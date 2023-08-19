@@ -1,4 +1,6 @@
-FROM golang:1.21.0-alpine3.17
+ARG BUILD_ARG_GO_VERSION=1.21.0
+ARG BUILD_ARG_ALPINE_VERSION=3.18
+FROM golang:${BUILD_ARG_GO_VERSION}-alpine${BUILD_ARG_ALPINE_VERSION} AS builder
 
 # install tools (bash, git, protobuf, protoc-gen-go, protoc-grn-go-grpc, pkger)
 RUN apk -U --no-cache add bash git protobuf &&\
@@ -28,6 +30,16 @@ WORKDIR /go/src/github.com/tokopedia/gripmock
 # install gripmock & build example to cache necessary imports
 RUN go install -v && go build ./example/simple/client
 
+RUN cp $GOPATH/bin/gripmock /usr/local/bin/
+
+FROM alpine:${BUILD_ARG_ALPINE_VERSION}
+
+WORKDIR /
+
+RUN apk add --update protoc
+
+COPY --from=builder /usr/local/bin/gripmock .
+
 EXPOSE 4770 4771
 
-ENTRYPOINT ["gripmock"]
+ENTRYPOINT ["/gripmock"]
