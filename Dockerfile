@@ -34,7 +34,7 @@ WORKDIR /go/src/github.com/tokopedia/gripmock
 RUN go install -v
 
 # remove pkgs
-RUN apk del git
+RUN apk del git && apk -v cache clean
 
 EXPOSE 4770 4771
 
