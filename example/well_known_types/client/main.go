@@ -8,6 +8,7 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	pb "github.com/tokopedia/gripmock/protogen/example/well_known_types"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // in order to generate this .pb.go you need to have https://github.com/google/protobuf.git cloned
@@ -18,7 +19,7 @@ func main() {
 	defer cancel()
 
 	// Set up a connection to the server.
-	conn, err := grpc.DialContext(ctx, "localhost:4770", grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.DialContext(ctx, "localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}

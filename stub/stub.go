@@ -3,12 +3,12 @@ package stub
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"github.com/go-chi/chi"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+	"io"
 	"log"
 	"net/http"
-	"strings"
-
-	"github.com/go-chi/chi"
 )
 
 type Options struct {
@@ -17,11 +17,11 @@ type Options struct {
 	StubPath string
 }
 
-const DEFAULT_PORT = "4771"
+const DefaultPort = "4771"
 
 func RunStubServer(opt Options) {
 	if opt.Port == "" {
-		opt.Port = DEFAULT_PORT
+		opt.Port = DefaultPort
 	}
 	addr := opt.BindAddr + ":" + opt.Port
 	r := chi.NewRouter()
@@ -65,7 +65,7 @@ type Output struct {
 }
 
 func addStub(w http.ResponseWriter, r *http.Request) {
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		responseError(err, w)
 		return
@@ -100,16 +100,17 @@ func listStub(w http.ResponseWriter, r *http.Request) {
 
 func validateStub(stub *Stub) error {
 	if stub.Service == "" {
-		return fmt.Errorf("Service name can't be empty")
+		return fmt.Errorf("service name can't be empty")
 	}
 
 	if stub.Method == "" {
-		return fmt.Errorf("Method name can't be emtpy")
+		return fmt.Errorf("method name can't be emtpy")
 	}
 
 	// due to golang implementation
 	// method name must capital
-	stub.Method = strings.Title(stub.Method)
+	title := cases.Title(language.English, cases.NoLower)
+	stub.Method = title.String(stub.Method)
 
 	switch {
 	case stub.Input.Contains != nil:
@@ -148,7 +149,8 @@ func handleFindStub(w http.ResponseWriter, r *http.Request) {
 
 	// due to golang implementation
 	// method name must capital
-	stub.Method = strings.Title(stub.Method)
+	title := cases.Title(language.English, cases.NoLower)
+	stub.Method = title.String(stub.Method)
 
 	output, err := findStub(stub)
 	if err != nil {

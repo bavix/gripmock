@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 	"reflect"
 	"regexp"
 	"sync"
@@ -200,7 +200,7 @@ func matches(expect, actual map[string]interface{}) bool {
 func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc) bool {
 
 	// circuit brake
-	if acc == false {
+	if !acc {
 		return false
 	}
 
@@ -277,7 +277,7 @@ func readStubFromFile(path string) {
 }
 
 func (sm *stubMapping) readStubFromFile(path string) {
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
 		log.Printf("Can't read stub from %s. %v\n", path, err)
 		return
@@ -289,7 +289,7 @@ func (sm *stubMapping) readStubFromFile(path string) {
 			continue
 		}
 
-		byt, err := ioutil.ReadFile(path + "/" + file.Name())
+		byt, err := os.ReadFile(path + "/" + file.Name())
 		if err != nil {
 			log.Printf("Error when reading file %s. %v. skipping...", file.Name(), err)
 			continue

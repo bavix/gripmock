@@ -5,7 +5,7 @@ GOLANGCI_LING_IMAGE="golangci/golangci-lint:v1.54.0-alpine"
 version=latest
 
 build:
-	docker buildx build --load -t "bavix/gripmock:${version}" --platform linux/amd64,linux/arm64 .
+	docker buildx build --load -t "bavix/gripmock:${version}" --no-cache --platform linux/arm64 .
 
 test:
 	go test -tags mock -race -cover ./...
