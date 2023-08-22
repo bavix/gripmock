@@ -12,6 +12,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"golang.org/x/tools/imports"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/types/pluginpb"
@@ -239,6 +241,7 @@ func getGoPackage(proto *descriptor.FileDescriptorProto) (alias string, goPackag
 // change the structure also translate method type
 func extractServices(protos []*descriptor.FileDescriptorProto) []Service {
 	svcTmp := []Service{}
+	title := cases.Title(language.English, cases.NoLower)
 	for _, proto := range protos {
 		for _, svc := range proto.GetService() {
 			var s Service
@@ -259,7 +262,7 @@ func extractServices(protos []*descriptor.FileDescriptorProto) []Service {
 				}
 
 				methods[j] = methodTemplate{
-					Name:        strings.Title(*method.Name),
+					Name:        title.String(*method.Name),
 					SvcPackage:  s.Package,
 					ServiceName: svc.GetName(),
 					Input:       getMessageType(protos, method.GetInputType()),

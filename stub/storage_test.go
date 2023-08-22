@@ -2,7 +2,7 @@ package stub
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -19,9 +19,9 @@ func Test_readStubFromFile(t *testing.T) {
 		{
 			name: "single file, single stub",
 			mock: func(service, method string, data []storage) (path string) {
-				dir, err := ioutil.TempDir("", "")
+				dir, err := os.MkdirTemp("", "")
 				require.NoError(t, err)
-				tempF, err := ioutil.TempFile(dir, "")
+				tempF, err := os.CreateTemp(dir, "")
 				require.NoError(t, err)
 				defer tempF.Close()
 
@@ -53,9 +53,9 @@ func Test_readStubFromFile(t *testing.T) {
 		{
 			name: "single file, multiple stub",
 			mock: func(service, method string, data []storage) (path string) {
-				dir, err := ioutil.TempDir("", "")
+				dir, err := os.MkdirTemp("", "")
 				require.NoError(t, err)
-				tempF, err := ioutil.TempFile(dir, "")
+				tempF, err := os.CreateTemp(dir, "")
 				require.NoError(t, err)
 				defer tempF.Close()
 
@@ -91,11 +91,11 @@ func Test_readStubFromFile(t *testing.T) {
 		{
 			name: "multiple file, single stub",
 			mock: func(service, method string, data []storage) (path string) {
-				dir, err := ioutil.TempDir("", "")
+				dir, err := os.MkdirTemp("", "")
 				require.NoError(t, err)
 
 				for _, d := range data {
-					tempF, err := ioutil.TempFile(dir, "")
+					tempF, err := os.CreateTemp(dir, "")
 					require.NoError(t, err)
 					defer tempF.Close()
 

@@ -76,8 +76,8 @@ func main() {
 	// and run
 	run, runerr := runGrpcServer(output)
 
-	var term = make(chan os.Signal)
-	signal.Notify(term, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGINT)
+	term := make(chan os.Signal, 1)
+	signal.Notify(term, syscall.SIGTERM, syscall.SIGINT)
 	select {
 	case err := <-runerr:
 		log.Fatal(err)

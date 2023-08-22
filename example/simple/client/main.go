@@ -8,6 +8,7 @@ import (
 
 	pb "github.com/tokopedia/gripmock/protogen/example/simple"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -15,7 +16,7 @@ func main() {
 	defer cancel()
 
 	// Set up a connection to the server.
-	conn, err := grpc.DialContext(ctx, "localhost:4770", grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.DialContext(ctx, "localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}

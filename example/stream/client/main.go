@@ -9,6 +9,7 @@ import (
 
 	pb "github.com/tokopedia/gripmock/protogen/example/stream"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
@@ -17,7 +18,7 @@ func main() {
 	defer cancel()
 
 	// Set up a connection to the server.
-	conn, err := grpc.DialContext(ctx, "localhost:4770", grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.DialContext(ctx, "localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -46,7 +47,7 @@ func serverStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 	}
 	stream, err := c.ServerStream(context.Background(), req)
 	if err != nil {
-		log.Fatal("server stream error: %v", err)
+		log.Fatalf("server stream error: %v", err)
 	}
 
 	for {
@@ -56,7 +57,7 @@ func serverStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 		}
 
 		if err != nil {
-			log.Fatal("s2c error: %v", err)
+			log.Fatalf("s2c error: %v", err)
 		}
 
 		log.Printf("s2c message: %s\n", reply.Message)
