@@ -171,6 +171,12 @@ func fixGoPackage(protoPaths []string) []string {
 }
 
 func runGrpcServer(output string) (*exec.Cmd, <-chan error) {
+	run1 := exec.Command("cat", output+"server.go")
+	run1.Stdout = os.Stdout
+	run1.Stderr = os.Stderr
+	if err := run1.Start(); err != nil {
+		log.Fatal(err)
+	}
 	run := exec.Command("go", "run", output+"server.go")
 	run.Stdout = os.Stdout
 	run.Stderr = os.Stderr
