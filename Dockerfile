@@ -23,6 +23,8 @@ RUN mkdir /proto /stubs &&\
 
 RUN cd /go/src/github.com/tokopedia/gripmock/protoc-gen-gripmock &&\
     go install -v &&\
+    cd /go/src/github.com/tokopedia/gripmock/example/simple/client &&\
+    go get -u all &&\
     cd /go/src/github.com/tokopedia/gripmock &&\
     go install -v
 
