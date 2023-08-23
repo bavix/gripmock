@@ -203,7 +203,7 @@ func getGoPackage(proto *descriptor.FileDescriptorProto) (alias string, goPackag
 	}
 
 	// support go_package alias declaration
-	// https://google.golang.org/protobuf/issues/139
+	// https://github.com/golang/protobuf/issues/139
 	if splits := strings.Split(goPackage, ";"); len(splits) > 1 {
 		goPackage = splits[0]
 		alias = splits[1]
