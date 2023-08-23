@@ -5,6 +5,6 @@
 gripmock --stub=example/stream/stub example/stream/stream.proto &
 
 # wait for generated files to be available and gripmock is up
-sleep 2
+sleep 5
 
 go run example/stream/client/*.go
