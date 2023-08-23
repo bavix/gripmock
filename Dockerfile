@@ -24,10 +24,6 @@ WORKDIR /go/src/github.com/tokopedia/gripmock/protoc-gen-gripmock
 # install generator plugin
 RUN go install -v
 
-WORKDIR /go/src/github.com/tokopedia/gripmock/example/simple/client
-
-RUN go get -u all
-
 WORKDIR /go/src/github.com/tokopedia/gripmock
 
 # install gripmock & build example to cache necessary imports
