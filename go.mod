@@ -17,7 +17,6 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/tokopedia/gripmock/protogen v0.0.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	google.golang.org/genproto v0.0.0-20230822172742-b8732ec3820d // indirect

@@ -1,4 +1,4 @@
-GOLANGCI_LING_IMAGE="golangci/golangci-lint:v1.54.0-alpine"
+GOLANGCI_LING_IMAGE="golangci/golangci-lint:v1.54.2-alpine"
 
 .PHONY: *
 
@@ -15,3 +15,6 @@ lint:
 
 lint-fix:
 	make lint args=--fix
+
+test: build
+	docker compose -f deployments/docker-compose/docker-compose.yml up
