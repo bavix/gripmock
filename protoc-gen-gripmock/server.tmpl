@@ -51,7 +51,7 @@ func main() {
 
 {{ define "services" }}
 type {{.Name}} struct{
-    {{.Package}}Unsafe{{.Name}}Server
+    proto.Unsafe{{.Name}}Server
 }
 
 {{ template "methods" .}}
