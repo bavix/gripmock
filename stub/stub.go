@@ -6,7 +6,6 @@ import (
 	"github.com/go-chi/chi"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"io"
 	"log"
 	"net/http"
 )
@@ -65,32 +64,32 @@ type Output struct {
 }
 
 func addStub(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		responseError(err, w)
-		return
-	}
-
 	stub := new(Stub)
-	err = json.Unmarshal(body, stub)
-	if err != nil {
+	decoder := json.NewDecoder(r.Body)
+	decoder.UseNumber()
+
+	if err := decoder.Decode(stub); err != nil {
 		responseError(err, w)
 		return
 	}
 
-	err = validateStub(stub)
-	if err != nil {
+	defer r.Body.Close()
+
+	if err := validateStub(stub); err != nil {
 		responseError(err, w)
 		return
 	}
 
-	err = storeStub(stub)
-	if err != nil {
+	if err := storeStub(stub); err != nil {
 		responseError(err, w)
 		return
 	}
 
-	w.Write([]byte("Success add stub"))
+	_, err := w.Write([]byte("Success add stub"))
+	if err != nil {
+		responseError(err, w)
+		return
+	}
 }
 
 func listStub(w http.ResponseWriter, r *http.Request) {
