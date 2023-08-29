@@ -140,11 +140,13 @@ func handleFindStub(w http.ResponseWriter, r *http.Request) {
 	stub := new(findStubPayload)
 	decoder := json.NewDecoder(r.Body)
 	decoder.UseNumber()
-	err := decoder.Decode(stub)
-	if err != nil {
+
+	if err := decoder.Decode(stub); err != nil {
 		responseError(err, w)
 		return
 	}
+
+	defer r.Body.Close()
 
 	// due to golang implementation
 	// method name must capital

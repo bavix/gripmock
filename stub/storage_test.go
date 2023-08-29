@@ -45,7 +45,7 @@ func Test_readStubFromFile(t *testing.T) {
 			method:  "getname",
 			data: []storage{
 				{
-					Input:  Input{Equals: map[string]interface{}{"id": float64(1)}},
+					Input:  Input{Equals: map[string]interface{}{"id": json.Number("1")}},
 					Output: Output{Data: map[string]interface{}{"name": "user1"}},
 				},
 			},
@@ -79,11 +79,11 @@ func Test_readStubFromFile(t *testing.T) {
 			method:  "getname",
 			data: []storage{
 				{
-					Input:  Input{Equals: map[string]interface{}{"id": float64(1)}},
+					Input:  Input{Equals: map[string]interface{}{"id": json.Number("1")}},
 					Output: Output{Data: map[string]interface{}{"name": "user1"}},
 				},
 				{
-					Input:  Input{Equals: map[string]interface{}{"id": float64(2)}},
+					Input:  Input{Equals: map[string]interface{}{"id": json.Number("2")}},
 					Output: Output{Data: map[string]interface{}{"name": "user2"}},
 				},
 			},
@@ -117,11 +117,11 @@ func Test_readStubFromFile(t *testing.T) {
 			method:  "getname",
 			data: []storage{
 				{
-					Input:  Input{Equals: map[string]interface{}{"id": float64(1)}},
+					Input:  Input{Equals: map[string]interface{}{"id": json.Number("1")}},
 					Output: Output{Data: map[string]interface{}{"name": "user1"}},
 				},
 				{
-					Input:  Input{Equals: map[string]interface{}{"id": float64(2)}},
+					Input:  Input{Equals: map[string]interface{}{"id": json.Number("2")}},
 					Output: Output{Data: map[string]interface{}{"name": "user2"}},
 				},
 			},
