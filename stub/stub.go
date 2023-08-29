@@ -92,7 +92,7 @@ func addStub(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func listStub(w http.ResponseWriter, r *http.Request) {
+func listStub(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(allStub())
 }
@@ -119,13 +119,13 @@ func validateStub(stub *Stub) error {
 	case stub.Input.Matches != nil:
 		break
 	default:
-		return fmt.Errorf("Input cannot be empty")
+		return fmt.Errorf("input cannot be empty")
 	}
 
 	// TODO: validate all input case
 
 	if stub.Output.Error == "" && stub.Output.Data == nil {
-		return fmt.Errorf("Output can't be empty")
+		return fmt.Errorf("output can't be empty")
 	}
 	return nil
 }
@@ -140,11 +140,13 @@ func handleFindStub(w http.ResponseWriter, r *http.Request) {
 	stub := new(findStubPayload)
 	decoder := json.NewDecoder(r.Body)
 	decoder.UseNumber()
-	err := decoder.Decode(stub)
-	if err != nil {
+
+	if err := decoder.Decode(stub); err != nil {
 		responseError(err, w)
 		return
 	}
+
+	defer r.Body.Close()
 
 	// due to golang implementation
 	// method name must capital
