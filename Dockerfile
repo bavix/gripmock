@@ -28,6 +28,8 @@ RUN cd /go/src/github.com/tokopedia/gripmock/protoc-gen-gripmock &&\
     cd /go/src/github.com/tokopedia/gripmock &&\
     go install -v
 
+WORKDIR /go/src/github.com/tokopedia/gripmock
+
 EXPOSE 4770 4771
 
 ENTRYPOINT ["gripmock"]
