@@ -4,9 +4,9 @@ on:
   push:
     branches:
       - "latest"
+      - "nightly"
     tags:
       - "v*.*.*"
-  pull_request:
 
 jobs:
   docker:

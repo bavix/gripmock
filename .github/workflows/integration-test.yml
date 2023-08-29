@@ -3,6 +3,7 @@ on:
   pull_request:
     branches:
       - develop
+      - nightly
       - latest
 
 jobs:
@@ -16,12 +17,10 @@ jobs:
       uses: ./
       with:
         entrypoint: example/simple/entrypoint.sh
-        args: simple
     - name: Run Stream Example
       uses: ./
       with:
         entrypoint: example/stream/entrypoint.sh
-        args: stream
     - name: Run WKT Example
       uses: ./
       with:
