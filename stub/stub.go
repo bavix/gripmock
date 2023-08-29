@@ -92,7 +92,7 @@ func addStub(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func listStub(w http.ResponseWriter, r *http.Request) {
+func listStub(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(allStub())
 }
@@ -119,13 +119,13 @@ func validateStub(stub *Stub) error {
 	case stub.Input.Matches != nil:
 		break
 	default:
-		return fmt.Errorf("Input cannot be empty")
+		return fmt.Errorf("input cannot be empty")
 	}
 
 	// TODO: validate all input case
 
 	if stub.Output.Error == "" && stub.Output.Data == nil {
-		return fmt.Errorf("Output can't be empty")
+		return fmt.Errorf("output can't be empty")
 	}
 	return nil
 }

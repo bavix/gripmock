@@ -60,19 +60,19 @@ func findStub(stub *findStubPayload) (*Output, error) {
 	mx.Lock()
 	defer mx.Unlock()
 	if _, ok := stubStorage[stub.Service]; !ok {
-		return nil, fmt.Errorf("Can't find stub for Service: %s", stub.Service)
+		return nil, fmt.Errorf("can't find stub for Service: %s", stub.Service)
 	}
 
 	if _, ok := stubStorage[stub.Service][stub.Method]; !ok {
-		return nil, fmt.Errorf("Can't find stub for Service:%s and Method:%s", stub.Service, stub.Method)
+		return nil, fmt.Errorf("can't find stub for Service:%s and Method:%s", stub.Service, stub.Method)
 	}
 
 	stubs := stubStorage[stub.Service][stub.Method]
 	if len(stubs) == 0 {
-		return nil, fmt.Errorf("Stub for Service:%s and Method:%s is empty", stub.Service, stub.Method)
+		return nil, fmt.Errorf("stub for Service:%s and Method:%s is empty", stub.Service, stub.Method)
 	}
 
-	closestMatch := []closeMatch{}
+	var closestMatch []closeMatch
 	for _, stubrange := range stubs {
 		if expect := stubrange.Input.Equals; expect != nil {
 			closestMatch = append(closestMatch, closeMatch{"equals", expect})
@@ -139,22 +139,22 @@ func stubNotFoundError(stub *findStubPayload, closestMatches []closeMatch) error
 // count the matches field_name and value then compare it with total field names and values
 // the higher the better
 func rankMatch(expect string, closeMatch map[string]interface{}) float32 {
-	occurence := 0
+	occurrence := 0
 	for key, value := range closeMatch {
 		if fuzzy.Match(key+":", expect) {
-			occurence++
+			occurrence++
 		}
 
 		if fuzzy.Match(fmt.Sprint(value), expect) {
-			occurence++
+			occurrence++
 		}
 	}
 
-	if occurence == 0 {
+	if occurrence == 0 {
 		return 0
 	}
 	totalFields := len(closeMatch) * 2
-	return float32(occurence) / float32(totalFields)
+	return float32(occurrence) / float32(totalFields)
 }
 
 func renderFieldAsString(fields map[string]interface{}) string {
