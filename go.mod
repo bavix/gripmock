@@ -16,7 +16,9 @@ require (
 
 require (
 	github.com/fatih/color v1.10.0 // indirect
+	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	golang.org/x/net v0.14.0 // indirect

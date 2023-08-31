@@ -14,7 +14,17 @@ import (
 	"golang.org/x/text/language"
 )
 
-type Handler struct {
+type HealthcheckHandler struct{}
+
+func (*HealthcheckHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(200)
+}
+
+func NewHealthcheckHandler() *HealthcheckHandler {
+	return &HealthcheckHandler{}
+}
+
+type ApiHandler struct {
 	stubs     *storage.StubStorage
 	convertor *yaml2json.Convertor
 }
@@ -25,11 +35,11 @@ type findStubPayload struct {
 	Data    map[string]interface{} `json:"data"`
 }
 
-func NewHandler() *Handler {
-	return &Handler{stubs: storage.New(), convertor: yaml2json.New()}
+func NewApiHandler() *ApiHandler {
+	return &ApiHandler{stubs: storage.New(), convertor: yaml2json.New()}
 }
 
-func (h *Handler) searchHandle(w http.ResponseWriter, r *http.Request) {
+func (h *ApiHandler) searchHandle(w http.ResponseWriter, r *http.Request) {
 	stub := new(findStubPayload)
 	decoder := json.NewDecoder(r.Body)
 	decoder.UseNumber()
@@ -57,12 +67,12 @@ func (h *Handler) searchHandle(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(output)
 }
 
-func (h *Handler) purgeHandle(w http.ResponseWriter, _ *http.Request) {
+func (h *ApiHandler) purgeHandle(w http.ResponseWriter, _ *http.Request) {
 	h.stubs.Purge()
 	w.WriteHeader(204)
 }
 
-func (h *Handler) listHandle(w http.ResponseWriter, _ *http.Request) {
+func (h *ApiHandler) listHandle(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(h.stubs.Stubs())
 	if err != nil {
@@ -71,7 +81,7 @@ func (h *Handler) listHandle(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func (h *Handler) addHandle(w http.ResponseWriter, r *http.Request) {
+func (h *ApiHandler) addHandle(w http.ResponseWriter, r *http.Request) {
 	// todo: add supported input array
 	stub := new(storage.Stub)
 	decoder := json.NewDecoder(r.Body)
@@ -97,13 +107,13 @@ func (h *Handler) addHandle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) responseError(err error, w http.ResponseWriter) {
+func (h *ApiHandler) responseError(err error, w http.ResponseWriter) {
 	w.WriteHeader(500)
 
 	_, _ = w.Write([]byte(err.Error()))
 }
 
-func (h *Handler) readStubs(path string) {
+func (h *ApiHandler) readStubs(path string) {
 	files, err := os.ReadDir(path)
 	if err != nil {
 		log.Printf("Can't read stub from %s. %v\n", path, err)
