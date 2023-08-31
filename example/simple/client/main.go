@@ -33,12 +33,38 @@ func main() {
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
+	if r.ReturnCode != 1 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 1)
+	}
 	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
 
 	name = "world"
 	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
+	}
+	if r.ReturnCode != 1 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 1)
+	}
+	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+
+	name = "simple2"
+	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
+	if err != nil {
+		log.Fatalf("error from grpc: %v", err)
+	}
+	if r.ReturnCode != 2 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 2)
+	}
+	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+
+	name = "simple3"
+	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
+	if err != nil {
+		log.Fatalf("error from grpc: %v", err)
+	}
+	if r.ReturnCode != 3 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 3)
 	}
 	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
 }

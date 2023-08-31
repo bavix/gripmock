@@ -18,8 +18,12 @@ func New() *Engine {
 func (e *Engine) Execute(name string, data []byte) ([]byte, error) {
 	var buffer bytes.Buffer
 
-	err := template.New(name).Funcs(e.funcMap()).Execute(&buffer, data)
+	parse, err := template.New(name).Funcs(e.funcMap()).Parse(string(data))
 	if err != nil {
+		return nil, err
+	}
+
+	if err := parse.Execute(&buffer, nil); err != nil {
 		return nil, err
 	}
 
