@@ -4,5 +4,6 @@ gripmock
 .DS_Store
 protogen/*
 !protogen/go.mod
+!protogen/empty.go
 !protogen/example/
 temp

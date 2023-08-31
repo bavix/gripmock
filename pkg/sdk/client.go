@@ -28,7 +28,7 @@ type Response struct {
 	Error string      `json:"error"`
 }
 
-func (c *StubApiClient) Search(payload Payload) (*Response, error) {
+func (c *StubApiClient) Search(payload Payload) (any, error) {
 	postBody, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -55,5 +55,9 @@ func (c *StubApiClient) Search(payload Payload) (*Response, error) {
 		return nil, err
 	}
 
-	return result, nil
+	if result.Error != "" {
+		return nil, fmt.Errorf(result.Error)
+	}
+
+	return result.Data, nil
 }
