@@ -29,7 +29,7 @@ func NewHandler() *Handler {
 	return &Handler{stubs: storage.New(), convertor: yaml2json.New()}
 }
 
-func (h *Handler) handleFind(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) searchHandle(w http.ResponseWriter, r *http.Request) {
 	stub := new(findStubPayload)
 	decoder := json.NewDecoder(r.Body)
 	decoder.UseNumber()
@@ -57,12 +57,12 @@ func (h *Handler) handleFind(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(output)
 }
 
-func (h *Handler) handlePurge(w http.ResponseWriter, _ *http.Request) {
+func (h *Handler) purgeHandle(w http.ResponseWriter, _ *http.Request) {
 	h.stubs.Purge()
 	w.WriteHeader(204)
 }
 
-func (h *Handler) handleStubs(w http.ResponseWriter, _ *http.Request) {
+func (h *Handler) listHandle(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(h.stubs.Stubs())
 	if err != nil {
@@ -71,7 +71,7 @@ func (h *Handler) handleStubs(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func (h *Handler) handleAddStub(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) addHandle(w http.ResponseWriter, r *http.Request) {
 	// todo: add supported input array
 	stub := new(storage.Stub)
 	decoder := json.NewDecoder(r.Body)

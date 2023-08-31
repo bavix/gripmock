@@ -2,7 +2,7 @@ package stub
 
 import (
 	"fmt"
-	"github.com/go-chi/chi"
+	"github.com/gorilla/mux"
 	"github.com/tokopedia/gripmock/pkg/storage"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -24,21 +24,23 @@ func RunStubServer(opt Options) {
 	}
 	addr := opt.BindAddr + ":" + opt.Port
 
-	handler := NewHandler()
-
-	r := chi.NewRouter()
-	r.Get("/", handler.handleStubs)
-	r.Post("/add", handler.handleAddStub)
-	r.Post("/find", handler.handleFind)
-	r.Get("/purge", handler.handlePurge)
-
+	api := NewHandler()
 	if opt.StubPath != "" {
-		handler.readStubs(opt.StubPath)
+		api.readStubs(opt.StubPath)
 	}
+
+	router := mux.NewRouter()
+
+	apiRouter := router.PathPrefix("/api").Subrouter()
+	apiRouter.HandleFunc("/stubs/search", api.searchHandle).Methods("POST")
+	apiRouter.HandleFunc("/stubs", api.listHandle).Methods("GET")
+	apiRouter.HandleFunc("/stubs", api.addHandle).Methods("POST")
+	apiRouter.HandleFunc("/stubs", api.purgeHandle).Methods("DELETE")
 
 	fmt.Println("Serving stub admin on http://" + addr)
 	go func() {
-		err := http.ListenAndServe(addr, r)
+		http.Handle("/", router)
+		err := http.ListenAndServe(addr, nil)
 		log.Fatal(err)
 	}()
 }

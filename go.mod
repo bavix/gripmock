@@ -3,9 +3,9 @@ module github.com/tokopedia/gripmock
 go 1.21
 
 require (
-	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/goccy/go-yaml v1.11.0
 	github.com/google/uuid v1.3.0
+	github.com/gorilla/mux v1.8.0
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/tokopedia/gripmock/protogen/example v0.0.0
 	golang.org/x/text v0.12.0
