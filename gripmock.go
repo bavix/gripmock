@@ -12,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	_ "github.com/tokopedia/gripmock/protogen"
 	"github.com/tokopedia/gripmock/stub"
 )
 

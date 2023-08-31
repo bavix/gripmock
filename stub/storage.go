@@ -1,97 +1,58 @@
 package stub
 
 import (
-	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
-	"os"
 	"reflect"
 	"regexp"
-	"sync"
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
+	"github.com/tokopedia/gripmock/pkg/storage"
 )
 
-var mx = sync.Mutex{}
-
-// below represent map[servicename][methodname][]expectations
-type stubMapping map[string]map[string][]storage
-
 type matchFunc func(interface{}, interface{}) bool
-
-var stubStorage = stubMapping{}
-
-type storage struct {
-	Input  Input
-	Output Output
-}
-
-func storeStub(stub *Stub) error {
-	return stubStorage.storeStub(stub)
-}
-
-func (sm *stubMapping) storeStub(stub *Stub) error {
-	mx.Lock()
-	defer mx.Unlock()
-
-	if (*sm)[stub.Service] == nil {
-		(*sm)[stub.Service] = make(map[string][]storage)
-	}
-	(*sm)[stub.Service][stub.Method] = append((*sm)[stub.Service][stub.Method], storage{
-		Input:  stub.Input,
-		Output: stub.Output,
-	})
-	return nil
-}
-
-func allStub() stubMapping {
-	mx.Lock()
-	defer mx.Unlock()
-	return stubStorage
-}
 
 type closeMatch struct {
 	rule   string
 	expect map[string]interface{}
 }
 
-func findStub(stub *findStubPayload) (*Output, error) {
-	mx.Lock()
-	defer mx.Unlock()
-	if _, ok := stubStorage[stub.Service]; !ok {
+func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage.Output, error) {
+	stubs, err := stubStorage.ItemsBy(stub.Service, stub.Method)
+	if errors.Is(err, storage.ErrServiceNotFound) {
 		return nil, fmt.Errorf("can't find stub for Service: %s", stub.Service)
 	}
 
-	if _, ok := stubStorage[stub.Service][stub.Method]; !ok {
+	if errors.Is(err, storage.ErrMethodNotFound) {
 		return nil, fmt.Errorf("can't find stub for Service:%s and Method:%s", stub.Service, stub.Method)
 	}
 
-	stubs := stubStorage[stub.Service][stub.Method]
 	if len(stubs) == 0 {
 		return nil, fmt.Errorf("stub for Service:%s and Method:%s is empty", stub.Service, stub.Method)
 	}
 
 	var closestMatch []closeMatch
-	for _, stubrange := range stubs {
-		if expect := stubrange.Input.Equals; expect != nil {
+	for _, strange := range stubs {
+		if expect := strange.Input.Equals; expect != nil {
 			closestMatch = append(closestMatch, closeMatch{"equals", expect})
 			if equals(stub.Data, expect) {
-				return &stubrange.Output, nil
+				return &strange.Output, nil
 			}
 		}
 
-		if expect := stubrange.Input.Contains; expect != nil {
+		if expect := strange.Input.Contains; expect != nil {
 			closestMatch = append(closestMatch, closeMatch{"contains", expect})
-			if contains(stubrange.Input.Contains, stub.Data) {
-				return &stubrange.Output, nil
+			if contains(strange.Input.Contains, stub.Data) {
+				return &strange.Output, nil
 			}
 		}
 
-		if expect := stubrange.Input.Matches; expect != nil {
+		if expect := strange.Input.Matches; expect != nil {
 			closestMatch = append(closestMatch, closeMatch{"matches", expect})
-			if matches(stubrange.Input.Matches, stub.Data) {
-				return &stubrange.Output, nil
+			if matches(strange.Input.Matches, stub.Data) {
+				return &strange.Output, nil
 			}
 		}
 	}
@@ -101,8 +62,12 @@ func findStub(stub *findStubPayload) (*Output, error) {
 
 func stubNotFoundError(stub *findStubPayload, closestMatches []closeMatch) error {
 	template := fmt.Sprintf("Can't find stub \n\nService: %s \n\nMethod: %s \n\nInput\n\n", stub.Service, stub.Method)
-	expectString := renderFieldAsString(stub.Data)
-	template += expectString
+	expectString, err := json.MarshalIndent(stub.Data, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	template += string(expectString)
 
 	if len(closestMatches) == 0 {
 		return fmt.Errorf(template)
@@ -113,7 +78,7 @@ func stubNotFoundError(stub *findStubPayload, closestMatches []closeMatch) error
 		match closeMatch
 	}{0, closeMatch{}}
 	for _, closeMatchValue := range closestMatches {
-		rank := rankMatch(expectString, closeMatchValue.expect)
+		rank := rankMatch(string(expectString), closeMatchValue.expect)
 
 		// the higher the better
 		if rank > highestRank.rank {
@@ -129,7 +94,11 @@ func stubNotFoundError(stub *findStubPayload, closestMatches []closeMatch) error
 		closestMatch = highestRank.match
 	}
 
-	closestMatchString := renderFieldAsString(closestMatch.expect)
+	closestMatchString, err := json.MarshalIndent(closestMatch.expect, "", "\t")
+	if err != nil {
+		return err
+	}
+
 	template += fmt.Sprintf("\n\nClosest Match \n\n%s:%s", closestMatch.rule, closestMatchString)
 
 	return fmt.Errorf(template)
@@ -157,19 +126,6 @@ func rankMatch(expect string, closeMatch map[string]interface{}) float32 {
 	return float32(occurrence) / float32(totalFields)
 }
 
-func renderFieldAsString(fields map[string]interface{}) string {
-	template := "{\n"
-	for key, val := range fields {
-		template += fmt.Sprintf("\t%s: %v\n", key, val)
-	}
-	template += "}"
-	return template
-}
-
-func deepEqual(expect, actual interface{}) bool {
-	return reflect.DeepEqual(expect, actual)
-}
-
 func regexMatch(expect, actual interface{}) bool {
 	var expectedStr, expectedStringOk = expect.(string)
 	var actualStr, actualStringOk = actual.(string)
@@ -182,15 +138,15 @@ func regexMatch(expect, actual interface{}) bool {
 		return match
 	}
 
-	return deepEqual(expect, actual)
+	return reflect.DeepEqual(expect, actual)
 }
 
 func equals(expect, actual map[string]interface{}) bool {
-	return find(expect, actual, true, true, deepEqual)
+	return find(expect, actual, true, true, reflect.DeepEqual)
 }
 
 func contains(expect, actual map[string]interface{}) bool {
-	return find(expect, actual, true, false, deepEqual)
+	return find(expect, actual, true, false, reflect.DeepEqual)
 }
 
 func matches(expect, actual map[string]interface{}) bool {
@@ -263,62 +219,4 @@ func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc) bool {
 	}
 
 	return f(expect, actual)
-}
-
-func clearStorage() {
-	mx.Lock()
-	defer mx.Unlock()
-
-	stubStorage = stubMapping{}
-}
-
-func readStubFromFile(path string) {
-	stubStorage.readStubFromFile(path)
-}
-
-func (sm *stubMapping) readStubFromFile(path string) {
-	files, err := os.ReadDir(path)
-	if err != nil {
-		log.Printf("Can't read stub from %s. %v\n", path, err)
-		return
-	}
-
-	for _, file := range files {
-		if file.IsDir() {
-			readStubFromFile(path + "/" + file.Name())
-			continue
-		}
-
-		byt, err := os.ReadFile(path + "/" + file.Name())
-		if err != nil {
-			log.Printf("Error when reading file %s. %v. skipping...", file.Name(), err)
-			continue
-		}
-
-		if byt[0] == '[' && byt[len(byt)-1] == ']' {
-			var stubs []*Stub
-			decoder := json.NewDecoder(bytes.NewReader(byt))
-			decoder.UseNumber()
-
-			if err = decoder.Decode(&stubs); err != nil {
-				log.Printf("Error when unmarshalling file %s. %v. skipping...", file.Name(), err)
-				continue
-			}
-			for _, s := range stubs {
-				sm.storeStub(s)
-			}
-			continue
-		}
-
-		stub := new(Stub)
-		decoder := json.NewDecoder(bytes.NewReader(byt))
-		decoder.UseNumber()
-
-		if err = decoder.Decode(stub); err != nil {
-			log.Printf("Error when unmarshalling file %s. %v. skipping...", file.Name(), err)
-			continue
-		}
-
-		sm.storeStub(stub)
-	}
 }
