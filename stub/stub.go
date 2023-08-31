@@ -2,12 +2,14 @@ package stub
 
 import (
 	"fmt"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/tokopedia/gripmock/pkg/storage"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"log"
 	"net/http"
+	"os"
 )
 
 type Options struct {
@@ -24,12 +26,15 @@ func RunStubServer(opt Options) {
 	}
 	addr := opt.BindAddr + ":" + opt.Port
 
-	api := NewHandler()
+	api := NewApiHandler()
 	if opt.StubPath != "" {
 		api.readStubs(opt.StubPath)
 	}
 
+	healthcheck := NewHealthcheckHandler()
+
 	router := mux.NewRouter()
+	router.Handle("/health", healthcheck).Methods("GET")
 
 	apiRouter := router.PathPrefix("/api").Subrouter()
 	apiRouter.HandleFunc("/stubs/search", api.searchHandle).Methods("POST")
@@ -39,8 +44,8 @@ func RunStubServer(opt Options) {
 
 	fmt.Println("Serving stub admin on http://" + addr)
 	go func() {
-		http.Handle("/", router)
-		err := http.ListenAndServe(addr, nil)
+		handler := handlers.CompressHandler(handlers.LoggingHandler(os.Stdout, router))
+		err := http.ListenAndServe(addr, handler)
 		log.Fatal(err)
 	}()
 }

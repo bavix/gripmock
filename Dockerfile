@@ -32,4 +32,6 @@ WORKDIR /go/src/github.com/tokopedia/gripmock
 
 EXPOSE 4770 4771
 
+HEALTHCHECK CMD curl --fail http://127.0.0.1:4771/health
+
 ENTRYPOINT ["gripmock"]
