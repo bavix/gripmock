@@ -43,7 +43,7 @@ func TestStub(t *testing.T) {
 						}
 					}`
 				read := bytes.NewReader([]byte(payload))
-				return httptest.NewRequest("POST", "/add", read)
+				return httptest.NewRequest("POST", "/api/stubs", read)
 			},
 			handler: api.AddHandle,
 			expect:  `["43739ed8-2810-4f57-889b-4d3ff5795bce"]`,
@@ -51,7 +51,7 @@ func TestStub(t *testing.T) {
 		{
 			name: "list stub",
 			mock: func() *http.Request {
-				return httptest.NewRequest("GET", "/", nil)
+				return httptest.NewRequest("GET", "/api/stubs", nil)
 			},
 			handler: api.ListHandle,
 			expect:  "[{\"id\":\"43739ed8-2810-4f57-889b-4d3ff5795bce\",\"service\":\"Testing\",\"method\":\"TestMethod\",\"input\":{\"equals\":{\"Hola\":\"Mundo\"},\"contains\":null,\"matches\":null},\"output\":{\"data\":{\"Hello\":\"World\"},\"error\":\"\"}}]",
@@ -60,7 +60,7 @@ func TestStub(t *testing.T) {
 			name: "find stub equals",
 			mock: func() *http.Request {
 				payload := `{"service":"Testing","method":"TestMethod","data":{"Hola":"Mundo"}}`
-				return httptest.NewRequest("POST", "/find", bytes.NewReader([]byte(payload)))
+				return httptest.NewRequest("POST", "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchHandle,
 			expect:  "{\"data\":{\"Hello\":\"World\"},\"error\":\"\"}\n",
@@ -92,7 +92,7 @@ func TestStub(t *testing.T) {
 						}
 					}`
 				read := bytes.NewReader([]byte(payload))
-				return httptest.NewRequest("POST", "/add", read)
+				return httptest.NewRequest("POST", "/api/stubs", read)
 			},
 			handler: api.AddHandle,
 			expect:  `["b7211be4-06f7-4a2c-8453-359f077bcdb8"]`,
@@ -101,7 +101,7 @@ func TestStub(t *testing.T) {
 			name: "find nested stub equals",
 			mock: func() *http.Request {
 				payload := `{"service":"NestedTesting","method":"TestMethod","data":{"name":"Afra Gokce","age":1,"girl":true,"null":null,"greetings":{"hola":"mundo","merhaba":"dunya"},"cities":["Istanbul","Jakarta"]}}`
-				return httptest.NewRequest("POST", "/find", bytes.NewReader([]byte(payload)))
+				return httptest.NewRequest("POST", "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchHandle,
 			expect:  "{\"data\":{\"Hello\":\"World\"},\"error\":\"\"}\n",
@@ -125,7 +125,7 @@ func TestStub(t *testing.T) {
 									}
 								}
 							}`
-				return httptest.NewRequest("POST", "/add", bytes.NewReader([]byte(payload)))
+				return httptest.NewRequest("POST", "/api/stubs", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.AddHandle,
 			expect:  `["b5e35447-45bb-4b71-8ab4-41ba5dda669c"]`,
@@ -142,7 +142,7 @@ func TestStub(t *testing.T) {
 							"field3":"hello field3"
 						}
 					}`
-				return httptest.NewRequest("GET", "/find", bytes.NewReader([]byte(payload)))
+				return httptest.NewRequest("GET", "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchHandle,
 			expect:  "{\"data\":{\"hello\":\"world\"},\"error\":\"\"}\n",
@@ -170,7 +170,7 @@ func TestStub(t *testing.T) {
 									}
 								}
 							}`
-				return httptest.NewRequest("POST", "/add", bytes.NewReader([]byte(payload)))
+				return httptest.NewRequest("POST", "/api/stubs", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.AddHandle,
 			expect:  `["b8e354d9-a211-49c7-9947-b617e1689e0f"]`,
@@ -217,7 +217,7 @@ func TestStub(t *testing.T) {
 									}
 								}
 							}]`
-				return httptest.NewRequest("POST", "/add", bytes.NewReader([]byte(payload)))
+				return httptest.NewRequest("POST", "/api/stubs", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.AddHandle,
 			expect:  `["3f68f410-bb58-49ad-b679-23f2ed690c1d","6da11d72-c0db-4075-9e72-31d61ffd0483"]`,
@@ -239,7 +239,7 @@ func TestStub(t *testing.T) {
 								"cities": ["Istanbul", "Jakarta", "Winterfell"]
 						}
 					}`
-				return httptest.NewRequest("GET", "/find", bytes.NewReader([]byte(payload)))
+				return httptest.NewRequest("GET", "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchHandle,
 			expect:  "{\"data\":{\"hello\":\"world\"},\"error\":\"\"}\n",
@@ -262,7 +262,7 @@ func TestStub(t *testing.T) {
 							}
 						}
 					}`
-				return httptest.NewRequest("POST", "/add", bytes.NewReader([]byte(payload)))
+				return httptest.NewRequest("POST", "/api/stubs", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.AddHandle,
 			expect:  `["faf39edb-c695-493f-a25e-ecfc171977dc"]`,
@@ -277,7 +277,7 @@ func TestStub(t *testing.T) {
 							"field1":"hello"
 						}
 					}`
-				return httptest.NewRequest("GET", "/find", bytes.NewReader([]byte(payload)))
+				return httptest.NewRequest("GET", "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchHandle,
 			expect:  "{\"data\":{\"reply\":\"OK\"},\"error\":\"\"}\n",
@@ -307,7 +307,7 @@ func TestStub(t *testing.T) {
 							}
 						}
 					}`
-				return httptest.NewRequest("POST", "/add", bytes.NewReader([]byte(payload)))
+				return httptest.NewRequest("POST", "/api/stubs", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.AddHandle,
 			expect:  `["b1299ce3-a2a6-4fe7-94d4-0b68fc80afaa"]`,
@@ -330,7 +330,7 @@ func TestStub(t *testing.T) {
 							}
 						}
 					}`
-				return httptest.NewRequest("GET", "/find", bytes.NewReader([]byte(payload)))
+				return httptest.NewRequest("GET", "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchHandle,
 			expect:  "{\"data\":{\"reply\":\"OK\"},\"error\":\"\"}\n",
@@ -345,7 +345,7 @@ func TestStub(t *testing.T) {
 							"field1":"hello field1"
 						}
 					}`
-				return httptest.NewRequest("GET", "/find", bytes.NewReader([]byte(payload)))
+				return httptest.NewRequest("GET", "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchHandle,
 			expect:  "{\"error\":\"Can't find stub \\n\\nService: Testing \\n\\nMethod: TestMethod \\n\\nInput\\n\\n{\\n\\t\\\"field1\\\": \\\"hello field1\\\"\\n}\\n\\nClosest Match \\n\\ncontains:{\\n\\t\\\"field1\\\": \\\"hello field1\\\",\\n\\t\\\"field3\\\": \\\"hello field3\\\"\\n}\"}",
@@ -354,7 +354,7 @@ func TestStub(t *testing.T) {
 			name: "error find stub equals",
 			mock: func() *http.Request {
 				payload := `{"service":"Testing","method":"TestMethod","data":{"Hola":"Dunia"}}`
-				return httptest.NewRequest("POST", "/find", bytes.NewReader([]byte(payload)))
+				return httptest.NewRequest("POST", "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchHandle,
 			expect:  "{\"error\":\"Can't find stub \\n\\nService: Testing \\n\\nMethod: TestMethod \\n\\nInput\\n\\n{\\n\\t\\\"Hola\\\": \\\"Dunia\\\"\\n}\\n\\nClosest Match \\n\\nequals:{\\n\\t\\\"Hola\\\": \\\"Mundo\\\"\\n}\"}",
@@ -369,7 +369,26 @@ func TestStub(t *testing.T) {
 			res, err := io.ReadAll(wrt.Result().Body)
 
 			assert.NoError(t, err)
-			require.JSONEq(t, v.expect, string(res), string(res))
+			require.JSONEq(t, v.expect, string(res))
 		})
 	}
+
+	t.Run("purge handler", func(t *testing.T) {
+		deleteWrt := httptest.NewRecorder()
+		deleteReq := httptest.NewRequest("DELETE", "/api/stubs", nil)
+
+		api.PurgeHandle(deleteWrt, deleteReq)
+
+		listWrt := httptest.NewRecorder()
+		listReq := httptest.NewRequest("GET", "/api/stubs", nil)
+
+		api.ListHandle(listWrt, listReq)
+
+		res, err := io.ReadAll(listWrt.Result().Body)
+
+		assert.NoError(t, err)
+		require.Equal(t, http.StatusNoContent, deleteWrt.Result().StatusCode)
+
+		require.JSONEq(t, "[]", string(res))
+	})
 }
