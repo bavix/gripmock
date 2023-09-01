@@ -42,7 +42,9 @@ func main() {
 	// for safety
 	output += "/"
 	if _, err := os.Stat(output); os.IsNotExist(err) {
-		os.Mkdir(output, os.ModePerm)
+		if err := os.Mkdir(output, os.ModePerm); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	// run admin stub server
@@ -71,9 +73,6 @@ func main() {
 		imports:     importDirs,
 	})
 
-	// build the server
-	//buildServer(output)
-
 	// and run
 	run, runerr := runGrpcServer(output)
 
@@ -84,7 +83,9 @@ func main() {
 		log.Fatal(err)
 	case <-term:
 		fmt.Println("Stopping gRPC Server")
-		run.Process.Kill()
+		if err := run.Process.Kill(); err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 

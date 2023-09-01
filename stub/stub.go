@@ -37,10 +37,10 @@ func RunStubServer(opt Options) {
 	router.Handle("/health", healthcheck).Methods("GET")
 
 	apiRouter := router.PathPrefix("/api").Subrouter()
-	apiRouter.HandleFunc("/stubs/search", api.searchHandle).Methods("POST")
-	apiRouter.HandleFunc("/stubs", api.listHandle).Methods("GET")
-	apiRouter.HandleFunc("/stubs", api.addHandle).Methods("POST")
-	apiRouter.HandleFunc("/stubs", api.purgeHandle).Methods("DELETE")
+	apiRouter.HandleFunc("/stubs/search", api.SearchHandle).Methods("POST")
+	apiRouter.HandleFunc("/stubs", api.ListHandle).Methods("GET")
+	apiRouter.HandleFunc("/stubs", api.AddHandle).Methods("POST")
+	apiRouter.HandleFunc("/stubs", api.PurgeHandle).Methods("DELETE")
 
 	fmt.Println("Serving stub admin on http://" + addr)
 	go func() {
