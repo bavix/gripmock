@@ -2,8 +2,9 @@ package storage
 
 import (
 	"errors"
-	"github.com/google/uuid"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 var ErrServiceNotFound = errors.New("service not found")
@@ -107,8 +108,10 @@ func (r *StubStorage) Stubs() []Stub {
 	for service, methods := range r.items {
 		for method, storages := range methods {
 			for _, datum := range storages {
+				id := datum.ID
+
 				results = append(results, Stub{
-					ID:      &datum.ID,
+					ID:      &id,
 					Service: service,
 					Method:  method,
 					Input:   datum.Input,

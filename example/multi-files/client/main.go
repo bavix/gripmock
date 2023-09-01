@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+//nolint:gomnd
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
@@ -24,7 +25,7 @@ func main() {
 	c := pb.NewGripmock1Client(conn)
 
 	// Contact the server and print out its response.
-	r, err := c.SayHello(context.Background(), &pb.Request1{Name: "bavix"})
+	r, err := c.SayHello(context.Background(), &pb.Request1{Name: "tokopedia"})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
@@ -33,7 +34,7 @@ func main() {
 	c2 := pb.NewGripmock2Client(conn)
 
 	// Contact the server and print out its response.
-	r2, err := c2.SayHello(context.Background(), &pb.Request2{Name: "bavix"})
+	r2, err := c2.SayHello(context.Background(), &pb.Request2{Name: "tokopedia"})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}

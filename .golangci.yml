@@ -16,6 +16,9 @@ linters:
     - scopelint
     # not relevant
     - varnamelen
+    - wrapcheck
+    - paralleltest
+    - exhaustruct
 linters-settings:
   lll:
     line-length: 160

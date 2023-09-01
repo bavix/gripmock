@@ -1,9 +1,11 @@
 package yaml2json_test
 
 import (
-	"github.com/bavix/gripmock/pkg/yaml2json"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/bavix/gripmock/pkg/yaml2json"
 )
 
 func TestConvertor(t *testing.T) {

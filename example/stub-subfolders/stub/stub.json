@@ -3,7 +3,7 @@
   "method": "SayHello",
   "input": {
     "equals": {
-      "name": "bavix"
+      "name": "tokopedia"
     }
   },
   "output": {

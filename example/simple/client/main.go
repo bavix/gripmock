@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+//nolint:gomnd
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
@@ -25,7 +26,7 @@ func main() {
 	c := pb.NewGripmockClient(conn)
 
 	// Contact the server and print out its response.
-	name := "bavix"
+	name := "tokopedia"
 	if len(os.Args) > 1 {
 		name = os.Args[1]
 	}

@@ -9,16 +9,17 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bavix/gripmock/pkg/storage"
-	"github.com/bavix/gripmock/pkg/yaml2json"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+
+	"github.com/bavix/gripmock/pkg/storage"
+	"github.com/bavix/gripmock/pkg/yaml2json"
 )
 
 type HealthcheckHandler struct{}
 
 func (*HealthcheckHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 }
 
 func NewHealthcheckHandler() *HealthcheckHandler {
@@ -47,6 +48,7 @@ func (h *ApiHandler) SearchHandle(w http.ResponseWriter, r *http.Request) {
 
 	if err := decoder.Decode(stub); err != nil {
 		h.responseError(err, w)
+
 		return
 	}
 
@@ -60,8 +62,9 @@ func (h *ApiHandler) SearchHandle(w http.ResponseWriter, r *http.Request) {
 	output, err := findStub(h.stubs, stub)
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		h.writeResponseError(err, w)
+
 		return
 	}
 
@@ -71,7 +74,7 @@ func (h *ApiHandler) SearchHandle(w http.ResponseWriter, r *http.Request) {
 
 func (h *ApiHandler) PurgeHandle(w http.ResponseWriter, _ *http.Request) {
 	h.stubs.Purge()
-	w.WriteHeader(204)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *ApiHandler) ListHandle(w http.ResponseWriter, _ *http.Request) {
@@ -79,6 +82,7 @@ func (h *ApiHandler) ListHandle(w http.ResponseWriter, _ *http.Request) {
 	err := json.NewEncoder(w).Encode(h.stubs.Stubs())
 	if err != nil {
 		h.responseError(err, w)
+
 		return
 	}
 }
@@ -87,6 +91,7 @@ func (h *ApiHandler) AddHandle(w http.ResponseWriter, r *http.Request) {
 	byt, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.responseError(err, w)
+
 		return
 	}
 
@@ -104,12 +109,14 @@ func (h *ApiHandler) AddHandle(w http.ResponseWriter, r *http.Request) {
 
 	if err := decoder.Decode(&stubs); err != nil {
 		h.responseError(err, w)
+
 		return
 	}
 
 	for _, stub := range stubs {
 		if err := validateStub(stub); err != nil {
 			h.responseError(err, w)
+
 			return
 		}
 	}
@@ -117,12 +124,13 @@ func (h *ApiHandler) AddHandle(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(h.stubs.Add(stubs...)); err != nil {
 		h.responseError(err, w)
+
 		return
 	}
 }
 
 func (h *ApiHandler) responseError(err error, w http.ResponseWriter) {
-	w.WriteHeader(500)
+	w.WriteHeader(http.StatusInternalServerError)
 
 	h.writeResponseError(err, w)
 }
@@ -137,18 +145,21 @@ func (h *ApiHandler) readStubs(path string) {
 	files, err := os.ReadDir(path)
 	if err != nil {
 		log.Printf("Can't read stub from %s. %v\n", path, err)
+
 		return
 	}
 
 	for _, file := range files {
 		if file.IsDir() {
 			h.readStubs(path + "/" + file.Name())
+
 			continue
 		}
 
 		byt, err := os.ReadFile(path + "/" + file.Name())
 		if err != nil {
 			log.Printf("Error when reading file %s. %v. skipping...", file.Name(), err)
+
 			continue
 		}
 
@@ -158,6 +169,7 @@ func (h *ApiHandler) readStubs(path string) {
 			byt, err = h.convertor.Execute(file.Name(), byt)
 			if err != nil {
 				log.Printf("Error when unmarshalling file %s. %v. skipping...", file.Name(), err)
+
 				continue
 			}
 		}
@@ -172,6 +184,7 @@ func (h *ApiHandler) readStubs(path string) {
 
 		if err = decoder.Decode(&stubs); err != nil {
 			log.Printf("Error when unmarshalling file %s. %v %v. skipping...", file.Name(), string(byt), err)
+
 			continue
 		}
 

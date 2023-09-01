@@ -2,14 +2,16 @@ package stub
 
 import (
 	"fmt"
-	"github.com/bavix/gripmock/pkg/storage"
+	"log"
+	"net/http"
+	"os"
+
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"log"
-	"net/http"
-	"os"
+
+	"github.com/bavix/gripmock/pkg/storage"
 )
 
 type Options struct {
@@ -52,6 +54,8 @@ func RunStubServer(opt Options) {
 
 func validateStub(stub *storage.Stub) error {
 	if stub.Service == "" {
+		//fixme
+		//nolint:goerr113
 		return fmt.Errorf("service name can't be empty")
 	}
 
@@ -72,12 +76,16 @@ func validateStub(stub *storage.Stub) error {
 	case stub.Input.Matches != nil:
 		break
 	default:
+		//fixme
+		//nolint:goerr113
 		return fmt.Errorf("input cannot be empty")
 	}
 
 	// TODO: validate all input case
 
 	if stub.Output.Error == "" && stub.Output.Data == nil {
+		//fixme
+		//nolint:goerr113
 		return fmt.Errorf("output can't be empty")
 	}
 

@@ -3,7 +3,7 @@
   "method":"Greet",
   "input":{
     "equals":{
-      "name":"bavix"
+      "name":"tokopedia"
     }
   },
   "output":{
