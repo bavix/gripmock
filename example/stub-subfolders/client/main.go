@@ -5,9 +5,10 @@ import (
 	"log"
 	"time"
 
-	pb "github.com/bavix/gripmock/protogen/example/stub-subfolders"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	pb "github.com/bavix/gripmock/protogen/example/stub-subfolders"
 )
 
 //nolint:gomnd
@@ -31,7 +32,7 @@ func main() {
 	}
 	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
 
-	r, err = c.SayHello(context.Background(), &pb.Request{Name: "subbavix"})
+	r, err = c.SayHello(context.Background(), &pb.Request{Name: "subtokopedia"})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
