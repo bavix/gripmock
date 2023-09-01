@@ -60,7 +60,8 @@ func (h *ApiHandler) SearchHandle(w http.ResponseWriter, r *http.Request) {
 	output, err := findStub(h.stubs, stub)
 	if err != nil {
 		log.Println(err)
-		h.responseError(err, w)
+		w.WriteHeader(404)
+		h.writeResponseError(err, w)
 		return
 	}
 
@@ -123,6 +124,10 @@ func (h *ApiHandler) AddHandle(w http.ResponseWriter, r *http.Request) {
 func (h *ApiHandler) responseError(err error, w http.ResponseWriter) {
 	w.WriteHeader(500)
 
+	h.writeResponseError(err, w)
+}
+
+func (h *ApiHandler) writeResponseError(err error, w http.ResponseWriter) {
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"error": err.Error(),
 	})
