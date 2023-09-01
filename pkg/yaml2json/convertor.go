@@ -2,15 +2,14 @@ package yaml2json
 
 import (
 	"github.com/goccy/go-yaml"
-	"github.com/tokopedia/gripmock/pkg/template"
 )
 
 type Convertor struct {
-	engine *template.Engine
+	engine *engine
 }
 
 func New() *Convertor {
-	return &Convertor{engine: template.New()}
+	return &Convertor{engine: &engine{}}
 }
 
 func (t *Convertor) Execute(name string, data []byte) ([]byte, error) {
