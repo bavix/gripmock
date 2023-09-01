@@ -3,6 +3,7 @@ package stub
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -39,7 +40,7 @@ func NewApiHandler() *ApiHandler {
 	return &ApiHandler{stubs: storage.New(), convertor: yaml2json.New()}
 }
 
-func (h *ApiHandler) searchHandle(w http.ResponseWriter, r *http.Request) {
+func (h *ApiHandler) SearchHandle(w http.ResponseWriter, r *http.Request) {
 	stub := new(findStubPayload)
 	decoder := json.NewDecoder(r.Body)
 	decoder.UseNumber()
@@ -64,15 +65,15 @@ func (h *ApiHandler) searchHandle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(output)
+	_ = json.NewEncoder(w).Encode(output)
 }
 
-func (h *ApiHandler) purgeHandle(w http.ResponseWriter, _ *http.Request) {
+func (h *ApiHandler) PurgeHandle(w http.ResponseWriter, _ *http.Request) {
 	h.stubs.Purge()
 	w.WriteHeader(204)
 }
 
-func (h *ApiHandler) listHandle(w http.ResponseWriter, _ *http.Request) {
+func (h *ApiHandler) ListHandle(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(h.stubs.Stubs())
 	if err != nil {
@@ -81,27 +82,39 @@ func (h *ApiHandler) listHandle(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func (h *ApiHandler) addHandle(w http.ResponseWriter, r *http.Request) {
-	// todo: add supported input array
-	stub := new(storage.Stub)
-	decoder := json.NewDecoder(r.Body)
-	decoder.UseNumber()
-
-	if err := decoder.Decode(stub); err != nil {
+func (h *ApiHandler) AddHandle(w http.ResponseWriter, r *http.Request) {
+	byt, err := io.ReadAll(r.Body)
+	if err != nil {
 		h.responseError(err, w)
 		return
 	}
 
 	defer r.Body.Close()
 
-	if err := validateStub(stub); err != nil {
+	byt = bytes.TrimSpace(byt)
+
+	if byt[0] == '{' && byt[len(byt)-1] == '}' {
+		byt = []byte("[" + string(byt) + "]")
+	}
+
+	var stubs []*storage.Stub
+	decoder := json.NewDecoder(bytes.NewReader(byt))
+	decoder.UseNumber()
+
+	if err := decoder.Decode(&stubs); err != nil {
 		h.responseError(err, w)
 		return
 	}
 
+	for _, stub := range stubs {
+		if err := validateStub(stub); err != nil {
+			h.responseError(err, w)
+			return
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(h.stubs.Add(stub))
-	if err != nil {
+	if err := json.NewEncoder(w).Encode(h.stubs.Add(stubs...)); err != nil {
 		h.responseError(err, w)
 		return
 	}
@@ -110,7 +123,9 @@ func (h *ApiHandler) addHandle(w http.ResponseWriter, r *http.Request) {
 func (h *ApiHandler) responseError(err error, w http.ResponseWriter) {
 	w.WriteHeader(500)
 
-	_, _ = w.Write([]byte(err.Error()))
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"error": err.Error(),
+	})
 }
 
 func (h *ApiHandler) readStubs(path string) {

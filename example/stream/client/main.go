@@ -128,5 +128,5 @@ func bidirectionalStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 			log.Fatalf("2ds error: %v", err)
 		}
 	}
-	stream.CloseSend()
+	_ = stream.CloseSend()
 }
