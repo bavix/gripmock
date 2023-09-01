@@ -154,31 +154,24 @@ func matches(expect, actual map[string]interface{}) bool {
 }
 
 func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc) bool {
-
 	// circuit brake
 	if !acc {
 		return false
 	}
 
-	expectArrayValue, expectArrayOk := expect.([]interface{})
-	if expectArrayOk {
+	if expectArrayValue, expectArrayOk := expect.([]interface{}); expectArrayOk {
 
 		actualArrayValue, actualArrayOk := actual.([]interface{})
 		if !actualArrayOk {
-			acc = false
-			return acc
+			return false
 		}
 
 		if exactMatch {
 			if len(expectArrayValue) != len(actualArrayValue) {
-				acc = false
-				return acc
+				return false
 			}
-		} else {
-			if len(expectArrayValue) > len(actualArrayValue) {
-				acc = false
-				return acc
-			}
+		} else if len(expectArrayValue) > len(actualArrayValue) {
+			return false
 		}
 
 		for expectItemIndex, expectItemValue := range expectArrayValue {
@@ -189,25 +182,18 @@ func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc) bool {
 		return acc
 	}
 
-	expectMapValue, expectMapOk := expect.(map[string]interface{})
-	if expectMapOk {
-
+	if expectMapValue, expectMapOk := expect.(map[string]interface{}); expectMapOk {
 		actualMapValue, actualMapOk := actual.(map[string]interface{})
 		if !actualMapOk {
-			acc = false
-			return acc
+			return false
 		}
 
 		if exactMatch {
 			if len(expectMapValue) != len(actualMapValue) {
-				acc = false
-				return acc
+				return false
 			}
-		} else {
-			if len(expectMapValue) > len(actualMapValue) {
-				acc = false
-				return acc
-			}
+		} else if len(expectMapValue) > len(actualMapValue) {
+			return false
 		}
 
 		for expectItemKey, expectItemValue := range expectMapValue {
