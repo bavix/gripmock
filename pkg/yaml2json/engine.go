@@ -1,4 +1,4 @@
-package template
+package yaml2json
 
 import (
 	"bytes"
@@ -9,13 +9,9 @@ import (
 	"github.com/google/uuid"
 )
 
-type Engine struct{}
+type engine struct{}
 
-func New() *Engine {
-	return &Engine{}
-}
-
-func (e *Engine) Execute(name string, data []byte) ([]byte, error) {
+func (e *engine) Execute(name string, data []byte) ([]byte, error) {
 	var buffer bytes.Buffer
 
 	parse, err := template.New(name).Funcs(e.funcMap()).Parse(string(data))
@@ -30,10 +26,12 @@ func (e *Engine) Execute(name string, data []byte) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (e *Engine) funcMap() template.FuncMap {
+func (e *engine) funcMap() template.FuncMap {
 	return template.FuncMap{
-		"base64StdEncoding": func(str string) string {
-			return base64.StdEncoding.EncodeToString([]byte(str))
+		"uuidToBase64StdEncoding": func(guid string) string {
+			v := uuid.MustParse(guid)
+
+			return base64.StdEncoding.EncodeToString(v[:])
 		},
 		"uuidToHighLowLittleEndian": func(guid string) string {
 			v := uuid.MustParse(guid)
