@@ -5,11 +5,12 @@ import (
 	"log"
 	"time"
 
-	pb "github.com/tokopedia/gripmock/protogen/example/multi-files"
+	pb "github.com/bavix/gripmock/protogen/example/multi-files"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+//nolint:gomnd
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()

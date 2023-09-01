@@ -26,6 +26,7 @@ func (e *engine) Execute(name string, data []byte) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
+//nolint:gomnd
 func (e *engine) funcMap() template.FuncMap {
 	return template.FuncMap{
 		"uuid2base64": func(guid string) string {

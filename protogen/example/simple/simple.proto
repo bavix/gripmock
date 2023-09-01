@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "github.com/tokopedia/gripmock/protogen/example/simple";
+option go_package = "github.com/bavix/gripmock/protogen/example/simple";
 
 package simple;
 

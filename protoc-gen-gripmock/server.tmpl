@@ -3,6 +3,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,7 +18,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	"github.com/tokopedia/gripmock/pkg/sdk"
+	"github.com/bavix/gripmock/pkg/sdk"
 )
 {{ range $package, $alias := .Dependencies }}
 import {{$alias}} "{{$package}}"
@@ -76,7 +77,7 @@ type {{.Name}} struct{
 {{ define "standard_method" }}
 func (s *{{.ServiceName}}) {{.Name}}(ctx context.Context, in *{{.Input}}) (*{{.Output}},error){
 	out := &{{.Output}}{}
-	err := findStub("{{.ServiceName}}", "{{.Name}}", in, out)
+	err := findStub(ctx, "{{.ServiceName}}", "{{.Name}}", in, out)
 	return out, err
 }
 {{ end }}
@@ -84,7 +85,7 @@ func (s *{{.ServiceName}}) {{.Name}}(ctx context.Context, in *{{.Input}}) (*{{.O
 {{ define "server_stream_method" }}
 func (s *{{.ServiceName}}) {{.Name}}(in *{{.Input}},srv {{.SvcPackage}}{{.ServiceName}}_{{.Name}}Server) error {
 	out := &{{.Output}}{}
-	err := findStub("{{.ServiceName}}", "{{.Name}}", in, out)
+	err := findStub(srv.Context(), "{{.ServiceName}}", "{{.Name}}", in, out)
 	if err!=nil {
 		return err
 	}
@@ -98,10 +99,10 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 	out := &{{.Output}}{}
 	for {
 		input,err := srv.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return srv.SendAndClose(out)
 		}
-		err = findStub("{{.ServiceName}}","{{.Name}}",input,out)
+		err = findStub(srv.Context(), "{{.ServiceName}}","{{.Name}}",input,out)
 		if err != nil {
 			return err
 		}
@@ -113,7 +114,7 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name}}Server) error {
 	for {
 		in, err := srv.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {
@@ -121,7 +122,7 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 		}
 
 		out := &{{.Output}}{}
-		err = findStub("{{.ServiceName}}","{{.Name}}",in,out)
+		err = findStub(srv.Context(), "{{.ServiceName}}","{{.Name}}",in,out)
 		if err != nil {
 			return err
 		}
@@ -150,9 +151,9 @@ type response struct {
 	Error string      `json:"error"`
 }
 
-func findStub(service, method string, in, out protoreflect.ProtoMessage) error {
+func findStub(ctx context.Context, service, method string, in, out protoreflect.ProtoMessage) error {
     api := sdk.NewStubApiClient(fmt.Sprintf("http://localhost%s", HTTP_PORT), http.DefaultClient)
-	resp, err := api.Search(sdk.Payload{
+	resp, err := api.Search(ctx, sdk.Payload{
         Service: service,
         Method:  method,
         Data:    in,

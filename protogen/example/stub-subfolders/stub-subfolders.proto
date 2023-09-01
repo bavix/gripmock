@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "github.com/tokopedia/gripmock/protogen/example/stub-subfolders";
+option go_package = "github.com/bavix/gripmock/protogen/example/stub-subfolders";
 
 package stub_subfolders;
 

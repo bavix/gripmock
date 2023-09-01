@@ -1,3 +1,3 @@
-module github.com/tokopedia/gripmock/protogen
+module github.com/bavix/gripmock/protogen
 
 go 1.21

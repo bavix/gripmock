@@ -6,11 +6,12 @@ import (
 	"os"
 	"time"
 
-	oneof "github.com/tokopedia/gripmock/protogen/example/one-of"
+	oneof "github.com/bavix/gripmock/protogen/example/one-of"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+//nolint:gomnd
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()

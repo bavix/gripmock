@@ -1,16 +1,16 @@
-module github.com/tokopedia/gripmock
+module github.com/bavix/gripmock
 
 go 1.21
 
 require (
+	github.com/bavix/gripmock/protogen v0.0.0
+	github.com/bavix/gripmock/protogen/example v0.0.0
 	github.com/goccy/go-yaml v1.11.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/lithammer/fuzzysearch v1.1.8
 	github.com/stretchr/testify v1.8.4
-	github.com/tokopedia/gripmock/protogen v0.0.0
-	github.com/tokopedia/gripmock/protogen/example v0.0.0
 	golang.org/x/text v0.12.0
 	google.golang.org/grpc v1.57.0
 	google.golang.org/protobuf v1.31.0
@@ -32,7 +32,7 @@ require (
 )
 
 // this is for generated server to be able to run
-replace github.com/tokopedia/gripmock/protogen/example v0.0.0 => ./protogen/example
+replace github.com/bavix/gripmock/protogen/example v0.0.0 => ./protogen/example
 
 // this is for example client to be able to run
-replace github.com/tokopedia/gripmock/protogen v0.0.0 => ./protogen
+replace github.com/bavix/gripmock/protogen v0.0.0 => ./protogen

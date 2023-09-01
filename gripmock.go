@@ -12,8 +12,8 @@ import (
 	"strings"
 	"syscall"
 
-	_ "github.com/tokopedia/gripmock/protogen"
-	"github.com/tokopedia/gripmock/stub"
+	_ "github.com/bavix/gripmock/protogen"
+	"github.com/bavix/gripmock/stub"
 )
 
 func main() {
@@ -134,7 +134,7 @@ func generateProtoc(param protocParam) {
 	protodirs := getProtodirs(param.protoPath[0], param.imports)
 
 	// estimate args length to prevent expand
-	args := make([]string, 0, len(protodirs)+len(param.protoPath)+2)
+	args := make([]string, 0, len(protodirs)+len(param.protoPath)+2) //nolint:gomnd
 	for _, dir := range protodirs {
 		args = append(args, "-I", dir)
 	}
@@ -157,7 +157,7 @@ func generateProtoc(param protocParam) {
 
 }
 
-// append gopackage in proto files if doesn't have any
+// append gopackage in proto files if doesn't have any.
 func fixGoPackage(protoPaths []string) []string {
 	fixgopackage := exec.Command("fix_gopackage.sh", protoPaths...)
 	buf := &bytes.Buffer{}
@@ -166,6 +166,7 @@ func fixGoPackage(protoPaths []string) []string {
 	err := fixgopackage.Run()
 	if err != nil {
 		log.Println("error on fixGoPackage", err)
+
 		return protoPaths
 	}
 

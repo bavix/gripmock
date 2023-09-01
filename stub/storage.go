@@ -9,7 +9,8 @@ import (
 	"regexp"
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
-	"github.com/tokopedia/gripmock/pkg/storage"
+
+	"github.com/bavix/gripmock/pkg/storage"
 )
 
 type matchFunc func(interface{}, interface{}) bool
@@ -22,14 +23,20 @@ type closeMatch struct {
 func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage.Output, error) {
 	stubs, err := stubStorage.ItemsBy(stub.Service, stub.Method)
 	if errors.Is(err, storage.ErrServiceNotFound) {
+		//fixme
+		//nolint:goerr113
 		return nil, fmt.Errorf("can't find stub for Service: %s", stub.Service)
 	}
 
 	if errors.Is(err, storage.ErrMethodNotFound) {
+		//fixme
+		//nolint:goerr113
 		return nil, fmt.Errorf("can't find stub for Service:%s and Method:%s", stub.Service, stub.Method)
 	}
 
 	if len(stubs) == 0 {
+		//fixme
+		//nolint:goerr113
 		return nil, fmt.Errorf("stub for Service:%s and Method:%s is empty", stub.Service, stub.Method)
 	}
 
@@ -70,6 +77,8 @@ func stubNotFoundError(stub *findStubPayload, closestMatches []closeMatch) error
 	template += string(expectString)
 
 	if len(closestMatches) == 0 {
+		//fixme
+		//nolint:goerr113
 		return fmt.Errorf(template)
 	}
 
@@ -101,12 +110,14 @@ func stubNotFoundError(stub *findStubPayload, closestMatches []closeMatch) error
 
 	template += fmt.Sprintf("\n\nClosest Match \n\n%s:%s", closestMatch.rule, closestMatchString)
 
+	//fixme
+	//nolint:goerr113
 	return fmt.Errorf(template)
 }
 
 // we made our own simple ranking logic
 // count the matches field_name and value then compare it with total field names and values
-// the higher the better
+// the higher the better.
 func rankMatch(expect string, closeMatch map[string]interface{}) float32 {
 	occurrence := 0
 	for key, value := range closeMatch {

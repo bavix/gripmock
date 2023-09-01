@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,13 +29,18 @@ type Response struct {
 	Error string      `json:"error"`
 }
 
-func (c *StubApiClient) Search(payload Payload) (any, error) {
+func (c *StubApiClient) Search(ctx context.Context, payload Payload) (any, error) {
 	postBody, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := c.httpClient.Post(c.url+"/api/stubs/search", "application/json", bytes.NewReader(postBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url+"/api/stubs/search", bytes.NewReader(postBody))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -44,6 +50,8 @@ func (c *StubApiClient) Search(payload Payload) (any, error) {
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 
+		//fixme
+		//nolint:goerr113
 		return nil, fmt.Errorf(string(body))
 	}
 
@@ -56,6 +64,8 @@ func (c *StubApiClient) Search(payload Payload) (any, error) {
 	}
 
 	if result.Error != "" {
+		//fixme
+		//nolint:goerr113
 		return nil, fmt.Errorf(result.Error)
 	}
 
