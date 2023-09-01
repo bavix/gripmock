@@ -28,12 +28,12 @@ func (e *engine) Execute(name string, data []byte) ([]byte, error) {
 
 func (e *engine) funcMap() template.FuncMap {
 	return template.FuncMap{
-		"uuidToBase64StdEncoding": func(guid string) string {
+		"uuid2base64": func(guid string) string {
 			v := uuid.MustParse(guid)
 
 			return base64.StdEncoding.EncodeToString(v[:])
 		},
-		"uuidToHighLowLittleEndian": func(guid string) string {
+		"uuid2highLow": func(guid string) string {
 			v := uuid.MustParse(guid)
 
 			high := int64(v[0]) | int64(v[1])<<8 | int64(v[2])<<16 | int64(v[3])<<24 |
