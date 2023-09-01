@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	pb "github.com/tokopedia/gripmock/protogen/example/well_known_types"
+	pb "github.com/bavix/gripmock/protogen/example/well_known_types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	empty "google.golang.org/protobuf/types/known/emptypb"

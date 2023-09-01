@@ -3,12 +3,12 @@
   "method":"Greet",
   "input":{
     "equals":{
-      "name":"tokopedia"
+      "name":"bavix"
     }
   },
   "output":{
     "data":{
-      "response":"Hello Tokopedia"
+      "response":"Hello bavix"
     }
   }
 }

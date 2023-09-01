@@ -1,8 +1,8 @@
 package yaml2json_test
 
 import (
+	"github.com/bavix/gripmock/pkg/yaml2json"
 	"github.com/stretchr/testify/require"
-	"github.com/tokopedia/gripmock/pkg/yaml2json"
 	"testing"
 )
 

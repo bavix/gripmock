@@ -12,8 +12,8 @@ import (
 	"strings"
 	"syscall"
 
-	_ "github.com/tokopedia/gripmock/protogen"
-	"github.com/tokopedia/gripmock/stub"
+	_ "github.com/bavix/gripmock/protogen"
+	"github.com/bavix/gripmock/stub"
 )
 
 func main() {

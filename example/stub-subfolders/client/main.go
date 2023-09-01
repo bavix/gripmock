@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	pb "github.com/tokopedia/gripmock/protogen/example/stub-subfolders"
+	pb "github.com/bavix/gripmock/protogen/example/stub-subfolders"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -24,13 +24,13 @@ func main() {
 	c := pb.NewGripmockClient(conn)
 
 	// Contact the server and print out its response.
-	r, err := c.SayHello(context.Background(), &pb.Request{Name: "tokopedia"})
+	r, err := c.SayHello(context.Background(), &pb.Request{Name: "bavix"})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
 	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
 
-	r, err = c.SayHello(context.Background(), &pb.Request{Name: "subtokopedia"})
+	r, err = c.SayHello(context.Background(), &pb.Request{Name: "subbavix"})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}

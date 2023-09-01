@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	"github.com/tokopedia/gripmock/pkg/sdk"
+	"github.com/bavix/gripmock/pkg/sdk"
 )
 {{ range $package, $alias := .Dependencies }}
 import {{$alias}} "{{$package}}"

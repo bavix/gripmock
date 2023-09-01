@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	pb "github.com/tokopedia/gripmock/protogen/example/multi-package"
-	multi_package "github.com/tokopedia/gripmock/protogen/example/multi-package/bar"
+	pb "github.com/bavix/gripmock/protogen/example/multi-package"
+	multi_package "github.com/bavix/gripmock/protogen/example/multi-package/bar"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -26,7 +26,7 @@ func main() {
 	c := pb.NewGripmockClient(conn)
 
 	// Contact the server and print out its response.
-	name := "tokopedia"
+	name := "bavix"
 	if len(os.Args) > 1 {
 		name = os.Args[1]
 	}

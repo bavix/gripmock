@@ -15,20 +15,20 @@ RUN apk -U --no-cache add bash git protobuf &&\
     apk del git &&\
     apk -v cache clean
 
-COPY . /go/src/github.com/tokopedia/gripmock
+COPY . /go/src/github.com/bavix/gripmock
 
 # create necessary dirs and export fix_gopackage.sh
 RUN mkdir /proto /stubs &&\
-    ln -s /go/src/github.com/tokopedia/gripmock/fix_gopackage.sh /bin/
+    ln -s /go/src/github.com/bavix/gripmock/fix_gopackage.sh /bin/
 
-RUN cd /go/src/github.com/tokopedia/gripmock/protoc-gen-gripmock &&\
+RUN cd /go/src/github.com/bavix/gripmock/protoc-gen-gripmock &&\
     go install -v &&\
-    cd /go/src/github.com/tokopedia/gripmock/example/simple/client &&\
+    cd /go/src/github.com/bavix/gripmock/example/simple/client &&\
     go get -u all &&\
-    cd /go/src/github.com/tokopedia/gripmock &&\
+    cd /go/src/github.com/bavix/gripmock &&\
     go install -v
 
-WORKDIR /go/src/github.com/tokopedia/gripmock
+WORKDIR /go/src/github.com/bavix/gripmock
 
 EXPOSE 4770 4771
 

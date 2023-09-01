@@ -3,12 +3,12 @@
   "method": "SayHello",
   "input": {
     "equals": {
-      "name": "subtokopedia"
+      "name": "subbavix"
     }
   },
   "output": {
     "data": {
-      "message": "Hello Sub Tokopedia",
+      "message": "Hello Sub bavix",
       "return_code": 1
     }
   }

@@ -7,7 +7,7 @@
 package multi_package
 
 import (
-	bar "github.com/tokopedia/gripmock/protogen/example/multi-package/bar"
+	bar "github.com/bavix/gripmock/protogen/example/multi-package/bar"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"

@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/tokopedia/gripmock/pkg/storage"
-	"github.com/tokopedia/gripmock/pkg/yaml2json"
+	"github.com/bavix/gripmock/pkg/storage"
+	"github.com/bavix/gripmock/pkg/yaml2json"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )

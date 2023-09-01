@@ -8,7 +8,7 @@ package multi_package
 
 import (
 	context "context"
-	bar "github.com/tokopedia/gripmock/protogen/example/multi-package/bar"
+	bar "github.com/bavix/gripmock/protogen/example/multi-package/bar"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"

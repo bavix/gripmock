@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	pb "github.com/tokopedia/gripmock/protogen/example/multi-files"
+	pb "github.com/bavix/gripmock/protogen/example/multi-files"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -24,7 +24,7 @@ func main() {
 	c := pb.NewGripmock1Client(conn)
 
 	// Contact the server and print out its response.
-	r, err := c.SayHello(context.Background(), &pb.Request1{Name: "tokopedia"})
+	r, err := c.SayHello(context.Background(), &pb.Request1{Name: "bavix"})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
@@ -33,7 +33,7 @@ func main() {
 	c2 := pb.NewGripmock2Client(conn)
 
 	// Contact the server and print out its response.
-	r2, err := c2.SayHello(context.Background(), &pb.Request2{Name: "tokopedia"})
+	r2, err := c2.SayHello(context.Background(), &pb.Request2{Name: "bavix"})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}

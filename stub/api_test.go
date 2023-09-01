@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tokopedia/gripmock/stub"
+	"github.com/bavix/gripmock/stub"
 )
 
 func TestStub(t *testing.T) {

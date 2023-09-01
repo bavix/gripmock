@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"regexp"
 
+	"github.com/bavix/gripmock/pkg/storage"
 	"github.com/lithammer/fuzzysearch/fuzzy"
-	"github.com/tokopedia/gripmock/pkg/storage"
 )
 
 type matchFunc func(interface{}, interface{}) bool

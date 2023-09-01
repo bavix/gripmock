@@ -6,11 +6,11 @@ The server implementation is in GoLang but the client can be any programming lan
 ---
 
 ### Announcement:
-The latest [version (v1.10)](https://github.com/tokopedia/gripmock/releases/tag/v1.10) of gripmock is requiring `go_package` declaration in the `.proto` file. This is due to the latest update of `protoc` plugin that being used by gripmock is making the `go_package` declaration mandatory.
+The latest [version (v1.10)](https://github.com/bavix/gripmock/releases/tag/v1.10) of gripmock is requiring `go_package` declaration in the `.proto` file. This is due to the latest update of `protoc` plugin that being used by gripmock is making the `go_package` declaration mandatory.
 
 **Update Feb 2022:**
 
-[Version 1.11-beta](https://github.com/tokopedia/gripmock/releases/tag/v1.11-beta) release is available.
+[Version 1.11-beta](https://github.com/bavix/gripmock/releases/tag/v1.11-beta) release is available.
 It supports **NO** declaration of `go_package`, please download and test before it can be tagged as stable.
 
 you can get the docker image using `docker pull tkpd/gripmock:v1.11-beta`.
@@ -28,7 +28,7 @@ basic syntax to run GripMock is
 - On a separate terminal we are gonna add a stub into the stub service. Run `curl -X POST -d '{"service":"Gripmock","method":"SayHello","input":{"equals":{"name":"gripmock"}},"output":{"data":{"message":"Hello GripMock"}}}' localhost:4771/add `
 - Now we are ready to test it with our client. You can find a client example file under `example/simple/client/`. Execute one of your preferred language. Example for go: `go run example/simple/client/*.go`
 
-Check [`example`](https://github.com/tokopedia/gripmock/tree/master/example) folder for various usecase of gripmock.
+Check [`example`](https://github.com/bavix/gripmock/tree/master/example) folder for various usecase of gripmock.
 
 ---
 
