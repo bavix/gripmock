@@ -5,7 +5,7 @@ on:
     branches: [ nightly, latest ]
 
 jobs:
-  ui:
+  docs:
     permissions:
       contents: write
     uses: bavix/.github/.github/workflows/compile-assets.yml@0.0.5
