@@ -76,7 +76,8 @@ Stub Format is JSON text format. It has a skeleton as follows:
     "data":{
       // put result fields here
     },
-    "error":"<error message>" // Optional. if you want to return error instead.
+    "error":"<error message>", // Optional. if you want to return error instead.
+    "code":"<response code>" // Optional. Grpc response code. if code !=0  return error instead.
   }
 }
 ```

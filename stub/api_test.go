@@ -230,6 +230,105 @@ func TestStub(t *testing.T) {
 			handler: api.AddHandle,
 			expect:  `["3f68f410-bb58-49ad-b679-23f2ed690c1d","6da11d72-c0db-4075-9e72-31d61ffd0483"]`,
 		},
+
+		{
+			name: "add error stub with result code contains",
+			mock: func() *http.Request {
+				payload := `{
+								"id": "cda7321b-9241-4a58-9cbf-0603e0146542",
+								"service": "ErrorStabWithCode",
+								"method":"TestMethod",
+								"input":{
+									"contains":{
+												"key": "value",
+												"greetings": {
+													"hola": "mundo",
+													"merhaba": "dunya"
+												},
+												"cities": ["Istanbul", "Jakarta"]
+									}
+								},
+								"output":{
+									"error":"error msg",
+                                    "code": 3
+								}
+							}`
+				return httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewReader([]byte(payload)))
+			},
+			handler: api.AddHandle,
+			expect:  `["cda7321b-9241-4a58-9cbf-0603e0146542"]`,
+		},
+		{
+			name: "find error stub with result code contains",
+			mock: func() *http.Request {
+				payload := `{
+						"service": "ErrorStabWithCode",
+						"method":"TestMethod",
+						"data":{
+								"key": "value",
+								"anotherKey": "anotherValue",
+								"greetings": {
+									"hola": "mundo",
+									"merhaba": "dunya",
+									"hello": "world"
+								},
+								"cities": ["Istanbul", "Jakarta", "Winterfell"]
+						}
+					}`
+				return httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
+			},
+			handler: api.SearchHandle,
+			expect:  "{\"data\":null,\"error\":\"error msg\",\"code\":3}\n",
+		},
+
+		{
+			name: "add error stub without result code contains",
+			mock: func() *http.Request {
+				payload := `{
+								"id": "6d5ec9a6-94a7-4f23-b5ea-b04a37796adb",
+								"service": "ErrorStab",
+								"method":"TestMethod",
+								"input":{
+									"contains":{
+												"key": "value",
+												"greetings": {
+													"hola": "mundo",
+													"merhaba": "dunya"
+												},
+												"cities": ["Istanbul", "Jakarta"]
+									}
+								},
+								"output":{
+									"error":"error msg"
+								}
+							}`
+				return httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewReader([]byte(payload)))
+			},
+			handler: api.AddHandle,
+			expect:  `["6d5ec9a6-94a7-4f23-b5ea-b04a37796adb"]`,
+		},
+		{
+			name: "find error stub without result code contains",
+			mock: func() *http.Request {
+				payload := `{
+						"service": "ErrorStab",
+						"method":"TestMethod",
+						"data":{
+								"key": "value",
+								"anotherKey": "anotherValue",
+								"greetings": {
+									"hola": "mundo",
+									"merhaba": "dunya",
+									"hello": "world"
+								},
+								"cities": ["Istanbul", "Jakarta", "Winterfell"]
+						}
+					}`
+				return httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
+			},
+			handler: api.SearchHandle,
+			expect:  "{\"data\":null,\"error\":\"error msg\"}\n",
+		},
 		{
 			name: "find nested stub contains",
 			mock: func() *http.Request {

@@ -17,6 +17,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/bavix/gripmock/pkg/sdk"
 )
@@ -153,7 +155,7 @@ type response struct {
 
 func findStub(ctx context.Context, service, method string, in, out protoreflect.ProtoMessage) error {
     api := sdk.NewStubApiClient(fmt.Sprintf("http://localhost%s", HTTP_PORT), http.DefaultClient)
-	resp, err := api.Search(ctx, sdk.Payload{
+	respRPC, err := api.Search(ctx, sdk.Payload{
         Service: service,
         Method:  method,
         Data:    in,
@@ -162,7 +164,18 @@ func findStub(ctx context.Context, service, method string, in, out protoreflect.
         return err
     }
 
-	data, err := json.Marshal(resp)
+    if respRPC.Error != "" || respRPC.Code != nil {
+		if respRPC.Code == nil {
+			abortedCode := codes.Aborted
+			respRPC.Code = &abortedCode
+		}
+
+		if *respRPC.Code != codes.OK {
+			return status.Error(*respRPC.Code, respRPC.Error)
+		}
+	}
+
+	data, err := json.Marshal(respRPC.Data)
 	if err != nil {
 	    return err
 	}

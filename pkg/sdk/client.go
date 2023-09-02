@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"google.golang.org/grpc/codes"
 )
 
 type StubApiClient struct {
@@ -27,9 +29,10 @@ type Payload struct {
 type Response struct {
 	Data  interface{} `json:"data"`
 	Error string      `json:"error"`
+	Code  *codes.Code `json:"code,omitempty"`
 }
 
-func (c *StubApiClient) Search(ctx context.Context, payload Payload) (any, error) {
+func (c *StubApiClient) Search(ctx context.Context, payload Payload) (*Response, error) {
 	postBody, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -63,11 +66,5 @@ func (c *StubApiClient) Search(ctx context.Context, payload Payload) (any, error
 		return nil, err
 	}
 
-	if result.Error != "" {
-		//fixme
-		//nolint:goerr113
-		return nil, fmt.Errorf(result.Error)
-	}
-
-	return result.Data, nil
+	return result, nil
 }

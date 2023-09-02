@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
 )
 
 var ErrServiceNotFound = errors.New("service not found")
@@ -27,6 +28,7 @@ type Input struct {
 type Output struct {
 	Data  map[string]interface{} `json:"data"`
 	Error string                 `json:"error"`
+	Code  *codes.Code            `json:"code,omitempty"`
 }
 
 type storage struct {
