@@ -1,0 +1,6 @@
+import 'docsify'
+import 'docsify/lib/plugins/emoji'
+import 'docsify/lib/plugins/search'
+import 'prismjs/components/prism-go'
+import 'prismjs/components/prism-bash'
+import 'docsify/lib/themes/vue.css'
