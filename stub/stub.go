@@ -83,7 +83,7 @@ func validateStub(stub *storage.Stub) error {
 
 	// TODO: validate all input case
 
-	if stub.Output.Error == "" && stub.Output.Data == nil {
+	if stub.Output.Error == "" && stub.Output.Data == nil && stub.Output.Code == nil {
 		//fixme
 		//nolint:goerr113
 		return fmt.Errorf("output can't be empty")
