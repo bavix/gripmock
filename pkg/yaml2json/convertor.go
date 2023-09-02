@@ -12,7 +12,7 @@ func New() *Convertor {
 	return &Convertor{engine: &engine{}}
 }
 
-func (t *Convertor) Execute(name string, data []byte) ([]byte, error) {
+func (t *Convertor) Execute(name string, data []byte) (res []byte, err error) {
 	bytes, err := t.engine.Execute(name, data)
 	if err != nil {
 		return nil, err
