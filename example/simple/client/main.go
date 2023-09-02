@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/bavix/gripmock/protogen/example/simple"
@@ -71,6 +72,16 @@ func main() {
 		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 3)
 	}
 	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+
+	name = "simple3"
+	r, err = c.SayHello(context.Background(), &pb.Request{Name: name}, grpc.UseCompressor(gzip.Name))
+	if err != nil {
+		log.Fatalf("error from grpc: %v", err)
+	}
+	if r.ReturnCode != 3 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 3)
+	}
+	log.Printf("Greeting (gzip): %s (return code %d)", r.Message, r.ReturnCode)
 
 	name = "error"
 	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
