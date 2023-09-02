@@ -106,4 +106,13 @@ func main() {
 	}
 
 	log.Printf("Greeting error: %s, code: %d", err, s.Code())
+
+	r, err = c.SayHello(context.Background(), &pb.Request{Vint64: 72057594037927936, Vuint64: 18446744073709551615})
+	if err != nil {
+		log.Fatalf("error from grpc: %v", err)
+	}
+	if r.Message != "72057594037927936 18446744073709551615" {
+		log.Fatalf("failed to get valid message: %v", r.Message)
+	}
+	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
 }

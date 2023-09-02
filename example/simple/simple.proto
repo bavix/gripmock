@@ -13,6 +13,8 @@ service Gripmock {
 // The request message containing the user's name.
 message Request {
   string name = 1;
+  int64 vint64 = 2;
+  uint64 vuint64 = 3;
 }
 
 // The response message containing the greetings
