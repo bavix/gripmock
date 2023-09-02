@@ -1,0 +1,12 @@
+name: build app
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  ui:
+    permissions:
+      contents: write
+    uses: bavix/.github/.github/workflows/compile-assets.yml@0.0.5
+    secrets: inherit

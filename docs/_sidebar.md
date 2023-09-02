@@ -1,2 +1,3 @@
 - Getting started
-    - [Introduction](README)
+    - [Overview](overview)
+    - [Quick Usage](quick-usage)
