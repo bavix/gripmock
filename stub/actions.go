@@ -16,16 +16,6 @@ import (
 	"github.com/bavix/gripmock/pkg/yaml2json"
 )
 
-type HealthcheckHandler struct{}
-
-func (*HealthcheckHandler) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-}
-
-func NewHealthcheckHandler() *HealthcheckHandler {
-	return &HealthcheckHandler{}
-}
-
 type ApiHandler struct {
 	stubs     *storage.StubStorage
 	convertor *yaml2json.Convertor

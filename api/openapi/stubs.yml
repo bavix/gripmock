@@ -2,8 +2,8 @@ openapi: 3.0.2
 servers:
   - url: /api
 info:
-  version: 1.0.0
-  title: GripMock API schema
+  version: 2.0.0
+  title: GripMock API Schema
 tags:
   - name: stubs
     description: Stubs storage management
@@ -86,17 +86,14 @@ paths:
           content:
             application/json:
               schema:
-                oneOf:
-                  - $ref: '#/components/schemas/Stub'
+                $ref: '#/components/schemas/SearchResponse'
       requestBody:
         description: Description of filtering
         required: true
         content:
           application/json:
             schema:
-              oneOf:
-                - $ref: '#/components/schemas/StubList'
-                - $ref: '#/components/schemas/Stub'
+              $ref: '#/components/schemas/SearchRequest'
 components:
   schemas:
     ID:
@@ -126,14 +123,15 @@ components:
           example: SayHello
         data:
           type: object
+          additionalProperties: true
     SearchResponse:
       type: object
       required:
         - data
-        - error
       properties:
         data:
           type: object
+          additionalProperties: true
         error:
           type: string
           example: Message not found
@@ -146,6 +144,8 @@ components:
       required:
         - service
         - method
+        - input
+        - output
       properties:
         id:
           $ref: '#/components/schemas/ID'
@@ -164,18 +164,21 @@ components:
       properties:
         equals:
           type: object
+          additionalProperties: true
         contains:
           type: object
+          additionalProperties: true
         matches:
           type: object
+          additionalProperties: true
     StubOutput:
       type: object
       required:
         - data
-        - error
       properties:
         data:
           type: object
+          additionalProperties: true
         error:
           type: string
           example: Message not found

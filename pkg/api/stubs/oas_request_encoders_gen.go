@@ -26,7 +26,7 @@ func encodeAddStubRequest(
 }
 
 func encodeSearchStubsRequest(
-	req SearchStubsReq,
+	req *SearchRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

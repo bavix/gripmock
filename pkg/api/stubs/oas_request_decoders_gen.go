@@ -87,7 +87,7 @@ func (s *Server) decodeAddStubRequest(r *http.Request) (
 }
 
 func (s *Server) decodeSearchStubsRequest(r *http.Request) (
-	req SearchStubsReq,
+	req *SearchRequest,
 	close func() error,
 	rerr error,
 ) {
@@ -126,7 +126,7 @@ func (s *Server) decodeSearchStubsRequest(r *http.Request) (
 
 		d := jx.DecodeBytes(buf)
 
-		var request SearchStubsReq
+		var request SearchRequest
 		if err := func() error {
 			if err := request.Decode(d); err != nil {
 				return err
@@ -143,15 +143,7 @@ func (s *Server) decodeSearchStubsRequest(r *http.Request) (
 			}
 			return req, close, err
 		}
-		if err := func() error {
-			if err := request.Validate(); err != nil {
-				return err
-			}
-			return nil
-		}(); err != nil {
-			return req, close, errors.Wrap(err, "validate")
-		}
-		return request, close, nil
+		return &request, close, nil
 	default:
 		return req, close, validate.InvalidContentType(ct)
 	}

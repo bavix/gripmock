@@ -222,53 +222,56 @@ func (s *OptID) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
-// Encode encodes StubInput as json.
-func (o OptStubInput) Encode(e *jx.Encoder) {
+// Encode encodes string as json.
+func (o OptString) Encode(e *jx.Encoder) {
 	if !o.Set {
 		return
 	}
-	o.Value.Encode(e)
+	e.Str(string(o.Value))
 }
 
-// Decode decodes StubInput from json.
-func (o *OptStubInput) Decode(d *jx.Decoder) error {
+// Decode decodes string from json.
+func (o *OptString) Decode(d *jx.Decoder) error {
 	if o == nil {
-		return errors.New("invalid: unable to decode OptStubInput to nil")
+		return errors.New("invalid: unable to decode OptString to nil")
 	}
 	o.Set = true
-	if err := o.Value.Decode(d); err != nil {
+	v, err := d.Str()
+	if err != nil {
 		return err
 	}
+	o.Value = string(v)
 	return nil
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s OptStubInput) MarshalJSON() ([]byte, error) {
+func (s OptString) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *OptStubInput) UnmarshalJSON(data []byte) error {
+func (s *OptString) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
 
-// Encode encodes StubOutput as json.
-func (o OptStubOutput) Encode(e *jx.Encoder) {
+// Encode encodes StubInputContains as json.
+func (o OptStubInputContains) Encode(e *jx.Encoder) {
 	if !o.Set {
 		return
 	}
 	o.Value.Encode(e)
 }
 
-// Decode decodes StubOutput from json.
-func (o *OptStubOutput) Decode(d *jx.Decoder) error {
+// Decode decodes StubInputContains from json.
+func (o *OptStubInputContains) Decode(d *jx.Decoder) error {
 	if o == nil {
-		return errors.New("invalid: unable to decode OptStubOutput to nil")
+		return errors.New("invalid: unable to decode OptStubInputContains to nil")
 	}
 	o.Set = true
+	o.Value = make(StubInputContains)
 	if err := o.Value.Decode(d); err != nil {
 		return err
 	}
@@ -276,14 +279,82 @@ func (o *OptStubOutput) Decode(d *jx.Decoder) error {
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s OptStubOutput) MarshalJSON() ([]byte, error) {
+func (s OptStubInputContains) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *OptStubOutput) UnmarshalJSON(data []byte) error {
+func (s *OptStubInputContains) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes StubInputEquals as json.
+func (o OptStubInputEquals) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes StubInputEquals from json.
+func (o *OptStubInputEquals) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptStubInputEquals to nil")
+	}
+	o.Set = true
+	o.Value = make(StubInputEquals)
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptStubInputEquals) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptStubInputEquals) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes StubInputMatches as json.
+func (o OptStubInputMatches) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes StubInputMatches from json.
+func (o *OptStubInputMatches) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptStubInputMatches to nil")
+	}
+	o.Set = true
+	o.Value = make(StubInputMatches)
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptStubInputMatches) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptStubInputMatches) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -323,87 +394,374 @@ func (s *OptUint32) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
-// Encode encodes SearchStubsOK as json.
-func (s SearchStubsOK) Encode(e *jx.Encoder) {
-	switch s.Type {
-	case StubSearchStubsOK:
-		s.Stub.Encode(e)
+// Encode implements json.Marshaler.
+func (s *SearchRequest) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *SearchRequest) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("service")
+		e.Str(s.Service)
+	}
+	{
+		e.FieldStart("method")
+		e.Str(s.Method)
+	}
+	{
+		e.FieldStart("data")
+		s.Data.Encode(e)
 	}
 }
 
-// Decode decodes SearchStubsOK from json.
-func (s *SearchStubsOK) Decode(d *jx.Decoder) error {
+var jsonFieldsNameOfSearchRequest = [3]string{
+	0: "service",
+	1: "method",
+	2: "data",
+}
+
+// Decode decodes SearchRequest from json.
+func (s *SearchRequest) Decode(d *jx.Decoder) error {
 	if s == nil {
-		return errors.New("invalid: unable to decode SearchStubsOK to nil")
+		return errors.New("invalid: unable to decode SearchRequest to nil")
 	}
-	// Sum type type_discriminator.
-	switch t := d.Next(); t {
-	case jx.Object:
-		if err := s.Stub.Decode(d); err != nil {
-			return err
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "service":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.Service = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"service\"")
+			}
+		case "method":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.Method = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"method\"")
+			}
+		case "data":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				if err := s.Data.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"data\"")
+			}
+		default:
+			return d.Skip()
 		}
-		s.Type = StubSearchStubsOK
-	default:
-		return errors.Errorf("unexpected json type %q", t)
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode SearchRequest")
 	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfSearchRequest) {
+					name = jsonFieldsNameOfSearchRequest[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
 	return nil
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s SearchStubsOK) MarshalJSON() ([]byte, error) {
+func (s *SearchRequest) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *SearchStubsOK) UnmarshalJSON(data []byte) error {
+func (s *SearchRequest) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
 
-// Encode encodes SearchStubsReq as json.
-func (s SearchStubsReq) Encode(e *jx.Encoder) {
-	switch s.Type {
-	case StubListSearchStubsReq:
-		s.StubList.Encode(e)
-	case StubSearchStubsReq:
-		s.Stub.Encode(e)
+// Encode implements json.Marshaler.
+func (s SearchRequestData) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields implements json.Marshaler.
+func (s SearchRequestData) encodeFields(e *jx.Encoder) {
+	for k, elem := range s {
+		e.FieldStart(k)
+
+		if len(elem) != 0 {
+			e.Raw(elem)
+		}
 	}
 }
 
-// Decode decodes SearchStubsReq from json.
-func (s *SearchStubsReq) Decode(d *jx.Decoder) error {
+// Decode decodes SearchRequestData from json.
+func (s *SearchRequestData) Decode(d *jx.Decoder) error {
 	if s == nil {
-		return errors.New("invalid: unable to decode SearchStubsReq to nil")
+		return errors.New("invalid: unable to decode SearchRequestData to nil")
 	}
-	// Sum type type_discriminator.
-	switch t := d.Next(); t {
-	case jx.Array:
-		if err := s.StubList.Decode(d); err != nil {
-			return err
+	m := s.init()
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		var elem jx.Raw
+		if err := func() error {
+			v, err := d.RawAppend(nil)
+			elem = jx.Raw(v)
+			if err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrapf(err, "decode field %q", k)
 		}
-		s.Type = StubListSearchStubsReq
-	case jx.Object:
-		if err := s.Stub.Decode(d); err != nil {
-			return err
-		}
-		s.Type = StubSearchStubsReq
-	default:
-		return errors.Errorf("unexpected json type %q", t)
+		m[string(k)] = elem
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode SearchRequestData")
 	}
+
 	return nil
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s SearchStubsReq) MarshalJSON() ([]byte, error) {
+func (s SearchRequestData) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
 }
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *SearchStubsReq) UnmarshalJSON(data []byte) error {
+func (s *SearchRequestData) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *SearchResponse) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *SearchResponse) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("data")
+		s.Data.Encode(e)
+	}
+	{
+		if s.Error.Set {
+			e.FieldStart("error")
+			s.Error.Encode(e)
+		}
+	}
+	{
+		if s.Code.Set {
+			e.FieldStart("code")
+			s.Code.Encode(e)
+		}
+	}
+}
+
+var jsonFieldsNameOfSearchResponse = [3]string{
+	0: "data",
+	1: "error",
+	2: "code",
+}
+
+// Decode decodes SearchResponse from json.
+func (s *SearchResponse) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SearchResponse to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "data":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.Data.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"data\"")
+			}
+		case "error":
+			if err := func() error {
+				s.Error.Reset()
+				if err := s.Error.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"error\"")
+			}
+		case "code":
+			if err := func() error {
+				s.Code.Reset()
+				if err := s.Code.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"code\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode SearchResponse")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000001,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfSearchResponse) {
+					name = jsonFieldsNameOfSearchResponse[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *SearchResponse) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SearchResponse) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s SearchResponseData) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields implements json.Marshaler.
+func (s SearchResponseData) encodeFields(e *jx.Encoder) {
+	for k, elem := range s {
+		e.FieldStart(k)
+
+		if len(elem) != 0 {
+			e.Raw(elem)
+		}
+	}
+}
+
+// Decode decodes SearchResponseData from json.
+func (s *SearchResponseData) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode SearchResponseData to nil")
+	}
+	m := s.init()
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		var elem jx.Raw
+		if err := func() error {
+			v, err := d.RawAppend(nil)
+			elem = jx.Raw(v)
+			if err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrapf(err, "decode field %q", k)
+		}
+		m[string(k)] = elem
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode SearchResponseData")
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s SearchResponseData) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *SearchResponseData) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -432,16 +790,12 @@ func (s *Stub) encodeFields(e *jx.Encoder) {
 		e.Str(s.Method)
 	}
 	{
-		if s.Input.Set {
-			e.FieldStart("input")
-			s.Input.Encode(e)
-		}
+		e.FieldStart("input")
+		s.Input.Encode(e)
 	}
 	{
-		if s.Output.Set {
-			e.FieldStart("output")
-			s.Output.Encode(e)
-		}
+		e.FieldStart("output")
+		s.Output.Encode(e)
 	}
 }
 
@@ -497,8 +851,8 @@ func (s *Stub) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"method\"")
 			}
 		case "input":
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
-				s.Input.Reset()
 				if err := s.Input.Decode(d); err != nil {
 					return err
 				}
@@ -507,8 +861,8 @@ func (s *Stub) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"input\"")
 			}
 		case "output":
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
-				s.Output.Reset()
 				if err := s.Output.Decode(d); err != nil {
 					return err
 				}
@@ -526,7 +880,7 @@ func (s *Stub) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000110,
+		0b00011110,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -582,19 +936,19 @@ func (s *StubInput) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *StubInput) encodeFields(e *jx.Encoder) {
 	{
-		if s.Equals != nil {
+		if s.Equals.Set {
 			e.FieldStart("equals")
 			s.Equals.Encode(e)
 		}
 	}
 	{
-		if s.Contains != nil {
+		if s.Contains.Set {
 			e.FieldStart("contains")
 			s.Contains.Encode(e)
 		}
 	}
 	{
-		if s.Matches != nil {
+		if s.Matches.Set {
 			e.FieldStart("matches")
 			s.Matches.Encode(e)
 		}
@@ -617,36 +971,30 @@ func (s *StubInput) Decode(d *jx.Decoder) error {
 		switch string(k) {
 		case "equals":
 			if err := func() error {
-				s.Equals = nil
-				var elem StubInputEquals
-				if err := elem.Decode(d); err != nil {
+				s.Equals.Reset()
+				if err := s.Equals.Decode(d); err != nil {
 					return err
 				}
-				s.Equals = &elem
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"equals\"")
 			}
 		case "contains":
 			if err := func() error {
-				s.Contains = nil
-				var elem StubInputContains
-				if err := elem.Decode(d); err != nil {
+				s.Contains.Reset()
+				if err := s.Contains.Decode(d); err != nil {
 					return err
 				}
-				s.Contains = &elem
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"contains\"")
 			}
 		case "matches":
 			if err := func() error {
-				s.Matches = nil
-				var elem StubInputMatches
-				if err := elem.Decode(d); err != nil {
+				s.Matches.Reset()
+				if err := s.Matches.Decode(d); err != nil {
 					return err
 				}
-				s.Matches = &elem
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"matches\"")
@@ -676,29 +1024,43 @@ func (s *StubInput) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
-func (s *StubInputContains) Encode(e *jx.Encoder) {
+func (s StubInputContains) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
 	e.ObjEnd()
 }
 
-// encodeFields encodes fields.
-func (s *StubInputContains) encodeFields(e *jx.Encoder) {
-}
+// encodeFields implements json.Marshaler.
+func (s StubInputContains) encodeFields(e *jx.Encoder) {
+	for k, elem := range s {
+		e.FieldStart(k)
 
-var jsonFieldsNameOfStubInputContains = [0]string{}
+		if len(elem) != 0 {
+			e.Raw(elem)
+		}
+	}
+}
 
 // Decode decodes StubInputContains from json.
 func (s *StubInputContains) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode StubInputContains to nil")
 	}
-
+	m := s.init()
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
-		switch string(k) {
-		default:
-			return d.Skip()
+		var elem jx.Raw
+		if err := func() error {
+			v, err := d.RawAppend(nil)
+			elem = jx.Raw(v)
+			if err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrapf(err, "decode field %q", k)
 		}
+		m[string(k)] = elem
+		return nil
 	}); err != nil {
 		return errors.Wrap(err, "decode StubInputContains")
 	}
@@ -707,7 +1069,7 @@ func (s *StubInputContains) Decode(d *jx.Decoder) error {
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s *StubInputContains) MarshalJSON() ([]byte, error) {
+func (s StubInputContains) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
@@ -720,29 +1082,43 @@ func (s *StubInputContains) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
-func (s *StubInputEquals) Encode(e *jx.Encoder) {
+func (s StubInputEquals) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
 	e.ObjEnd()
 }
 
-// encodeFields encodes fields.
-func (s *StubInputEquals) encodeFields(e *jx.Encoder) {
-}
+// encodeFields implements json.Marshaler.
+func (s StubInputEquals) encodeFields(e *jx.Encoder) {
+	for k, elem := range s {
+		e.FieldStart(k)
 
-var jsonFieldsNameOfStubInputEquals = [0]string{}
+		if len(elem) != 0 {
+			e.Raw(elem)
+		}
+	}
+}
 
 // Decode decodes StubInputEquals from json.
 func (s *StubInputEquals) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode StubInputEquals to nil")
 	}
-
+	m := s.init()
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
-		switch string(k) {
-		default:
-			return d.Skip()
+		var elem jx.Raw
+		if err := func() error {
+			v, err := d.RawAppend(nil)
+			elem = jx.Raw(v)
+			if err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrapf(err, "decode field %q", k)
 		}
+		m[string(k)] = elem
+		return nil
 	}); err != nil {
 		return errors.Wrap(err, "decode StubInputEquals")
 	}
@@ -751,7 +1127,7 @@ func (s *StubInputEquals) Decode(d *jx.Decoder) error {
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s *StubInputEquals) MarshalJSON() ([]byte, error) {
+func (s StubInputEquals) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
@@ -764,29 +1140,43 @@ func (s *StubInputEquals) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
-func (s *StubInputMatches) Encode(e *jx.Encoder) {
+func (s StubInputMatches) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
 	e.ObjEnd()
 }
 
-// encodeFields encodes fields.
-func (s *StubInputMatches) encodeFields(e *jx.Encoder) {
-}
+// encodeFields implements json.Marshaler.
+func (s StubInputMatches) encodeFields(e *jx.Encoder) {
+	for k, elem := range s {
+		e.FieldStart(k)
 
-var jsonFieldsNameOfStubInputMatches = [0]string{}
+		if len(elem) != 0 {
+			e.Raw(elem)
+		}
+	}
+}
 
 // Decode decodes StubInputMatches from json.
 func (s *StubInputMatches) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode StubInputMatches to nil")
 	}
-
+	m := s.init()
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
-		switch string(k) {
-		default:
-			return d.Skip()
+		var elem jx.Raw
+		if err := func() error {
+			v, err := d.RawAppend(nil)
+			elem = jx.Raw(v)
+			if err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrapf(err, "decode field %q", k)
 		}
+		m[string(k)] = elem
+		return nil
 	}); err != nil {
 		return errors.Wrap(err, "decode StubInputMatches")
 	}
@@ -795,7 +1185,7 @@ func (s *StubInputMatches) Decode(d *jx.Decoder) error {
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s *StubInputMatches) MarshalJSON() ([]byte, error) {
+func (s StubInputMatches) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil
@@ -871,8 +1261,10 @@ func (s *StubOutput) encodeFields(e *jx.Encoder) {
 		s.Data.Encode(e)
 	}
 	{
-		e.FieldStart("error")
-		e.Str(s.Error)
+		if s.Error.Set {
+			e.FieldStart("error")
+			s.Error.Encode(e)
+		}
 	}
 	{
 		if s.Code.Set {
@@ -908,11 +1300,9 @@ func (s *StubOutput) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"data\"")
 			}
 		case "error":
-			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				v, err := d.Str()
-				s.Error = string(v)
-				if err != nil {
+				s.Error.Reset()
+				if err := s.Error.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -939,7 +1329,7 @@ func (s *StubOutput) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000011,
+		0b00000001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -986,29 +1376,43 @@ func (s *StubOutput) UnmarshalJSON(data []byte) error {
 }
 
 // Encode implements json.Marshaler.
-func (s *StubOutputData) Encode(e *jx.Encoder) {
+func (s StubOutputData) Encode(e *jx.Encoder) {
 	e.ObjStart()
 	s.encodeFields(e)
 	e.ObjEnd()
 }
 
-// encodeFields encodes fields.
-func (s *StubOutputData) encodeFields(e *jx.Encoder) {
-}
+// encodeFields implements json.Marshaler.
+func (s StubOutputData) encodeFields(e *jx.Encoder) {
+	for k, elem := range s {
+		e.FieldStart(k)
 
-var jsonFieldsNameOfStubOutputData = [0]string{}
+		if len(elem) != 0 {
+			e.Raw(elem)
+		}
+	}
+}
 
 // Decode decodes StubOutputData from json.
 func (s *StubOutputData) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode StubOutputData to nil")
 	}
-
+	m := s.init()
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
-		switch string(k) {
-		default:
-			return d.Skip()
+		var elem jx.Raw
+		if err := func() error {
+			v, err := d.RawAppend(nil)
+			elem = jx.Raw(v)
+			if err != nil {
+				return err
+			}
+			return nil
+		}(); err != nil {
+			return errors.Wrapf(err, "decode field %q", k)
 		}
+		m[string(k)] = elem
+		return nil
 	}); err != nil {
 		return errors.Wrap(err, "decode StubOutputData")
 	}
@@ -1017,7 +1421,7 @@ func (s *StubOutputData) Decode(d *jx.Decoder) error {
 }
 
 // MarshalJSON implements stdjson.Marshaler.
-func (s *StubOutputData) MarshalJSON() ([]byte, error) {
+func (s StubOutputData) MarshalJSON() ([]byte, error) {
 	e := jx.Encoder{}
 	s.Encode(&e)
 	return e.Bytes(), nil

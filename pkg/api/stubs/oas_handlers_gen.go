@@ -450,7 +450,7 @@ func (s *Server) handleSearchStubsRequest(args [0]string, argsEscaped bool, w ht
 		}
 	}()
 
-	var response SearchStubsOK
+	var response *SearchResponse
 	if m := s.cfg.Middleware; m != nil {
 		mreq := middleware.Request{
 			Context:       ctx,
@@ -462,9 +462,9 @@ func (s *Server) handleSearchStubsRequest(args [0]string, argsEscaped bool, w ht
 		}
 
 		type (
-			Request  = SearchStubsReq
+			Request  = *SearchRequest
 			Params   = struct{}
-			Response = SearchStubsOK
+			Response = *SearchResponse
 		)
 		response, err = middleware.HookMiddleware[
 			Request,

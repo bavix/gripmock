@@ -14,7 +14,7 @@ import (
 	"github.com/ogen-go/ogen/validate"
 )
 
-func decodeAddStubResponse(resp *http.Response) (res AddStubOK, _ error) {
+func decodeLivenessResponse(resp *http.Response) (res *MessageOK, _ error) {
 	switch resp.StatusCode {
 	case 200:
 		// Code 200.
@@ -30,7 +30,7 @@ func decodeAddStubResponse(resp *http.Response) (res AddStubOK, _ error) {
 			}
 			d := jx.DecodeBytes(buf)
 
-			var response AddStubOK
+			var response MessageOK
 			if err := func() error {
 				if err := response.Decode(d); err != nil {
 					return err
@@ -47,7 +47,7 @@ func decodeAddStubResponse(resp *http.Response) (res AddStubOK, _ error) {
 				}
 				return res, err
 			}
-			return response, nil
+			return &response, nil
 		default:
 			return res, validate.InvalidContentType(ct)
 		}
@@ -55,19 +55,7 @@ func decodeAddStubResponse(resp *http.Response) (res AddStubOK, _ error) {
 	return res, validate.UnexpectedStatusCode(resp.StatusCode)
 }
 
-func decodeDeleteStubByIDResponse(resp *http.Response) (res DeleteStubByIDRes, _ error) {
-	switch resp.StatusCode {
-	case 204:
-		// Code 204.
-		return &DeleteStubByIDNoContent{}, nil
-	case 404:
-		// Code 404.
-		return &DeleteStubByIDNotFound{}, nil
-	}
-	return res, validate.UnexpectedStatusCode(resp.StatusCode)
-}
-
-func decodeListStubsResponse(resp *http.Response) (res StubList, _ error) {
+func decodeReadinessResponse(resp *http.Response) (res *MessageOK, _ error) {
 	switch resp.StatusCode {
 	case 200:
 		// Code 200.
@@ -83,57 +71,7 @@ func decodeListStubsResponse(resp *http.Response) (res StubList, _ error) {
 			}
 			d := jx.DecodeBytes(buf)
 
-			var response StubList
-			if err := func() error {
-				if err := response.Decode(d); err != nil {
-					return err
-				}
-				if err := d.Skip(); err != io.EOF {
-					return errors.New("unexpected trailing data")
-				}
-				return nil
-			}(); err != nil {
-				err = &ogenerrors.DecodeBodyError{
-					ContentType: ct,
-					Body:        buf,
-					Err:         err,
-				}
-				return res, err
-			}
-			return response, nil
-		default:
-			return res, validate.InvalidContentType(ct)
-		}
-	}
-	return res, validate.UnexpectedStatusCode(resp.StatusCode)
-}
-
-func decodePurgeStubsResponse(resp *http.Response) (res *PurgeStubsNoContent, _ error) {
-	switch resp.StatusCode {
-	case 204:
-		// Code 204.
-		return &PurgeStubsNoContent{}, nil
-	}
-	return res, validate.UnexpectedStatusCode(resp.StatusCode)
-}
-
-func decodeSearchStubsResponse(resp *http.Response) (res *SearchResponse, _ error) {
-	switch resp.StatusCode {
-	case 200:
-		// Code 200.
-		ct, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
-		if err != nil {
-			return res, errors.Wrap(err, "parse media type")
-		}
-		switch {
-		case ct == "application/json":
-			buf, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return res, err
-			}
-			d := jx.DecodeBytes(buf)
-
-			var response SearchResponse
+			var response MessageOK
 			if err := func() error {
 				if err := response.Decode(d); err != nil {
 					return err

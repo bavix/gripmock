@@ -1,0 +1,46 @@
+openapi: 3.0.2
+servers:
+  - url: /health
+info:
+  version: 2.0.0
+  title: GripMock API Schema
+tags:
+  - name: probe
+    description: Healthcheck
+paths:
+  /liveness:
+    get:
+      tags:
+        - probe
+      summary: Liveness check
+      description: The test says that the service is alive and yet
+      operationId: liveness
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOK'
+  /readiness:
+    get:
+      tags:
+        - probe
+      summary: Readiness check
+      description: The test indicates readiness to receive traffic
+      operationId: readiness
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOK'
+components:
+  schemas:
+    MessageOK:
+      type: object
+      properties:
+        message:
+          type: string
+          default: "ok"

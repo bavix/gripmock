@@ -54,6 +54,6 @@ func (UnimplementedHandler) PurgeStubs(ctx context.Context) error {
 // Performs a search for a stub by the given conditions.
 //
 // POST /stubs/search
-func (UnimplementedHandler) SearchStubs(ctx context.Context, req SearchStubsReq) (r SearchStubsOK, _ error) {
+func (UnimplementedHandler) SearchStubs(ctx context.Context, req *SearchRequest) (r *SearchResponse, _ error) {
 	return r, ht.ErrNotImplemented
 }

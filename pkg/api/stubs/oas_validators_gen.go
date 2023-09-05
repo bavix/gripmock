@@ -40,20 +40,6 @@ func (s ListID) Validate() error {
 	return nil
 }
 
-func (s SearchStubsReq) Validate() error {
-	switch s.Type {
-	case StubListSearchStubsReq:
-		if err := s.StubList.Validate(); err != nil {
-			return err
-		}
-		return nil
-	case StubSearchStubsReq:
-		return nil // no validation needed
-	default:
-		return errors.Errorf("invalid type %q", s.Type)
-	}
-}
-
 func (s StubList) Validate() error {
 	alias := ([]Stub)(s)
 	if alias == nil {

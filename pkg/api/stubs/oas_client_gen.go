@@ -391,24 +391,15 @@ func (c *Client) sendPurgeStubs(ctx context.Context) (res *PurgeStubsNoContent, 
 // Performs a search for a stub by the given conditions.
 //
 // POST /stubs/search
-func (c *Client) SearchStubs(ctx context.Context, request SearchStubsReq) (SearchStubsOK, error) {
+func (c *Client) SearchStubs(ctx context.Context, request *SearchRequest) (*SearchResponse, error) {
 	res, err := c.sendSearchStubs(ctx, request)
 	_ = res
 	return res, err
 }
 
-func (c *Client) sendSearchStubs(ctx context.Context, request SearchStubsReq) (res SearchStubsOK, err error) {
+func (c *Client) sendSearchStubs(ctx context.Context, request *SearchRequest) (res *SearchResponse, err error) {
 	otelAttrs := []attribute.KeyValue{
 		otelogen.OperationID("searchStubs"),
-	}
-	// Validate request before sending.
-	if err := func() error {
-		if err := request.Validate(); err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		return res, errors.Wrap(err, "validate")
 	}
 
 	// Run stopwatch.
