@@ -1,0 +1,185 @@
+openapi: 3.0.2
+servers:
+  - url: /api
+info:
+  version: 1.0.0
+  title: GripMock API schema
+tags:
+  - name: stubs
+    description: Stubs storage management
+paths:
+  /stubs:
+    get:
+      tags:
+        - stubs
+      summary: Getting a list of stubs
+      description: The list of stubs is required to view all added stubs
+      operationId: listStubs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubList'
+    post:
+      tags:
+        - stubs
+      summary: Add a new stub to the store
+      description: Add a new stub to the store
+      operationId: addStub
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ListID'
+      requestBody:
+        description: Create a new pet in the store
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/StubList'
+                - $ref: '#/components/schemas/Stub'
+    delete:
+      tags:
+        - stubs
+      summary: Remove all stubs
+      description: Completely clears the stub storage
+      operationId: purgeStubs
+      responses:
+        '204':
+          description: Successful operation
+  '/stubs/{uuid}':
+    delete:
+      tags:
+        - stubs
+      summary: Deletes stub by ID
+      description: The method removes the stub by ID
+      operationId: deleteStubByID
+      parameters:
+        - name: uuid
+          in: path
+          description: ID of stub
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          description: successful operation
+        '404':
+          description: Pet not found
+  '/stubs/search':
+    post:
+      tags:
+        - stubs
+      summary: Stub storage search
+      description: Performs a search for a stub by the given conditions
+      operationId: searchStubs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Stub'
+      requestBody:
+        description: Description of filtering
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/StubList'
+                - $ref: '#/components/schemas/Stub'
+components:
+  schemas:
+    ID:
+      type: string
+      format: uuid
+      example: 51c50050-ec27-4dae-a583-a32ca71a1dd5
+    ListID:
+      type: array
+      items:
+        $ref: '#/components/schemas/ID'
+    StubList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Stub'
+    SearchRequest:
+      type: object
+      required:
+        - service
+        - method
+        - data
+      properties:
+        service:
+          type: string
+          example: Gripmock
+        method:
+          type: string
+          example: SayHello
+        data:
+          type: object
+    SearchResponse:
+      type: object
+      required:
+        - data
+        - error
+      properties:
+        data:
+          type: object
+        error:
+          type: string
+          example: Message not found
+        code:
+          type: integer
+          format: uint32
+          example: 3
+    Stub:
+      type: object
+      required:
+        - service
+        - method
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        service:
+          type: string
+          example: Gripmock
+        method:
+          type: string
+          example: SayHello
+        input:
+          $ref: '#/components/schemas/StubInput'
+        output:
+          $ref: '#/components/schemas/StubOutput'
+    StubInput:
+      type: object
+      properties:
+        equals:
+          type: object
+        contains:
+          type: object
+        matches:
+          type: object
+    StubOutput:
+      type: object
+      required:
+        - data
+        - error
+      properties:
+        data:
+          type: object
+        error:
+          type: string
+          example: Message not found
+        code:
+          type: integer
+          format: uint32
+          example: 3
