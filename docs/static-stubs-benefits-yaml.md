@@ -69,8 +69,6 @@ And now the same thing, but in yaml:
 
 ### Anchor and Alias
 
-> only in yaml
-
 You can read more details here: https://github.com/goccy/go-yaml#2-reference-elements-declared-in-another-file
 
 ```yaml
