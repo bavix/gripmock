@@ -22,3 +22,6 @@
   - [stub server](specs-stub-server)
   - [protoc-gen-gripmock](specs-protoc-gen-gripmock)
   - [protogen](protogen)
+
+- Reference
+  - [Swagger API](https://app.swaggerhub.com/apis-docs/bavix/GripMock)

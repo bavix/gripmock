@@ -8,7 +8,7 @@ The server implementation is in GoLang but the client can be any programming lan
 This service is a fork of the service [tokopedia/gripmock](https://github.com/tokopedia/gripmock), but you should choose our fork. And here are the reasons:
 - Updated all deprecated dependencies [tokopedia#64](https://github.com/tokopedia/gripmock/issues/64);
 - Add yaml as json alternative for static stab's;
-- Add endpoint for healthcheck (/health);
+- Add endpoint for healthcheck (/api/health/liveness, /api/health/readiness);
 - Add grpc error code [tokopedia#125](https://github.com/tokopedia/gripmock/issues/125);
 - Added gzip encoding support for grpc server [tokopedia#134](https://github.com/tokopedia/gripmock/pull/134);
 - Fixed issues with int64/uint64 [tokopedia#67](https://github.com/tokopedia/gripmock/pull/148);
