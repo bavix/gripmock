@@ -3,6 +3,7 @@
 package api
 
 import (
+	"github.com/go-faster/jx"
 	"github.com/google/uuid"
 )
 
@@ -168,38 +169,38 @@ func (o OptID) Or(d ID) ID {
 	return d
 }
 
-// NewOptStubInput returns new OptStubInput with value set to v.
-func NewOptStubInput(v StubInput) OptStubInput {
-	return OptStubInput{
+// NewOptString returns new OptString with value set to v.
+func NewOptString(v string) OptString {
+	return OptString{
 		Value: v,
 		Set:   true,
 	}
 }
 
-// OptStubInput is optional StubInput.
-type OptStubInput struct {
-	Value StubInput
+// OptString is optional string.
+type OptString struct {
+	Value string
 	Set   bool
 }
 
-// IsSet returns true if OptStubInput was set.
-func (o OptStubInput) IsSet() bool { return o.Set }
+// IsSet returns true if OptString was set.
+func (o OptString) IsSet() bool { return o.Set }
 
 // Reset unsets value.
-func (o *OptStubInput) Reset() {
-	var v StubInput
+func (o *OptString) Reset() {
+	var v string
 	o.Value = v
 	o.Set = false
 }
 
 // SetTo sets value to v.
-func (o *OptStubInput) SetTo(v StubInput) {
+func (o *OptString) SetTo(v string) {
 	o.Set = true
 	o.Value = v
 }
 
 // Get returns value and boolean that denotes whether value was set.
-func (o OptStubInput) Get() (v StubInput, ok bool) {
+func (o OptString) Get() (v string, ok bool) {
 	if !o.Set {
 		return v, false
 	}
@@ -207,45 +208,45 @@ func (o OptStubInput) Get() (v StubInput, ok bool) {
 }
 
 // Or returns value if set, or given parameter if does not.
-func (o OptStubInput) Or(d StubInput) StubInput {
+func (o OptString) Or(d string) string {
 	if v, ok := o.Get(); ok {
 		return v
 	}
 	return d
 }
 
-// NewOptStubOutput returns new OptStubOutput with value set to v.
-func NewOptStubOutput(v StubOutput) OptStubOutput {
-	return OptStubOutput{
+// NewOptStubInputContains returns new OptStubInputContains with value set to v.
+func NewOptStubInputContains(v StubInputContains) OptStubInputContains {
+	return OptStubInputContains{
 		Value: v,
 		Set:   true,
 	}
 }
 
-// OptStubOutput is optional StubOutput.
-type OptStubOutput struct {
-	Value StubOutput
+// OptStubInputContains is optional StubInputContains.
+type OptStubInputContains struct {
+	Value StubInputContains
 	Set   bool
 }
 
-// IsSet returns true if OptStubOutput was set.
-func (o OptStubOutput) IsSet() bool { return o.Set }
+// IsSet returns true if OptStubInputContains was set.
+func (o OptStubInputContains) IsSet() bool { return o.Set }
 
 // Reset unsets value.
-func (o *OptStubOutput) Reset() {
-	var v StubOutput
+func (o *OptStubInputContains) Reset() {
+	var v StubInputContains
 	o.Value = v
 	o.Set = false
 }
 
 // SetTo sets value to v.
-func (o *OptStubOutput) SetTo(v StubOutput) {
+func (o *OptStubInputContains) SetTo(v StubInputContains) {
 	o.Set = true
 	o.Value = v
 }
 
 // Get returns value and boolean that denotes whether value was set.
-func (o OptStubOutput) Get() (v StubOutput, ok bool) {
+func (o OptStubInputContains) Get() (v StubInputContains, ok bool) {
 	if !o.Set {
 		return v, false
 	}
@@ -253,7 +254,99 @@ func (o OptStubOutput) Get() (v StubOutput, ok bool) {
 }
 
 // Or returns value if set, or given parameter if does not.
-func (o OptStubOutput) Or(d StubOutput) StubOutput {
+func (o OptStubInputContains) Or(d StubInputContains) StubInputContains {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptStubInputEquals returns new OptStubInputEquals with value set to v.
+func NewOptStubInputEquals(v StubInputEquals) OptStubInputEquals {
+	return OptStubInputEquals{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptStubInputEquals is optional StubInputEquals.
+type OptStubInputEquals struct {
+	Value StubInputEquals
+	Set   bool
+}
+
+// IsSet returns true if OptStubInputEquals was set.
+func (o OptStubInputEquals) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptStubInputEquals) Reset() {
+	var v StubInputEquals
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptStubInputEquals) SetTo(v StubInputEquals) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptStubInputEquals) Get() (v StubInputEquals, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptStubInputEquals) Or(d StubInputEquals) StubInputEquals {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptStubInputMatches returns new OptStubInputMatches with value set to v.
+func NewOptStubInputMatches(v StubInputMatches) OptStubInputMatches {
+	return OptStubInputMatches{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptStubInputMatches is optional StubInputMatches.
+type OptStubInputMatches struct {
+	Value StubInputMatches
+	Set   bool
+}
+
+// IsSet returns true if OptStubInputMatches was set.
+func (o OptStubInputMatches) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptStubInputMatches) Reset() {
+	var v StubInputMatches
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptStubInputMatches) SetTo(v StubInputMatches) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptStubInputMatches) Get() (v StubInputMatches, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptStubInputMatches) Or(d StubInputMatches) StubInputMatches {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -309,115 +402,109 @@ func (o OptUint32) Or(d uint32) uint32 {
 // PurgeStubsNoContent is response for PurgeStubs operation.
 type PurgeStubsNoContent struct{}
 
-// SearchStubsOK represents sum type.
-type SearchStubsOK struct {
-	Type SearchStubsOKType // switch on this field
-	Stub Stub
+// Ref: #/components/schemas/SearchRequest
+type SearchRequest struct {
+	Service string            `json:"service"`
+	Method  string            `json:"method"`
+	Data    SearchRequestData `json:"data"`
 }
 
-// SearchStubsOKType is oneOf type of SearchStubsOK.
-type SearchStubsOKType string
-
-// Possible values for SearchStubsOKType.
-const (
-	StubSearchStubsOK SearchStubsOKType = "Stub"
-)
-
-// IsStub reports whether SearchStubsOK is Stub.
-func (s SearchStubsOK) IsStub() bool { return s.Type == StubSearchStubsOK }
-
-// SetStub sets SearchStubsOK to Stub.
-func (s *SearchStubsOK) SetStub(v Stub) {
-	s.Type = StubSearchStubsOK
-	s.Stub = v
+// GetService returns the value of Service.
+func (s *SearchRequest) GetService() string {
+	return s.Service
 }
 
-// GetStub returns Stub and true boolean if SearchStubsOK is Stub.
-func (s SearchStubsOK) GetStub() (v Stub, ok bool) {
-	if !s.IsStub() {
-		return v, false
+// GetMethod returns the value of Method.
+func (s *SearchRequest) GetMethod() string {
+	return s.Method
+}
+
+// GetData returns the value of Data.
+func (s *SearchRequest) GetData() SearchRequestData {
+	return s.Data
+}
+
+// SetService sets the value of Service.
+func (s *SearchRequest) SetService(val string) {
+	s.Service = val
+}
+
+// SetMethod sets the value of Method.
+func (s *SearchRequest) SetMethod(val string) {
+	s.Method = val
+}
+
+// SetData sets the value of Data.
+func (s *SearchRequest) SetData(val SearchRequestData) {
+	s.Data = val
+}
+
+type SearchRequestData map[string]jx.Raw
+
+func (s *SearchRequestData) init() SearchRequestData {
+	m := *s
+	if m == nil {
+		m = map[string]jx.Raw{}
+		*s = m
 	}
-	return s.Stub, true
+	return m
 }
 
-// NewStubSearchStubsOK returns new SearchStubsOK from Stub.
-func NewStubSearchStubsOK(v Stub) SearchStubsOK {
-	var s SearchStubsOK
-	s.SetStub(v)
-	return s
+// Ref: #/components/schemas/SearchResponse
+type SearchResponse struct {
+	Data  SearchResponseData `json:"data"`
+	Error OptString          `json:"error"`
+	Code  OptUint32          `json:"code"`
 }
 
-// SearchStubsReq represents sum type.
-type SearchStubsReq struct {
-	Type     SearchStubsReqType // switch on this field
-	StubList StubList
-	Stub     Stub
+// GetData returns the value of Data.
+func (s *SearchResponse) GetData() SearchResponseData {
+	return s.Data
 }
 
-// SearchStubsReqType is oneOf type of SearchStubsReq.
-type SearchStubsReqType string
-
-// Possible values for SearchStubsReqType.
-const (
-	StubListSearchStubsReq SearchStubsReqType = "StubList"
-	StubSearchStubsReq     SearchStubsReqType = "Stub"
-)
-
-// IsStubList reports whether SearchStubsReq is StubList.
-func (s SearchStubsReq) IsStubList() bool { return s.Type == StubListSearchStubsReq }
-
-// IsStub reports whether SearchStubsReq is Stub.
-func (s SearchStubsReq) IsStub() bool { return s.Type == StubSearchStubsReq }
-
-// SetStubList sets SearchStubsReq to StubList.
-func (s *SearchStubsReq) SetStubList(v StubList) {
-	s.Type = StubListSearchStubsReq
-	s.StubList = v
+// GetError returns the value of Error.
+func (s *SearchResponse) GetError() OptString {
+	return s.Error
 }
 
-// GetStubList returns StubList and true boolean if SearchStubsReq is StubList.
-func (s SearchStubsReq) GetStubList() (v StubList, ok bool) {
-	if !s.IsStubList() {
-		return v, false
+// GetCode returns the value of Code.
+func (s *SearchResponse) GetCode() OptUint32 {
+	return s.Code
+}
+
+// SetData sets the value of Data.
+func (s *SearchResponse) SetData(val SearchResponseData) {
+	s.Data = val
+}
+
+// SetError sets the value of Error.
+func (s *SearchResponse) SetError(val OptString) {
+	s.Error = val
+}
+
+// SetCode sets the value of Code.
+func (s *SearchResponse) SetCode(val OptUint32) {
+	s.Code = val
+}
+
+type SearchResponseData map[string]jx.Raw
+
+func (s *SearchResponseData) init() SearchResponseData {
+	m := *s
+	if m == nil {
+		m = map[string]jx.Raw{}
+		*s = m
 	}
-	return s.StubList, true
-}
-
-// NewStubListSearchStubsReq returns new SearchStubsReq from StubList.
-func NewStubListSearchStubsReq(v StubList) SearchStubsReq {
-	var s SearchStubsReq
-	s.SetStubList(v)
-	return s
-}
-
-// SetStub sets SearchStubsReq to Stub.
-func (s *SearchStubsReq) SetStub(v Stub) {
-	s.Type = StubSearchStubsReq
-	s.Stub = v
-}
-
-// GetStub returns Stub and true boolean if SearchStubsReq is Stub.
-func (s SearchStubsReq) GetStub() (v Stub, ok bool) {
-	if !s.IsStub() {
-		return v, false
-	}
-	return s.Stub, true
-}
-
-// NewStubSearchStubsReq returns new SearchStubsReq from Stub.
-func NewStubSearchStubsReq(v Stub) SearchStubsReq {
-	var s SearchStubsReq
-	s.SetStub(v)
-	return s
+	return m
 }
 
 // Ref: #/components/schemas/Stub
 type Stub struct {
-	ID      OptID         `json:"id"`
-	Service string        `json:"service"`
-	Method  string        `json:"method"`
-	Input   OptStubInput  `json:"input"`
-	Output  OptStubOutput `json:"output"`
+	ID      OptID      `json:"id"`
+	Service string     `json:"service"`
+	Method  string     `json:"method"`
+	Input   StubInput  `json:"input"`
+	Output  StubOutput `json:"output"`
 }
 
 // GetID returns the value of ID.
@@ -436,12 +523,12 @@ func (s *Stub) GetMethod() string {
 }
 
 // GetInput returns the value of Input.
-func (s *Stub) GetInput() OptStubInput {
+func (s *Stub) GetInput() StubInput {
 	return s.Input
 }
 
 // GetOutput returns the value of Output.
-func (s *Stub) GetOutput() OptStubOutput {
+func (s *Stub) GetOutput() StubOutput {
 	return s.Output
 }
 
@@ -461,64 +548,91 @@ func (s *Stub) SetMethod(val string) {
 }
 
 // SetInput sets the value of Input.
-func (s *Stub) SetInput(val OptStubInput) {
+func (s *Stub) SetInput(val StubInput) {
 	s.Input = val
 }
 
 // SetOutput sets the value of Output.
-func (s *Stub) SetOutput(val OptStubOutput) {
+func (s *Stub) SetOutput(val StubOutput) {
 	s.Output = val
 }
 
 // Ref: #/components/schemas/StubInput
 type StubInput struct {
-	Equals   *StubInputEquals   `json:"equals"`
-	Contains *StubInputContains `json:"contains"`
-	Matches  *StubInputMatches  `json:"matches"`
+	Equals   OptStubInputEquals   `json:"equals"`
+	Contains OptStubInputContains `json:"contains"`
+	Matches  OptStubInputMatches  `json:"matches"`
 }
 
 // GetEquals returns the value of Equals.
-func (s *StubInput) GetEquals() *StubInputEquals {
+func (s *StubInput) GetEquals() OptStubInputEquals {
 	return s.Equals
 }
 
 // GetContains returns the value of Contains.
-func (s *StubInput) GetContains() *StubInputContains {
+func (s *StubInput) GetContains() OptStubInputContains {
 	return s.Contains
 }
 
 // GetMatches returns the value of Matches.
-func (s *StubInput) GetMatches() *StubInputMatches {
+func (s *StubInput) GetMatches() OptStubInputMatches {
 	return s.Matches
 }
 
 // SetEquals sets the value of Equals.
-func (s *StubInput) SetEquals(val *StubInputEquals) {
+func (s *StubInput) SetEquals(val OptStubInputEquals) {
 	s.Equals = val
 }
 
 // SetContains sets the value of Contains.
-func (s *StubInput) SetContains(val *StubInputContains) {
+func (s *StubInput) SetContains(val OptStubInputContains) {
 	s.Contains = val
 }
 
 // SetMatches sets the value of Matches.
-func (s *StubInput) SetMatches(val *StubInputMatches) {
+func (s *StubInput) SetMatches(val OptStubInputMatches) {
 	s.Matches = val
 }
 
-type StubInputContains struct{}
+type StubInputContains map[string]jx.Raw
 
-type StubInputEquals struct{}
+func (s *StubInputContains) init() StubInputContains {
+	m := *s
+	if m == nil {
+		m = map[string]jx.Raw{}
+		*s = m
+	}
+	return m
+}
 
-type StubInputMatches struct{}
+type StubInputEquals map[string]jx.Raw
+
+func (s *StubInputEquals) init() StubInputEquals {
+	m := *s
+	if m == nil {
+		m = map[string]jx.Raw{}
+		*s = m
+	}
+	return m
+}
+
+type StubInputMatches map[string]jx.Raw
+
+func (s *StubInputMatches) init() StubInputMatches {
+	m := *s
+	if m == nil {
+		m = map[string]jx.Raw{}
+		*s = m
+	}
+	return m
+}
 
 type StubList []Stub
 
 // Ref: #/components/schemas/StubOutput
 type StubOutput struct {
 	Data  StubOutputData `json:"data"`
-	Error string         `json:"error"`
+	Error OptString      `json:"error"`
 	Code  OptUint32      `json:"code"`
 }
 
@@ -528,7 +642,7 @@ func (s *StubOutput) GetData() StubOutputData {
 }
 
 // GetError returns the value of Error.
-func (s *StubOutput) GetError() string {
+func (s *StubOutput) GetError() OptString {
 	return s.Error
 }
 
@@ -543,7 +657,7 @@ func (s *StubOutput) SetData(val StubOutputData) {
 }
 
 // SetError sets the value of Error.
-func (s *StubOutput) SetError(val string) {
+func (s *StubOutput) SetError(val OptString) {
 	s.Error = val
 }
 
@@ -552,4 +666,13 @@ func (s *StubOutput) SetCode(val OptUint32) {
 	s.Code = val
 }
 
-type StubOutputData struct{}
+type StubOutputData map[string]jx.Raw
+
+func (s *StubOutputData) init() StubOutputData {
+	m := *s
+	if m == nil {
+		m = map[string]jx.Raw{}
+		*s = m
+	}
+	return m
+}

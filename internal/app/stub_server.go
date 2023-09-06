@@ -25,9 +25,9 @@ func NewStubsServer() *StubsServer {
 
 // deprecated code
 type findStubPayload struct {
-	Service string      `json:"service"`
-	Method  string      `json:"method"`
-	Data    interface{} `json:"data"`
+	Service string                 `json:"service"`
+	Method  string                 `json:"method"`
+	Data    map[string]interface{} `json:"data"`
 }
 
 func (s *StubsServer) AddStub(ctx context.Context, req api.AddStubReq) (api.AddStubOK, error) {

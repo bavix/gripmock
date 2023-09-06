@@ -37,7 +37,7 @@ type Handler interface {
 	// Performs a search for a stub by the given conditions.
 	//
 	// POST /stubs/search
-	SearchStubs(ctx context.Context, req SearchStubsReq) (SearchStubsOK, error)
+	SearchStubs(ctx context.Context, req *SearchRequest) (*SearchResponse, error)
 }
 
 // Server implements http server based on OpenAPI v3 specification and

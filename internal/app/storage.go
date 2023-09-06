@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	"log"
 	"reflect"
 	"regexp"
@@ -154,15 +152,15 @@ func regexMatch(expect, actual interface{}) bool {
 	return reflect.DeepEqual(expect, actual)
 }
 
-func equals(expect, actual interface{}) bool {
+func equals(expect, actual map[string]interface{}) bool {
 	return find(expect, actual, true, true, reflect.DeepEqual)
 }
 
-func contains(expect, actual interface{}) bool {
+func contains(expect, actual map[string]interface{}) bool {
 	return find(expect, actual, true, false, reflect.DeepEqual)
 }
 
-func matches(expect, actual interface{}) bool {
+func matches(expect, actual map[string]interface{}) bool {
 	return find(expect, actual, true, false, regexMatch)
 }
 
@@ -218,44 +216,4 @@ func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc) bool {
 	}
 
 	return f(expect, actual)
-}
-
-func validateStub(stub *storage.Stub) error {
-	if stub.Service == "" {
-		//fixme
-		//nolint:goerr113
-		return fmt.Errorf("service name can't be empty")
-	}
-
-	if stub.Method == "" {
-		return fmt.Errorf("method name can't be emtpy")
-	}
-
-	// due to golang implementation
-	// method name must capital
-	title := cases.Title(language.English, cases.NoLower)
-	stub.Method = title.String(stub.Method)
-
-	switch {
-	case stub.Input.Contains != nil:
-		break
-	case stub.Input.Equals != nil:
-		break
-	case stub.Input.Matches != nil:
-		break
-	default:
-		//fixme
-		//nolint:goerr113
-		return fmt.Errorf("input cannot be empty")
-	}
-
-	// TODO: validate all input case
-
-	if stub.Output.Error == "" && stub.Output.Data == nil && stub.Output.Code == nil {
-		//fixme
-		//nolint:goerr113
-		return fmt.Errorf("output can't be empty")
-	}
-
-	return nil
 }
