@@ -32,6 +32,6 @@ WORKDIR /go/src/github.com/bavix/gripmock
 
 EXPOSE 4770 4771
 
-HEALTHCHECK CMD curl --fail http://127.0.0.1:4771/health
+HEALTHCHECK CMD curl --fail http://127.0.0.1:4771/api/health/readiness
 
 ENTRYPOINT ["gripmock"]

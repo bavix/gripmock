@@ -1,19 +1,24 @@
+![GripMock](https://github.com/bavix/gripmock/assets/5111255/bbb14393-2b71-4136-875f-e2e4d0b6bcb9)
+
 # GripMock
 GripMock is a **mock server** for **GRPC** services. It's using a `.proto` file to generate implementation of gRPC service for you.
 You can use gripmock for setting up end-to-end testing or as a dummy server in a software development phase.
 The server implementation is in GoLang but the client can be any programming language that support gRPC.
 
----
+[[Documentation]](https://bavix.github.io/gripmock/)
 
-### Announcement:
-The latest [version (v1.10)](https://github.com/bavix/gripmock/releases/tag/v1.10) of gripmock is requiring `go_package` declaration in the `.proto` file. This is due to the latest update of `protoc` plugin that being used by gripmock is making the `go_package` declaration mandatory.
-
-**Update Feb 2022:**
-
-[Version 1.11-beta](https://github.com/bavix/gripmock/releases/tag/v1.11-beta) release is available.
-It supports **NO** declaration of `go_package`, please download and test before it can be tagged as stable.
-
-you can get the docker image using `docker pull tkpd/gripmock:v1.11-beta`.
+This service is a fork of the service [tokopedia/gripmock](https://github.com/tokopedia/gripmock), but you should choose our fork. And here are the reasons:
+- Updated all deprecated dependencies [tokopedia#64](https://github.com/tokopedia/gripmock/issues/64);
+- Add yaml as json alternative for static stab's;
+- Add endpoint for healthcheck (/api/health/liveness, /api/health/readiness);
+- Add grpc error code [tokopedia#125](https://github.com/tokopedia/gripmock/issues/125);
+- Added gzip encoding support for grpc server [tokopedia#134](https://github.com/tokopedia/gripmock/pull/134);
+- Fixed issues with int64/uint64 [tokopedia#67](https://github.com/tokopedia/gripmock/pull/148);
+- Add 404 error for stubs not found [tokopedia#142](https://github.com/tokopedia/gripmock/issues/142);
+- Support for deleting specific stub [tokopedia#123](https://github.com/tokopedia/gripmock/issues/123);
+- Reduced image size [tokopedia#91](https://github.com/tokopedia/gripmock/issues/91);
+- Active support [tokopedia#82](https://github.com/tokopedia/gripmock/issues/82);
+- Added [documentation](https://bavix.github.io/gripmock/);
 
 ---
 
@@ -23,9 +28,9 @@ basic syntax to run GripMock is
 `gripmock <protofile>`
 
 - Install [Docker](https://docs.docker.com/install/)
-- Run `docker pull tkpd/gripmock` to pull the image
-- We are gonna mount `/mypath/hello.proto` (it must be a fullpath) into a container and also we expose ports needed. Run `docker run -p 4770:4770 -p 4771:4771 -v /mypath:/proto tkpd/gripmock /proto/hello.proto`
-- On a separate terminal we are gonna add a stub into the stub service. Run `curl -X POST -d '{"service":"Gripmock","method":"SayHello","input":{"equals":{"name":"gripmock"}},"output":{"data":{"message":"Hello GripMock"}}}' localhost:4771/add `
+- Run `docker pull bavix/gripmock` to pull the image
+- We are gonna mount `/mypath/hello.proto` (it must be a fullpath) into a container and also we expose ports needed. Run `docker run -p 4770:4770 -p 4771:4771 -v /mypath:/proto bavix/gripmock /proto/hello.proto`
+- On a separate terminal we are gonna add a stub into the stub service. Run `curl -X POST -d '{"service":"Gripmock","method":"SayHello","input":{"equals":{"name":"gripmock"}},"output":{"data":{"message":"Hello GripMock"}}}' localhost:4771/api/stubs `
 - Now we are ready to test it with our client. You can find a client example file under `example/simple/client/`. Execute one of your preferred language. Example for go: `go run example/simple/client/*.go`
 
 Check [`example`](https://github.com/bavix/gripmock/tree/master/example) folder for various usecase of gripmock.
@@ -59,10 +64,10 @@ Stubbing is the essential mocking of GripMock. It will match and return the expe
 ### Dynamic stubbing
 You could add stubbing on the fly with a simple REST API. HTTP stub server is running on port `:4771`
 
-- `GET /` Will list all stubs mapping.
-- `POST /add` Will add stub with provided stub data
-- `POST /find` Find matching stub with provided input. see [Input Matching](#input_matching) below.
-- `GET /clear` Clear stub mappings.
+- `GET /api/stubs` Will list all stubs mapping.
+- `POST /api/stubs` Will add stub with provided stub data
+- `POST /api/stubs/search` Find matching stub with provided input. see [Input Matching](#input_matching) below.
+- `DELETE /api/stubs` Clear stub mappings.
 
 Stub Format is JSON text format. It has a skeleton as follows:
 ```
@@ -104,12 +109,12 @@ For our `hello` service example we put a stub with the text below:
 You could initialize gripmock with stub json files and provide the path using `--stub` argument. For example you may
 mount your stub file in `/mystubs` folder then mount it to docker like
 
-`docker run -p 4770:4770 -p 4771:4771 -v /mypath:/proto -v /mystubs:/stub tkpd/gripmock --stub=/stub /proto/hello.proto`
+`docker run -p 4770:4770 -p 4771:4771 -v /mypath:/proto -v /mystubs:/stub bavix/gripmock --stub=/stub /proto/hello.proto`
 
 Please note that Gripmock still serves http stubbing to modify stored stubs on the fly.
 
 ## <a name="input_matching"></a>Input Matching
-Stub will respond with the expected response only if the request matches any rule. Stub service will serve `/find` endpoint with format:
+Stub will respond with the expected response only if the request matches any rule. Stub service will serve `/api/stubs/search` endpoint with format:
 ```
 {
   "service":"<service name>",
@@ -119,7 +124,7 @@ Stub will respond with the expected response only if the request matches any rul
   }
 }
 ```
-So if you do a `curl -X POST -d '{"service":"Greeter","method":"SayHello","data":{"name":"gripmock"}}' localhost:4771/find` stub service will find a match from listed stubs stored there.
+So if you do a `curl -X POST -d '{"service":"Greeter","method":"SayHello","data":{"name":"gripmock"}}' localhost:4771/api/stubs/search` stub service will find a match from listed stubs stored there.
 
 ### Input Matching Rule
 Input matching has 3 rules to match an input: **equals**,**contains** and **regex**
@@ -186,3 +191,7 @@ Nested fields are allowed for input matching too for all JSON data types. (`stri
 }
 ```
 
+---
+Supported by
+
+[![Supported by JetBrains](https://cdn.rawgit.com/bavix/development-through/46475b4b/jetbrains.svg)](https://www.jetbrains.com/)

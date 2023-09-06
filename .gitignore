@@ -7,3 +7,4 @@ protogen/*
 !protogen/empty.go
 !protogen/example/
 temp
+node_modules/
