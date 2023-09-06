@@ -62,7 +62,7 @@ func main() {
 		log.Fatalf("Failed to generate server %v", err)
 	}
 
-	file := plugin.NewGeneratedFile("stub_server.go", ".")
+	file := plugin.NewGeneratedFile("server.go", ".")
 	file.Write(buf.Bytes())
 
 	// Generate a response from our plugin and marshall as protobuf
