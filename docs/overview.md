@@ -17,4 +17,4 @@ This service is a fork of the service [tokopedia/gripmock](https://github.com/to
 - Support for deleting specific stub [tokopedia#123](https://github.com/tokopedia/gripmock/issues/123);
 - Reduced image size [tokopedia#91](https://github.com/tokopedia/gripmock/issues/91);
 - Active support [tokopedia#82](https://github.com/tokopedia/gripmock/issues/82);
-- Added documentation;
+- Added [documentation](https://bavix.github.io/gripmock/);

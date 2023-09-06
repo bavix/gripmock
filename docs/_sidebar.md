@@ -13,15 +13,27 @@
 
 - Rest API
   - [List stubs](api-stubs-list)
-  - [Search stub](api-stubs-search)
   - [Add stub](api-stubs-add)
   - [Delete stub](api-stubs-delete)
+  - [Search stub](api-stubs-search)
   - [Purge stubs](api-stubs-purge)
+
+[//]: # (- Go SDK Client)
+
+[//]: # (  - [List stubs]&#40;sdk-stubs-list&#41;)
+
+[//]: # (  - [Add stub]&#40;sdk-stubs-add&#41;)
+
+[//]: # (  - [Delete stub]&#40;sdk-stubs-delete&#41;)
+
+[//]: # (  - [Search stub]&#40;sdk-stubs-search&#41;)
+
+[//]: # (  - [Purge stubs]&#40;sdk-stubs-purge&#41;)
 
 - Specs
   - [stub server](specs-stub-server)
   - [protoc-gen-gripmock](specs-protoc-gen-gripmock)
-  - [protogen](protogen)
+  - [protogen](specs-protogen)
 
 - Reference
   - [Swagger API](https://app.swaggerhub.com/apis-docs/bavix/GripMock)
