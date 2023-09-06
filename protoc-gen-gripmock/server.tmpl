@@ -155,8 +155,12 @@ type response struct {
 }
 
 func findStub(ctx context.Context, service, method string, in, out protoreflect.ProtoMessage) error {
-    api := sdk.NewStubApiClient(fmt.Sprintf("http://localhost%s", HTTP_PORT), http.DefaultClient)
-	respRPC, err := api.Search(ctx, sdk.Payload{
+    api, err := sdk.NewClientWithResponses(fmt.Sprintf("http://localhost%s/api", HTTP_PORT))
+    if err != nil {
+        return err
+    }
+
+	searchStub, err := api.SearchStubsWithResponse(ctx, sdk.SearchStubsJSONRequestBody{
         Service: service,
         Method:  method,
         Data:    in,
@@ -165,18 +169,21 @@ func findStub(ctx context.Context, service, method string, in, out protoreflect.
         return err
     }
 
-    if respRPC.Error != "" || respRPC.Code != nil {
-		if respRPC.Code == nil {
-			abortedCode := codes.Aborted
-			respRPC.Code = &abortedCode
+    if searchStub.JSON200 == nil {
+        return fmt.Errorf(string(searchStub.Body))
+    }
+
+    if searchStub.JSON200.Error != "" || searchStub.JSON200.Code != nil {
+		if searchStub.JSON200.Code == nil {
+		    return status.Error(codes.Aborted, searchStub.JSON200.Error)
 		}
 
-		if *respRPC.Code != codes.OK {
-			return status.Error(*respRPC.Code, respRPC.Error)
+		if *searchStub.JSON200.Code != codes.OK {
+			return status.Error(*searchStub.JSON200.Code, searchStub.JSON200.Error)
 		}
 	}
 
-	data, err := json.Marshal(respRPC.Data)
+	data, err := json.Marshal(searchStub.JSON200.Data)
 	if err != nil {
 	    return err
 	}

@@ -48,7 +48,7 @@ func main() {
 	}
 
 	// run admin stub server
-	stub.RunStubServer(stub.Options{
+	stub.RunRestServer(stub.Options{
 		StubPath: *stubPath,
 		Port:     *adminport,
 		BindAddr: *adminBindAddr,

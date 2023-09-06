@@ -1,4 +1,4 @@
-![GripMock](https://github.com/bavix/gripmock/assets/5111255/1471ddff-b0f7-48b7-851c-67d26edf271b)
+![GripMock](https://github.com/bavix/gripmock/assets/5111255/bbb14393-2b71-4136-875f-e2e4d0b6bcb9)
 
 # GripMock
 GripMock is a **mock server** for **GRPC** services. It's using a `.proto` file to generate implementation of gRPC service for you.

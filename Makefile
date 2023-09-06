@@ -18,3 +18,8 @@ lint-fix:
 
 intgr-test: build
 	docker compose -f deployments/docker-compose/docker-compose.yml up
+
+# before: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
+gen:
+	oapi-codegen -generate gorilla,types -package rest ./api/openapi/api.yaml > internal/domain/rest/api.gen.go
+	oapi-codegen -generate client,types -package sdk ./api/openapi/api.yaml > pkg/sdk/api.gen.go

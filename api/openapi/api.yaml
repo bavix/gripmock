@@ -7,7 +7,40 @@ info:
 tags:
   - name: stubs
     description: Stubs storage management
+  - name: healthcheck
+    description: Healthcheck
 paths:
+  # healthcheck
+  /health/liveness:
+    get:
+      tags:
+        - healthcheck
+      summary: Liveness check
+      description: The test says that the service is alive and yet
+      operationId: liveness
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOK'
+  /health/readiness:
+    get:
+      tags:
+        - healthcheck
+      summary: Readiness check
+      description: The test indicates readiness to receive traffic
+      operationId: readiness
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOK'
+
+  # stubs
   /stubs:
     get:
       tags:
@@ -96,6 +129,19 @@ paths:
               $ref: '#/components/schemas/SearchRequest'
 components:
   schemas:
+    # health
+    MessageOK:
+      type: object
+      required:
+        - message
+        - time
+      properties:
+        message:
+          type: string
+        time:
+          type: string
+          format: date-time
+    # stubs
     ID:
       type: string
       format: uuid
@@ -123,14 +169,17 @@ components:
           example: SayHello
         data:
           type: object
+          x-go-type: interface{}
           additionalProperties: true
     SearchResponse:
       type: object
       required:
         - data
+        - error
       properties:
         data:
           type: object
+          x-go-type: interface{}
           additionalProperties: true
         error:
           type: string
@@ -138,6 +187,10 @@ components:
         code:
           type: integer
           format: uint32
+          x-go-type: codes.Code
+          x-go-type-import:
+            name: codes
+            path: google.golang.org/grpc/codes
           example: 3
     Stub:
       type: object
@@ -165,16 +218,20 @@ components:
         equals:
           type: object
           additionalProperties: true
+          x-go-type-skip-optional-pointer: true
         contains:
           type: object
           additionalProperties: true
+          x-go-type-skip-optional-pointer: true
         matches:
           type: object
           additionalProperties: true
+          x-go-type-skip-optional-pointer: true
     StubOutput:
       type: object
       required:
         - data
+        - error
       properties:
         data:
           type: object
@@ -185,4 +242,8 @@ components:
         code:
           type: integer
           format: uint32
+          x-go-type: codes.Code
+          x-go-type-import:
+            name: codes
+            path: google.golang.org/grpc/codes
           example: 3

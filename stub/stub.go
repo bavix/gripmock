@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/bavix/gripmock/internal/app"
-	health_api "github.com/bavix/gripmock/pkg/api/health"
-	stubs_api "github.com/bavix/gripmock/pkg/api/stubs"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+
+	"github.com/bavix/gripmock/internal/app"
+	"github.com/bavix/gripmock/internal/domain/rest"
 )
 
 type Options struct {
@@ -21,30 +21,16 @@ type Options struct {
 
 const DefaultPort = "4771"
 
-func RunStubServer(opt Options) {
+func RunRestServer(opt Options) {
 	if opt.Port == "" {
 		opt.Port = DefaultPort
 	}
 	addr := opt.BindAddr + ":" + opt.Port
 
-	api := NewApiHandler()
-	if opt.StubPath != "" {
-		api.readStubs(opt.StubPath)
-	}
-
-	healthSrv, err := health_api.NewServer(&app.HealthcheckServer{})
-	if err != nil {
-		panic(err) // fixme: ...
-	}
-
-	stubsSrv, err := stubs_api.NewServer(app.NewStubsServer())
-	if err != nil {
-		panic(err) // fixme: ...
-	}
+	apiServer := app.NewRestServer(opt.StubPath)
 
 	router := mux.NewRouter()
-	router.Handle("/health", healthSrv)
-	router.PathPrefix("/api").Subrouter().Handle("/", stubsSrv)
+	rest.HandlerFromMuxWithBaseURL(apiServer, router, "/api")
 
 	fmt.Println("Serving stub admin on http://" + addr)
 	go func() {
