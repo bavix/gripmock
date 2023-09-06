@@ -17,7 +17,7 @@ import (
 )
 
 func main() {
-	outputPointer := flag.String("o", "", "directory to output server.go. Default is $GOPATH/src/grpc/")
+	outputPointer := flag.String("o", "", "directory to output stub_server.go. Default is $GOPATH/src/grpc/")
 	grpcPort := flag.String("grpc-port", "4770", "Port of gRPC tcp server")
 	grpcBindAddr := flag.String("grpc-listen", "", "Adress the gRPC server will bind to. Default to localhost, set to 0.0.0.0 to use from another machine")
 	adminport := flag.String("admin-port", "4771", "Port of stub admin server")
@@ -48,7 +48,7 @@ func main() {
 	}
 
 	// run admin stub server
-	stub.RunStubServer(stub.Options{
+	stub.RunRestServer(stub.Options{
 		StubPath: *stubPath,
 		Port:     *adminport,
 		BindAddr: *adminBindAddr,
@@ -174,7 +174,7 @@ func fixGoPackage(protoPaths []string) []string {
 }
 
 func runGrpcServer(output string) (*exec.Cmd, <-chan error) {
-	run := exec.Command("go", "run", output+"server.go")
+	run := exec.Command("go", "run", output+"stub_server.go")
 	run.Stdout = os.Stdout
 	run.Stderr = os.Stderr
 	err := run.Start()

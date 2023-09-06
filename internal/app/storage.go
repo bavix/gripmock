@@ -1,4 +1,4 @@
-package stub
+package app
 
 import (
 	"encoding/json"
