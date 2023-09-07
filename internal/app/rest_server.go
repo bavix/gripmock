@@ -102,6 +102,11 @@ func (h *StubsServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, _ r
 	panic("DeleteStubByID")
 }
 
+func (h *StubsServer) ListUnusedStubs(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	panic("ListUnusedStubs")
+}
+
 func (h *StubsServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(h.stubs.Stubs())
