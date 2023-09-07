@@ -14,6 +14,7 @@ import (
 	"github.com/bavix/gripmock/pkg/clock"
 	"github.com/bavix/gripmock/pkg/storage"
 	"github.com/bavix/gripmock/pkg/yaml2json"
+	"github.com/google/uuid"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -25,9 +26,14 @@ type StubsServer struct {
 	clock     *clock.Clock
 }
 
-func NewRestServer(path string) *StubsServer {
+func NewRestServer(path string) (*StubsServer, error) {
+	stubsStorage, err := storage.New()
+	if err != nil {
+		return nil, err
+	}
+
 	server := &StubsServer{
-		stubs:     storage.New(),
+		stubs:     stubsStorage,
 		convertor: yaml2json.New(),
 		clock:     clock.New(),
 		caser:     cases.Title(language.English, cases.NoLower),
@@ -37,7 +43,7 @@ func NewRestServer(path string) *StubsServer {
 		server.readStubs(path) // TODO: someday you will need to rewrite this code
 	}
 
-	return server
+	return server, nil
 }
 
 // deprecated code
@@ -97,9 +103,29 @@ func (h *StubsServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *StubsServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, _ rest.ID) {
+func (h *StubsServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
 	w.Header().Set("Content-Type", "application/json")
-	panic("DeleteStubByID")
+	h.stubs.Delete(uuid)
+}
+
+func (h *StubsServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var inputs []uuid.UUID
+	decoder := json.NewDecoder(r.Body)
+	decoder.UseNumber()
+
+	defer r.Body.Close()
+
+	if err := decoder.Decode(&inputs); err != nil {
+		h.responseError(err, w)
+
+		return
+	}
+
+	if len(inputs) > 0 {
+		h.stubs.Delete(inputs...)
+	}
 }
 
 func (h *StubsServer) ListUnusedStubs(w http.ResponseWriter, r *http.Request) {

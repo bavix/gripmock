@@ -21,7 +21,7 @@ func TestStub(t *testing.T) {
 		expect  string
 	}
 
-	api := app.NewRestServer("")
+	api, _ := app.NewRestServer("")
 
 	cases := []test{
 		{

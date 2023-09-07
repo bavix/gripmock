@@ -101,6 +101,23 @@ paths:
       responses:
         '204':
           description: Successful operation
+  /stubs/batchDelete:
+    post:
+      tags:
+        - stubs
+      summary: Deletes a pack by IDs
+      description: Takes IDs as input and deletes them
+      operationId: batchStubsDelete
+      responses:
+        '204':
+          description: Successful operation
+      requestBody:
+        description: Create a new pet in the store
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListID'
   '/stubs/{uuid}':
     delete:
       tags:

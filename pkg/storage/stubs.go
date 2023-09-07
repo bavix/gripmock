@@ -2,9 +2,10 @@ package storage
 
 import (
 	"errors"
-	"sync"
+	"sync/atomic"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-memdb"
 	"google.golang.org/grpc/codes"
 )
 
@@ -17,6 +18,15 @@ type Stub struct {
 	Method  string     `json:"method"`
 	Input   Input      `json:"input"`
 	Output  Output     `json:"output"`
+}
+
+func (s *Stub) GetID() uuid.UUID {
+	if s.ID == nil {
+		id := uuid.New()
+		s.ID = &id
+	}
+
+	return *s.ID
 }
 
 type Input struct {
@@ -38,99 +48,119 @@ type storage struct {
 }
 
 type StubStorage struct {
-	mu    sync.RWMutex
-	items map[string]map[string][]storage
-	total uint64
+	db    *memdb.MemDB
+	total int64
 }
 
-func New() *StubStorage {
-	return &StubStorage{
-		items: make(map[string]map[string][]storage),
+func New() (*StubStorage, error) {
+	db, err := memdb.NewMemDB(&memdb.DBSchema{Tables: schema()})
+	if err != nil {
+		return nil, err
 	}
+
+	return &StubStorage{db: db}, nil
 }
 
 func (r *StubStorage) Add(stubs ...*Stub) []uuid.UUID {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	txn := r.db.Txn(true)
 
 	result := make([]uuid.UUID, 0, len(stubs))
 
 	for _, stub := range stubs {
-		if _, ok := r.items[stub.Service]; !ok {
-			r.items[stub.Service] = make(map[string][]storage, 1)
+		stub.GetID() // init id if not exists
+
+		err := txn.Insert(TableName, stub)
+		if err != nil {
+			txn.Abort()
+
+			return nil
 		}
 
-		r.items[stub.Service][stub.Method] = append(r.items[stub.Service][stub.Method], storage{
-			ID:     stub.GetID(),
-			Input:  stub.Input,
-			Output: stub.Output,
-		})
-
 		result = append(result, stub.GetID())
-
-		r.total++
 	}
+
+	atomic.AddInt64(&r.total, int64(len(result)))
+
+	txn.Commit()
 
 	return result
 }
 
-func (r *StubStorage) Delete(_ ...uuid.UUID) {
-	r.total-- // fixme
+func (r *StubStorage) Delete(args ...uuid.UUID) {
+	txn := r.db.Txn(true)
+	defer txn.Commit()
+
+	var total int64
+	for _, arg := range args {
+		n, _ := txn.DeleteAll(TableName, IDField, arg)
+
+		total += int64(n)
+	}
+
+	atomic.AddInt64(&r.total, -total)
 }
 
 func (r *StubStorage) Purge() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	txn := r.db.Txn(true)
+	defer txn.Commit()
 
-	r.items = map[string]map[string][]storage{}
-	r.total = 0
+	n, _ := txn.DeleteAll(TableName, IDField)
+
+	atomic.AddInt64(&r.total, -int64(n))
 }
 
 func (r *StubStorage) ItemsBy(service, method string) ([]storage, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	txn := r.db.Txn(false)
+	defer txn.Abort()
 
-	if _, ok := r.items[service]; !ok {
+	// Support for backward compatibility. Someday it will be redone...
+	first, err := txn.First(TableName, ServiceField, service)
+	if err != nil || first == nil {
 		return nil, ErrServiceNotFound
 	}
 
-	if _, ok := r.items[service][method]; !ok {
+	// Support for backward compatibility. Someday it will be redone...
+	first, err = txn.First(TableName, ServiceMethodField)
+	if err != nil || first == nil {
 		return nil, ErrMethodNotFound
 	}
 
-	return r.items[service][method], nil
+	it, err := txn.Get(TableName, ServiceMethodField, service, method)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []storage
+
+	for obj := it.Next(); obj != nil; obj = it.Next() {
+		stub := obj.(*Stub)
+
+		result = append(result, storage{
+			ID:     stub.GetID(),
+			Input:  stub.Input,
+			Output: stub.Output,
+		})
+	}
+
+	return result, nil
 }
 
 func (r *StubStorage) Stubs() []Stub {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	txn := r.db.Txn(false)
+	defer txn.Abort()
 
-	results := make([]Stub, 0, r.total)
+	result := make([]Stub, 0, atomic.LoadInt64(&r.total))
 
-	for service, methods := range r.items {
-		for method, storages := range methods {
-			for _, datum := range storages {
-				id := datum.ID
-
-				results = append(results, Stub{
-					ID:      &id,
-					Service: service,
-					Method:  method,
-					Input:   datum.Input,
-					Output:  datum.Output,
-				})
-			}
-		}
+	it, err := txn.Get(TableName, IDField)
+	if err != nil {
+		return nil
 	}
 
-	return results
-}
+	for obj := it.Next(); obj != nil; obj = it.Next() {
+		stub := obj.(*Stub)
 
-func (s *Stub) GetID() uuid.UUID {
-	if s.ID == nil {
-		id := uuid.New()
-		s.ID = &id
+		result = append(result, *stub)
 	}
 
-	return *s.ID
+	return result
 }

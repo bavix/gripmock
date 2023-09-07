@@ -75,6 +75,9 @@ type AddStubJSONBody struct {
 // AddStubJSONRequestBody defines body for AddStub for application/json ContentType.
 type AddStubJSONRequestBody AddStubJSONBody
 
+// BatchStubsDeleteJSONRequestBody defines body for BatchStubsDelete for application/json ContentType.
+type BatchStubsDeleteJSONRequestBody = ListID
+
 // SearchStubsJSONRequestBody defines body for SearchStubs for application/json ContentType.
 type SearchStubsJSONRequestBody = SearchRequest
 
@@ -95,6 +98,9 @@ type ServerInterface interface {
 	// Add a new stub to the store
 	// (POST /stubs)
 	AddStub(w http.ResponseWriter, r *http.Request)
+	// Deletes a pack by IDs
+	// (POST /stubs/batchDelete)
+	BatchStubsDelete(w http.ResponseWriter, r *http.Request)
 	// Stub storage search
 	// (POST /stubs/search)
 	SearchStubs(w http.ResponseWriter, r *http.Request)
@@ -181,6 +187,21 @@ func (siw *ServerInterfaceWrapper) AddStub(w http.ResponseWriter, r *http.Reques
 
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AddStub(w, r)
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler(w, r.WithContext(ctx))
+}
+
+// BatchStubsDelete operation middleware
+func (siw *ServerInterfaceWrapper) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.BatchStubsDelete(w, r)
 	}
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -368,6 +389,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/stubs", wrapper.ListStubs).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/stubs", wrapper.AddStub).Methods("POST")
+
+	r.HandleFunc(options.BaseURL+"/stubs/batchDelete", wrapper.BatchStubsDelete).Methods("POST")
 
 	r.HandleFunc(options.BaseURL+"/stubs/search", wrapper.SearchStubs).Methods("POST")
 
