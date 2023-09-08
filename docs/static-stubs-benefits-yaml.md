@@ -77,7 +77,7 @@ You can read more details here: https://github.com/goccy/go-yaml#2-reference-ele
   input:
     equals:
       name: tokopedia
-      traceID: &traceID 0ad1348f1403169275002100356696
+      code: &code 0ad1348f1403169275002100356696
   output:
     data: &result
       message: Hello Tokopedia
@@ -87,7 +87,7 @@ You can read more details here: https://github.com/goccy/go-yaml#2-reference-ele
   input:
     equals:
       name: world
-      traceID: *traceID
+      code: *code
   output:
     data: *result
 ```
