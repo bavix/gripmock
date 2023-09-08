@@ -2,7 +2,7 @@
 
 ---
 
-![GripMock](https://github.com/bavix/gripmock/assets/5111255/7fcbcacb-11f4-416c-b7a9-b022e4bb134a)
+![GripMock](https://github.com/bavix/gripmock/assets/5111255/6417d7c5-0250-4d00-a1c0-24c592e3c812)
 
 `GripMock` is a mock server for GRPC services.
 
