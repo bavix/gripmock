@@ -1,0 +1,9 @@
+- service: Gripmock
+  method: SayHello
+  input:
+    equals:
+      name: simple2
+  output:
+    data:
+      message: Hello Simple2
+      return_code: 2

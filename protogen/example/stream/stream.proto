@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "github.com/tokopedia/gripmock/protogen/example/stream";
+option go_package = "github.com/bavix/gripmock/protogen/example/stream";
 
 package stream;
 

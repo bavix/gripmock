@@ -10,12 +10,12 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/tools/imports"
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/pluginpb"
 )
 
@@ -40,7 +40,7 @@ func main() {
 
 	plugin.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
 
-	protos := make([]*descriptor.FileDescriptorProto, len(plugin.Files))
+	protos := make([]*descriptorpb.FileDescriptorProto, len(plugin.Files))
 	for index, file := range plugin.Files {
 		protos[index] = file.Proto
 	}
@@ -129,7 +129,7 @@ func init() {
 	ServerTemplate = string(data)
 }
 
-func generateServer(protos []*descriptor.FileDescriptorProto, opt *Options) error {
+func generateServer(protos []*descriptorpb.FileDescriptorProto, opt *Options) error {
 	services := extractServices(protos)
 	deps := resolveDependencies(protos)
 
@@ -171,7 +171,7 @@ func generateServer(protos []*descriptor.FileDescriptorProto, opt *Options) erro
 	return err
 }
 
-func resolveDependencies(protos []*descriptor.FileDescriptorProto) map[string]string {
+func resolveDependencies(protos []*descriptorpb.FileDescriptorProto) map[string]string {
 
 	deps := map[string]string{}
 	for _, proto := range protos {
@@ -196,7 +196,7 @@ var aliases = map[string]bool{}
 var aliasNum = 1
 var packages = map[string]string{}
 
-func getGoPackage(proto *descriptor.FileDescriptorProto) (alias string, goPackage string) {
+func getGoPackage(proto *descriptorpb.FileDescriptorProto) (alias string, goPackage string) {
 	goPackage = proto.GetOptions().GetGoPackage()
 	if goPackage == "" {
 		return
@@ -239,8 +239,8 @@ func getGoPackage(proto *descriptor.FileDescriptorProto) (alias string, goPackag
 }
 
 // change the structure also translate method type
-func extractServices(protos []*descriptor.FileDescriptorProto) []Service {
-	svcTmp := []Service{}
+func extractServices(protos []*descriptorpb.FileDescriptorProto) []Service {
+	var svcTmp []Service
 	title := cases.Title(language.English, cases.NoLower)
 	for _, proto := range protos {
 		for _, svc := range proto.GetService() {
@@ -277,7 +277,7 @@ func extractServices(protos []*descriptor.FileDescriptorProto) []Service {
 	return svcTmp
 }
 
-func getMessageType(protos []*descriptor.FileDescriptorProto, tipe string) string {
+func getMessageType(protos []*descriptorpb.FileDescriptorProto, tipe string) string {
 	split := strings.Split(tipe, ".")[1:]
 	targetPackage := strings.Join(split[:len(split)-1], ".")
 	targetType := split[len(split)-1]

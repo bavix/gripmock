@@ -1,0 +1,8 @@
+import 'docsify'
+import 'docsify/lib/plugins/search'
+import 'prismjs/components/prism-go'
+import 'prismjs/components/prism-json'
+import 'prismjs/components/prism-yaml'
+import 'prismjs/components/prism-bash'
+import 'prismjs/components/prism-protobuf'
+import 'docsify/lib/themes/buble.css'

@@ -12,7 +12,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/tokopedia/gripmock/stub"
+	_ "github.com/bavix/gripmock/protogen"
+	"github.com/bavix/gripmock/stub"
 )
 
 func main() {
@@ -41,11 +42,13 @@ func main() {
 	// for safety
 	output += "/"
 	if _, err := os.Stat(output); os.IsNotExist(err) {
-		os.Mkdir(output, os.ModePerm)
+		if err := os.Mkdir(output, os.ModePerm); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	// run admin stub server
-	stub.RunStubServer(stub.Options{
+	stub.RunRestServer(stub.Options{
 		StubPath: *stubPath,
 		Port:     *adminport,
 		BindAddr: *adminBindAddr,
@@ -70,9 +73,6 @@ func main() {
 		imports:     importDirs,
 	})
 
-	// build the server
-	//buildServer(output)
-
 	// and run
 	run, runerr := runGrpcServer(output)
 
@@ -83,7 +83,9 @@ func main() {
 		log.Fatal(err)
 	case <-term:
 		fmt.Println("Stopping gRPC Server")
-		run.Process.Kill()
+		if err := run.Process.Kill(); err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -132,7 +134,7 @@ func generateProtoc(param protocParam) {
 	protodirs := getProtodirs(param.protoPath[0], param.imports)
 
 	// estimate args length to prevent expand
-	args := make([]string, 0, len(protodirs)+len(param.protoPath)+2)
+	args := make([]string, 0, len(protodirs)+len(param.protoPath)+2) //nolint:gomnd
 	for _, dir := range protodirs {
 		args = append(args, "-I", dir)
 	}
@@ -141,7 +143,8 @@ func generateProtoc(param protocParam) {
 	pbOutput := os.Getenv("GOPATH") + "/src"
 
 	args = append(args, param.protoPath...)
-	args = append(args, "--go_out=plugins=grpc:"+pbOutput)
+	args = append(args, "--go_out="+pbOutput)
+	args = append(args, "--go-grpc_out="+pbOutput)
 	args = append(args, fmt.Sprintf("--gripmock_out=admin-port=%s,grpc-address=%s,grpc-port=%s:%s",
 		param.adminPort, param.grpcAddress, param.grpcPort, param.output))
 	protoc := exec.Command("protoc", args...)
@@ -154,7 +157,7 @@ func generateProtoc(param protocParam) {
 
 }
 
-// append gopackage in proto files if doesn't have any
+// append gopackage in proto files if doesn't have any.
 func fixGoPackage(protoPaths []string) []string {
 	fixgopackage := exec.Command("fix_gopackage.sh", protoPaths...)
 	buf := &bytes.Buffer{}
@@ -163,6 +166,7 @@ func fixGoPackage(protoPaths []string) []string {
 	err := fixgopackage.Run()
 	if err != nil {
 		log.Println("error on fixGoPackage", err)
+
 		return protoPaths
 	}
 

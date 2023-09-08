@@ -3,6 +3,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,11 +12,16 @@ import (
 	"net"
 	"net/http"
 
-    "github.com/golang/protobuf/jsonpb"
+    jsonpb "google.golang.org/protobuf/encoding/protojson"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/protobuf/runtime/protoiface"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	_ "google.golang.org/grpc/encoding/gzip"
+
+	"github.com/bavix/gripmock/pkg/sdk"
 )
 {{ range $package, $alias := .Dependencies }}
 import {{$alias}} "{{$package}}"
@@ -50,7 +56,9 @@ func main() {
 {{ template "find_stub" }}
 
 {{ define "services" }}
-type {{.Name}} struct{}
+type {{.Name}} struct{
+    {{.Package}}Unsafe{{.Name}}Server
+}
 
 {{ template "methods" .}}
 {{ end }}
@@ -72,7 +80,7 @@ type {{.Name}} struct{}
 {{ define "standard_method" }}
 func (s *{{.ServiceName}}) {{.Name}}(ctx context.Context, in *{{.Input}}) (*{{.Output}},error){
 	out := &{{.Output}}{}
-	err := findStub("{{.ServiceName}}", "{{.Name}}", in, out)
+	err := findStub(ctx, "{{.ServiceName}}", "{{.Name}}", in, out)
 	return out, err
 }
 {{ end }}
@@ -80,7 +88,7 @@ func (s *{{.ServiceName}}) {{.Name}}(ctx context.Context, in *{{.Input}}) (*{{.O
 {{ define "server_stream_method" }}
 func (s *{{.ServiceName}}) {{.Name}}(in *{{.Input}},srv {{.SvcPackage}}{{.ServiceName}}_{{.Name}}Server) error {
 	out := &{{.Output}}{}
-	err := findStub("{{.ServiceName}}", "{{.Name}}", in, out)
+	err := findStub(srv.Context(), "{{.ServiceName}}", "{{.Name}}", in, out)
 	if err!=nil {
 		return err
 	}
@@ -94,10 +102,10 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 	out := &{{.Output}}{}
 	for {
 		input,err := srv.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return srv.SendAndClose(out)
 		}
-		err = findStub("{{.ServiceName}}","{{.Name}}",input,out)
+		err = findStub(srv.Context(), "{{.ServiceName}}","{{.Name}}",input,out)
 		if err != nil {
 			return err
 		}
@@ -109,7 +117,7 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name}}Server) error {
 	for {
 		in, err := srv.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {
@@ -117,7 +125,7 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 		}
 
 		out := &{{.Output}}{}
-		err = findStub("{{.ServiceName}}","{{.Name}}",in,out)
+		err = findStub(srv.Context(), "{{.ServiceName}}","{{.Name}}",in,out)
 		if err != nil {
 			return err
 		}
@@ -146,41 +154,40 @@ type response struct {
 	Error string      `json:"error"`
 }
 
-func findStub(service, method string, in, out protoiface.MessageV1) error {
-	url := fmt.Sprintf("http://localhost%s/find", HTTP_PORT)
-	pyl := payload{
-		Service: service,
-		Method:  method,
-		Data:    in,
+func findStub(ctx context.Context, service, method string, in, out protoreflect.ProtoMessage) error {
+    api, err := sdk.NewClientWithResponses(fmt.Sprintf("http://localhost%s/api", HTTP_PORT))
+    if err != nil {
+        return err
+    }
+
+	searchStub, err := api.SearchStubsWithResponse(ctx, sdk.SearchStubsJSONRequestBody{
+        Service: service,
+        Method:  method,
+        Data:    in,
+    })
+    if err != nil {
+        return err
+    }
+
+    if searchStub.JSON200 == nil {
+        return fmt.Errorf(string(searchStub.Body))
+    }
+
+    if searchStub.JSON200.Error != "" || searchStub.JSON200.Code != nil {
+		if searchStub.JSON200.Code == nil {
+		    return status.Error(codes.Aborted, searchStub.JSON200.Error)
+		}
+
+		if *searchStub.JSON200.Code != codes.OK {
+			return status.Error(*searchStub.JSON200.Code, searchStub.JSON200.Error)
+		}
 	}
-	byt, err := json.Marshal(pyl)
+
+	data, err := json.Marshal(searchStub.JSON200.Data)
 	if err != nil {
-		return err
-	}
-	reader := bytes.NewReader(byt)
-	resp, err := http.DefaultClient.Post(url, "application/json", reader)
-	if err != nil {
-		return fmt.Errorf("Error request to stub server %v",err)
+	    return err
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf(string(body))
-	}
-
-	respRPC := new(response)
-	decoder := json.NewDecoder(resp.Body)
-	decoder.UseNumber()
-	err = decoder.Decode(respRPC)
-	if err != nil {
-		return fmt.Errorf("decoding json response %v",err)
-	}
-
-	if respRPC.Error != "" {
-		return fmt.Errorf(respRPC.Error)
-	}
-
-	data, _ := json.Marshal(respRPC.Data)
-	return jsonpb.Unmarshal(bytes.NewReader(data), out)
+	return jsonpb.Unmarshal(data, out)
 }
 {{ end }}

@@ -1,0 +1,40 @@
+run:
+  timeout: 1m
+linters:
+  enable-all: true
+  disable:
+    # deprecated
+    - nosnakecase
+    - structcheck
+    - interfacer
+    - deadcode
+    - exhaustivestruct
+    - maligned
+    - ifshort
+    - varcheck
+    - golint
+    - scopelint
+    # not relevant
+    - varnamelen
+    - wrapcheck
+    - paralleltest
+    - exhaustruct
+linters-settings:
+  lll:
+    line-length: 160
+  gci:
+    sections:
+      - Standard
+      - Default
+      - Prefix(github.com/bavix)
+  depguard:
+    rules:
+      main:
+        allow:
+          - $gostd
+          - github.com
+issues:
+  exclude-rules:
+    - path: (.+)_test.go
+      linters:
+        - dupl

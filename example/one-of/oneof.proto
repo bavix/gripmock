@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package oneof;
 
-option go_package = "github.com/tokopedia/gripmock/example/one-of";
+option go_package = "github.com/bavix/gripmock/example/one-of";
 
 // The Gripmock service definition.
 service Gripmock {

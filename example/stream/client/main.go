@@ -2,16 +2,19 @@ package main
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log"
 	"sync"
 	"time"
 
-	pb "github.com/tokopedia/gripmock/protogen/example/stream"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	pb "github.com/bavix/gripmock/protogen/example/stream"
 )
 
+//nolint:gomnd
 func main() {
 	// Set up a connection to the server.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
@@ -27,19 +30,21 @@ func main() {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
 	go serverStream(c, wg)
 
 	wg.Add(1)
+
 	go clientStream(c, wg)
 
 	wg.Add(1)
+
 	go bidirectionalStream(c, wg)
 
 	wg.Wait()
-
 }
 
-// server to client streaming
+// server to client streaming.
 func serverStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 	defer wg.Done()
 	req := &pb.Request{
@@ -52,7 +57,7 @@ func serverStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 
 	for {
 		reply, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 
@@ -79,12 +84,15 @@ func clientStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 			Name: "c2s-2",
 		},
 	}
+
+	//nolint:govet
 	for _, req := range requests {
 		err := stream.Send(&req)
 		if err != nil {
 			log.Fatalf("c2s error: %v", err)
 		}
 	}
+
 	reply, err := stream.CloseAndRecv()
 	if err != nil {
 		log.Fatalf("c2s error: %v", err)
@@ -110,9 +118,10 @@ func bidirectionalStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 
 	go func() {
 		defer wg.Done()
+
 		for {
 			reply, err := stream.Recv()
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return
 			}
 			if err != nil {
@@ -123,10 +132,11 @@ func bidirectionalStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 		}
 	}()
 
+	//nolint:govet
 	for _, request := range requests {
 		if err := stream.Send(&request); err != nil {
 			log.Fatalf("2ds error: %v", err)
 		}
 	}
-	stream.CloseSend()
+	_ = stream.CloseSend()
 }

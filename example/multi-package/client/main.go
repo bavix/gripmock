@@ -6,12 +6,13 @@ import (
 	"os"
 	"time"
 
-	pb "github.com/tokopedia/gripmock/protogen/example/multi-package"
-	multi_package "github.com/tokopedia/gripmock/protogen/example/multi-package/bar"
+	pb "github.com/bavix/gripmock/protogen/example/multi-package"
+	multi_package "github.com/bavix/gripmock/protogen/example/multi-package/bar"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+//nolint:gomnd
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
@@ -21,6 +22,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
+
 	defer conn.Close()
 
 	c := pb.NewGripmockClient(conn)
@@ -30,9 +32,11 @@ func main() {
 	if len(os.Args) > 1 {
 		name = os.Args[1]
 	}
+
 	r, err := c.Greet(context.Background(), &multi_package.Bar{Name: name})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
+
 	log.Printf("Greeting: %s", r.Response)
 }
