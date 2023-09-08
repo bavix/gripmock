@@ -30,6 +30,7 @@ type MessageOK struct {
 // SearchRequest defines model for SearchRequest.
 type SearchRequest struct {
 	Data    interface{} `json:"data"`
+	Id      *ID         `json:"id,omitempty"`
 	Method  string      `json:"method"`
 	Service string      `json:"service"`
 }

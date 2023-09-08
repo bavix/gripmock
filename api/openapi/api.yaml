@@ -192,6 +192,8 @@ components:
         - method
         - data
       properties:
+        id:
+          $ref: '#/components/schemas/ID'
         service:
           type: string
           example: Gripmock

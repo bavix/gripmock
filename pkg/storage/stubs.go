@@ -48,6 +48,7 @@ type storage struct {
 }
 
 type StubStorage struct {
+	used  map[uuid.UUID]struct{}
 	db    *memdb.MemDB
 	total int64
 }
@@ -58,7 +59,7 @@ func New() (*StubStorage, error) {
 		return nil, err
 	}
 
-	return &StubStorage{db: db}, nil
+	return &StubStorage{db: db, used: map[uuid.UUID]struct{}{}}, nil
 }
 
 func (r *StubStorage) Add(stubs ...*Stub) []uuid.UUID {
@@ -93,8 +94,9 @@ func (r *StubStorage) Delete(args ...uuid.UUID) {
 	var total int64
 	for _, arg := range args {
 		n, _ := txn.DeleteAll(TableName, IDField, arg)
-
 		total += int64(n)
+
+		delete(r.used, arg)
 	}
 
 	atomic.AddInt64(&r.total, -total)
@@ -105,13 +107,14 @@ func (r *StubStorage) Purge() {
 	defer txn.Commit()
 
 	n, _ := txn.DeleteAll(TableName, IDField)
+	r.used = map[uuid.UUID]struct{}{}
 
 	atomic.AddInt64(&r.total, -int64(n))
 }
 
-func (r *StubStorage) ItemsBy(service, method string) ([]storage, error) {
-	txn := r.db.Txn(false)
-	defer txn.Abort()
+func (r *StubStorage) ItemsBy(service, method string, ID *uuid.UUID) ([]storage, error) {
+	txn := r.db.Txn(true)
+	defer txn.Commit()
 
 	// Support for backward compatibility. Someday it will be redone...
 	first, err := txn.First(TableName, ServiceField, service)
@@ -125,7 +128,14 @@ func (r *StubStorage) ItemsBy(service, method string) ([]storage, error) {
 		return nil, ErrMethodNotFound
 	}
 
-	it, err := txn.Get(TableName, ServiceMethodField, service, method)
+	var it memdb.ResultIterator
+
+	if ID == nil {
+		it, err = txn.Get(TableName, ServiceMethodField, service, method)
+	} else {
+		it, err = txn.Get(TableName, IDField, ID)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -135,6 +145,7 @@ func (r *StubStorage) ItemsBy(service, method string) ([]storage, error) {
 	for obj := it.Next(); obj != nil; obj = it.Next() {
 		stub := obj.(*Stub)
 
+		r.used[stub.GetID()] = struct{}{}
 		result = append(result, storage{
 			ID:     stub.GetID(),
 			Input:  stub.Input,
@@ -145,16 +156,47 @@ func (r *StubStorage) ItemsBy(service, method string) ([]storage, error) {
 	return result, nil
 }
 
-func (r *StubStorage) Stubs() []Stub {
+func (r *StubStorage) Unused() []Stub {
 	txn := r.db.Txn(false)
 	defer txn.Abort()
 
+	iter, err := txn.Get(TableName, IDField)
+	if err != nil {
+		return nil
+	}
+
+	it := memdb.NewFilterIterator(iter, func(raw interface{}) bool {
+		obj, ok := raw.(*Stub)
+		if !ok {
+			return true
+		}
+
+		_, ok = r.used[obj.GetID()]
+
+		return ok
+	})
+
 	result := make([]Stub, 0, atomic.LoadInt64(&r.total))
+
+	for obj := it.Next(); obj != nil; obj = it.Next() {
+		stub := obj.(*Stub)
+
+		result = append(result, *stub)
+	}
+
+	return result
+}
+
+func (r *StubStorage) Stubs() []Stub {
+	txn := r.db.Txn(false)
+	defer txn.Abort()
 
 	it, err := txn.Get(TableName, IDField)
 	if err != nil {
 		return nil
 	}
+
+	result := make([]Stub, 0, atomic.LoadInt64(&r.total))
 
 	for obj := it.Next(); obj != nil; obj = it.Next() {
 		stub := obj.(*Stub)

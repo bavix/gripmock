@@ -21,7 +21,7 @@ type closeMatch struct {
 }
 
 func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage.Output, error) {
-	stubs, err := stubStorage.ItemsBy(stub.Service, stub.Method)
+	stubs, err := stubStorage.ItemsBy(stub.Service, stub.Method, stub.ID)
 	if errors.Is(err, storage.ErrServiceNotFound) {
 		//fixme
 		//nolint:goerr113
@@ -38,6 +38,10 @@ func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage
 		//fixme
 		//nolint:goerr113
 		return nil, fmt.Errorf("stub for Service:%s and Method:%s is empty", stub.Service, stub.Method)
+	}
+
+	if stub.ID != nil {
+		return &stubs[0].Output, nil
 	}
 
 	var closestMatch []closeMatch

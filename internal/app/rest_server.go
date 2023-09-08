@@ -48,6 +48,7 @@ func NewRestServer(path string) (*StubsServer, error) {
 
 // deprecated code
 type findStubPayload struct {
+	ID      *uuid.UUID             `json:"id,omitempty"`
 	Service string                 `json:"service"`
 	Method  string                 `json:"method"`
 	Data    map[string]interface{} `json:"data"`
@@ -128,9 +129,14 @@ func (h *StubsServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *StubsServer) ListUnusedStubs(w http.ResponseWriter, r *http.Request) {
+func (h *StubsServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	panic("ListUnusedStubs")
+	err := json.NewEncoder(w).Encode(h.stubs.Unused())
+	if err != nil {
+		h.responseError(err, w)
+
+		return
+	}
 }
 
 func (h *StubsServer) ListStubs(w http.ResponseWriter, _ *http.Request) {

@@ -58,9 +58,35 @@ func TestStub(t *testing.T) {
 			expect:  "[{\"id\":\"43739ed8-2810-4f57-889b-4d3ff5795bce\",\"service\":\"Testing\",\"method\":\"TestMethod\",\"input\":{\"equals\":{\"Hola\":\"Mundo\"},\"contains\":null,\"matches\":null},\"output\":{\"data\":{\"Hello\":\"World\"},\"error\":\"\"}}]",
 		},
 		{
+			name: "unused stubs (all stubs)",
+			mock: func() *http.Request {
+				return httptest.NewRequest(http.MethodGet, "/api/stubs/unused", nil)
+			},
+			handler: api.ListUnusedStubs,
+			expect:  "[{\"id\":\"43739ed8-2810-4f57-889b-4d3ff5795bce\",\"service\":\"Testing\",\"method\":\"TestMethod\",\"input\":{\"equals\":{\"Hola\":\"Mundo\"},\"contains\":null,\"matches\":null},\"output\":{\"data\":{\"Hello\":\"World\"},\"error\":\"\"}}]",
+		},
+		{
 			name: "find stub equals",
 			mock: func() *http.Request {
 				payload := `{"service":"Testing","method":"TestMethod","data":{"Hola":"Mundo"}}`
+
+				return httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
+			},
+			handler: api.SearchStubs,
+			expect:  "{\"data\":{\"Hello\":\"World\"},\"error\":\"\"}\n",
+		},
+		{
+			name: "unused stubs (zero)",
+			mock: func() *http.Request {
+				return httptest.NewRequest(http.MethodGet, "/api/stubs/unused", nil)
+			},
+			handler: api.ListUnusedStubs,
+			expect:  "[]",
+		},
+		{
+			name: "find stub by ID",
+			mock: func() *http.Request {
+				payload := `{"id": "43739ed8-2810-4f57-889b-4d3ff5795bce", "service":"Testing","method":"TestMethod","data":{}}`
 
 				return httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
