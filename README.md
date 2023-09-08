@@ -70,7 +70,7 @@ You could add stubbing on the fly with a simple REST API. HTTP stub server is ru
 - `DELETE /api/stubs` Clear stub mappings.
 
 Stub Format is JSON text format. It has a skeleton as follows:
-```
+```json
 {
   "service":"<servicename>", // name of service defined in proto
   "method":"<methodname>", // name of method that we want to mock
@@ -88,7 +88,7 @@ Stub Format is JSON text format. It has a skeleton as follows:
 ```
 
 For our `hello` service example we put a stub with the text below:
-```
+```json
   {
     "service":"Greeter",
     "method":"SayHello",
@@ -115,7 +115,7 @@ Please note that Gripmock still serves http stubbing to modify stored stubs on t
 
 ## <a name="input_matching"></a>Input Matching
 Stub will respond with the expected response only if the request matches any rule. Stub service will serve `/api/stubs/search` endpoint with format:
-```
+```json
 {
   "service":"<service name>",
   "method":"<method name>",
@@ -134,7 +134,7 @@ Nested fields are allowed for input matching too for all JSON data types. (`stri
 **Gripmock** recursively goes over the fields and tries to match with given input.
 <br>
 **equals** will match the exact field name and value of input into expected stub. example stub JSON:
-```
+```json
 {
   .
   .
@@ -157,7 +157,7 @@ Nested fields are allowed for input matching too for all JSON data types. (`stri
 ```
 
 **contains** will match input that has the value declared expected fields. example stub JSON:
-```
+```json
 {
   .
   .
@@ -176,7 +176,7 @@ Nested fields are allowed for input matching too for all JSON data types. (`stri
 
 **matches** using regex for matching fields expectation. example:
 
-```
+```json
 {
   .
   .
