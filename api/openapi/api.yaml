@@ -41,6 +41,20 @@ paths:
                 $ref: '#/components/schemas/MessageOK'
 
   # stubs
+  /stubs/unused:
+    get:
+      tags:
+        - stubs
+      summary: Getting a list of unused stubs
+      description: The list is needed to quickly find unused stubs
+      operationId: listUnusedStubs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubList'
   /stubs:
     get:
       tags:
@@ -87,6 +101,23 @@ paths:
       responses:
         '204':
           description: Successful operation
+  /stubs/batchDelete:
+    post:
+      tags:
+        - stubs
+      summary: Deletes a pack by IDs
+      description: Takes IDs as input and deletes them
+      operationId: batchStubsDelete
+      responses:
+        '204':
+          description: Successful operation
+      requestBody:
+        description: Create a new pet in the store
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListID'
   '/stubs/{uuid}':
     delete:
       tags:
@@ -161,6 +192,8 @@ components:
         - method
         - data
       properties:
+        id:
+          $ref: '#/components/schemas/ID'
         service:
           type: string
           example: Gripmock

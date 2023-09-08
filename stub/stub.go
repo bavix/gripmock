@@ -27,7 +27,7 @@ func RunRestServer(opt Options) {
 	}
 	addr := opt.BindAddr + ":" + opt.Port
 
-	apiServer := app.NewRestServer(opt.StubPath)
+	apiServer, _ := app.NewRestServer(opt.StubPath)
 
 	router := mux.NewRouter()
 	rest.HandlerFromMuxWithBaseURL(apiServer, router, "/api")

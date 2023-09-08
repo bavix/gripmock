@@ -34,6 +34,7 @@ type MessageOK struct {
 // SearchRequest defines model for SearchRequest.
 type SearchRequest struct {
 	Data    interface{} `json:"data"`
+	Id      *ID         `json:"id,omitempty"`
 	Method  string      `json:"method"`
 	Service string      `json:"service"`
 }
@@ -78,6 +79,9 @@ type AddStubJSONBody struct {
 
 // AddStubJSONRequestBody defines body for AddStub for application/json ContentType.
 type AddStubJSONRequestBody AddStubJSONBody
+
+// BatchStubsDeleteJSONRequestBody defines body for BatchStubsDelete for application/json ContentType.
+type BatchStubsDeleteJSONRequestBody = ListID
 
 // SearchStubsJSONRequestBody defines body for SearchStubs for application/json ContentType.
 type SearchStubsJSONRequestBody = SearchRequest
@@ -172,10 +176,18 @@ type ClientInterface interface {
 
 	AddStub(ctx context.Context, body AddStubJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// BatchStubsDeleteWithBody request with any body
+	BatchStubsDeleteWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	BatchStubsDelete(ctx context.Context, body BatchStubsDeleteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// SearchStubsWithBody request with any body
 	SearchStubsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	SearchStubs(ctx context.Context, body SearchStubsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListUnusedStubs request
+	ListUnusedStubs(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteStubByID request
 	DeleteStubByID(ctx context.Context, uuid ID, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -253,6 +265,30 @@ func (c *Client) AddStub(ctx context.Context, body AddStubJSONRequestBody, reqEd
 	return c.Client.Do(req)
 }
 
+func (c *Client) BatchStubsDeleteWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBatchStubsDeleteRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) BatchStubsDelete(ctx context.Context, body BatchStubsDeleteJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewBatchStubsDeleteRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) SearchStubsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchStubsRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -267,6 +303,18 @@ func (c *Client) SearchStubsWithBody(ctx context.Context, contentType string, bo
 
 func (c *Client) SearchStubs(ctx context.Context, body SearchStubsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSearchStubsRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListUnusedStubs(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListUnusedStubsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -437,6 +485,46 @@ func NewAddStubRequestWithBody(server string, contentType string, body io.Reader
 	return req, nil
 }
 
+// NewBatchStubsDeleteRequest calls the generic BatchStubsDelete builder with application/json body
+func NewBatchStubsDeleteRequest(server string, body BatchStubsDeleteJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewBatchStubsDeleteRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewBatchStubsDeleteRequestWithBody generates requests for BatchStubsDelete with any type of body
+func NewBatchStubsDeleteRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stubs/batchDelete")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewSearchStubsRequest calls the generic SearchStubs builder with application/json body
 func NewSearchStubsRequest(server string, body SearchStubsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -473,6 +561,33 @@ func NewSearchStubsRequestWithBody(server string, contentType string, body io.Re
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewListUnusedStubsRequest generates requests for ListUnusedStubs
+func NewListUnusedStubsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stubs/unused")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -571,10 +686,18 @@ type ClientWithResponsesInterface interface {
 
 	AddStubWithResponse(ctx context.Context, body AddStubJSONRequestBody, reqEditors ...RequestEditorFn) (*AddStubResponse, error)
 
+	// BatchStubsDeleteWithBodyWithResponse request with any body
+	BatchStubsDeleteWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BatchStubsDeleteResponse, error)
+
+	BatchStubsDeleteWithResponse(ctx context.Context, body BatchStubsDeleteJSONRequestBody, reqEditors ...RequestEditorFn) (*BatchStubsDeleteResponse, error)
+
 	// SearchStubsWithBodyWithResponse request with any body
 	SearchStubsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchStubsResponse, error)
 
 	SearchStubsWithResponse(ctx context.Context, body SearchStubsJSONRequestBody, reqEditors ...RequestEditorFn) (*SearchStubsResponse, error)
+
+	// ListUnusedStubsWithResponse request
+	ListUnusedStubsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUnusedStubsResponse, error)
 
 	// DeleteStubByIDWithResponse request
 	DeleteStubByIDWithResponse(ctx context.Context, uuid ID, reqEditors ...RequestEditorFn) (*DeleteStubByIDResponse, error)
@@ -691,6 +814,27 @@ func (r AddStubResponse) StatusCode() int {
 	return 0
 }
 
+type BatchStubsDeleteResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r BatchStubsDeleteResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r BatchStubsDeleteResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type SearchStubsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -707,6 +851,28 @@ func (r SearchStubsResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r SearchStubsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListUnusedStubsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *StubList
+}
+
+// Status returns HTTPResponse.Status
+func (r ListUnusedStubsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListUnusedStubsResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -787,6 +953,23 @@ func (c *ClientWithResponses) AddStubWithResponse(ctx context.Context, body AddS
 	return ParseAddStubResponse(rsp)
 }
 
+// BatchStubsDeleteWithBodyWithResponse request with arbitrary body returning *BatchStubsDeleteResponse
+func (c *ClientWithResponses) BatchStubsDeleteWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BatchStubsDeleteResponse, error) {
+	rsp, err := c.BatchStubsDeleteWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBatchStubsDeleteResponse(rsp)
+}
+
+func (c *ClientWithResponses) BatchStubsDeleteWithResponse(ctx context.Context, body BatchStubsDeleteJSONRequestBody, reqEditors ...RequestEditorFn) (*BatchStubsDeleteResponse, error) {
+	rsp, err := c.BatchStubsDelete(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseBatchStubsDeleteResponse(rsp)
+}
+
 // SearchStubsWithBodyWithResponse request with arbitrary body returning *SearchStubsResponse
 func (c *ClientWithResponses) SearchStubsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SearchStubsResponse, error) {
 	rsp, err := c.SearchStubsWithBody(ctx, contentType, body, reqEditors...)
@@ -802,6 +985,15 @@ func (c *ClientWithResponses) SearchStubsWithResponse(ctx context.Context, body 
 		return nil, err
 	}
 	return ParseSearchStubsResponse(rsp)
+}
+
+// ListUnusedStubsWithResponse request returning *ListUnusedStubsResponse
+func (c *ClientWithResponses) ListUnusedStubsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUnusedStubsResponse, error) {
+	rsp, err := c.ListUnusedStubs(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListUnusedStubsResponse(rsp)
 }
 
 // DeleteStubByIDWithResponse request returning *DeleteStubByIDResponse
@@ -935,6 +1127,22 @@ func ParseAddStubResponse(rsp *http.Response) (*AddStubResponse, error) {
 	return response, nil
 }
 
+// ParseBatchStubsDeleteResponse parses an HTTP response from a BatchStubsDeleteWithResponse call
+func ParseBatchStubsDeleteResponse(rsp *http.Response) (*BatchStubsDeleteResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &BatchStubsDeleteResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
+}
+
 // ParseSearchStubsResponse parses an HTTP response from a SearchStubsWithResponse call
 func ParseSearchStubsResponse(rsp *http.Response) (*SearchStubsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -951,6 +1159,32 @@ func ParseSearchStubsResponse(rsp *http.Response) (*SearchStubsResponse, error) 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest SearchResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListUnusedStubsResponse parses an HTTP response from a ListUnusedStubsWithResponse call
+func ParseListUnusedStubsResponse(rsp *http.Response) (*ListUnusedStubsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListUnusedStubsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StubList
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
