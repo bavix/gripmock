@@ -37,7 +37,36 @@ Enough to knock on the handle POST /api/stubs/search:
 
 Response:
 ```json
-["6c85b0fa-caaf-4640-a672-f56b7dd8074d"]
+{
+  "data":{
+    "message": "World",
+    "return_code": 0
+  },
+  "error": ""
+}
+```
+
+## Find by ID
+
+Enough to knock on the handle `POST /api/stubs/search`:
+```bash
+curl -X POST -d '{ \
+  "id": "6c85b0fa-caaf-4640-a672-f56b7dd8074d", \
+  "service": "Gripmock", \
+  "method": "SayHello", \
+  "data":{} \
+}' http://127.0.0.1:4771/api/stubs/search
+```
+
+Response:
+```json
+{
+  "data":{
+    "message": "World",
+    "return_code": 0
+  },
+  "error": ""
+}
 ```
 
 ## Input Matching
