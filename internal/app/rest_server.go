@@ -24,6 +24,7 @@ type StubsServer struct {
 	convertor *yaml2json.Convertor
 	caser     cases.Caser
 	clock     *clock.Clock
+	ok        bool
 }
 
 func NewRestServer(path string) (*StubsServer, error) {
@@ -54,11 +55,23 @@ type findStubPayload struct {
 	Data    map[string]interface{} `json:"data"`
 }
 
+func (h *StubsServer) ServiceReady() {
+	h.ok = true
+}
+
 func (h *StubsServer) Liveness(w http.ResponseWriter, _ *http.Request) {
 	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: h.clock.Now()})
 }
 
 func (h *StubsServer) Readiness(w http.ResponseWriter, _ *http.Request) {
+	if !h.ok {
+		w.WriteHeader(http.StatusServiceUnavailable)
+
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
 	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: h.clock.Now()})
 }
 
