@@ -2,15 +2,18 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path"
 	"strings"
 	"syscall"
+	"time"
 
 	_ "github.com/bavix/gripmock/protogen"
 	"github.com/bavix/gripmock/stub"
@@ -47,8 +50,12 @@ func main() {
 		}
 	}
 
+	ctx := context.Background()
+
+	chReady := make(chan struct{})
+
 	// run admin stub server
-	stub.RunRestServer(stub.Options{
+	stub.RunRestServer(chReady, stub.Options{
 		StubPath: *stubPath,
 		Port:     *adminport,
 		BindAddr: *adminBindAddr,
@@ -75,6 +82,28 @@ func main() {
 
 	// and run
 	run, runerr := runGrpcServer(output)
+
+	// This is a kind of crutch, but now there is no other solution.
+	//I have an idea to combine gripmock and grpcmock services into one, then this check will be easier to do.
+	// Checking the grpc port of the service. If the port appears, the service has started successfully.
+	go func() {
+		var d net.Dialer
+
+		for {
+			dialCtx, cancel := context.WithTimeout(ctx, time.Second)
+
+			conn, err := d.DialContext(dialCtx, "tcp", net.JoinHostPort(*grpcBindAddr, *grpcPort))
+			cancel()
+
+			if err == nil && conn != nil {
+				chReady <- struct{}{}
+
+				conn.Close()
+
+				break
+			}
+		}
+	}()
 
 	term := make(chan os.Signal, 1)
 	signal.Notify(term, syscall.SIGTERM, syscall.SIGINT)

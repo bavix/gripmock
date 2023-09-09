@@ -21,7 +21,7 @@ type Options struct {
 
 const DefaultPort = "4771"
 
-func RunRestServer(opt Options) {
+func RunRestServer(ch chan struct{}, opt Options) {
 	if opt.Port == "" {
 		opt.Port = DefaultPort
 	}
@@ -37,5 +37,14 @@ func RunRestServer(opt Options) {
 		handler := handlers.CompressHandler(handlers.LoggingHandler(os.Stdout, router))
 		err := http.ListenAndServe(addr, handler)
 		log.Fatal(err)
+	}()
+
+	go func() {
+		select {
+		case <-ch:
+			apiServer.ServiceReady()
+		}
+
+		log.Println("GRPC-service is ready to accept requests")
 	}()
 }
