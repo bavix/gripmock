@@ -45,6 +45,6 @@ func RunRestServer(ch chan struct{}, opt Options) {
 			apiServer.ServiceReady()
 		}
 
-		log.Println("GRPC-service is ready to accept requests")
+		log.Println("gRPC-service is ready to accept requests")
 	}()
 }

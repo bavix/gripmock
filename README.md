@@ -1,7 +1,7 @@
 ![GripMock](https://github.com/bavix/gripmock/assets/5111255/90119438-92e5-4479-bfc8-5cf510249b7f)
 
 # GripMock
-GripMock is a **mock server** for **GRPC** services. It's using a `.proto` file to generate implementation of gRPC service for you.
+GripMock is a **mock server** for **gRPC** services. It's using a `.proto` file to generate implementation of gRPC service for you.
 You can use gripmock for setting up end-to-end testing or as a dummy server in a software development phase.
 The server implementation is in GoLang but the client can be any programming language that support gRPC.
 
@@ -41,10 +41,10 @@ Check [`example`](https://github.com/bavix/gripmock/tree/master/example) folder 
 ![Running Gripmock](https://github.com/bavix/gripmock/assets/5111255/e8f74280-52b1-41bd-8582-4026904d934c)
 
 From client perspective, GripMock has 2 main components:
-1. GRPC server that serves on `tcp://localhost:4770`. Its main job is to serve incoming rpc call from client and then parse the input so that it can be posted to Stub service to find the perfect stub match.
+1. gRPC server that serves on `tcp://localhost:4770`. Its main job is to serve incoming rpc call from client and then parse the input so that it can be posted to Stub service to find the perfect stub match.
 2. Stub server that serves on `http://localhost:4771`. Its main job is to store all the stub mapping. We can add a new stub or list existing stub using http request.
 
-Matched stub will be returned to GRPC service then further parse it to response the rpc call.
+Matched stub will be returned to gRPC service then further parse it to response the rpc call.
 
 
 From technical perspective, GripMock consists of 2 binaries. 
@@ -59,7 +59,7 @@ The second binary is the protoc plugin which located in folder [protoc-gen-gripm
 
 ## Stubbing
 
-Stubbing is the essential mocking of GripMock. It will match and return the expected result into GRPC service. This is where you put all your request expectation and response
+Stubbing is the essential mocking of GripMock. It will match and return the expected result into gRPC service. This is where you put all your request expectation and response
 
 ### Dynamic stubbing
 You could add stubbing on the fly with a simple REST API. HTTP stub server is running on port `:4771`

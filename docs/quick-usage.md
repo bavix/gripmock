@@ -42,7 +42,7 @@ Serving gRPC on tcp://:4770
 ```
 
 What is important to understand? 
-1. GRPC Mock server started on port 4770;
+1. gRPC Mock server started on port 4770;
 2. HTTP server for working with the stub server is running on port 4771;
 
 This means that everything went well. Now let's add the first stub:
