@@ -7,3 +7,16 @@
     data:
       message: Hello Simple3
       return_code: 3
+- service: Gripmock
+  method: SayHello
+  headers:
+    contains:
+      authorization: Basic dXNlcjp1c2Vy # user:user
+  input:
+    equals:
+      name: simple3
+  output:
+    data:
+      message: Authorization OK
+    headers:
+      result: ok

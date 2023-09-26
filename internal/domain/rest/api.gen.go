@@ -29,26 +29,36 @@ type MessageOK struct {
 
 // SearchRequest defines model for SearchRequest.
 type SearchRequest struct {
-	Data    interface{} `json:"data"`
-	Id      *ID         `json:"id,omitempty"`
-	Method  string      `json:"method"`
-	Service string      `json:"service"`
+	Data    interface{}       `json:"data"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Id      *ID               `json:"id,omitempty"`
+	Method  string            `json:"method"`
+	Service string            `json:"service"`
 }
 
 // SearchResponse defines model for SearchResponse.
 type SearchResponse struct {
-	Code  *codes.Code `json:"code,omitempty"`
-	Data  interface{} `json:"data"`
-	Error string      `json:"error"`
+	Code    *codes.Code       `json:"code,omitempty"`
+	Data    interface{}       `json:"data"`
+	Error   string            `json:"error"`
+	Headers map[string]string `json:"headers,omitempty"`
 }
 
 // Stub defines model for Stub.
 type Stub struct {
-	Id      *ID        `json:"id,omitempty"`
-	Input   StubInput  `json:"input"`
-	Method  string     `json:"method"`
-	Output  StubOutput `json:"output"`
-	Service string     `json:"service"`
+	Headers StubHeaders `json:"headers,omitempty"`
+	Id      *ID         `json:"id,omitempty"`
+	Input   StubInput   `json:"input"`
+	Method  string      `json:"method"`
+	Output  StubOutput  `json:"output"`
+	Service string      `json:"service"`
+}
+
+// StubHeaders defines model for StubHeaders.
+type StubHeaders struct {
+	Contains map[string]string `json:"contains,omitempty"`
+	Equals   map[string]string `json:"equals,omitempty"`
+	Matches  map[string]string `json:"matches,omitempty"`
 }
 
 // StubInput defines model for StubInput.
@@ -63,9 +73,10 @@ type StubList = []Stub
 
 // StubOutput defines model for StubOutput.
 type StubOutput struct {
-	Code  *codes.Code            `json:"code,omitempty"`
-	Data  map[string]interface{} `json:"data"`
-	Error string                 `json:"error"`
+	Code    *codes.Code            `json:"code,omitempty"`
+	Data    map[string]interface{} `json:"data"`
+	Error   string                 `json:"error"`
+	Headers map[string]string      `json:"headers,omitempty"`
 }
 
 // AddStubJSONBody defines parameters for AddStub.

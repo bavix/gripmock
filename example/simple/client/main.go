@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/encoding/gzip"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/bavix/gripmock/protogen/example/simple"
@@ -70,6 +71,28 @@ func main() {
 	}
 	if r.ReturnCode != 3 {
 		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 3)
+	}
+	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+
+	md := metadata.New(map[string]string{"Authorization": "Basic dXNlcjp1c2Vy"})
+	ctx = metadata.NewOutgoingContext(context.Background(), md)
+
+	var headers metadata.MD
+
+	name = "simple3"
+	r, err = c.SayHello(ctx, &pb.Request{Name: name}, grpc.Header(&headers))
+	if err != nil {
+		log.Fatalf("error from grpc: %v", err)
+	}
+	if r.ReturnCode != 0 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 0)
+	}
+	header := headers["result"]
+	if len(header) == 0 {
+		log.Fatal("the service did not return headers")
+	}
+	if header[0] != "ok" {
+		log.Fatal("the service returned an incorrect header")
 	}
 	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
 
