@@ -16,6 +16,7 @@ type Stub struct {
 	ID      *uuid.UUID `json:"id,omitempty"`
 	Service string     `json:"service"`
 	Method  string     `json:"method"`
+	Headers Input      `json:"headers"`
 	Input   Input      `json:"input"`
 	Output  Output     `json:"output"`
 }
@@ -29,6 +30,10 @@ func (s *Stub) GetID() uuid.UUID {
 	return *s.ID
 }
 
+func (s *Stub) CheckHeaders() bool {
+	return (len(s.Headers.Equals) + len(s.Headers.Matches) + len(s.Headers.Contains)) > 0
+}
+
 type Input struct {
 	Equals   map[string]interface{} `json:"equals"`
 	Contains map[string]interface{} `json:"contains"`
@@ -36,15 +41,21 @@ type Input struct {
 }
 
 type Output struct {
-	Data  map[string]interface{} `json:"data"`
-	Error string                 `json:"error"`
-	Code  *codes.Code            `json:"code,omitempty"`
+	Headers map[string]string      `json:"headers"`
+	Data    map[string]interface{} `json:"data"`
+	Error   string                 `json:"error"`
+	Code    *codes.Code            `json:"code,omitempty"`
 }
 
 type storage struct {
-	ID     uuid.UUID
-	Input  Input
-	Output Output
+	ID      uuid.UUID
+	Headers Input
+	Input   Input
+	Output  Output
+}
+
+func (s *storage) CheckHeaders() bool {
+	return (len(s.Headers.Equals) + len(s.Headers.Matches) + len(s.Headers.Contains)) > 0
 }
 
 type StubStorage struct {
@@ -140,20 +151,27 @@ func (r *StubStorage) ItemsBy(service, method string, ID *uuid.UUID) ([]storage,
 		return nil, err
 	}
 
+	var resultWithHeaders []storage
 	var result []storage
 
 	for obj := it.Next(); obj != nil; obj = it.Next() {
 		stub := obj.(*Stub)
 
-		r.used[stub.GetID()] = struct{}{}
-		result = append(result, storage{
-			ID:     stub.GetID(),
-			Input:  stub.Input,
-			Output: stub.Output,
-		})
+		s := storage{
+			ID:      stub.GetID(),
+			Headers: stub.Headers,
+			Input:   stub.Input,
+			Output:  stub.Output,
+		}
+
+		if stub.CheckHeaders() {
+			resultWithHeaders = append(resultWithHeaders, s)
+		} else {
+			result = append(result, s)
+		}
 	}
 
-	return result, nil
+	return append(resultWithHeaders, result...), nil
 }
 
 func (r *StubStorage) Unused() []Stub {
@@ -185,6 +203,10 @@ func (r *StubStorage) Unused() []Stub {
 	}
 
 	return result
+}
+
+func (r *StubStorage) MarkUsed(id uuid.UUID) {
+	r.used[id] = struct{}{}
 }
 
 func (r *StubStorage) Stubs() []Stub {
