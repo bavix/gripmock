@@ -198,6 +198,11 @@ components:
         method:
           type: string
           example: SayHello
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
         data:
           type: object
           x-go-type: interface{}
@@ -208,6 +213,11 @@ components:
         - data
         - error
       properties:
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
         data:
           type: object
           x-go-type: interface{}
@@ -239,6 +249,8 @@ components:
         method:
           type: string
           example: SayHello
+        headers:
+          $ref: '#/components/schemas/StubHeaders'
         input:
           $ref: '#/components/schemas/StubInput'
         output:
@@ -258,6 +270,25 @@ components:
           type: object
           additionalProperties: true
           x-go-type-skip-optional-pointer: true
+    StubHeaders:
+      type: object
+      x-go-type-skip-optional-pointer: true
+      properties:
+        equals:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        contains:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        matches:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
     StubOutput:
       type: object
       required:
@@ -267,6 +298,11 @@ components:
         data:
           type: object
           additionalProperties: true
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
         error:
           type: string
           example: Message not found
