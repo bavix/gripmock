@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"log"
 	"net"
 	"os"
@@ -44,7 +46,7 @@ func main() {
 
 	// for safety
 	output += "/"
-	if _, err := os.Stat(output); os.IsNotExist(err) {
+	if _, err := os.Stat(output); errors.Is(err, fs.ErrNotExist) {
 		if err := os.Mkdir(output, os.ModePerm); err != nil {
 			log.Fatal(err)
 		}
