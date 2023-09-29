@@ -55,7 +55,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodGet, "/api/stubs", nil)
 			},
 			handler: api.ListStubs,
-			expect:  "[{\"id\":\"43739ed8-2810-4f57-889b-4d3ff5795bce\",\"service\":\"Testing\",\"method\":\"TestMethod\",\"input\":{\"equals\":{\"Hola\":\"Mundo\"},\"contains\":null,\"matches\":null},\"output\":{\"data\":{\"Hello\":\"World\"},\"error\":\"\"}}]",
+			expect:  "[{\"id\":\"43739ed8-2810-4f57-889b-4d3ff5795bce\",\"service\":\"Testing\",\"method\":\"TestMethod\",\"headers\":{\"equals\":null,\"contains\":null,\"matches\":null},\"input\":{\"equals\":{\"Hola\":\"Mundo\"},\"contains\":null,\"matches\":null},\"output\":{\"data\":{\"Hello\":\"World\"},\"error\":\"\",\"headers\":null}}]",
 		},
 		{
 			name: "unused stubs (all stubs)",
@@ -63,7 +63,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodGet, "/api/stubs/unused", nil)
 			},
 			handler: api.ListUnusedStubs,
-			expect:  "[{\"id\":\"43739ed8-2810-4f57-889b-4d3ff5795bce\",\"service\":\"Testing\",\"method\":\"TestMethod\",\"input\":{\"equals\":{\"Hola\":\"Mundo\"},\"contains\":null,\"matches\":null},\"output\":{\"data\":{\"Hello\":\"World\"},\"error\":\"\"}}]",
+			expect:  "[{\"id\":\"43739ed8-2810-4f57-889b-4d3ff5795bce\",\"service\":\"Testing\",\"method\":\"TestMethod\",\"headers\":{\"equals\":null,\"contains\":null,\"matches\":null},\"input\":{\"equals\":{\"Hola\":\"Mundo\"},\"contains\":null,\"matches\":null},\"output\":{\"data\":{\"Hello\":\"World\"},\"error\":\"\",\"headers\":null}}]",
 		},
 		{
 			name: "find stub equals",
@@ -73,7 +73,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchStubs,
-			expect:  "{\"data\":{\"Hello\":\"World\"},\"error\":\"\"}\n",
+			expect:  "{\"data\":{\"Hello\":\"World\"},\"error\":\"\",\"headers\":null}\n",
 		},
 		{
 			name: "unused stubs (zero)",
@@ -91,7 +91,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchStubs,
-			expect:  "{\"data\":{\"Hello\":\"World\"},\"error\":\"\"}\n",
+			expect:  "{\"data\":{\"Hello\":\"World\"},\"error\":\"\",\"headers\":null}\n",
 		},
 		{
 			name: "add nested stub equals",
@@ -134,7 +134,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchStubs,
-			expect:  "{\"data\":{\"Hello\":\"World\"},\"error\":\"\"}\n",
+			expect:  "{\"data\":{\"Hello\":\"World\"},\"error\":\"\",\"headers\":null}\n",
 		},
 		{
 			name: "add stub contains",
@@ -177,7 +177,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodGet, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchStubs,
-			expect:  "{\"data\":{\"hello\":\"world\"},\"error\":\"\"}\n",
+			expect:  "{\"data\":{\"hello\":\"world\"},\"error\":\"\",\"headers\":null}\n",
 		},
 		{
 			name: "add nested stub contains",
@@ -304,7 +304,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchStubs,
-			expect:  "{\"data\":null,\"error\":\"error msg\",\"code\":3}\n",
+			expect:  "{\"data\":null,\"error\":\"error msg\",\"code\":3,\"headers\":null}\n",
 		},
 
 		{
@@ -353,7 +353,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchStubs,
-			expect:  "{\"data\":null,\"error\":\"error msg\"}\n",
+			expect:  "{\"data\":null,\"error\":\"error msg\",\"headers\":null}\n",
 		},
 		{
 			name: "find nested stub contains",
@@ -376,7 +376,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodGet, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchStubs,
-			expect:  "{\"data\":{\"hello\":\"world\"},\"error\":\"\"}\n",
+			expect:  "{\"data\":{\"hello\":\"world\"},\"error\":\"\",\"headers\":null}\n",
 		},
 		{
 			name: "add stub matches regex",
@@ -416,7 +416,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodGet, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchStubs,
-			expect:  "{\"data\":{\"reply\":\"OK\"},\"error\":\"\"}\n",
+			expect:  "{\"data\":{\"reply\":\"OK\"},\"error\":\"\",\"headers\":null}\n",
 		},
 		{
 			name: "add nested stub matches regex",
@@ -471,7 +471,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodGet, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchStubs,
-			expect:  "{\"data\":{\"reply\":\"OK\"},\"error\":\"\"}\n",
+			expect:  "{\"data\":{\"reply\":\"OK\"},\"error\":\"\",\"headers\":null}\n",
 		},
 		{
 			name: "error find stub contains",
@@ -509,7 +509,7 @@ func TestStub(t *testing.T) {
 			res, err := io.ReadAll(wrt.Result().Body)
 
 			assert.NoError(t, err)
-			require.JSONEq(t, v.expect, string(res))
+			require.JSONEq(t, v.expect, string(res), string(res))
 		})
 	}
 
