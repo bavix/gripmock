@@ -35,6 +35,7 @@ func RunRestServer(ch chan struct{}, opt Options) {
 	fmt.Println("Serving stub admin on http://" + addr)
 	go func() {
 		handler := handlers.CompressHandler(handlers.LoggingHandler(os.Stdout, router))
+		// nosemgrep:go.lang.security.audit.net.use-tls.use-tls
 		err := http.ListenAndServe(addr, handler)
 		log.Fatal(err)
 	}()

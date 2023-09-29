@@ -1,0 +1,12 @@
+name: semgrep
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - nightly
+      - latest
+
+jobs:
+  semgrep:
+    uses: bavix/.github/.github/workflows/go-semgrep.yml@0.0.6

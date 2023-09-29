@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"text/template"
@@ -55,7 +56,7 @@ func main() {
 	err = generateServer(protos, &Options{
 		writer:    buf,
 		adminPort: params["admin-port"],
-		grpcAddr:  fmt.Sprintf("%s:%s", params["grpc-address"], params["grpc-port"]),
+		grpcAddr:  net.JoinHostPort(params["grpc-address"], params["grpc-port"]),
 	})
 
 	if err != nil {
