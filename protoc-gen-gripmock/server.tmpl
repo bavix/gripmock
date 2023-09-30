@@ -169,12 +169,12 @@ func findStub(ctx context.Context, service, method string, md metadata.MD, in, o
         return err
     }
 
-    excludes := []string{":authority", "content-type", "grpc-accept-encoding", "user-agent"}
+	excludes := []string{":authority", "content-type", "grpc-accept-encoding", "user-agent"}
 	headers := make(map[string]string, len(md))
 	for h, v := range md {
-	    if slices.Contains(excludes, h) {
-	        continue
-	    }
+		if slices.Contains(excludes, h) {
+			continue
+		}
 
 		headers[h] = strings.Join(v, ";")
 	}
