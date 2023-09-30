@@ -96,6 +96,55 @@ func main() {
 	}
 	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
 
+	md2 := metadata.New(map[string]string{"Authorization": "Basic dXNlcjp1c2Vy", "ab": "blue"})
+	ctx = metadata.NewOutgoingContext(context.Background(), md2)
+
+	var headers2 metadata.MD
+
+	name = "simple3"
+	r, err = c.SayHello(ctx, &pb.Request{Name: name}, grpc.Header(&headers2))
+	if err != nil {
+		log.Fatalf("error from grpc: %v", err)
+	}
+	if r.ReturnCode != 0 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 0)
+	}
+	if _, ok := headers2["result"]; !ok {
+		log.Fatal("header key `result` not found")
+	}
+	if len(headers2["result"]) != 3 {
+		log.Fatalf("the service did not return headers %+v", headers2)
+	}
+	if headers2["result"][0] != "blue" && headers2["result"][1] != "red" && headers2["result"][2] != "none" {
+		log.Fatal("the service returned an incorrect header")
+	}
+	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+
+	md3 := metadata.New(map[string]string{"Authorization": "Basic dXNlcjp1c2Vy", "ab": "red"})
+	ctx = metadata.NewOutgoingContext(context.Background(), md3)
+
+	var headers3 metadata.MD
+
+	name = "simple3"
+	r, err = c.SayHello(ctx, &pb.Request{Name: name}, grpc.Header(&headers3))
+	if err != nil {
+		log.Fatalf("error from grpc: %v", err)
+	}
+	if r.ReturnCode != 0 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 0)
+	}
+	if _, ok := headers3["result"]; !ok {
+		log.Fatal("header key `result` not found")
+	}
+	headers3.Get("result")
+	if len(headers3["result"]) != 3 {
+		log.Fatalf("the service did not return headers %+v", headers3)
+	}
+	if headers2["result"][0] != "red" && headers2["result"][1] != "blue" && headers2["result"][2] != "none" {
+		log.Fatal("the service returned an incorrect header")
+	}
+	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+
 	name = "simple3"
 	r, err = c.SayHello(context.Background(), &pb.Request{Name: name}, grpc.UseCompressor(gzip.Name))
 	if err != nil {
