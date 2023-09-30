@@ -10,7 +10,7 @@
 - service: Gripmock
   method: SayHello
   headers:
-    contains:
+    equals:
       authorization: Basic dXNlcjp1c2Vy # user:user
   input:
     equals:
