@@ -202,7 +202,16 @@ func findStub(ctx context.Context, service, method string, md metadata.MD, in, o
 	    return err
 	}
 
-	mdResp := metadata.New(searchStub.JSON200.Headers)
+	mdResp := make(metadata.MD, len(searchStub.JSON200.Headers))
+	for k, v := range searchStub.JSON200.Headers {
+		splits := strings.Split(v, ";")
+		for i, s := range splits {
+			splits[i] = strings.TrimSpace(s)
+		}
+
+		mdResp[k] = splits
+	}
+
 	grpc.SetHeader(ctx, mdResp)
 
 	return jsonpb.Unmarshal(data, out)
