@@ -3,6 +3,7 @@ package stub
 import (
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 
@@ -25,7 +26,7 @@ func RunRestServer(ch chan struct{}, opt Options) {
 	if opt.Port == "" {
 		opt.Port = DefaultPort
 	}
-	addr := opt.BindAddr + ":" + opt.Port
+	addr := net.JoinHostPort(opt.BindAddr, opt.Port)
 
 	apiServer, _ := app.NewRestServer(opt.StubPath)
 
