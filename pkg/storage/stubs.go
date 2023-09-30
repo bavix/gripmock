@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"slices"
 	"sync/atomic"
 
 	"github.com/google/uuid"
@@ -30,10 +31,6 @@ func (s *Stub) GetID() uuid.UUID {
 	return *s.ID
 }
 
-func (s *Stub) CheckHeaders() bool {
-	return (len(s.Headers.Equals) + len(s.Headers.Matches) + len(s.Headers.Contains)) > 0
-}
-
 type Input struct {
 	Equals   map[string]interface{} `json:"equals"`
 	Contains map[string]interface{} `json:"contains"`
@@ -54,8 +51,12 @@ type storage struct {
 	Output  Output
 }
 
+func (s *storage) CountHeaders() int {
+	return len(s.Headers.Equals) + len(s.Headers.Matches) + len(s.Headers.Contains)
+}
+
 func (s *storage) CheckHeaders() bool {
-	return (len(s.Headers.Equals) + len(s.Headers.Matches) + len(s.Headers.Contains)) > 0
+	return s.CountHeaders() > 0
 }
 
 type StubStorage struct {
@@ -151,7 +152,6 @@ func (r *StubStorage) ItemsBy(service, method string, ID *uuid.UUID) ([]storage,
 		return nil, err
 	}
 
-	var resultWithHeaders []storage
 	var result []storage
 
 	for obj := it.Next(); obj != nil; obj = it.Next() {
@@ -164,14 +164,14 @@ func (r *StubStorage) ItemsBy(service, method string, ID *uuid.UUID) ([]storage,
 			Output:  stub.Output,
 		}
 
-		if stub.CheckHeaders() {
-			resultWithHeaders = append(resultWithHeaders, s)
-		} else {
-			result = append(result, s)
-		}
+		result = append(result, s)
 	}
 
-	return append(resultWithHeaders, result...), nil
+	slices.SortFunc(result, func(a, b storage) int {
+		return b.CountHeaders() - a.CountHeaders()
+	})
+
+	return result, nil
 }
 
 func (r *StubStorage) Unused() []Stub {
