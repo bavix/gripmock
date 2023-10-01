@@ -11,7 +11,8 @@ RUN apk -U --no-cache add bash git protobuf curl &&\
     git clone --depth=1 https://github.com/protocolbuffers/protobuf.git /protobuf-repo &&\
     mv /protobuf-repo/src/ /protobuf/ &&\
     rm -rf /protobuf-repo &&\
-    # cleanup
+    # cleanup \
+    find /protobuf -not -name "*.proto" -type f -delete &&\
     apk del git &&\
     apk -v cache clean
 
