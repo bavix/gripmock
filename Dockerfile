@@ -23,8 +23,6 @@ RUN mkdir /proto /stubs &&\
 
 RUN cd /go/src/github.com/bavix/gripmock/protoc-gen-gripmock &&\
     go install -v &&\
-    cd /go/src/github.com/bavix/gripmock/example/simple/client &&\
-    go mod tidy &&\
     cd /go/src/github.com/bavix/gripmock &&\
     go install -v
 
