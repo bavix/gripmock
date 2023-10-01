@@ -2,6 +2,7 @@ package storage
 
 import (
 	"errors"
+	"slices"
 	"sync/atomic"
 
 	"github.com/google/uuid"
@@ -16,6 +17,7 @@ type Stub struct {
 	ID      *uuid.UUID `json:"id,omitempty"`
 	Service string     `json:"service"`
 	Method  string     `json:"method"`
+	Headers Input      `json:"headers"`
 	Input   Input      `json:"input"`
 	Output  Output     `json:"output"`
 }
@@ -36,15 +38,25 @@ type Input struct {
 }
 
 type Output struct {
-	Data  map[string]interface{} `json:"data"`
-	Error string                 `json:"error"`
-	Code  *codes.Code            `json:"code,omitempty"`
+	Headers map[string]string      `json:"headers"`
+	Data    map[string]interface{} `json:"data"`
+	Error   string                 `json:"error"`
+	Code    *codes.Code            `json:"code,omitempty"`
 }
 
 type storage struct {
-	ID     uuid.UUID
-	Input  Input
-	Output Output
+	ID      uuid.UUID
+	Headers Input
+	Input   Input
+	Output  Output
+}
+
+func (s *storage) CountHeaders() int {
+	return len(s.Headers.Equals) + len(s.Headers.Matches) + len(s.Headers.Contains)
+}
+
+func (s *storage) CheckHeaders() bool {
+	return s.CountHeaders() > 0
 }
 
 type StubStorage struct {
@@ -145,13 +157,19 @@ func (r *StubStorage) ItemsBy(service, method string, ID *uuid.UUID) ([]storage,
 	for obj := it.Next(); obj != nil; obj = it.Next() {
 		stub := obj.(*Stub)
 
-		r.used[stub.GetID()] = struct{}{}
-		result = append(result, storage{
-			ID:     stub.GetID(),
-			Input:  stub.Input,
-			Output: stub.Output,
-		})
+		s := storage{
+			ID:      stub.GetID(),
+			Headers: stub.Headers,
+			Input:   stub.Input,
+			Output:  stub.Output,
+		}
+
+		result = append(result, s)
 	}
+
+	slices.SortFunc(result, func(a, b storage) int {
+		return b.CountHeaders() - a.CountHeaders()
+	})
 
 	return result, nil
 }
@@ -185,6 +203,10 @@ func (r *StubStorage) Unused() []Stub {
 	}
 
 	return result
+}
+
+func (r *StubStorage) MarkUsed(id uuid.UUID) {
+	r.used[id] = struct{}{}
 }
 
 func (r *StubStorage) Stubs() []Stub {

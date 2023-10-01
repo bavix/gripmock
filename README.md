@@ -11,6 +11,7 @@ This service is a fork of the service [tokopedia/gripmock](https://github.com/to
 - Updated all deprecated dependencies [tokopedia#64](https://github.com/tokopedia/gripmock/issues/64);
 - Add yaml as json alternative for static stab's;
 - Add endpoint for healthcheck (/api/health/liveness, /api/health/readiness);
+- Add support headers [tokopedia#144](https://github.com/tokopedia/gripmock/issues/144);
 - Add grpc error code [tokopedia#125](https://github.com/tokopedia/gripmock/issues/125);
 - Added gzip encoding support for grpc server [tokopedia#134](https://github.com/tokopedia/gripmock/pull/134);
 - Fixed issues with int64/uint64 [tokopedia#67](https://github.com/tokopedia/gripmock/pull/148);
@@ -74,12 +75,18 @@ Stub Format is JSON text format. It has a skeleton as follows:
 {
   "service":"<servicename>", // name of service defined in proto
   "method":"<methodname>", // name of method that we want to mock
+  "headers":{ // Optional. headers matching rule. see Headers Matching Rule section below
+    // put rule here
+  },
   "input":{ // input matching rule. see Input Matching Rule section below
     // put rule here
   },
   "output":{ // output json if input were matched
     "data":{
       // put result fields here
+    },
+    "headers":{ // Optional
+      // put result headers here
     },
     "error":"<error message>", // Optional. if you want to return error instead.
     "code":"<response code>" // Optional. Grpc response code. if code !=0  return error instead.
@@ -127,7 +134,7 @@ Stub will respond with the expected response only if the request matches any rul
 So if you do a `curl -X POST -d '{"service":"Greeter","method":"SayHello","data":{"name":"gripmock"}}' localhost:4771/api/stubs/search` stub service will find a match from listed stubs stored there.
 
 ### Input Matching Rule
-Input matching has 3 rules to match an input: **equals**,**contains** and **regex**
+Input matching has 3 rules to match an input: **equals**,**contains** and **matches**
 <br>
 Nested fields are allowed for input matching too for all JSON data types. (`string`, `bool`, `array`, etc.)
 <br>
@@ -184,6 +191,73 @@ Nested fields are allowed for input matching too for all JSON data types. (`stri
     "matches":{
       "name":"^grip.*$",
       "cities": ["Jakarta", "Istanbul", ".*grad$"]
+    }
+  }
+  .
+  .
+}
+```
+
+## Headers Matching
+Stub will respond with the expected response only if the request matches any rule. Stub service will serve `/api/stubs/search` endpoint with format:
+```json
+{
+  "service":"<service name>",
+  "method":"<method name>",
+  "data":{
+    // input that suppose to match with stored stubs
+  }
+}
+```
+So if you do a `curl -X POST -d '{"service":"Greeter","method":"SayHello","data":{"name":"gripmock"}}' localhost:4771/api/stubs/search` stub service will find a match from listed stubs stored there.
+
+### Headers Matching Rule
+Headers matching has 3 rules to match an input: **equals**,**contains** and **matches**
+<br>
+Headers can consist of a key and a value. If there are several values, then you need to list them separated by ";". Data type string.
+<br>
+**Gripmock** recursively goes over the fields and tries to match with given input.
+<br>
+**equals** will match the exact field name and value of input into expected stub. example stub JSON:
+```json
+{
+  .
+  .
+  "headers":{
+    "equals":{
+      "authorization": "mytoken",
+      "system": "ec071904-93bf-4ded-b49c-d06097ddc6d5"
+    }
+  }
+  .
+  .
+}
+```
+
+**contains** will match input that has the value declared expected fields. example stub JSON:
+```json
+{
+  .
+  .
+  "headers":{
+    "contains":{
+      "field2":"hello"
+    }
+  }
+  .
+  .
+}
+```
+
+**matches** using regex for matching fields expectation. example:
+
+```json
+{
+  .
+  .
+  "headers":{
+    "matches":{
+      "name":"^grip.*$"
     }
   }
   .

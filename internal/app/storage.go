@@ -13,11 +13,15 @@ import (
 	"github.com/bavix/gripmock/pkg/storage"
 )
 
+var ErrNotFound = errors.New("not found")
+
 type matchFunc func(interface{}, interface{}) bool
 
 type closeMatch struct {
-	rule   string
-	expect map[string]interface{}
+	rule         string
+	expect       map[string]interface{}
+	headerRule   string
+	headerExpect map[string]interface{}
 }
 
 func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage.Output, error) {
@@ -41,34 +45,77 @@ func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage
 	}
 
 	if stub.ID != nil {
+		stubStorage.MarkUsed(stubs[0].ID)
+
 		return &stubs[0].Output, nil
 	}
 
 	var closestMatch []closeMatch
 	for _, strange := range stubs {
-		if expect := strange.Input.Equals; expect != nil {
-			closestMatch = append(closestMatch, closeMatch{"equals", expect})
-			if equals(stub.Data, expect) {
-				return &strange.Output, nil
+		cmpData, cmpDataErr := inputCmp(strange.Input, stub.Data)
+		if cmpDataErr != nil {
+			if cmpData != nil {
+				closestMatch = append(closestMatch, *cmpData)
+			}
+
+			continue
+		}
+
+		if strange.CheckHeaders() {
+			if cmpHeaders, cmpHeadersErr := inputCmp(strange.Headers, stub.Headers); cmpHeadersErr != nil {
+				if cmpHeaders != nil {
+					closestMatch = append(closestMatch, closeMatch{
+						rule:         cmpData.rule,
+						expect:       cmpData.expect,
+						headerRule:   cmpHeaders.rule,
+						headerExpect: cmpHeaders.expect,
+					})
+				}
+
+				continue
 			}
 		}
 
-		if expect := strange.Input.Contains; expect != nil {
-			closestMatch = append(closestMatch, closeMatch{"contains", expect})
-			if contains(strange.Input.Contains, stub.Data) {
-				return &strange.Output, nil
-			}
-		}
+		stubStorage.MarkUsed(strange.ID)
 
-		if expect := strange.Input.Matches; expect != nil {
-			closestMatch = append(closestMatch, closeMatch{"matches", expect})
-			if matches(strange.Input.Matches, stub.Data) {
-				return &strange.Output, nil
-			}
-		}
+		return &strange.Output, nil
 	}
 
 	return nil, stubNotFoundError(stub, closestMatch)
+}
+
+func inputCmp(input storage.Input, data map[string]interface{}) (*closeMatch, error) {
+	if expect := input.Equals; expect != nil {
+		closeMatchVal := closeMatch{rule: "equals", expect: expect}
+
+		if equals(input.Equals, data) {
+			return &closeMatchVal, nil
+		}
+
+		return &closeMatchVal, ErrNotFound
+	}
+
+	if expect := input.Contains; expect != nil {
+		closeMatchVal := closeMatch{rule: "contains", expect: expect}
+
+		if contains(input.Contains, data) {
+			return &closeMatchVal, nil
+		}
+
+		return &closeMatchVal, ErrNotFound
+	}
+
+	if expect := input.Matches; expect != nil {
+		closeMatchVal := closeMatch{rule: "matches", expect: expect}
+
+		if matches(input.Matches, data) {
+			return &closeMatchVal, nil
+		}
+
+		return &closeMatchVal, ErrNotFound
+	}
+
+	return nil, ErrNotFound
 }
 
 func stubNotFoundError(stub *findStubPayload, closestMatches []closeMatch) error {
