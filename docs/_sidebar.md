@@ -6,6 +6,10 @@
   - [One service](proto-one-file)
   - [N-Services in one](proto-multifiles)
 
+- Matching Rule
+  - [Input](matching-rule-input)
+  - [Headers](matching-rule-headers)
+
 - Static stubs
   - [JSON](static-stubs-json)
   - [YAML](static-stubs-yaml)
