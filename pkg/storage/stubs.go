@@ -3,6 +3,7 @@ package storage
 import (
 	"errors"
 	"slices"
+	"sync"
 	"sync/atomic"
 
 	"github.com/google/uuid"
@@ -60,6 +61,7 @@ func (s *storage) CheckHeaders() bool {
 }
 
 type StubStorage struct {
+	mu    sync.Mutex
 	used  map[uuid.UUID]struct{}
 	db    *memdb.MemDB
 	total int64
@@ -206,6 +208,9 @@ func (r *StubStorage) Unused() []Stub {
 }
 
 func (r *StubStorage) MarkUsed(id uuid.UUID) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	r.used[id] = struct{}{}
 }
 
