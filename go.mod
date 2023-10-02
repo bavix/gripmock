@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/bavix/gripmock/protogen v0.0.0
 	github.com/bavix/gripmock/protogen/example v0.0.0
+	github.com/goccy/go-json v0.10.2
 	github.com/goccy/go-yaml v1.11.2
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/handlers v1.5.1
