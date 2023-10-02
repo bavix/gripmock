@@ -6,7 +6,6 @@ package sdk
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,6 +16,8 @@ import (
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	codes "google.golang.org/grpc/codes"
+
+	"github.com/bavix/gripmock/pkg/json"
 )
 
 // ID defines model for ID.
