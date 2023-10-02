@@ -448,7 +448,7 @@ func NewListStubsRequest(server string) (*http.Request, error) {
 // NewAddStubRequest calls the generic AddStub builder with application/json body
 func NewAddStubRequest(server string, body AddStubJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
+	buf, err := Marshal(body)
 	if err != nil {
 		return nil, err
 	}
@@ -488,7 +488,7 @@ func NewAddStubRequestWithBody(server string, contentType string, body io.Reader
 // NewBatchStubsDeleteRequest calls the generic BatchStubsDelete builder with application/json body
 func NewBatchStubsDeleteRequest(server string, body BatchStubsDeleteJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
+	buf, err := Marshal(body)
 	if err != nil {
 		return nil, err
 	}
@@ -528,7 +528,7 @@ func NewBatchStubsDeleteRequestWithBody(server string, contentType string, body 
 // NewSearchStubsRequest calls the generic SearchStubs builder with application/json body
 func NewSearchStubsRequest(server string, body SearchStubsJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
+	buf, err := Marshal(body)
 	if err != nil {
 		return nil, err
 	}
@@ -1021,7 +1021,7 @@ func ParseLivenessResponse(rsp *http.Response) (*LivenessResponse, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest MessageOK
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		if err := Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
@@ -1047,7 +1047,7 @@ func ParseReadinessResponse(rsp *http.Response) (*ReadinessResponse, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest MessageOK
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		if err := Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
@@ -1089,7 +1089,7 @@ func ParseListStubsResponse(rsp *http.Response) (*ListStubsResponse, error) {
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest StubList
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		if err := Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
@@ -1117,7 +1117,7 @@ func ParseAddStubResponse(rsp *http.Response) (*AddStubResponse, error) {
 		var dest struct {
 			union json.RawMessage
 		}
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		if err := Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
@@ -1159,7 +1159,7 @@ func ParseSearchStubsResponse(rsp *http.Response) (*SearchStubsResponse, error) 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest SearchResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		if err := Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
@@ -1185,7 +1185,7 @@ func ParseListUnusedStubsResponse(rsp *http.Response) (*ListUnusedStubsResponse,
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest StubList
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+		if err := Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
