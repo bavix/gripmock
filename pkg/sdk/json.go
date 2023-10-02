@@ -3,7 +3,7 @@ package sdk
 import (
 	"bytes"
 
-	fastjson "github.com/goccy/go-json"
+	fastjson "encoding/json"
 )
 
 func Marshal(v any) ([]byte, error) {
