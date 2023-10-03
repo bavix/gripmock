@@ -21,4 +21,6 @@ message Request {
 message Reply {
   string message = 1;
   int32 return_code = 2;
+  int64 vint64 = 3;
+  uint64 vuint64 = 4;
 }

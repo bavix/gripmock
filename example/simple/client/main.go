@@ -186,5 +186,11 @@ func main() {
 	if r.Message != "72057594037927936 18446744073709551615" {
 		log.Fatalf("failed to get valid message: %v", r.Message)
 	}
+	if r.Vint64 != 72057594037927936 {
+		log.Fatalf("expected: 72057594037927936, received: %d", r.Vint64)
+	}
+	if r.Vuint64 != 18446744073709551615 {
+		log.Fatalf("expected: 18446744073709551615, received: %d", r.Vuint64)
+	}
 	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
 }
