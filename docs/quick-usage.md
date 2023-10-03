@@ -63,6 +63,11 @@ The result will not make you wait long, you should see the following:
     "id": "6c85b0fa-caaf-4640-a672-f56b7dd8074d",
     "service": "Gripmock",
     "method": "SayHello",
+    "headers": {
+      "equals": null,
+      "contains": null,
+      "matches": null
+    },
     "input": {
       "equals": {
         "name": "gripmock"

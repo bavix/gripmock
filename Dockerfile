@@ -12,6 +12,7 @@ RUN apk -U --no-cache add bash git protobuf curl &&\
     mv /protobuf-repo/src/ /protobuf/ &&\
     rm -rf /protobuf-repo &&\
     # cleanup
+    find /protobuf -not -name "*.proto" -type f -delete &&\
     apk del git &&\
     apk -v cache clean
 
@@ -23,8 +24,6 @@ RUN mkdir /proto /stubs &&\
 
 RUN cd /go/src/github.com/bavix/gripmock/protoc-gen-gripmock &&\
     go install -v &&\
-    cd /go/src/github.com/bavix/gripmock/example/simple/client &&\
-    go get -u all &&\
     cd /go/src/github.com/bavix/gripmock &&\
     go install -v
 

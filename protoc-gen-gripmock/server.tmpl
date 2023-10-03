@@ -4,6 +4,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"slices"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,9 +13,10 @@ import (
 	"net"
 	"net/http"
 
-    jsonpb "google.golang.org/protobuf/encoding/protojson"
+	jsonpb "google.golang.org/protobuf/encoding/protojson"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/grpc/codes"
@@ -80,7 +82,8 @@ type {{.Name}} struct{
 {{ define "standard_method" }}
 func (s *{{.ServiceName}}) {{.Name}}(ctx context.Context, in *{{.Input}}) (*{{.Output}},error){
 	out := &{{.Output}}{}
-	err := findStub(ctx, "{{.ServiceName}}", "{{.Name}}", in, out)
+	md, _ := metadata.FromIncomingContext(ctx)
+	err := findStub(ctx, "{{.ServiceName}}", "{{.Name}}", md, in, out)
 	return out, err
 }
 {{ end }}
@@ -88,8 +91,10 @@ func (s *{{.ServiceName}}) {{.Name}}(ctx context.Context, in *{{.Input}}) (*{{.O
 {{ define "server_stream_method" }}
 func (s *{{.ServiceName}}) {{.Name}}(in *{{.Input}},srv {{.SvcPackage}}{{.ServiceName}}_{{.Name}}Server) error {
 	out := &{{.Output}}{}
-	err := findStub(srv.Context(), "{{.ServiceName}}", "{{.Name}}", in, out)
-	if err!=nil {
+	ctx := srv.Context()
+	md, _ := metadata.FromIncomingContext(ctx)
+	err := findStub(ctx, "{{.ServiceName}}", "{{.Name}}", md, in, out)
+	if err != nil {
 		return err
 	}
 
@@ -100,12 +105,14 @@ func (s *{{.ServiceName}}) {{.Name}}(in *{{.Input}},srv {{.SvcPackage}}{{.Servic
 {{ define "client_stream_method"}}
 func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name}}Server) error {
 	out := &{{.Output}}{}
+	ctx := srv.Context()
+	md, _ := metadata.FromIncomingContext(ctx)
 	for {
 		input,err := srv.Recv()
 		if errors.Is(err, io.EOF) {
 			return srv.SendAndClose(out)
 		}
-		err = findStub(srv.Context(), "{{.ServiceName}}","{{.Name}}",input,out)
+		err = findStub(ctx, "{{.ServiceName}}","{{.Name}}",md,input,out)
 		if err != nil {
 			return err
 		}
@@ -115,6 +122,8 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 
 {{ define "bidirectional_method"}}
 func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name}}Server) error {
+	ctx := srv.Context()
+	md, _ := metadata.FromIncomingContext(ctx)
 	for {
 		in, err := srv.Recv()
 		if errors.Is(err, io.EOF) {
@@ -125,7 +134,7 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 		}
 
 		out := &{{.Output}}{}
-		err = findStub(srv.Context(), "{{.ServiceName}}","{{.Name}}",in,out)
+		err = findStub(ctx, "{{.ServiceName}}","{{.Name}}", md, in, out)
 		if err != nil {
 			return err
 		}
@@ -154,16 +163,27 @@ type response struct {
 	Error string      `json:"error"`
 }
 
-func findStub(ctx context.Context, service, method string, in, out protoreflect.ProtoMessage) error {
+func findStub(ctx context.Context, service, method string, md metadata.MD, in, out protoreflect.ProtoMessage) error {
     api, err := sdk.NewClientWithResponses(fmt.Sprintf("http://localhost%s/api", HTTP_PORT))
     if err != nil {
         return err
     }
 
+	excludes := []string{":authority", "content-type", "grpc-accept-encoding", "user-agent"}
+	headers := make(map[string]string, len(md))
+	for h, v := range md {
+		if slices.Contains(excludes, h) {
+			continue
+		}
+
+		headers[h] = strings.Join(v, ";")
+	}
+
 	searchStub, err := api.SearchStubsWithResponse(ctx, sdk.SearchStubsJSONRequestBody{
         Service: service,
         Method:  method,
-        Data:    in,
+        Headers: headers,
+        Data: in,
     })
     if err != nil {
         return err
@@ -187,6 +207,18 @@ func findStub(ctx context.Context, service, method string, in, out protoreflect.
 	if err != nil {
 	    return err
 	}
+
+	mdResp := make(metadata.MD, len(searchStub.JSON200.Headers))
+	for k, v := range searchStub.JSON200.Headers {
+		splits := strings.Split(v, ";")
+		for i, s := range splits {
+			splits[i] = strings.TrimSpace(s)
+		}
+
+		mdResp[k] = splits
+	}
+
+	grpc.SetHeader(ctx, mdResp)
 
 	return jsonpb.Unmarshal(data, out)
 }

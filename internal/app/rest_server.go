@@ -52,6 +52,7 @@ type findStubPayload struct {
 	ID      *uuid.UUID             `json:"id,omitempty"`
 	Service string                 `json:"service"`
 	Method  string                 `json:"method"`
+	Headers map[string]interface{} `json:"headers"`
 	Data    map[string]interface{} `json:"data"`
 }
 
