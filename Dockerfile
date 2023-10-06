@@ -10,7 +10,7 @@ RUN apk -U --no-cache add bash git protobuf curl &&\
     git clone --depth=1 https://github.com/protocolbuffers/protobuf.git /protobuf-repo &&\
     mv /protobuf-repo/src/ /protobuf/ &&\
     # cloning googleapis-types
-    git clone --depth=1 https://github.com/googleapis/googleapis.git /protobuf/googleapis &&\
+    git clone --depth=1 https://github.com/googleapis/googleapis.git /googleapis &&\
     # cleanup
     rm -rf /protobuf-repo &&\
     find /protobuf -not -name "*.proto" -type f -delete &&\
