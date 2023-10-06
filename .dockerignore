@@ -1,4 +1,4 @@
-assets
+deployments
 .git
 .github
 *.pb.go
