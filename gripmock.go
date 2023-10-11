@@ -28,7 +28,7 @@ func main() {
 	adminport := flag.String("admin-port", "4771", "Port of stub admin server")
 	adminBindAddr := flag.String("admin-listen", "0.0.0.0", "Adress the admin server will bind to. Default to localhost, set to 0.0.0.0 to use from another machine")
 	stubPath := flag.String("stub", "", "Path where the stub files are (Optional)")
-	imports := flag.String("imports", "/protobuf", "comma separated imports path. default path /protobuf is where gripmock Dockerfile install WKT protos")
+	imports := flag.String("imports", "/protobuf,/googleapis", "comma separated imports path. default path /protobuf,/googleapis is where gripmock Dockerfile install WKT protos")
 	// for backwards compatibility
 	if os.Args[1] == "gripmock" {
 		os.Args = append(os.Args[:1], os.Args[2:]...)
