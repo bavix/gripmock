@@ -1,4 +1,4 @@
-GOLANGCI_LING_IMAGE="golangci/golangci-lint:v1.54.2-alpine"
+GOLANGCI_LING_IMAGE="golangci/golangci-lint:v1.55.1-alpine"
 
 .PHONY: *
 
@@ -19,7 +19,6 @@ lint-fix:
 intgr-test: build
 	docker compose -f deployments/docker-compose/docker-compose.yml up
 
-# before: go install github.com/deepmap/oapi-codegen/cmd/oapi-codegen@latest
 gen:
-	oapi-codegen -generate gorilla,types -package rest ./api/openapi/api.yaml > internal/domain/rest/api.gen.go
-	oapi-codegen -generate client,types -package sdk ./api/openapi/api.yaml | sed -e 's/json\.Marshal/Marshal/g' -e 's/json\.Unmarshal/Unmarshal/g' > pkg/sdk/api.gen.go
+	go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest -generate gorilla,types -package rest ./api/openapi/api.yaml > internal/domain/rest/api.gen.go
+	go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest -generate client,types -package sdk ./api/openapi/api.yaml | sed -e 's/json\.Marshal/Marshal/g' -e 's/json\.Unmarshal/Unmarshal/g' > pkg/sdk/api.gen.go

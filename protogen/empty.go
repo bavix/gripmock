@@ -1,6 +1,7 @@
 package protogen
 
 import (
+	_ "google.golang.org/genproto/googleapis/api/annotations"
 	_ "google.golang.org/grpc"
 	_ "google.golang.org/grpc/codes"
 	_ "google.golang.org/grpc/status"
