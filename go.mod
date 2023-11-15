@@ -10,7 +10,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/go-memdb v1.3.4
 	github.com/lithammer/fuzzysearch v1.1.8
-	github.com/oapi-codegen/runtime v1.0.0
+	github.com/oapi-codegen/runtime v1.1.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/text v0.14.0
 	google.golang.org/grpc v1.59.0
