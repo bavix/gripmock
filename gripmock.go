@@ -212,7 +212,7 @@ func runGrpcServer(output string) (*exec.Cmd, <-chan error) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("grpc server pid: %d\n", run.Process.Pid)
+	fmt.Printf("gRPC server pid: %d\n", run.Process.Pid)
 	runerr := make(chan error)
 	go func() {
 		runerr <- run.Wait()
