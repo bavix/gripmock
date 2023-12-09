@@ -24,9 +24,9 @@ RUN mkdir /proto /stubs &&\
     ln -s /go/src/github.com/bavix/gripmock/fix_gopackage.sh /bin/
 
 RUN cd /go/src/github.com/bavix/gripmock/protoc-gen-gripmock &&\
-    go install -v &&\
+    go install -v -ldflags "-s -w" &&\
     cd /go/src/github.com/bavix/gripmock &&\
-    go install -v
+    go install -v -ldflags "-s -w"
 
 WORKDIR /go/src/github.com/bavix/gripmock
 
