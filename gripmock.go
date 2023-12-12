@@ -1,11 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net"
@@ -13,10 +13,12 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/bavix/gripmock/internal/pkg/patcher"
 	_ "github.com/bavix/gripmock/protogen"
 	"github.com/bavix/gripmock/stub"
 )
@@ -185,23 +187,43 @@ func generateProtoc(param protocParam) {
 	if err != nil {
 		log.Fatal("Fail on protoc ", err)
 	}
-
 }
 
 // append gopackage in proto files if doesn't have any.
 func fixGoPackage(protoPaths []string) []string {
-	fixgopackage := exec.Command("fix_gopackage.sh", protoPaths...)
-	buf := &bytes.Buffer{}
-	fixgopackage.Stdout = buf
-	fixgopackage.Stderr = os.Stderr
-	err := fixgopackage.Run()
-	if err != nil {
-		log.Println("error on fixGoPackage", err)
+	var results []string
 
-		return protoPaths
+	for _, protoPath := range protoPaths {
+		pile, err := os.OpenFile(protoPath, os.O_RDONLY, 0600)
+		if err != nil {
+			fmt.Printf("сan't open protofile %s: %v", protoPath, err)
+			continue
+		}
+		defer pile.Close()
+
+		packageName := "protogen/" + strings.Trim(filepath.Dir(protoPath), "/")
+
+		if err := os.MkdirAll(packageName, 0666); err != nil {
+			fmt.Printf("сan't create temp dir %s: %v", protoPath, err)
+			continue
+		}
+
+		tmp, err := os.Create(filepath.Join(packageName, filepath.Base(protoPath)))
+		if err != nil {
+			fmt.Printf("сan't create temp file %s: %v", protoPath, err)
+			continue
+		}
+		defer tmp.Close()
+
+		if _, err = io.Copy(patcher.NewWriterWrapper(tmp, packageName), pile); err != nil {
+			fmt.Printf("unable to copy file %s: %v", protoPath, err)
+			continue
+		}
+
+		results = append(results, tmp.Name())
 	}
 
-	return strings.Split(strings.TrimRight(buf.String(), "\n"), "\n")
+	return results
 }
 
 func runGrpcServer(output string) (*exec.Cmd, <-chan error) {
