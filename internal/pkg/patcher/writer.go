@@ -25,7 +25,7 @@ func NewWriterWrapper(writer io.Writer, packageName string) io.Writer {
 func (f *fileWriterWrapper) Write(p []byte) (int, error) {
 	const (
 		syntaxIndexes = 2
-		prefix        = "github.com/bavix/gripmock/protogen"
+		prefix        = "github.com/bavix/gripmock"
 	)
 
 	n := len(p)
