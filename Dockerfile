@@ -19,10 +19,6 @@ RUN apk -U --no-cache add bash git protobuf curl &&\
 
 COPY . /go/src/github.com/bavix/gripmock
 
-# create necessary dirs and export fix_gopackage.sh
-RUN mkdir /proto /stubs &&\
-    ln -s /go/src/github.com/bavix/gripmock/fix_gopackage.sh /bin/
-
 RUN cd /go/src/github.com/bavix/gripmock/protoc-gen-gripmock &&\
     go install -v -ldflags "-s -w" &&\
     cd /go/src/github.com/bavix/gripmock &&\
