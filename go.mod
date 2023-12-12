@@ -13,7 +13,7 @@ require (
 	github.com/oapi-codegen/runtime v1.1.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/text v0.14.0
-	google.golang.org/grpc v1.59.0
+	google.golang.org/grpc v1.60.0
 	google.golang.org/protobuf v1.31.0
 )
 
