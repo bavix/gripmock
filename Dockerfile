@@ -4,8 +4,8 @@ FROM golang:${BUILD_ARG_GO_VERSION}-alpine${BUILD_ARG_ALPINE_VERSION} AS builder
 
 # install tools (bash, git, protobuf, protoc-gen-go, protoc-grn-go-grpc)
 RUN apk -U --no-cache add bash git protobuf curl &&\
-    go install -v google.golang.org/protobuf/cmd/protoc-gen-go@latest &&\
-    go install -v google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest &&\
+    go install -v -ldflags "-s -w" google.golang.org/protobuf/cmd/protoc-gen-go@latest &&\
+    go install -v -ldflags "-s -w" google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest &&\
     # cloning well-known-types
     git clone --depth=1 https://github.com/protocolbuffers/protobuf.git /protobuf-repo &&\
     mv /protobuf-repo/src/ /protobuf/ &&\
