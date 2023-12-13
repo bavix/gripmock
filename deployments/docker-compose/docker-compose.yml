@@ -3,21 +3,33 @@ services:
   simple:
     image: bavix/gripmock:latest
     entrypoint: example/simple/entrypoint.sh
+    healthcheck: &health
+      test: "curl --connect-timeout 1 --silent --show-error --fail http://127.0.0.1:4771/api/health/readiness"
+      timeout: 1s
+      interval: 1s
+      start_period: 1s
+      retries: 120
   stream:
     image: bavix/gripmock:latest
     entrypoint: example/stream/entrypoint.sh
+    healthcheck: *health
   well_known_types:
     image: bavix/gripmock:latest
     entrypoint: example/well_known_types/entrypoint.sh
+    healthcheck: *health
   multi-package:
     image: bavix/gripmock:latest
     entrypoint: example/multi-package/entrypoint.sh
+    healthcheck: *health
   multi-files:
     image: bavix/gripmock:latest
     entrypoint: example/multi-files/entrypoint.sh
+    healthcheck: *health
   one-of:
     image: bavix/gripmock:latest
     entrypoint: example/one-of/entrypoint.sh
+    healthcheck: *health
   stub-subfolders:
     image: bavix/gripmock:latest
     entrypoint: example/stub-subfolders/entrypoint.sh
+    healthcheck: *health
