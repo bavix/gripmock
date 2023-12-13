@@ -21,7 +21,7 @@ func TestWriterWrapper_OptionUpdate(t *testing.T) {
 
 	var result bytes.Buffer
 
-	tmp := patcher.NewWriterWrapper(&result, "patcher/v1")
+	tmp := patcher.NewWriterWrapper(&result, "protogen/patcher/v1")
 
 	_, err = io.Copy(tmp, pile)
 	require.NoError(t, err)
@@ -50,7 +50,7 @@ message Reply1 {
 
 	var result bytes.Buffer
 
-	tmp := patcher.NewWriterWrapper(&result, "patcher/v2")
+	tmp := patcher.NewWriterWrapper(&result, "protogen/patcher/v2")
 
 	_, err := io.Copy(tmp, pile)
 	require.NoError(t, err)
@@ -77,7 +77,7 @@ message Reply1 {
 
 	var result bytes.Buffer
 
-	tmp := patcher.NewWriterWrapper(&result, "patcher/v3")
+	tmp := patcher.NewWriterWrapper(&result, "protogen/patcher/v3")
 
 	_, err := io.Copy(tmp, pile)
 	require.ErrorIs(t, patcher.ErrSyntaxNotFound, err)
