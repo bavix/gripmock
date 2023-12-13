@@ -143,6 +143,16 @@ func (h *StubsServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *StubsServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	err := json.NewEncoder(w).Encode(h.stubs.Used())
+	if err != nil {
+		h.responseError(err, w)
+
+		return
+	}
+}
+
 func (h *StubsServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(h.stubs.Unused())

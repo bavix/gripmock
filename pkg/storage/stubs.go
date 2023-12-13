@@ -176,6 +176,37 @@ func (r *StubStorage) ItemsBy(service, method string, ID *uuid.UUID) ([]storage,
 	return result, nil
 }
 
+func (r *StubStorage) Used() []Stub {
+	txn := r.db.Txn(false)
+	defer txn.Abort()
+
+	iter, err := txn.Get(TableName, IDField)
+	if err != nil {
+		return nil
+	}
+
+	it := memdb.NewFilterIterator(iter, func(raw interface{}) bool {
+		obj, ok := raw.(*Stub)
+		if !ok {
+			return true
+		}
+
+		_, ok = r.used[obj.GetID()]
+
+		return !ok
+	})
+
+	result := make([]Stub, 0, atomic.LoadInt64(&r.total))
+
+	for obj := it.Next(); obj != nil; obj = it.Next() {
+		stub := obj.(*Stub)
+
+		result = append(result, *stub)
+	}
+
+	return result
+}
+
 func (r *StubStorage) Unused() []Stub {
 	txn := r.db.Txn(false)
 	defer txn.Abort()

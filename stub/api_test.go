@@ -66,6 +66,14 @@ func TestStub(t *testing.T) {
 			expect:  "[{\"id\":\"43739ed8-2810-4f57-889b-4d3ff5795bce\",\"service\":\"Testing\",\"method\":\"TestMethod\",\"headers\":{\"equals\":null,\"contains\":null,\"matches\":null},\"input\":{\"equals\":{\"Hola\":\"Mundo\"},\"contains\":null,\"matches\":null},\"output\":{\"data\":{\"Hello\":\"World\"},\"error\":\"\",\"headers\":null}}]",
 		},
 		{
+			name: "used stubs (zero)",
+			mock: func() *http.Request {
+				return httptest.NewRequest(http.MethodGet, "/api/stubs/used", nil)
+			},
+			handler: api.ListUsedStubs,
+			expect:  "[]",
+		},
+		{
 			name: "find stub equals",
 			mock: func() *http.Request {
 				payload := `{"service":"Testing","method":"TestMethod","data":{"Hola":"Mundo"}}`
@@ -82,6 +90,14 @@ func TestStub(t *testing.T) {
 			},
 			handler: api.ListUnusedStubs,
 			expect:  "[]",
+		},
+		{
+			name: "used stubs (all stubs)",
+			mock: func() *http.Request {
+				return httptest.NewRequest(http.MethodGet, "/api/stubs/used", nil)
+			},
+			handler: api.ListUsedStubs,
+			expect:  "[{\"id\":\"43739ed8-2810-4f57-889b-4d3ff5795bce\",\"service\":\"Testing\",\"method\":\"TestMethod\",\"headers\":{\"equals\":null,\"contains\":null,\"matches\":null},\"input\":{\"equals\":{\"Hola\":\"Mundo\"},\"contains\":null,\"matches\":null},\"output\":{\"data\":{\"Hello\":\"World\"},\"error\":\"\",\"headers\":null}}]",
 		},
 		{
 			name: "find stub by ID",

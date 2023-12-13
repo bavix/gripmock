@@ -200,6 +200,9 @@ type ClientInterface interface {
 	// ListUnusedStubs request
 	ListUnusedStubs(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// ListUsedStubs request
+	ListUsedStubs(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// DeleteStubByID request
 	DeleteStubByID(ctx context.Context, uuid ID, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
@@ -326,6 +329,18 @@ func (c *Client) SearchStubs(ctx context.Context, body SearchStubsJSONRequestBod
 
 func (c *Client) ListUnusedStubs(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListUnusedStubsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListUsedStubs(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListUsedStubsRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -603,6 +618,33 @@ func NewListUnusedStubsRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewListUsedStubsRequest generates requests for ListUsedStubs
+func NewListUsedStubsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/stubs/used")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewDeleteStubByIDRequest generates requests for DeleteStubByID
 func NewDeleteStubByIDRequest(server string, uuid ID) (*http.Request, error) {
 	var err error
@@ -709,6 +751,9 @@ type ClientWithResponsesInterface interface {
 
 	// ListUnusedStubsWithResponse request
 	ListUnusedStubsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUnusedStubsResponse, error)
+
+	// ListUsedStubsWithResponse request
+	ListUsedStubsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUsedStubsResponse, error)
 
 	// DeleteStubByIDWithResponse request
 	DeleteStubByIDWithResponse(ctx context.Context, uuid ID, reqEditors ...RequestEditorFn) (*DeleteStubByIDResponse, error)
@@ -890,6 +935,28 @@ func (r ListUnusedStubsResponse) StatusCode() int {
 	return 0
 }
 
+type ListUsedStubsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *StubList
+}
+
+// Status returns HTTPResponse.Status
+func (r ListUsedStubsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListUsedStubsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type DeleteStubByIDResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1005,6 +1072,15 @@ func (c *ClientWithResponses) ListUnusedStubsWithResponse(ctx context.Context, r
 		return nil, err
 	}
 	return ParseListUnusedStubsResponse(rsp)
+}
+
+// ListUsedStubsWithResponse request returning *ListUsedStubsResponse
+func (c *ClientWithResponses) ListUsedStubsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUsedStubsResponse, error) {
+	rsp, err := c.ListUsedStubs(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListUsedStubsResponse(rsp)
 }
 
 // DeleteStubByIDWithResponse request returning *DeleteStubByIDResponse
@@ -1189,6 +1265,32 @@ func ParseListUnusedStubsResponse(rsp *http.Response) (*ListUnusedStubsResponse,
 	}
 
 	response := &ListUnusedStubsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StubList
+		if err := Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListUsedStubsResponse parses an HTTP response from a ListUsedStubsWithResponse call
+func ParseListUsedStubsResponse(rsp *http.Response) (*ListUsedStubsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListUsedStubsResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}

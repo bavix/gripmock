@@ -41,6 +41,20 @@ paths:
                 $ref: '#/components/schemas/MessageOK'
 
   # stubs
+  /stubs/used:
+    get:
+      tags:
+        - stubs
+      summary: Getting a list of used stubs
+      description: The list is needed to quickly find used stubs
+      operationId: listUsedStubs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubList'
   /stubs/unused:
     get:
       tags:

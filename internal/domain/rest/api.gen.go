@@ -119,6 +119,9 @@ type ServerInterface interface {
 	// Getting a list of unused stubs
 	// (GET /stubs/unused)
 	ListUnusedStubs(w http.ResponseWriter, r *http.Request)
+	// Getting a list of used stubs
+	// (GET /stubs/used)
+	ListUsedStubs(w http.ResponseWriter, r *http.Request)
 	// Deletes stub by ID
 	// (DELETE /stubs/{uuid})
 	DeleteStubByID(w http.ResponseWriter, r *http.Request, uuid ID)
@@ -244,6 +247,21 @@ func (siw *ServerInterfaceWrapper) ListUnusedStubs(w http.ResponseWriter, r *htt
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListUnusedStubs(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// ListUsedStubs operation middleware
+func (siw *ServerInterfaceWrapper) ListUsedStubs(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListUsedStubs(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -407,6 +425,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/stubs/search", wrapper.SearchStubs).Methods("POST")
 
 	r.HandleFunc(options.BaseURL+"/stubs/unused", wrapper.ListUnusedStubs).Methods("GET")
+
+	r.HandleFunc(options.BaseURL+"/stubs/used", wrapper.ListUsedStubs).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/stubs/{uuid}", wrapper.DeleteStubByID).Methods("DELETE")
 
