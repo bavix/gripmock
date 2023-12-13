@@ -40,5 +40,3 @@
   - [protoc-gen-gripmock](specs-protoc-gen-gripmock)
   - [protogen](specs-protogen)
 
-- Reference
-  - [Swagger API](https://app.swaggerhub.com/apis-docs/bavix/GripMock)
