@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 
 	"github.com/bavix/gripmock/internal/domain/rest"
 	"github.com/bavix/gripmock/pkg/clock"
@@ -24,7 +25,7 @@ type StubsServer struct {
 	convertor *yaml2json.Convertor
 	caser     cases.Caser
 	clock     *clock.Clock
-	ok        bool
+	ok        atomic.Bool
 }
 
 func NewRestServer(path string) (*StubsServer, error) {
@@ -57,7 +58,7 @@ type findStubPayload struct {
 }
 
 func (h *StubsServer) ServiceReady() {
-	h.ok = true
+	h.ok.Store(true)
 }
 
 func (h *StubsServer) Liveness(w http.ResponseWriter, _ *http.Request) {
@@ -65,7 +66,7 @@ func (h *StubsServer) Liveness(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (h *StubsServer) Readiness(w http.ResponseWriter, _ *http.Request) {
-	if !h.ok {
+	if !h.ok.Load() {
 		w.WriteHeader(http.StatusServiceUnavailable)
 
 		return
