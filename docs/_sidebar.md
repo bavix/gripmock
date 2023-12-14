@@ -18,6 +18,7 @@
 - Rest API
   - [List stubs](api-stubs-list)
   - [List unused stubs](api-unused-stubs-list)
+  - [List used stubs](api-used-stubs-list)
   - [Add stub](api-stubs-add)
   - [Delete stub](api-stubs-delete)
   - [Search stub](api-stubs-search)
