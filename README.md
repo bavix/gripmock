@@ -39,7 +39,7 @@ Check [`example`](https://github.com/bavix/gripmock/tree/master/example) folder 
 ---
 
 ## How It Works
-![Running Gripmock](https://github.com/bavix/gripmock/assets/5111255/e8f74280-52b1-41bd-8582-4026904d934c)
+![Operation of the gRPC service](https://github.com/bavix/gripmock/assets/5111255/076e796e-5213-4b64-a6f3-b4edffa331d6)
 
 From client perspective, GripMock has 2 main components:
 1. gRPC server that serves on `tcp://localhost:4770`. Its main job is to serve incoming rpc call from client and then parse the input so that it can be posted to Stub service to find the perfect stub match.
@@ -54,7 +54,7 @@ When the server sucessfully generated, it will be invoked in parallel with stub 
 
 The second binary is the protoc plugin which located in folder [protoc-gen-gripmock](/protoc-gen-gripmock). This plugin is the one who translates protobuf declaration into a gRPC server in Go programming language. 
 
-![Inside GripMock](https://github.com/bavix/gripmock/assets/5111255/b0f27a47-6d2f-40ed-96d4-81b1151b747d)
+![Inside GripMock](https://github.com/bavix/gripmock/assets/5111255/a4cd490a-96fd-4ad3-b9d8-872fb7d6e70c)
 
 ---
 
