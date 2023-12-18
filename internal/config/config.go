@@ -7,11 +7,13 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/pkg/errors"
+
+	"github.com/bavix/gripmock/pkg/trace"
 )
 
 type Config struct {
 	App       App
-	OTLPTrace OTLPTrace
+	OTLPTrace trace.OTLPTrace
 	GRPC      GRPC
 	HTTP      HTTP
 }
@@ -36,8 +38,4 @@ func (c *Config) GRPCAddr() string {
 
 func (c *Config) HTTPAddr() string {
 	return net.JoinHostPort(c.HTTP.Host, c.HTTP.Port)
-}
-
-func (c *Config) UseTrace() bool {
-	return c.OTLPTrace.Endpoint != "" && c.OTLPTrace.SampleRatio > 0
 }

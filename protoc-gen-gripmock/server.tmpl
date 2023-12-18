@@ -23,6 +23,8 @@ import (
 	"google.golang.org/grpc/status"
 	_ "google.golang.org/grpc/encoding/gzip"
 	"github.com/rs/zerolog"
+	"github.com/bavix/gripmock/pkg/grpccontext"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
 	"github.com/bavix/gripmock/pkg/sdk"
 	"github.com/bavix/gripmock/pkg/utils"
@@ -48,7 +50,17 @@ func main() {
 	    logger.Fatal().Err(err).Msg("failed to listen")
 	}
 
-	s := grpc.NewServer()
+	ctx := logger.WithContext(context.Background())
+
+	s := grpc.NewServer(
+        grpc.StatsHandler(otelgrpc.NewServerHandler()),
+        grpc.ChainUnaryInterceptor([]grpc.UnaryServerInterceptor{
+            grpccontext.UnaryInterceptor(ctx),
+        }...),
+        grpc.ChainStreamInterceptor([]grpc.StreamServerInterceptor{
+            grpccontext.StreamInterceptor(ctx),
+        }...),
+    )
 	{{ range .Services }}
 	{{ template "register_services" . }}
 	{{ end }}
