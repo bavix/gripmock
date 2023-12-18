@@ -22,8 +22,8 @@ func RequestLogger(next http.Handler) http.Handler {
 			IPAddr("ip", ip).
 			Str("method", r.Method).
 			Str("url", r.URL.RequestURI()).
-			Str("user_agent", r.UserAgent()).
 			Dur("elapsed", time.Since(now)).
+			Str("ua", r.UserAgent()).
 			Int("bytes", ww.bytes).
 			Int("code", ww.status).
 			Send()
