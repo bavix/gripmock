@@ -34,6 +34,9 @@ jobs:
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          build-args: |
+            buildRelease="${{ github.ref_name }}"
       -
         name: Login to GitHub Container Registry
         if: github.event_name != 'pull_request'
