@@ -181,7 +181,6 @@ func generateServer(protos []*descriptorpb.FileDescriptorProto, opt *Options) er
 }
 
 func resolveDependencies(protos []*descriptorpb.FileDescriptorProto) map[string]string {
-
 	deps := map[string]string{}
 	for _, proto := range protos {
 		alias, pkg := getGoPackage(proto)
@@ -201,9 +200,11 @@ func resolveDependencies(protos []*descriptorpb.FileDescriptorProto) map[string]
 	return deps
 }
 
-var aliases = map[string]bool{}
-var aliasNum = 1
-var packages = map[string]string{}
+var (
+	aliases  = map[string]bool{}
+	aliasNum = 1
+	packages = map[string]string{}
+)
 
 func getGoPackage(proto *descriptorpb.FileDescriptorProto) (alias string, goPackage string) {
 	goPackage = proto.GetOptions().GetGoPackage()

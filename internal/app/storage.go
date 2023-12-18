@@ -24,6 +24,7 @@ type closeMatch struct {
 	headerExpect map[string]interface{}
 }
 
+//nolint:cyclop
 func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage.Output, error) {
 	stubs, err := stubStorage.ItemsBy(stub.Service, stub.Method, stub.ID)
 	if errors.Is(err, storage.ErrServiceNotFound) {
@@ -51,6 +52,7 @@ func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage
 	}
 
 	var closestMatch []closeMatch
+
 	for _, strange := range stubs {
 		cmpData, cmpDataErr := inputCmp(strange.Input, stub.Data)
 		if cmpDataErr != nil {
@@ -137,6 +139,7 @@ func stubNotFoundError(stub *findStubPayload, closestMatches []closeMatch) error
 		rank  float32
 		match closeMatch
 	}{0, closeMatch{}}
+
 	for _, closeMatchValue := range closestMatches {
 		rank := rankMatch(string(expectString), closeMatchValue.expect)
 
@@ -171,6 +174,7 @@ func stubNotFoundError(stub *findStubPayload, closestMatches []closeMatch) error
 // the higher the better.
 func rankMatch(expect string, closeMatch map[string]interface{}) float32 {
 	occurrence := 0
+
 	for key, value := range closeMatch {
 		if fuzzy.Match(key+":", expect) {
 			occurrence++
@@ -185,18 +189,22 @@ func rankMatch(expect string, closeMatch map[string]interface{}) float32 {
 		return 0
 	}
 	totalFields := len(closeMatch) * 2
+
 	return float32(occurrence) / float32(totalFields)
 }
 
 func regexMatch(expect, actual interface{}) bool {
-	var expectedStr, expectedStringOk = expect.(string)
-	var actualStr, actualStringOk = actual.(string)
+	var (
+		expectedStr, expectedStringOk = expect.(string)
+		actualStr, actualStringOk     = actual.(string)
+	)
 
 	if expectedStringOk && actualStringOk {
-		match, err := regexp.Match(expectedStr, []byte(actualStr))
+		match, err := regexp.MatchString(expectedStr, actualStr)
 		if err != nil {
 			log.Printf("Error on matching regex %s with %s error:%v\n", expect, actual, err)
 		}
+
 		return match
 	}
 
@@ -215,14 +223,15 @@ func matches(expect, actual map[string]interface{}) bool {
 	return find(expect, actual, true, false, regexMatch)
 }
 
+//nolint:cyclop
 func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc) bool {
 	// circuit brake
 	if !acc {
 		return false
 	}
 
+	//nolint:nestif
 	if expectArrayValue, expectArrayOk := expect.([]interface{}); expectArrayOk {
-
 		actualArrayValue, actualArrayOk := actual.([]interface{})
 		if !actualArrayOk {
 			return false
@@ -244,6 +253,7 @@ func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc) bool {
 		return acc
 	}
 
+	//nolint:nestif
 	if expectMapValue, expectMapOk := expect.(map[string]interface{}); expectMapOk {
 		actualMapValue, actualMapOk := actual.(map[string]interface{})
 		if !actualMapOk {

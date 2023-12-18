@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -18,6 +19,11 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+)
+
+var (
+	ErrServiceIsMissing = errors.New("service name is missing")
+	ErrMethodIsMissing  = errors.New("method name is missing")
 )
 
 type StubsServer struct {
@@ -48,7 +54,7 @@ func NewRestServer(path string) (*StubsServer, error) {
 	return server, nil
 }
 
-// deprecated code
+// deprecated code.
 type findStubPayload struct {
 	ID      *uuid.UUID             `json:"id,omitempty"`
 	Service string                 `json:"service"`
@@ -62,6 +68,7 @@ func (h *StubsServer) ServiceReady() {
 }
 
 func (h *StubsServer) Liveness(w http.ResponseWriter, _ *http.Request) {
+	//nolint:errchkjson
 	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: h.clock.Now()})
 }
 
@@ -74,6 +81,7 @@ func (h *StubsServer) Readiness(w http.ResponseWriter, _ *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
+	//nolint:errchkjson
 	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: h.clock.Now()})
 }
 
@@ -207,6 +215,7 @@ func (h *StubsServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//nolint:errchkjson
 	_ = json.NewEncoder(w).Encode(output)
 }
 
@@ -217,11 +226,13 @@ func (h *StubsServer) responseError(err error, w http.ResponseWriter) {
 }
 
 func (h *StubsServer) writeResponseError(err error, w http.ResponseWriter) {
+	//nolint:errchkjson
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"error": err.Error(),
 	})
 }
 
+//nolint:cyclop
 func (h *StubsServer) readStubs(path string) {
 	files, err := os.ReadDir(path)
 	if err != nil {
@@ -275,13 +286,11 @@ func (h *StubsServer) readStubs(path string) {
 
 func validateStub(stub *storage.Stub) error {
 	if stub.Service == "" {
-		//fixme
-		//nolint:goerr113
-		return fmt.Errorf("service name can't be empty")
+		return ErrServiceIsMissing
 	}
 
 	if stub.Method == "" {
-		return fmt.Errorf("method name can't be emtpy")
+		return ErrMethodIsMissing
 	}
 
 	// due to golang implementation

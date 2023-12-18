@@ -30,6 +30,7 @@ yaml2json:
 	"bytes": "aGVsbG8gd29ybGQ="
   }
 }`
+
 	require.NoError(t, err)
 	require.JSONEq(t, expected, string(bytes))
 }

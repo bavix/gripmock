@@ -29,6 +29,7 @@ import (
 
 var buildRelease string //nolint:gochecknoglobals
 
+//nolint:funlen,cyclop
 func main() {
 	conf, err := config.Load()
 	if err != nil {
@@ -48,16 +49,16 @@ func main() {
 	ctx = logger.WithContext(ctx)
 
 	// deprecated. will be removed in 3.x
-	grpcPort := flag.String("grpc-port", conf.GRPC.Port, "Deprecated: use ENV GRPC_PORT. Port of gRPC tcp server")
-	grpcBindAddr := flag.String("grpc-listen", conf.GRPC.Host, "Deprecated: use ENV GRPC_HOST. Adress the gRPC server will bind to. Default to localhost, set to 0.0.0.0 to use from another machine")
-	adminPort := flag.String("admin-port", conf.HTTP.Port, "Deprecated: use ENV HTTP_PORT. Port of stub admin server")
-	adminBindAddr := flag.String("admin-listen", conf.HTTP.Host, "Deprecated: use ENV HTTP_HOST. Adress the admin server will bind to. Default to localhost, set to 0.0.0.0 to use from another machine")
+	grpcPort := flag.String("grpc-port", conf.GRPC.Port, "Deprecated: use ENV GRPC_PORT. Port of gRPC tcp server")                                                                                         //nolint:lll
+	grpcBindAddr := flag.String("grpc-listen", conf.GRPC.Host, "Deprecated: use ENV GRPC_HOST. Address the gRPC server will bind to. Default to localhost, set to 0.0.0.0 to use from another machine")    //nolint:lll
+	adminPort := flag.String("admin-port", conf.HTTP.Port, "Deprecated: use ENV HTTP_PORT. Port of stub admin server")                                                                                     //nolint:lll
+	adminBindAddr := flag.String("admin-listen", conf.HTTP.Host, "Deprecated: use ENV HTTP_HOST. Address the admin server will bind to. Default to localhost, set to 0.0.0.0 to use from another machine") //nolint:lll
 
 	outputPointer := flag.String("output", "", "directory to output server.go. Default is $GOPATH/src/grpc/")
 	flag.StringVar(outputPointer, "o", *outputPointer, "alias for -output")
 
 	stubPath := flag.String("stub", "", "Path where the stub files are (Optional)")
-	imports := flag.String("imports", "/protobuf,/googleapis", "comma separated imports path. default path /protobuf,/googleapis is where gripmock Dockerfile install WKT protos")
+	imports := flag.String("imports", "/protobuf,/googleapis", "comma separated imports path. default path /protobuf,/googleapis is where gripmock Dockerfile install WKT protos") //nolint:lll
 
 	flag.Parse()
 
@@ -73,6 +74,7 @@ func main() {
 		os.Args = append(os.Args[:1], os.Args[2:]...)
 	}
 
+	//nolint:godox
 	// fixme: move validation of required arguments to a separate service
 	logger.Info().Str("release", buildRelease).Msg("Starting GripMock")
 	if os.Getenv("GOPATH") == "" {
@@ -120,7 +122,7 @@ func main() {
 	run, chErr := runGrpcServer(ctx, output)
 
 	// This is a kind of crutch, but now there is no other solution.
-	//I have an idea to combine gripmock and grpcmock services into one, then this check will be easier to do.
+	// I have an idea to combine gripmock and grpcmock services into one, then this check will be easier to do.
 	// Checking the grpc port of the service. If the port appears, the service has started successfully.
 	go func() {
 		var d net.Dialer
@@ -129,6 +131,7 @@ func main() {
 			dialCtx, cancel := context.WithTimeout(ctx, time.Second)
 
 			conn, err := d.DialContext(dialCtx, conf.GRPC.Network, conf.GRPCAddr())
+
 			cancel()
 
 			if err == nil && conn != nil {
@@ -167,7 +170,7 @@ type protocParam struct {
 	imports     []string
 }
 
-func getProtodirs(ctx context.Context, protoPath string, imports []string) []string {
+func getProtodirs(_ context.Context, protoPath string, imports []string) []string {
 	// deduced proto dir from proto path
 	splitPath := strings.Split(protoPath, "/")
 	protoDir := ""
@@ -177,11 +180,13 @@ func getProtodirs(ctx context.Context, protoPath string, imports []string) []str
 
 	// search protoDir prefix
 	protoDirIdx := -1
+
 	for i := range imports {
 		dir := path.Join("protogen", imports[i])
 		if strings.HasPrefix(protoDir, dir) {
 			protoDir = dir
 			protoDirIdx = i
+
 			break
 		}
 	}
@@ -193,8 +198,10 @@ func getProtodirs(ctx context.Context, protoPath string, imports []string) []str
 		if i == protoDirIdx {
 			continue
 		}
+
 		protoDirs = append(protoDirs, dir)
 	}
+
 	return protoDirs
 }
 
@@ -228,32 +235,38 @@ func generateProtoc(ctx context.Context, param protocParam) {
 
 // append gopackage in proto files if doesn't have any.
 func fixGoPackage(ctx context.Context, protoPaths []string) []string {
-	var results []string
+	results := make([]string, 0, len(protoPaths))
 
 	for _, protoPath := range protoPaths {
-		pile, err := os.OpenFile(protoPath, os.O_RDONLY, 0600)
+		pile, err := os.OpenFile(protoPath, os.O_RDONLY, 0o600)
 		if err != nil {
 			zerolog.Ctx(ctx).Err(err).Msgf("unable to open protofile %s", protoPath)
+
 			continue
 		}
+
 		defer pile.Close()
 
 		packageName := "protogen/" + strings.Trim(filepath.Dir(protoPath), "/")
 
-		if err := os.MkdirAll(packageName, 0666); err != nil {
+		if err := os.MkdirAll(packageName, 0o666); err != nil {
 			zerolog.Ctx(ctx).Err(err).Msgf("unable to create temp dir %s", protoPath)
+
 			continue
 		}
 
 		tmp, err := os.Create(filepath.Join(packageName, filepath.Base(protoPath)))
 		if err != nil {
 			zerolog.Ctx(ctx).Err(err).Msgf("unable to create temp file %s", protoPath)
+
 			continue
 		}
+
 		defer tmp.Close()
 
 		if _, err = io.Copy(patcher.NewWriterWrapper(tmp, packageName), pile); err != nil {
 			zerolog.Ctx(ctx).Err(err).Msgf("unable to copy file %s", protoPath)
+
 			continue
 		}
 
@@ -264,7 +277,7 @@ func fixGoPackage(ctx context.Context, protoPaths []string) []string {
 }
 
 func runGrpcServer(ctx context.Context, output string) (*exec.Cmd, <-chan error) {
-	run := exec.CommandContext(ctx, "go", "run", output+"server.go")
+	run := exec.CommandContext(ctx, "go", "run", output+"server.go") //nolint:gosec
 	run.Stdout = os.Stdout
 	run.Stderr = os.Stderr
 
@@ -275,6 +288,7 @@ func runGrpcServer(ctx context.Context, output string) (*exec.Cmd, <-chan error)
 
 	zerolog.Ctx(ctx).Info().Int("pid", run.Process.Pid).Msg("gRPC-service started")
 	runErr := make(chan error)
+
 	go func() {
 		runErr <- run.Wait()
 	}()

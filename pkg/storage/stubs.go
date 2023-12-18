@@ -11,8 +11,10 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-var ErrServiceNotFound = errors.New("service not found")
-var ErrMethodNotFound = errors.New("method not found")
+var (
+	ErrServiceNotFound = errors.New("service not found")
+	ErrMethodNotFound  = errors.New("method not found")
+)
 
 type Stub struct {
 	ID      *uuid.UUID `json:"id,omitempty"`
@@ -106,6 +108,7 @@ func (r *StubStorage) Delete(args ...uuid.UUID) {
 	defer txn.Commit()
 
 	var total int64
+
 	for _, arg := range args {
 		n, _ := txn.DeleteAll(TableName, IDField, arg)
 		total += int64(n)
@@ -157,7 +160,7 @@ func (r *StubStorage) ItemsBy(service, method string, ID *uuid.UUID) ([]storage,
 	var result []storage
 
 	for obj := it.Next(); obj != nil; obj = it.Next() {
-		stub := obj.(*Stub)
+		stub, _ := obj.(*Stub)
 
 		s := storage{
 			ID:      stub.GetID(),
@@ -199,7 +202,7 @@ func (r *StubStorage) Used() []Stub {
 	result := make([]Stub, 0, atomic.LoadInt64(&r.total))
 
 	for obj := it.Next(); obj != nil; obj = it.Next() {
-		stub := obj.(*Stub)
+		stub, _ := obj.(*Stub)
 
 		result = append(result, *stub)
 	}
@@ -230,7 +233,7 @@ func (r *StubStorage) Unused() []Stub {
 	result := make([]Stub, 0, atomic.LoadInt64(&r.total))
 
 	for obj := it.Next(); obj != nil; obj = it.Next() {
-		stub := obj.(*Stub)
+		stub, _ := obj.(*Stub)
 
 		result = append(result, *stub)
 	}
@@ -257,7 +260,7 @@ func (r *StubStorage) Stubs() []Stub {
 	result := make([]Stub, 0, atomic.LoadInt64(&r.total))
 
 	for obj := it.Next(); obj != nil; obj = it.Next() {
-		stub := obj.(*Stub)
+		stub, _ := obj.(*Stub)
 
 		result = append(result, *stub)
 	}

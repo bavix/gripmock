@@ -29,14 +29,17 @@ func (e *engine) Execute(name string, data []byte) ([]byte, error) {
 func (e *engine) uuid2int64(str string) string {
 	v := e.uuid2bytes(str)
 
+	//nolint:gomnd
 	high := int64(v[0]) | int64(v[1])<<8 | int64(v[2])<<16 | int64(v[3])<<24 |
 		int64(v[4])<<32 | int64(v[5])<<40 | int64(v[6])<<48 | int64(v[7])<<56
 
+	//nolint:gomnd
 	low := int64(v[8]) | int64(v[9])<<8 | int64(v[10])<<16 | int64(v[11])<<24 |
 		int64(v[12])<<32 | int64(v[13])<<40 | int64(v[14])<<48 | int64(v[15])<<56
 
 	var buffer bytes.Buffer
 
+	//nolint:errchkjson
 	_ = json.NewEncoder(&buffer).Encode(map[string]int64{
 		"high": high,
 		"low":  low,
@@ -67,7 +70,6 @@ func (e *engine) bytes2base64(v []byte) string {
 	return base64.StdEncoding.EncodeToString(v)
 }
 
-//nolint:gomnd
 func (e *engine) funcMap() template.FuncMap {
 	return template.FuncMap{
 		"bytes":         e.bytes,

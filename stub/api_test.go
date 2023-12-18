@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bavix/gripmock/internal/app"
@@ -23,6 +22,7 @@ func TestStub(t *testing.T) {
 
 	api, _ := app.NewRestServer("")
 
+	//nolint:lll
 	cases := []test{
 		{
 			name: "add simple stub",
@@ -295,6 +295,7 @@ func TestStub(t *testing.T) {
                                     "code": 3
 								}
 							}`
+
 				return httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.AddStub,
@@ -317,6 +318,7 @@ func TestStub(t *testing.T) {
 								"cities": ["Istanbul", "Jakarta", "Winterfell"]
 						}
 					}`
+
 				return httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchStubs,
@@ -344,6 +346,7 @@ func TestStub(t *testing.T) {
 									"error":"error msg"
 								}
 							}`
+
 				return httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.AddStub,
@@ -366,6 +369,7 @@ func TestStub(t *testing.T) {
 								"cities": ["Istanbul", "Jakarta", "Winterfell"]
 						}
 					}`
+
 				return httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			handler: api.SearchStubs,
@@ -524,7 +528,7 @@ func TestStub(t *testing.T) {
 			v.handler(wrt, req)
 			res, err := io.ReadAll(wrt.Result().Body)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.JSONEq(t, v.expect, string(res), string(res))
 		})
 	}
@@ -542,8 +546,12 @@ func TestStub(t *testing.T) {
 
 		res, err := io.ReadAll(listWrt.Result().Body)
 
-		assert.NoError(t, err)
+		require.NoError(t, listWrt.Result().Body.Close())
+
+		require.NoError(t, err)
 		require.Equal(t, http.StatusNoContent, deleteWrt.Result().StatusCode)
+
+		require.NoError(t, deleteWrt.Result().Body.Close())
 
 		require.JSONEq(t, "[]", string(res))
 	})
