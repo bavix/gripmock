@@ -22,14 +22,17 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	_ "google.golang.org/grpc/encoding/gzip"
+	"github.com/rs/zerolog"
 
 	"github.com/bavix/gripmock/pkg/sdk"
+	"github.com/bavix/gripmock/pkg/utils"
 )
 {{ range $package, $alias := .Dependencies }}
 import {{$alias}} "{{$package}}"
 {{end}}
 const (
-	TCP_ADDRESS  = "{{.GrpcAddr}}"
+	GRPC_NETWORK  = "{{.GrpcNet}}"
+	GRPC_ADDR  = "{{.GrpcAddr}}"
 	HTTP_PORT = ":{{.AdminPort}}"
 )
 
@@ -38,9 +41,11 @@ const (
 {{ end }}
 
 func main() {
-	lis, err := net.Listen("tcp", TCP_ADDRESS)
+	logger := utils.NewLogger(zerolog.InfoLevel)
+
+	lis, err := net.Listen(GRPC_NETWORK, GRPC_ADDR)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+	    logger.Fatal().Err(err).Msg("failed to listen")
 	}
 
 	s := grpc.NewServer()
@@ -48,10 +53,14 @@ func main() {
 	{{ template "register_services" . }}
 	{{ end }}
 
-	reflection.Register(s)
-	fmt.Println("Serving gRPC on tcp://" + TCP_ADDRESS)
+    reflection.Register(s)
+
+	logger.Info().
+	    Str("addr", fmt.Sprintf("%s://%s", GRPC_NETWORK, GRPC_ADDR)).
+	    Msg("Serving gRPC")
+
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+	    logger.Fatal().Err(err).Msg("server ended")
 	}
 }
 

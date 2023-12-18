@@ -1,17 +1,18 @@
 package stub
 
 import (
-	"fmt"
-	"log"
+	"context"
+	"errors"
 	"net"
 	"net/http"
-	"os"
+	"time"
 
-	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/rs/zerolog"
 
 	"github.com/bavix/gripmock/internal/app"
 	"github.com/bavix/gripmock/internal/domain/rest"
+	"github.com/bavix/gripmock/internal/pkg/muxmiddleware"
 )
 
 type Options struct {
@@ -20,33 +21,46 @@ type Options struct {
 	StubPath string
 }
 
-const DefaultPort = "4771"
+func RunRestServer(ctx context.Context, ch chan struct{}, opt Options) {
+	const timeout = time.Millisecond * 25
 
-func RunRestServer(ch chan struct{}, opt Options) {
-	if opt.Port == "" {
-		opt.Port = DefaultPort
-	}
 	addr := net.JoinHostPort(opt.BindAddr, opt.Port)
 
 	apiServer, _ := app.NewRestServer(opt.StubPath)
 
 	router := mux.NewRouter()
+	router.Use(muxmiddleware.RequestLogger)
 	rest.HandlerFromMuxWithBaseURL(apiServer, router, "/api")
 
-	fmt.Println("Serving stub admin on http://" + addr)
+	srv := &http.Server{
+		Addr:              addr,
+		ReadHeaderTimeout: timeout,
+		BaseContext: func(listener net.Listener) context.Context {
+			return ctx
+		},
+		Handler: router,
+	}
+
+	zerolog.Ctx(ctx).
+		Info().
+		Str("addr", addr).
+		Msg("stub-manager started")
+
 	go func() {
-		handler := handlers.CompressHandler(handlers.LoggingHandler(os.Stdout, router))
 		// nosemgrep:go.lang.security.audit.net.use-tls.use-tls
-		err := http.ListenAndServe(addr, handler)
-		log.Fatal(err)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			zerolog.Ctx(ctx).Fatal().Err(err).Msg("stub manager completed")
+		}
 	}()
 
 	go func() {
 		select {
+		case <-ctx.Done():
+			return
 		case <-ch:
 			apiServer.ServiceReady()
 		}
 
-		log.Println("gRPC-service is ready to accept requests")
+		zerolog.Ctx(ctx).Info().Msg("gRPC-service is ready to accept requests")
 	}()
 }

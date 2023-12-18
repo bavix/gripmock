@@ -55,7 +55,9 @@ func main() {
 	buf := new(bytes.Buffer)
 	err = generateServer(protos, &Options{
 		writer:    buf,
+		adminHost: params["admin-host"],
 		adminPort: params["admin-port"],
+		grpcNet:   params["grpc-network"],
 		grpcAddr:  net.JoinHostPort(params["grpc-address"], params["grpc-port"]),
 	})
 
@@ -79,7 +81,9 @@ func main() {
 type generatorParam struct {
 	Services     []Service
 	Dependencies map[string]string
+	GrpcNet      string
 	GrpcAddr     string
+	AdminHost    string
 	AdminPort    string
 	PbPath       string
 }
@@ -110,7 +114,9 @@ const (
 
 type Options struct {
 	writer    io.Writer
+	grpcNet   string
 	grpcAddr  string
+	adminHost string
 	adminPort string
 	pbPath    string
 	format    bool
@@ -137,7 +143,9 @@ func generateServer(protos []*descriptorpb.FileDescriptorProto, opt *Options) er
 	param := generatorParam{
 		Services:     services,
 		Dependencies: deps,
+		GrpcNet:      opt.grpcNet,
 		GrpcAddr:     opt.grpcAddr,
+		AdminHost:    opt.adminHost,
 		AdminPort:    opt.adminPort,
 		PbPath:       opt.pbPath,
 	}
