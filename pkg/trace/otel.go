@@ -33,7 +33,7 @@ func InitTracer(ctx context.Context, appName string, otlpTrace OTLPTrace) error 
 
 	tp := trace.NewTracerProvider(
 		trace.WithSampler(trace.TraceIDRatioBased(otlpTrace.SampleRatio)),
-		trace.WithBatcher(exporter),
+		trace.WithSyncer(exporter),
 		trace.WithResource(
 			resource.NewWithAttributes(
 				semconv.SchemaURL,
