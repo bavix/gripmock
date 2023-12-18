@@ -59,4 +59,4 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
           build-args: |
-            buildRelease="${{ github.ref_name }}"
+            buildRelease=${{ github.ref_name }}
