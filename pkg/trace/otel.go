@@ -2,6 +2,7 @@ package trace
 
 import (
 	"context"
+	"net"
 
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
@@ -12,14 +13,15 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.21.0"
 )
 
-const appName = "gripmock"
-
-func InitTracer(ctx context.Context, otlpTrace OTLPTrace) error {
+func InitTracer(ctx context.Context, appName string, otlpTrace OTLPTrace) error {
 	if !otlpTrace.UseTrace() {
 		return nil
 	}
 
-	options := []otlptracegrpc.Option{otlptracegrpc.WithEndpoint(otlpTrace.Endpoint)}
+	options := []otlptracegrpc.Option{
+		otlptracegrpc.WithEndpoint(
+			net.JoinHostPort(otlpTrace.Host, otlpTrace.Port)),
+	}
 	if !otlpTrace.TLS {
 		options = append(options, otlptracegrpc.WithInsecure())
 	}

@@ -25,9 +25,11 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/bavix/gripmock/pkg/grpccontext"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/bavix/gripmock/pkg/sdk"
 	"github.com/bavix/gripmock/pkg/utils"
+	"github.com/bavix/gripmock/pkg/trace"
 )
 {{ range $package, $alias := .Dependencies }}
 import {{$alias}} "{{$package}}"
@@ -43,6 +45,8 @@ const (
 {{ end }}
 
 func main() {
+	http.DefaultTransport = otelhttp.NewTransport(http.DefaultTransport)
+
 	logger := utils.NewLogger(zerolog.InfoLevel)
 
 	lis, err := net.Listen(GRPC_NETWORK, GRPC_ADDR)
@@ -51,6 +55,15 @@ func main() {
 	}
 
 	ctx := logger.WithContext(context.Background())
+
+    if err := trace.InitTracer(ctx, "gripmock-gen", trace.OTLPTrace{
+        Host: "{{ .OtlpHost }}",
+        Port: "{{ .OtlpPort }}",
+        TLS: {{ .OtlpTLS }},
+        SampleRatio: {{ .OtlpSampleRatio }},
+    }); err != nil {
+        logger.Err(err).Msg("connect to tracer")
+    }
 
 	s := grpc.NewServer(
         grpc.StatsHandler(otelgrpc.NewServerHandler()),
@@ -185,7 +198,9 @@ type response struct {
 }
 
 func findStub(ctx context.Context, service, method string, md metadata.MD, in, out protoreflect.ProtoMessage) error {
-    api, err := sdk.NewClientWithResponses(fmt.Sprintf("http://localhost%s/api", HTTP_PORT))
+    api, err := sdk.NewClientWithResponses(fmt.Sprintf("http://localhost%s/api", HTTP_PORT),
+        sdk.WithHTTPClient(http.DefaultClient),
+    )
     if err != nil {
         return err
     }

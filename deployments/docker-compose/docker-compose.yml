@@ -3,21 +3,32 @@ services:
   simple:
     image: bavix/gripmock:latest
     entrypoint: example/simple/entrypoint.sh
+    environment: &env
+      OTLP_TRACE_GRPC_HOST: 192.168.1.186
+      OTLP_TRACE_GRPC_PORT: 4317
+      OTLP_TRACE_TLS: 0
+      OTLP_SAMPLE_RATIO: 1
   stream:
     image: bavix/gripmock:latest
     entrypoint: example/stream/entrypoint.sh
+    environment: *env
   well_known_types:
     image: bavix/gripmock:latest
     entrypoint: example/well_known_types/entrypoint.sh
+    environment: *env
   multi-package:
     image: bavix/gripmock:latest
     entrypoint: example/multi-package/entrypoint.sh
+    environment: *env
   multi-files:
     image: bavix/gripmock:latest
     entrypoint: example/multi-files/entrypoint.sh
+    environment: *env
   one-of:
     image: bavix/gripmock:latest
     entrypoint: example/one-of/entrypoint.sh
+    environment: *env
   stub-subfolders:
     image: bavix/gripmock:latest
     entrypoint: example/stub-subfolders/entrypoint.sh
+    environment: *env

@@ -22,6 +22,7 @@ import (
 
 	"github.com/bavix/gripmock/internal/config"
 	"github.com/bavix/gripmock/internal/pkg/patcher"
+	"github.com/bavix/gripmock/pkg/trace"
 	"github.com/bavix/gripmock/pkg/utils"
 	_ "github.com/bavix/gripmock/protogen"
 	"github.com/bavix/gripmock/stub"
@@ -47,6 +48,10 @@ func main() {
 	defer cancel()
 
 	ctx = logger.WithContext(ctx)
+
+	if err := trace.InitTracer(ctx, "gripmock", conf.OTLPTrace); err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg("connect to tracer")
+	}
 
 	// deprecated. will be removed in 3.x
 	grpcPort := flag.String("grpc-port", conf.GRPC.Port, "Deprecated: use ENV GRPC_PORT. Port of gRPC tcp server")                                                                                         //nolint:lll
@@ -108,14 +113,18 @@ func main() {
 
 	// generate pb.go and grpc server based on proto
 	generateProtoc(ctx, protocParam{
-		protoPath:   protoPaths,
-		adminHost:   *adminBindAddr,
-		adminPort:   *adminPort,
-		grpcNet:     conf.GRPC.Network,
-		grpcAddress: *grpcBindAddr,
-		grpcPort:    *grpcPort,
-		output:      output,
-		imports:     importDirs,
+		protoPath:       protoPaths,
+		adminHost:       *adminBindAddr,
+		adminPort:       *adminPort,
+		grpcNet:         conf.GRPC.Network,
+		grpcAddress:     *grpcBindAddr,
+		grpcPort:        *grpcPort,
+		otlpHost:        conf.OTLPTrace.Host,
+		otlpPort:        conf.OTLPTrace.Port,
+		otlpTLS:         conf.OTLPTrace.TLS,
+		otlpSampleRatio: conf.OTLPTrace.SampleRatio,
+		output:          output,
+		imports:         importDirs,
 	})
 
 	// and run
@@ -160,14 +169,18 @@ func main() {
 }
 
 type protocParam struct {
-	protoPath   []string
-	adminHost   string
-	adminPort   string
-	grpcAddress string
-	grpcNet     string
-	grpcPort    string
-	output      string
-	imports     []string
+	protoPath       []string
+	adminHost       string
+	adminPort       string
+	grpcAddress     string
+	grpcNet         string
+	grpcPort        string
+	output          string
+	otlpHost        string
+	otlpPort        string
+	otlpTLS         bool
+	otlpSampleRatio float64
+	imports         []string
 }
 
 func getProtodirs(_ context.Context, protoPath string, imports []string) []string {
@@ -218,12 +231,22 @@ func generateProtoc(ctx context.Context, param protocParam) {
 	// the latest go-grpc plugin will generate subfolders under $GOPATH/src based on go_package option
 	pbOutput := os.Getenv("GOPATH") + "/src"
 
+	gmOut := []string{
+		fmt.Sprintf(
+			"admin-host=%s,admin-port=%s",
+			param.adminHost, param.adminPort),
+		fmt.Sprintf("grpc-network=%s,grpc-address=%s,grpc-port=%s",
+			param.grpcNet, param.grpcAddress, param.grpcPort),
+		fmt.Sprintf("otlp-host=%s,otlp-port=%s,otlp-tls=%d,otlp-ratio=%f",
+			param.otlpHost, param.otlpPort, bool2int(param.otlpTLS), param.otlpSampleRatio),
+	}
+
 	args = append(args, param.protoPath...)
 	args = append(args, "--go_out="+pbOutput)
 	args = append(args, "--go-grpc_out="+pbOutput)
 	args = append(args, fmt.Sprintf(
-		"--gripmock_out=admin-host=%s,admin-port=%s,grpc-network=%s,grpc-address=%s,grpc-port=%s:%s",
-		param.adminHost, param.adminPort, param.grpcNet, param.grpcAddress, param.grpcPort, param.output))
+		"--gripmock_out=%s:%s",
+		strings.Join(gmOut, ","), param.output))
 	protoc := exec.Command("protoc", args...)
 	protoc.Stdout = os.Stdout
 	protoc.Stderr = os.Stderr
@@ -231,6 +254,14 @@ func generateProtoc(ctx context.Context, param protocParam) {
 	if err != nil {
 		zerolog.Ctx(ctx).Fatal().Err(err).Msg("fail on protoc")
 	}
+}
+
+func bool2int(b bool) int {
+	if b {
+		return 1
+	}
+
+	return 0
 }
 
 // append gopackage in proto files if doesn't have any.

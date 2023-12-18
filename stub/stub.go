@@ -13,6 +13,7 @@ import (
 	"github.com/bavix/gripmock/internal/app"
 	"github.com/bavix/gripmock/internal/domain/rest"
 	"github.com/bavix/gripmock/internal/pkg/muxmiddleware"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
 type Options struct {
@@ -30,6 +31,7 @@ func RunRestServer(ctx context.Context, ch chan struct{}, opt Options) {
 
 	router := mux.NewRouter()
 	router.Use(muxmiddleware.RequestLogger)
+	router.Use(otelmux.Middleware("gripmock-manager"))
 	rest.HandlerFromMuxWithBaseURL(apiServer, router, "/api")
 
 	srv := &http.Server{
