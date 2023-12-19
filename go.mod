@@ -33,7 +33,7 @@ require (
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect

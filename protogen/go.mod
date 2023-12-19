@@ -6,7 +6,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.46.1
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1
 	google.golang.org/genproto/googleapis/api v0.0.0-20231212172506-995d672761c0
-	google.golang.org/grpc v1.60.0
+	google.golang.org/grpc v1.60.1
 	google.golang.org/protobuf v1.31.0
 )
 
