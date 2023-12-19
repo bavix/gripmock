@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -52,11 +53,20 @@ func main() {
 		params[split[0]] = split[1]
 	}
 
+	otlpTLS, _ := strconv.ParseBool(params["otlp-tls"])
+	otlpRatioFloat, _ := strconv.ParseFloat(params["otlp-ratio"], 64)
+
 	buf := new(bytes.Buffer)
 	err = generateServer(protos, &Options{
-		writer:    buf,
-		adminPort: params["admin-port"],
-		grpcAddr:  net.JoinHostPort(params["grpc-address"], params["grpc-port"]),
+		writer:          buf,
+		adminHost:       params["admin-host"],
+		adminPort:       params["admin-port"],
+		grpcNet:         params["grpc-network"],
+		grpcAddr:        net.JoinHostPort(params["grpc-address"], params["grpc-port"]),
+		otlpTLS:         otlpTLS,
+		otlpHost:        params["otlp-host"],
+		otlpPort:        params["otlp-port"],
+		otlpSampleRatio: otlpRatioFloat,
 	})
 
 	if err != nil {
@@ -77,11 +87,17 @@ func main() {
 }
 
 type generatorParam struct {
-	Services     []Service
-	Dependencies map[string]string
-	GrpcAddr     string
-	AdminPort    string
-	PbPath       string
+	Services        []Service
+	Dependencies    map[string]string
+	GrpcNet         string
+	GrpcAddr        string
+	AdminHost       string
+	AdminPort       string
+	OtlpHost        string
+	OtlpPort        string
+	OtlpTLS         bool
+	OtlpSampleRatio float64
+	PbPath          string
 }
 
 type Service struct {
@@ -109,11 +125,16 @@ const (
 )
 
 type Options struct {
-	writer    io.Writer
-	grpcAddr  string
-	adminPort string
-	pbPath    string
-	format    bool
+	writer          io.Writer
+	grpcNet         string
+	grpcAddr        string
+	adminHost       string
+	adminPort       string
+	otlpHost        string
+	otlpPort        string
+	otlpTLS         bool
+	otlpSampleRatio float64
+	pbPath          string
 }
 
 var ServerTemplate string
@@ -135,11 +156,17 @@ func generateServer(protos []*descriptorpb.FileDescriptorProto, opt *Options) er
 	deps := resolveDependencies(protos)
 
 	param := generatorParam{
-		Services:     services,
-		Dependencies: deps,
-		GrpcAddr:     opt.grpcAddr,
-		AdminPort:    opt.adminPort,
-		PbPath:       opt.pbPath,
+		Services:        services,
+		Dependencies:    deps,
+		GrpcNet:         opt.grpcNet,
+		GrpcAddr:        opt.grpcAddr,
+		AdminHost:       opt.adminHost,
+		AdminPort:       opt.adminPort,
+		OtlpHost:        opt.otlpHost,
+		OtlpPort:        opt.otlpPort,
+		OtlpTLS:         opt.otlpTLS,
+		OtlpSampleRatio: opt.otlpSampleRatio,
+		PbPath:          opt.pbPath,
 	}
 
 	if opt == nil {
@@ -173,7 +200,6 @@ func generateServer(protos []*descriptorpb.FileDescriptorProto, opt *Options) er
 }
 
 func resolveDependencies(protos []*descriptorpb.FileDescriptorProto) map[string]string {
-
 	deps := map[string]string{}
 	for _, proto := range protos {
 		alias, pkg := getGoPackage(proto)
@@ -193,9 +219,11 @@ func resolveDependencies(protos []*descriptorpb.FileDescriptorProto) map[string]
 	return deps
 }
 
-var aliases = map[string]bool{}
-var aliasNum = 1
-var packages = map[string]string{}
+var (
+	aliases  = map[string]bool{}
+	aliasNum = 1
+	packages = map[string]string{}
+)
 
 func getGoPackage(proto *descriptorpb.FileDescriptorProto) (alias string, goPackage string) {
 	goPackage = proto.GetOptions().GetGoPackage()

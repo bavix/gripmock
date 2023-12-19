@@ -6,10 +6,11 @@ import (
 	"os"
 	"time"
 
-	pb "github.com/bavix/gripmock/protogen/example/multi-package"
-	multi_package "github.com/bavix/gripmock/protogen/example/multi-package/bar"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	pb "github.com/bavix/gripmock/protogen/example/multi-package"
+	multi_package "github.com/bavix/gripmock/protogen/example/multi-package/bar"
 )
 
 //nolint:gomnd

@@ -22,14 +22,21 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	_ "google.golang.org/grpc/encoding/gzip"
+	"github.com/rs/zerolog"
+	"github.com/bavix/gripmock/pkg/grpccontext"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/bavix/gripmock/pkg/sdk"
+	"github.com/bavix/gripmock/pkg/utils"
+	"github.com/bavix/gripmock/pkg/trace"
 )
 {{ range $package, $alias := .Dependencies }}
 import {{$alias}} "{{$package}}"
 {{end}}
 const (
-	TCP_ADDRESS  = "{{.GrpcAddr}}"
+	GRPC_NETWORK  = "{{.GrpcNet}}"
+	GRPC_ADDR  = "{{.GrpcAddr}}"
 	HTTP_PORT = ":{{.AdminPort}}"
 )
 
@@ -38,20 +45,47 @@ const (
 {{ end }}
 
 func main() {
-	lis, err := net.Listen("tcp", TCP_ADDRESS)
+	http.DefaultTransport = otelhttp.NewTransport(http.DefaultTransport)
+
+	logger := utils.NewLogger(zerolog.InfoLevel)
+
+	lis, err := net.Listen(GRPC_NETWORK, GRPC_ADDR)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+	    logger.Fatal().Err(err).Msg("failed to listen")
 	}
 
-	s := grpc.NewServer()
+	ctx := logger.WithContext(context.Background())
+
+    if err := trace.InitTracer(ctx, "gripmock-gen", trace.OTLPTrace{
+        Host: "{{ .OtlpHost }}",
+        Port: "{{ .OtlpPort }}",
+        TLS: {{ .OtlpTLS }},
+        SampleRatio: {{ .OtlpSampleRatio }},
+    }); err != nil {
+        logger.Err(err).Msg("connect to tracer")
+    }
+
+	s := grpc.NewServer(
+        grpc.StatsHandler(otelgrpc.NewServerHandler()),
+        grpc.ChainUnaryInterceptor([]grpc.UnaryServerInterceptor{
+            grpccontext.UnaryInterceptor(ctx),
+        }...),
+        grpc.ChainStreamInterceptor([]grpc.StreamServerInterceptor{
+            grpccontext.StreamInterceptor(ctx),
+        }...),
+    )
 	{{ range .Services }}
 	{{ template "register_services" . }}
 	{{ end }}
 
-	reflection.Register(s)
-	fmt.Println("Serving gRPC on tcp://" + TCP_ADDRESS)
+    reflection.Register(s)
+
+	logger.Info().
+	    Str("addr", fmt.Sprintf("%s://%s", GRPC_NETWORK, GRPC_ADDR)).
+	    Msg("Serving gRPC")
+
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+	    logger.Fatal().Err(err).Msg("server ended")
 	}
 }
 
@@ -164,7 +198,9 @@ type response struct {
 }
 
 func findStub(ctx context.Context, service, method string, md metadata.MD, in, out protoreflect.ProtoMessage) error {
-    api, err := sdk.NewClientWithResponses(fmt.Sprintf("http://localhost%s/api", HTTP_PORT))
+    api, err := sdk.NewClientWithResponses(fmt.Sprintf("http://localhost%s/api", HTTP_PORT),
+        sdk.WithHTTPClient(http.DefaultClient),
+    )
     if err != nil {
         return err
     }

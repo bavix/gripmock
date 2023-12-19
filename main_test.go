@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"reflect"
 	"testing"
 )
@@ -49,9 +50,12 @@ func Test_getProtodirs(t *testing.T) {
 			},
 		},
 	}
+
+	ctx := context.Background()
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getProtodirs(tt.args.protoPath, tt.args.imports); !reflect.DeepEqual(got, tt.want) {
+			if got := getProtodirs(ctx, tt.args.protoPath, tt.args.imports); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("getProtodirs() = %v, want %v", got, tt.want)
 			}
 		})

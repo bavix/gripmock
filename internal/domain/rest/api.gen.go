@@ -378,7 +378,7 @@ type GorillaServerOptions struct {
 	ErrorHandlerFunc func(w http.ResponseWriter, r *http.Request, err error)
 }
 
-// HandlerFromMux creates http.Handler with routing matching OpenAPI spec based on the provided mux.
+// HandlerFromMux creates http.Handler with routing matching OpenAPI spec based on the provided muxmiddleware.
 func HandlerFromMux(si ServerInterface, r *mux.Router) http.Handler {
 	return HandlerWithOptions(si, GorillaServerOptions{
 		BaseRouter: r,

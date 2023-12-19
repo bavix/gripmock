@@ -5,10 +5,11 @@ import (
 	"log"
 	"time"
 
-	pb "github.com/bavix/gripmock/protogen/example/well_known_types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	empty "google.golang.org/protobuf/types/known/emptypb"
+
+	pb "github.com/bavix/gripmock/protogen/example/well_known_types"
 )
 
 // in order to generate this .pb.go you need to have https://github.com/google/protobuf.git cloned

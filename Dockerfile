@@ -1,6 +1,8 @@
 ARG BUILD_ARG_GO_VERSION=1.21
-ARG BUILD_ARG_ALPINE_VERSION=3.18
+ARG BUILD_ARG_ALPINE_VERSION=3.19
 FROM golang:${BUILD_ARG_GO_VERSION}-alpine${BUILD_ARG_ALPINE_VERSION} AS builder
+
+ARG buildRelease
 
 # install tools (git, protobuf, protoc-gen-go, protoc-grn-go-grpc)
 RUN apk -U --no-cache add git protobuf curl &&\
@@ -23,7 +25,7 @@ COPY . /go/src/github.com/bavix/gripmock
 RUN cd /go/src/github.com/bavix/gripmock/protoc-gen-gripmock &&\
     go install -v -ldflags "-s -w" &&\
     cd /go/src/github.com/bavix/gripmock &&\
-    go install -v -ldflags "-s -w"
+    go install -v -ldflags "-X 'main.buildRelease=${buildRelease:-dev}' -s -w"
 
 WORKDIR /go/src/github.com/bavix/gripmock
 

@@ -15,7 +15,7 @@ func TestWriterWrapper_OptionUpdate(t *testing.T) {
 	pile, err := os.OpenFile(
 		"./../../../protogen/example/multi-files/file1.proto",
 		os.O_RDONLY,
-		0444,
+		0o444,
 	)
 	require.NoError(t, err)
 

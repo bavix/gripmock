@@ -6,9 +6,10 @@ import (
 	"os"
 	"time"
 
-	oneof "github.com/bavix/gripmock/protogen/example/one-of"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	oneof "github.com/bavix/gripmock/protogen/example/one-of"
 )
 
 //nolint:gomnd

@@ -1,6 +1,8 @@
 package protogen
 
 import (
+	_ "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	_ "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	_ "google.golang.org/genproto/googleapis/api/annotations"
 	_ "google.golang.org/grpc"
 	_ "google.golang.org/grpc/codes"
