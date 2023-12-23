@@ -2,6 +2,10 @@ ARG BUILD_ARG_GO_VERSION=1.21
 ARG BUILD_ARG_ALPINE_VERSION=3.19
 FROM golang:${BUILD_ARG_GO_VERSION}-alpine${BUILD_ARG_ALPINE_VERSION} AS builder
 
+LABEL org.opencontainers.image.source=https://github.com/bavix/gripmock
+LABEL org.opencontainers.image.description="gRPC Mock Server"
+LABEL org.opencontainers.image.licenses=Apache-2.0
+
 ARG buildRelease
 
 # install tools (git, protobuf, protoc-gen-go, protoc-grn-go-grpc)
