@@ -60,3 +60,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             buildRelease=${{ github.ref_name }}
+          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
