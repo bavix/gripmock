@@ -6,7 +6,7 @@ LABEL org.opencontainers.image.source=https://github.com/bavix/gripmock
 LABEL org.opencontainers.image.description="gRPC Mock Server"
 LABEL org.opencontainers.image.licenses=Apache-2.0
 
-ARG buildRelease
+ARG version
 
 # install tools (git, protobuf, protoc-gen-go, protoc-grn-go-grpc)
 RUN apk -U --no-cache add git protobuf curl &&\
@@ -29,7 +29,7 @@ COPY . /go/src/github.com/bavix/gripmock
 RUN cd /go/src/github.com/bavix/gripmock/protoc-gen-gripmock &&\
     go install -v -ldflags "-s -w" &&\
     cd /go/src/github.com/bavix/gripmock &&\
-    go install -v -ldflags "-X 'main.buildRelease=${buildRelease:-dev}' -s -w"
+    go install -v -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:-dev}' -s -w"
 
 WORKDIR /go/src/github.com/bavix/gripmock
 
