@@ -35,9 +35,10 @@ func (s *Stub) GetID() uuid.UUID {
 }
 
 type Input struct {
-	Equals   map[string]interface{} `json:"equals"`
-	Contains map[string]interface{} `json:"contains"`
-	Matches  map[string]interface{} `json:"matches"`
+	IgnoreArrayOrder bool                   `json:"ignoreArrayOrder"`
+	Equals           map[string]interface{} `json:"equals"`
+	Contains         map[string]interface{} `json:"contains"`
+	Matches          map[string]interface{} `json:"matches"`
 }
 
 type Output struct {

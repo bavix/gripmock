@@ -90,7 +90,7 @@ func inputCmp(input storage.Input, data map[string]interface{}) (*closeMatch, er
 	if expect := input.Equals; expect != nil {
 		closeMatchVal := closeMatch{rule: "equals", expect: expect}
 
-		if equals(input.Equals, data) {
+		if equals(input.Equals, data, input.IgnoreArrayOrder) {
 			return &closeMatchVal, nil
 		}
 
@@ -100,7 +100,7 @@ func inputCmp(input storage.Input, data map[string]interface{}) (*closeMatch, er
 	if expect := input.Contains; expect != nil {
 		closeMatchVal := closeMatch{rule: "contains", expect: expect}
 
-		if contains(input.Contains, data) {
+		if contains(input.Contains, data, input.IgnoreArrayOrder) {
 			return &closeMatchVal, nil
 		}
 
@@ -110,7 +110,7 @@ func inputCmp(input storage.Input, data map[string]interface{}) (*closeMatch, er
 	if expect := input.Matches; expect != nil {
 		closeMatchVal := closeMatch{rule: "matches", expect: expect}
 
-		if matches(input.Matches, data) {
+		if matches(input.Matches, data, input.IgnoreArrayOrder) {
 			return &closeMatchVal, nil
 		}
 
@@ -211,20 +211,20 @@ func regexMatch(expect, actual interface{}) bool {
 	return reflect.DeepEqual(expect, actual)
 }
 
-func equals(expect, actual map[string]interface{}) bool {
-	return find(expect, actual, true, true, reflect.DeepEqual)
+func equals(expect, actual map[string]interface{}, ignoreArrayOrder bool) bool {
+	return find(expect, actual, true, true, reflect.DeepEqual, ignoreArrayOrder)
 }
 
-func contains(expect, actual map[string]interface{}) bool {
-	return find(expect, actual, true, false, reflect.DeepEqual)
+func contains(expect, actual map[string]interface{}, ignoreArrayOrder bool) bool {
+	return find(expect, actual, true, false, reflect.DeepEqual, ignoreArrayOrder)
 }
 
-func matches(expect, actual map[string]interface{}) bool {
-	return find(expect, actual, true, false, regexMatch)
+func matches(expect, actual map[string]interface{}, ignoreArrayOrder bool) bool {
+	return find(expect, actual, true, false, regexMatch, ignoreArrayOrder)
 }
 
 //nolint:cyclop
-func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc) bool {
+func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc, ignoreArrayOrder bool) bool {
 	// circuit brake
 	if !acc {
 		return false
@@ -245,9 +245,13 @@ func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc) bool {
 			return false
 		}
 
+		if ignoreArrayOrder {
+			return cmpValue(expectArrayValue, actualArrayValue, f)
+		}
+
 		for expectItemIndex, expectItemValue := range expectArrayValue {
 			actualItemValue := actualArrayValue[expectItemIndex]
-			acc = find(expectItemValue, actualItemValue, acc, exactMatch, f)
+			acc = find(expectItemValue, actualItemValue, acc, exactMatch, f, ignoreArrayOrder)
 		}
 
 		return acc
@@ -270,11 +274,42 @@ func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc) bool {
 
 		for expectItemKey, expectItemValue := range expectMapValue {
 			actualItemValue := actualMapValue[expectItemKey]
-			acc = find(expectItemValue, actualItemValue, acc, exactMatch, f)
+			acc = find(expectItemValue, actualItemValue, acc, exactMatch, f, ignoreArrayOrder)
 		}
 
 		return acc
 	}
 
 	return f(expect, actual)
+}
+
+func cmpValue(a, b []interface{}, f matchFunc) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	if f(a, b) {
+		return true
+	}
+
+	d := len(a)
+	c := make([]interface{}, 0, d)
+
+	for i := 0; i < d; i++ {
+		for ia, va := range a {
+			for ib, vb := range b {
+				if f(va, vb) {
+					c = append(c, va)
+					a = remove(a, ia)
+					b = remove(b, ib)
+				}
+			}
+		}
+	}
+
+	return d == len(c)
+}
+
+func remove(s []interface{}, i int) []interface{} {
+	return append(s[:i], s[i+1:]...)
 }

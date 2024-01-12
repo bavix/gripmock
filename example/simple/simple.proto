@@ -15,6 +15,7 @@ message Request {
   string name = 1;
   int64 vint64 = 2;
   uint64 vuint64 = 3;
+  repeated int64 values = 4;
 }
 
 // The response message containing the greetings

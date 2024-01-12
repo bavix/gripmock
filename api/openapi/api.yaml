@@ -272,6 +272,9 @@ components:
     StubInput:
       type: object
       properties:
+        ignoreArrayOrder:
+          type: boolean
+          default: false
         equals:
           type: object
           additionalProperties: true
