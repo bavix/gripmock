@@ -28,7 +28,7 @@ import (
 	"github.com/bavix/gripmock/stub"
 )
 
-var buildRelease string //nolint:gochecknoglobals
+var version string
 
 //nolint:funlen,cyclop
 func main() {
@@ -81,7 +81,7 @@ func main() {
 
 	//nolint:godox
 	// fixme: move validation of required arguments to a separate service
-	logger.Info().Str("release", buildRelease).Msg("Starting GripMock")
+	logger.Info().Str("release", version).Msg("Starting GripMock")
 	if os.Getenv("GOPATH") == "" {
 		logger.Fatal().Msg("$GOPATH is empty")
 	}
