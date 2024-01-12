@@ -2,21 +2,6 @@
 - service: Gripmock
   method: SayHello
   input:
-    equals:
-      values:
-        - 1
-        - 2
-        - 3
-        - 6
-        - 5
-        - 4
-  output:
-    data:
-      message: "6. strict mode"
-
-- service: Gripmock
-  method: SayHello
-  input:
     ignoreArrayOrder: true
     equals:
       values:

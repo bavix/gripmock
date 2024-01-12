@@ -1,5 +1,8 @@
 version: '3.8'
 services:
+  ms:
+    image: bavix/gripmock:latest
+    entrypoint: example/ms/entrypoint.sh
   simple:
     image: bavix/gripmock:latest
     entrypoint: example/simple/entrypoint.sh

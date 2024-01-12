@@ -295,21 +295,29 @@ func cmpValue(a, b []interface{}, f matchFunc) bool {
 	d := len(a)
 	c := make([]interface{}, 0, d)
 
+	usedA := make(map[int]bool, len(a))
+	usedB := make(map[int]bool, len(b))
+
 	for i := 0; i < d; i++ {
 		for ia, va := range a {
+			if usedA[ia] {
+				continue
+			}
+
 			for ib, vb := range b {
+				if usedB[ib] {
+					continue
+				}
+
 				if f(va, vb) {
 					c = append(c, va)
-					a = remove(a, ia)
-					b = remove(b, ib)
+
+					usedA[ia] = true
+					usedB[ib] = true
 				}
 			}
 		}
 	}
 
 	return d == len(c)
-}
-
-func remove(s []interface{}, i int) []interface{} {
-	return append(s[:i], s[i+1:]...)
 }

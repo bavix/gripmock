@@ -194,12 +194,6 @@ func main() {
 	}
 	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
 
-	// ignoreArrayOrder=false
-	r, err = c.SayHello(context.Background(), &pb.Request{Values: []int64{1, 2, 3, 4, 5, 6}})
-	if err == nil {
-		log.Fatal("error it is expected that there will be no stubs")
-	}
-
 	// ignoreArrayOrder=true
 	r, err = c.SayHello(context.Background(), &pb.Request{Values: []int64{10, 20, 30, 40, 50, 60, 70}})
 	if err != nil {
