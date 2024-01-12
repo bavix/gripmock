@@ -36,8 +36,11 @@
 
 [//]: # (  - [Purge stubs]&#40;sdk-stubs-purge&#41;)
 
-- Specs
-  - [stub server](specs-stub-server)
-  - [protoc-gen-gripmock](specs-protoc-gen-gripmock)
-  - [protogen](specs-protogen)
+[//]: # (- Specs)
+
+[//]: # (  - [stub server]&#40;specs-stub-server&#41;)
+
+[//]: # (  - [protoc-gen-gripmock]&#40;specs-protoc-gen-gripmock&#41;)
+
+[//]: # (  - [protogen]&#40;specs-protogen&#41;)
 
