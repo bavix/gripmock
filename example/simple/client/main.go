@@ -193,4 +193,11 @@ func main() {
 		log.Fatalf("expected: 18446744073709551615, received: %d", r.Vuint64)
 	}
 	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+
+	// ignoreArrayOrder=true
+	r, err = c.SayHello(context.Background(), &pb.Request{Values: []int64{10, 20, 30, 40, 50, 60, 70}})
+	if err != nil {
+		log.Fatalf("error from grpc: %v", err)
+	}
+	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
 }

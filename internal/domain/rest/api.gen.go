@@ -63,9 +63,10 @@ type StubHeaders struct {
 
 // StubInput defines model for StubInput.
 type StubInput struct {
-	Contains map[string]interface{} `json:"contains,omitempty"`
-	Equals   map[string]interface{} `json:"equals,omitempty"`
-	Matches  map[string]interface{} `json:"matches,omitempty"`
+	Contains         map[string]interface{} `json:"contains,omitempty"`
+	Equals           map[string]interface{} `json:"equals,omitempty"`
+	IgnoreArrayOrder *bool                  `json:"ignoreArrayOrder,omitempty"`
+	Matches          map[string]interface{} `json:"matches,omitempty"`
 }
 
 // StubList defines model for StubList.

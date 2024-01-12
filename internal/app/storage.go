@@ -54,7 +54,7 @@ func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage
 	var closestMatch []closeMatch
 
 	for _, strange := range stubs {
-		cmpData, cmpDataErr := inputCmp(strange.Input, stub.Data)
+		cmpData, cmpDataErr := inputCmp(strange.Input, stub.Data, strange.Input.IgnoreArrayOrder)
 		if cmpDataErr != nil {
 			if cmpData != nil {
 				closestMatch = append(closestMatch, *cmpData)
@@ -64,7 +64,7 @@ func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage
 		}
 
 		if strange.CheckHeaders() {
-			if cmpHeaders, cmpHeadersErr := inputCmp(strange.Headers, stub.Headers); cmpHeadersErr != nil {
+			if cmpHeaders, cmpHeadersErr := inputCmp(strange.Headers, stub.Headers, false); cmpHeadersErr != nil {
 				if cmpHeaders != nil {
 					closestMatch = append(closestMatch, closeMatch{
 						rule:         cmpData.rule,
@@ -86,31 +86,31 @@ func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage
 	return nil, stubNotFoundError(stub, closestMatch)
 }
 
-func inputCmp(input storage.Input, data map[string]interface{}) (*closeMatch, error) {
-	if expect := input.Equals; expect != nil {
+func inputCmp(input storage.InputInterface, data map[string]interface{}, ignoreArrayOrder bool) (*closeMatch, error) {
+	if expect := input.GetEquals(); expect != nil {
 		closeMatchVal := closeMatch{rule: "equals", expect: expect}
 
-		if equals(input.Equals, data) {
+		if equals(input.GetEquals(), data, ignoreArrayOrder) {
 			return &closeMatchVal, nil
 		}
 
 		return &closeMatchVal, ErrNotFound
 	}
 
-	if expect := input.Contains; expect != nil {
+	if expect := input.GetContains(); expect != nil {
 		closeMatchVal := closeMatch{rule: "contains", expect: expect}
 
-		if contains(input.Contains, data) {
+		if contains(input.GetContains(), data, ignoreArrayOrder) {
 			return &closeMatchVal, nil
 		}
 
 		return &closeMatchVal, ErrNotFound
 	}
 
-	if expect := input.Matches; expect != nil {
+	if expect := input.GetMatches(); expect != nil {
 		closeMatchVal := closeMatch{rule: "matches", expect: expect}
 
-		if matches(input.Matches, data) {
+		if matches(input.GetMatches(), data, ignoreArrayOrder) {
 			return &closeMatchVal, nil
 		}
 
@@ -211,20 +211,20 @@ func regexMatch(expect, actual interface{}) bool {
 	return reflect.DeepEqual(expect, actual)
 }
 
-func equals(expect, actual map[string]interface{}) bool {
-	return find(expect, actual, true, true, reflect.DeepEqual)
+func equals(expect, actual map[string]interface{}, ignoreArrayOrder bool) bool {
+	return find(expect, actual, true, true, reflect.DeepEqual, ignoreArrayOrder)
 }
 
-func contains(expect, actual map[string]interface{}) bool {
-	return find(expect, actual, true, false, reflect.DeepEqual)
+func contains(expect, actual map[string]interface{}, ignoreArrayOrder bool) bool {
+	return find(expect, actual, true, false, reflect.DeepEqual, ignoreArrayOrder)
 }
 
-func matches(expect, actual map[string]interface{}) bool {
-	return find(expect, actual, true, false, regexMatch)
+func matches(expect, actual map[string]interface{}, ignoreArrayOrder bool) bool {
+	return find(expect, actual, true, false, regexMatch, ignoreArrayOrder)
 }
 
 //nolint:cyclop
-func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc) bool {
+func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc, ignoreArrayOrder bool) bool {
 	// circuit brake
 	if !acc {
 		return false
@@ -245,9 +245,13 @@ func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc) bool {
 			return false
 		}
 
+		if ignoreArrayOrder {
+			return cmpValue(expectArrayValue, actualArrayValue, f)
+		}
+
 		for expectItemIndex, expectItemValue := range expectArrayValue {
 			actualItemValue := actualArrayValue[expectItemIndex]
-			acc = find(expectItemValue, actualItemValue, acc, exactMatch, f)
+			acc = find(expectItemValue, actualItemValue, acc, exactMatch, f, ignoreArrayOrder)
 		}
 
 		return acc
@@ -270,11 +274,50 @@ func find(expect, actual interface{}, acc, exactMatch bool, f matchFunc) bool {
 
 		for expectItemKey, expectItemValue := range expectMapValue {
 			actualItemValue := actualMapValue[expectItemKey]
-			acc = find(expectItemValue, actualItemValue, acc, exactMatch, f)
+			acc = find(expectItemValue, actualItemValue, acc, exactMatch, f, ignoreArrayOrder)
 		}
 
 		return acc
 	}
 
 	return f(expect, actual)
+}
+
+func cmpValue(a, b []interface{}, f matchFunc) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	if f(a, b) {
+		return true
+	}
+
+	d := len(a)
+	c := make([]interface{}, 0, d)
+
+	usedA := make(map[int]bool, len(a))
+	usedB := make(map[int]bool, len(b))
+
+	for i := 0; i < d; i++ {
+		for ia, va := range a {
+			if usedA[ia] {
+				continue
+			}
+
+			for ib, vb := range b {
+				if usedB[ib] {
+					continue
+				}
+
+				if f(va, vb) {
+					c = append(c, va)
+
+					usedA[ia] = true
+					usedB[ib] = true
+				}
+			}
+		}
+	}
+
+	return d == len(c)
 }

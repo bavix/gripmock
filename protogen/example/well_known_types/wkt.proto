@@ -1,15 +1,20 @@
 syntax = "proto3";
-option go_package = "github.com/bavix/gripmock/protogen/example/well_known_types";
 
 package well_known_types;
 
+import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/api.proto";
 
-
+option go_package = "github.com/bavix/gripmock/protogen/example/well_known_types";
 service Gripmock {
   // this shows us example on using WKT as dependency
   // api.proto in particular has go_package alias with semicolon
   // "google.golang.org/genproto/protobuf/api;api"
-  rpc ApiInfo(google.protobuf.Empty) returns (google.protobuf.Api);
+  rpc ApiInfo(google.protobuf.Empty) returns (google.protobuf.Api) {
+    option (google.api.http) = {
+      post: "/v1/gripmock/api-info"
+      body: "*"
+    };
+  }
 }

@@ -41,3 +41,7 @@ jobs:
       uses: ./
       with:
         entrypoint: example/stub-subfolders/entrypoint.sh
+    - name: Run microservice example
+      uses: ./
+      with:
+        entrypoint: example/ms/entrypoint.sh
