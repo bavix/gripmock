@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package ms;
+
+option go_package = "github.com/bavix/gripmock/protogen/example/ms";
+
+service MicroService {
+  rpc SayHello (Request) returns (Reply);
+}
+
+message Request {
+  repeated bytes v1 = 1;
+  repeated string v2 = 2;
+}
+
+message Reply {
+  int64 code = 1;
+}

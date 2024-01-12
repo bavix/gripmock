@@ -2,12 +2,13 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v4.24.4
-// source: oneof.proto
+// source: hello.proto
 
-package one_of
+package multi_package
 
 import (
 	context "context"
+	bar "github.com/bavix/gripmock/protogen/example/multi-package/bar"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -19,15 +20,14 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Gripmock_SayHello_FullMethodName = "/oneof.Gripmock/SayHello"
+	Gripmock_Greet_FullMethodName = "/multi_package.Gripmock/Greet"
 )
 
 // GripmockClient is the client API for Gripmock service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type GripmockClient interface {
-	// simple unary method
-	SayHello(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Reply, error)
+	Greet(ctx context.Context, in *bar.Bar, opts ...grpc.CallOption) (*Response, error)
 }
 
 type gripmockClient struct {
@@ -38,9 +38,9 @@ func NewGripmockClient(cc grpc.ClientConnInterface) GripmockClient {
 	return &gripmockClient{cc}
 }
 
-func (c *gripmockClient) SayHello(ctx context.Context, in *Request, opts ...grpc.CallOption) (*Reply, error) {
-	out := new(Reply)
-	err := c.cc.Invoke(ctx, Gripmock_SayHello_FullMethodName, in, out, opts...)
+func (c *gripmockClient) Greet(ctx context.Context, in *bar.Bar, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := c.cc.Invoke(ctx, Gripmock_Greet_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -51,8 +51,7 @@ func (c *gripmockClient) SayHello(ctx context.Context, in *Request, opts ...grpc
 // All implementations must embed UnimplementedGripmockServer
 // for forward compatibility
 type GripmockServer interface {
-	// simple unary method
-	SayHello(context.Context, *Request) (*Reply, error)
+	Greet(context.Context, *bar.Bar) (*Response, error)
 	mustEmbedUnimplementedGripmockServer()
 }
 
@@ -60,8 +59,8 @@ type GripmockServer interface {
 type UnimplementedGripmockServer struct {
 }
 
-func (UnimplementedGripmockServer) SayHello(context.Context, *Request) (*Reply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SayHello not implemented")
+func (UnimplementedGripmockServer) Greet(context.Context, *bar.Bar) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Greet not implemented")
 }
 func (UnimplementedGripmockServer) mustEmbedUnimplementedGripmockServer() {}
 
@@ -76,20 +75,20 @@ func RegisterGripmockServer(s grpc.ServiceRegistrar, srv GripmockServer) {
 	s.RegisterService(&Gripmock_ServiceDesc, srv)
 }
 
-func _Gripmock_SayHello_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Request)
+func _Gripmock_Greet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(bar.Bar)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(GripmockServer).SayHello(ctx, in)
+		return srv.(GripmockServer).Greet(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Gripmock_SayHello_FullMethodName,
+		FullMethod: Gripmock_Greet_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(GripmockServer).SayHello(ctx, req.(*Request))
+		return srv.(GripmockServer).Greet(ctx, req.(*bar.Bar))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -98,14 +97,14 @@ func _Gripmock_SayHello_Handler(srv interface{}, ctx context.Context, dec func(i
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Gripmock_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "oneof.Gripmock",
+	ServiceName: "multi_package.Gripmock",
 	HandlerType: (*GripmockServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SayHello",
-			Handler:    _Gripmock_SayHello_Handler,
+			MethodName: "Greet",
+			Handler:    _Gripmock_Greet_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "oneof.proto",
+	Metadata: "hello.proto",
 }

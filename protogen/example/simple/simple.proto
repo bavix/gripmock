@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package simple;
+
+option go_package = "github.com/bavix/gripmock/protogen/example/simple";
+
+// The Gripmock service definition.
+service Gripmock {
+  // simple unary method
+  rpc SayHello (Request) returns (Reply);
+}
+
+// The request message containing the user's name.
+message Request {
+  string name = 1;
+  int64 vint64 = 2;
+  uint64 vuint64 = 3;
+  repeated int64 values = 4;
+}
+
+// The response message containing the greetings
+message Reply {
+  string message = 1;
+  int32 return_code = 2;
+  int64 vint64 = 3;
+  uint64 vuint64 = 4;
+}
