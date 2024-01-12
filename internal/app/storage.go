@@ -54,7 +54,7 @@ func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage
 	var closestMatch []closeMatch
 
 	for _, strange := range stubs {
-		cmpData, cmpDataErr := inputCmp(strange.Input, stub.Data)
+		cmpData, cmpDataErr := inputCmp(strange.Input, stub.Data, strange.Input.IgnoreArrayOrder)
 		if cmpDataErr != nil {
 			if cmpData != nil {
 				closestMatch = append(closestMatch, *cmpData)
@@ -64,7 +64,7 @@ func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage
 		}
 
 		if strange.CheckHeaders() {
-			if cmpHeaders, cmpHeadersErr := inputCmp(strange.Headers, stub.Headers); cmpHeadersErr != nil {
+			if cmpHeaders, cmpHeadersErr := inputCmp(strange.Headers, stub.Headers, false); cmpHeadersErr != nil {
 				if cmpHeaders != nil {
 					closestMatch = append(closestMatch, closeMatch{
 						rule:         cmpData.rule,
@@ -86,31 +86,31 @@ func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage
 	return nil, stubNotFoundError(stub, closestMatch)
 }
 
-func inputCmp(input storage.Input, data map[string]interface{}) (*closeMatch, error) {
-	if expect := input.Equals; expect != nil {
+func inputCmp(input storage.InputInterface, data map[string]interface{}, ignoreArrayOrder bool) (*closeMatch, error) {
+	if expect := input.GetEquals(); expect != nil {
 		closeMatchVal := closeMatch{rule: "equals", expect: expect}
 
-		if equals(input.Equals, data, input.IgnoreArrayOrder) {
+		if equals(input.GetEquals(), data, ignoreArrayOrder) {
 			return &closeMatchVal, nil
 		}
 
 		return &closeMatchVal, ErrNotFound
 	}
 
-	if expect := input.Contains; expect != nil {
+	if expect := input.GetContains(); expect != nil {
 		closeMatchVal := closeMatch{rule: "contains", expect: expect}
 
-		if contains(input.Contains, data, input.IgnoreArrayOrder) {
+		if contains(input.GetContains(), data, ignoreArrayOrder) {
 			return &closeMatchVal, nil
 		}
 
 		return &closeMatchVal, ErrNotFound
 	}
 
-	if expect := input.Matches; expect != nil {
+	if expect := input.GetMatches(); expect != nil {
 		closeMatchVal := closeMatch{rule: "matches", expect: expect}
 
-		if matches(input.Matches, data, input.IgnoreArrayOrder) {
+		if matches(input.GetMatches(), data, ignoreArrayOrder) {
 			return &closeMatchVal, nil
 		}
 

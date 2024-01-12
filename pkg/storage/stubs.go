@@ -17,12 +17,12 @@ var (
 )
 
 type Stub struct {
-	ID      *uuid.UUID `json:"id,omitempty"`
-	Service string     `json:"service"`
-	Method  string     `json:"method"`
-	Headers Input      `json:"headers"`
-	Input   Input      `json:"input"`
-	Output  Output     `json:"output"`
+	ID      *uuid.UUID  `json:"id,omitempty"`
+	Service string      `json:"service"`
+	Method  string      `json:"method"`
+	Headers InputHeader `json:"headers"`
+	Input   InputData   `json:"input"`
+	Output  Output      `json:"output"`
 }
 
 func (s *Stub) GetID() uuid.UUID {
@@ -34,11 +34,47 @@ func (s *Stub) GetID() uuid.UUID {
 	return *s.ID
 }
 
-type Input struct {
-	IgnoreArrayOrder bool                   `json:"ignoreArrayOrder"`
+type InputInterface interface {
+	GetEquals() map[string]interface{}
+	GetContains() map[string]interface{}
+	GetMatches() map[string]interface{}
+}
+
+type InputData struct {
+	IgnoreArrayOrder bool                   `json:"ignoreArrayOrder,omitempty"`
 	Equals           map[string]interface{} `json:"equals"`
 	Contains         map[string]interface{} `json:"contains"`
 	Matches          map[string]interface{} `json:"matches"`
+}
+
+func (i InputData) GetEquals() map[string]interface{} {
+	return i.Equals
+}
+
+func (i InputData) GetContains() map[string]interface{} {
+	return i.Contains
+}
+
+func (i InputData) GetMatches() map[string]interface{} {
+	return i.Matches
+}
+
+type InputHeader struct {
+	Equals   map[string]interface{} `json:"equals"`
+	Contains map[string]interface{} `json:"contains"`
+	Matches  map[string]interface{} `json:"matches"`
+}
+
+func (i InputHeader) GetEquals() map[string]interface{} {
+	return i.Equals
+}
+
+func (i InputHeader) GetContains() map[string]interface{} {
+	return i.Contains
+}
+
+func (i InputHeader) GetMatches() map[string]interface{} {
+	return i.Matches
 }
 
 type Output struct {
@@ -50,8 +86,8 @@ type Output struct {
 
 type storage struct {
 	ID      uuid.UUID
-	Headers Input
-	Input   Input
+	Headers InputHeader
+	Input   InputData
 	Output  Output
 }
 
