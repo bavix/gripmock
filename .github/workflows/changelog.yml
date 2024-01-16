@@ -10,4 +10,5 @@ jobs:
   changelog:
     permissions:
       contents: write
+    secrets: inherit
     uses: bavix/.github/.github/workflows/changelog.yml@0.1.2
