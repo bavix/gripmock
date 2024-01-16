@@ -1,0 +1,13 @@
+name: update changelog
+
+on:
+  release:
+    types: [released]
+
+permissions: {}
+
+jobs:
+  changelog:
+    permissions:
+      contents: write
+    uses: bavix/.github/.github/workflows/changelog.yml@0.1.2
