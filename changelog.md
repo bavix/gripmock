@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.6.2 - 2024-01-18
+
+### What's Changed
+
+* Bump size-limit from 11.0.1 to 11.0.2 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/115
+* Bump bavix/.github from 0.1.1 to 0.1.4 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/114
+* fix contributors by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/116
+* Bump go.opentelemetry.io/otel/sdk from 1.21.0 to 1.22.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/118
+* Bump bavix/.github from 0.1.4 to 0.1.6 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/117
+* Bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc from 1.21.0 to 1.22.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/120
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.1...v2.6.2
+
 ## v2.6.1 - 2024-01-16
 
 ### What's Changed
