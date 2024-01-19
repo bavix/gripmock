@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.6.3 - 2024-01-19
+
+### What's Changed
+
+* Bump bavix/.github from 0.1.6 to 0.1.7 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/127
+* Bump go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux from 0.46.1 to 0.47.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/124
+* Bump css-loader from 6.9.0 to 6.9.1 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/123
+* Bump go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc from 0.46.1 to 0.47.0 in /protoc-gen-gripmock by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/122
+* Bump go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp from 0.46.1 to 0.47.0 in /protoc-gen-gripmock by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/121
+* upgrade gomod by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/128
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.2...v2.6.3
+
 ## v2.6.2 - 2024-01-18
 
 ### What's Changed
