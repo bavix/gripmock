@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.6.4 - 2024-01-22
+
+### What's Changed
+
+* Bump bavix/.github from 0.1.7 to 0.1.9 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/129
+* upgrade googleapis by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/130
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.3...v2.6.4
+
 ## v2.6.3 - 2024-01-19
 
 ### What's Changed
@@ -273,7 +282,7 @@
 
 ## New Contributors
 
-* @dependabot made their first contribution in https://github.com/bavix/gripmock/pull/29
+* [@dependabot](https://github.com/dependabot) made their first contribution in https://github.com/bavix/gripmock/pull/29
 
 **Full Changelog**: https://github.com/bavix/gripmock/compare/v2.0.0...v2.0.1
 
@@ -347,6 +356,6 @@
 
 ## New Contributors
 
-* @rez1dent3 made their first contribution in https://github.com/bavix/gripmock/pull/1
+* [@rez1dent3](https://github.com/rez1dent3) made their first contribution in https://github.com/bavix/gripmock/pull/1
 
 **Full Changelog**: https://github.com/bavix/gripmock/commits/v1.13.0
