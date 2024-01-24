@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.6.5 - 2024-01-24
+
+### What's Changed
+
+* Bump bavix/.github from 0.1.9 to 0.2.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/131
+* Bump google.golang.org/grpc from 1.60.1 to 1.61.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/132
+* Bump github.com/google/uuid from 1.5.0 to 1.6.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/133
+* Bump google.golang.org/grpc from 1.60.1 to 1.61.0 in /protogen by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/134
+* Bump bavix/.github from 0.2.0 to 0.2.1 by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/135
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.4...v2.6.5
+
 ## v2.6.4 - 2024-01-22
 
 ### What's Changed
