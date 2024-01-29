@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.6.6 - 2024-01-29
+
+### What's Changed
+
+* Bump bavix/.github from 0.2.0 to 0.2.1 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/136
+* Bump webpack from 5.89.0 to 5.90.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/137
+* Bump github.com/goccy/go-yaml from 1.11.2 to 1.11.3 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/138
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.5...v2.6.6
+
 ## v2.6.5 - 2024-01-24
 
 ### What's Changed
