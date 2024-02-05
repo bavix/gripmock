@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.6.7 - 2024-02-05
+
+### What's Changed
+
+* Bump bavix/.github from 0.2.1 to 0.2.2 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/139
+* Bump css-loader from 6.9.1 to 6.10.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/140
+* Bump webpack from 5.90.0 to 5.90.1 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/141
+* Bump mini-css-extract-plugin from 2.7.7 to 2.8.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/142
+* Bump github.com/rs/zerolog from 1.31.0 to 1.32.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/143
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.6...v2.6.7
+
 ## v2.6.6 - 2024-01-29
 
 ### What's Changed
