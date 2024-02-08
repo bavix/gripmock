@@ -22,7 +22,9 @@ This service is a fork of the service [tokopedia/gripmock](https://github.com/to
 - Active support [tokopedia#82](https://github.com/tokopedia/gripmock/issues/82);
 - Added [documentation](https://bavix.github.io/gripmock/);
 
----
+## Useful articles
+
+- [Testing gRPC client with mock server and Testcontainers](https://medium.com/skyro-tech/testing-grpc-client-with-mock-server-and-testcontainers-f51cb8a6be9a)
 
 ## Quick Usage
 First, prepare your `.proto` file. Or you can use `hello.proto` in `example/simple/` folder. Suppose you put it in `/mypath/hello.proto`. We are gonna use Docker image for easier example test.
