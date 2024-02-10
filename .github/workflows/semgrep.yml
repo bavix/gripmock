@@ -2,10 +2,6 @@ name: semgrep
 
 on:
   pull_request:
-    branches:
-      - develop
-      - nightly
-      - latest
 
 jobs:
   semgrep:

@@ -3,8 +3,7 @@ name: builder
 on:
   push:
     branches:
-      - "latest"
-      - "nightly"
+      - "master"
     tags:
       - "v*.*.*"
 

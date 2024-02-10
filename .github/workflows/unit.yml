@@ -1,10 +1,6 @@
 name: Unit
 on:
   pull_request:
-    branches:
-      - develop
-      - nightly
-      - latest
 
 jobs:
   test:
