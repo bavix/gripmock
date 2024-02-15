@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.6.10 - 2024-02-15
+
+### What's Changed
+
+* upgrade mod's by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/161
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.9...v2.6.10
+
 ## v2.6.9 - 2024-02-14
 
 ### What's Changed
