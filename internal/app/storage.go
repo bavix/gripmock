@@ -1,13 +1,13 @@
 package app
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"reflect"
 	"regexp"
 
+	"github.com/goccy/go-json"
 	"github.com/lithammer/fuzzysearch/fuzzy"
 
 	"github.com/bavix/gripmock/pkg/storage"

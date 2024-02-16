@@ -3,6 +3,7 @@ module github.com/bavix/gripmock/protogen
 go 1.22
 
 require (
+	github.com/goccy/go-json v0.10.2
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.48.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.48.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20240213162025-012b6fc9bca9

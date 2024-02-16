@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,13 +11,15 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/goccy/go-json"
+	"github.com/google/uuid"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/bavix/gripmock/internal/domain/rest"
 	"github.com/bavix/gripmock/pkg/clock"
 	"github.com/bavix/gripmock/pkg/storage"
 	"github.com/bavix/gripmock/pkg/yaml2json"
-	"github.com/google/uuid"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 )
 
 var (

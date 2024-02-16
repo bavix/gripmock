@@ -33,6 +33,9 @@ linters-settings:
         allow:
           - $gostd
           - github.com
+        deny:
+          - pkg: "encoding/json"
+            desc: "use github.com/goccy/go-json"
 issues:
   exclude-rules:
     - path: (.+)_test.go
