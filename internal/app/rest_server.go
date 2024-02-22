@@ -12,13 +12,15 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/bavix/gripmock/internal/domain/rest"
-	"github.com/bavix/gripmock/pkg/clock"
-	"github.com/bavix/gripmock/pkg/storage"
-	"github.com/bavix/gripmock/pkg/yaml2json"
 	"github.com/google/uuid"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+
+	"github.com/bavix/gripmock/internal/domain/rest"
+	"github.com/bavix/gripmock/internal/pkg/features"
+	"github.com/bavix/gripmock/pkg/clock"
+	"github.com/bavix/gripmock/pkg/storage"
+	"github.com/bavix/gripmock/pkg/yaml2json"
 )
 
 var (
@@ -56,11 +58,12 @@ func NewRestServer(path string) (*StubsServer, error) {
 
 // deprecated code.
 type findStubPayload struct {
-	ID      *uuid.UUID             `json:"id,omitempty"`
-	Service string                 `json:"service"`
-	Method  string                 `json:"method"`
-	Headers map[string]interface{} `json:"headers"`
-	Data    map[string]interface{} `json:"data"`
+	ID       *uuid.UUID             `json:"id,omitempty"`
+	Service  string                 `json:"service"`
+	Method   string                 `json:"method"`
+	Headers  map[string]interface{} `json:"headers"`
+	Data     map[string]interface{} `json:"data"`
+	features features.FeatureSlice
 }
 
 func (h *StubsServer) ServiceReady() {
@@ -189,7 +192,7 @@ func (h *StubsServer) PurgeStubs(w http.ResponseWriter, _ *http.Request) {
 
 func (h *StubsServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	stub := new(findStubPayload)
+	stub := &findStubPayload{features: features.New(r)}
 	decoder := json.NewDecoder(r.Body)
 	decoder.UseNumber()
 
