@@ -12,9 +12,11 @@ const (
 )
 
 func (f FeatureSlice) Has(feature Feature) bool {
-	_, ok := f[feature]
+	if val, ok := f[feature]; ok {
+		return val
+	}
 
-	return ok
+	return false
 }
 
 func New(r *http.Request) FeatureSlice {
