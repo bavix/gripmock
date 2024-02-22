@@ -10,6 +10,7 @@ import (
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
 
+	"github.com/bavix/gripmock/internal/pkg/features"
 	"github.com/bavix/gripmock/pkg/storage"
 )
 
@@ -46,7 +47,9 @@ func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage
 	}
 
 	if stub.ID != nil {
-		stubStorage.MarkUsed(stubs[0].ID)
+		if !stub.features.Has(features.RequestInternal) {
+			stubStorage.MarkUsed(stubs[0].ID)
+		}
 
 		return &stubs[0].Output, nil
 	}
@@ -78,7 +81,9 @@ func findStub(stubStorage *storage.StubStorage, stub *findStubPayload) (*storage
 			}
 		}
 
-		stubStorage.MarkUsed(strange.ID)
+		if !stub.features.Has(features.RequestInternal) {
+			stubStorage.MarkUsed(strange.ID)
+		}
 
 		return &strange.Output, nil
 	}
