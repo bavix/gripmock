@@ -11,8 +11,10 @@ service MicroService {
 message Request {
   repeated bytes v1 = 1;
   repeated string v2 = 2;
+  optional int64 v3 = 3;
 }
 
 message Reply {
   int64 code = 1;
+  optional uint64 v3 = 2;
 }
