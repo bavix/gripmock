@@ -1,3 +1,5 @@
+OPENAPI=https://raw.githubusercontent.com/bavix/gripmock-openapi/master/api.yaml
+
 .PHONY: *
 
 version=latest
@@ -18,5 +20,5 @@ intgr-test: build
 	docker compose -f deployments/docker-compose/docker-compose.yml up
 
 gen:
-	go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest -generate gorilla,types -package rest ./api/openapi/api.yaml > internal/domain/rest/api.gen.go
-	go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest -generate client,types -package sdk ./api/openapi/api.yaml | sed -e 's/json\.Marshal/Marshal/g' -e 's/json\.Unmarshal/Unmarshal/g' > pkg/sdk/api.gen.go
+	go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest -generate gorilla,types -package rest ${OPENAPI} > internal/domain/rest/api.gen.go
+	go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest -generate client,types -package sdk ${OPENAPI} | sed -e 's/json\.Marshal/Marshal/g' -e 's/json\.Unmarshal/Unmarshal/g' > pkg/sdk/api.gen.go
