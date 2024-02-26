@@ -20,6 +20,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	_ "github.com/bavix/gripmock-sdk-go"
 	"github.com/bavix/gripmock/internal/config"
 	"github.com/bavix/gripmock/internal/pkg/patcher"
 	"github.com/bavix/gripmock/pkg/trace"

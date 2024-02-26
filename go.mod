@@ -1,8 +1,9 @@
 module github.com/bavix/gripmock
 
-go 1.22
+go 1.22.0
 
 require (
+	github.com/bavix/gripmock-sdk-go v1.0.0
 	github.com/bavix/gripmock/protogen v0.0.0
 	github.com/goccy/go-yaml v1.11.3
 	github.com/google/uuid v1.6.0
