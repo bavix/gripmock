@@ -96,8 +96,8 @@ github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UV
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
-go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.48.0 h1:7rkdNoXgScpSUIqBch/VOB24fk9g0wl3Tr5WPtshi9o=
-go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.48.0/go.mod h1:U3t9uswWhDzieXHMNWP6zk87J4HNondiibKMdNLpnMk=
+go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.49.0 h1:h+c4WbSjBBc3j+IsxwB2mWvkm2nDh0SyGLa5Y5+V9cw=
+go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.49.0/go.mod h1:FObmJ0epY1FcwMR7aq7sRkrCfwwV3d0GBGFfyV5JUBg=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.48.0 h1:P+/g8GpuJGYbOp2tAdKrIPUX9JO02q8Q0YNlHolpibA=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.48.0/go.mod h1:tIKj3DbO8N9Y2xo52og3irLsPI4GW02DSMtrVgNMgxg=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.48.0 h1:doUP+ExOpH3spVTLS0FcWGLnQrPct/hD/bCPbDRUEAU=
