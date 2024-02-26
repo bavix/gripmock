@@ -3,7 +3,7 @@ module github.com/bavix/gripmock/protoc-gen-gripmock
 go 1.22
 
 require (
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.48.0
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.49.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0
 	golang.org/x/text v0.14.0
 	golang.org/x/tools v0.18.0
