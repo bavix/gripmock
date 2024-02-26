@@ -55,12 +55,6 @@ func main() {
 		zerolog.Ctx(ctx).Err(err).Msg("connect to tracer")
 	}
 
-	// deprecated. will be removed in 3.x
-	grpcPort := flag.String("grpc-port", conf.GRPC.Port, "Deprecated: use ENV GRPC_PORT. Port of gRPC tcp server")                                                                                         //nolint:lll
-	grpcBindAddr := flag.String("grpc-listen", conf.GRPC.Host, "Deprecated: use ENV GRPC_HOST. Address the gRPC server will bind to. Default to localhost, set to 0.0.0.0 to use from another machine")    //nolint:lll
-	adminPort := flag.String("admin-port", conf.HTTP.Port, "Deprecated: use ENV HTTP_PORT. Port of stub admin server")                                                                                     //nolint:lll
-	adminBindAddr := flag.String("admin-listen", conf.HTTP.Host, "Deprecated: use ENV HTTP_HOST. Address the admin server will bind to. Default to localhost, set to 0.0.0.0 to use from another machine") //nolint:lll
-
 	outputPointer := flag.String("output", "", "directory to output server.go. Default is $GOPATH/src/grpc/")
 	flag.StringVar(outputPointer, "o", *outputPointer, "alias for -output")
 
@@ -107,8 +101,8 @@ func main() {
 	// run admin stub server
 	stub.RunRestServer(ctx, chReady, stub.Options{
 		StubPath: *stubPath,
-		Port:     *adminPort,
-		BindAddr: *adminBindAddr,
+		Port:     conf.HTTP.Port,
+		BindAddr: conf.HTTP.Host,
 	})
 
 	importDirs := strings.Split(*imports, ",")
@@ -116,11 +110,11 @@ func main() {
 	// generate pb.go and grpc server based on proto
 	generateProtoc(ctx, protocParam{
 		protoPath:       protoPaths,
-		adminHost:       *adminBindAddr,
-		adminPort:       *adminPort,
+		adminHost:       conf.HTTP.Host,
+		adminPort:       conf.HTTP.Port,
 		grpcNet:         conf.GRPC.Network,
-		grpcAddress:     *grpcBindAddr,
-		grpcPort:        *grpcPort,
+		grpcAddress:     conf.GRPC.Host,
+		grpcPort:        conf.GRPC.Port,
 		otlpHost:        conf.OTLPTrace.Host,
 		otlpPort:        conf.OTLPTrace.Port,
 		otlpTLS:         conf.OTLPTrace.TLS,
