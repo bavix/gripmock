@@ -10,11 +10,12 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 
 	"github.com/bavix/gripmock/internal/app"
 	"github.com/bavix/gripmock/internal/domain/rest"
+	"github.com/bavix/gripmock/internal/pkg/features"
 	"github.com/bavix/gripmock/internal/pkg/muxmiddleware"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
 type Options struct {
@@ -41,7 +42,9 @@ func RunRestServer(ctx context.Context, ch chan struct{}, opt Options) {
 		BaseContext: func(listener net.Listener) context.Context {
 			return ctx
 		},
-		Handler: handlers.CORS()(router),
+		Handler: handlers.CORS(
+			handlers.AllowedHeaders([]string{string(features.RequestInternal)}),
+		)(router),
 	}
 
 	zerolog.Ctx(ctx).
