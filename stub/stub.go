@@ -3,7 +3,6 @@ package stub
 import (
 	"context"
 	"errors"
-	"github.com/bavix/gripmock/internal/pkg/features"
 	"net"
 	"net/http"
 	"time"
@@ -11,11 +10,12 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 
 	"github.com/bavix/gripmock/internal/app"
 	"github.com/bavix/gripmock/internal/domain/rest"
+	"github.com/bavix/gripmock/internal/pkg/features"
 	"github.com/bavix/gripmock/internal/pkg/muxmiddleware"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 )
 
 type Options struct {
