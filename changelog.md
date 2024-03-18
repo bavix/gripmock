@@ -1,5 +1,43 @@
 # Changelog
 
+## v2.6.12 - 2024-03-07
+
+### What's Changed
+
+* Bump mini-css-extract-plugin from 2.8.0 to 2.8.1 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/186
+* Bump bavix/.github from 0.2.3 to 0.2.4 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/185
+* Bump github.com/stretchr/testify from 1.8.4 to 1.9.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/187
+* Bump golang.org/x/tools from 0.18.0 to 0.19.0 in /protoc-gen-gripmock by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/188
+* Bump google.golang.org/protobuf from 1.32.0 to 1.33.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/192
+* Bump google.golang.org/protobuf from 1.32.0 to 1.33.0 in /protoc-gen-gripmock by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/193
+* Bump google.golang.org/grpc from 1.62.0 to 1.62.1 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/191
+* Bump google.golang.org/grpc from 1.62.0 to 1.62.1 in /protogen by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/190
+* Bump google.golang.org/protobuf from 1.32.0 to 1.33.0 in /protogen by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/189
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.11...v2.6.12
+
+## v2.6.11 - 2024-02-26
+
+### What's Changed
+
+* Bump webpack from 5.90.1 to 5.90.2 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/162
+* Bump webpack from 5.90.2 to 5.90.3 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/164
+* Configure Mend Bolt for GitHub by [@mend-bolt-for-github](https://github.com/mend-bolt-for-github) in https://github.com/bavix/gripmock/pull/166
+* Bump google.golang.org/grpc from 1.61.1 to 1.62.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/168
+* Bump google.golang.org/grpc from 1.61.1 to 1.62.0 in /protogen by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/169
+* Bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc from 1.23.1 to 1.24.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/174
+* Bump go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux from 0.48.0 to 0.49.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/176
+* Bump go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp from 0.48.0 to 0.49.0 in /protoc-gen-gripmock by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/179
+* Bump go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc from 0.48.0 to 0.49.0 in /protoc-gen-gripmock by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/178
+* Bump go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp from 0.48.0 to 0.49.0 in /protogen by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/180
+* Bump go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc from 0.48.0 to 0.49.0 in /protogen by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/181
+
+### New Contributors
+
+* [@mend-bolt-for-github](https://github.com/mend-bolt-for-github) made their first contribution in https://github.com/bavix/gripmock/pull/166
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.10...v2.6.11
+
 ## v2.6.10 - 2024-02-15
 
 ### What's Changed
