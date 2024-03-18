@@ -43,7 +43,12 @@ func RunRestServer(ctx context.Context, ch chan struct{}, opt Options) {
 			return ctx
 		},
 		Handler: handlers.CORS(
-			handlers.AllowedHeaders([]string{string(features.RequestInternal)}),
+			handlers.AllowedOrigins([]string{"*"}),
+			handlers.AllowedHeaders([]string{
+				"Accept", "Accept-Language", "Content-Type", "Content-Language", "Origin",
+				string(features.RequestInternal),
+			}),
+			handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodDelete}),
 		)(router),
 	}
 
