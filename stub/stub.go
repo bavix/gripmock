@@ -3,6 +3,7 @@ package stub
 import (
 	"context"
 	"errors"
+	"github.com/bavix/gripmock/internal/pkg/features"
 	"net"
 	"net/http"
 	"time"
@@ -41,7 +42,9 @@ func RunRestServer(ctx context.Context, ch chan struct{}, opt Options) {
 		BaseContext: func(listener net.Listener) context.Context {
 			return ctx
 		},
-		Handler: handlers.CORS()(router),
+		Handler: handlers.CORS(
+			handlers.AllowedHeaders([]string{string(features.RequestInternal)}),
+		)(router),
 	}
 
 	zerolog.Ctx(ctx).
