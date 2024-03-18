@@ -126,6 +126,9 @@ type ServerInterface interface {
 	// Deletes stub by ID
 	// (DELETE /stubs/{uuid})
 	DeleteStubByID(w http.ResponseWriter, r *http.Request, uuid ID)
+	// Get Stub by ID
+	// (GET /stubs/{uuid})
+	FindByID(w http.ResponseWriter, r *http.Request, uuid ID)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -298,6 +301,32 @@ func (siw *ServerInterfaceWrapper) DeleteStubByID(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
+// FindByID operation middleware
+func (siw *ServerInterfaceWrapper) FindByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	// ------------- Path parameter "uuid" -------------
+	var uuid ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "uuid", mux.Vars(r)["uuid"], &uuid, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "uuid", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.FindByID(w, r, uuid)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -430,6 +459,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/stubs/used", wrapper.ListUsedStubs).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/stubs/{uuid}", wrapper.DeleteStubByID).Methods("DELETE")
+
+	r.HandleFunc(options.BaseURL+"/stubs/{uuid}", wrapper.FindByID).Methods("GET")
 
 	return r
 }

@@ -222,6 +222,18 @@ func (h *StubsServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(output)
 }
 
+func (h *StubsServer) FindByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
+	stub := h.stubs.FindByID(uuid)
+	if stub == nil {
+		w.WriteHeader(http.StatusNotFound)
+
+		return
+	}
+
+	//nolint:errchkjson
+	_ = json.NewEncoder(w).Encode(stub)
+}
+
 func (h *StubsServer) responseError(err error, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
 
