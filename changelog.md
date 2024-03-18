@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.6.13 - 2024-03-18
+
+### What's Changed
+
+* Bump size-limit from 11.0.2 to 11.0.3 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/194
+* Bump size-limit from 11.0.3 to 11.1.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/195
+* Bump size-limit from 11.1.0 to 11.1.1 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/196
+* upgrade by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/197
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.12...v2.6.13
+
 ## v2.6.12 - 2024-03-07
 
 ### What's Changed
