@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 
@@ -40,7 +41,7 @@ func RunRestServer(ctx context.Context, ch chan struct{}, opt Options) {
 		BaseContext: func(listener net.Listener) context.Context {
 			return ctx
 		},
-		Handler: router,
+		Handler: handlers.CORS()(router),
 	}
 
 	zerolog.Ctx(ctx).
