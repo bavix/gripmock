@@ -27,6 +27,12 @@ type MessageOK struct {
 	Time    time.Time `json:"time"`
 }
 
+// Method defines model for Method.
+type Method struct {
+	Name    string  `json:"name"`
+	Service Service `json:"service"`
+}
+
 // SearchRequest defines model for SearchRequest.
 type SearchRequest struct {
 	Data    interface{}       `json:"data"`
@@ -42,6 +48,13 @@ type SearchResponse struct {
 	Data    interface{}       `json:"data"`
 	Error   string            `json:"error"`
 	Headers map[string]string `json:"headers,omitempty"`
+}
+
+// Service defines model for Service.
+type Service struct {
+	Id      string `json:"id"`
+	Name    string `json:"name"`
+	Package string `json:"package"`
 }
 
 // Stub defines model for Stub.
@@ -102,6 +115,12 @@ type ServerInterface interface {
 	// Readiness check
 	// (GET /health/readiness)
 	Readiness(w http.ResponseWriter, r *http.Request)
+	// Services
+	// (GET /services)
+	ServicesList(w http.ResponseWriter, r *http.Request)
+	// Service methods
+	// (GET /services/{serviceID})
+	ServiceMethodsList(w http.ResponseWriter, r *http.Request, serviceID string)
 	// Remove all stubs
 	// (DELETE /stubs)
 	PurgeStubs(w http.ResponseWriter, r *http.Request)
@@ -161,6 +180,47 @@ func (siw *ServerInterfaceWrapper) Readiness(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Readiness(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// ServicesList operation middleware
+func (siw *ServerInterfaceWrapper) ServicesList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ServicesList(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// ServiceMethodsList operation middleware
+func (siw *ServerInterfaceWrapper) ServiceMethodsList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	// ------------- Path parameter "serviceID" -------------
+	var serviceID string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "serviceID", mux.Vars(r)["serviceID"], &serviceID, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "serviceID", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ServiceMethodsList(w, r, serviceID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -443,6 +503,10 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/health/liveness", wrapper.Liveness).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/health/readiness", wrapper.Readiness).Methods("GET")
+
+	r.HandleFunc(options.BaseURL+"/services", wrapper.ServicesList).Methods("GET")
+
+	r.HandleFunc(options.BaseURL+"/services/{serviceID}", wrapper.ServiceMethodsList).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/stubs", wrapper.PurgeStubs).Methods("DELETE")
 

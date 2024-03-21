@@ -22,7 +22,7 @@ func TestStub(t *testing.T) {
 		expect  string
 	}
 
-	api, _ := app.NewRestServer("")
+	api, _ := app.NewRestServer("", nil)
 
 	//nolint:lll
 	cases := []test{
