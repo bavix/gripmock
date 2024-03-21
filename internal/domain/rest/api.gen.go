@@ -29,6 +29,7 @@ type MessageOK struct {
 
 // Method defines model for Method.
 type Method struct {
+	Id      string  `json:"id"`
 	Name    string  `json:"name"`
 	Service Service `json:"service"`
 }
@@ -119,7 +120,7 @@ type ServerInterface interface {
 	// (GET /services)
 	ServicesList(w http.ResponseWriter, r *http.Request)
 	// Service methods
-	// (GET /services/{serviceID})
+	// (GET /services/{serviceID}/methods)
 	ServiceMethodsList(w http.ResponseWriter, r *http.Request, serviceID string)
 	// Remove all stubs
 	// (DELETE /stubs)
@@ -506,7 +507,7 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/services", wrapper.ServicesList).Methods("GET")
 
-	r.HandleFunc(options.BaseURL+"/services/{serviceID}", wrapper.ServiceMethodsList).Methods("GET")
+	r.HandleFunc(options.BaseURL+"/services/{serviceID}/methods", wrapper.ServiceMethodsList).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/stubs", wrapper.PurgeStubs).Methods("DELETE")
 

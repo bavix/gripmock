@@ -17,6 +17,7 @@ type Service struct {
 }
 
 type Method struct {
+	ID      string
 	Service Service
 	Name    string
 }
@@ -45,9 +46,10 @@ func (g *GReflector) makeService(serviceID string) Service {
 	}
 }
 
-func (g *GReflector) makeMethod(service, method string) Method {
+func (g *GReflector) makeMethod(serviceID, method string) Method {
 	return Method{
-		Service: g.makeService(service),
+		ID:      serviceID + "/" + method,
+		Service: g.makeService(serviceID),
 		Name:    method,
 	}
 }

@@ -102,6 +102,7 @@ func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, 
 	results := make([]rest.Method, len(methods))
 	for i, method := range methods {
 		results[i] = rest.Method{
+			Id: method.ID,
 			Service: rest.Service{
 				Id:      method.Service.ID,
 				Name:    method.Service.Name,
