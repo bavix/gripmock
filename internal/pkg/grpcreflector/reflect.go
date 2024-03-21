@@ -8,6 +8,8 @@ import (
 	"google.golang.org/grpc"
 )
 
+const prefix = "grpc.reflection.v1"
+
 type Service struct {
 	ID      string
 	Package string
@@ -59,7 +61,9 @@ func (g *GReflector) Services(ctx context.Context) ([]Service, error) {
 	results := make([]Service, len(services))
 
 	for i, service := range services {
-		results[i] = g.makeService(service)
+		if !strings.HasPrefix(service, prefix) {
+			results[i] = g.makeService(service)
+		}
 	}
 
 	return results, nil
@@ -73,8 +77,10 @@ func (g *GReflector) Methods(ctx context.Context, serviceID string) ([]Method, e
 
 	results := make([]Method, len(dest.GetMethods()))
 
-	for i, method := range dest.GetMethods() {
-		results[i] = g.makeMethod(serviceID, method.GetName())
+	if !strings.HasPrefix(serviceID, prefix) {
+		for i, method := range dest.GetMethods() {
+			results[i] = g.makeMethod(serviceID, method.GetName())
+		}
 	}
 
 	return results, err
