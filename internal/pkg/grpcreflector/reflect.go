@@ -2,7 +2,6 @@ package grpcreflector
 
 import (
 	"context"
-	"slices"
 	"strings"
 
 	"github.com/jhump/protoreflect/grpcreflect"
@@ -37,13 +36,10 @@ func (g *GReflector) makeService(serviceID string) Service {
 
 	splits := strings.Split(serviceID, sep)
 
-	service := splits[len(splits)-1]
-	slices.Delete(splits, len(splits)-1, 1)
-
 	return Service{
 		ID:      serviceID,
-		Package: strings.Join(splits, sep),
-		Name:    service,
+		Package: strings.Join(splits[:len(splits)-1], sep),
+		Name:    splits[len(splits)-1],
 	}
 }
 
