@@ -58,7 +58,7 @@ func (g *GReflector) Services(ctx context.Context) ([]Service, error) {
 		return nil, err
 	}
 
-	results := make([]Service, len(services))
+	results := make([]Service, 0, len(services))
 
 	for i, service := range services {
 		if !strings.HasPrefix(service, prefix) {
@@ -75,7 +75,7 @@ func (g *GReflector) Methods(ctx context.Context, serviceID string) ([]Method, e
 		return nil, err
 	}
 
-	results := make([]Method, len(dest.GetMethods()))
+	results := make([]Method, 0, len(dest.GetMethods()))
 
 	if !strings.HasPrefix(serviceID, prefix) {
 		for i, method := range dest.GetMethods() {
