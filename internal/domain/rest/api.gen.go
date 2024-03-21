@@ -29,9 +29,10 @@ type MessageOK struct {
 
 // Method defines model for Method.
 type Method struct {
-	Id      string  `json:"id"`
-	Name    string  `json:"name"`
-	Service Service `json:"service"`
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	Package   string `json:"package"`
+	ServiceId string `json:"service_id"`
 }
 
 // SearchRequest defines model for SearchRequest.
