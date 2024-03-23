@@ -83,10 +83,24 @@ func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
 
 	results := make([]rest.Service, len(services))
 	for i, service := range services {
+		serviceMethods, err := h.reflector.Methods(r.Context(), service.ID)
+		if err != nil {
+			continue
+		}
+
+		restMethods := make([]rest.Method, len(serviceMethods))
+		for i, serviceMethod := range serviceMethods {
+			restMethods[i] = rest.Method{
+				Id:   serviceMethod.ID,
+				Name: serviceMethod.Name,
+			}
+		}
+
 		results[i] = rest.Service{
 			Id:      service.ID,
 			Name:    service.Name,
 			Package: service.Package,
+			Methods: restMethods,
 		}
 	}
 
@@ -102,10 +116,8 @@ func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, 
 	results := make([]rest.Method, len(methods))
 	for i, method := range methods {
 		results[i] = rest.Method{
-			Id:        method.ID,
-			ServiceId: method.Service.ID,
-			Package:   method.Service.Package,
-			Name:      method.Name,
+			Id:   method.ID,
+			Name: method.Name,
 		}
 	}
 

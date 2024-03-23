@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/bavix/gripmock/internal/container"
 	"io"
 	"io/fs"
 	"log"
@@ -25,6 +24,7 @@ import (
 
 	_ "github.com/bavix/gripmock-sdk-go"
 	"github.com/bavix/gripmock/internal/config"
+	"github.com/bavix/gripmock/internal/container"
 	"github.com/bavix/gripmock/internal/pkg/patcher"
 	"github.com/bavix/gripmock/pkg/trace"
 	"github.com/bavix/gripmock/pkg/utils"
@@ -61,11 +61,6 @@ func main() {
 
 	stubPath := flag.String("stub", "", "Path where the stub files are (Optional)")
 	imports := flag.String("imports", "/protobuf,/googleapis", "comma separated imports path. default path /protobuf,/googleapis is where gripmock Dockerfile install WKT protos") //nolint:lll
-
-	simplerMode := flag.Bool("simpler", true, "The package name will be omitted for unique services.")
-
-	// The fact is that in the original GripMock, you do not need to write "package" before the service.
-	_ = simplerMode
 
 	flag.Parse()
 

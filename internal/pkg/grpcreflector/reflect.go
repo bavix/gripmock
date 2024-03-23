@@ -17,9 +17,8 @@ type Service struct {
 }
 
 type Method struct {
-	ID      string
-	Service Service
-	Name    string
+	ID   string
+	Name string
 }
 
 type GReflector struct {
@@ -48,9 +47,8 @@ func (g *GReflector) makeService(serviceID string) Service {
 
 func (g *GReflector) makeMethod(serviceID, method string) Method {
 	return Method{
-		ID:      serviceID + "/" + method,
-		Service: g.makeService(serviceID),
-		Name:    method,
+		ID:   serviceID + "/" + method,
+		Name: method,
 	}
 }
 

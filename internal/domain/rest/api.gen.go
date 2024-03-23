@@ -29,10 +29,8 @@ type MessageOK struct {
 
 // Method defines model for Method.
 type Method struct {
-	Id        string `json:"id"`
-	Name      string `json:"name"`
-	Package   string `json:"package"`
-	ServiceId string `json:"service_id"`
+	Id   string `json:"id"`
+	Name string `json:"name"`
 }
 
 // SearchRequest defines model for SearchRequest.
@@ -54,9 +52,10 @@ type SearchResponse struct {
 
 // Service defines model for Service.
 type Service struct {
-	Id      string `json:"id"`
-	Name    string `json:"name"`
-	Package string `json:"package"`
+	Id      string   `json:"id"`
+	Methods []Method `json:"methods"`
+	Name    string   `json:"name"`
+	Package string   `json:"package"`
 }
 
 // Stub defines model for Stub.
