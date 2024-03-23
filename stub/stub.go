@@ -27,7 +27,7 @@ type Options struct {
 	StubPath string
 }
 
-//go:embed all:ui/dist
+//go:embed ui/dist
 var staticFiles embed.FS
 
 func RunRestServer(ctx context.Context, ch chan struct{}, opt Options, reflector *grpcreflector.GReflector) {
