@@ -7,8 +7,9 @@ jobs:
     name: Run example
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@master
+    -
+      name: Checkout
+      uses: actions/checkout@v4
     - name: Run Simple Example
       uses: ./
       with:

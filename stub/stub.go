@@ -3,7 +3,6 @@ package stub
 import (
 	"context"
 	"errors"
-	"github.com/bavix/gripmock/internal/pkg/grpcreflector"
 	"net"
 	"net/http"
 	"time"
@@ -13,9 +12,11 @@ import (
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 
+	gripmockui "github.com/bavix/gripmock-ui"
 	"github.com/bavix/gripmock/internal/app"
 	"github.com/bavix/gripmock/internal/domain/rest"
 	"github.com/bavix/gripmock/internal/pkg/features"
+	"github.com/bavix/gripmock/internal/pkg/grpcreflector"
 	"github.com/bavix/gripmock/internal/pkg/muxmiddleware"
 )
 
@@ -32,10 +33,13 @@ func RunRestServer(ctx context.Context, ch chan struct{}, opt Options, reflector
 
 	apiServer, _ := app.NewRestServer(opt.StubPath, reflector)
 
+	ui, _ := gripmockui.Assets()
+
 	router := mux.NewRouter()
 	router.Use(muxmiddleware.RequestLogger)
 	router.Use(otelmux.Middleware("gripmock-manager"))
 	rest.HandlerFromMuxWithBaseURL(apiServer, router, "/api")
+	router.PathPrefix("/").Handler(http.FileServerFS(ui)).Methods(http.MethodGet)
 
 	srv := &http.Server{
 		Addr:              addr,

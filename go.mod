@@ -1,9 +1,10 @@
 module github.com/bavix/gripmock
 
-go 1.22.0
+go 1.22.1
 
 require (
 	github.com/bavix/gripmock-sdk-go v1.0.2
+	github.com/bavix/gripmock-ui v0.0.0-20240323204046-3f969ea2b548
 	github.com/bavix/gripmock/protogen v0.0.0
 	github.com/goccy/go-yaml v1.11.3
 	github.com/google/uuid v1.6.0
@@ -31,7 +32,7 @@ require (
 
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
-	github.com/bufbuild/protocompile v0.8.0 // indirect
+	github.com/bufbuild/protocompile v0.9.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.16.0 // indirect
