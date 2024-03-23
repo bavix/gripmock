@@ -24,6 +24,7 @@ import (
 
 	_ "github.com/bavix/gripmock-sdk-go"
 	"github.com/bavix/gripmock/internal/config"
+	"github.com/bavix/gripmock/internal/container"
 	"github.com/bavix/gripmock/internal/pkg/patcher"
 	"github.com/bavix/gripmock/pkg/trace"
 	"github.com/bavix/gripmock/pkg/utils"
@@ -62,6 +63,13 @@ func main() {
 	imports := flag.String("imports", "/protobuf,/googleapis", "comma separated imports path. default path /protobuf,/googleapis is where gripmock Dockerfile install WKT protos") //nolint:lll
 
 	flag.Parse()
+
+	box := container.New(&conf)
+
+	reflector, err := box.GReflector(ctx)
+	if err != nil {
+		logger.Fatal().Msg("reflector is required")
+	}
 
 	// parse proto files
 	protoPaths := flag.Args()
@@ -103,7 +111,7 @@ func main() {
 		StubPath: *stubPath,
 		Port:     conf.HTTP.Port,
 		BindAddr: conf.HTTP.Host,
-	})
+	}, reflector)
 
 	importDirs := strings.Split(*imports, ",")
 

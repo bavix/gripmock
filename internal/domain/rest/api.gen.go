@@ -27,6 +27,12 @@ type MessageOK struct {
 	Time    time.Time `json:"time"`
 }
 
+// Method defines model for Method.
+type Method struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // SearchRequest defines model for SearchRequest.
 type SearchRequest struct {
 	Data    interface{}       `json:"data"`
@@ -42,6 +48,14 @@ type SearchResponse struct {
 	Data    interface{}       `json:"data"`
 	Error   string            `json:"error"`
 	Headers map[string]string `json:"headers,omitempty"`
+}
+
+// Service defines model for Service.
+type Service struct {
+	Id      string   `json:"id"`
+	Methods []Method `json:"methods"`
+	Name    string   `json:"name"`
+	Package string   `json:"package"`
 }
 
 // Stub defines model for Stub.
@@ -102,6 +116,12 @@ type ServerInterface interface {
 	// Readiness check
 	// (GET /health/readiness)
 	Readiness(w http.ResponseWriter, r *http.Request)
+	// Services
+	// (GET /services)
+	ServicesList(w http.ResponseWriter, r *http.Request)
+	// Service methods
+	// (GET /services/{serviceID}/methods)
+	ServiceMethodsList(w http.ResponseWriter, r *http.Request, serviceID string)
 	// Remove all stubs
 	// (DELETE /stubs)
 	PurgeStubs(w http.ResponseWriter, r *http.Request)
@@ -126,6 +146,9 @@ type ServerInterface interface {
 	// Deletes stub by ID
 	// (DELETE /stubs/{uuid})
 	DeleteStubByID(w http.ResponseWriter, r *http.Request, uuid ID)
+	// Get Stub by ID
+	// (GET /stubs/{uuid})
+	FindByID(w http.ResponseWriter, r *http.Request, uuid ID)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -158,6 +181,47 @@ func (siw *ServerInterfaceWrapper) Readiness(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Readiness(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// ServicesList operation middleware
+func (siw *ServerInterfaceWrapper) ServicesList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ServicesList(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// ServiceMethodsList operation middleware
+func (siw *ServerInterfaceWrapper) ServiceMethodsList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	// ------------- Path parameter "serviceID" -------------
+	var serviceID string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "serviceID", mux.Vars(r)["serviceID"], &serviceID, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "serviceID", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ServiceMethodsList(w, r, serviceID)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -298,6 +362,32 @@ func (siw *ServerInterfaceWrapper) DeleteStubByID(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
+// FindByID operation middleware
+func (siw *ServerInterfaceWrapper) FindByID(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	// ------------- Path parameter "uuid" -------------
+	var uuid ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "uuid", mux.Vars(r)["uuid"], &uuid, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "uuid", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.FindByID(w, r, uuid)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -415,6 +505,10 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/health/readiness", wrapper.Readiness).Methods("GET")
 
+	r.HandleFunc(options.BaseURL+"/services", wrapper.ServicesList).Methods("GET")
+
+	r.HandleFunc(options.BaseURL+"/services/{serviceID}/methods", wrapper.ServiceMethodsList).Methods("GET")
+
 	r.HandleFunc(options.BaseURL+"/stubs", wrapper.PurgeStubs).Methods("DELETE")
 
 	r.HandleFunc(options.BaseURL+"/stubs", wrapper.ListStubs).Methods("GET")
@@ -430,6 +524,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/stubs/used", wrapper.ListUsedStubs).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/stubs/{uuid}", wrapper.DeleteStubByID).Methods("DELETE")
+
+	r.HandleFunc(options.BaseURL+"/stubs/{uuid}", wrapper.FindByID).Methods("GET")
 
 	return r
 }

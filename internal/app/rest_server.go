@@ -18,6 +18,7 @@ import (
 
 	"github.com/bavix/gripmock/internal/domain/rest"
 	"github.com/bavix/gripmock/internal/pkg/features"
+	"github.com/bavix/gripmock/internal/pkg/grpcreflector"
 	"github.com/bavix/gripmock/pkg/clock"
 	"github.com/bavix/gripmock/pkg/storage"
 	"github.com/bavix/gripmock/pkg/yaml2json"
@@ -28,25 +29,29 @@ var (
 	ErrMethodIsMissing  = errors.New("method name is missing")
 )
 
-type StubsServer struct {
+type RestServer struct {
 	stubs     *storage.StubStorage
 	convertor *yaml2json.Convertor
 	caser     cases.Caser
 	clock     *clock.Clock
 	ok        atomic.Bool
+	reflector *grpcreflector.GReflector
 }
 
-func NewRestServer(path string) (*StubsServer, error) {
+var _ rest.ServerInterface = &RestServer{}
+
+func NewRestServer(path string, reflector *grpcreflector.GReflector) (*RestServer, error) {
 	stubsStorage, err := storage.New()
 	if err != nil {
 		return nil, err
 	}
 
-	server := &StubsServer{
+	server := &RestServer{
 		stubs:     stubsStorage,
 		convertor: yaml2json.New(),
 		clock:     clock.New(),
 		caser:     cases.Title(language.English, cases.NoLower),
+		reflector: reflector,
 	}
 
 	if path != "" {
@@ -66,16 +71,65 @@ type findStubPayload struct {
 	features features.FeatureSlice
 }
 
-func (h *StubsServer) ServiceReady() {
+func (h *RestServer) ServiceReady() {
 	h.ok.Store(true)
 }
 
-func (h *StubsServer) Liveness(w http.ResponseWriter, _ *http.Request) {
+func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
+	services, err := h.reflector.Services(r.Context())
+	if err != nil {
+		return
+	}
+
+	results := make([]rest.Service, len(services))
+	for i, service := range services {
+		serviceMethods, err := h.reflector.Methods(r.Context(), service.ID)
+		if err != nil {
+			continue
+		}
+
+		restMethods := make([]rest.Method, len(serviceMethods))
+		for i, serviceMethod := range serviceMethods {
+			restMethods[i] = rest.Method{
+				Id:   serviceMethod.ID,
+				Name: serviceMethod.Name,
+			}
+		}
+
+		results[i] = rest.Service{
+			Id:      service.ID,
+			Name:    service.Name,
+			Package: service.Package,
+			Methods: restMethods,
+		}
+	}
+
+	_ = json.NewEncoder(w).Encode(results)
+}
+
+func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, serviceID string) {
+	methods, err := h.reflector.Methods(r.Context(), serviceID)
+	if err != nil {
+		return
+	}
+
+	results := make([]rest.Method, len(methods))
+	for i, method := range methods {
+		results[i] = rest.Method{
+			Id:   method.ID,
+			Name: method.Name,
+		}
+	}
+
+	_ = json.NewEncoder(w).Encode(results)
+}
+
+func (h *RestServer) Liveness(w http.ResponseWriter, _ *http.Request) {
 	//nolint:errchkjson
 	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: h.clock.Now()})
 }
 
-func (h *StubsServer) Readiness(w http.ResponseWriter, _ *http.Request) {
+func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
 	if !h.ok.Load() {
 		w.WriteHeader(http.StatusServiceUnavailable)
 
@@ -88,7 +142,7 @@ func (h *StubsServer) Readiness(w http.ResponseWriter, _ *http.Request) {
 	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: h.clock.Now()})
 }
 
-func (h *StubsServer) AddStub(w http.ResponseWriter, r *http.Request) {
+func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	byt, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -130,12 +184,12 @@ func (h *StubsServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *StubsServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
+func (h *RestServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
 	w.Header().Set("Content-Type", "application/json")
 	h.stubs.Delete(uuid)
 }
 
-func (h *StubsServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
+func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var inputs []uuid.UUID
@@ -155,7 +209,7 @@ func (h *StubsServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *StubsServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
+func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(h.stubs.Used())
 	if err != nil {
@@ -165,7 +219,7 @@ func (h *StubsServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func (h *StubsServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
+func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(h.stubs.Unused())
 	if err != nil {
@@ -175,7 +229,7 @@ func (h *StubsServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func (h *StubsServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
+func (h *RestServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(h.stubs.Stubs())
 	if err != nil {
@@ -185,12 +239,12 @@ func (h *StubsServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
 	}
 }
 
-func (h *StubsServer) PurgeStubs(w http.ResponseWriter, _ *http.Request) {
+func (h *RestServer) PurgeStubs(w http.ResponseWriter, _ *http.Request) {
 	h.stubs.Purge()
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *StubsServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
+func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	stub := &findStubPayload{features: features.New(r)}
 	decoder := json.NewDecoder(r.Body)
@@ -222,13 +276,25 @@ func (h *StubsServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(output)
 }
 
-func (h *StubsServer) responseError(err error, w http.ResponseWriter) {
+func (h *RestServer) FindByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
+	stub := h.stubs.FindByID(uuid)
+	if stub == nil {
+		w.WriteHeader(http.StatusNotFound)
+
+		return
+	}
+
+	//nolint:errchkjson
+	_ = json.NewEncoder(w).Encode(stub)
+}
+
+func (h *RestServer) responseError(err error, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
 
 	h.writeResponseError(err, w)
 }
 
-func (h *StubsServer) writeResponseError(err error, w http.ResponseWriter) {
+func (h *RestServer) writeResponseError(err error, w http.ResponseWriter) {
 	//nolint:errchkjson
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"error": err.Error(),
@@ -236,7 +302,7 @@ func (h *StubsServer) writeResponseError(err error, w http.ResponseWriter) {
 }
 
 //nolint:cyclop
-func (h *StubsServer) readStubs(path string) {
+func (h *RestServer) readStubs(path string) {
 	files, err := os.ReadDir(path)
 	if err != nil {
 		log.Printf("Can't read stub from %s. %v\n", path, err)

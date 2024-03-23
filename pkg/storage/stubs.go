@@ -285,6 +285,24 @@ func (r *StubStorage) MarkUsed(id uuid.UUID) {
 	r.used[id] = struct{}{}
 }
 
+func (r *StubStorage) FindByID(id uuid.UUID) *Stub {
+	txn := r.db.Txn(false)
+	defer txn.Abort()
+
+	it, err := txn.Get(TableName, IDField, id)
+	if err != nil {
+		return nil
+	}
+
+	for obj := it.Next(); obj != nil; {
+		stub, _ := obj.(*Stub)
+
+		return stub
+	}
+
+	return nil
+}
+
 func (r *StubStorage) Stubs() []Stub {
 	txn := r.db.Txn(false)
 	defer txn.Abort()

@@ -3,6 +3,7 @@ package stub
 import (
 	"context"
 	"errors"
+	"github.com/bavix/gripmock/internal/pkg/grpcreflector"
 	"net"
 	"net/http"
 	"time"
@@ -24,12 +25,12 @@ type Options struct {
 	StubPath string
 }
 
-func RunRestServer(ctx context.Context, ch chan struct{}, opt Options) {
+func RunRestServer(ctx context.Context, ch chan struct{}, opt Options, reflector *grpcreflector.GReflector) {
 	const timeout = time.Millisecond * 25
 
 	addr := net.JoinHostPort(opt.BindAddr, opt.Port)
 
-	apiServer, _ := app.NewRestServer(opt.StubPath)
+	apiServer, _ := app.NewRestServer(opt.StubPath, reflector)
 
 	router := mux.NewRouter()
 	router.Use(muxmiddleware.RequestLogger)
