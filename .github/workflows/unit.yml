@@ -9,10 +9,11 @@ jobs:
       matrix:
         go-version: [ '1.22' ]
     steps:
-      - uses: actions/checkout@v4
+      -
+        name: Checkout
+        uses: actions/checkout@v4
         with:
           submodules: 'true'
-          token: ${{ secrets.PAT_TOKEN }}
       - name: Setup Go
         uses: actions/setup-go@v5
         with:

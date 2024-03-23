@@ -16,7 +16,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: 'true'
-          token: ${{ secrets.PAT_TOKEN }}
       -
         name: Docker meta
         id: meta
