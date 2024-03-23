@@ -2,8 +2,9 @@ package stub
 
 import (
 	"context"
+	"embed"
 	"errors"
-	"github.com/bavix/gripmock/internal/pkg/grpcreflector"
+	"io/fs"
 	"net"
 	"net/http"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/bavix/gripmock/internal/app"
 	"github.com/bavix/gripmock/internal/domain/rest"
 	"github.com/bavix/gripmock/internal/pkg/features"
+	"github.com/bavix/gripmock/internal/pkg/grpcreflector"
 	"github.com/bavix/gripmock/internal/pkg/muxmiddleware"
 )
 
@@ -25,6 +27,9 @@ type Options struct {
 	StubPath string
 }
 
+//go:embed ui/dist
+var staticFiles embed.FS
+
 func RunRestServer(ctx context.Context, ch chan struct{}, opt Options, reflector *grpcreflector.GReflector) {
 	const timeout = time.Millisecond * 25
 
@@ -32,9 +37,12 @@ func RunRestServer(ctx context.Context, ch chan struct{}, opt Options, reflector
 
 	apiServer, _ := app.NewRestServer(opt.StubPath, reflector)
 
+	htmlContent, _ := fs.Sub(staticFiles, "ui/dist")
+
 	router := mux.NewRouter()
 	router.Use(muxmiddleware.RequestLogger)
 	router.Use(otelmux.Middleware("gripmock-manager"))
+	router.Handle("/", http.FileServer(http.FS(htmlContent)))
 	rest.HandlerFromMuxWithBaseURL(apiServer, router, "/api")
 
 	srv := &http.Server{

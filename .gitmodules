@@ -1,0 +1,3 @@
+[submodule "stub/ui"]
+	path = stub/ui
+	url = git@github.com:bavix/gripmock-ui.git
