@@ -22,6 +22,10 @@ This service is a fork of the service [tokopedia/gripmock](https://github.com/to
 - Active support [tokopedia#82](https://github.com/tokopedia/gripmock/issues/82);
 - Added [documentation](https://bavix.github.io/gripmock/);
 
+UI will appear in 3.x:
+
+![gripmock-ui](https://github.com/bavix/gripmock/assets/5111255/3d9ebb46-7810-4225-9a30-3e058fa5fe16)
+
 ## Useful articles
 
 - [Testing gRPC client with mock server and Testcontainers](https://medium.com/skyro-tech/testing-grpc-client-with-mock-server-and-testcontainers-f51cb8a6be9a) [@AndrewIISM](https://github.com/AndrewIISM)
@@ -38,11 +42,6 @@ basic syntax to run GripMock is
 - Now we are ready to test it with our client. You can find a client example file under `example/simple/client/`. Execute one of your preferred language. Example for go: `go run example/simple/client/*.go`
 
 Check [`example`](https://github.com/bavix/gripmock/tree/master/example) folder for various usecase of gripmock.
-
-
-UI will appear in 3.x:
-
-![gripmock-ui](https://github.com/bavix/gripmock/assets/5111255/3d9ebb46-7810-4225-9a30-3e058fa5fe16)
 
 ---
 
