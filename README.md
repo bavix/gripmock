@@ -39,6 +39,8 @@ basic syntax to run GripMock is
 
 Check [`example`](https://github.com/bavix/gripmock/tree/master/example) folder for various usecase of gripmock.
 
+![gripmock-ui](https://github.com/bavix/gripmock/assets/5111255/3d9ebb46-7810-4225-9a30-3e058fa5fe16)
+
 ---
 
 ## How It Works
