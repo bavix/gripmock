@@ -4,7 +4,7 @@ go 1.22.1
 
 require (
 	github.com/bavix/gripmock-sdk-go v1.0.2
-	github.com/bavix/gripmock-ui v0.0.0-20240323204046-3f969ea2b548
+	github.com/bavix/gripmock-ui v1.0.0-alpha1
 	github.com/bavix/gripmock/protogen v0.0.0
 	github.com/goccy/go-yaml v1.11.3
 	github.com/google/uuid v1.6.0
