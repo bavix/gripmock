@@ -2,21 +2,34 @@ package main
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"log"
+	"net"
+	"os"
 	"time"
 
-	pb "github.com/bavix/gripmock/protogen/example/ms"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	pb "github.com/bavix/gripmock/protogen/example/ms"
 )
+
+func env(key, fallback string) string {
+	if value := os.Getenv(key); len(value) > 0 {
+		return value
+	}
+
+	return fallback
+}
 
 //nolint:gomnd
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	conn, err := grpc.DialContext(ctx, "localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	grpcPort := env("GRPC_PORT", "4770")
+
+	conn, err := grpc.DialContext(ctx, net.JoinHostPort("localhost", grpcPort), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
