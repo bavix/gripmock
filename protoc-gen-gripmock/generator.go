@@ -8,10 +8,12 @@ import (
 	"log"
 	"net"
 	"os"
-	"strconv"
 	"strings"
 	"text/template"
 
+	"github.com/joho/godotenv"
+	"github.com/kelseyhightower/envconfig"
+	"github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/tools/imports"
@@ -20,6 +22,56 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/pluginpb"
 )
+
+type Config struct {
+	OTLPTrace OTLPTrace
+	GRPC      GRPC
+	HTTP      HTTP
+}
+
+type HTTP struct {
+	Host string `envconfig:"HTTP_HOST" default:"0.0.0.0"`
+	Port string `envconfig:"HTTP_PORT" default:"4771"`
+}
+
+type GRPC struct {
+	Network string `envconfig:"GRPC_NETWORK" default:"tcp"`
+	Host    string `envconfig:"GRPC_HOST" default:"0.0.0.0"`
+	Port    string `envconfig:"GRPC_PORT" default:"4770"`
+}
+
+func Load() (Config, error) {
+	cnf := Config{} //nolint:exhaustruct
+
+	if err := godotenv.Load(".env"); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return cnf, errors.Wrap(err, "read .env file")
+	}
+
+	if err := envconfig.Process("", &cnf); err != nil {
+		return cnf, errors.Wrap(err, "read environment")
+	}
+
+	return cnf, nil
+}
+
+func (c *Config) GRPCAddr() string {
+	return net.JoinHostPort(c.GRPC.Host, c.GRPC.Port)
+}
+
+func (c *Config) HTTPAddr() string {
+	return net.JoinHostPort(c.HTTP.Host, c.HTTP.Port)
+}
+
+type OTLPTrace struct {
+	Host        string  `envconfig:"OTLP_TRACE_GRPC_HOST" default:"127.0.0.1"`
+	Port        string  `envconfig:"OTLP_TRACE_GRPC_PORT" default:"4317"`
+	TLS         bool    `envconfig:"OTLP_TRACE_TLS" default:"false"`
+	SampleRatio float64 `envconfig:"OTLP_SAMPLE_RATIO"`
+}
+
+func (o *OTLPTrace) UseTrace() bool {
+	return o.Host != "" && o.Port != "" && o.SampleRatio > 0
+}
 
 func main() {
 	// Tip of the hat to Tim Coulson
@@ -31,6 +83,11 @@ func main() {
 	var request pluginpb.CodeGeneratorRequest
 	if err := proto.Unmarshal(input, &request); err != nil {
 		log.Fatalf("error unmarshalling [%s]: %v", string(input), err)
+	}
+
+	conf, err := Load()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	// Initialise our plugin with default options
@@ -47,26 +104,12 @@ func main() {
 		protos[index] = file.Proto
 	}
 
-	params := make(map[string]string)
-	for _, param := range strings.Split(request.GetParameter(), ",") {
-		split := strings.Split(param, "=")
-		params[split[0]] = split[1]
-	}
-
-	otlpTLS, _ := strconv.ParseBool(params["otlp-tls"])
-	otlpRatioFloat, _ := strconv.ParseFloat(params["otlp-ratio"], 64)
+	// request.GetParameter()
 
 	buf := new(bytes.Buffer)
 	err = generateServer(protos, &Options{
-		writer:          buf,
-		adminHost:       params["admin-host"],
-		adminPort:       params["admin-port"],
-		grpcNet:         params["grpc-network"],
-		grpcAddr:        net.JoinHostPort(params["grpc-address"], params["grpc-port"]),
-		otlpTLS:         otlpTLS,
-		otlpHost:        params["otlp-host"],
-		otlpPort:        params["otlp-port"],
-		otlpSampleRatio: otlpRatioFloat,
+		writer: buf,
+		conf:   conf,
 	})
 
 	if err != nil {
@@ -97,7 +140,6 @@ type generatorParam struct {
 	OtlpPort        string
 	OtlpTLS         bool
 	OtlpSampleRatio float64
-	PbPath          string
 }
 
 type Service struct {
@@ -125,16 +167,8 @@ const (
 )
 
 type Options struct {
-	writer          io.Writer
-	grpcNet         string
-	grpcAddr        string
-	adminHost       string
-	adminPort       string
-	otlpHost        string
-	otlpPort        string
-	otlpTLS         bool
-	otlpSampleRatio float64
-	pbPath          string
+	writer io.Writer
+	conf   Config
 }
 
 var ServerTemplate string
@@ -158,15 +192,14 @@ func generateServer(protos []*descriptorpb.FileDescriptorProto, opt *Options) er
 	param := generatorParam{
 		Services:        services,
 		Dependencies:    deps,
-		GrpcNet:         opt.grpcNet,
-		GrpcAddr:        opt.grpcAddr,
-		AdminHost:       opt.adminHost,
-		AdminPort:       opt.adminPort,
-		OtlpHost:        opt.otlpHost,
-		OtlpPort:        opt.otlpPort,
-		OtlpTLS:         opt.otlpTLS,
-		OtlpSampleRatio: opt.otlpSampleRatio,
-		PbPath:          opt.pbPath,
+		GrpcNet:         opt.conf.GRPC.Network,
+		GrpcAddr:        opt.conf.GRPCAddr(),
+		AdminHost:       opt.conf.HTTP.Host,
+		AdminPort:       opt.conf.HTTP.Port,
+		OtlpHost:        opt.conf.OTLPTrace.Host,
+		OtlpPort:        opt.conf.OTLPTrace.Port,
+		OtlpTLS:         opt.conf.OTLPTrace.TLS,
+		OtlpSampleRatio: opt.conf.OTLPTrace.SampleRatio,
 	}
 
 	if opt == nil {
