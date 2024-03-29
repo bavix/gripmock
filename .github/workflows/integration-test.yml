@@ -42,3 +42,10 @@ jobs:
       uses: ./
       with:
         entrypoint: example/ms/entrypoint.sh
+    - name: Run microservice example (custom ports)
+      uses: ./
+      env:
+        GRPC_PORT: 5000
+        HTTP_PORT: 6000
+      with:
+        entrypoint: example/ms/entrypoint.sh
