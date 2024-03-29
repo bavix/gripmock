@@ -235,37 +235,18 @@ func generateProtoc(ctx context.Context, param protocParam) {
 	// the latest go-grpc plugin will generate subfolders under $GOPATH/src based on go_package option
 	pbOutput := os.Getenv("GOPATH") + "/src"
 
-	gmOut := []string{
-		fmt.Sprintf(
-			"admin-host=%s,admin-port=%s",
-			param.adminHost, param.adminPort),
-		fmt.Sprintf("grpc-network=%s,grpc-address=%s,grpc-port=%s",
-			param.grpcNet, param.grpcAddress, param.grpcPort),
-		fmt.Sprintf("otlp-host=%s,otlp-port=%s,otlp-tls=%d,otlp-ratio=%f",
-			param.otlpHost, param.otlpPort, bool2int(param.otlpTLS), param.otlpSampleRatio),
-	}
-
 	args = append(args, param.protoPath...)
 	args = append(args, "--go_out="+pbOutput)
 	args = append(args, "--go-grpc_out="+pbOutput)
-	args = append(args, fmt.Sprintf(
-		"--gripmock_out=%s:%s",
-		strings.Join(gmOut, ","), param.output))
+	args = append(args, fmt.Sprintf("--gripmock_out=%s", param.output))
 	protoc := exec.Command("protoc", args...)
+	protoc.Env = os.Environ()
 	protoc.Stdout = os.Stdout
 	protoc.Stderr = os.Stderr
 	err := protoc.Run()
 	if err != nil {
 		zerolog.Ctx(ctx).Fatal().Err(err).Msg("fail on protoc")
 	}
-}
-
-func bool2int(b bool) int {
-	if b {
-		return 1
-	}
-
-	return 0
 }
 
 // append gopackage in proto files if doesn't have any.
