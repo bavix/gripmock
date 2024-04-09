@@ -100,7 +100,7 @@ func inputCmp(input storage.InputInterface, data map[string]interface{}, ignoreA
 	if expect := input.GetContains(); expect != nil {
 		closeMatchVal := closeMatch{rule: "contains", expect: expect}
 
-		if contains(input.GetContains(), data, ignoreArrayOrder) {
+		if deeply.ContainsIgnoreArrayOrder(input.GetContains(), data) {
 			return &closeMatchVal, nil
 		}
 
@@ -171,14 +171,6 @@ func equals(expect, actual map[string]interface{}, ignoreArrayOrder bool) bool {
 	}
 
 	return deeply.Equals(expect, actual)
-}
-
-func contains(expect, actual map[string]interface{}, ignoreArrayOrder bool) bool {
-	if ignoreArrayOrder {
-		return deeply.ContainsIgnoreArrayOrder(expect, actual)
-	}
-
-	return deeply.Contains(expect, actual)
 }
 
 func matches(expect, actual map[string]interface{}, ignoreArrayOrder bool) bool {
