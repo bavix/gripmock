@@ -44,8 +44,8 @@ github.com/gorilla/handlers v1.5.2 h1:cLTUSsNkgcwhgRqvCNmdbRWG0A3N4F+M2nWKdScwyE
 github.com/gorilla/handlers v1.5.2/go.mod h1:dX+xVpaxdSw+q0Qek8SSsl3dfMk3jNddUkMzo0GtH0w=
 github.com/gorilla/mux v1.8.1 h1:TuBL49tXwgrFYWhqrNgrUNEY92u81SPhu7sTdzQEiWY=
 github.com/gorilla/mux v1.8.1/go.mod h1:AKf9I4AEqPTmMytcMc0KkNouC66V3BtZ4qD5fmWSiMQ=
-github.com/gripmock/deeply v1.0.0 h1:ExmBy1vcieV33NQHplGVcjj5qsAhT/pktd+93fxos8o=
-github.com/gripmock/deeply v1.0.0/go.mod h1:xKJ9we/cU0CnCoYa+En2MirViTzvgsNp5B0hya1DhKk=
+github.com/gripmock/deeply v1.0.1 h1:/9jVJwcebBJK3//CHdj3unwdHU+Q76ctnKAf+axsCX0=
+github.com/gripmock/deeply v1.0.1/go.mod h1:xKJ9we/cU0CnCoYa+En2MirViTzvgsNp5B0hya1DhKk=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1 h1:/c3QmbOGMGTOumP2iT/rCwB7b0QDGLKzqOmktBjT+Is=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1/go.mod h1:5SN9VR2LTsRFsrEC6FHgRbTWrTHu6tqPeKxEQv15giM=
 github.com/hashicorp/go-immutable-radix v1.3.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
