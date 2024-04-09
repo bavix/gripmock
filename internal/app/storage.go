@@ -110,7 +110,7 @@ func inputCmp(input storage.InputInterface, data map[string]interface{}, ignoreA
 	if expect := input.GetMatches(); expect != nil {
 		closeMatchVal := closeMatch{rule: "matches", expect: expect}
 
-		if matches(input.GetMatches(), data, ignoreArrayOrder) {
+		if deeply.MatchesIgnoreArrayOrder(input.GetMatches(), data) {
 			return &closeMatchVal, nil
 		}
 
@@ -171,12 +171,4 @@ func equals(expect, actual map[string]interface{}, ignoreArrayOrder bool) bool {
 	}
 
 	return deeply.Equals(expect, actual)
-}
-
-func matches(expect, actual map[string]interface{}, ignoreArrayOrder bool) bool {
-	if ignoreArrayOrder {
-		return deeply.MatchesIgnoreArrayOrder(expect, actual)
-	}
-
-	return deeply.Matches(expect, actual)
 }
