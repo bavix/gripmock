@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gripmock/deeply v1.0.1
 	github.com/hashicorp/go-memdb v1.3.4
-	github.com/jhump/protoreflect v1.15.6
+	github.com/jhump/protoreflect v1.16.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/oapi-codegen/runtime v1.1.1
@@ -27,7 +27,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.25.0
 	golang.org/x/text v0.14.0
 	google.golang.org/grpc v1.63.2
-	google.golang.org/protobuf v1.33.1-0.20240319125436-3039476726e4
+	google.golang.org/protobuf v1.33.1-0.20240408130810-98873a205002
 )
 
 require (
