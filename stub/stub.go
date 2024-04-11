@@ -15,7 +15,6 @@ import (
 	gripmockui "github.com/bavix/gripmock-ui"
 	"github.com/bavix/gripmock/internal/app"
 	"github.com/bavix/gripmock/internal/domain/rest"
-	"github.com/bavix/gripmock/internal/pkg/features"
 	"github.com/bavix/gripmock/internal/pkg/grpcreflector"
 	"github.com/bavix/gripmock/internal/pkg/muxmiddleware"
 )
@@ -51,7 +50,7 @@ func RunRestServer(ctx context.Context, ch chan struct{}, opt Options, reflector
 			handlers.AllowedOrigins([]string{"*"}),
 			handlers.AllowedHeaders([]string{
 				"Accept", "Accept-Language", "Content-Type", "Content-Language", "Origin",
-				string(features.RequestInternal),
+				"X-GripMock-RequestInternal",
 			}),
 			handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodDelete}),
 		)(router),

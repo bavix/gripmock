@@ -2,7 +2,6 @@ package stub_test
 
 import (
 	"bytes"
-	"github.com/bavix/gripmock/internal/pkg/features"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -81,7 +80,7 @@ func TestStub(t *testing.T) {
 				payload := `{"service":"Testing","method":"TestMethod","data":{"Hola":"Mundo"}}`
 
 				req := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
-				req.Header.Add(strings.ToUpper(string(features.RequestInternal)), "ok") //enable
+				req.Header.Add(strings.ToUpper("X-GripMock-RequestInternal"), "ok") //enable
 
 				return req
 			},
@@ -295,7 +294,6 @@ func TestStub(t *testing.T) {
 			handler: api.AddStub,
 			expect:  `["3f68f410-bb58-49ad-b679-23f2ed690c1d","6da11d72-c0db-4075-9e72-31d61ffd0483"]`,
 		},
-
 		{
 			name: "add error stub with result code contains",
 			mock: func() *http.Request {
@@ -347,7 +345,6 @@ func TestStub(t *testing.T) {
 			handler: api.SearchStubs,
 			expect:  "{\"data\":null,\"error\":\"error msg\",\"code\":3,\"headers\":null}\n",
 		},
-
 		{
 			name: "add error stub without result code contains",
 			mock: func() *http.Request {
