@@ -1,6 +1,8 @@
 package muxmiddleware
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"time"
 
@@ -14,6 +16,10 @@ func RequestLogger(next http.Handler) http.Handler {
 		ip, err := getIP(r)
 		now := time.Now()
 
+		bodyBytes, _ := io.ReadAll(r.Body)
+		r.Body.Close() //  must close
+		r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
 		next.ServeHTTP(ww, r)
 
 		logger.
@@ -22,6 +28,7 @@ func RequestLogger(next http.Handler) http.Handler {
 			IPAddr("ip", ip).
 			Str("method", r.Method).
 			Str("url", r.URL.RequestURI()).
+			RawJSON("input", bodyBytes).
 			Dur("elapsed", time.Since(now)).
 			Str("ua", r.UserAgent()).
 			Int("bytes", ww.bytes).

@@ -13,14 +13,14 @@ import (
 	"sync/atomic"
 
 	"github.com/google/uuid"
+	"github.com/gripmock/stuber"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
+	"github.com/bavix/features"
 	"github.com/bavix/gripmock/internal/domain/rest"
-	"github.com/bavix/gripmock/internal/pkg/features"
 	"github.com/bavix/gripmock/internal/pkg/grpcreflector"
 	"github.com/bavix/gripmock/pkg/clock"
-	"github.com/bavix/gripmock/pkg/storage"
 	"github.com/bavix/gripmock/pkg/yaml2json"
 )
 
@@ -30,7 +30,7 @@ var (
 )
 
 type RestServer struct {
-	stubs     *storage.StubStorage
+	stuber    *stuber.Budgerigar
 	convertor *yaml2json.Convertor
 	caser     cases.Caser
 	clock     *clock.Clock
@@ -41,13 +41,8 @@ type RestServer struct {
 var _ rest.ServerInterface = &RestServer{}
 
 func NewRestServer(path string, reflector *grpcreflector.GReflector) (*RestServer, error) {
-	stubsStorage, err := storage.New()
-	if err != nil {
-		return nil, err
-	}
-
 	server := &RestServer{
-		stubs:     stubsStorage,
+		stuber:    stuber.NewBudgerigar(features.New(stuber.MethodTitle)),
 		convertor: yaml2json.New(),
 		clock:     clock.New(),
 		caser:     cases.Title(language.English, cases.NoLower),
@@ -59,16 +54,6 @@ func NewRestServer(path string, reflector *grpcreflector.GReflector) (*RestServe
 	}
 
 	return server, nil
-}
-
-// deprecated code.
-type findStubPayload struct {
-	ID       *uuid.UUID             `json:"id,omitempty"`
-	Service  string                 `json:"service"`
-	Method   string                 `json:"method"`
-	Headers  map[string]interface{} `json:"headers"`
-	Data     map[string]interface{} `json:"data"`
-	features features.FeatureSlice
 }
 
 func (h *RestServer) ServiceReady() {
@@ -159,7 +144,7 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 		byt = []byte("[" + string(byt) + "]")
 	}
 
-	var inputs []*storage.Stub
+	var inputs []*stuber.Stub
 	decoder := json.NewDecoder(bytes.NewReader(byt))
 	decoder.UseNumber()
 
@@ -177,7 +162,7 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := json.NewEncoder(w).Encode(h.stubs.Add(inputs...)); err != nil {
+	if err := json.NewEncoder(w).Encode(h.stuber.PutMany(inputs...)); err != nil {
 		h.responseError(err, w)
 
 		return
@@ -186,7 +171,7 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 
 func (h *RestServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
 	w.Header().Set("Content-Type", "application/json")
-	h.stubs.Delete(uuid)
+	h.stuber.DeleteByID(uuid)
 }
 
 func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
@@ -205,13 +190,14 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(inputs) > 0 {
-		h.stubs.Delete(inputs...)
+		h.stuber.DeleteByID(inputs...)
 	}
 }
 
 func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(h.stubs.Used())
+	err := json.NewEncoder(w).Encode(h.stuber.Used())
+
 	if err != nil {
 		h.responseError(err, w)
 
@@ -221,7 +207,8 @@ func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 
 func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(h.stubs.Unused())
+	err := json.NewEncoder(w).Encode(h.stuber.Unused())
+
 	if err != nil {
 		h.responseError(err, w)
 
@@ -231,7 +218,8 @@ func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 
 func (h *RestServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(h.stubs.Stubs())
+	err := json.NewEncoder(w).Encode(h.stuber.All())
+
 	if err != nil {
 		h.responseError(err, w)
 
@@ -240,17 +228,16 @@ func (h *RestServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (h *RestServer) PurgeStubs(w http.ResponseWriter, _ *http.Request) {
-	h.stubs.Purge()
+	h.stuber.Clear()
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	stub := &findStubPayload{features: features.New(r)}
-	decoder := json.NewDecoder(r.Body)
-	decoder.UseNumber()
 
-	if err := decoder.Decode(stub); err != nil {
+	query, err := stuber.NewQuery(r)
+	if err != nil {
 		h.responseError(err, w)
 
 		return
@@ -258,26 +245,27 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	// due to golang implementation
-	// method name must capital
-	title := cases.Title(language.English, cases.NoLower)
-	stub.Method = title.String(stub.Method)
-
-	output, err := findStub(h.stubs, stub)
+	result, err := h.stuber.FindByQuery(query)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
-		log.Println(err)
 		h.writeResponseError(err, w)
 
 		return
 	}
 
+	if result.Found() == nil {
+		w.WriteHeader(http.StatusNotFound)
+		h.writeResponseError(stubNotFoundError2(query, result), w)
+
+		return
+	}
+
 	//nolint:errchkjson
-	_ = json.NewEncoder(w).Encode(output)
+	_ = json.NewEncoder(w).Encode(result.Found().Output)
 }
 
 func (h *RestServer) FindByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
-	stub := h.stubs.FindByID(uuid)
+	stub := h.stuber.FindByID(uuid)
 	if stub == nil {
 		w.WriteHeader(http.StatusNotFound)
 
@@ -339,7 +327,7 @@ func (h *RestServer) readStubs(path string) {
 			byt = []byte("[" + string(byt) + "]")
 		}
 
-		var storageStubs []*storage.Stub
+		var storageStubs []*stuber.Stub
 		decoder := json.NewDecoder(bytes.NewReader(byt))
 		decoder.UseNumber()
 
@@ -349,11 +337,11 @@ func (h *RestServer) readStubs(path string) {
 			continue
 		}
 
-		h.stubs.Add(storageStubs...)
+		h.stuber.PutMany(storageStubs...)
 	}
 }
 
-func validateStub(stub *storage.Stub) error {
+func validateStub(stub *stuber.Stub) error {
 	if stub.Service == "" {
 		return ErrServiceIsMissing
 	}
@@ -361,11 +349,6 @@ func validateStub(stub *storage.Stub) error {
 	if stub.Method == "" {
 		return ErrMethodIsMissing
 	}
-
-	// due to golang implementation
-	// method name must capital
-	title := cases.Title(language.English, cases.NoLower)
-	stub.Method = title.String(stub.Method)
 
 	switch {
 	case stub.Input.Contains != nil:

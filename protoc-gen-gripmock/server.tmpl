@@ -186,17 +186,6 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 {{ end }}
 
 {{ define "find_stub" }}
-type payload struct {
-	Service string      `json:"service"`
-	Method  string      `json:"method"`
-	Data    interface{} `json:"data"`
-}
-
-type response struct {
-	Data  interface{} `json:"data"`
-	Error string      `json:"error"`
-}
-
 func findStub(ctx context.Context, service, method string, md metadata.MD, in, out protoreflect.ProtoMessage) error {
     api, err := sdk.NewClientWithResponses(fmt.Sprintf("http://localhost%s/api", HTTP_PORT),
         sdk.WithHTTPClient(http.DefaultClient),
