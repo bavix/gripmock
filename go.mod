@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/gripmock/stuber v0.0.0-20240411211057-abb2f3d06dcb
+	github.com/gripmock/stuber v0.0.0-20240412102748-e33bea496d15
 	github.com/jhump/protoreflect v1.16.0
 	github.com/joho/godotenv v1.5.1
 	github.com/kelseyhightower/envconfig v1.4.0
