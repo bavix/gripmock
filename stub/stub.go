@@ -35,9 +35,12 @@ func RunRestServer(ctx context.Context, ch chan struct{}, opt Options, reflector
 	ui, _ := gripmockui.Assets()
 
 	router := mux.NewRouter()
-	router.Use(muxmiddleware.RequestLogger)
 	router.Use(otelmux.Middleware("gripmock-manager"))
-	rest.HandlerFromMuxWithBaseURL(apiServer, router, "/api")
+	rest.HandlerWithOptions(apiServer, rest.GorillaServerOptions{
+		BaseURL:     "/api",
+		BaseRouter:  router,
+		Middlewares: []rest.MiddlewareFunc{muxmiddleware.RequestLogger},
+	})
 	router.PathPrefix("/").Handler(http.FileServerFS(ui)).Methods(http.MethodGet)
 
 	srv := &http.Server{
