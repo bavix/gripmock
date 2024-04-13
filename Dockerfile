@@ -13,6 +13,12 @@ RUN apk --no-cache add git &&\
     find /protobuf -not -name "*.proto" -type f -delete &&\
     find /googleapis -not -name "*.proto" -type f -delete
 
+COPY . /go/src/github.com/bavix/gripmock
+
+WORKDIR /go/src/github.com/bavix/gripmock/protoc-gen-gripmock
+
+RUN go install -v -ldflags "-s -w"
+
 FROM golang:1.22-alpine3.19
 
 LABEL org.opencontainers.image.source=https://github.com/bavix/gripmock
@@ -28,15 +34,13 @@ COPY --from=builder /googleapis /googleapis
 
 COPY --from=builder $GOPATH/bin/protoc-gen-go $GOPATH/bin/protoc-gen-go
 COPY --from=builder $GOPATH/bin/protoc-gen-go-grpc $GOPATH/bin/protoc-gen-go-grpc
+COPY --from=builder $GOPATH/bin/protoc-gen-gripmock $GOPATH/bin/protoc-gen-gripmock
 
 COPY . /go/src/github.com/bavix/gripmock
 
 WORKDIR /go/src/github.com/bavix/gripmock
 
-RUN cd /go/src/github.com/bavix/gripmock/protoc-gen-gripmock &&\
-    go install -v -ldflags "-s -w" &&\
-    cd /go/src/github.com/bavix/gripmock &&\
-    go install -v -ldflags "-X 'main.version=${version:-dev}' -s -w"
+RUN go install -v -ldflags "-X 'main.version=${version:-dev}' -s -w"
 
 EXPOSE 4770 4771
 
