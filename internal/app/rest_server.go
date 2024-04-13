@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
@@ -20,7 +21,6 @@ import (
 	"github.com/bavix/features"
 	"github.com/bavix/gripmock/internal/domain/rest"
 	"github.com/bavix/gripmock/internal/pkg/grpcreflector"
-	"github.com/bavix/gripmock/pkg/clock"
 	"github.com/bavix/gripmock/pkg/yaml2json"
 )
 
@@ -33,7 +33,6 @@ type RestServer struct {
 	stuber    *stuber.Budgerigar
 	convertor *yaml2json.Convertor
 	caser     cases.Caser
-	clock     *clock.Clock
 	ok        atomic.Bool
 	reflector *grpcreflector.GReflector
 }
@@ -44,7 +43,6 @@ func NewRestServer(path string, reflector *grpcreflector.GReflector) (*RestServe
 	server := &RestServer{
 		stuber:    stuber.NewBudgerigar(features.New(stuber.MethodTitle)),
 		convertor: yaml2json.New(),
-		clock:     clock.New(),
 		caser:     cases.Title(language.English, cases.NoLower),
 		reflector: reflector,
 	}
@@ -111,7 +109,7 @@ func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, 
 
 func (h *RestServer) Liveness(w http.ResponseWriter, _ *http.Request) {
 	//nolint:errchkjson
-	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: h.clock.Now()})
+	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()})
 }
 
 func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
@@ -124,7 +122,7 @@ func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	//nolint:errchkjson
-	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: h.clock.Now()})
+	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()})
 }
 
 func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
