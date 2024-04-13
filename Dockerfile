@@ -1,6 +1,6 @@
 FROM golang:1.22-alpine3.19 AS builder
 
-RUN apk --no-cache add git &&\
+RUN apk --no-cache add git binutils &&\
     go install -v -ldflags "-s -w" google.golang.org/protobuf/cmd/protoc-gen-go@latest &&\
     go install -v -ldflags "-s -w" google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest &&\
     # cloning well-known-types
@@ -18,6 +18,10 @@ COPY . /go/src/github.com/bavix/gripmock
 WORKDIR /go/src/github.com/bavix/gripmock/protoc-gen-gripmock
 
 RUN go install -v -ldflags "-s -w"
+
+RUN strip $GOPATH/bin/protoc-gen-go-grpc && \
+    strip $GOPATH/bin/protoc-gen-gripmock && \
+    strip $GOPATH/bin/protoc-gen-go
 
 FROM golang:1.22-alpine3.19
 
@@ -40,7 +44,10 @@ COPY . /go/src/github.com/bavix/gripmock
 
 WORKDIR /go/src/github.com/bavix/gripmock
 
-RUN go install -v -ldflags "-X 'main.version=${version:-dev}' -s -w"
+RUN apk --no-cache add binutils &&  \
+    go install -v -ldflags "-X 'main.version=${version:-dev}' -s -w" && \
+    strip $GOPATH/bin/gripmock && \
+    apk del binutils
 
 EXPOSE 4770 4771
 
