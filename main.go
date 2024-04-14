@@ -117,18 +117,9 @@ func main() {
 
 	// generate pb.go and grpc server based on proto
 	generateProtoc(ctx, protocParam{
-		protoPath:       protoPaths,
-		adminHost:       conf.HTTP.Host,
-		adminPort:       conf.HTTP.Port,
-		grpcNet:         conf.GRPC.Network,
-		grpcAddress:     conf.GRPC.Host,
-		grpcPort:        conf.GRPC.Port,
-		otlpHost:        conf.OTLPTrace.Host,
-		otlpPort:        conf.OTLPTrace.Port,
-		otlpTLS:         conf.OTLPTrace.TLS,
-		otlpSampleRatio: conf.OTLPTrace.SampleRatio,
-		output:          output,
-		imports:         importDirs,
+		protoPath: protoPaths,
+		output:    output,
+		imports:   importDirs,
 	})
 
 	// and run
@@ -173,18 +164,9 @@ func main() {
 }
 
 type protocParam struct {
-	protoPath       []string
-	adminHost       string
-	adminPort       string
-	grpcAddress     string
-	grpcNet         string
-	grpcPort        string
-	output          string
-	otlpHost        string
-	otlpPort        string
-	otlpTLS         bool
-	otlpSampleRatio float64
-	imports         []string
+	protoPath []string
+	output    string
+	imports   []string
 }
 
 func getProtodirs(_ context.Context, protoPath string, imports []string) []string {
@@ -294,6 +276,7 @@ func fixGoPackage(ctx context.Context, protoPaths []string) []string {
 
 func runGrpcServer(ctx context.Context, output string) (*exec.Cmd, <-chan error) {
 	run := exec.CommandContext(ctx, "go", "run", output+"server.go") //nolint:gosec
+	run.Env = os.Environ()
 	run.Stdout = os.Stdout
 	run.Stderr = os.Stderr
 
