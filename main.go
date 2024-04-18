@@ -23,11 +23,8 @@ import (
 	_ "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	_ "github.com/bavix/gripmock-sdk-go"
-	"github.com/bavix/gripmock/internal/config"
-	"github.com/bavix/gripmock/internal/container"
 	"github.com/bavix/gripmock/internal/pkg/patcher"
-	"github.com/bavix/gripmock/pkg/trace"
-	"github.com/bavix/gripmock/pkg/utils"
+	"github.com/bavix/gripmock/pkg/dependencies"
 	"github.com/bavix/gripmock/stub"
 )
 
@@ -35,27 +32,6 @@ var version string
 
 //nolint:funlen,cyclop
 func main() {
-	conf, err := config.Load()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	logLevel, err := zerolog.ParseLevel(conf.App.LogLevel)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	logger := utils.NewLogger(logLevel)
-
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-	defer cancel()
-
-	ctx = logger.WithContext(ctx)
-
-	if err := trace.InitTracer(ctx, "gripmock", conf.OTLPTrace); err != nil {
-		zerolog.Ctx(ctx).Err(err).Msg("connect to tracer")
-	}
-
 	outputPointer := flag.String("output", "", "directory to output server.go. Default is $GOPATH/src/grpc/")
 	flag.StringVar(outputPointer, "o", *outputPointer, "alias for -output")
 
@@ -64,12 +40,17 @@ func main() {
 
 	flag.Parse()
 
-	box := container.New(&conf)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer cancel()
 
-	reflector, err := box.GReflector(ctx)
+	builder, err := dependencies.New(ctx, "gripmock-rest")
 	if err != nil {
-		logger.Fatal().Msg("reflector is required")
+		log.Fatal(err)
 	}
+
+	logger := builder.Logger()
+
+	ctx = logger.WithContext(ctx)
 
 	// parse proto files
 	protoPaths := flag.Args()
@@ -107,11 +88,7 @@ func main() {
 	defer close(chReady)
 
 	// run admin stub server
-	stub.RunRestServer(ctx, chReady, stub.Options{
-		StubPath: *stubPath,
-		Port:     conf.HTTP.Port,
-		BindAddr: conf.HTTP.Host,
-	}, reflector)
+	stub.RunRestServer(ctx, chReady, *stubPath, builder.Config(), builder.Reflector())
 
 	importDirs := strings.Split(*imports, ",")
 
@@ -134,7 +111,7 @@ func main() {
 		for {
 			dialCtx, cancel := context.WithTimeout(ctx, time.Second)
 
-			conn, err := d.DialContext(dialCtx, conf.GRPC.Network, conf.GRPCAddr())
+			conn, err := d.DialContext(dialCtx, builder.Config().GRPCNetwork, builder.Config().GRPCAddr)
 
 			cancel()
 

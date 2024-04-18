@@ -9,28 +9,27 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/gripmock/environment"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 
 	gripmockui "github.com/bavix/gripmock-ui"
 	"github.com/bavix/gripmock/internal/app"
 	"github.com/bavix/gripmock/internal/domain/rest"
-	"github.com/bavix/gripmock/internal/pkg/grpcreflector"
 	"github.com/bavix/gripmock/internal/pkg/muxmiddleware"
+	"github.com/bavix/gripmock/pkg/grpcreflector"
 )
 
-type Options struct {
-	Port     string
-	BindAddr string
-	StubPath string
-}
-
-func RunRestServer(ctx context.Context, ch chan struct{}, opt Options, reflector *grpcreflector.GReflector) {
+func RunRestServer(
+	ctx context.Context,
+	ch chan struct{},
+	stubPath string,
+	config environment.Config,
+	reflector *grpcreflector.GReflector,
+) {
 	const timeout = time.Millisecond * 25
 
-	addr := net.JoinHostPort(opt.BindAddr, opt.Port)
-
-	apiServer, _ := app.NewRestServer(opt.StubPath, reflector)
+	apiServer, _ := app.NewRestServer(stubPath, reflector)
 
 	ui, _ := gripmockui.Assets()
 
@@ -44,7 +43,7 @@ func RunRestServer(ctx context.Context, ch chan struct{}, opt Options, reflector
 	router.PathPrefix("/").Handler(http.FileServerFS(ui)).Methods(http.MethodGet)
 
 	srv := &http.Server{
-		Addr:              addr,
+		Addr:              config.HTTPAddr,
 		ReadHeaderTimeout: timeout,
 		BaseContext: func(listener net.Listener) context.Context {
 			return ctx
@@ -61,7 +60,7 @@ func RunRestServer(ctx context.Context, ch chan struct{}, opt Options, reflector
 
 	zerolog.Ctx(ctx).
 		Info().
-		Str("addr", addr).
+		Str("addr", config.HTTPAddr).
 		Msg("stub-manager started")
 
 	go func() {

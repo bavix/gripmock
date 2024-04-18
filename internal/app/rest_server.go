@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/bavix/gripmock/pkg/grpcreflector"
 	"io"
 	"log"
 	"net/http"
@@ -20,7 +21,6 @@ import (
 
 	"github.com/bavix/features"
 	"github.com/bavix/gripmock/internal/domain/rest"
-	"github.com/bavix/gripmock/internal/pkg/grpcreflector"
 	"github.com/bavix/gripmock/pkg/yaml2json"
 )
 

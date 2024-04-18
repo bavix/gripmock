@@ -1,38 +1,44 @@
-package trace
+package dependencies
 
 import (
 	"context"
 	"net"
 
+	"github.com/gripmock/environment"
+	"github.com/gripmock/shutdown"
 	"github.com/pkg/errors"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.23.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 )
 
-func InitTracer(ctx context.Context, appName string, otlpTrace OTLPTrace) error {
-	if !otlpTrace.UseTrace() {
-		return nil
+func tracer(
+	ctx context.Context,
+	config environment.Config,
+	shutdown *shutdown.Shutdown,
+	appName string,
+) (*trace.TracerProvider, error) {
+	if config.OtlpRatio == 0 || config.OtlpHost == "" || config.OtlpPort == "" {
+		return nil, nil
 	}
 
 	options := []otlptracegrpc.Option{
-		otlptracegrpc.WithEndpoint(
-			net.JoinHostPort(otlpTrace.Host, otlpTrace.Port)),
+		otlptracegrpc.WithEndpoint(net.JoinHostPort(config.OtlpHost, config.OtlpPort)),
 	}
-	if !otlpTrace.TLS {
+	if !config.OtlpTLS {
 		options = append(options, otlptracegrpc.WithInsecure())
 	}
 
 	exporter, err := otlptracegrpc.New(ctx, options...)
 	if err != nil {
-		return errors.Wrap(err, "build trace exporter")
+		return nil, errors.Wrap(err, "build trace exporter")
 	}
 
 	tp := trace.NewTracerProvider(
-		trace.WithSampler(trace.TraceIDRatioBased(otlpTrace.SampleRatio)),
+		trace.WithSampler(trace.TraceIDRatioBased(config.OtlpRatio)),
 		trace.WithSyncer(exporter),
 		trace.WithResource(
 			resource.NewWithAttributes(
@@ -42,10 +48,10 @@ func InitTracer(ctx context.Context, appName string, otlpTrace OTLPTrace) error 
 		),
 	)
 
-	//tp.Shutdown
+	shutdown.Add(tp.Shutdown)
 
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
-	return nil
+	return tp, nil
 }

@@ -7,15 +7,12 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/pkg/errors"
-
-	"github.com/bavix/gripmock/pkg/trace"
 )
 
 type Config struct {
-	App       App
-	OTLPTrace trace.OTLPTrace
-	GRPC      GRPC
-	HTTP      HTTP
+	App  App
+	GRPC GRPC
+	HTTP HTTP
 }
 
 func Load() (Config, error) {
