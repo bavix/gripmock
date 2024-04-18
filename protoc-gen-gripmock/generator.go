@@ -6,14 +6,10 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"os"
 	"strings"
 	"text/template"
 
-	"github.com/joho/godotenv"
-	"github.com/kelseyhightower/envconfig"
-	"github.com/pkg/errors"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/tools/imports"
@@ -22,56 +18,6 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/pluginpb"
 )
-
-type Config struct {
-	OTLPTrace OTLPTrace
-	GRPC      GRPC
-	HTTP      HTTP
-}
-
-type HTTP struct {
-	Host string `envconfig:"HTTP_HOST" default:"0.0.0.0"`
-	Port string `envconfig:"HTTP_PORT" default:"4771"`
-}
-
-type GRPC struct {
-	Network string `envconfig:"GRPC_NETWORK" default:"tcp"`
-	Host    string `envconfig:"GRPC_HOST" default:"0.0.0.0"`
-	Port    string `envconfig:"GRPC_PORT" default:"4770"`
-}
-
-func Load() (Config, error) {
-	cnf := Config{} //nolint:exhaustruct
-
-	if err := godotenv.Load(".env"); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return cnf, errors.Wrap(err, "read .env file")
-	}
-
-	if err := envconfig.Process("", &cnf); err != nil {
-		return cnf, errors.Wrap(err, "read environment")
-	}
-
-	return cnf, nil
-}
-
-func (c *Config) GRPCAddr() string {
-	return net.JoinHostPort(c.GRPC.Host, c.GRPC.Port)
-}
-
-func (c *Config) HTTPAddr() string {
-	return net.JoinHostPort(c.HTTP.Host, c.HTTP.Port)
-}
-
-type OTLPTrace struct {
-	Host        string  `envconfig:"OTLP_TRACE_GRPC_HOST" default:"127.0.0.1"`
-	Port        string  `envconfig:"OTLP_TRACE_GRPC_PORT" default:"4317"`
-	TLS         bool    `envconfig:"OTLP_TRACE_TLS" default:"false"`
-	SampleRatio float64 `envconfig:"OTLP_SAMPLE_RATIO"`
-}
-
-func (o *OTLPTrace) UseTrace() bool {
-	return o.Host != "" && o.Port != "" && o.SampleRatio > 0
-}
 
 func main() {
 	// Tip of the hat to Tim Coulson
@@ -83,11 +29,6 @@ func main() {
 	var request pluginpb.CodeGeneratorRequest
 	if err := proto.Unmarshal(input, &request); err != nil {
 		log.Fatalf("error unmarshalling [%s]: %v", string(input), err)
-	}
-
-	conf, err := Load()
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	// Initialise our plugin with default options
@@ -104,12 +45,9 @@ func main() {
 		protos[index] = file.Proto
 	}
 
-	// request.GetParameter()
-
 	buf := new(bytes.Buffer)
 	err = generateServer(protos, &Options{
 		writer: buf,
-		conf:   conf,
 	})
 
 	if err != nil {
@@ -130,16 +68,8 @@ func main() {
 }
 
 type generatorParam struct {
-	Services        []Service
-	Dependencies    map[string]string
-	GrpcNet         string
-	GrpcAddr        string
-	AdminHost       string
-	AdminPort       string
-	OtlpHost        string
-	OtlpPort        string
-	OtlpTLS         bool
-	OtlpSampleRatio float64
+	Services     []Service
+	Dependencies map[string]string
 }
 
 type Service struct {
@@ -168,7 +98,6 @@ const (
 
 type Options struct {
 	writer io.Writer
-	conf   Config
 }
 
 var ServerTemplate string
@@ -190,20 +119,8 @@ func generateServer(protos []*descriptorpb.FileDescriptorProto, opt *Options) er
 	deps := resolveDependencies(protos)
 
 	param := generatorParam{
-		Services:        services,
-		Dependencies:    deps,
-		GrpcNet:         opt.conf.GRPC.Network,
-		GrpcAddr:        opt.conf.GRPCAddr(),
-		AdminHost:       opt.conf.HTTP.Host,
-		AdminPort:       opt.conf.HTTP.Port,
-		OtlpHost:        opt.conf.OTLPTrace.Host,
-		OtlpPort:        opt.conf.OTLPTrace.Port,
-		OtlpTLS:         opt.conf.OTLPTrace.TLS,
-		OtlpSampleRatio: opt.conf.OTLPTrace.SampleRatio,
-	}
-
-	if opt == nil {
-		opt = &Options{}
+		Services:     services,
+		Dependencies: deps,
 	}
 
 	if opt.writer == nil {

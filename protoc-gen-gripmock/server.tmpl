@@ -2,19 +2,18 @@
 package main
 
 import (
-	"bytes"
+	"context"
 	"errors"
 	"slices"
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
+    "io"
 	"log"
 	"net"
 	"net/http"
 
+	"github.com/gripmock/environment"
 	jsonpb "google.golang.org/protobuf/encoding/protojson"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
@@ -22,23 +21,16 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	_ "google.golang.org/grpc/encoding/gzip"
-	"github.com/rs/zerolog"
-	"github.com/bavix/gripmock/pkg/grpccontext"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
+	"github.com/bavix/gripmock/pkg/grpccontext"
 	sdk "github.com/bavix/gripmock-sdk-go"
-	"github.com/bavix/gripmock/pkg/utils"
-	"github.com/bavix/gripmock/pkg/trace"
+	"github.com/bavix/gripmock/pkg/dependencies"
 )
 {{ range $package, $alias := .Dependencies }}
 import {{$alias}} "{{$package}}"
 {{end}}
-const (
-	GRPC_NETWORK  = "{{.GrpcNet}}"
-	GRPC_ADDR  = "{{.GrpcAddr}}"
-	HTTP_PORT = ":{{.AdminPort}}"
-)
 
 {{ range .Services }}
 {{ template "services" . }}
@@ -47,31 +39,26 @@ const (
 func main() {
 	http.DefaultTransport = otelhttp.NewTransport(http.DefaultTransport)
 
-	logger := utils.NewLogger(zerolog.InfoLevel)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer cancel()
 
-	lis, err := net.Listen(GRPC_NETWORK, GRPC_ADDR)
+	builder, err := dependencies.New(ctx, "gripmock-grpc")
 	if err != nil {
-	    logger.Fatal().Err(err).Msg("failed to listen")
+		log.Fatal(err)
 	}
 
-	ctx := logger.WithContext(context.Background())
-
-    if err := trace.InitTracer(ctx, "gripmock-gen", trace.OTLPTrace{
-        Host: "{{ .OtlpHost }}",
-        Port: "{{ .OtlpPort }}",
-        TLS: {{ .OtlpTLS }},
-        SampleRatio: {{ .OtlpSampleRatio }},
-    }); err != nil {
-        logger.Err(err).Msg("connect to tracer")
-    }
+	lis, err := net.Listen(builder.Config().GRPCNetwork, builder.Config().GRPCAddr)
+	if err != nil {
+		builder.Logger().Fatal().Err(err).Msg("failed to listen")
+	}
 
 	s := grpc.NewServer(
         grpc.StatsHandler(otelgrpc.NewServerHandler()),
         grpc.ChainUnaryInterceptor([]grpc.UnaryServerInterceptor{
-            grpccontext.UnaryInterceptor(ctx),
+            grpccontext.UnaryInterceptor(builder.Logger()),
         }...),
         grpc.ChainStreamInterceptor([]grpc.StreamServerInterceptor{
-            grpccontext.StreamInterceptor(ctx),
+            grpccontext.StreamInterceptor(builder.Logger()),
         }...),
     )
 	{{ range .Services }}
@@ -80,12 +67,12 @@ func main() {
 
     reflection.Register(s)
 
-	logger.Info().
-	    Str("addr", fmt.Sprintf("%s://%s", GRPC_NETWORK, GRPC_ADDR)).
+	builder.Logger().Info().
+	    Str("addr", fmt.Sprintf("%s://%s", builder.Config().GRPCNetwork, builder.Config().GRPCAddr)).
 	    Msg("Serving gRPC")
 
 	if err := s.Serve(lis); err != nil {
-	    logger.Fatal().Err(err).Msg("server ended")
+		builder.Logger().Fatal().Err(err).Msg("server ended")
 	}
 }
 
@@ -94,6 +81,7 @@ func main() {
 {{ define "services" }}
 type {{.Name}} struct{
     {{.Package}}Unsafe{{.Name}}Server
+	__builder__ *dependencies.Builder
 }
 
 {{ template "methods" .}}
@@ -117,7 +105,7 @@ type {{.Name}} struct{
 func (s *{{.ServiceName}}) {{.Name}}(ctx context.Context, in *{{.Input}}) (*{{.Output}},error){
 	out := &{{.Output}}{}
 	md, _ := metadata.FromIncomingContext(ctx)
-	err := findStub(ctx, "{{.ServiceName}}", "{{.Name}}", md, in, out)
+	err := findStub(ctx, s.__builder__.Config(), "{{.ServiceName}}", "{{.Name}}", md, in, out)
 	return out, err
 }
 {{ end }}
@@ -127,7 +115,7 @@ func (s *{{.ServiceName}}) {{.Name}}(in *{{.Input}},srv {{.SvcPackage}}{{.Servic
 	out := &{{.Output}}{}
 	ctx := srv.Context()
 	md, _ := metadata.FromIncomingContext(ctx)
-	err := findStub(ctx, "{{.ServiceName}}", "{{.Name}}", md, in, out)
+	err := findStub(ctx, s.__builder__.Config(), "{{.ServiceName}}", "{{.Name}}", md, in, out)
 	if err != nil {
 		return err
 	}
@@ -146,7 +134,7 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 		if errors.Is(err, io.EOF) {
 			return srv.SendAndClose(out)
 		}
-		err = findStub(ctx, "{{.ServiceName}}","{{.Name}}",md,input,out)
+		err = findStub(ctx, s.__builder__.Config(), "{{.ServiceName}}","{{.Name}}",md,input,out)
 		if err != nil {
 			return err
 		}
@@ -168,7 +156,7 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 		}
 
 		out := &{{.Output}}{}
-		err = findStub(ctx, "{{.ServiceName}}","{{.Name}}", md, in, out)
+		err = findStub(ctx, s.__builder__.Config(), "{{.ServiceName}}","{{.Name}}", md, in, out)
 		if err != nil {
 			return err
 		}
@@ -182,12 +170,12 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 
 
 {{ define "register_services" }}
-	{{.Package}}Register{{.Name}}Server(s, &{{.Name}}{})
+	{{.Package}}Register{{.Name}}Server(s, &{{.Name}}{__builder__: builder})
 {{ end }}
 
 {{ define "find_stub" }}
-func findStub(ctx context.Context, service, method string, md metadata.MD, in, out protoreflect.ProtoMessage) error {
-    api, err := sdk.NewClientWithResponses(fmt.Sprintf("http://localhost%s/api", HTTP_PORT),
+func findStub(ctx context.Context, conf environment.Config, service, method string, md metadata.MD, in, out protoreflect.ProtoMessage) error {
+    api, err := sdk.NewClientWithResponses(fmt.Sprintf("http://%s/api", conf.HTTPAddr),
         sdk.WithHTTPClient(http.DefaultClient),
     )
     if err != nil {

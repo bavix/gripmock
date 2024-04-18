@@ -8,14 +8,14 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-func UnaryInterceptor(ctx context.Context) grpc.UnaryServerInterceptor {
+func UnaryInterceptor(logger *zerolog.Logger) grpc.UnaryServerInterceptor {
 	return func(
 		innerCtx context.Context,
 		req interface{},
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
-		return handler(zerolog.Ctx(ctx).WithContext(innerCtx), req)
+		return handler(logger.WithContext(innerCtx), req)
 	}
 }
 
@@ -31,7 +31,7 @@ func (w serverStreamWrapper) SendHeader(md metadata.MD) error { return w.ss.Send
 func (w serverStreamWrapper) SetHeader(md metadata.MD) error  { return w.ss.SetHeader(md) }
 func (w serverStreamWrapper) SetTrailer(md metadata.MD)       { w.ss.SetTrailer(md) }
 
-func StreamInterceptor(ctx context.Context) grpc.StreamServerInterceptor {
+func StreamInterceptor(logger *zerolog.Logger) grpc.StreamServerInterceptor {
 	return func(
 		srv interface{},
 		ss grpc.ServerStream,
@@ -40,7 +40,7 @@ func StreamInterceptor(ctx context.Context) grpc.StreamServerInterceptor {
 	) error {
 		return handler(srv, serverStreamWrapper{
 			ss:  ss,
-			ctx: zerolog.Ctx(ctx).WithContext(ss.Context()),
+			ctx: logger.WithContext(ss.Context()),
 		})
 	}
 }
