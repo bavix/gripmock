@@ -2,6 +2,7 @@ run:
   timeout: 1m
   build-tags:
     - wireinject
+    - nobuild
 linters:
   enable-all: true
   disable:

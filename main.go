@@ -19,10 +19,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	_ "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	_ "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
-	_ "github.com/bavix/gripmock-sdk-go"
 	"github.com/bavix/gripmock/internal/pkg/patcher"
 	"github.com/bavix/gripmock/pkg/dependencies"
 	"github.com/bavix/gripmock/stub"
