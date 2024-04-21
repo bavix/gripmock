@@ -1,11 +1,11 @@
 package app
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/bavix/gripmock/pkg/grpcreflector"
+	"github.com/bavix/gripmock/pkg/jsondecoder"
 	"io"
 	"log"
 	"net/http"
@@ -136,17 +136,9 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	byt = bytes.TrimSpace(byt)
-
-	if byt[0] == '{' && byt[len(byt)-1] == '}' {
-		byt = []byte("[" + string(byt) + "]")
-	}
-
 	var inputs []*stuber.Stub
-	decoder := json.NewDecoder(bytes.NewReader(byt))
-	decoder.UseNumber()
 
-	if err := decoder.Decode(&inputs); err != nil {
+	if err := jsondecoder.UnmarshalSlice(byt, &inputs); err != nil {
 		h.responseError(err, w)
 
 		return
@@ -310,8 +302,6 @@ func (h *RestServer) readStubs(path string) {
 			continue
 		}
 
-		byt = bytes.TrimSpace(byt)
-
 		if strings.HasSuffix(file.Name(), ".yaml") || strings.HasSuffix(file.Name(), ".yml") {
 			byt, err = h.convertor.Execute(file.Name(), byt)
 			if err != nil {
@@ -321,15 +311,9 @@ func (h *RestServer) readStubs(path string) {
 			}
 		}
 
-		if byt[0] == '{' && byt[len(byt)-1] == '}' {
-			byt = []byte("[" + string(byt) + "]")
-		}
-
 		var storageStubs []*stuber.Stub
-		decoder := json.NewDecoder(bytes.NewReader(byt))
-		decoder.UseNumber()
 
-		if err = decoder.Decode(&storageStubs); err != nil {
+		if err = jsondecoder.UnmarshalSlice(byt, &storageStubs); err != nil {
 			log.Printf("Error when unmarshalling file %s. %v %v. skipping...", file.Name(), string(byt), err)
 
 			continue

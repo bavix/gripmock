@@ -7,6 +7,7 @@ require (
 	github.com/bavix/gripmock-sdk-go v1.0.4
 	github.com/bavix/gripmock-ui v1.0.0-alpha1
 	github.com/bavix/gripmock/protogen v0.0.0
+	github.com/goccy/go-json v0.10.2
 	github.com/goccy/go-yaml v1.11.3
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
