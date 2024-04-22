@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+
+	"github.com/bavix/gripmock/pkg/jsondecoder"
 )
 
 func RequestLogger(next http.Handler) http.Handler {
@@ -22,13 +24,16 @@ func RequestLogger(next http.Handler) http.Handler {
 
 		next.ServeHTTP(ww, r)
 
-		logger.
-			Info().
-			Err(err).
+		event := logger.Info().Err(err).
 			IPAddr("ip", ip).
 			Str("method", r.Method).
-			Str("url", r.URL.RequestURI()).
-			RawJSON("input", bodyBytes).
+			Str("url", r.URL.RequestURI())
+
+		if err := jsondecoder.UnmarshalSlice(bodyBytes, nil); err == nil {
+			event.RawJSON("input", bodyBytes)
+		}
+
+		event.
 			Dur("elapsed", time.Since(now)).
 			Str("ua", r.UserAgent()).
 			Int("bytes", ww.bytes).

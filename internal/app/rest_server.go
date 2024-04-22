@@ -160,18 +160,24 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 func (h *RestServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
 	w.Header().Set("Content-Type", "application/json")
 	h.stuber.DeleteByID(uuid)
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	byt, err := io.ReadAll(r.Body)
+	if err != nil {
+		h.responseError(err, w)
 
-	var inputs []uuid.UUID
-	decoder := json.NewDecoder(r.Body)
-	decoder.UseNumber()
+		return
+	}
 
 	defer r.Body.Close()
 
-	if err := decoder.Decode(&inputs); err != nil {
+	var inputs []uuid.UUID
+
+	if err := jsondecoder.UnmarshalSlice(byt, &inputs); err != nil {
 		h.responseError(err, w)
 
 		return
@@ -187,8 +193,6 @@ func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 	err := json.NewEncoder(w).Encode(h.stuber.Used())
 	if err != nil {
 		h.responseError(err, w)
-
-		return
 	}
 }
 
@@ -197,8 +201,6 @@ func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 	err := json.NewEncoder(w).Encode(h.stuber.Unused())
 	if err != nil {
 		h.responseError(err, w)
-
-		return
 	}
 }
 
@@ -207,8 +209,6 @@ func (h *RestServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
 	err := json.NewEncoder(w).Encode(h.stuber.All())
 	if err != nil {
 		h.responseError(err, w)
-
-		return
 	}
 }
 
@@ -266,7 +266,6 @@ func (h *RestServer) responseError(err error, w http.ResponseWriter) {
 }
 
 func (h *RestServer) writeResponseError(err error, w http.ResponseWriter) {
-
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"error": err.Error(),
 	})
