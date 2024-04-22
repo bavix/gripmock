@@ -2,8 +2,7 @@ package jsondecoder
 
 import (
 	"bytes"
-
-	"github.com/goccy/go-json"
+	"encoding/json"
 )
 
 func UnmarshalSlice(data []byte, v interface{}) error {
