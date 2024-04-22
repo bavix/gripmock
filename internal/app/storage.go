@@ -1,9 +1,9 @@
 package app
 
 import (
-	"encoding/json"
 	"fmt"
 
+	"github.com/goccy/go-json"
 	"github.com/gripmock/stuber"
 )
 
@@ -17,7 +17,7 @@ func stubNotFoundError2(expect stuber.Query, result *stuber.Result) error {
 	template += string(expectString)
 
 	if result.Similar() == nil {
-		//fixme
+		// fixme
 		//nolint:goerr113
 		return fmt.Errorf(template)
 	}
@@ -49,7 +49,7 @@ func stubNotFoundError2(expect stuber.Query, result *stuber.Result) error {
 		template += fmt.Sprintf("\n\nClosest Match \n\n%s:%s", "matches", closestMatchString)
 	}
 
-	//fixme
+	// fixme
 	//nolint:goerr113
 	return fmt.Errorf(template)
 }

@@ -1,11 +1,8 @@
 package app
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/bavix/gripmock/pkg/grpcreflector"
-	"github.com/bavix/gripmock/pkg/jsondecoder"
 	"io"
 	"log"
 	"net/http"
@@ -14,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
 	"golang.org/x/text/cases"
@@ -21,6 +19,8 @@ import (
 
 	"github.com/bavix/features"
 	"github.com/bavix/gripmock/internal/domain/rest"
+	"github.com/bavix/gripmock/pkg/grpcreflector"
+	"github.com/bavix/gripmock/pkg/jsondecoder"
 	"github.com/bavix/gripmock/pkg/yaml2json"
 )
 
@@ -108,7 +108,6 @@ func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, 
 }
 
 func (h *RestServer) Liveness(w http.ResponseWriter, _ *http.Request) {
-	//nolint:errchkjson
 	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()})
 }
 
@@ -121,7 +120,6 @@ func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	//nolint:errchkjson
 	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()})
 }
 
@@ -187,7 +185,6 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(h.stuber.Used())
-
 	if err != nil {
 		h.responseError(err, w)
 
@@ -198,7 +195,6 @@ func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(h.stuber.Unused())
-
 	if err != nil {
 		h.responseError(err, w)
 
@@ -209,7 +205,6 @@ func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 func (h *RestServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(h.stuber.All())
-
 	if err != nil {
 		h.responseError(err, w)
 
@@ -250,7 +245,6 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//nolint:errchkjson
 	_ = json.NewEncoder(w).Encode(result.Found().Output)
 }
 
@@ -262,7 +256,6 @@ func (h *RestServer) FindByID(w http.ResponseWriter, _ *http.Request, uuid rest.
 		return
 	}
 
-	//nolint:errchkjson
 	_ = json.NewEncoder(w).Encode(stub)
 }
 
@@ -273,13 +266,12 @@ func (h *RestServer) responseError(err error, w http.ResponseWriter) {
 }
 
 func (h *RestServer) writeResponseError(err error, w http.ResponseWriter) {
-	//nolint:errchkjson
+
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"error": err.Error(),
 	})
 }
 
-//nolint:cyclop
 func (h *RestServer) readStubs(path string) {
 	files, err := os.ReadDir(path)
 	if err != nil {
@@ -340,7 +332,7 @@ func validateStub(stub *stuber.Stub) error {
 	case stub.Input.Matches != nil:
 		break
 	default:
-		//fixme
+		// fixme
 		//nolint:goerr113
 		return fmt.Errorf("input cannot be empty")
 	}
@@ -348,7 +340,7 @@ func validateStub(stub *stuber.Stub) error {
 	// TODO: validate all input case
 
 	if stub.Output.Error == "" && stub.Output.Data == nil && stub.Output.Code == nil {
-		//fixme
+		// fixme
 		//nolint:goerr113
 		return fmt.Errorf("output can't be empty")
 	}

@@ -22,7 +22,7 @@ func TestUnmarshalSlice(t *testing.T) {
 	}
 
 	for _, input := range inputs {
-		var results = make([]demo, 0)
+		results := make([]demo, 0)
 
 		err := jsondecoder.UnmarshalSlice(input, &results)
 

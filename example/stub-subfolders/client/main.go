@@ -30,11 +30,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	r, err = c.SayHello(context.Background(), &pb.Request{Name: "subtokopedia"})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 }

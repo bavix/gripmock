@@ -3,9 +3,9 @@ package yaml2json
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
 	"text/template"
 
+	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 )
 
@@ -39,7 +39,6 @@ func (e *engine) uuid2int64(str string) string {
 
 	var buffer bytes.Buffer
 
-	//nolint:errchkjson
 	_ = json.NewEncoder(&buffer).Encode(map[string]int64{
 		"high": high,
 		"low":  low,

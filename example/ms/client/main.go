@@ -46,7 +46,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	log.Printf("Result: %d", r1.Code)
+	log.Printf("Result: %d", r1.GetCode())
 
 	r2, err := c.SayHello(context.Background(), &pb.Request{V2: []string{
 		"e3484119-24e1-42d9-b4c2-7d6004ee86d9", // 1
@@ -57,7 +57,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	log.Printf("Result: %d", r2.Code)
+	log.Printf("Result: %d", r2.GetCode())
 
 	r3, err := c.SayHello(context.Background(), &pb.Request{V2: []string{
 		"e3484119-24e1-42d9-b4c2-7d6004ee86d9", // 1
@@ -68,8 +68,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	log.Printf("Result: %d", r3.Code)
-	log.Printf("v3: %d", *r3.V3)
+	log.Printf("Result: %d", r3.GetCode())
+	log.Printf("v3: %d", r3.GetV3())
 }
 
 func u2bytes(v string) []byte {
