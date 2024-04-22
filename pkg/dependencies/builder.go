@@ -4,13 +4,13 @@ package dependencies
 
 import (
 	"context"
-	"google.golang.org/grpc"
 
 	"github.com/google/wire"
 	"github.com/gripmock/environment"
 	"github.com/gripmock/shutdown"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/otel/sdk/trace"
+	"google.golang.org/grpc"
 
 	"github.com/bavix/gripmock/pkg/grpcreflector"
 )

@@ -65,11 +65,11 @@ func serverStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 			log.Fatalf("s2c error: %v", err)
 		}
 
-		log.Printf("s2c message: %s\n", reply.Message)
+		log.Printf("s2c message: %s\n", reply.GetMessage())
 	}
 }
 
-// client to server streaming
+// client to server streaming.
 func clientStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 	defer wg.Done()
 	stream, err := c.ClientStream(context.Background())
@@ -98,10 +98,10 @@ func clientStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 		log.Fatalf("c2s error: %v", err)
 	}
 
-	log.Printf("c2s message: %v", reply.Message)
+	log.Printf("c2s message: %v", reply.GetMessage())
 }
 
-// bidirectional stream
+// bidirectional stream.
 func bidirectionalStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 	stream, err := c.Bidirectional(context.Background())
 	if err != nil {
@@ -128,7 +128,7 @@ func bidirectionalStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 				log.Fatalf("2ds error %v", err)
 			}
 
-			log.Printf("2ds message: %s\n", reply.Message)
+			log.Printf("2ds message: %s\n", reply.GetMessage())
 		}
 	}()
 

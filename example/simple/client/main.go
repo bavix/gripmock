@@ -39,40 +39,40 @@ func main() {
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	if r.ReturnCode != 1 {
-		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 1)
+	if r.GetReturnCode() != 1 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.GetReturnCode(), 1)
 	}
-	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	name = "world"
 	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	if r.ReturnCode != 1 {
-		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 1)
+	if r.GetReturnCode() != 1 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.GetReturnCode(), 1)
 	}
-	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	name = "simple2"
 	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	if r.ReturnCode != 2 {
-		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 2)
+	if r.GetReturnCode() != 2 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.GetReturnCode(), 2)
 	}
-	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	name = "simple3"
 	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	if r.ReturnCode != 3 {
-		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 3)
+	if r.GetReturnCode() != 3 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.GetReturnCode(), 3)
 	}
-	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	md := metadata.New(map[string]string{"Authorization": "Basic dXNlcjp1c2Vy"})
 	ctx = metadata.NewOutgoingContext(context.Background(), md)
@@ -84,8 +84,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	if r.ReturnCode != 0 {
-		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 0)
+	if r.GetReturnCode() != 0 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.GetReturnCode(), 0)
 	}
 	header := headers["result"]
 	if len(header) == 0 {
@@ -94,7 +94,7 @@ func main() {
 	if header[0] != "ok" {
 		log.Fatal("the service returned an incorrect header")
 	}
-	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	md2 := metadata.New(map[string]string{"Authorization": "Basic dXNlcjp1c2Vy", "ab": "blue"})
 	ctx = metadata.NewOutgoingContext(context.Background(), md2)
@@ -106,8 +106,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	if r.ReturnCode != 0 {
-		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 0)
+	if r.GetReturnCode() != 0 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.GetReturnCode(), 0)
 	}
 	if _, ok := headers2["result"]; !ok {
 		log.Fatal("header key `result` not found")
@@ -118,7 +118,7 @@ func main() {
 	if headers2["result"][0] != "blue" && headers2["result"][1] != "red" && headers2["result"][2] != "none" {
 		log.Fatal("the service returned an incorrect header")
 	}
-	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	md3 := metadata.New(map[string]string{"Authorization": "Basic dXNlcjp1c2Vy", "ab": "red"})
 	ctx = metadata.NewOutgoingContext(context.Background(), md3)
@@ -130,8 +130,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	if r.ReturnCode != 0 {
-		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 0)
+	if r.GetReturnCode() != 0 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.GetReturnCode(), 0)
 	}
 	if _, ok := headers3["result"]; !ok {
 		log.Fatal("header key `result` not found")
@@ -143,29 +143,29 @@ func main() {
 	if headers2["result"][0] != "red" && headers2["result"][1] != "blue" && headers2["result"][2] != "none" {
 		log.Fatal("the service returned an incorrect header")
 	}
-	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	name = "simple3"
 	r, err = c.SayHello(context.Background(), &pb.Request{Name: name}, grpc.UseCompressor(gzip.Name))
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	if r.ReturnCode != 3 {
-		log.Fatalf("grpc server returned code: %d, expected code: %d", r.ReturnCode, 3)
+	if r.GetReturnCode() != 3 {
+		log.Fatalf("grpc server returned code: %d, expected code: %d", r.GetReturnCode(), 3)
 	}
-	log.Printf("Greeting (gzip): %s (return code %d)", r.Message, r.ReturnCode)
+	log.Printf("Greeting (gzip): %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	name = "error"
 	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
 	if err == nil {
-		log.Fatalf("Expected error, but return %d", r.ReturnCode)
+		log.Fatalf("Expected error, but return %d", r.GetReturnCode())
 	}
 	log.Printf("Greeting error: %s", err)
 
 	name = "error_code"
 	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
 	if err == nil {
-		log.Fatalf("Expected error, but return %d", r.ReturnCode)
+		log.Fatalf("Expected error, but return %d", r.GetReturnCode())
 	}
 
 	s, ok := status.FromError(err)
@@ -183,21 +183,21 @@ func main() {
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	if r.Message != "72057594037927936 18446744073709551615" {
-		log.Fatalf("failed to get valid message: %v", r.Message)
+	if r.GetMessage() != "72057594037927936 18446744073709551615" {
+		log.Fatalf("failed to get valid message: %v", r.GetMessage())
 	}
-	if r.Vint64 != 72057594037927936 {
-		log.Fatalf("expected: 72057594037927936, received: %d", r.Vint64)
+	if r.GetVint64() != 72057594037927936 {
+		log.Fatalf("expected: 72057594037927936, received: %d", r.GetVint64())
 	}
-	if r.Vuint64 != 18446744073709551615 {
-		log.Fatalf("expected: 18446744073709551615, received: %d", r.Vuint64)
+	if r.GetVuint64() != 18446744073709551615 {
+		log.Fatalf("expected: 18446744073709551615, received: %d", r.GetVuint64())
 	}
-	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	// ignoreArrayOrder=true
 	r, err = c.SayHello(context.Background(), &pb.Request{Values: []int64{10, 20, 30, 40, 50, 60, 70}})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
-	log.Printf("Greeting: %s (return code %d)", r.Message, r.ReturnCode)
+	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 }

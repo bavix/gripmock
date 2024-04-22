@@ -7,6 +7,7 @@ require (
 	github.com/bavix/gripmock-sdk-go v1.0.4
 	github.com/bavix/gripmock-ui v1.0.0-alpha1
 	github.com/bavix/gripmock/protogen v0.0.0
+	github.com/goccy/go-json v0.10.3-0.20231019071309-df897aec9dc4
 	github.com/goccy/go-yaml v1.11.3
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
@@ -33,7 +34,7 @@ require (
 
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
-	github.com/bufbuild/protocompile v0.11.0 // indirect
+	github.com/bufbuild/protocompile v0.12.0 // indirect
 	github.com/caarlos0/env/v10 v10.0.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

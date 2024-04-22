@@ -39,5 +39,5 @@ func main() {
 		log.Fatalf("error from grpc: %v", err)
 	}
 
-	log.Printf("Greeting: %s", r.Response)
+	log.Printf("Greeting: %s", r.GetResponse())
 }

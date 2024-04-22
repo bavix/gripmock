@@ -35,9 +35,9 @@ func main() {
 		log.Fatalf("error from grpc: %v", err)
 	}
 
-	if r.Name != "Gripmock" {
-		log.Fatalf("expecting api name: Gripmock, but got '%v' instead", r.Name)
+	if r.GetName() != "Gripmock" {
+		log.Fatalf("expecting api name: Gripmock, but got '%v' instead", r.GetName())
 	}
 
-	log.Printf("Api Name: %v", r.Name)
+	log.Printf("Api Name: %v", r.GetName())
 }

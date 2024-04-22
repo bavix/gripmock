@@ -5,7 +5,7 @@ OPENAPI=https://raw.githubusercontent.com/bavix/gripmock-openapi/master/api.yaml
 version=latest
 
 build:
-	docker buildx build --load -t "bavix/gripmock:${version}" --platform linux/arm64 .
+	docker buildx build --load -t "bavix/gripmock:${version}" .
 
 test:
 	go test -tags mock -race -cover ./...
