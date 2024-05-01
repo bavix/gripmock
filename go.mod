@@ -28,7 +28,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.26.0
 	golang.org/x/text v0.14.0
 	google.golang.org/grpc v1.63.2
-	google.golang.org/protobuf v1.33.1-0.20240408130810-98873a205002
+	google.golang.org/protobuf v1.34.0
 )
 
 require (
