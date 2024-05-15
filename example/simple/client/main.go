@@ -20,7 +20,8 @@ import (
 //nolint:gomnd
 func main() {
 	// Set up a connection to the server.
-	conn, err := grpc.NewClient("localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()),
+	conn, err := grpc.NewClient("localhost:4770",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithChainUnaryInterceptor(grpcinterceptors.UnaryTimeoutInterceptor(5*time.Second)),
 		grpc.WithChainStreamInterceptor(grpcinterceptors.StreamTimeoutInterceptor(5*time.Second)))
 	if err != nil {
@@ -35,7 +36,7 @@ func main() {
 	if len(os.Args) > 1 {
 		name = os.Args[1]
 	}
-	r, err := c.SayHello(context.Background(), &pb.Request{Name: name})
+	r, err := c.SayHello(context.Background(), &pb.Request{Name: name}, grpc.WaitForReady(true))
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
