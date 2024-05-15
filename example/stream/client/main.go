@@ -21,7 +21,7 @@ func main() {
 	defer cancel()
 
 	// Set up a connection to the server.
-	conn, err := grpc.DialContext(ctx, "localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.NewClient("localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -50,7 +50,7 @@ func serverStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 	req := &pb.Request{
 		Name: "server-to-client-streaming",
 	}
-	stream, err := c.ServerStream(context.Background(), req)
+	stream, err := c.ServerStream(ctx, req)
 	if err != nil {
 		log.Fatalf("server stream error: %v", err)
 	}

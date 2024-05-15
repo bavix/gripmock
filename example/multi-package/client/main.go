@@ -19,7 +19,7 @@ func main() {
 	defer cancel()
 
 	// Set up a connection to the server.
-	conn, err := grpc.DialContext(ctx, "localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.NewClient("localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -34,7 +34,7 @@ func main() {
 		name = os.Args[1]
 	}
 
-	r, err := c.Greet(context.Background(), &multi_package.Bar{Name: name})
+	r, err := c.Greet(ctx, &multi_package.Bar{Name: name})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}

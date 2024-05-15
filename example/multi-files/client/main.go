@@ -17,7 +17,7 @@ func main() {
 	defer cancel()
 
 	// Set up a connection to the server.
-	conn, err := grpc.DialContext(ctx, "localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.NewClient("localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -26,7 +26,7 @@ func main() {
 	c := pb.NewGripmock1Client(conn)
 
 	// Contact the server and print out its response.
-	r, err := c.SayHello(context.Background(), &pb.Request1{Name: "tokopedia"})
+	r, err := c.SayHello(ctx, &pb.Request1{Name: "tokopedia"})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
@@ -35,7 +35,7 @@ func main() {
 	c2 := pb.NewGripmock2Client(conn)
 
 	// Contact the server and print out its response.
-	r2, err := c2.SayHello(context.Background(), &pb.Request2{Name: "tokopedia"})
+	r2, err := c2.SayHello(ctx, &pb.Request2{Name: "tokopedia"})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}

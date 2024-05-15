@@ -22,7 +22,7 @@ func main() {
 	defer cancel()
 
 	// Set up a connection to the server.
-	conn, err := grpc.DialContext(ctx, "localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.NewClient("localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -30,7 +30,7 @@ func main() {
 
 	c := pb.NewGripmockClient(conn)
 
-	r, err := c.ApiInfo(context.Background(), &empty.Empty{})
+	r, err := c.ApiInfo(ctx, &empty.Empty{})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}

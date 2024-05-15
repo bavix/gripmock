@@ -22,7 +22,7 @@ func main() {
 	defer cancel()
 
 	// Set up a connection to the server.
-	conn, err := grpc.DialContext(ctx, "localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.NewClient("localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -35,7 +35,7 @@ func main() {
 	if len(os.Args) > 1 {
 		name = os.Args[1]
 	}
-	r, err := c.SayHello(context.Background(), &pb.Request{Name: name})
+	r, err := c.SayHello(ctx, &pb.Request{Name: name})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
@@ -45,7 +45,7 @@ func main() {
 	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	name = "world"
-	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
+	r, err = c.SayHello(ctx, &pb.Request{Name: name})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
@@ -55,7 +55,7 @@ func main() {
 	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	name = "simple2"
-	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
+	r, err = c.SayHello(ctx, &pb.Request{Name: name})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
@@ -65,7 +65,7 @@ func main() {
 	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	name = "simple3"
-	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
+	r, err = c.SayHello(ctx, &pb.Request{Name: name})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
@@ -75,7 +75,7 @@ func main() {
 	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	md := metadata.New(map[string]string{"Authorization": "Basic dXNlcjp1c2Vy"})
-	ctx = metadata.NewOutgoingContext(context.Background(), md)
+	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	var headers metadata.MD
 
@@ -97,7 +97,7 @@ func main() {
 	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	md2 := metadata.New(map[string]string{"Authorization": "Basic dXNlcjp1c2Vy", "ab": "blue"})
-	ctx = metadata.NewOutgoingContext(context.Background(), md2)
+	ctx = metadata.NewOutgoingContext(ctx, md2)
 
 	var headers2 metadata.MD
 
@@ -121,7 +121,7 @@ func main() {
 	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	md3 := metadata.New(map[string]string{"Authorization": "Basic dXNlcjp1c2Vy", "ab": "red"})
-	ctx = metadata.NewOutgoingContext(context.Background(), md3)
+	ctx = metadata.NewOutgoingContext(ctx, md3)
 
 	var headers3 metadata.MD
 
@@ -146,7 +146,7 @@ func main() {
 	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	name = "simple3"
-	r, err = c.SayHello(context.Background(), &pb.Request{Name: name}, grpc.UseCompressor(gzip.Name))
+	r, err = c.SayHello(ctx, &pb.Request{Name: name}, grpc.UseCompressor(gzip.Name))
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
@@ -156,14 +156,14 @@ func main() {
 	log.Printf("Greeting (gzip): %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	name = "error"
-	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
+	r, err = c.SayHello(ctx, &pb.Request{Name: name})
 	if err == nil {
 		log.Fatalf("Expected error, but return %d", r.GetReturnCode())
 	}
 	log.Printf("Greeting error: %s", err)
 
 	name = "error_code"
-	r, err = c.SayHello(context.Background(), &pb.Request{Name: name})
+	r, err = c.SayHello(ctx, &pb.Request{Name: name})
 	if err == nil {
 		log.Fatalf("Expected error, but return %d", r.GetReturnCode())
 	}
@@ -179,7 +179,7 @@ func main() {
 
 	log.Printf("Greeting error: %s, code: %d", err, s.Code())
 
-	r, err = c.SayHello(context.Background(), &pb.Request{Vint64: 72057594037927936, Vuint64: 18446744073709551615})
+	r, err = c.SayHello(ctx, &pb.Request{Vint64: 72057594037927936, Vuint64: 18446744073709551615})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
@@ -195,7 +195,7 @@ func main() {
 	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	// ignoreArrayOrder=true
-	r, err = c.SayHello(context.Background(), &pb.Request{Values: []int64{10, 20, 30, 40, 50, 60, 70}})
+	r, err = c.SayHello(ctx, &pb.Request{Values: []int64{10, 20, 30, 40, 50, 60, 70}})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
