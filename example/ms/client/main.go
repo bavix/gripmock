@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	grpcinterceptors "github.com/gripmock/grpc-interceptors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -24,12 +25,12 @@ func env(key, fallback string) string {
 
 //nolint:gomnd
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
 	grpcPort := env("GRPC_PORT", "4770")
 
-	conn, err := grpc.DialContext(ctx, net.JoinHostPort("localhost", grpcPort), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.NewClient(net.JoinHostPort("localhost", grpcPort),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(grpcinterceptors.UnaryTimeoutInterceptor(5*time.Second)),
+		grpc.WithChainStreamInterceptor(grpcinterceptors.StreamTimeoutInterceptor(5*time.Second)))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -42,7 +43,7 @@ func main() {
 		u2bytes("99aebcf2-b56d-4923-9266-ab72bf5b9d0b"), // 1
 		u2bytes("5659bec5-dda5-4e87-bef4-e9e37c60eb1c"), // 2
 		u2bytes("77465064-a0ce-48a3-b7e4-d50f88e55093"), // 0
-	}})
+	}}, grpc.WaitForReady(true))
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}

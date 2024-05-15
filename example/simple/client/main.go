@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	grpcinterceptors "github.com/gripmock/grpc-interceptors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -18,11 +19,11 @@ import (
 
 //nolint:gomnd
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
 	// Set up a connection to the server.
-	conn, err := grpc.DialContext(ctx, "localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+	conn, err := grpc.NewClient("localhost:4770",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(grpcinterceptors.UnaryTimeoutInterceptor(5*time.Second)),
+		grpc.WithChainStreamInterceptor(grpcinterceptors.StreamTimeoutInterceptor(5*time.Second)))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -35,7 +36,7 @@ func main() {
 	if len(os.Args) > 1 {
 		name = os.Args[1]
 	}
-	r, err := c.SayHello(context.Background(), &pb.Request{Name: name})
+	r, err := c.SayHello(context.Background(), &pb.Request{Name: name}, grpc.WaitForReady(true))
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}
@@ -75,7 +76,7 @@ func main() {
 	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 
 	md := metadata.New(map[string]string{"Authorization": "Basic dXNlcjp1c2Vy"})
-	ctx = metadata.NewOutgoingContext(context.Background(), md)
+	ctx := metadata.NewOutgoingContext(context.Background(), md)
 
 	var headers metadata.MD
 

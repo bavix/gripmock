@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/gripmock/grpc-interceptors"
 	"github.com/rs/zerolog"
 	_ "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	_ "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
