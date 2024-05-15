@@ -6,20 +6,20 @@ import (
 	"os"
 	"time"
 
+	grpcinterceptors "github.com/gripmock/grpc-interceptors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	pb "github.com/bavix/gripmock/protogen/example/multi-package"
-	multi_package "github.com/bavix/gripmock/protogen/example/multi-package/bar"
+	multipackage "github.com/bavix/gripmock/protogen/example/multi-package/bar"
 )
 
 //nolint:gomnd
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
 	// Set up a connection to the server.
-	conn, err := grpc.NewClient("localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(grpcinterceptors.UnaryTimeoutInterceptor(5*time.Second)),
+		grpc.WithChainStreamInterceptor(grpcinterceptors.StreamTimeoutInterceptor(5*time.Second)))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -34,7 +34,7 @@ func main() {
 		name = os.Args[1]
 	}
 
-	r, err := c.Greet(ctx, &multi_package.Bar{Name: name})
+	r, err := c.Greet(context.Background(), &multipackage.Bar{Name: name})
 	if err != nil {
 		log.Fatalf("error from grpc: %v", err)
 	}

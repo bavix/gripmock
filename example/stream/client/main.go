@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	grpcinterceptors "github.com/gripmock/grpc-interceptors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -17,7 +18,9 @@ import (
 //nolint:gomnd
 func main() {
 	// Set up a connection to the server.
-	conn, err := grpc.NewClient("localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("localhost:4770", grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithChainUnaryInterceptor(grpcinterceptors.UnaryTimeoutInterceptor(5*time.Second)),
+		grpc.WithChainStreamInterceptor(grpcinterceptors.StreamTimeoutInterceptor(5*time.Second)))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
@@ -42,15 +45,11 @@ func main() {
 
 // server to client streaming.
 func serverStream(c pb.GripmockClient, wg *sync.WaitGroup) {
-	// Set up a connection to the server.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
 	defer wg.Done()
 	req := &pb.Request{
 		Name: "server-to-client-streaming",
 	}
-	stream, err := c.ServerStream(ctx, req)
+	stream, err := c.ServerStream(context.Background(), req)
 	if err != nil {
 		log.Fatalf("server stream error: %v", err)
 	}
@@ -71,12 +70,8 @@ func serverStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 
 // client to server streaming.
 func clientStream(c pb.GripmockClient, wg *sync.WaitGroup) {
-	// Set up a connection to the server.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
 	defer wg.Done()
-	stream, err := c.ClientStream(ctx)
+	stream, err := c.ClientStream(context.Background())
 	if err != nil {
 		log.Fatalf("c2s error: %v", err)
 	}
@@ -107,11 +102,7 @@ func clientStream(c pb.GripmockClient, wg *sync.WaitGroup) {
 
 // bidirectional stream.
 func bidirectionalStream(c pb.GripmockClient, wg *sync.WaitGroup) {
-	// Set up a connection to the server.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
-	stream, err := c.Bidirectional(ctx)
+	stream, err := c.Bidirectional(context.Background())
 	if err != nil {
 		log.Fatalf("2ds error: %v", err)
 	}
