@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine3.19 AS builder
+FROM golang:1.22-alpine3.20 AS builder
 
 RUN apk --no-cache add git &&\
     go install -v -ldflags "-s -w" google.golang.org/protobuf/cmd/protoc-gen-go@latest &&\
@@ -19,7 +19,7 @@ WORKDIR /go/src/github.com/bavix/gripmock/protoc-gen-gripmock
 
 RUN go install -v -ldflags "-s -w"
 
-FROM golang:1.22-alpine3.19
+FROM golang:1.22-alpine3.20
 
 LABEL org.opencontainers.image.source=https://github.com/bavix/gripmock
 LABEL org.opencontainers.image.description="gRPC Mock Server"
