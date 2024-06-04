@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/fs"
 	"log"
-	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -16,7 +15,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 
 	_ "github.com/gripmock/grpc-interceptors"
 	"github.com/rs/zerolog"
@@ -107,22 +105,8 @@ func main() {
 	// I have an idea to combine gripmock and grpcmock services into one, then this check will be easier to do.
 	// Checking the grpc port of the service. If the port appears, the service has started successfully.
 	go func() {
-		var d net.Dialer
-
-		for {
-			dialCtx, cancel := context.WithTimeout(ctx, time.Second)
-
-			conn, err := d.DialContext(dialCtx, builder.Config().GRPCNetwork, builder.Config().GRPCAddr)
-
-			cancel()
-
-			if err == nil && conn != nil {
-				chReady <- struct{}{}
-
-				conn.Close()
-
-				break
-			}
+		if _, err := builder.Reflector().Services(ctx); err == nil {
+			chReady <- struct{}{}
 		}
 	}()
 
