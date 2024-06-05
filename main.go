@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/fs"
 	"log"
-	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -22,6 +21,9 @@ import (
 	"github.com/rs/zerolog"
 	_ "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	_ "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/health"
+	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
 
 	_ "github.com/bavix/gripmock-sdk-go"
 	"github.com/bavix/gripmock/internal/pkg/patcher"
@@ -29,7 +31,7 @@ import (
 	"github.com/bavix/gripmock/stub"
 )
 
-var version string
+var version = "development"
 
 //nolint:funlen,cyclop
 func main() {
@@ -58,11 +60,6 @@ func main() {
 
 	if len(protoPaths) == 0 {
 		logger.Fatal().Msg("at least one proto file is required")
-	}
-
-	// for backwards compatibility
-	if os.Args[1] == "gripmock" {
-		os.Args = append(os.Args[:1], os.Args[2:]...)
 	}
 
 	//nolint:godox
@@ -107,22 +104,17 @@ func main() {
 	// I have an idea to combine gripmock and grpcmock services into one, then this check will be easier to do.
 	// Checking the grpc port of the service. If the port appears, the service has started successfully.
 	go func() {
-		var d net.Dialer
+		ctx, cancel := context.WithTimeout(ctx, time.Minute)
+		defer cancel()
 
-		for {
-			dialCtx, cancel := context.WithTimeout(ctx, time.Second)
+		waiter := healthv1.NewHealthClient(builder.GRPCClient())
+		check, err := waiter.Check(ctx, &healthv1.HealthCheckRequest{Service: ""}, grpc.WaitForReady(true))
+		if err != nil {
+			return
+		}
 
-			conn, err := d.DialContext(dialCtx, builder.Config().GRPCNetwork, builder.Config().GRPCAddr)
-
-			cancel()
-
-			if err == nil && conn != nil {
-				chReady <- struct{}{}
-
-				conn.Close()
-
-				break
-			}
+		if check.GetStatus() == healthv1.HealthCheckResponse_SERVING {
+			chReady <- struct{}{}
 		}
 	}()
 

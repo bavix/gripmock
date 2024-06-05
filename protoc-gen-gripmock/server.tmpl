@@ -20,6 +20,8 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/health"
+	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 	_ "google.golang.org/grpc/encoding/gzip"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -65,6 +67,7 @@ func main() {
 	{{ template "register_services" . }}
 	{{ end }}
 
+	healthgrpc.RegisterHealthServer(s, health.NewServer())
     reflection.Register(s)
 
 	builder.Logger().Info().
