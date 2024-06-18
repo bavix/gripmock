@@ -5,4 +5,4 @@ on:
 
 jobs:
   semgrep:
-    uses: bavix/.github/.github/workflows/go-semgrep.yml@0.2.5
+    uses: bavix/.github/.github/workflows/go-semgrep.yml@0.3.0
