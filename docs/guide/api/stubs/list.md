@@ -3,7 +3,7 @@
 Stubs List — endpoint returns a list of all registered stub files. It can be helpful to debbug your integration tests.
 
 Let's imagine that our contract `simple.proto` looks something like this:
-```protobuf
+```proto
 syntax = "proto3";
 option go_package = "github.com/bavix/gripmock/protogen/example/simple";
 

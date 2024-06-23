@@ -3,7 +3,7 @@
 Stubs Search — endpoint helps to flexibly search for stubs in the stub storage.
 
 Let's imagine that our contract `simple.proto` looks something like this:
-```protobuf
+```proto
 syntax = "proto3";
 option go_package = "github.com/bavix/gripmock/protogen/example/simple";
 
@@ -71,6 +71,6 @@ Response:
 }
 ```
 
-[Input Matching](../../../../docs_old/matching-rule-input.md ':include')
+<!--@include: ../../matcher/input.md -->
 
-[Headers Matching](../../../../docs_old/matching-rule-headers.md ':include')
+<!--@include: ../../matcher/headers.md -->

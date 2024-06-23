@@ -11,7 +11,7 @@ I will skip the details of installing docker and using it. Read documentation: h
 Let's imagine that we have a gRPC service that we want to mock.
 
 Let's imagine that our contract `simple.proto` looks something like this:
-```protobuf
+```proto
 syntax = "proto3";
 option go_package = "github.com/bavix/gripmock/protogen/example/simple";
 

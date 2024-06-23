@@ -4,7 +4,7 @@ Stubs Unused List — endpoint returns a list of unused stubs (all stubs that we
 A very useful method that helps find dead stubs in the code.
 
 Let's imagine that our contract `simple.proto` looks something like this:
-```protobuf
+```proto
 syntax = "proto3";
 option go_package = "github.com/bavix/gripmock/protogen/example/simple";
 
