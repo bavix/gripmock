@@ -1,6 +1,14 @@
-## Quick Usage
+# Quick Usage
 
-I suspect if you have reached this page, then you already have a grpc server and a proto contract. Do not delay the contract far, now you will need it.
+## Installation
+
+For ease of installation, the entire GripMock service is packaged into one dockerfile. You only need to install docker and get the image.
+
+I will skip the details of installing docker and using it. Read documentation: https://docs.docker.com/engine/install/.
+
+## Preparation
+
+Let's imagine that we have a gRPC service that we want to mock.
 
 Let's imagine that our contract `simple.proto` looks something like this:
 ```protobuf
@@ -23,16 +31,48 @@ message Reply {
 }
 ```
 
-At the moment, there is no standalone version of gripmock, only a docker image.
+## One service
 
-I will skip the details of installing docker and using it. Read documentation: https://docs.docker.com/engine/install/.
+GripMock service, at the moment, can only be run in a docker container.
+All proto-files must be mounted in the docker and the path to them must be specified for the gripmock service.
+
+The launch looks something like this:
+```bash
+docker run \
+  -p 4770:4770 \
+  -p 4771:4771 \
+  -v ./api/proto:/proto:ro \
+  bavix/gripmock /proto/simple.proto
+```
+
+We mounted the `api/proto` folder with our proto-files, there is a `simple.proto` file there.
+We have created this service.
+
+## Many services
+
+GripMock service, at the moment, can only be run in a docker container.
+All proto-files must be mounted in the docker and the path to them must be specified for the gripmock service.
+
+The launch looks something like this:
+```bash
+docker run \
+  -p 4770:4770 \
+  -p 4771:4771 \
+  -v ./api/proto:/proto:ro \
+  bavix/gripmock /proto/proto1.proto /proto/proto2.proto ... /proto/protoN.proto
+```
+
+We mounted the api/proto folder with our protofiles, there were N-services there.
+We have created this service.
+
+## Mocking
 
 Let's start the GripMock server:
 ```bash
 docker run -p 4770:4770 -p 4771:4771 -v ./simple.proto:/proto/simple.proto:ro bavix/gripmock /proto/simple.proto
 ```
 
-After launch, you will see something like this: 
+After launch, you will see something like this:
 ```bash
 ➜  simple git:(docs) ✗ docker run -p 4770:4770 -p 4771:4771 -v ./api:/proto:ro bavix/gripmock /proto/simple.proto
 Starting GripMock
@@ -41,9 +81,13 @@ grpc server pid: 38
 Serving gRPC on tcp://:4770
 ```
 
-What is important to understand? 
+What is important to understand?
 1. gRPC Mock server started on port 4770;
 2. HTTP server for working with the stub server is running on port 4771;
+
+GripMock server supports [method reflection](https://github.com/grpc/grpc-go/blob/master/Documentation/server-reflection-tutorial.md). You can verify that all services have been created successfully by accessing the gripmock port.
+
+## Stubbing
 
 This means that everything went well. Now let's add the first stub:
 ```bash
@@ -54,6 +98,8 @@ The stub has been successfully added, you have received a stub ID:
 ```bash
 ["6c85b0fa-caaf-4640-a672-f56b7dd8074d"]
 ```
+
+## Checking
 
 You can check the added stubs at the link: http://127.0.0.1:4771/api/stubs.
 The result will not make you wait long, you should see the following:
@@ -88,5 +134,3 @@ The result will not make you wait long, you should see the following:
 Now try to use the grpc client to our service with the data from the input.
 
 Happened? Well done. You are a fast learner.
-
-It worked! 

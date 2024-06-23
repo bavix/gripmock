@@ -1,4 +1,4 @@
-## Rest API. Stubs Search
+# Stub API. Stubs Search
 
 Stubs Search — endpoint helps to flexibly search for stubs in the stub storage.
 
@@ -22,6 +22,8 @@ message Reply {
   int32 return_code = 2;
 }
 ```
+
+## Search Query
 
 Enough to knock on the handle POST /api/stubs/search:
 
@@ -69,6 +71,6 @@ Response:
 }
 ```
 
-[Input Matching](matching-rule-input.md ':include')
+[Input Matching](../../../../docs_old/matching-rule-input.md ':include')
 
-[Headers Matching](matching-rule-headers.md ':include')
+[Headers Matching](../../../../docs_old/matching-rule-headers.md ':include')

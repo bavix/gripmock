@@ -1,12 +1,18 @@
-# Overview
+# Introduction
+
+![GripMock](https://github.com/bavix/gripmock/assets/5111255/6417d7c5-0250-4d00-a1c0-24c592e3c812)
+
+`GripMock` is a mock server for gRPC services.
+
+## Overview
 
 GripMock is a **mock server** for **gRPC** services. It's using a `.proto` file to generate implementation of gRPC service for you.
 You can use gripmock for setting up end-to-end testing or as a dummy server in a software development phase.
 The server implementation is in GoLang but the client can be any programming language that support gRPC.
 
-This service is a fork of the service [tokopedia/gripmock](https://github.com/tokopedia/gripmock). 
+This service is a fork of the service [tokopedia/gripmock](https://github.com/tokopedia/gripmock).
 
-## Fork key features
+## Key features
 - Updated all deprecated dependencies [tokopedia#64](https://github.com/tokopedia/gripmock/issues/64);
 - Add yaml as json alternative for static stab's;
 - Add endpoint for healthcheck (/api/health/liveness, /api/health/readiness);
@@ -19,3 +25,7 @@ This service is a fork of the service [tokopedia/gripmock](https://github.com/to
 - Reduced image size [tokopedia#91](https://github.com/tokopedia/gripmock/issues/91);
 - Active support [tokopedia#82](https://github.com/tokopedia/gripmock/issues/82);
 - Added [documentation](https://bavix.github.io/gripmock/);
+
+## Support
+
+Please ask questions on the [Github issues page](https://github.com/bavix/gripmock/issues).

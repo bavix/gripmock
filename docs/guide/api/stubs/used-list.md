@@ -1,7 +1,7 @@
-## Rest API. Stubs Unused List
+# Stub API. Get Stubs Used List
 
-Stubs Unused List — endpoint returns a list of unused stubs (all stubs that were not accessed through search).
-A very useful method that helps find dead stubs in the code.
+Stubs Used List — endpoint returns a list of used stubs (all stubs that were found through the search).
+The method inverts the logic of unused operation.
 
 Let's imagine that our contract `simple.proto` looks something like this:
 ```protobuf
@@ -24,9 +24,33 @@ message Reply {
 }
 ```
 
-Enough to knock on the handle `GET /api/stubs/unused`:
+## Search Query
+
+Enough to knock on the handle `GET /api/stubs/used`:
 ```bash
-curl http://127.0.0.1:4771/api/stubs/unused
+curl http://127.0.0.1:4771/api/stubs/used
+```
+
+Response:
+```json
+[]
+```
+
+## Checking
+
+Find stub by ID. Enough to knock on the handle `POST /api/stubs/search`:
+```bash
+curl -X POST -d '{ \
+  "id": "6c85b0fa-caaf-4640-a672-f56b7dd8074d", \
+  "service": "Gripmock", \
+  "method": "SayHello", \
+  "data":{} \
+}' http://127.0.0.1:4771/api/stubs/search
+```
+
+Now the stub is marked as used. Let's try to get a list of used stubs.
+```bash
+curl http://127.0.0.1:4771/api/stubs/used
 ```
 
 Response:
@@ -53,25 +77,3 @@ Response:
   }
 ]
 ```
-
-Find stub by ID. Enough to knock on the handle `POST /api/stubs/search`:
-```bash
-curl -X POST -d '{ \
-  "id": "6c85b0fa-caaf-4640-a672-f56b7dd8074d", \
-  "service": "Gripmock", \
-  "method": "SayHello", \
-  "data":{} \
-}' http://127.0.0.1:4771/api/stubs/search
-```
-
-Now the stub is marked as used. Let's try to get a list of unused stubs.
-```bash
-curl http://127.0.0.1:4771/api/stubs/unused
-```
-
-Response:
-```json
-[]
-```
-
-It worked! 

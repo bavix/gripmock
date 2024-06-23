@@ -1,4 +1,4 @@
-## Rest API. Stubs List
+# Stub API. Get Stubs List
 
 Stubs List — endpoint returns a list of all registered stub files. It can be helpful to debbug your integration tests.
 
@@ -52,5 +52,3 @@ Response:
   }
 ]
 ```
-
-It worked! 

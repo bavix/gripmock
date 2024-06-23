@@ -1,4 +1,4 @@
-## Rest API. Stubs Delete
+# Stub API. Stubs Delete
 
 Stubs Delete — endpoint removes stub by ID.
 
@@ -8,5 +8,3 @@ curl -X DELETE http://127.0.0.1:4771/api/stubs/6c85b0fa-caaf-4640-a672-f56b7dd80
 ```
 
 The endpoint will respond with code 204, the stub has been removed.
-
-It worked! 
