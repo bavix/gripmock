@@ -20,7 +20,7 @@ Headers can consist of a key and a value. If there are several values, then you 
 **Gripmock** recursively goes over the fields and tries to match with given input.
 <br>
 
-## Equals
+## Header Equals
 
 **equals** will match the exact field name and value of input into expected stub. example stub JSON:
 ```json
@@ -38,7 +38,7 @@ Headers can consist of a key and a value. If there are several values, then you 
 }
 ```
 
-## Contains
+## Header Contains
 
 **contains** will match input that has the value declared expected fields. example stub JSON:
 ```json
@@ -55,7 +55,7 @@ Headers can consist of a key and a value. If there are several values, then you 
 }
 ```
 
-## Matches
+## Header Matches
 
 **matches** using regex for matching fields expectation. example:
 

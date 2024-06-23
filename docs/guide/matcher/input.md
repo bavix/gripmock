@@ -19,7 +19,7 @@ Nested fields are allowed for input matching too for all JSON data types. (`stri
 **Gripmock** recursively goes over the fields and tries to match with given input.
 <br>
 
-## Equals
+## Input Equals
 
 **equals** will match the exact field name and value of input into expected stub. example stub JSON:
 ```json
@@ -44,7 +44,7 @@ Nested fields are allowed for input matching too for all JSON data types. (`stri
 }
 ```
 
-## Contains
+## Input Contains
 
 **contains** will match input that has the value declared expected fields. example stub JSON:
 ```json
@@ -64,7 +64,7 @@ Nested fields are allowed for input matching too for all JSON data types. (`stri
 }
 ```
 
-## Matches
+## Input Matches
 
 **matches** using regex for matching fields expectation. example:
 
@@ -83,7 +83,7 @@ Nested fields are allowed for input matching too for all JSON data types. (`stri
 }
 ```
 
-## Flag ignoreArrayOrder
+## Input Flag ignoreArrayOrder
 
 **ignoreArrayOrder** Disables sorting check inside arrays.
 ```yaml

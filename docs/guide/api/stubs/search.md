@@ -71,6 +71,6 @@ Response:
 }
 ```
 
-[Input Matching](../../../../docs_old/matching-rule-input.md ':include')
+<!--@include: ../../matcher/input.md -->
 
-[Headers Matching](../../../../docs_old/matching-rule-headers.md ':include')
+<!--@include: ../../matcher/headers.md -->
