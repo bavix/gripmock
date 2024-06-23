@@ -1,4 +1,4 @@
-## Static Stubs. How is yaml better than json?
+# Benefits YAML
 
 Let's talk about the pros of yaml, shall we?
 - Short syntax that is difficult to get confused;
@@ -7,7 +7,7 @@ Let's talk about the pros of yaml, shall we?
 
 Let's talk about each item separately.
 
-### Short Syntax
+## Short Syntax
 
 I think there is nothing to discuss here. Let's look at the json format:
 ```json
@@ -67,7 +67,7 @@ And now the same thing, but in yaml:
       return_code: 1
 ```
 
-### Anchor and Alias
+## Anchor and Alias
 
 You can read more details here: https://github.com/goccy/go-yaml#2-reference-elements-declared-in-another-file
 
@@ -92,7 +92,7 @@ You can read more details here: https://github.com/goccy/go-yaml#2-reference-ele
     data: *result
 ```
 
-### Additional functions
+## Additional functions
 
 You know these standards, right? Each developer starts creating their own guide standard, and you have to mock it all.
 
@@ -156,7 +156,3 @@ Result:
   "bytes": "aGVsbG8gd29ybGQ="
 }
 ```
-
-New features will be added as needed.
-
-It worked! 

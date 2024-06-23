@@ -1,4 +1,5 @@
-## Headers Matching
+# Headers Matching Rule
+
 Stub will respond with the expected response only if the request matches any rule. Stub service will serve `/api/stubs/search` endpoint with format:
 ```json
 {
@@ -9,15 +10,18 @@ Stub will respond with the expected response only if the request matches any rul
   }
 }
 ```
+
 So if you do a `curl -X POST -d '{"service":"Greeter","method":"SayHello","data":{"name":"gripmock"}}' localhost:4771/api/stubs/search` stub service will find a match from listed stubs stored there.
 
-### Headers Matching Rule
 Headers matching has 3 rules to match an input: **equals**,**contains** and **matches**
 <br>
 Headers can consist of a key and a value. If there are several values, then you need to list them separated by ";". Data type string.
 <br>
 **Gripmock** recursively goes over the fields and tries to match with given input.
 <br>
+
+## Equals
+
 **equals** will match the exact field name and value of input into expected stub. example stub JSON:
 ```json
 {
@@ -34,6 +38,8 @@ Headers can consist of a key and a value. If there are several values, then you 
 }
 ```
 
+## Contains
+
 **contains** will match input that has the value declared expected fields. example stub JSON:
 ```json
 {
@@ -48,6 +54,8 @@ Headers can consist of a key and a value. If there are several values, then you 
   .
 }
 ```
+
+## Matches
 
 **matches** using regex for matching fields expectation. example:
 

@@ -1,4 +1,4 @@
-## Static Stubs. JSON
+# JSON
 
 With static stubs, you can use gripmock without the handle API. 
 This is useful when you don't want to rely on the http protocol in your tests, or if your data is all static and doesn't change. 
@@ -26,6 +26,8 @@ message Reply {
   int32 return_code = 2;
 }
 ```
+
+## Static JSON-stubs
 
 We have created a folder for `stubs` stubs.
 Now you need to create the first stub in this folder `single.json`.
@@ -85,6 +87,8 @@ Let's create a second stub `multi-stabs.json`.
 ]
 ```
 
+## Launch
+
 The launch looks something like this:
 ```bash
 docker run \
@@ -95,9 +99,9 @@ docker run \
   bavix/gripmock --stub=/stubs /proto/simple.proto
 ```
 
+## Data checking
+
 You can verify that the stubs have been loaded successfully by running a query:
 ```bash
 curl http://127.0.0.1:4771/api/stubs
 ```
-
-It worked! 

@@ -1,6 +1,4 @@
-## Rest API. Stubs Add
-
-Stubs Add — endpoint for adding stubs via http.
+# Stub API. Stubs Upsert
 
 Let's imagine that our contract `simple.proto` looks something like this:
 ```protobuf
@@ -23,6 +21,8 @@ message Reply {
 }
 ```
 
+Stubs Upsert — endpoint adds or updates a stub via http api using its ID..
+
 Enough to knock on the handle `POST /api/stubs`. One stub:
 ```bash
 curl -X POST -d '{"service":"Gripmock","method":"SayHello","input":{"equals":{"name":"gripmock"},"contains":null,"matches":null},"output":{"data":{"message":"Hello GripMock","return_code":42},"error":""}}' http://127.0.0.1:4771/api/stubs
@@ -42,5 +42,3 @@ Response:
 ```json
 ["2378ccb8-f36e-48b0-a257-4309876bed47", "0ee02a07-4cae-4a0b-b0c1-5e7c379bc858"]
 ```
-
-It worked! 
