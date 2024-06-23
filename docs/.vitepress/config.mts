@@ -22,7 +22,7 @@ export default defineConfig({
     [
       'link', {
       rel: 'icon',
-      href: 'https://github.com/bavix/gripmock/assets/5111255/93d2ed8b-f267-426d-86a4-690db05f36e8',
+      href: 'https://github.com/bavix/gripmock/assets/5111255/b835b1a7-f572-438d-9ddb-eda7e0842db0',
       sizes: "any",
       type: "image/svg+xml",
     }
