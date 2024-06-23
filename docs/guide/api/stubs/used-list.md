@@ -4,7 +4,7 @@ Stubs Used List — endpoint returns a list of used stubs (all stubs that were f
 The method inverts the logic of unused operation.
 
 Let's imagine that our contract `simple.proto` looks something like this:
-```protobuf
+```proto
 syntax = "proto3";
 option go_package = "github.com/bavix/gripmock/protogen/example/simple";
 

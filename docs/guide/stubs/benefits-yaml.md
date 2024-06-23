@@ -99,14 +99,14 @@ You know these standards, right? Each developer starts creating their own guide 
 Yes, Yes. I even had to do something like this: https://bavix.github.io/uuid-ui/
 
 Option 1:
-```protobuf
+```proto
 message .... {
   bytes uuid = 1;
 }
 ```
 
 Option 2:
-```protobuf
+```proto
 message UUID {
   int64 high = 1;
   int64 low = 2;
@@ -114,7 +114,7 @@ message UUID {
 ```
 
 Option 3 (there is such an implementation, but so far it is not in the functions):
-```protobuf
+```proto
 message UUID {
   uint64 high = 1;
   uint64 low = 2;

@@ -7,7 +7,7 @@ It can also be useful when there are a lot of stubs.
 So what do you need to work? It is enough to mount a folder with stubs in your container and tell the service the path to the stubs.
 
 Let's imagine that our contract `simple.proto` looks something like this:
-```protobuf
+```proto
 syntax = "proto3";
 option go_package = "github.com/bavix/gripmock/protogen/example/simple";
 
