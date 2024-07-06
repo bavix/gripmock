@@ -33,6 +33,7 @@ export default defineConfig({
     search: {
       provider: 'local'
     },
+    logo: "/mr.cookie.svg",
     editLink: {
       pattern: 'https://github.com/bavix/gripmock/edit/master/docs/:path'
     },
