@@ -3,9 +3,9 @@ package yaml2json
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
 	"text/template"
 
+	"github.com/bytedance/sonic/encoder"
 	"github.com/google/uuid"
 )
 
@@ -40,7 +40,7 @@ func (e *engine) uuid2int64(str string) string {
 
 	var buffer bytes.Buffer
 
-	if err := json.NewEncoder(&buffer).Encode(map[string]int64{
+	if err := encoder.NewStreamEncoder(&buffer).Encode(map[string]int64{
 		"high": high,
 		"low":  low,
 	}); err != nil {

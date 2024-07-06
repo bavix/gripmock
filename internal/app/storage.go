@@ -1,16 +1,16 @@
 package app
 
 import (
-	"encoding/json"
 	"fmt"
 
+	"github.com/bytedance/sonic"
 	"github.com/gripmock/stuber"
 )
 
 func stubNotFoundError2(expect stuber.Query, result *stuber.Result) error {
 	template := fmt.Sprintf("Can't find stub \n\nService: %s \n\nMethod: %s \n\nInput\n\n", expect.Service, expect.Method)
 
-	expectString, err := json.MarshalIndent(expect.Data, "", "\t")
+	expectString, err := sonic.ConfigFastest.MarshalIndent(expect.Data, "", "\t")
 	if err != nil {
 		return err
 	}
@@ -24,7 +24,7 @@ func stubNotFoundError2(expect stuber.Query, result *stuber.Result) error {
 	}
 
 	if len(result.Similar().Input.Equals) > 0 {
-		closestMatchString, err := json.MarshalIndent(result.Similar().Input.Equals, "", "\t")
+		closestMatchString, err := sonic.ConfigFastest.MarshalIndent(result.Similar().Input.Equals, "", "\t")
 		if err != nil {
 			return err
 		}
@@ -33,7 +33,7 @@ func stubNotFoundError2(expect stuber.Query, result *stuber.Result) error {
 	}
 
 	if len(result.Similar().Input.Contains) > 0 {
-		closestMatchString, err := json.MarshalIndent(result.Similar().Input.Contains, "", "\t")
+		closestMatchString, err := sonic.ConfigFastest.MarshalIndent(result.Similar().Input.Contains, "", "\t")
 		if err != nil {
 			return err
 		}
@@ -42,7 +42,7 @@ func stubNotFoundError2(expect stuber.Query, result *stuber.Result) error {
 	}
 
 	if len(result.Similar().Input.Matches) > 0 {
-		closestMatchString, err := json.MarshalIndent(result.Similar().Input.Matches, "", "\t")
+		closestMatchString, err := sonic.ConfigFastest.MarshalIndent(result.Similar().Input.Matches, "", "\t")
 		if err != nil {
 			return err
 		}

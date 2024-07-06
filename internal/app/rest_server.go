@@ -1,7 +1,6 @@
 package app
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/bytedance/sonic/encoder"
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
 	"golang.org/x/text/cases"
@@ -88,7 +88,7 @@ func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := json.NewEncoder(w).Encode(results); err != nil {
+	if err := encoder.NewStreamEncoder(w).Encode(results); err != nil {
 		h.responseError(err, w)
 	}
 }
@@ -107,13 +107,13 @@ func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
-	if err := json.NewEncoder(w).Encode(results); err != nil {
+	if err := encoder.NewStreamEncoder(w).Encode(results); err != nil {
 		h.responseError(err, w)
 	}
 }
 
 func (h *RestServer) Liveness(w http.ResponseWriter, _ *http.Request) {
-	if err := json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
+	if err := encoder.NewStreamEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
 		h.responseError(err, w)
 	}
 }
@@ -127,7 +127,7 @@ func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	if err := json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
+	if err := encoder.NewStreamEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}
 }
@@ -160,7 +160,7 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := json.NewEncoder(w).Encode(h.stuber.PutMany(inputs...)); err != nil {
+	if err := encoder.NewStreamEncoder(w).Encode(h.stuber.PutMany(inputs...)); err != nil {
 		h.responseError(err, w)
 
 		return
@@ -202,7 +202,7 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if err := json.NewEncoder(w).Encode(h.stuber.Used()); err != nil {
+	if err := encoder.NewStreamEncoder(w).Encode(h.stuber.Used()); err != nil {
 		h.responseError(err, w)
 	}
 }
@@ -210,7 +210,7 @@ func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if err := json.NewEncoder(w).Encode(h.stuber.Unused()); err != nil {
+	if err := encoder.NewStreamEncoder(w).Encode(h.stuber.Unused()); err != nil {
 		h.responseError(err, w)
 	}
 }
@@ -218,7 +218,7 @@ func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 func (h *RestServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	if err := json.NewEncoder(w).Encode(h.stuber.All()); err != nil {
+	if err := encoder.NewStreamEncoder(w).Encode(h.stuber.All()); err != nil {
 		h.responseError(err, w)
 	}
 }
@@ -256,7 +256,7 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(result.Found().Output); err != nil {
+	if err := encoder.NewStreamEncoder(w).Encode(result.Found().Output); err != nil {
 		h.responseError(err, w)
 	}
 }
@@ -269,7 +269,7 @@ func (h *RestServer) FindByID(w http.ResponseWriter, _ *http.Request, uuid rest.
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(stub); err != nil {
+	if err := encoder.NewStreamEncoder(w).Encode(stub); err != nil {
 		h.responseError(err, w)
 	}
 }
@@ -281,7 +281,7 @@ func (h *RestServer) responseError(err error, w http.ResponseWriter) {
 }
 
 func (h *RestServer) writeResponseError(err error, w http.ResponseWriter) {
-	if err := json.NewEncoder(w).Encode(map[string]string{
+	if err := encoder.NewStreamEncoder(w).Encode(map[string]string{
 		"error": err.Error(),
 	}); err != nil {
 		h.responseError(err, w)

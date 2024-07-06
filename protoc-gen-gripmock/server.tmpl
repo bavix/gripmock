@@ -10,9 +10,9 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"encoding/json"
 
 	"github.com/gripmock/environment"
+	"github.com/bytedance/sonic"
 	jsonpb "google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -219,7 +219,7 @@ func findStub(ctx context.Context, conf environment.Config, service, method stri
 		}
 	}
 
-	data, err := json.Marshal(searchStub.JSON200.Data)
+	data, err := sonic.Marshal(searchStub.JSON200.Data)
 	if err != nil {
 	    return err
 	}

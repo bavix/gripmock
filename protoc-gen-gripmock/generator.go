@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/template"
 
+	_ "github.com/bytedance/sonic"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/tools/imports"
