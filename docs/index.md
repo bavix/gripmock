@@ -23,22 +23,3 @@ hero:
 #  - title: Feature C
 #    details: Lorem ipsum dolor sit amet, consectetur adipiscing elit
 ---
-
-<style>
-:root {
-  --vp-home-hero-image-background-image: linear-gradient(-44deg, #b033ec 50%, #41b9ea 50%);
-  --vp-home-hero-image-filter: blur(46px);
-}
-
-@media (min-width: 640px) {
-  :root {
-    --vp-home-hero-image-filter: blur(50px);
-  }
-}
-
-@media (min-width: 960px) {
-  :root {
-    --vp-home-hero-image-filter: blur(75px);
-  }
-}
-</style>
