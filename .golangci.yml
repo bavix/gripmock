@@ -7,7 +7,6 @@ linters:
   disable:
     # turn on later
     - godox
-    - gomoddirectives # critic
     # deprecated
     - gomnd
     - execinquery
