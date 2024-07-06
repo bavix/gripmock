@@ -6,7 +6,7 @@ require (
 	github.com/bavix/features v1.0.0
 	github.com/bavix/gripmock-sdk-go v1.0.4
 	github.com/bavix/gripmock-ui v1.0.0-alpha5
-	github.com/bavix/gripmock/protogen v0.0.0
+	github.com/bavix/gripmock/protogen v0.0.0-20240706174427-ef324cdfb46b
 	github.com/goccy/go-yaml v1.11.3
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
@@ -60,6 +60,3 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240701130421-f6361c86f094 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-// this is for example client to be able to run
-replace github.com/bavix/gripmock/protogen v0.0.0 => ./protogen
