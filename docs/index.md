@@ -7,8 +7,8 @@ hero:
   text: Fast. Just. Comfortable.
   tagline: gRPC-MockServer
   image: 
-    dark: https://github.com/bavix/gripmock/assets/5111255/10632425-2d45-48a2-9d61-2db1dc42abd3
-    light: https://github.com/bavix/gripmock/assets/5111255/10632425-2d45-48a2-9d61-2db1dc42abd3
+    dark: https://github.com/bavix/gripmock/assets/5111255/74dd3d49-f014-4cdc-8d91-dcaec0dd1c16
+    light: https://github.com/bavix/gripmock/assets/5111255/74dd3d49-f014-4cdc-8d91-dcaec0dd1c16
   actions:
     - theme: brand
       text: Getting started
