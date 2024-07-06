@@ -1,7 +1,6 @@
 package dependencies
 
 import (
-	"github.com/gripmock/shutdown"
 	"github.com/rs/zerolog"
 )
 
@@ -13,6 +12,6 @@ func (l Logger) Err(err error) {
 	l.logger.Err(err).Send()
 }
 
-func newLog(logger *zerolog.Logger) shutdown.Logger {
+func newLog(logger *zerolog.Logger) *Logger {
 	return &Logger{logger: logger}
 }

@@ -11,7 +11,7 @@ test:
 	go test -tags mock -race -cover ./...
 
 lint:
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.55.2 run --color always ${args}
+	go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.1 run --color always ${args}
 
 lint-fix:
 	make lint args=--fix
@@ -20,4 +20,4 @@ intgr-test: build
 	docker compose -f deployments/docker-compose/docker-compose.yml up
 
 gen:
-	go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest -generate gorilla,types -package rest ${OPENAPI} > internal/domain/rest/api.gen.go
+	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest -generate gorilla,types -package rest ${OPENAPI} > internal/domain/rest/api.gen.go

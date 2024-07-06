@@ -13,6 +13,7 @@ import (
 	"github.com/bavix/gripmock/internal/app"
 )
 
+//nolint:all
 func TestStub(t *testing.T) {
 	type test struct {
 		name    string
@@ -80,7 +81,7 @@ func TestStub(t *testing.T) {
 				payload := `{"service":"Testing","method":"TestMethod","data":{"Hola":"Mundo"}}`
 
 				req := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
-				req.Header.Add(strings.ToUpper("X-GripMock-RequestInternal"), "ok") //enable
+				req.Header.Add(strings.ToUpper("X-GripMock-RequestInternal"), "ok") // enable
 
 				return req
 			},

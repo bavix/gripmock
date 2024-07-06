@@ -65,6 +65,7 @@ func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	results := make([]rest.Service, len(services))
+
 	for i, service := range services {
 		serviceMethods, err := h.reflector.Methods(r.Context(), service.ID)
 		if err != nil {
@@ -87,7 +88,9 @@ func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_ = json.NewEncoder(w).Encode(results)
+	if err := json.NewEncoder(w).Encode(results); err != nil {
+		h.responseError(err, w)
+	}
 }
 
 func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, serviceID string) {
@@ -104,11 +107,15 @@ func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
-	_ = json.NewEncoder(w).Encode(results)
+	if err := json.NewEncoder(w).Encode(results); err != nil {
+		h.responseError(err, w)
+	}
 }
 
 func (h *RestServer) Liveness(w http.ResponseWriter, _ *http.Request) {
-	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()})
+	if err := json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
+		h.responseError(err, w)
+	}
 }
 
 func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
@@ -120,11 +127,14 @@ func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()})
+	if err := json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}
 }
 
 func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
 	byt, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.responseError(err, w)
@@ -166,6 +176,7 @@ func (h *RestServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, uuid
 
 func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
 	byt, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.responseError(err, w)
@@ -190,24 +201,24 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 
 func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(h.stuber.Used())
-	if err != nil {
+
+	if err := json.NewEncoder(w).Encode(h.stuber.Used()); err != nil {
 		h.responseError(err, w)
 	}
 }
 
 func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(h.stuber.Unused())
-	if err != nil {
+
+	if err := json.NewEncoder(w).Encode(h.stuber.Unused()); err != nil {
 		h.responseError(err, w)
 	}
 }
 
 func (h *RestServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(h.stuber.All())
-	if err != nil {
+
+	if err := json.NewEncoder(w).Encode(h.stuber.All()); err != nil {
 		h.responseError(err, w)
 	}
 }
@@ -245,7 +256,9 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = json.NewEncoder(w).Encode(result.Found().Output)
+	if err := json.NewEncoder(w).Encode(result.Found().Output); err != nil {
+		h.responseError(err, w)
+	}
 }
 
 func (h *RestServer) FindByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
@@ -256,7 +269,9 @@ func (h *RestServer) FindByID(w http.ResponseWriter, _ *http.Request, uuid rest.
 		return
 	}
 
-	_ = json.NewEncoder(w).Encode(stub)
+	if err := json.NewEncoder(w).Encode(stub); err != nil {
+		h.responseError(err, w)
+	}
 }
 
 func (h *RestServer) responseError(err error, w http.ResponseWriter) {
@@ -266,9 +281,11 @@ func (h *RestServer) responseError(err error, w http.ResponseWriter) {
 }
 
 func (h *RestServer) writeResponseError(err error, w http.ResponseWriter) {
-	_ = json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"error": err.Error(),
-	})
+	}); err != nil {
+		h.responseError(err, w)
+	}
 }
 
 func (h *RestServer) readStubs(path string) {
@@ -332,7 +349,7 @@ func validateStub(stub *stuber.Stub) error {
 		break
 	default:
 		// fixme
-		//nolint:goerr113
+		//nolint:goerr113,perfsprint
 		return fmt.Errorf("input cannot be empty")
 	}
 
@@ -340,7 +357,7 @@ func validateStub(stub *stuber.Stub) error {
 
 	if stub.Output.Error == "" && stub.Output.Data == nil && stub.Output.Code == nil {
 		// fixme
-		//nolint:goerr113
+		//nolint:goerr113,perfsprint
 		return fmt.Errorf("output can't be empty")
 	}
 

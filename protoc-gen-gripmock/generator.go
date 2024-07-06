@@ -49,7 +49,6 @@ func main() {
 	err = generateServer(protos, &Options{
 		writer: buf,
 	})
-
 	if err != nil {
 		log.Fatalf("Failed to generate server %v", err)
 	}

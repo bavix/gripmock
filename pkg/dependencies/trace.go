@@ -22,7 +22,7 @@ func tracer(
 	appName string,
 ) (*trace.TracerProvider, error) {
 	if config.OtlpRatio == 0 || config.OtlpHost == "" || config.OtlpPort == "" {
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 
 	options := []otlptracegrpc.Option{
