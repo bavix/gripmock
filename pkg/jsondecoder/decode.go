@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 )
 
+//nolint:mnd
 func UnmarshalSlice(data []byte, v interface{}) error {
 	input := bytes.TrimSpace(data)
 

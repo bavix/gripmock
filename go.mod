@@ -5,14 +5,14 @@ go 1.22.2
 require (
 	github.com/bavix/features v1.0.0
 	github.com/bavix/gripmock-sdk-go v1.0.4
-	github.com/bavix/gripmock-ui v1.0.0-alpha4
+	github.com/bavix/gripmock-ui v1.0.0-alpha5
 	github.com/bavix/gripmock/protogen v0.0.0
 	github.com/goccy/go-yaml v1.11.3
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/gripmock/environment v1.0.1
+	github.com/gripmock/environment v1.0.2
 	github.com/gripmock/grpc-interceptors v1.0.2
 	github.com/gripmock/shutdown v1.0.0
 	github.com/gripmock/stuber v1.0.1
@@ -34,7 +34,7 @@ require (
 
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
-	github.com/bufbuild/protocompile v0.13.0 // indirect
+	github.com/bufbuild/protocompile v0.14.0 // indirect
 	github.com/caarlos0/env/v10 v10.0.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -52,9 +52,9 @@ require (
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
-	golang.org/x/exp v0.0.0-20240531132922-fd00a4e0eefc // indirect
-	golang.org/x/net v0.26.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
+	golang.org/x/net v0.27.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240701130421-f6361c86f094 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240701130421-f6361c86f094 // indirect

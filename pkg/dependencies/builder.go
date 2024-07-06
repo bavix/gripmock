@@ -49,6 +49,7 @@ func New(ctx context.Context, appName string) (*Builder, error) {
 		environment.New,
 		NewZerolog,
 		newLog,
+		wire.Bind(new(shutdown.Logger), new(*Logger)),
 		shutdown.New,
 		tracer,
 		grpcClient,

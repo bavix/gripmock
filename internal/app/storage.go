@@ -9,6 +9,7 @@ import (
 
 func stubNotFoundError2(expect stuber.Query, result *stuber.Result) error {
 	template := fmt.Sprintf("Can't find stub \n\nService: %s \n\nMethod: %s \n\nInput\n\n", expect.Service, expect.Method)
+
 	expectString, err := json.MarshalIndent(expect.Data, "", "\t")
 	if err != nil {
 		return err
@@ -18,7 +19,7 @@ func stubNotFoundError2(expect stuber.Query, result *stuber.Result) error {
 
 	if result.Similar() == nil {
 		// fixme
-		//nolint:goerr113
+		//nolint:goerr113,perfsprint
 		return fmt.Errorf(template)
 	}
 
@@ -50,6 +51,6 @@ func stubNotFoundError2(expect stuber.Query, result *stuber.Result) error {
 	}
 
 	// fixme
-	//nolint:goerr113
+	//nolint:goerr113,perfsprint
 	return fmt.Errorf(template)
 }

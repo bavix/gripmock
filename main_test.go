@@ -11,6 +11,7 @@ func Test_getProtodirs(t *testing.T) {
 		protoPath string
 		imports   []string
 	}
+
 	tests := []struct {
 		name string
 		args args

@@ -27,8 +27,8 @@ func New(ctx context.Context, appName string) (*Builder, error) {
 	if err != nil {
 		return nil, err
 	}
-	shutdownLogger := newLog(logger)
-	shutdownShutdown := shutdown.New(shutdownLogger)
+	dependenciesLogger := newLog(logger)
+	shutdownShutdown := shutdown.New(dependenciesLogger)
 	tracerProvider, err := tracer(ctx, config, shutdownShutdown, appName)
 	if err != nil {
 		return nil, err

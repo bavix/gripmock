@@ -1,6 +1,6 @@
 .git
+.github
+deployments
 docs
 node_modules
-deployments
-.github
 *.pb.go

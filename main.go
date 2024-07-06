@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"flag"
-	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -38,8 +37,8 @@ func main() {
 	outputPointer := flag.String("output", "", "directory to output server.go. Default is $GOPATH/src/grpc/")
 	flag.StringVar(outputPointer, "o", *outputPointer, "alias for -output")
 
-	stubPath := flag.String("stub", "", "Path where the stub files are (Optional)")
-	imports := flag.String("imports", "/protobuf,/googleapis", "comma separated imports path. default path /protobuf,/googleapis is where gripmock Dockerfile install WKT protos") //nolint:lll
+	stubPath := flag.String("stub", "", "Path where the stub files are (Optional)")                                                                                                //nolint:lll,staticcheck
+	imports := flag.String("imports", "/protobuf,/googleapis", "comma separated imports path. default path /protobuf,/googleapis is where gripmock Dockerfile install WKT protos") //nolint:lll,staticcheck
 
 	flag.Parse()
 
@@ -48,7 +47,7 @@ func main() {
 
 	builder, err := dependencies.New(ctx, "gripmock-rest")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err) //nolint:gocritic
 	}
 
 	logger := builder.Logger()
@@ -65,6 +64,7 @@ func main() {
 	//nolint:godox
 	// fixme: move validation of required arguments to a separate service
 	logger.Info().Str("release", version).Msg("Starting GripMock")
+
 	if os.Getenv("GOPATH") == "" {
 		logger.Fatal().Msg("$GOPATH is empty")
 	}
@@ -108,6 +108,7 @@ func main() {
 		defer cancel()
 
 		waiter := healthv1.NewHealthClient(builder.GRPCClient())
+
 		check, err := waiter.Check(ctx, &healthv1.HealthCheckRequest{Service: ""}, grpc.WaitForReady(true))
 		if err != nil {
 			return
@@ -127,6 +128,7 @@ func main() {
 		}
 
 		logger.Info().Msg("Stopping gRPC Server")
+
 		if err := run.Process.Kill(); err != nil {
 			logger.Fatal().Err(err).Msg("process killed")
 		}
@@ -143,6 +145,7 @@ func getProtodirs(_ context.Context, protoPath string, imports []string) []strin
 	// deduced proto dir from proto path
 	splitPath := strings.Split(protoPath, "/")
 	protoDir := ""
+
 	if len(splitPath) > 0 {
 		protoDir = path.Join(splitPath[:len(splitPath)-1]...)
 	}
@@ -179,7 +182,7 @@ func generateProtoc(ctx context.Context, param protocParam) {
 	protodirs := getProtodirs(ctx, param.protoPath[0], param.imports)
 
 	// estimate args length to prevent expand
-	args := make([]string, 0, len(protodirs)+len(param.protoPath)+2) //nolint:gomnd
+	args := make([]string, 0, len(protodirs)+len(param.protoPath)+2) //nolint:mnd
 	for _, dir := range protodirs {
 		args = append(args, "-I", dir)
 	}
@@ -190,13 +193,13 @@ func generateProtoc(ctx context.Context, param protocParam) {
 	args = append(args, param.protoPath...)
 	args = append(args, "--go_out="+pbOutput)
 	args = append(args, "--go-grpc_out="+pbOutput)
-	args = append(args, fmt.Sprintf("--gripmock_out=%s", param.output))
+	args = append(args, "--gripmock_out="+param.output)
 	protoc := exec.Command("protoc", args...)
 	protoc.Env = os.Environ()
 	protoc.Stdout = os.Stdout
 	protoc.Stderr = os.Stderr
-	err := protoc.Run()
-	if err != nil {
+
+	if err := protoc.Run(); err != nil {
 		zerolog.Ctx(ctx).Fatal().Err(err).Msg("fail on protoc")
 	}
 }
@@ -206,7 +209,7 @@ func fixGoPackage(ctx context.Context, protoPaths []string) []string {
 	results := make([]string, 0, len(protoPaths))
 
 	for _, protoPath := range protoPaths {
-		pile, err := os.OpenFile(protoPath, os.O_RDONLY, 0o600)
+		pile, err := os.OpenFile(protoPath, os.O_RDONLY, 0o600) //nolint:mnd
 		if err != nil {
 			zerolog.Ctx(ctx).Err(err).Msgf("unable to open protofile %s", protoPath)
 
@@ -217,7 +220,7 @@ func fixGoPackage(ctx context.Context, protoPaths []string) []string {
 
 		packageName := "protogen/" + strings.Trim(filepath.Dir(protoPath), "/")
 
-		if err := os.MkdirAll(packageName, 0o666); err != nil {
+		if err := os.MkdirAll(packageName, 0o666); err != nil { //nolint:mnd
 			zerolog.Ctx(ctx).Err(err).Msgf("unable to create temp dir %s", protoPath)
 
 			continue
@@ -256,6 +259,7 @@ func runGrpcServer(ctx context.Context, output string) (*exec.Cmd, <-chan error)
 	}
 
 	zerolog.Ctx(ctx).Info().Int("pid", run.Process.Pid).Msg("gRPC-service started")
+
 	runErr := make(chan error)
 
 	go func() {

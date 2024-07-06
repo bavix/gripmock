@@ -45,7 +45,7 @@ func RunRestServer(
 	srv := &http.Server{
 		Addr:              config.HTTPAddr,
 		ReadHeaderTimeout: timeout,
-		BaseContext: func(listener net.Listener) context.Context {
+		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},
 		Handler: handlers.CORS(

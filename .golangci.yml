@@ -5,17 +5,12 @@ run:
 linters:
   enable-all: true
   disable:
+    # turn on later
+    - godox
+    - gomoddirectives # critic
     # deprecated
-    - nosnakecase
-    - structcheck
-    - interfacer
-    - deadcode
-    - exhaustivestruct
-    - maligned
-    - ifshort
-    - varcheck
-    - golint
-    - scopelint
+    - gomnd
+    - execinquery
     # not relevant
     - varnamelen
     - wrapcheck
@@ -36,6 +31,10 @@ linters-settings:
           - $gostd
           - github.com
 issues:
+  exclude-files:
+    - pkg/dependencies/builder.go
+  exclude-dirs:
+    - example
   exclude-rules:
     - path: (.+)_test.go
       linters:

@@ -28,21 +28,24 @@ func (e *engine) Execute(name string, data []byte) ([]byte, error) {
 
 func (e *engine) uuid2int64(str string) string {
 	v := e.uuid2bytes(str)
+	_ = v[15]
 
-	//nolint:gomnd
+	//nolint:mnd
 	high := int64(v[0]) | int64(v[1])<<8 | int64(v[2])<<16 | int64(v[3])<<24 |
 		int64(v[4])<<32 | int64(v[5])<<40 | int64(v[6])<<48 | int64(v[7])<<56
 
-	//nolint:gomnd
+	//nolint:mnd
 	low := int64(v[8]) | int64(v[9])<<8 | int64(v[10])<<16 | int64(v[11])<<24 |
 		int64(v[12])<<32 | int64(v[13])<<40 | int64(v[14])<<48 | int64(v[15])<<56
 
 	var buffer bytes.Buffer
 
-	_ = json.NewEncoder(&buffer).Encode(map[string]int64{
+	if err := json.NewEncoder(&buffer).Encode(map[string]int64{
 		"high": high,
 		"low":  low,
-	})
+	}); err != nil {
+		return ""
+	}
 
 	return buffer.String()
 }

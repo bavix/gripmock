@@ -12,7 +12,7 @@ import (
 	pb "github.com/bavix/gripmock/protogen/example/multi-files"
 )
 
-//nolint:gomnd
+//nolint:mnd
 func main() {
 	// Set up a connection to the server.
 	conn, err := grpc.NewClient("localhost:4770",

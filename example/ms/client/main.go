@@ -23,7 +23,7 @@ func env(key, fallback string) string {
 	return fallback
 }
 
-//nolint:gomnd
+//nolint:mnd
 func main() {
 	grpcPort := env("GRPC_PORT", "4770")
 

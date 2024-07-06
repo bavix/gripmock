@@ -12,7 +12,7 @@ func UnaryInterceptor(logger *zerolog.Logger) grpc.UnaryServerInterceptor {
 	return func(
 		innerCtx context.Context,
 		req interface{},
-		info *grpc.UnaryServerInfo,
+		_ *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
 		return handler(logger.WithContext(innerCtx), req)
@@ -35,7 +35,7 @@ func StreamInterceptor(logger *zerolog.Logger) grpc.StreamServerInterceptor {
 	return func(
 		srv interface{},
 		ss grpc.ServerStream,
-		info *grpc.StreamServerInfo,
+		_ *grpc.StreamServerInfo,
 		handler grpc.StreamHandler,
 	) error {
 		return handler(srv, serverStreamWrapper{

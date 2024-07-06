@@ -17,7 +17,7 @@ import (
 // then use it as protobuf_dir below
 // protoc --go_out=plugins=grpc:${GOPATH}/src -I=.. -I=<protobuf_dir>  ../wkt.proto
 //
-//nolint:gomnd
+//nolint:mnd
 func main() {
 	// Set up a connection to the server.
 	conn, err := grpc.NewClient("localhost:4770",
