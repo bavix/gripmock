@@ -100,6 +100,8 @@ func main() {
 				if err == nil && resp.JSON200 != nil {
 					healthcheck.SetServingStatus("", healthgrpc.HealthCheckResponse_SERVING)
 
+					builder.Logger().Info().Msg("gRPC server is ready to accept requests")
+
 					return
 				}
 			}

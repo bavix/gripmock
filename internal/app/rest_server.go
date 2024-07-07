@@ -8,7 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
+	"path"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -50,6 +50,7 @@ func NewRestServer(path string, reflector *grpcreflector.GReflector) (*RestServe
 
 	if path != "" {
 		server.readStubs(path) // TODO: someday you will need to rewrite this code
+		server.ok.Store(true)
 	}
 
 	return server, nil
@@ -289,33 +290,30 @@ func (h *RestServer) writeResponseError(err error, w http.ResponseWriter) {
 // and adds them to the server's stub store.
 // The stub files can be in yaml or json format.
 // If a file is in yaml format, it will be converted to json format.
-func (h *RestServer) readStubs(path string) {
-	defer h.ok.Store(true)
-
-	files, err := os.ReadDir(path)
+func (h *RestServer) readStubs(pathDir string) {
+	files, err := os.ReadDir(pathDir)
 	if err != nil {
-		log.Printf("can't read stubs from %s: %v", path, err)
+		log.Printf("can't read stubs from %s: %v", pathDir, err)
+
 		return
 	}
 
 	for _, file := range files {
 		// If the file is a directory, recursively read its stubs.
 		if file.IsDir() {
-			h.readStubs(filepath.Join(path, file.Name()))
-			continue
-		}
+			h.readStubs(path.Join(pathDir, file.Name()))
 
-		// Only process files with yaml or yml extensions.
-		if !strings.HasSuffix(file.Name(), ".yaml") && !strings.HasSuffix(file.Name(), ".yml") {
 			continue
 		}
 
 		// Read the stub file and add it to the server's stub store.
-		stubs, err := h.readStub(filepath.Join(path, file.Name()))
+		stubs, err := h.readStub(path.Join(pathDir, file.Name()))
 		if err != nil {
 			log.Printf("cant read stubs from %s: %v", file.Name(), err)
+
 			continue
 		}
+
 		h.stuber.PutMany(stubs...)
 	}
 }
@@ -327,21 +325,21 @@ func (h *RestServer) readStub(path string) ([]*stuber.Stub, error) {
 	// Read the file
 	byt, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("error when reading file %s: %v", path, err)
+		return nil, fmt.Errorf("error when reading file %s: %w", path, err)
 	}
 
 	// If the file is in yaml format, convert it to json format
 	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
 		byt, err = h.convertor.Execute(path, byt)
 		if err != nil {
-			return nil, fmt.Errorf("error when unmarshalling file %s: %v", path, err)
+			return nil, fmt.Errorf("error when unmarshalling file %s: %w", path, err)
 		}
 	}
 
 	// Unmarshal the json into a slice of stubs
 	var stubs []*stuber.Stub
 	if err := jsondecoder.UnmarshalSlice(byt, &stubs); err != nil {
-		return nil, fmt.Errorf("error when unmarshalling file %s: %v %s", path, string(byt), err)
+		return nil, fmt.Errorf("error when unmarshalling file %s: %v %w", path, string(byt), err)
 	}
 
 	return stubs, nil
@@ -371,6 +369,7 @@ func validateStub(stub *stuber.Stub) error {
 	}
 
 	if stub.Output.Error == "" && stub.Output.Data == nil && stub.Output.Code == nil {
+		//nolint:goerr113,perfsprint
 		return fmt.Errorf("output cannot be empty")
 	}
 

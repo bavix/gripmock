@@ -26,8 +26,6 @@ func RunRestServer(
 	config environment.Config,
 	reflector *grpcreflector.GReflector,
 ) {
-	const timeout = time.Millisecond * 25
-
 	apiServer, _ := app.NewRestServer(stubPath, reflector)
 
 	ui, _ := gripmockui.Assets()
@@ -40,6 +38,8 @@ func RunRestServer(
 		Middlewares: []rest.MiddlewareFunc{muxmiddleware.RequestLogger},
 	})
 	router.PathPrefix("/").Handler(http.FileServerFS(ui)).Methods(http.MethodGet)
+
+	const timeout = time.Millisecond * 25
 
 	srv := &http.Server{
 		Addr:              config.HTTPAddr,
@@ -62,12 +62,8 @@ func RunRestServer(
 		Str("addr", config.HTTPAddr).
 		Msg("stub-manager started")
 
-	go func() {
-		// nosemgrep:go.lang.security.audit.net.use-tls.use-tls
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			zerolog.Ctx(ctx).Fatal().Err(err).Msg("stub manager completed")
-		}
-	}()
-
-	<-ctx.Done()
+	// nosemgrep:go.lang.security.audit.net.use-tls.use-tls
+	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		zerolog.Ctx(ctx).Fatal().Err(err).Msg("stub manager completed")
+	}
 }

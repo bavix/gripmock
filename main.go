@@ -12,15 +12,12 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 
 	_ "github.com/gripmock/grpc-interceptors"
 	"github.com/rs/zerolog"
 	_ "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	_ "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/health"
-	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
 
 	_ "github.com/bavix/gripmock-sdk-go"
 	"github.com/bavix/gripmock/internal/pkg/patcher"
@@ -114,30 +111,6 @@ func main() {
 
 	// And run
 	run, chErr := runGrpcServer(ctx, output)
-
-	// Wait for the gRPC server to start and confirm that it is in the "SERVING" state.
-	// This is done by checking the health check service on the server.
-	// If the service is in the "SERVING" state, it means that the server has started successfully.
-	go func() {
-		ctx, cancel := context.WithTimeout(ctx, time.Minute)
-		defer cancel()
-
-		waiter := healthv1.NewHealthClient(builder.GRPCClient())
-
-		// Check the health of the server.
-		// The empty string in the request means that we want to check the whole server,
-		// not a specific service.
-		// The grpc.WaitForReady(true) parameter means that we want to wait for the server to become ready.
-		check, err := waiter.Check(ctx, &healthv1.HealthCheckRequest{Service: ""}, grpc.WaitForReady(true))
-		if err != nil {
-			return
-		}
-
-		// If the server is in the "SERVING" state, send a signal to the chReady channel.
-		if check.GetStatus() == healthv1.HealthCheckResponse_SERVING {
-			zerolog.Ctx(ctx).Info().Msg("gRPC server is ready to accept requests")
-		}
-	}()
 
 	// Wait for the gRPC server to exit or the context to be done.
 	select {
