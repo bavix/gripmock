@@ -1,14 +1,12 @@
 // Package main contains the main function for the protoc-gen-gripmock generator.
 package main // import "github.com/bavix/gripmock/protoc-gen-gripmock"
 
-//nosemgrep:go.lang.security.audit.crypto.math_random.math-random-used
 import (
 	"bytes"
 	"embed"
 	"fmt"
 	"io"
 	"log"
-	"math/rand/v2"
 	"os"
 	"strings"
 	"text/template"
@@ -32,7 +30,6 @@ import (
 // It reads input from stdin, unmarshals the request, and creates a new
 // CodeGenerator object. It then generates the gRPC mock server in server.go.
 func main() {
-
 	// Protoc passes pluginpb.CodeGeneratorRequest in via stdin
 	// marshalled with Protobuf
 	input, _ := io.ReadAll(os.Stdin)
@@ -265,44 +262,43 @@ var (
 // extracted from the protobuf file's go_package option.
 //
 // If the go_package option is not present, it returns an empty string for goPackage.
-// If the go_package option is present and has no alias, it returns an empty string for alias.
-//
+// If the go_package option is present but has no alias, it returns an empty string for alias.
 // If the go_package option has an alias, it returns the alias and the go package name.
 // The alias is derived from the last folder in the go package name.
 // If the last folder contains a dash, it is replaced with an underscore.
 // If the alias is a keyword, it appends a random number to the alias.
 // If the alias already exists, it appends a number to the alias.
+//
+// The go_package option format is: package_name;alias.
 func getGoPackage(proto *descriptorpb.FileDescriptorProto) (alias string, goPackage string) {
 	goPackage = proto.GetOptions().GetGoPackage()
 	if goPackage == "" {
 		return
 	}
 
-	// Support go_package alias declaration
-	// https://github.com/golang/protobuf/issues/139
+	// If the go_package option has an alias, it is separated by semicolon.
 	if splits := strings.Split(goPackage, ";"); len(splits) > 1 {
 		goPackage = splits[0]
 		alias = splits[1]
 	} else {
-		// Get the alias based on the last folder in the go package name
+		// Get the alias based on the last folder in the go package name.
 		splitSlash := strings.Split(goPackage, "/")
-		// Replace dash with underscore
+		// Replace dash with underscore.
 		alias = strings.ReplaceAll(splitSlash[len(splitSlash)-1], "-", "_")
 	}
 
-	// If the package has already been discovered, return the alias
+	// If the package has already been discovered, return the alias.
 	if al, ok := packages[goPackage]; ok {
 		alias = al
 		return
 	}
 
-	// Aliases can't be keywords
+	// If the alias is a keyword, append a random number to it.
 	if isKeyword(alias) {
-		// Append a random number to the alias
-		alias = fmt.Sprintf("%s_%x_pb", alias, rand.Int())
+		alias = fmt.Sprintf("%s_pb%d", alias, aliasNum)
 	}
 
-	// If the alias already exists, append a number to the alias
+	// If the alias already exists, append a number to it.
 	if ok := aliases[alias]; ok {
 		alias = fmt.Sprintf("%s%d", alias, aliasNum)
 		aliasNum++
