@@ -113,12 +113,6 @@ func (h *RestServer) Liveness(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
-	if !h.ok.Load() {
-		w.WriteHeader(http.StatusServiceUnavailable)
-
-		return
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {

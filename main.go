@@ -35,8 +35,8 @@ func main() {
 	outputPointer := flag.String("output", "", "directory to output server.go. Default is $GOPATH/src/grpc/")
 	flag.StringVar(outputPointer, "o", *outputPointer, "alias for -output")
 
-	stubPath := flag.String("stub", "", "Path where the stub files are (Optional)")
-	imports := flag.String("imports", "/protobuf,/googleapis", "comma separated imports path. default path /protobuf,/googleapis is where gripmock Dockerfile install WKT protos")
+	stubPath := flag.String("stub", "", "Path where the stub files are (Optional)")                                                                                                //nolint:lll,staticcheck
+	imports := flag.String("imports", "/protobuf,/googleapis", "comma separated imports path. default path /protobuf,/googleapis is where gripmock Dockerfile install WKT protos") //nolint:lll,staticcheck
 
 	flag.Parse()
 
@@ -45,7 +45,7 @@ func main() {
 
 	builder, err := dependencies.New(ctx, "gripmock-rest")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err) //nolint:gocritic
 	}
 
 	logger := builder.Logger()
@@ -81,6 +81,7 @@ func main() {
 	output += "/"
 
 	// Check if output folder exists, if not create it
+	// nosemgrep:semgrep-go.os-error-is-not-exist
 	if _, err := os.Stat(output); os.IsNotExist(err) {
 		// Create output folder
 		if err := os.Mkdir(output, os.ModePerm); err != nil {
