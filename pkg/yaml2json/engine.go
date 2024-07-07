@@ -2,11 +2,11 @@ package yaml2json
 
 import (
 	"bytes"
-	"encoding/json"
 	"text/template"
 
 	"github.com/cristalhq/base64"
 	"github.com/google/uuid"
+	"github.com/gripmock/json"
 )
 
 type engine struct{}
@@ -50,12 +50,13 @@ func (e *engine) uuid2int64(str string) string {
 		"low":  low,
 	}
 
-	int64JSON, err := json.Marshal(int64Data)
-	if err != nil {
+	var buffer bytes.Buffer
+
+	if err := json.Encode(&buffer, int64Data); err != nil {
 		return ""
 	}
 
-	return string(int64JSON)
+	return buffer.String()
 }
 
 // uuid2base64 converts a UUID string to a base64 string.

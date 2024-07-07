@@ -2,7 +2,9 @@ package jsondecoder
 
 import (
 	"bytes"
-	"encoding/json"
+	stdjson "encoding/json"
+
+	"github.com/gripmock/json"
 )
 
 const minJSONLength = 2
@@ -36,7 +38,7 @@ func UnmarshalSlice(data []byte, v interface{}) error {
 	input := bytes.TrimSpace(data)
 
 	if len(input) < minJSONLength {
-		return &json.SyntaxError{}
+		return &stdjson.SyntaxError{}
 	}
 
 	// If the input is not a JSON array, wrap it in an array
@@ -44,8 +46,5 @@ func UnmarshalSlice(data []byte, v interface{}) error {
 		input = append(append([]byte{'['}, input...), ']')
 	}
 
-	decoder := json.NewDecoder(bytes.NewReader(input))
-	decoder.UseNumber()
-
-	return decoder.Decode(v)
+	return json.Decode(bytes.NewReader(input), v)
 }

@@ -1,9 +1,9 @@
 package app
 
 import (
-	"encoding/json"
 	"fmt"
 
+	"github.com/gripmock/json"
 	"github.com/gripmock/stuber"
 )
 
