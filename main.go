@@ -89,19 +89,12 @@ func main() {
 		}
 	}
 
-	chReady := make(chan struct{})
-	defer close(chReady)
-
 	// Run the admin stub server in a separate goroutine.
 	//
 	// This goroutine runs the REST server that serves the stub files.
 	// It waits for the ready signal from the gRPC server goroutine.
 	// Once the gRPC server is ready, it starts the admin stub server.
 	go func() {
-		<-chReady
-
-		zerolog.Ctx(ctx).Info().Msg("gRPC server is ready to accept requests")
-
 		stub.RunRestServer(ctx, *stubPath, builder.Config(), builder.Reflector())
 	}()
 
@@ -142,7 +135,7 @@ func main() {
 
 		// If the server is in the "SERVING" state, send a signal to the chReady channel.
 		if check.GetStatus() == healthv1.HealthCheckResponse_SERVING {
-			chReady <- struct{}{}
+			zerolog.Ctx(ctx).Info().Msg("gRPC server is ready to accept requests")
 		}
 	}()
 

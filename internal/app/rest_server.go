@@ -8,7 +8,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,6 +31,7 @@ var (
 )
 
 type RestServer struct {
+	ok        atomic.Bool
 	stuber    *stuber.Budgerigar
 	convertor *yaml2json.Convertor
 	caser     cases.Caser
@@ -113,6 +116,12 @@ func (h *RestServer) Liveness(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
+	if !h.ok.Load() {
+		w.WriteHeader(http.StatusServiceUnavailable)
+
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
@@ -276,49 +285,69 @@ func (h *RestServer) writeResponseError(err error, w http.ResponseWriter) {
 	}
 }
 
+// readStubs reads all the stubs from the given directory and its subdirectories,
+// and adds them to the server's stub store.
+// The stub files can be in yaml or json format.
+// If a file is in yaml format, it will be converted to json format.
 func (h *RestServer) readStubs(path string) {
+	defer h.ok.Store(true)
+
 	files, err := os.ReadDir(path)
 	if err != nil {
-		log.Printf("Can't read stub from %s. %v\n", path, err)
-
+		log.Printf("can't read stubs from %s: %v", path, err)
 		return
 	}
 
 	for _, file := range files {
+		// If the file is a directory, recursively read its stubs.
 		if file.IsDir() {
-			h.readStubs(path + "/" + file.Name())
-
+			h.readStubs(filepath.Join(path, file.Name()))
 			continue
 		}
 
-		byt, err := os.ReadFile(path + "/" + file.Name())
+		// Only process files with yaml or yml extensions.
+		if !strings.HasSuffix(file.Name(), ".yaml") && !strings.HasSuffix(file.Name(), ".yml") {
+			continue
+		}
+
+		// Read the stub file and add it to the server's stub store.
+		stubs, err := h.readStub(filepath.Join(path, file.Name()))
 		if err != nil {
-			log.Printf("Error when reading file %s. %v. skipping...", file.Name(), err)
-
+			log.Printf("cant read stubs from %s: %v", file.Name(), err)
 			continue
 		}
-
-		if strings.HasSuffix(file.Name(), ".yaml") || strings.HasSuffix(file.Name(), ".yml") {
-			byt, err = h.convertor.Execute(file.Name(), byt)
-			if err != nil {
-				log.Printf("Error when unmarshalling file %s. %v. skipping...", file.Name(), err)
-
-				continue
-			}
-		}
-
-		var storageStubs []*stuber.Stub
-
-		if err = jsondecoder.UnmarshalSlice(byt, &storageStubs); err != nil {
-			log.Printf("Error when unmarshalling file %s. %v %v. skipping...", file.Name(), string(byt), err)
-
-			continue
-		}
-
-		h.stuber.PutMany(storageStubs...)
+		h.stuber.PutMany(stubs...)
 	}
 }
 
+// readStub reads a stub file and returns a slice of stubs.
+// The stub file can be in yaml or json format.
+// If the file is in yaml format, it will be converted to json format.
+func (h *RestServer) readStub(path string) ([]*stuber.Stub, error) {
+	// Read the file
+	byt, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("error when reading file %s: %v", path, err)
+	}
+
+	// If the file is in yaml format, convert it to json format
+	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
+		byt, err = h.convertor.Execute(path, byt)
+		if err != nil {
+			return nil, fmt.Errorf("error when unmarshalling file %s: %v", path, err)
+		}
+	}
+
+	// Unmarshal the json into a slice of stubs
+	var stubs []*stuber.Stub
+	if err := jsondecoder.UnmarshalSlice(byt, &stubs); err != nil {
+		return nil, fmt.Errorf("error when unmarshalling file %s: %v %s", path, string(byt), err)
+	}
+
+	return stubs, nil
+}
+
+// validateStub validates if the stub is valid or not.
 func validateStub(stub *stuber.Stub) error {
 	if stub.Service == "" {
 		return ErrServiceIsMissing
@@ -341,12 +370,8 @@ func validateStub(stub *stuber.Stub) error {
 		return fmt.Errorf("input cannot be empty")
 	}
 
-	// TODO: validate all input case
-
 	if stub.Output.Error == "" && stub.Output.Data == nil && stub.Output.Code == nil {
-		// fixme
-		//nolint:goerr113,perfsprint
-		return fmt.Errorf("output can't be empty")
+		return fmt.Errorf("output cannot be empty")
 	}
 
 	return nil

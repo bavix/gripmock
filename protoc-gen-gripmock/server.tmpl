@@ -3,10 +3,9 @@ package main
 
 import (
 	"context"
-	"errors"
+	"time"
 	"slices"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -63,19 +62,52 @@ func main() {
             grpccontext.StreamInterceptor(builder.Logger()),
         }...),
     )
+
+	healthcheck := health.NewServer()
+	healthcheck.SetServingStatus("", healthgrpc.HealthCheckResponse_NOT_SERVING)
+
 	{{ range .Services }}
 	{{ template "register_services" . }}
 	{{ end }}
-
-	healthgrpc.RegisterHealthServer(s, health.NewServer())
+	healthgrpc.RegisterHealthServer(s, healthcheck)
     reflection.Register(s)
 
 	builder.Logger().Info().
-	    Str("addr", fmt.Sprintf("%s://%s", builder.Config().GRPCNetwork, builder.Config().GRPCAddr)).
+		Str("addr", builder.Config().GRPCAddr).
+	    Str("network", builder.Config().GRPCNetwork).
 	    Msg("Serving gRPC")
 
+	go func () {
+		api, err := sdk.NewClientWithResponses(
+			fmt.Sprintf("http://%s/api", builder.Config().HTTPAddr),
+        	sdk.WithHTTPClient(http.DefaultClient))
+		if err != nil {
+			return
+		}	
+
+		ctx, cancel := context.WithTimeout(ctx, 120 * time.Second)
+		defer cancel()
+
+		tick := time.NewTicker(250 * time.Millisecond)
+		defer tick.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-tick.C:
+				resp, err := api.ReadinessWithResponse(ctx)
+				if err == nil && resp.JSON200 != nil {
+					healthcheck.SetServingStatus("", healthgrpc.HealthCheckResponse_SERVING)
+
+					return
+				}
+			}
+		}
+	}()
+
 	if err := s.Serve(lis); err != nil {
-		builder.Logger().Fatal().Err(err).Msg("server ended")
+		builder.Logger().Fatal().Err(err).Msg("failed to serve")
 	}
 }
 
