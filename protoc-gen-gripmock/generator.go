@@ -1,6 +1,7 @@
 // Package main contains the main function for the protoc-gen-gripmock generator.
 package main // import "github.com/bavix/gripmock/protoc-gen-gripmock"
 
+//nosemgrep:go.lang.security.audit.crypto.math_random.math-random-used
 import (
 	"bytes"
 	"embed"
