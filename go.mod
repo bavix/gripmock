@@ -7,6 +7,7 @@ require (
 	github.com/bavix/gripmock-sdk-go v1.0.4
 	github.com/bavix/gripmock-ui v1.0.0-alpha5
 	github.com/bavix/gripmock/protogen v0.0.0-20240706201937-fc1e72a8ad5f
+	github.com/bytedance/sonic v1.10.0-rc3
 	github.com/cristalhq/base64 v0.1.2
 	github.com/goccy/go-yaml v1.11.3
 	github.com/google/uuid v1.6.0
@@ -38,6 +39,8 @@ require (
 	github.com/bufbuild/protocompile v0.14.0 // indirect
 	github.com/caarlos0/env/v10 v10.0.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
+	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
+	github.com/chenzhuoyu/iasm v0.9.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.17.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -46,13 +49,16 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gripmock/deeply v1.0.9 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.28.0 // indirect
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
+	golang.org/x/arch v0.4.0 // indirect
 	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8 // indirect
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect

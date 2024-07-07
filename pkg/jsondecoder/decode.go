@@ -3,6 +3,8 @@ package jsondecoder
 import (
 	"bytes"
 	"encoding/json"
+
+	"github.com/bytedance/sonic/decoder"
 )
 
 const minJSONLength = 2
@@ -44,8 +46,8 @@ func UnmarshalSlice(data []byte, v interface{}) error {
 		input = append(append([]byte{'['}, input...), ']')
 	}
 
-	decoder := json.NewDecoder(bytes.NewReader(input))
-	decoder.UseNumber()
+	streamDecoder := decoder.NewStreamDecoder(bytes.NewReader(input))
+	streamDecoder.UseNumber()
 
-	return decoder.Decode(v)
+	return streamDecoder.Decode(v)
 }

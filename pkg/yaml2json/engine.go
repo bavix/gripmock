@@ -2,9 +2,9 @@ package yaml2json
 
 import (
 	"bytes"
-	"encoding/json"
 	"text/template"
 
+	"github.com/bytedance/sonic/encoder"
 	"github.com/cristalhq/base64"
 	"github.com/google/uuid"
 )
@@ -50,12 +50,13 @@ func (e *engine) uuid2int64(str string) string {
 		"low":  low,
 	}
 
-	int64JSON, err := json.Marshal(int64Data)
-	if err != nil {
+	var buffer bytes.Buffer
+
+	if err := encoder.NewStreamEncoder(&buffer).Encode(int64Data); err != nil {
 		return ""
 	}
 
-	return string(int64JSON)
+	return buffer.String()
 }
 
 // uuid2base64 converts a UUID string to a base64 string.
