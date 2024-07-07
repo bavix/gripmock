@@ -349,7 +349,7 @@ func fixGoPackage(ctx context.Context, protoPaths []string) []string {
 // that receives an error when the process exits.
 func runGrpcServer(ctx context.Context, output string) (*exec.Cmd, <-chan error) {
 	// Construct the command to run the gRPC server.
-	run := exec.CommandContext(ctx, "go", "run", output+"server.go")
+	run := exec.CommandContext(ctx, "go", "run", output+"server.go") //nolint:gosec
 	run.Env = os.Environ()
 	run.Stdout = os.Stdout
 	run.Stderr = os.Stderr
