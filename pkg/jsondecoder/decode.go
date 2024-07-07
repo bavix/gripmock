@@ -5,15 +5,43 @@ import (
 	"encoding/json"
 )
 
-//nolint:mnd
+const minJSONLength = 2
+
+// UnmarshalSlice is a function that parses JSON data into a slice of the provided interface.
+// It handles the case where the input data is not a JSON array by wrapping it in an array.
+//
+// Examples:
+//
+//	data := []byte(`{"name": "Bob"}`)
+//	var result []map[string]interface{}
+//	err := UnmarshalSlice(data, &result)
+//	// result is now [{"name": "Bob"}]
+//
+//	data := []byte(`{"name": "Bob"}`)
+//	var result []map[string]string
+//	err := UnmarshalSlice(data, &result)
+//	// result is now [{"name": "Bob"}]
+//
+//	data := []byte(`{"name": "Bob"}`)
+//	var result []interface{}
+//	err := UnmarshalSlice(data, &result)
+//	// result is now [{"name": "Bob"}]
+//
+//	data := []byte(`{"name": "Bob"}`)
+//	var result []map[string]string
+//	err := UnmarshalSlice(data, &result)
+//	// result is now [{"name": "Bob"}]
+//	// NOTE: if the input data is not a JSON array, it is wrapped in an array before decoding
 func UnmarshalSlice(data []byte, v interface{}) error {
 	input := bytes.TrimSpace(data)
 
-	// input[0] == "{" AND input[len(input)-1] == "}"
-	if bytes.HasPrefix(input, []byte{123}) &&
-		bytes.HasSuffix(input, []byte{125}) {
-		// "[${input}]"
-		input = append(append([]byte{91}, input...), 93)
+	if len(input) < minJSONLength {
+		return &json.SyntaxError{}
+	}
+
+	// If the input is not a JSON array, wrap it in an array
+	if len(input) > 0 && input[0] == '{' && input[len(input)-1] == '}' {
+		input = append(append([]byte{'['}, input...), ']')
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(input))

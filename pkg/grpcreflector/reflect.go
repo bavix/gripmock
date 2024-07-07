@@ -8,31 +8,40 @@ import (
 	"google.golang.org/grpc"
 )
 
+// GReflector is a client for the gRPC reflection API.
+// It provides methods to list services and methods available on a gRPC server.
+type GReflector struct {
+	conn *grpc.ClientConn // grpc connection to the server
+}
+
+// Service represents a gRPC service.
+type Service struct {
+	ID      string // service ID
+	Package string // service package
+	Name    string // service name
+}
+
+// Method represents a gRPC method.
+type Method struct {
+	ID   string // method ID
+	Name string // method name
+}
+
 const prefix = "grpc.reflection.v1"
 
-type Service struct {
-	ID      string
-	Package string
-	Name    string
-}
-
-type Method struct {
-	ID   string
-	Name string
-}
-
-type GReflector struct {
-	conn *grpc.ClientConn
-}
-
+// New creates a new GReflector with the given grpc connection.
 func New(conn *grpc.ClientConn) *GReflector {
 	return &GReflector{conn: conn}
 }
 
+// client returns a new gRPC reflection client.
+// It uses the given context and the grpc connection of the GReflector.
 func (g *GReflector) client(ctx context.Context) *grpcreflect.Client {
 	return grpcreflect.NewClientAuto(ctx, g.conn)
 }
 
+// makeService creates a Service struct from a service ID.
+// The service ID is split into its package and name parts.
 func (g *GReflector) makeService(serviceID string) Service {
 	const sep = "."
 
@@ -45,6 +54,8 @@ func (g *GReflector) makeService(serviceID string) Service {
 	}
 }
 
+// makeMethod creates a Method struct from a service ID and method name.
+// The method ID is created by concatenating the service ID and method name with a slash.
 func (g *GReflector) makeMethod(serviceID, method string) Method {
 	return Method{
 		ID:   serviceID + "/" + method,
@@ -52,6 +63,8 @@ func (g *GReflector) makeMethod(serviceID, method string) Method {
 	}
 }
 
+// Services lists all services available on the gRPC server.
+// It uses the gRPC reflection client to get the list of services and filters out the reflection service.
 func (g *GReflector) Services(ctx context.Context) ([]Service, error) {
 	services, err := g.client(ctx).ListServices()
 	if err != nil {
@@ -69,6 +82,8 @@ func (g *GReflector) Services(ctx context.Context) ([]Service, error) {
 	return results, nil
 }
 
+// Methods lists all methods available on a service.
+// It uses the gRPC reflection client to resolve the service and filter out the reflection methods.
 func (g *GReflector) Methods(ctx context.Context, serviceID string) ([]Method, error) {
 	dest, err := g.client(ctx).ResolveService(serviceID)
 	if err != nil {
