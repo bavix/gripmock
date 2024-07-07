@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,7 +32,6 @@ type RestServer struct {
 	stuber    *stuber.Budgerigar
 	convertor *yaml2json.Convertor
 	caser     cases.Caser
-	ok        atomic.Bool
 	reflector *grpcreflector.GReflector
 }
 
@@ -52,10 +50,6 @@ func NewRestServer(path string, reflector *grpcreflector.GReflector) (*RestServe
 	}
 
 	return server, nil
-}
-
-func (h *RestServer) ServiceReady() {
-	h.ok.Store(true)
 }
 
 func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {

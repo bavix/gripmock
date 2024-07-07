@@ -22,7 +22,6 @@ import (
 
 func RunRestServer(
 	ctx context.Context,
-	ch chan struct{},
 	stubPath string,
 	config environment.Config,
 	reflector *grpcreflector.GReflector,
@@ -70,14 +69,5 @@ func RunRestServer(
 		}
 	}()
 
-	go func() {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ch:
-			apiServer.ServiceReady()
-		}
-
-		zerolog.Ctx(ctx).Info().Msg("gRPC-service is ready to accept requests")
-	}()
+	<-ctx.Done()
 }
