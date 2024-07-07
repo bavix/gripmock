@@ -7,8 +7,8 @@ github.com/bavix/gripmock-sdk-go v1.0.4 h1:FDBlusqVFoy5Yo49khztYqfVt9+NSEf1mIl1n
 github.com/bavix/gripmock-sdk-go v1.0.4/go.mod h1:/1cmn8VuN6Pc7ttMejqXLYpvf1CJF08ezoEA9lJIZiU=
 github.com/bavix/gripmock-ui v1.0.0-alpha5 h1:+2vWLZPeGGrpBSENWXIfyf6bwN+Pou+XucX0XlccLQo=
 github.com/bavix/gripmock-ui v1.0.0-alpha5/go.mod h1:XEH4YYEKL+wEDtONntoWm6JxjbVWzl7XtDYztUTBfeA=
-github.com/bavix/gripmock/protogen v0.0.0-20240706174427-ef324cdfb46b h1:YCLXlvREBDiqSZX8D4e0DtPQB0jm55cl4YsllmB0B4k=
-github.com/bavix/gripmock/protogen v0.0.0-20240706174427-ef324cdfb46b/go.mod h1:ARIfXpB9cyL9jIr7C1yrhwnb3wCSrewPNLdyG4URmJk=
+github.com/bavix/gripmock/protogen v0.0.0-20240706201937-fc1e72a8ad5f h1:B/nZWWeQRXb4SQFHQWw45cMAnZ6eu/T6TAkJFpTqLHw=
+github.com/bavix/gripmock/protogen v0.0.0-20240706201937-fc1e72a8ad5f/go.mod h1:ARIfXpB9cyL9jIr7C1yrhwnb3wCSrewPNLdyG4URmJk=
 github.com/bmatcuk/doublestar v1.1.1/go.mod h1:UD6OnuiIn0yFxxA2le/rnRU1G4RaI4UvFv1sNto9p6w=
 github.com/bufbuild/protocompile v0.14.0 h1:z3DW4IvXE5G/uTOnSQn+qwQQxvhckkTWLS/0No/o7KU=
 github.com/bufbuild/protocompile v0.14.0/go.mod h1:N6J1NYzkspJo3ZwyL4Xjvli86XOj1xq4qAasUFxGups=

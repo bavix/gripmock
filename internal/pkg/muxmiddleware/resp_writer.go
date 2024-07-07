@@ -1,28 +1,28 @@
 package muxmiddleware
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type responseWriter struct {
 	w http.ResponseWriter
 
-	status int
-	bytes  int
+	status       int
+	bytesWritten int
 }
 
-func (r *responseWriter) Header() http.Header {
-	return r.w.Header()
+func (rw *responseWriter) Header() http.Header {
+	return rw.w.Header()
 }
 
-func (r *responseWriter) Write(bytes []byte) (int, error) {
-	n, err := r.w.Write(bytes)
-
-	r.bytes += n
+func (rw *responseWriter) Write(bytes []byte) (int, error) {
+	n, err := rw.w.Write(bytes)
+	rw.bytesWritten += n
 
 	return n, err
 }
 
-func (r *responseWriter) WriteHeader(statusCode int) {
-	r.w.WriteHeader(statusCode)
-
-	r.status = statusCode
+func (rw *responseWriter) WriteHeader(statusCode int) {
+	rw.status = statusCode
+	rw.w.WriteHeader(statusCode)
 }

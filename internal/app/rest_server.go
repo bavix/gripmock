@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -30,10 +31,10 @@ var (
 )
 
 type RestServer struct {
+	ok        atomic.Bool
 	stuber    *stuber.Budgerigar
 	convertor *yaml2json.Convertor
 	caser     cases.Caser
-	ok        atomic.Bool
 	reflector *grpcreflector.GReflector
 }
 
@@ -49,13 +50,10 @@ func NewRestServer(path string, reflector *grpcreflector.GReflector) (*RestServe
 
 	if path != "" {
 		server.readStubs(path) // TODO: someday you will need to rewrite this code
+		server.ok.Store(true)
 	}
 
 	return server, nil
-}
-
-func (h *RestServer) ServiceReady() {
-	h.ok.Store(true)
 }
 
 func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
@@ -288,49 +286,66 @@ func (h *RestServer) writeResponseError(err error, w http.ResponseWriter) {
 	}
 }
 
-func (h *RestServer) readStubs(path string) {
-	files, err := os.ReadDir(path)
+// readStubs reads all the stubs from the given directory and its subdirectories,
+// and adds them to the server's stub store.
+// The stub files can be in yaml or json format.
+// If a file is in yaml format, it will be converted to json format.
+func (h *RestServer) readStubs(pathDir string) {
+	files, err := os.ReadDir(pathDir)
 	if err != nil {
-		log.Printf("Can't read stub from %s. %v\n", path, err)
+		log.Printf("can't read stubs from %s: %v", pathDir, err)
 
 		return
 	}
 
 	for _, file := range files {
+		// If the file is a directory, recursively read its stubs.
 		if file.IsDir() {
-			h.readStubs(path + "/" + file.Name())
+			h.readStubs(path.Join(pathDir, file.Name()))
 
 			continue
 		}
 
-		byt, err := os.ReadFile(path + "/" + file.Name())
+		// Read the stub file and add it to the server's stub store.
+		stubs, err := h.readStub(path.Join(pathDir, file.Name()))
 		if err != nil {
-			log.Printf("Error when reading file %s. %v. skipping...", file.Name(), err)
+			log.Printf("cant read stubs from %s: %v", file.Name(), err)
 
 			continue
 		}
 
-		if strings.HasSuffix(file.Name(), ".yaml") || strings.HasSuffix(file.Name(), ".yml") {
-			byt, err = h.convertor.Execute(file.Name(), byt)
-			if err != nil {
-				log.Printf("Error when unmarshalling file %s. %v. skipping...", file.Name(), err)
-
-				continue
-			}
-		}
-
-		var storageStubs []*stuber.Stub
-
-		if err = jsondecoder.UnmarshalSlice(byt, &storageStubs); err != nil {
-			log.Printf("Error when unmarshalling file %s. %v %v. skipping...", file.Name(), string(byt), err)
-
-			continue
-		}
-
-		h.stuber.PutMany(storageStubs...)
+		h.stuber.PutMany(stubs...)
 	}
 }
 
+// readStub reads a stub file and returns a slice of stubs.
+// The stub file can be in yaml or json format.
+// If the file is in yaml format, it will be converted to json format.
+func (h *RestServer) readStub(path string) ([]*stuber.Stub, error) {
+	// Read the file
+	byt, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("error when reading file %s: %w", path, err)
+	}
+
+	// If the file is in yaml format, convert it to json format
+	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
+		byt, err = h.convertor.Execute(path, byt)
+		if err != nil {
+			return nil, fmt.Errorf("error when unmarshalling file %s: %w", path, err)
+		}
+	}
+
+	// Unmarshal the json into a slice of stubs
+	var stubs []*stuber.Stub
+	if err := jsondecoder.UnmarshalSlice(byt, &stubs); err != nil {
+		return nil, fmt.Errorf("error when unmarshalling file %s: %v %w", path, string(byt), err)
+	}
+
+	return stubs, nil
+}
+
+// validateStub validates if the stub is valid or not.
 func validateStub(stub *stuber.Stub) error {
 	if stub.Service == "" {
 		return ErrServiceIsMissing
@@ -353,12 +368,9 @@ func validateStub(stub *stuber.Stub) error {
 		return fmt.Errorf("input cannot be empty")
 	}
 
-	// TODO: validate all input case
-
 	if stub.Output.Error == "" && stub.Output.Data == nil && stub.Output.Code == nil {
-		// fixme
 		//nolint:goerr113,perfsprint
-		return fmt.Errorf("output can't be empty")
+		return fmt.Errorf("output cannot be empty")
 	}
 
 	return nil
