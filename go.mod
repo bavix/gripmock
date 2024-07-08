@@ -16,7 +16,7 @@ require (
 	github.com/gripmock/environment v1.0.2
 	github.com/gripmock/grpc-interceptors v1.0.2
 	github.com/gripmock/shutdown v1.0.0
-	github.com/gripmock/stuber v1.0.1
+	github.com/gripmock/stuber v1.0.3
 	github.com/jhump/protoreflect v1.16.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/pkg/errors v0.9.1

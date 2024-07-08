@@ -64,8 +64,8 @@ github.com/gripmock/grpc-interceptors v1.0.2 h1:wNmecrDlubuSXhJyJNfTM9ydPcY6w4Pz
 github.com/gripmock/grpc-interceptors v1.0.2/go.mod h1:Bzh5pbb+sSC1vPmKTcEqg1jUUJFMAobQOuSKSXpMBMM=
 github.com/gripmock/shutdown v1.0.0 h1:ESDCCBeNHazgAstCpIskaORNWH3b+P03a2gznW+8IFY=
 github.com/gripmock/shutdown v1.0.0/go.mod h1:YwyI7uYgIPPdR9k8QNHwzDI2mQNpUSu+WT9mvqVoty4=
-github.com/gripmock/stuber v1.0.1 h1:Wml8OxiISjpxuBCztzLc60jbeU+kpgh7HLbbjrkCwGo=
-github.com/gripmock/stuber v1.0.1/go.mod h1:cufN6X56Z+Vr/ISgOC7iSGLH2quwUEfDGT6oBTDVh4w=
+github.com/gripmock/stuber v1.0.3 h1:acPnHStw3oL9T9y6yKZn78ZPWW6RNMRM8Nzx92NCNIE=
+github.com/gripmock/stuber v1.0.3/go.mod h1:LRBrj6o0uoLIpcGGo3+hxMFovY15FpFswC4hVvjEOkg=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 h1:bkypFPDjIYGfCYD5mRBvpqxfYX1YCS1PXdKYWi8FsN0=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0/go.mod h1:P+Lt/0by1T8bfcF3z737NnSbmxQAppXMRziHUxPOC8k=
 github.com/jhump/protoreflect v1.16.0 h1:54fZg+49widqXYQ0b+usAFHbMkBGR4PpXrsHc8+TBDg=
