@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.6.15 - 2024-07-08
+
+### What's Changed
+
+* [2.x] fix simple yaml file by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/331 (Thank you [@Muntasir2001](https://github.com/Muntasir2001))
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.14...v2.6.15
+
 ## v2.6.13 - 2024-03-18
 
 ### What's Changed
