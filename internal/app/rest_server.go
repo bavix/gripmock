@@ -255,8 +255,6 @@ func (h *StubsServer) readStubs(path string) {
 			continue
 		}
 
-		byt = bytes.TrimSpace(byt)
-
 		if strings.HasSuffix(file.Name(), ".yaml") || strings.HasSuffix(file.Name(), ".yml") {
 			byt, err = h.convertor.Execute(file.Name(), byt)
 			if err != nil {
@@ -265,6 +263,8 @@ func (h *StubsServer) readStubs(path string) {
 				continue
 			}
 		}
+
+		byt = bytes.TrimSpace(byt)
 
 		if byt[0] == '{' && byt[len(byt)-1] == '}' {
 			byt = []byte("[" + string(byt) + "]")
