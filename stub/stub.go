@@ -11,7 +11,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gripmock/environment"
 	"github.com/rs/zerolog"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 
 	gripmockui "github.com/bavix/gripmock-ui"
 	"github.com/bavix/gripmock/internal/app"
@@ -31,7 +30,6 @@ func RunRestServer(
 	ui, _ := gripmockui.Assets()
 
 	router := mux.NewRouter()
-	router.Use(otelmux.Middleware("gripmock-manager"))
 	rest.HandlerWithOptions(apiServer, rest.GorillaServerOptions{
 		BaseURL:     "/api",
 		BaseRouter:  router,

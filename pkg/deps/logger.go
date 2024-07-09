@@ -1,4 +1,4 @@
-package dependencies
+package deps
 
 import (
 	"github.com/rs/zerolog"

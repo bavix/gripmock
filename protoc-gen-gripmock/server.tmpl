@@ -29,12 +29,10 @@ import (
 	"google.golang.org/grpc/health"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 	_ "google.golang.org/grpc/encoding/gzip"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/bavix/gripmock/pkg/grpccontext"
 	sdk "github.com/bavix/gripmock-sdk-go"
-	"github.com/bavix/gripmock/pkg/dependencies"
+	"github.com/bavix/gripmock/pkg/deps"
 )
 {{ range $package, $alias := .Dependencies }}
 import {{$alias}} "{{$package}}"
@@ -45,12 +43,10 @@ import {{$alias}} "{{$package}}"
 {{ end }}
 
 func main() {
-	http.DefaultTransport = otelhttp.NewTransport(http.DefaultTransport)
-
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
 
-	builder, err := dependencies.New(ctx, "gripmock-grpc")
+	builder, err := deps.New(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -61,7 +57,6 @@ func main() {
 	}
 
 	s := grpc.NewServer(
-		grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		grpc.UnaryInterceptor(grpccontext.UnaryInterceptor(builder.Logger())),
 		grpc.StreamInterceptor(grpccontext.StreamInterceptor(builder.Logger())),
 	)
@@ -134,7 +129,7 @@ func main() {
 {{ define "services" }}
 type {{.Name}} struct{
     {{.Package}}Unsafe{{.Name}}Server
-	__builder__ *dependencies.Builder
+	__builder__ *deps.Builder
 }
 
 {{ template "methods" .}}
