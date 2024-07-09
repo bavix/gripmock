@@ -3,7 +3,7 @@ package main // import "github.com/bavix/gripmock/protoc-gen-gripmock"
 
 import (
 	"bytes"
-	"embed"
+	_ "embed"
 	"fmt"
 	"io"
 	"log"
@@ -20,6 +20,10 @@ import (
 	"google.golang.org/protobuf/types/pluginpb"
 )
 
+const (
+	SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
+)
+
 // This package contains the implementation of protoc-gen-gripmock.
 // It uses the protoc tool to generate a gRPC mock server from a .proto file.
 //
@@ -32,7 +36,11 @@ import (
 func main() {
 	// Protoc passes pluginpb.CodeGeneratorRequest in via stdin
 	// marshalled with Protobuf
-	input, _ := io.ReadAll(os.Stdin)
+	input, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		log.Fatalf("error reading stdin: %v", err)
+	}
+
 	var request pluginpb.CodeGeneratorRequest
 	if err := proto.Unmarshal(input, &request); err != nil {
 		log.Fatalf("error unmarshalling [%s]: %v", string(input), err)
@@ -45,7 +53,7 @@ func main() {
 		log.Fatalf("error initializing plugin: %v", err)
 	}
 
-	plugin.SupportedFeatures = uint64(pluginpb.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL)
+	plugin.SupportedFeatures = SupportedFeatures
 
 	// Create a slice of FileDescriptorProto objects for each input file.
 	protos := make([]*descriptorpb.FileDescriptorProto, len(plugin.Files))
@@ -131,28 +139,11 @@ type Options struct {
 	Writer io.Writer `json:"writer"`
 }
 
-// ServerTemplate is the template used to generate the gRPC server code.
-// It is populated during the init function.
-var ServerTemplate string
-
-// serverTmpl is the embed.FS used to read the server template file.
+// It is used to embed the "server.tmpl" file into the binary and read its
+// contents at runtime.
 //
 //go:embed server.tmpl
-var serverTmpl embed.FS
-
-// Init initializes the ServerTemplate with the contents of the server.tmpl file.
-//
-// It reads the server.tmpl file from the serverTmpl embed.FS and assigns its contents
-// to the ServerTemplate variable. If there is an error reading the file, it logs
-// the error and stops the program.
-func init() {
-	data, err := serverTmpl.ReadFile("server.tmpl")
-	if err != nil {
-		log.Fatalf("error reading server.tmpl: %s", err)
-	}
-
-	ServerTemplate = string(data)
-}
+var serverTmpl string
 
 // generateServer generates the gRPC server code based on the given protobuf
 // descriptors and writes it to the provided io.Writer.
@@ -183,7 +174,7 @@ func generateServer(protos []*descriptorpb.FileDescriptorProto, opt *Options) er
 
 	// Create a new template and parse the server template
 	tmpl := template.New("server.tmpl")
-	_, err := tmpl.Parse(ServerTemplate)
+	_, err := tmpl.Parse(serverTmpl)
 	if err != nil {
 		return fmt.Errorf("template parse %v", err)
 	}
@@ -293,7 +284,9 @@ func getGoPackage(proto *descriptorpb.FileDescriptorProto) (alias string, goPack
 		return
 	}
 
-	// If the alias is a keyword, append a random number to it.
+	// If the alias is a Go keyword, append a random number to it.
+	// Go keywords are used for reserved identifiers and cannot be used as package names.
+	// This is to prevent naming conflicts with the generated code.
 	if isKeyword(alias) {
 		alias = fmt.Sprintf("%s_pb%d", alias, aliasNum)
 	}

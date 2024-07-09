@@ -18,39 +18,23 @@ func stubNotFoundError2(expect stuber.Query, result *stuber.Result) error {
 	template += string(expectString)
 
 	if result.Similar() == nil {
-		// fixme
-		//nolint:goerr113,perfsprint
-		return fmt.Errorf(template)
+		return fmt.Errorf("%s", template) //nolint:err113
 	}
 
-	if len(result.Similar().Input.Equals) > 0 {
-		closestMatchString, err := json.MarshalIndent(result.Similar().Input.Equals, "", "\t")
-		if err != nil {
-			return err
+	addClosestMatch := func(key string, match map[string]interface{}) {
+		if len(match) > 0 {
+			matchString, err := json.MarshalIndent(match, "", "\t")
+			if err != nil {
+				return
+			}
+
+			template += fmt.Sprintf("\n\nClosest Match \n\n%s:%s", key, matchString)
 		}
-
-		template += fmt.Sprintf("\n\nClosest Match \n\n%s:%s", "equals", closestMatchString)
 	}
 
-	if len(result.Similar().Input.Contains) > 0 {
-		closestMatchString, err := json.MarshalIndent(result.Similar().Input.Contains, "", "\t")
-		if err != nil {
-			return err
-		}
+	addClosestMatch("equals", result.Similar().Input.Equals)
+	addClosestMatch("contains", result.Similar().Input.Contains)
+	addClosestMatch("matches", result.Similar().Input.Matches)
 
-		template += fmt.Sprintf("\n\nClosest Match \n\n%s:%s", "contains", closestMatchString)
-	}
-
-	if len(result.Similar().Input.Matches) > 0 {
-		closestMatchString, err := json.MarshalIndent(result.Similar().Input.Matches, "", "\t")
-		if err != nil {
-			return err
-		}
-
-		template += fmt.Sprintf("\n\nClosest Match \n\n%s:%s", "matches", closestMatchString)
-	}
-
-	// fixme
-	//nolint:goerr113,perfsprint
-	return fmt.Errorf(template)
+	return fmt.Errorf("%s", template) //nolint:err113
 }
