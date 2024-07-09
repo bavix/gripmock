@@ -16,7 +16,7 @@ require (
 	github.com/gripmock/environment v1.0.2
 	github.com/gripmock/grpc-interceptors v1.0.2
 	github.com/gripmock/shutdown v1.0.0
-	github.com/gripmock/stuber v1.0.3
+	github.com/gripmock/stuber v1.0.4
 	github.com/jhump/protoreflect v1.16.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/pkg/errors v0.9.1
@@ -44,7 +44,7 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
-	github.com/gripmock/deeply v1.0.9 // indirect
+	github.com/gripmock/deeply v1.1.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
