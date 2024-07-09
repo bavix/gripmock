@@ -1,6 +1,6 @@
 # Stub API. Get Stubs List
 
-Stubs List — endpoint returns a list of all registered stub files. It can be helpful to debbug your integration tests.
+Stubs List — endpoint returns a list of all registered stub files. It can be helpful to debug your integration tests.
 
 Let's imagine that our contract `simple.proto` looks something like this:
 ```proto
@@ -22,7 +22,6 @@ message Reply {
   int32 return_code = 2;
 }
 ```
-
 Enough to knock on the handle `GET /api/stubs`:
 ```bash
 curl http://127.0.0.1:4771/api/stubs

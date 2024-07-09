@@ -4,7 +4,7 @@
 //go:build !wireinject
 // +build !wireinject
 
-package dependencies
+package deps
 
 import (
 	"context"
@@ -12,13 +12,12 @@ import (
 	"github.com/gripmock/environment"
 	"github.com/gripmock/shutdown"
 	"github.com/rs/zerolog"
-	"go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc"
 )
 
 // Injectors from builder.go:
 
-func New(ctx context.Context, appName string) (*Builder, error) {
+func New(ctx context.Context) (*Builder, error) {
 	config, err := environment.New()
 	if err != nil {
 		return nil, err
@@ -27,12 +26,8 @@ func New(ctx context.Context, appName string) (*Builder, error) {
 	if err != nil {
 		return nil, err
 	}
-	dependenciesLogger := newLog(logger)
-	shutdownShutdown := shutdown.New(dependenciesLogger)
-	tracerProvider, err := tracer(ctx, config, shutdownShutdown, appName)
-	if err != nil {
-		return nil, err
-	}
+	depsLogger := newLog(logger)
+	shutdownShutdown := shutdown.New(depsLogger)
 	clientConn, err := grpcClient(config, shutdownShutdown)
 	if err != nil {
 		return nil, err
@@ -41,7 +36,6 @@ func New(ctx context.Context, appName string) (*Builder, error) {
 	builder := &Builder{
 		ender:      shutdownShutdown,
 		config:     config,
-		tracer:     tracerProvider,
 		logger:     logger,
 		reflector:  gReflector,
 		grpcClient: clientConn,
@@ -54,7 +48,6 @@ func New(ctx context.Context, appName string) (*Builder, error) {
 type Builder struct {
 	ender      *shutdown.Shutdown
 	config     environment.Config
-	tracer     *trace.TracerProvider
 	logger     *zerolog.Logger
 	reflector  *grpcreflector.GReflector
 	grpcClient *grpc.ClientConn
@@ -62,10 +55,6 @@ type Builder struct {
 
 func (b *Builder) Config() environment.Config {
 	return b.config
-}
-
-func (b *Builder) Tracer() *trace.TracerProvider {
-	return b.tracer
 }
 
 func (b *Builder) Logger() *zerolog.Logger {

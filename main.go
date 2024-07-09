@@ -13,15 +13,10 @@ import (
 	"strings"
 	"syscall"
 
-	_ "github.com/gripmock/grpc-interceptors"
 	"github.com/rs/zerolog"
-	_ "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	_ "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	_ "google.golang.org/grpc/health"
 
-	_ "github.com/bavix/gripmock-sdk-go"
 	"github.com/bavix/gripmock/internal/pkg/patcher"
-	"github.com/bavix/gripmock/pkg/dependencies"
+	"github.com/bavix/gripmock/pkg/deps"
 	"github.com/bavix/gripmock/stub"
 )
 
@@ -40,7 +35,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
 
-	builder, err := dependencies.New(ctx, "gripmock-rest")
+	builder, err := deps.New(ctx)
 	if err != nil {
 		log.Fatal(err) //nolint:gocritic
 	}
@@ -91,9 +86,7 @@ func main() {
 	// This goroutine runs the REST server that serves the stub files.
 	// It waits for the ready signal from the gRPC server goroutine.
 	// Once the gRPC server is ready, it starts the admin stub server.
-	go func() {
-		stub.RunRestServer(ctx, *stubPath, builder.Config(), builder.Reflector())
-	}()
+	go stub.RunRestServer(ctx, *stubPath, builder.Config(), builder.Reflector())
 
 	importDirs := strings.Split(*imports, ",")
 
