@@ -31,9 +31,12 @@ func RunRestServer(
 
 	router := mux.NewRouter()
 	rest.HandlerWithOptions(apiServer, rest.GorillaServerOptions{
-		BaseURL:     "/api",
-		BaseRouter:  router,
-		Middlewares: []rest.MiddlewareFunc{muxmiddleware.RequestLogger},
+		BaseURL:    "/api",
+		BaseRouter: router,
+		Middlewares: []rest.MiddlewareFunc{
+			muxmiddleware.ContentType,
+			muxmiddleware.RequestLogger,
+		},
 	})
 	router.PathPrefix("/").Handler(http.FileServerFS(ui)).Methods(http.MethodGet)
 

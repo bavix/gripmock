@@ -8,3 +8,4 @@ protogen/*
 !protogen/example/
 temp
 node_modules/
+.trunk/
