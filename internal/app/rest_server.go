@@ -110,7 +110,7 @@ func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
-func (h *RestServer) Liveness(w http.ResponseWriter, _ *http.Request) {
+func (h *RestServer) liveness(w http.ResponseWriter) {
 	if err := json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
 		h.responseError(err, w)
 	}
@@ -123,16 +123,14 @@ func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	h.liveness(w)
+}
 
-	if err := json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
-		w.WriteHeader(http.StatusServiceUnavailable)
-	}
+func (h *RestServer) Liveness(w http.ResponseWriter, _ *http.Request) {
+	h.liveness(w)
 }
 
 func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	byt, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.responseError(err, w)
@@ -166,15 +164,12 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RestServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
-	w.Header().Set("Content-Type", "application/json")
 	h.stuber.DeleteByID(uuid)
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	byt, err := io.ReadAll(r.Body)
 	if err != nil {
 		h.responseError(err, w)
@@ -198,24 +193,18 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	if err := json.NewEncoder(w).Encode(h.stuber.Used()); err != nil {
 		h.responseError(err, w)
 	}
 }
 
 func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	if err := json.NewEncoder(w).Encode(h.stuber.Unused()); err != nil {
 		h.responseError(err, w)
 	}
 }
 
 func (h *RestServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	if err := json.NewEncoder(w).Encode(h.stuber.All()); err != nil {
 		h.responseError(err, w)
 	}
@@ -228,8 +217,6 @@ func (h *RestServer) PurgeStubs(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	query, err := stuber.NewQuery(r)
 	if err != nil {
 		h.responseError(err, w)
@@ -322,24 +309,21 @@ func (h *RestServer) readStubs(pathDir string) {
 // The stub file can be in yaml or json format.
 // If the file is in yaml format, it will be converted to json format.
 func (h *RestServer) readStub(path string) ([]*stuber.Stub, error) {
-	// Read the file
-	byt, err := os.ReadFile(path)
+	file, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("error when reading file %s: %w", path, err)
+		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
 	}
 
-	// If the file is in yaml format, convert it to json format
 	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
-		byt, err = h.convertor.Execute(path, byt)
+		file, err = h.convertor.Execute(path, file)
 		if err != nil {
-			return nil, fmt.Errorf("error when unmarshalling file %s: %w", path, err)
+			return nil, fmt.Errorf("failed to unmarshal file %s: %w", path, err)
 		}
 	}
 
-	// Unmarshal the json into a slice of stubs
 	var stubs []*stuber.Stub
-	if err := jsondecoder.UnmarshalSlice(byt, &stubs); err != nil {
-		return nil, fmt.Errorf("error when unmarshalling file %s: %v %w", path, string(byt), err)
+	if err := jsondecoder.UnmarshalSlice(file, &stubs); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal file %s: %v %w", path, string(file), err)
 	}
 
 	return stubs, nil
@@ -355,22 +339,12 @@ func validateStub(stub *stuber.Stub) error {
 		return ErrMethodIsMissing
 	}
 
-	switch {
-	case stub.Input.Contains != nil:
-		break
-	case stub.Input.Equals != nil:
-		break
-	case stub.Input.Matches != nil:
-		break
-	default:
-		// fixme
-		//nolint:goerr113,perfsprint
-		return fmt.Errorf("input cannot be empty")
+	if stub.Input.Contains == nil && stub.Input.Equals == nil && stub.Input.Matches == nil {
+		return errors.New("input cannot be empty") //nolint:err113
 	}
 
 	if stub.Output.Error == "" && stub.Output.Data == nil && stub.Output.Code == nil {
-		//nolint:goerr113,perfsprint
-		return fmt.Errorf("output cannot be empty")
+		return errors.New("output cannot be empty") //nolint:err113
 	}
 
 	return nil
