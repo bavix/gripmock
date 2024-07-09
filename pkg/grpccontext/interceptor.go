@@ -41,13 +41,12 @@ func (w serverStreamWrapper) SendHeader(md metadata.MD) error { return w.ss.Send
 func (w serverStreamWrapper) SetHeader(md metadata.MD) error  { return w.ss.SetHeader(md) }
 func (w serverStreamWrapper) SetTrailer(md metadata.MD)       { w.ss.SetTrailer(md) }
 
+// StreamInterceptor is a gRPC interceptor that adds a logger to the context.
+// The logger can be used to log messages related to the gRPC stream.
+//
+// It takes a logger as a parameter and returns a grpc.StreamServerInterceptor.
+// The returned interceptor is used to intercept the gRPC stream requests.
 func StreamInterceptor(logger *zerolog.Logger) grpc.StreamServerInterceptor {
-	// StreamInterceptor is a gRPC interceptor that adds a logger to the context.
-	// The logger can be used to log messages related to the gRPC stream.
-	//
-	// It takes a logger as a parameter and returns a grpc.StreamServerInterceptor.
-	// The returned interceptor is used to intercept the gRPC stream requests.
-	//
 	// The interceptor function is called for each gRPC stream request.
 	// It takes the server, the stream, the server info, and the handler.
 	// It returns an error.

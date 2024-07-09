@@ -529,3 +529,4 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	return r
 }
+
