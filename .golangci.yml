@@ -31,7 +31,7 @@ linters-settings:
           - github.com
 issues:
   exclude-files:
-    - pkg/dependencies/builder.go
+    - pkg/deps/builder.go
   exclude-dirs:
     - example
   exclude-rules:
