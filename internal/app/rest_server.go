@@ -15,8 +15,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/bavix/features"
 	"github.com/bavix/gripmock/internal/domain/rest"
@@ -34,7 +32,6 @@ type RestServer struct {
 	ok        atomic.Bool
 	stuber    *stuber.Budgerigar
 	convertor *yaml2json.Convertor
-	caser     cases.Caser
 	reflector *grpcreflector.GReflector
 }
 
@@ -44,7 +41,6 @@ func NewRestServer(path string, reflector *grpcreflector.GReflector) (*RestServe
 	server := &RestServer{
 		stuber:    stuber.NewBudgerigar(features.New(stuber.MethodTitle)),
 		convertor: yaml2json.New(),
-		caser:     cases.Title(language.English, cases.NoLower),
 		reflector: reflector,
 	}
 

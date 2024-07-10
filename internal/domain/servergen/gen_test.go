@@ -1,4 +1,4 @@
-package main
+package servergen //nolint:testpackage
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func Test_getProtodirs(t *testing.T) {
+func TestGetProtodirs(t *testing.T) {
 	type args struct {
 		protoPath string
 		imports   []string

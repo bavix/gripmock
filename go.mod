@@ -20,6 +20,7 @@ require (
 	github.com/jhump/protoreflect v1.16.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/rs/zerolog v1.33.0
+	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/text v0.16.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20240709173604-40e1e62336c5
@@ -36,11 +37,13 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gripmock/deeply v1.1.0 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
 	golang.org/x/exp v0.0.0-20240707233637-46b078467d37 // indirect
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect

@@ -1,33 +1,37 @@
-package stub
+package deps
 
 import (
 	"context"
-	"errors"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/gripmock/environment"
-	"github.com/rs/zerolog"
 
-	gripmockui "github.com/bavix/gripmock-ui"
 	"github.com/bavix/gripmock/internal/app"
 	"github.com/bavix/gripmock/internal/domain/rest"
-	"github.com/bavix/gripmock/internal/pkg/muxmiddleware"
-	"github.com/bavix/gripmock/pkg/grpcreflector"
+	"github.com/bavix/gripmock/internal/infra/muxmiddleware"
 )
 
-func RunRestServer(
+func (b *Builder) RestServe(
 	ctx context.Context,
 	stubPath string,
-	config environment.Config,
-	reflector *grpcreflector.GReflector,
-) {
-	apiServer, _ := app.NewRestServer(stubPath, reflector)
+) (*http.Server, error) {
+	reflector, err := b.reflector()
+	if err != nil {
+		return nil, err
+	}
 
-	ui, _ := gripmockui.Assets()
+	apiServer, err := app.NewRestServer(stubPath, reflector)
+	if err != nil {
+		return nil, err
+	}
+
+	ui, err := b.ui()
+	if err != nil {
+		return nil, err
+	}
 
 	router := mux.NewRouter()
 	rest.HandlerWithOptions(apiServer, rest.GorillaServerOptions{
@@ -42,8 +46,8 @@ func RunRestServer(
 
 	const timeout = time.Millisecond * 25
 
-	srv := &http.Server{
-		Addr:              config.HTTPAddr,
+	return &http.Server{
+		Addr:              b.config.HTTPAddr,
 		ReadHeaderTimeout: timeout,
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
@@ -56,15 +60,5 @@ func RunRestServer(
 			}),
 			handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodDelete}),
 		)(router),
-	}
-
-	zerolog.Ctx(ctx).
-		Info().
-		Str("addr", config.HTTPAddr).
-		Msg("stub-manager started")
-
-	// nosemgrep:go.lang.security.audit.net.use-tls.use-tls
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		zerolog.Ctx(ctx).Fatal().Err(err).Msg("stub manager completed")
-	}
+	}, nil
 }
