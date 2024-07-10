@@ -7,14 +7,11 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func (b *Builder) dialOptions(_ bool) []grpc.DialOption {
-	return []grpc.DialOption{
+func (b *Builder) grpcClientConn(_ bool, dsn string) (*grpc.ClientConn, error) {
+	conn, err := grpc.NewClient(
+		dsn,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}
-}
-
-func (b *Builder) grpcClientConn(tls bool, dsn string) (*grpc.ClientConn, error) {
-	conn, err := grpc.NewClient(dsn, b.dialOptions(tls)...)
+	)
 	if err != nil {
 		return nil, err
 	}
