@@ -36,15 +36,15 @@ var checkCmd = &cobra.Command{
 			return err
 		}
 
-		status, err := pingService.PingWithTimeout(ctx, pingTimeout, serviceName)
+		code, err := pingService.PingWithTimeout(ctx, pingTimeout, serviceName)
 		if err != nil {
 			zerolog.Ctx(ctx).Err(err).Msg("unable to connect to server")
 
 			return err
 		}
 
-		if status != waiter.Serving {
-			zerolog.Ctx(ctx).Error().Uint32("code", uint32(status)).Msg("server is not running")
+		if code != waiter.Serving {
+			zerolog.Ctx(ctx).Error().Uint32("code", uint32(code)).Msg("server is not running")
 
 			return errServerIsNotRunning
 		}

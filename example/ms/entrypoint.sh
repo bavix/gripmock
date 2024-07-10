@@ -5,6 +5,6 @@
 gripmock --stub=example/ms/stub example/ms/ms.proto &
 
 # wait for generated files to be available and gripmock is up
-sleep 2
+gripmock check --timeout=30s
 
 go run example/ms/client/*.go
