@@ -67,6 +67,16 @@ func main() {
 
 	flag.Parse()
 
+	for _, arg := range os.Args {
+		for _, str := range []string{"-stub", "-import", "-output"} {
+			if strings.HasPrefix(arg, str) {
+				logger.
+					Error().
+					Msgf("Deprecated %s. Use -%s. The behavior will be removed in the next major version.", arg, arg)
+			}
+		}
+	}
+
 	// parse proto files
 	protoPaths := flag.Args()
 
@@ -130,7 +140,7 @@ func main() {
 	// and run
 	run, chErr := runGrpcServer(ctx, output)
 
-	// This is a kind of crutch, but now there is no other solution.
+	// This is arg kind of crutch, but now there is no other solution.
 	// I have an idea to combine gripmock and grpcmock services into one, then this check will be easier to do.
 	// Checking the grpc port of the service. If the port appears, the service has started successfully.
 	go func() {
