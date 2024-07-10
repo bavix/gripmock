@@ -67,6 +67,16 @@ func main() {
 
 	flag.Parse()
 
+	for _, arg := range os.Args {
+		for _, str := range []string{"-stub", "-import", "-output"} {
+			if strings.HasPrefix(arg, str) {
+				logger.
+					Error().
+					Msgf("Deprecated %s. Use -%s. The behavior will be removed in the next major version.", arg, arg)
+			}
+		}
+	}
+
 	// parse proto files
 	protoPaths := flag.Args()
 
