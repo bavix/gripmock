@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.6.16 - 2024-07-10
+
+### What's Changed
+
+* [2.x] [BC] Backwards Compatibility Warning by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/343
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.15...v2.6.16
+
 ## v2.6.15 - 2024-07-08
 
 ### What's Changed
