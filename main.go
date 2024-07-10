@@ -140,7 +140,7 @@ func main() {
 	// and run
 	run, chErr := runGrpcServer(ctx, output)
 
-	// This is arg kind of crutch, but now there is no other solution.
+	// This is a kind of crutch, but now there is no other solution.
 	// I have an idea to combine gripmock and grpcmock services into one, then this check will be easier to do.
 	// Checking the grpc port of the service. If the port appears, the service has started successfully.
 	go func() {
