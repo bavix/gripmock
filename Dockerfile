@@ -40,7 +40,7 @@ COPY . /go/src/github.com/bavix/gripmock
 
 WORKDIR /go/src/github.com/bavix/gripmock
 
-RUN go install -v -ldflags "-X 'main.version=${version:-dev}' -s -w"
+RUN go install -v -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:-dev}' -s -w"
 
 EXPOSE 4770 4771
 

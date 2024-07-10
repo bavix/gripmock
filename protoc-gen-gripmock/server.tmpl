@@ -62,7 +62,7 @@ func main() {
 	)
 
 	healthcheck := health.NewServer()
-	healthcheck.SetServingStatus("", healthgrpc.HealthCheckResponse_NOT_SERVING)
+	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_NOT_SERVING)
 
 	{{ range .Services }}
 	{{ template "register_services" . }}
@@ -109,7 +109,7 @@ func main() {
 				// If the API call is successful and the response is not nil,
 				// set the gRPC server to SERVING state and log a message.
 				if err == nil && resp.JSON200 != nil {
-					healthcheck.SetServingStatus("", healthgrpc.HealthCheckResponse_SERVING)
+					healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_SERVING)
 
 					builder.Logger().Info().Msg("gRPC server is ready to accept requests")
 

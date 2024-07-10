@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/gripmock/internal/pkg/patcher"
+	"github.com/bavix/gripmock/internal/infra/patcher"
 )
 
 func TestWriterWrapper_OptionUpdate(t *testing.T) {
