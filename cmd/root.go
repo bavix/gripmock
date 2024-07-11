@@ -1,10 +1,7 @@
-//nolint:gochecknoglobals
 package cmd
 
 import (
 	"context"
-	"errors"
-	"net/http"
 	"os"
 
 	"github.com/rs/zerolog"
@@ -45,37 +42,6 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-func restServe(ctx context.Context, builder *deps.Builder) error {
-	srv, err := builder.RestServe(ctx, stubFlag)
-	if err != nil {
-		return err
-	}
-
-	ch := make(chan error)
-	defer close(ch)
-
-	go func() {
-		zerolog.Ctx(ctx).
-			Info().
-			Str("addr", builder.Config().HTTPAddr).
-			Msg("Serving stub-manager")
-
-		ch <- srv.ListenAndServe()
-	}()
-
-	select {
-	case err = <-ch:
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
-
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
-
-//nolint:gochecknoinits
 func init() {
 	rootCmd.Flags().StringVarP(
 		&outputFlag,
