@@ -26,6 +26,7 @@ func (s *GRPCServer) Serve(ctx context.Context) error {
 	}
 
 	server, ch := s.newServer(ctx)
+	defer close(ch)
 
 	// Wait for the gRPC server to exit or the context to be done.
 	select {
@@ -52,7 +53,7 @@ func (s *GRPCServer) Serve(ctx context.Context) error {
 // output is the output directory where the server.go file is located.
 // It returns the exec.Cmd object representing the running process, and a channel
 // that receives an error when the process exits.
-func (s *GRPCServer) newServer(ctx context.Context) (*exec.Cmd, <-chan error) {
+func (s *GRPCServer) newServer(ctx context.Context) (*exec.Cmd, chan error) {
 	// Construct the command to run the gRPC server.
 	run := exec.CommandContext(ctx, "go", "run", s.params.Output()+"/server.go") //nolint:gosec
 	run.Env = os.Environ()
