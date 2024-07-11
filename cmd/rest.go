@@ -11,11 +11,11 @@ import (
 	"github.com/bavix/gripmock/internal/deps"
 )
 
-// restCmd represents the rest command
+// restCmd represents the rest command.
 var restCmd = &cobra.Command{
 	Use:   "rest",
 	Short: "Start only the rest service",
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		builder := deps.NewBuilder(deps.WithDefaultConfig())
 		ctx, cancel := builder.SignalNotify(cmd.Context())
 		defer cancel()

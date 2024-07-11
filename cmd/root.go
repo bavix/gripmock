@@ -1,4 +1,3 @@
-//nolint:gochecknoglobals
 package cmd
 
 import (
@@ -43,7 +42,6 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-//nolint:gochecknoinits
 func init() {
 	rootCmd.Flags().StringVarP(
 		&outputFlag,

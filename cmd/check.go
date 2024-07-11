@@ -1,4 +1,3 @@
-//nolint:gochecknoglobals
 package cmd
 
 import (
@@ -53,7 +52,6 @@ var checkCmd = &cobra.Command{
 	},
 }
 
-//nolint:gochecknoinits
 func init() {
 	rootCmd.AddCommand(checkCmd)
 
