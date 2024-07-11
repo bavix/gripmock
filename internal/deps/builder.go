@@ -3,6 +3,7 @@ package deps
 import (
 	"github.com/gripmock/environment"
 	"github.com/gripmock/shutdown"
+	"github.com/gripmock/stuber"
 )
 
 type Option func(*Builder)
@@ -10,6 +11,8 @@ type Option func(*Builder)
 type Builder struct {
 	config environment.Config
 	ender  *shutdown.Shutdown
+
+	budgerigar *stuber.Budgerigar
 }
 
 func NewBuilder(opts ...Option) *Builder {

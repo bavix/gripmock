@@ -3,24 +3,17 @@ package app
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"os"
-	"path"
-	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/internal/domain/rest"
 	"github.com/bavix/gripmock/pkg/grpcreflector"
 	"github.com/bavix/gripmock/pkg/jsondecoder"
-	"github.com/bavix/gripmock/pkg/yaml2json"
 )
 
 var (
@@ -28,26 +21,35 @@ var (
 	ErrMethodIsMissing  = errors.New("method name is missing")
 )
 
+type Extender interface {
+	Wait()
+}
+
 type RestServer struct {
-	ok        atomic.Bool
-	stuber    *stuber.Budgerigar
-	convertor *yaml2json.Convertor
-	reflector *grpcreflector.GReflector
+	ok         atomic.Bool
+	budgerigar *stuber.Budgerigar
+	reflector  *grpcreflector.GReflector
 }
 
 var _ rest.ServerInterface = &RestServer{}
 
-func NewRestServer(path string, reflector *grpcreflector.GReflector) (*RestServer, error) {
+func NewRestServer(
+	budgerigar *stuber.Budgerigar,
+	extender Extender,
+	reflector *grpcreflector.GReflector,
+) (*RestServer, error) {
 	server := &RestServer{
-		stuber:    stuber.NewBudgerigar(features.New(stuber.MethodTitle)),
-		convertor: yaml2json.New(),
-		reflector: reflector,
+		reflector:  reflector,
+		budgerigar: budgerigar,
 	}
 
-	if path != "" {
-		server.readStubs(path) // TODO: someday you will need to rewrite this code
+	go func() {
+		if extender != nil {
+			extender.Wait()
+		}
+
 		server.ok.Store(true)
-	}
+	}()
 
 	return server, nil
 }
@@ -152,7 +154,7 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := json.NewEncoder(w).Encode(h.stuber.PutMany(inputs...)); err != nil {
+	if err := json.NewEncoder(w).Encode(h.budgerigar.PutMany(inputs...)); err != nil {
 		h.responseError(err, w)
 
 		return
@@ -160,7 +162,7 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RestServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
-	h.stuber.DeleteByID(uuid)
+	h.budgerigar.DeleteByID(uuid)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -184,30 +186,30 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(inputs) > 0 {
-		h.stuber.DeleteByID(inputs...)
+		h.budgerigar.DeleteByID(inputs...)
 	}
 }
 
 func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
-	if err := json.NewEncoder(w).Encode(h.stuber.Used()); err != nil {
+	if err := json.NewEncoder(w).Encode(h.budgerigar.Used()); err != nil {
 		h.responseError(err, w)
 	}
 }
 
 func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
-	if err := json.NewEncoder(w).Encode(h.stuber.Unused()); err != nil {
+	if err := json.NewEncoder(w).Encode(h.budgerigar.Unused()); err != nil {
 		h.responseError(err, w)
 	}
 }
 
 func (h *RestServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
-	if err := json.NewEncoder(w).Encode(h.stuber.All()); err != nil {
+	if err := json.NewEncoder(w).Encode(h.budgerigar.All()); err != nil {
 		h.responseError(err, w)
 	}
 }
 
 func (h *RestServer) PurgeStubs(w http.ResponseWriter, _ *http.Request) {
-	h.stuber.Clear()
+	h.budgerigar.Clear()
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -222,7 +224,7 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
 
-	result, err := h.stuber.FindByQuery(query)
+	result, err := h.budgerigar.FindByQuery(query)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		h.writeResponseError(err, w)
@@ -243,7 +245,7 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RestServer) FindByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
-	stub := h.stuber.FindByID(uuid)
+	stub := h.budgerigar.FindByID(uuid)
 	if stub == nil {
 		w.WriteHeader(http.StatusNotFound)
 
@@ -267,62 +269,6 @@ func (h *RestServer) writeResponseError(err error, w http.ResponseWriter) {
 	}); err != nil {
 		h.responseError(err, w)
 	}
-}
-
-// readStubs reads all the stubs from the given directory and its subdirectories,
-// and adds them to the server's stub store.
-// The stub files can be in yaml or json format.
-// If a file is in yaml format, it will be converted to json format.
-func (h *RestServer) readStubs(pathDir string) {
-	files, err := os.ReadDir(pathDir)
-	if err != nil {
-		log.Printf("can't read stubs from %s: %v", pathDir, err)
-
-		return
-	}
-
-	for _, file := range files {
-		// If the file is a directory, recursively read its stubs.
-		if file.IsDir() {
-			h.readStubs(path.Join(pathDir, file.Name()))
-
-			continue
-		}
-
-		// Read the stub file and add it to the server's stub store.
-		stubs, err := h.readStub(path.Join(pathDir, file.Name()))
-		if err != nil {
-			log.Printf("cant read stubs from %s: %v", file.Name(), err)
-
-			continue
-		}
-
-		h.stuber.PutMany(stubs...)
-	}
-}
-
-// readStub reads a stub file and returns a slice of stubs.
-// The stub file can be in yaml or json format.
-// If the file is in yaml format, it will be converted to json format.
-func (h *RestServer) readStub(path string) ([]*stuber.Stub, error) {
-	file, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
-	}
-
-	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
-		file, err = h.convertor.Execute(path, file)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal file %s: %w", path, err)
-		}
-	}
-
-	var stubs []*stuber.Stub
-	if err := jsondecoder.UnmarshalSlice(file, &stubs); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal file %s: %v %w", path, string(file), err)
-	}
-
-	return stubs, nil
 }
 
 // validateStub validates if the stub is valid or not.
