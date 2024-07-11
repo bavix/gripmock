@@ -8,8 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gripmock/stuber"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bavix/features"
 	"github.com/bavix/gripmock/internal/app"
 )
 
@@ -22,7 +24,11 @@ func TestStub(t *testing.T) {
 		expect  string
 	}
 
-	api, _ := app.NewRestServer("", nil)
+	api, _ := app.NewRestServer(
+		stuber.NewBudgerigar(features.New()),
+		nil,
+		nil,
+	)
 
 	//nolint:lll
 	cases := []test{
