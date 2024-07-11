@@ -52,6 +52,7 @@ func restServe(ctx context.Context, builder *deps.Builder) error {
 	}
 
 	ch := make(chan error)
+	defer close(ch)
 
 	go func() {
 		zerolog.Ctx(ctx).
