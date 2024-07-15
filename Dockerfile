@@ -44,6 +44,6 @@ RUN go install -v -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:
 
 EXPOSE 4770 4771
 
-HEALTHCHECK CMD gripmock check
+HEALTHCHECK CMD gripmock check --silent
 
 ENTRYPOINT ["gripmock"]
