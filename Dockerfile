@@ -27,7 +27,7 @@ LABEL org.opencontainers.image.licenses=Apache-2.0
 
 ARG version
 
-RUN apk --no-cache add protoc curl
+RUN apk --no-cache add protoc
 
 COPY --from=builder /protobuf /protobuf
 COPY --from=builder /googleapis /googleapis
@@ -44,6 +44,6 @@ RUN go install -v -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:
 
 EXPOSE 4770 4771
 
-HEALTHCHECK CMD curl --fail http://127.0.0.1:4771/api/health/readiness
+HEALTHCHECK CMD gripmock check
 
 ENTRYPOINT ["gripmock"]
