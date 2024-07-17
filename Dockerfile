@@ -27,6 +27,8 @@ RUN go install -v -ldflags "-s -w" google.golang.org/protobuf/cmd/protoc-gen-go@
 
 COPY . /src
 
+RUN go work vendor
+
 WORKDIR /src/protoc-gen-gripmock
 
 RUN go install -v -ldflags "-s -w"
