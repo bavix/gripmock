@@ -1,12 +1,7 @@
 FROM golang:1.22-alpine3.20 AS builder
 
-RUN apk --no-cache add git &&\
-    go install -v -ldflags "-s -w" google.golang.org/protobuf/cmd/protoc-gen-go@latest &&\
-    go install -v -ldflags "-s -w" google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest &&\
-    # cloning googleapis-types
-    git clone --depth=1 https://github.com/googleapis/googleapis.git /googleapis &&\
-    # cleanup
-    find /googleapis -not -name "*.proto" -type f -delete
+RUN go install -v -ldflags "-s -w" google.golang.org/protobuf/cmd/protoc-gen-go@latest &&\
+    go install -v -ldflags "-s -w" google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 COPY . /go/src/github.com/bavix/gripmock
 
@@ -17,16 +12,21 @@ RUN go install -v -ldflags "-s -w"
 FROM golang:1.22-alpine3.20 as protoc-builder
 
 ENV PROTOC_VERSION=27.2
+ARG TARGETARCH
 
-RUN apk --no-cache add curl unzip \
-    && export DL_ARCH=x86_64 \
-    && if [ `uname -m` = "aarch64" ]; then export DL_ARCH=aarch_64 ; fi \
+RUN apk --no-cache add git curl unzip \
+    && if [ $TARGETARCH = "amd64" ]; then export DL_ARCH=x86_64 ; fi \
+    && if [ $TARGETARCH = "arm64" ]; then export DL_ARCH=aarch_64 ; fi \
     && curl -f -L -o /tmp/protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-${DL_ARCH}.zip \
     && unzip /tmp/protoc.zip \
     && rm /tmp/protoc.zip \
     && mv bin/protoc /usr/bin \
-    && mkdir /protobuf \
-    && mv include/* /protobuf
+    && mv include /usr/include \
+    && rm -rf include bin  &&\
+    # cloning googleapis-types
+    git clone --depth=1 https://github.com/googleapis/googleapis.git /usr/include/googleapis &&\
+    # cleanup
+    find /usr/include/googleapis -not -name "*.proto" -type f -delete
 
 FROM golang:1.22-alpine3.20
 
@@ -37,8 +37,8 @@ LABEL org.opencontainers.image.licenses=Apache-2.0
 ARG version
 
 COPY --from=protoc-builder /usr/bin/protoc /usr/bin/protoc
-COPY --from=protoc-builder /protobuf /protobuf
-COPY --from=builder /googleapis /googleapis
+COPY --from=protoc-builder /usr/include/google /usr/include/google
+COPY --from=protoc-builder /usr/include/googleapis /usr/include/googleapis
 
 COPY --from=builder $GOPATH/bin/protoc-gen-go $GOPATH/bin/protoc-gen-go
 COPY --from=builder $GOPATH/bin/protoc-gen-go-grpc $GOPATH/bin/protoc-gen-go-grpc

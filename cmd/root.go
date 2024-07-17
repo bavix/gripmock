@@ -61,7 +61,7 @@ func init() {
 		&importsFlag,
 		"imports",
 		"i",
-		[]string{"/protobuf", "/googleapis"},
+		[]string{"/usr/include"},
 		"Path to import proto-libraries")
 }
 
