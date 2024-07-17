@@ -18,11 +18,9 @@ RUN apk --no-cache add git curl unzip \
     && if [ $TARGETARCH = "amd64" ]; then export DL_ARCH=x86_64 ; fi \
     && if [ $TARGETARCH = "arm64" ]; then export DL_ARCH=aarch_64 ; fi \
     && curl -f -L -o /tmp/protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-${DL_ARCH}.zip \
-    && unzip /tmp/protoc.zip \
-    && rm /tmp/protoc.zip \
-    && mv bin/protoc /usr/bin \
-    && mv include /usr/include \
-    && rm -rf include bin  &&\
+    && unzip /tmp/protoc.zip && rm /tmp/protoc.zip \
+    && mv bin/protoc /usr/bin && rm -rf bin \
+    && mv include /usr/include &&rm -rf include  &&\
     # cloning googleapis-types
     git clone --depth=1 https://github.com/googleapis/googleapis.git /usr/include/googleapis &&\
     # cleanup
@@ -37,8 +35,8 @@ LABEL org.opencontainers.image.licenses=Apache-2.0
 ARG version
 
 COPY --from=protoc-builder /usr/bin/protoc /usr/bin/protoc
-COPY --from=protoc-builder /usr/include/google /usr/include/google
-COPY --from=protoc-builder /usr/include/googleapis /usr/include/googleapis
+COPY --from=protoc-builder /usr/include/google /protobuf
+COPY --from=protoc-builder /usr/include/googleapis /googleapis
 
 COPY --from=builder $GOPATH/bin/protoc-gen-go $GOPATH/bin/protoc-gen-go
 COPY --from=builder $GOPATH/bin/protoc-gen-go-grpc $GOPATH/bin/protoc-gen-go-grpc
