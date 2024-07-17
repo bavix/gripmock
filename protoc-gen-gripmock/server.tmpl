@@ -18,7 +18,6 @@ import (
 	"net/http"
 	"encoding/json"
 
-	"github.com/gripmock/environment"
 	jsonpb "google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -160,7 +159,7 @@ func (s *{{.ServiceName}}) {{.Name}}(ctx context.Context, in *{{.Input}}) (*{{.O
 	// The stub defines the input and output messages for the method.
 	// If the stub is found, its output message is returned.
 	// If the stub is not found, an error is returned.
-	err := findStub(ctx, s.__builder__.Config(), "{{.ServiceName}}", "{{.Name}}", md, in, out)
+	err := findStub(ctx, s.__builder__.Config().HTTPAddr, "{{.ServiceName}}", "{{.Name}}", md, in, out)
 
 	// Return the output message and any error encountered while finding the stub.
 	return out, err
@@ -179,7 +178,7 @@ func (s *{{.ServiceName}}) {{.Name}}(in *{{.Input}},srv {{.SvcPackage}}{{.Servic
 	// The stub defines the input and output messages for the method.
 	// If the stub is found, its output message is returned.
 	// If the stub is not found, an error is returned.
-	err := findStub(ctx, s.__builder__.Config(), "{{.ServiceName}}", "{{.Name}}", md, in, out)
+	err := findStub(ctx, s.__builder__.Config().HTTPAddr, "{{.ServiceName}}", "{{.Name}}", md, in, out)
 	if err != nil {
 		// Return the error encountered while finding the stub.
 		return err
@@ -215,7 +214,7 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 		// The stub defines the input and output messages for the method.
 		// If the stub is found, its output message is returned.
 		// If the stub is not found, an error is returned.
-		err = findStub(ctx, s.__builder__.Config(), "{{.ServiceName}}","{{.Name}}", md, input, out)
+		err = findStub(ctx, s.__builder__.Config().HTTPAddr, "{{.ServiceName}}","{{.Name}}", md, input, out)
 		if err != nil {
 			// If there is an error finding the stub, return the error.
 			return err
@@ -253,7 +252,7 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 		// The stub defines the input and output messages for the method.
 		// If the stub is found, its output message is returned.
 		// If the stub is not found, an error is returned.
-		err = findStub(ctx, s.__builder__.Config(), "{{.ServiceName}}","{{.Name}}", md, input, out)
+		err = findStub(ctx, s.__builder__.Config().HTTPAddr, "{{.ServiceName}}","{{.Name}}", md, input, out)
 		if err != nil {
 			return err
 		}
@@ -273,10 +272,10 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 {{ end }}
 
 {{ define "find_stub" }}
-func findStub(ctx context.Context, conf environment.Config, service, method string, md metadata.MD, in, out protoreflect.ProtoMessage) error {
+func findStub(ctx context.Context, addr string, service, method string, md metadata.MD, in, out protoreflect.ProtoMessage) error {
     // Create a new client with the configured HTTP address.
     // Add the default HTTP client as the transport.
-    api, err := sdk.NewClientWithResponses(fmt.Sprintf("http://%s/api", conf.HTTPAddr),
+    api, err := sdk.NewClientWithResponses(fmt.Sprintf("http://%s/api", addr),
         sdk.WithHTTPClient(http.DefaultClient),
     )
     if err != nil {
