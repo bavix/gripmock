@@ -18,9 +18,8 @@ FROM golang:1.22-alpine3.20 as protoc-builder
 
 ENV PROTOC_VERSION=27.2
 
-RUN apk --no-cache add curl unzip &&\
-    if [ `uname -m` = "amd64" ]; then export DL_ARCH=x86_64 ; fi \
-    && if [ `uname -m` = "arm64" ]; then export DL_ARCH=aarch_64 ; fi \
+RUN apk --no-cache add curl unzip \
+    && export DL_ARCH=x86_64 \
     && if [ `uname -m` = "aarch64" ]; then export DL_ARCH=aarch_64 ; fi \
     && curl -f -L -o /tmp/protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-${DL_ARCH}.zip \
     && unzip /tmp/protoc.zip \
