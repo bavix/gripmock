@@ -27,13 +27,9 @@ RUN go install -v -ldflags "-s -w" google.golang.org/protobuf/cmd/protoc-gen-go@
 
 COPY . /src
 
-WORKDIR /src
-
-RUN go work vendor
-
 WORKDIR /src/protoc-gen-gripmock
 
-RUN go install -v -ldflags "-s -w"
+RUN go work vendor && go install -v -ldflags "-s -w"
 
 FROM golang:1.22-alpine3.20
 
@@ -55,7 +51,7 @@ COPY --from=builder /src /go/src/github.com/bavix/gripmock
 
 WORKDIR /go/src/github.com/bavix/gripmock
 
-RUN go install -v -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:-dev}' -s -w"
+RUN go work vendor && go install -v -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:-dev}' -s -w"
 
 EXPOSE 4770 4771
 
