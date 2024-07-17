@@ -1,14 +1,3 @@
-FROM golang:1.22-alpine3.20 AS builder
-
-RUN go install -v -ldflags "-s -w" google.golang.org/protobuf/cmd/protoc-gen-go@latest &&\
-    go install -v -ldflags "-s -w" google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-
-COPY . /src
-
-WORKDIR /src/protoc-gen-gripmock
-
-RUN go install -v -ldflags "-s -w"
-
 FROM golang:1.22-alpine3.20 as protoc-builder
 
 ENV PROTOC_VERSION=27.2
@@ -30,6 +19,17 @@ RUN apk --no-cache add git curl unzip \
     && rm -rf /protobuf-repo \
     && find /usr/include/protobuf -not -name "*.proto" -type f -delete \
     && find /usr/include/googleapis -not -name "*.proto" -type f -delete
+
+FROM golang:1.22-alpine3.20 AS builder
+
+RUN go install -v -ldflags "-s -w" google.golang.org/protobuf/cmd/protoc-gen-go@latest &&\
+    go install -v -ldflags "-s -w" google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+COPY . /src
+
+WORKDIR /src/protoc-gen-gripmock
+
+RUN go install -v -ldflags "-s -w"
 
 FROM golang:1.22-alpine3.20
 
