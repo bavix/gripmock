@@ -6,6 +6,6 @@ gripmock --stub=example/multi-files/stub example/multi-files/file1.proto \
   example/multi-files/file2.proto &
 
 # wait for generated files to be available and gripmock is up
-gripmock check --timeout=30s
+gripmock check --silent --timeout=30s
 
 go run example/multi-files/client/*.go

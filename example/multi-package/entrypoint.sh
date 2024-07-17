@@ -9,6 +9,6 @@ gripmock --stub=example/multi-package/stub --imports=example/multi-package/ \
   example/multi-package/foo.proto example/multi-package/hello.proto &
 
 # wait for generated files to be available and gripmock is up
-gripmock check --timeout=30s
+gripmock check --silent --timeout=30s
 
 go run example/multi-package/client/*.go

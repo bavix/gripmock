@@ -5,7 +5,14 @@ on:
 jobs:
   build:
     name: Run example
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          #- macos-latest
+          #- macos-latest-large
+          #- windows-latest
+    runs-on: ${{ matrix.os }}
     steps:
     -
       name: Checkout
