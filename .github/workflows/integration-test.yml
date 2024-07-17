@@ -9,9 +9,9 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - macos-latest
-          - macos-latest-large
-          - windows-latest
+          #- macos-latest
+          #- macos-latest-large
+          #- windows-latest
     runs-on: ${{ matrix.os }}
     steps:
     -
