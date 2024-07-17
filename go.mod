@@ -9,7 +9,7 @@ require (
 	github.com/bavix/gripmock/protogen v0.0.0-20240715054016-3ca5fe7d23ae
 	github.com/cockroachdb/errors v1.11.3
 	github.com/cristalhq/base64 v0.1.2
-	github.com/goccy/go-yaml v1.11.3
+	github.com/goccy/go-yaml v1.12.0
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
 	github.com/gorilla/handlers v1.5.2
@@ -55,7 +55,6 @@ require (
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
-	google.golang.org/genproto v0.0.0-20240711142825-46eb208f015d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240711142825-46eb208f015d // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
