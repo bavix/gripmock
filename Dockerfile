@@ -24,18 +24,21 @@ FROM golang:1.22-alpine3.20 AS builder
 
 ARG version
 
-RUN go install -v -ldflags "-s -w" google.golang.org/protobuf/cmd/protoc-gen-go@latest &&\
-    go install -v -ldflags "-s -w" google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+RUN go install -v -ldflags "-s -w" google.golang.org/protobuf/cmd/protoc-gen-go@latest  \
+    && go install -v -ldflags "-s -w" google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest \
+    && rm -rf /root/.cache
 
 COPY . /go/src/github.com/bavix/gripmock
 
 WORKDIR /go/src/github.com/bavix/gripmock/protoc-gen-gripmock
 
-RUN go install -v -ldflags "-s -w"
+RUN go install -v -ldflags "-s -w" \
+    && rm -rf /root/.cache
 
 WORKDIR /go/src/github.com/bavix/gripmock
 
-RUN go install -v -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:-dev}' -s -w"
+RUN go install -v -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:-dev}' -s -w" \
+    && rm -rf /root/.cache
 
 FROM golang:1.22-alpine3.20
 
@@ -56,7 +59,7 @@ COPY . /go/src/github.com/bavix/gripmock
 
 WORKDIR /go/src/github.com/bavix/gripmock
 
-RUN go build -o /dev/null .
+RUN go build -o /dev/null . && rm -rf /root/.cache
 
 EXPOSE 4770 4771
 
