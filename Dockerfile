@@ -31,6 +31,10 @@ WORKDIR /src/protoc-gen-gripmock
 
 RUN go install -v -ldflags "-s -w"
 
+WORKDIR /src
+
+RUN go install -v -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:-dev}' -s -w"
+
 FROM golang:1.22-alpine3.20
 
 LABEL org.opencontainers.image.source=https://github.com/bavix/gripmock
@@ -46,12 +50,13 @@ COPY --from=protoc-builder /usr/include/googleapis /googleapis
 COPY --from=builder $GOPATH/bin/protoc-gen-go $GOPATH/bin/protoc-gen-go
 COPY --from=builder $GOPATH/bin/protoc-gen-go-grpc $GOPATH/bin/protoc-gen-go-grpc
 COPY --from=builder $GOPATH/bin/protoc-gen-gripmock $GOPATH/bin/protoc-gen-gripmock
+COPY --from=builder $GOPATH/bin/gripmock $GOPATH/bin/gripmock
 
 COPY --from=builder /src /go/src/github.com/bavix/gripmock
 
 WORKDIR /go/src/github.com/bavix/gripmock
 
-RUN go install -v -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:-dev}' -s -w"
+RUN go build -o /dev/null .
 
 EXPOSE 4770 4771
 
