@@ -16,8 +16,8 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"encoding/json"
 
+	gmjson "github.com/gripmock/json"
 	jsonpb "google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -324,9 +324,10 @@ func findStub(ctx context.Context, addr string, service, method string, md metad
         }
     }
 
+	var buffer bytes.Buffer
+
     // Convert the search result to JSON.
-    data, err := json.Marshal(searchStub.JSON200.Data)
-    if err != nil {
+	if err := gmjson.Encode(&buffer, searchStub.JSON200.Data); err != nil {
         return err
     }
 
@@ -346,6 +347,6 @@ func findStub(ctx context.Context, addr string, service, method string, md metad
     grpc.SetHeader(ctx, mdResp)
 
     // Unmarshal the search result into the output message.
-    return jsonpb.Unmarshal(data, out)
+    return jsonpb.Unmarshal(buffer.Bytes(), out)
 }
 {{ end }}
