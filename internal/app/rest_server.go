@@ -1,7 +1,6 @@
 package app
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gripmock/json"
 	"github.com/gripmock/stuber"
 
 	"github.com/bavix/gripmock/internal/domain/rest"
@@ -84,7 +84,7 @@ func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := json.NewEncoder(w).Encode(results); err != nil {
+	if err := json.Encode(w, results); err != nil {
 		h.responseError(err, w)
 	}
 }
@@ -103,13 +103,13 @@ func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, 
 		}
 	}
 
-	if err := json.NewEncoder(w).Encode(results); err != nil {
+	if err := json.Encode(w, results); err != nil {
 		h.responseError(err, w)
 	}
 }
 
 func (h *RestServer) liveness(w http.ResponseWriter) {
-	if err := json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
+	if err := json.Encode(w, rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
 		h.responseError(err, w)
 	}
 }
@@ -154,7 +154,7 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := json.NewEncoder(w).Encode(h.budgerigar.PutMany(inputs...)); err != nil {
+	if err := json.Encode(w, h.budgerigar.PutMany(inputs...)); err != nil {
 		h.responseError(err, w)
 
 		return
@@ -191,19 +191,19 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
-	if err := json.NewEncoder(w).Encode(h.budgerigar.Used()); err != nil {
+	if err := json.Encode(w, h.budgerigar.Used()); err != nil {
 		h.responseError(err, w)
 	}
 }
 
 func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
-	if err := json.NewEncoder(w).Encode(h.budgerigar.Unused()); err != nil {
+	if err := json.Encode(w, h.budgerigar.Unused()); err != nil {
 		h.responseError(err, w)
 	}
 }
 
 func (h *RestServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
-	if err := json.NewEncoder(w).Encode(h.budgerigar.All()); err != nil {
+	if err := json.Encode(w, h.budgerigar.All()); err != nil {
 		h.responseError(err, w)
 	}
 }
@@ -239,7 +239,7 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(result.Found().Output); err != nil {
+	if err := json.Encode(w, result.Found().Output); err != nil {
 		h.responseError(err, w)
 	}
 }
@@ -252,7 +252,7 @@ func (h *RestServer) FindByID(w http.ResponseWriter, _ *http.Request, uuid rest.
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(stub); err != nil {
+	if err := json.Encode(w, stub); err != nil {
 		h.responseError(err, w)
 	}
 }
@@ -264,7 +264,7 @@ func (h *RestServer) responseError(err error, w http.ResponseWriter) {
 }
 
 func (h *RestServer) writeResponseError(err error, w http.ResponseWriter) {
-	if err := json.NewEncoder(w).Encode(map[string]string{
+	if err := json.Encode(w, map[string]string{
 		"error": err.Error(),
 	}); err != nil {
 		h.responseError(err, w)
