@@ -3,7 +3,7 @@ package cmd
 import (
 	"time"
 
-	"github.com/cockroachdb/errors"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/bavix/gripmock/internal/deps"

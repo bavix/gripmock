@@ -22,16 +22,18 @@ RUN apk --no-cache add git curl unzip \
 
 FROM golang:1.22-alpine3.20 AS builder
 
+ARG version
+
 RUN go install -v -ldflags "-s -w" google.golang.org/protobuf/cmd/protoc-gen-go@latest &&\
     go install -v -ldflags "-s -w" google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
-COPY . /src
+COPY . /go/src/github.com/bavix/gripmock
 
-WORKDIR /src/protoc-gen-gripmock
+WORKDIR /go/src/github.com/bavix/gripmock/protoc-gen-gripmock
 
 RUN go install -v -ldflags "-s -w"
 
-WORKDIR /src
+WORKDIR /go/src/github.com/bavix/gripmock
 
 RUN go install -v -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:-dev}' -s -w"
 
@@ -40,8 +42,6 @@ FROM golang:1.22-alpine3.20
 LABEL org.opencontainers.image.source=https://github.com/bavix/gripmock
 LABEL org.opencontainers.image.description="gRPC Mock Server"
 LABEL org.opencontainers.image.licenses=Apache-2.0
-
-ARG version
 
 COPY --from=protoc-builder /usr/bin/protoc /usr/bin/protoc
 COPY --from=protoc-builder /usr/include/protobuf /protobuf
@@ -52,7 +52,7 @@ COPY --from=builder $GOPATH/bin/protoc-gen-go-grpc $GOPATH/bin/protoc-gen-go-grp
 COPY --from=builder $GOPATH/bin/protoc-gen-gripmock $GOPATH/bin/protoc-gen-gripmock
 COPY --from=builder $GOPATH/bin/gripmock $GOPATH/bin/gripmock
 
-COPY --from=builder /src /go/src/github.com/bavix/gripmock
+COPY . /go/src/github.com/bavix/gripmock
 
 WORKDIR /go/src/github.com/bavix/gripmock
 
