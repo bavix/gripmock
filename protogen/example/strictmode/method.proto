@@ -1,0 +1,25 @@
+syntax = "proto3";
+option go_package = "github.com/bavix/gripmock/protogen/example/strictmode";
+
+package strictmode;
+
+service GripMock {
+  rpc SayTitleHello (SayTitleHelloRequest) returns (SayTitleHelloReply);
+  rpc sayLowerHello (sayLowerHelloRequest) returns (sayLowerHelloReply);
+}
+
+message sayLowerHelloRequest {
+  string name = 1;
+}
+
+message sayLowerHelloReply {
+  string message = 1;
+}
+
+message SayTitleHelloRequest {
+  string name = 1;
+}
+
+message SayTitleHelloReply {
+  string message = 1;
+}
