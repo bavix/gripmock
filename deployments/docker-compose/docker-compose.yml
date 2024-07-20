@@ -40,3 +40,9 @@ services:
     entrypoint: example/well_known_types/entrypoint.sh
     volumes:
       - ./../../protogen/example/well_known_types:/go/src/github.com/bavix/gripmock/protogen/example/well_known_types
+  strict-mode:
+    image: bavix/gripmock:latest
+    entrypoint: example/strictmode/entrypoint.sh
+    volumes:
+      - ./../../protogen/example/strictmode:/go/src/github.com/bavix/gripmock/protogen/example/strictmode
+  

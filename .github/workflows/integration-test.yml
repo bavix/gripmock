@@ -56,3 +56,7 @@ jobs:
         HTTP_PORT: 6000
       with:
         entrypoint: example/ms/entrypoint.sh
+    - name: Run strict mode example
+      uses: ./
+      with:
+        entrypoint: example/strictmode/entrypoint.sh

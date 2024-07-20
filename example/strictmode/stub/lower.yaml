@@ -1,0 +1,9 @@
+service: GripMock
+method: sayLowerHello
+input:
+  ignoreArrayOrder: true
+  equals:
+    name: "GripMock Request"
+output:
+  data:
+    message: "ok"

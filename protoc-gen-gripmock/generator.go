@@ -106,18 +106,27 @@ type Service struct {
 }
 
 // methodTemplate represents a method in a gRPC service.
+// methodTemplate represents a method in a gRPC service.
 type methodTemplate struct {
 	// SvcPackage is the package name of the service.
+	// For example, if the service name is "Greeter", SvcPackage would be "github.com/bavix/gripmock/protogen/example/Greeter".
 	SvcPackage string `json:"svc_package"`
-	// Name is the name of the method.
-	Name string `json:"name"`
+	// RpcName is the name of the RPC method, without the "Greeter/" prefix.
+	// For example, if the RPC method is "Greeter.SayHello", RpcName would be "SayHello".
+	RpcName string `json:"rpc_name"`
+	// TitleName is the name of the method, without the "Say" prefix.
+	// For example, if the method is "SayHello", TitleName would be "Hello".
+	TitleName string `json:"title_name"`
 	// ServiceName is the name of the service.
+	// For example, if the service name is "Greeter", ServiceName would be "Greeter".
 	ServiceName string `json:"service_name"`
 	// MethodType is the type of the method, which can be "standard", "server-stream", "client-stream", or "bidirectional".
 	MethodType string `json:"method_type"`
 	// Input is the name of the input message for the method.
+	// For example, if the input message is "HelloRequest", Input would be "HelloRequest".
 	Input string `json:"input"`
 	// Output is the name of the output message for the method.
+	// For example, if the output message is "HelloResponse", Output would be "HelloResponse".
 	Output string `json:"output"`
 }
 
@@ -237,7 +246,7 @@ func resolveDependencies(protos []*descriptorpb.FileDescriptorProto) map[string]
 var (
 	// aliases is a map that keeps track of package aliases. The key is the alias and the value
 	// is a boolean indicating whether the alias is used or not.
-	aliases = map[string]bool{}
+	aliases = make(map[string]struct{}, 128)
 
 	// aliasNum is an integer that keeps track of the number of used aliases. It is used to
 	// generate new unique aliases.
@@ -246,7 +255,7 @@ var (
 	// packages is a map that stores the package names as keys and their corresponding aliases
 	// as values. The package names are the full go package names and the aliases are the
 	// generated or specified aliases for the packages.
-	packages = map[string]string{}
+	packages = make(map[string]string, 32)
 )
 
 // getGoPackage returns the go package alias and the go package name
@@ -262,6 +271,7 @@ var (
 //
 // The go_package option format is: package_name;alias.
 func getGoPackage(proto *descriptorpb.FileDescriptorProto) (alias string, goPackage string) {
+	// Get the go_package option from the file descriptor.
 	goPackage = proto.GetOptions().GetGoPackage()
 	if goPackage == "" {
 		return
@@ -292,13 +302,16 @@ func getGoPackage(proto *descriptorpb.FileDescriptorProto) (alias string, goPack
 	}
 
 	// If the alias already exists, append a number to it.
-	if ok := aliases[alias]; ok {
+	if _, ok := aliases[alias]; ok {
 		alias = fmt.Sprintf("%s%d", alias, aliasNum)
 		aliasNum++
 	}
 
+	// Add the alias to the aliases map.
+	aliases[alias] = struct{}{}
+
+	// Add the package to the packages map with its alias.
 	packages[goPackage] = alias
-	aliases[alias] = true
 
 	return
 }
@@ -307,10 +320,11 @@ func getGoPackage(proto *descriptorpb.FileDescriptorProto) (alias string, goPack
 // a slice of Service structs, each representing a gRPC service.
 //
 // The function iterates over each file descriptor and extracts the services
-// defined in each file. It then populates the Services struct with relevant
-// information like the service name, package name, and methods. The methods
-// include information such as the method name, input and output types, and the
-// type of method (standard, server-stream, client-stream, or bidirectional).
+// defined in each file. It populates the Service struct with relevant
+// information like the service name, package name, and methods. Each method
+// represents a gRPC method and includes information such as the method name,
+// input and output types, and the type of method (standard, server-stream,
+// client-stream, or bidirectional).
 //
 // Parameters:
 // - protos: A slice of FileDescriptorProto structs representing the file
@@ -319,6 +333,7 @@ func getGoPackage(proto *descriptorpb.FileDescriptorProto) (alias string, goPack
 // Returns:
 // - svcTmp: A slice of Service structs representing the extracted services.
 func extractServices(protos []*descriptorpb.FileDescriptorProto) []Service {
+	// svcTmp will hold the extracted services
 	var svcTmp []Service
 	title := cases.Title(language.English, cases.NoLower)
 
@@ -350,7 +365,8 @@ func extractServices(protos []*descriptorpb.FileDescriptorProto) []Service {
 
 				// Populate the methodTemplate struct
 				methods[j] = methodTemplate{
-					Name:        title.String(*method.Name),
+					RpcName:     method.GetName(),
+					TitleName:   title.String(method.GetName()),
 					SvcPackage:  s.Package,
 					ServiceName: svc.GetName(),
 					Input:       getMessageType(protos, method.GetInputType()),
@@ -367,7 +383,16 @@ func extractServices(protos []*descriptorpb.FileDescriptorProto) []Service {
 	return svcTmp
 }
 
+// getMessageType takes a slice of file descriptors and a type string,
+// and returns a fully qualified message type.
+//
+// The message type is split into package and type parts, and the
+// function iterates over the protos to find the target message.
+// If the target message is found, the function returns the fully
+// qualified message type, otherwise it returns the target type.
 func getMessageType(protos []*descriptorpb.FileDescriptorProto, tipe string) string {
+	title := cases.Title(language.English, cases.NoLower)
+
 	// Split the message type into package and type parts
 	split := strings.Split(tipe, ".")[1:]
 	targetPackage := strings.Join(split[:len(split)-1], ".")
@@ -391,13 +416,13 @@ func getMessageType(protos []*descriptorpb.FileDescriptorProto, tipe string) str
 				}
 
 				// Return the fully qualified message type
-				return fmt.Sprintf("%s%s", alias, msg.GetName())
+				return fmt.Sprintf("%s%s", alias, title.String(msg.GetName()))
 			}
 		}
 	}
 
 	// Return the target type if no match was found
-	return targetType
+	return targetPackage + "." + title.String(targetType)
 }
 
 // keywords is a map that contains all the reserved keywords in Go.
