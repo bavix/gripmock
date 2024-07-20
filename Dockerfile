@@ -3,10 +3,11 @@ FROM golang:1.22-alpine3.20 as protoc-builder
 ENV PROTOC_VERSION=27.2
 ARG TARGETARCH
 
-RUN apk --no-cache add git curl unzip \
+#hadolint ignore=DL3018
+RUN apk --no-cache add git unzip \
     && if [ $TARGETARCH = "amd64" ]; then export DL_ARCH=x86_64 ; fi \
     && if [ $TARGETARCH = "arm64" ]; then export DL_ARCH=aarch_64 ; fi \
-    && curl -f -L -o /tmp/protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-${DL_ARCH}.zip \
+    && wget --no-verbose -O /tmp/protoc.zip "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-${DL_ARCH}.zip" \
     && unzip /tmp/protoc.zip && rm /tmp/protoc.zip \
     && mv bin/protoc /usr/bin && rm -rf bin include \
     && mkdir -p /usr/include \
