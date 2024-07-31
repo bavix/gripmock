@@ -35,7 +35,8 @@ func RequestLogger(next http.Handler) http.Handler {
 			Int("bytes", ww.bytesWritten).
 			Int("code", ww.status)
 
-		if err := jsondecoder.UnmarshalSlice(bodyBytes, nil); err == nil {
+		var result []any
+		if err := jsondecoder.UnmarshalSlice(bodyBytes, &result); err == nil {
 			event.RawJSON("input", bodyBytes)
 		}
 
