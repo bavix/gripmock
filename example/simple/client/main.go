@@ -201,4 +201,14 @@ func main() {
 		log.Fatalf("error from grpc: %v", err)
 	}
 	log.Printf("Greeting: %s (return code %d)", r.GetMessage(), r.GetReturnCode())
+
+	r, err = c.SayHello(context.Background(), &pb.Request{Vint64: 10012}, grpc.UseCompressor(gzip.Name))
+	if err != nil {
+		log.Fatalf("error from grpc: %v", err)
+	}
+	if r.GetMessage() != "Regexp matched" {
+		log.Fatalf("failed to get valid message: %v", r.GetMessage())
+	}
+
+	log.Printf("Greeting (gzip): %s (return code %d)", r.GetMessage(), r.GetReturnCode())
 }
