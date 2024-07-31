@@ -3,9 +3,10 @@ package deps
 import (
 	"context"
 	"log"
-	"time"
 
 	"github.com/rs/zerolog"
+
+	"github.com/bavix/gripmock/pkg/zlogger"
 )
 
 func (b *Builder) Logger(ctx context.Context) context.Context {
@@ -14,12 +15,5 @@ func (b *Builder) Logger(ctx context.Context) context.Context {
 		log.Fatal(err)
 	}
 
-	return zerolog.New(zerolog.NewConsoleWriter(func(w *zerolog.ConsoleWriter) {
-		w.TimeFormat = time.RFC3339Nano
-	})).
-		Level(level).
-		With().
-		Timestamp().
-		Logger().
-		WithContext(ctx)
+	return zlogger.Logger(ctx, level)
 }

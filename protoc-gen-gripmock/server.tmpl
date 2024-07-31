@@ -28,10 +28,12 @@ import (
 	"google.golang.org/grpc/health"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 	_ "google.golang.org/grpc/encoding/gzip"
+	"github.com/gripmock/environment"
+	"github.com/rs/zerolog"
 
 	"github.com/bavix/gripmock/pkg/grpccontext"
 	sdk "github.com/bavix/gripmock-sdk-go"
-	"github.com/bavix/gripmock/pkg/deps"
+	"github.com/bavix/gripmock/pkg/zlogger"
 )
 {{ range $package, $alias := .Dependencies }}
 import {{$alias}} "{{$package}}"
@@ -45,19 +47,27 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer cancel()
 
-	builder, err := deps.New(ctx)
+	config, err := environment.New()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	lis, err := net.Listen(builder.Config().GRPCNetwork, builder.Config().GRPCAddr)
+	level, err := zerolog.ParseLevel(config.LogLevel)
 	if err != nil {
-		builder.Logger().Fatal().Err(err).Msg("failed to listen")
+		log.Fatal(err)
+	}
+
+	ctx = zlogger.Logger(ctx, level)
+	logger := zerolog.Ctx(ctx)
+
+	lis, err := net.Listen(config.GRPCNetwork, config.GRPCAddr)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to listen")
 	}
 
 	s := grpc.NewServer(
-		grpc.UnaryInterceptor(grpccontext.UnaryInterceptor(builder.Logger())),
-		grpc.StreamInterceptor(grpccontext.StreamInterceptor(builder.Logger())),
+		grpc.UnaryInterceptor(grpccontext.UnaryInterceptor(logger)),
+		grpc.StreamInterceptor(grpccontext.StreamInterceptor(logger)),
 	)
 
 	healthcheck := health.NewServer()
@@ -69,9 +79,9 @@ func main() {
 	healthgrpc.RegisterHealthServer(s, healthcheck)
     reflection.Register(s)
 
-	builder.Logger().Info().
-		Str("addr", builder.Config().GRPCAddr).
-	    Str("network", builder.Config().GRPCNetwork).
+	logger.Info().
+		Str("addr", config.GRPCAddr).
+	    Str("network", config.GRPCNetwork).
 	    Msg("Serving gRPC")
 
 	// Health check goroutine to wait for the HTTP server to become ready.
@@ -79,7 +89,7 @@ func main() {
 	go func() {
 		// Create a new client to interact with the HTTP server API.
 		api, err := sdk.NewClientWithResponses(
-			fmt.Sprintf("http://%s/api", builder.Config().HTTPAddr),
+			fmt.Sprintf("http://%s/api", config.HTTPAddr),
 			sdk.WithHTTPClient(http.DefaultClient),
 		)
 		if err != nil {
@@ -110,7 +120,7 @@ func main() {
 				if err == nil && resp.JSON200 != nil {
 					healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_SERVING)
 
-					builder.Logger().Info().Msg("gRPC server is ready to accept requests")
+					logger.Info().Msg("gRPC server is ready to accept requests")
 
 					return
 				}
@@ -119,7 +129,7 @@ func main() {
 	}()
 
 	if err := s.Serve(lis); err != nil {
-		builder.Logger().Fatal().Err(err).Msg("failed to serve")
+		logger.Fatal().Err(err).Msg("failed to serve")
 	}
 }
 
@@ -128,7 +138,7 @@ func main() {
 {{ define "services" }}
 type {{.Name}} struct{
     {{.Package}}Unsafe{{.Name}}Server
-	__builder__ *deps.Builder
+	__httpAddr__ string
 }
 
 {{ template "methods" .}}
@@ -159,7 +169,7 @@ func (s *{{.ServiceName}}) {{.TitleName}}(ctx context.Context, in *{{.Input}}) (
 	// The stub defines the input and output messages for the method.
 	// If the stub is found, its output message is returned.
 	// If the stub is not found, an error is returned.
-	err := findStub(ctx, s.__builder__.Config().HTTPAddr, "{{.ServiceName}}", "{{.RpcName}}", md, in, out)
+	err := findStub(ctx, s.__httpAddr__, "{{.ServiceName}}", "{{.RpcName}}", md, in, out)
 
 	// Return the output message and any error encountered while finding the stub.
 	return out, err
@@ -178,7 +188,7 @@ func (s *{{.ServiceName}}) {{.TitleName}}(in *{{.Input}},srv {{.SvcPackage}}{{.S
 	// The stub defines the input and output messages for the method.
 	// If the stub is found, its output message is returned.
 	// If the stub is not found, an error is returned.
-	err := findStub(ctx, s.__builder__.Config().HTTPAddr, "{{.ServiceName}}", "{{.RpcName}}", md, in, out)
+	err := findStub(ctx, s.__httpAddr__, "{{.ServiceName}}", "{{.RpcName}}", md, in, out)
 	if err != nil {
 		// Return the error encountered while finding the stub.
 		return err
@@ -214,7 +224,7 @@ func (s *{{.ServiceName}}) {{.TitleName}}(srv {{.SvcPackage}}{{.ServiceName}}_{{
 		// The stub defines the input and output messages for the method.
 		// If the stub is found, its output message is returned.
 		// If the stub is not found, an error is returned.
-		err = findStub(ctx, s.__builder__.Config().HTTPAddr, "{{.ServiceName}}","{{.RpcName}}", md, input, out)
+		err = findStub(ctx, s.__httpAddr__, "{{.ServiceName}}","{{.RpcName}}", md, input, out)
 		if err != nil {
 			// If there is an error finding the stub, return the error.
 			return err
@@ -252,7 +262,7 @@ func (s *{{.ServiceName}}) {{.TitleName}}(srv {{.SvcPackage}}{{.ServiceName}}_{{
 		// The stub defines the input and output messages for the method.
 		// If the stub is found, its output message is returned.
 		// If the stub is not found, an error is returned.
-		err = findStub(ctx, s.__builder__.Config().HTTPAddr, "{{.ServiceName}}","{{.RpcName}}", md, input, out)
+		err = findStub(ctx, s.__httpAddr__, "{{.ServiceName}}","{{.RpcName}}", md, input, out)
 		if err != nil {
 			return err
 		}
@@ -268,7 +278,7 @@ func (s *{{.ServiceName}}) {{.TitleName}}(srv {{.SvcPackage}}{{.ServiceName}}_{{
 
 
 {{ define "register_services" }}
-	{{.Package}}Register{{.Name}}Server(s, &{{.Name}}{__builder__: builder})
+	{{.Package}}Register{{.Name}}Server(s, &{{.Name}}{__httpAddr__: config.HTTPAddr})
 {{ end }}
 
 {{ define "find_stub" }}
