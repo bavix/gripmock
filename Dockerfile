@@ -60,7 +60,7 @@ COPY . /go/src/github.com/bavix/gripmock
 
 WORKDIR /go/src/github.com/bavix/gripmock
 
-RUN go build -o /dev/null . && rm -rf /root/.cache
+RUN go build -o /dev/null .
 
 EXPOSE 4770 4771
 
