@@ -34,7 +34,7 @@ type StubsServer struct {
 	ok        atomic.Bool
 }
 
-func NewRestServer(path string) (*StubsServer, error) {
+func NewRestServer(path string, strictMode bool) (*StubsServer, error) {
 	stubsStorage, err := storage.New()
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func NewRestServer(path string) (*StubsServer, error) {
 	}
 
 	if path != "" {
-		server.readStubs(path) // TODO: someday you will need to rewrite this code
+		server.readStubs(path, strictMode) // TODO: someday you will need to rewrite this code
 	}
 
 	return server, nil
@@ -233,7 +233,7 @@ func (h *StubsServer) writeResponseError(err error, w http.ResponseWriter) {
 }
 
 //nolint:cyclop
-func (h *StubsServer) readStubs(path string) {
+func (h *StubsServer) readStubs(path string, strictMode bool) {
 	files, err := os.ReadDir(path)
 	if err != nil {
 		log.Printf("Can't read stub from %s. %v\n", path, err)
@@ -243,7 +243,7 @@ func (h *StubsServer) readStubs(path string) {
 
 	for _, file := range files {
 		if file.IsDir() {
-			h.readStubs(path + "/" + file.Name())
+			h.readStubs(path+"/"+file.Name(), strictMode)
 
 			continue
 		}
@@ -280,7 +280,7 @@ func (h *StubsServer) readStubs(path string) {
 			continue
 		}
 
-		h.stubs.Add(storageStubs...)
+		h.stubs.AddFromFiles(strictMode, storageStubs...)
 	}
 }
 

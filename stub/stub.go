@@ -17,9 +17,10 @@ import (
 )
 
 type Options struct {
-	Port     string
-	BindAddr string
-	StubPath string
+	Port       string
+	BindAddr   string
+	StubPath   string
+	StrictMode bool
 }
 
 func RunRestServer(ctx context.Context, ch chan struct{}, opt Options) {
@@ -27,7 +28,7 @@ func RunRestServer(ctx context.Context, ch chan struct{}, opt Options) {
 
 	addr := net.JoinHostPort(opt.BindAddr, opt.Port)
 
-	apiServer, _ := app.NewRestServer(opt.StubPath)
+	apiServer, _ := app.NewRestServer(opt.StubPath, opt.StrictMode)
 
 	router := mux.NewRouter()
 	router.Use(muxmiddleware.RequestLogger)
