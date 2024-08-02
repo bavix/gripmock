@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.6.17 - 2024-08-02
+
+### What's Changed
+
+* [2.x] strict mode by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/368
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.16...v2.6.17
+
 ## v2.6.16 - 2024-07-10
 
 ### What's Changed
