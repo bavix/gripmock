@@ -38,7 +38,7 @@ var rootCmd = &cobra.Command{
 			}
 		}()
 
-		return builder.GRPCServe(cmd.Context(), proto.NewProtocParam(args, outputFlag, importsFlag))
+		return builder.GRPCServe(ctx, proto.NewProtocParam(args, outputFlag, importsFlag))
 	},
 }
 

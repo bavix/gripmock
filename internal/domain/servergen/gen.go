@@ -75,6 +75,13 @@ func ServerGenerate(ctx context.Context, param *proto.ProtocParam) error {
 	protoc.Stdout = os.Stdout
 	protoc.Stderr = os.Stderr
 
+	// Run the protoc command.
+	zerolog.Ctx(ctx).
+		Debug().
+		Str("path", protoc.Path).
+		Strs("args", protoc.Args).
+		Msg("building gRPC server")
+
 	return protoc.Run()
 }
 
