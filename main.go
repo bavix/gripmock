@@ -62,6 +62,9 @@ func main() {
 	outputPointer := flag.String("output", "", "directory to output server.go. Default is $GOPATH/src/grpc/")
 	flag.StringVar(outputPointer, "o", *outputPointer, "alias for -output")
 
+	strictMode := false
+	flag.BoolVar(&strictMode, "strict", false, "enable strict mode")
+
 	stubPath := flag.String("stub", "", "Path where the stub files are (Optional)")
 	imports := flag.String("imports", "/protobuf,/googleapis", "comma separated imports path. default path /protobuf,/googleapis is where gripmock Dockerfile install WKT protos") //nolint:lll
 
@@ -114,9 +117,10 @@ func main() {
 
 	// run admin stub server
 	stub.RunRestServer(ctx, chReady, stub.Options{
-		StubPath: *stubPath,
-		Port:     *adminPort,
-		BindAddr: *adminBindAddr,
+		StubPath:   *stubPath,
+		Port:       *adminPort,
+		BindAddr:   *adminBindAddr,
+		StrictMode: strictMode,
 	})
 
 	importDirs := strings.Split(*imports, ",")

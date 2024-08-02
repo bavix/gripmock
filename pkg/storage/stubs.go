@@ -2,6 +2,8 @@ package storage
 
 import (
 	"errors"
+	"fmt"
+	"log"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -14,6 +16,7 @@ import (
 var (
 	ErrServiceNotFound = errors.New("service not found")
 	ErrMethodNotFound  = errors.New("method not found")
+	ErrAlreadyExists   = errors.New("already exists")
 )
 
 type Stub struct {
@@ -100,10 +103,11 @@ func (s *storage) CheckHeaders() bool {
 }
 
 type StubStorage struct {
-	mu    sync.Mutex
-	used  map[uuid.UUID]struct{}
-	db    *memdb.MemDB
-	total int64
+	mu              sync.Mutex
+	used            map[uuid.UUID]struct{}
+	loadedFromFiles map[uuid.UUID]struct{}
+	db              *memdb.MemDB
+	total           int64
 }
 
 func New() (*StubStorage, error) {
@@ -112,7 +116,32 @@ func New() (*StubStorage, error) {
 		return nil, err
 	}
 
-	return &StubStorage{db: db, used: map[uuid.UUID]struct{}{}}, nil
+	return &StubStorage{
+		db:              db,
+		used:            make(map[uuid.UUID]struct{}, 128),
+		loadedFromFiles: make(map[uuid.UUID]struct{}, 128),
+	}, nil
+}
+
+func (r *StubStorage) AddFromFiles(
+	strict bool,
+	stubs ...*Stub,
+) []uuid.UUID {
+	for _, stub := range stubs {
+		if _, ok := r.loadedFromFiles[stub.GetID()]; ok {
+			msg := fmt.Sprintf("[WARN] stub %s already loaded from file", stub.GetID())
+
+			if strict {
+				log.Fatalln(msg)
+			}
+
+			log.Println(msg)
+		}
+
+		r.loadedFromFiles[stub.GetID()] = struct{}{}
+	}
+
+	return r.Add(stubs...)
 }
 
 func (r *StubStorage) Add(stubs ...*Stub) []uuid.UUID {
