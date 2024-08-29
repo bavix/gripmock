@@ -15,7 +15,7 @@ require (
 	github.com/gripmock/environment v1.0.4
 	github.com/gripmock/grpc-interceptors v1.0.2
 	github.com/gripmock/shutdown v1.0.0
-	github.com/gripmock/stuber v1.1.2
+	github.com/gripmock/stuber v1.1.3
 	github.com/jhump/protoreflect v1.16.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/pkg/errors v0.9.1
@@ -23,7 +23,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20240730163845-b1a4ccb954bf
-	google.golang.org/grpc v1.65.0
+	google.golang.org/grpc v1.66.0
 	google.golang.org/protobuf v1.34.2
 )
 
