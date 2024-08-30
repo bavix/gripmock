@@ -13,7 +13,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gripmock/environment v1.0.4
-	github.com/gripmock/grpc-interceptors v1.0.2
+	github.com/gripmock/grpc-interceptors v1.0.3
 	github.com/gripmock/shutdown v1.0.0
 	github.com/gripmock/stuber v1.1.3
 	github.com/jhump/protoreflect v1.16.0
