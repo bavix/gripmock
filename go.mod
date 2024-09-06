@@ -16,7 +16,7 @@ require (
 	github.com/gripmock/grpc-interceptors v1.0.3
 	github.com/gripmock/shutdown v1.0.0
 	github.com/gripmock/stuber v1.1.3
-	github.com/jhump/protoreflect v1.16.0
+	github.com/jhump/protoreflect v1.17.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.33.0
@@ -29,7 +29,7 @@ require (
 
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
-	github.com/bufbuild/protocompile v0.14.0 // indirect
+	github.com/bufbuild/protocompile v0.14.1 // indirect
 	github.com/caarlos0/env/v10 v10.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.17.0 // indirect
