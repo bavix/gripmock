@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine3.20 as protoc-builder
+FROM golang:1.23-alpine3.20 AS protoc-builder
 
 ENV PROTOC_VERSION=28.2
 ARG TARGETARCH
