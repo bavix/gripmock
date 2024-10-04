@@ -1,6 +1,6 @@
 module github.com/bavix/gripmock
 
-go 1.23.1
+go 1.23.2
 
 require (
 	github.com/bavix/features v1.0.0

@@ -1,6 +1,6 @@
 module github.com/bavix/gripmock/protogen
 
-go 1.23.1
+go 1.23.2
 
 require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20240930140551-af27646dc61f
