@@ -1,9 +1,9 @@
 module github.com/bavix/gripmock/protoc-gen-gripmock
 
-go 1.22.2
+go 1.23.1
 
 require (
-	golang.org/x/text v0.18.0
+	golang.org/x/text v0.19.0
 	golang.org/x/tools v0.25.0
 	google.golang.org/protobuf v1.34.2
 )
