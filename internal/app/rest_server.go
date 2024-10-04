@@ -234,7 +234,7 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 
 	if result.Found() == nil {
 		w.WriteHeader(http.StatusNotFound)
-		h.writeResponseError(stubNotFoundError2(query, result), w)
+		h.writeResponseError(stubNotFoundError(query, result), w)
 
 		return
 	}

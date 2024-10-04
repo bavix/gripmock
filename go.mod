@@ -6,7 +6,7 @@ require (
 	github.com/bavix/features v1.0.0
 	github.com/bavix/gripmock-sdk-go v1.0.5
 	github.com/bavix/gripmock-ui v1.0.0-alpha9
-	github.com/bavix/gripmock/protogen v0.0.0-20240924151019-bd43d64ad313
+	github.com/bavix/gripmock/protogen v0.0.0-20241004180513-0c1a26e578c2
 	github.com/cristalhq/base64 v0.1.2
 	github.com/goccy/go-yaml v1.12.0
 	github.com/google/uuid v1.6.0
@@ -43,7 +43,7 @@ require (
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0 // indirect
+	golang.org/x/exp v0.0.0-20241004190924-225e2abe05e6 // indirect
 	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/text v0.19.0 // indirect

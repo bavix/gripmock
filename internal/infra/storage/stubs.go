@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/gripmock/stuber"
 	"github.com/rs/zerolog"
@@ -36,15 +37,32 @@ func (s *Extender) Wait() {
 }
 
 func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
-	defer close(s.ch)
-	s.readFromPath(ctx, pathDir)
+	s.readFromPath(ctx, pathDir, false)
+	close(s.ch)
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				s.readFromPath(ctx, pathDir, true)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 }
 
 // readFromPath reads all the stubs from the given directory and its subdirectories,
 // and adds them to the server's stub store.
 // The stub files can be in yaml or json format.
 // If a file is in yaml format, it will be converted to json format.
-func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
+//
+// If `update` is true, the stubs will be updated in the server's stub store.
+// Otherwise, the stubs will be added to the server's stub store.
+func (s *Extender) readFromPath(ctx context.Context, pathDir string, update bool) {
 	files, err := os.ReadDir(pathDir)
 	if err != nil {
 		zerolog.Ctx(ctx).
@@ -57,7 +75,7 @@ func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
 	for _, file := range files {
 		// If the file is a directory, recursively read its stubs.
 		if file.IsDir() {
-			s.readFromPath(ctx, path.Join(pathDir, file.Name()))
+			s.readFromPath(ctx, path.Join(pathDir, file.Name()), update)
 
 			continue
 		}
@@ -74,7 +92,12 @@ func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
 			continue
 		}
 
-		s.storage.PutMany(stubs...)
+		// Update or add the stubs to the server's stub store.
+		if update {
+			s.storage.UpdateMany(stubs...)
+		} else {
+			s.storage.PutMany(stubs...)
+		}
 	}
 }
 
