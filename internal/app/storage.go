@@ -7,7 +7,7 @@ import (
 	"github.com/gripmock/stuber"
 )
 
-func stubNotFoundError2(expect stuber.Query, result *stuber.Result) error {
+func stubNotFoundError(expect stuber.Query, result *stuber.Result) error {
 	template := fmt.Sprintf("Can't find stub \n\nService: %s \n\nMethod: %s \n\nInput\n\n", expect.Service, expect.Method)
 
 	expectString, err := json.MarshalIndent(expect.Data, "", "\t")
