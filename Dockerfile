@@ -1,6 +1,6 @@
 FROM golang:1.23-alpine3.20 as protoc-builder
 
-ENV PROTOC_VERSION=27.3
+ENV PROTOC_VERSION=28.2
 ARG TARGETARCH
 
 #hadolint ignore=DL3018

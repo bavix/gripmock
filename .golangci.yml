@@ -15,6 +15,7 @@ linters:
     - wrapcheck
     - paralleltest
     - exhaustruct
+    - exportloopref
 linters-settings:
   lll:
     line-length: 140

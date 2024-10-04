@@ -34,8 +34,7 @@ func (e *engine) Execute(name string, data []byte) ([]byte, error) {
 // uuid2int64 converts a UUID string to a map of two int64 values.
 // It returns an empty string if there is an error.
 func (e *engine) uuid2int64(str string) string {
-	v := e.uuid2bytes(str)
-	_ = v[15]
+	v := uuid.MustParse(str)
 
 	//nolint:mnd
 	high := int64(v[0]) | int64(v[1])<<8 | int64(v[2])<<16 | int64(v[3])<<24 |
@@ -45,17 +44,14 @@ func (e *engine) uuid2int64(str string) string {
 	low := int64(v[8]) | int64(v[9])<<8 | int64(v[10])<<16 | int64(v[11])<<24 |
 		int64(v[12])<<32 | int64(v[13])<<40 | int64(v[14])<<48 | int64(v[15])<<56
 
-	int64Data := map[string]int64{
+	if int64JSON, err := json.Marshal(map[string]int64{
 		"high": high,
 		"low":  low,
+	}); err == nil {
+		return string(int64JSON)
 	}
 
-	int64JSON, err := json.Marshal(int64Data)
-	if err != nil {
-		return ""
-	}
-
-	return string(int64JSON)
+	return ""
 }
 
 // uuid2base64 converts a UUID string to a base64 string.
