@@ -10,6 +10,7 @@ import (
 	"github.com/gripmock/stuber"
 	"github.com/rs/zerolog"
 
+	"github.com/bavix/gripmock/internal/infra/watcher"
 	"github.com/bavix/gripmock/pkg/jsondecoder"
 	"github.com/bavix/gripmock/pkg/yaml2json"
 )
@@ -18,16 +19,19 @@ type Extender struct {
 	storage   *stuber.Budgerigar
 	convertor *yaml2json.Convertor
 	ch        chan struct{}
+	watcher   *watcher.StubWatcher
 }
 
 func NewStub(
 	storage *stuber.Budgerigar,
 	convertor *yaml2json.Convertor,
+	watcher *watcher.StubWatcher,
 ) *Extender {
 	return &Extender{
 		storage:   storage,
 		convertor: convertor,
 		ch:        make(chan struct{}),
+		watcher:   watcher,
 	}
 }
 
@@ -36,14 +40,32 @@ func (s *Extender) Wait() {
 }
 
 func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
-	defer close(s.ch)
+	if pathDir == "" {
+		close(s.ch)
+
+		return
+	}
+
 	s.readFromPath(ctx, pathDir)
+	close(s.ch)
+
+	ch, err := s.watcher.Watch(ctx, pathDir)
+	if err != nil {
+		return
+	}
+
+	for file := range ch {
+		s.readByFile(ctx, file, true)
+	}
 }
 
 // readFromPath reads all the stubs from the given directory and its subdirectories,
 // and adds them to the server's stub store.
 // The stub files can be in yaml or json format.
 // If a file is in yaml format, it will be converted to json format.
+//
+// If `update` is true, the stubs will be updated in the server's stub store.
+// Otherwise, the stubs will be added to the server's stub store.
 func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
 	files, err := os.ReadDir(pathDir)
 	if err != nil {
@@ -62,18 +84,33 @@ func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
 			continue
 		}
 
-		// Read the stub file and add it to the server's stub store.
-		stubs, err := s.readStub(path.Join(pathDir, file.Name()))
-		if err != nil {
-			zerolog.Ctx(ctx).
-				Err(err).
-				Str("path", pathDir).
-				Str("file", file.Name()).
-				Msg("read file")
-
+		// If the file is not a stub file, skip it.
+		if !strings.HasSuffix(file.Name(), ".json") &&
+			!strings.HasSuffix(file.Name(), ".yaml") &&
+			!strings.HasSuffix(file.Name(), ".yml") {
 			continue
 		}
 
+		s.readByFile(ctx, path.Join(pathDir, file.Name()), false)
+	}
+}
+
+func (s *Extender) readByFile(ctx context.Context, currentFile string, update bool) {
+	// Read the stub file and add it to the server's stub store.
+	stubs, err := s.readStub(currentFile)
+	if err != nil {
+		zerolog.Ctx(ctx).
+			Err(err).
+			Str("file", currentFile).
+			Msg("read file")
+
+		return
+	}
+
+	// Update or add the stubs to the server's stub store.
+	if update {
+		s.storage.UpdateMany(stubs...)
+	} else {
 		s.storage.PutMany(stubs...)
 	}
 }
