@@ -6,7 +6,8 @@
       name: error
   output:
     error: test_error
-- service: Gripmock
+- id: 1d469bdf-c088-464f-8b87-4c1b5da2bd4d
+  service: Gripmock
   method: SayHello
   input:
     equals:

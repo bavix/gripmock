@@ -57,5 +57,12 @@ func restServe(ctx context.Context, builder *deps.Builder) error {
 }
 
 func init() {
+	restCmd.Flags().StringVarP(
+		&stubFlag,
+		"stub",
+		"s",
+		"",
+		"Path where the stub files are (Optional)")
+
 	rootCmd.AddCommand(restCmd)
 }

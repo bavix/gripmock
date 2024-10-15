@@ -4,6 +4,7 @@ import (
 	"github.com/gripmock/stuber"
 
 	"github.com/bavix/gripmock/internal/infra/storage"
+	"github.com/bavix/gripmock/internal/infra/watcher"
 	"github.com/bavix/gripmock/pkg/yaml2json"
 )
 
@@ -16,5 +17,5 @@ func (b *Builder) Budgerigar() *stuber.Budgerigar {
 }
 
 func (b *Builder) Extender() *storage.Extender {
-	return storage.NewStub(b.Budgerigar(), yaml2json.New())
+	return storage.NewStub(b.Budgerigar(), yaml2json.New(), watcher.NewStubWatcher(b.config))
 }
