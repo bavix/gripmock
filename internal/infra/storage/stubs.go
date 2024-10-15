@@ -63,9 +63,6 @@ func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
 // and adds them to the server's stub store.
 // The stub files can be in yaml or json format.
 // If a file is in yaml format, it will be converted to json format.
-//
-// If `update` is true, the stubs will be updated in the server's stub store.
-// Otherwise, the stubs will be added to the server's stub store.
 func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
 	files, err := os.ReadDir(pathDir)
 	if err != nil {
@@ -77,7 +74,6 @@ func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
 	}
 
 	for _, file := range files {
-		// If the file is a directory, recursively read its stubs.
 		if file.IsDir() {
 			s.readFromPath(ctx, path.Join(pathDir, file.Name()))
 

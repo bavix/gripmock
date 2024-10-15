@@ -116,7 +116,6 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 	return ch, nil
 }
 
-//nolint:gocognit
 func (s *StubWatcher) ticker(ctx context.Context, folderPath string) (<-chan string, error) {
 	ch := make(chan string)
 
@@ -137,26 +136,22 @@ func (s *StubWatcher) ticker(ctx context.Context, folderPath string) (<-chan str
 						return err
 					}
 
-					if info.IsDir() {
+					if info.IsDir() || isStub(currentPath) {
 						return nil
 					}
 
-					if lastModifyTime, ok := stubFiles[currentPath]; ok {
-						if info.ModTime().Equal(lastModifyTime) {
-							return nil
-						}
+					if lastModifyTime, ok := stubFiles[currentPath]; ok && info.ModTime().Equal(lastModifyTime) {
+						return nil
 					}
 
-					if isStub(currentPath) {
-						stubFiles[currentPath] = info.ModTime()
+					zerolog.Ctx(ctx).
+						Debug().
+						Str("path", currentPath).
+						Msg("updating stub")
 
-						zerolog.Ctx(ctx).
-							Debug().
-							Str("path", currentPath).
-							Msg("updating stub")
+					ch <- currentPath
 
-						ch <- currentPath
-					}
+					stubFiles[currentPath] = info.ModTime()
 
 					return nil
 				})
