@@ -9,7 +9,7 @@ require (
 	github.com/bavix/gripmock/protogen v0.0.0-20241014055401-9281a208d10e
 	github.com/cristalhq/base64 v0.1.2
 	github.com/fsnotify/fsnotify v1.8.0
-	github.com/goccy/go-yaml v1.13.2
+	github.com/goccy/go-yaml v1.13.4
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
