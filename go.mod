@@ -9,7 +9,7 @@ require (
 	github.com/bavix/gripmock/protogen v0.0.0-20241101203453-e09611bb15b4
 	github.com/cristalhq/base64 v0.1.2
 	github.com/fsnotify/fsnotify v1.8.0
-	github.com/goccy/go-yaml v1.13.5
+	github.com/goccy/go-yaml v1.13.7
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
@@ -33,7 +33,6 @@ require (
 	github.com/bufbuild/protocompile v0.14.1 // indirect
 	github.com/caarlos0/env/v10 v10.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gripmock/deeply v1.2.2 // indirect
