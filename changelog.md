@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.7.0 - 2024-11-15
+
+### What's Changed
+
+* go1.23 by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/438
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.6.17...v2.7.0
+
 ## v2.6.17 - 2024-08-02
 
 ### What's Changed
