@@ -55,14 +55,10 @@ func NewRestServer(
 }
 
 func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
-	services, err := h.reflector.Services(r.Context())
-	if err != nil {
-		return
-	}
+	services, _ := h.reflector.Services(r.Context())
+	results := make([]rest.Service, 0, len(services))
 
-	results := make([]rest.Service, len(services))
-
-	for i, service := range services {
+	for _, service := range services {
 		serviceMethods, err := h.reflector.Methods(r.Context(), service.ID)
 		if err != nil {
 			continue
@@ -76,12 +72,12 @@ func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		results[i] = rest.Service{
+		results = append(results, rest.Service{
 			Id:      service.ID,
 			Name:    service.Name,
 			Package: service.Package,
 			Methods: restMethods,
-		}
+		})
 	}
 
 	if err := json.NewEncoder(w).Encode(results); err != nil {
@@ -90,12 +86,9 @@ func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, serviceID string) {
-	methods, err := h.reflector.Methods(r.Context(), serviceID)
-	if err != nil {
-		return
-	}
-
+	methods, _ := h.reflector.Methods(r.Context(), serviceID)
 	results := make([]rest.Method, len(methods))
+
 	for i, method := range methods {
 		results[i] = rest.Method{
 			Id:   method.ID,
