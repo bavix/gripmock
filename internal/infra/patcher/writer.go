@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"sync/atomic"
 )
 
 var (
@@ -16,6 +17,7 @@ var (
 type fileWriterWrapper struct {
 	writer      io.Writer
 	packageName string
+	checked     uint32
 }
 
 func NewWriterWrapper(writer io.Writer, packageName string) io.Writer {
@@ -23,6 +25,12 @@ func NewWriterWrapper(writer io.Writer, packageName string) io.Writer {
 }
 
 func (f *fileWriterWrapper) Write(p []byte) (int, error) {
+	if atomic.LoadUint32(&f.checked) == 1 {
+		return f.writer.Write(p)
+	}
+
+	atomic.StoreUint32(&f.checked, 1)
+
 	const (
 		syntaxIndexes = 2
 		prefix        = "github.com/bavix/gripmock"
