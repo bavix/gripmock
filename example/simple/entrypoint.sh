@@ -2,7 +2,7 @@
 
 # this file is used by .github/workflows/integration-test.yml
 
-gripmock --stub=example/simple/stub example/simple/simple.proto &
+gripmock --stub=example/simple/stub example/simple/simple.proto example/simple/test-generated.proto &
 
 # wait for generated files to be available and gripmock is up
 gripmock check --silent --timeout=30s
