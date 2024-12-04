@@ -5,6 +5,7 @@ package well_known_types;
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/api.proto";
+import "google/type/date.proto";
 
 option go_package = "github.com/bavix/gripmock/example/well_known_types;wkt";
 service Gripmock {
@@ -17,4 +18,18 @@ service Gripmock {
       body: "*"
     };
   }
+
+  rpc ApiInfoV2 (ApiInfoV2Request) returns (ApiInfoV2Response) {
+    option (google.api.http) = {
+      post: "/v2/gripmock/api-info"
+      body: "*"
+    };
+  }
 }
+
+message ApiInfoV2Request {
+  string name = 1;
+  google.type.Date time = 2;
+}
+
+message ApiInfoV2Response {}

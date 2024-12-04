@@ -21,7 +21,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Gripmock_ApiInfo_FullMethodName = "/well_known_types.Gripmock/ApiInfo"
+	Gripmock_ApiInfo_FullMethodName   = "/well_known_types.Gripmock/ApiInfo"
+	Gripmock_ApiInfoV2_FullMethodName = "/well_known_types.Gripmock/ApiInfoV2"
 )
 
 // GripmockClient is the client API for Gripmock service.
@@ -32,6 +33,7 @@ type GripmockClient interface {
 	// api.proto in particular has go_package alias with semicolon
 	// "google.golang.org/genproto/protobuf/api;api"
 	ApiInfo(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*apipb.Api, error)
+	ApiInfoV2(ctx context.Context, in *ApiInfoV2Request, opts ...grpc.CallOption) (*ApiInfoV2Response, error)
 }
 
 type gripmockClient struct {
@@ -52,6 +54,16 @@ func (c *gripmockClient) ApiInfo(ctx context.Context, in *emptypb.Empty, opts ..
 	return out, nil
 }
 
+func (c *gripmockClient) ApiInfoV2(ctx context.Context, in *ApiInfoV2Request, opts ...grpc.CallOption) (*ApiInfoV2Response, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApiInfoV2Response)
+	err := c.cc.Invoke(ctx, Gripmock_ApiInfoV2_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // GripmockServer is the server API for Gripmock service.
 // All implementations must embed UnimplementedGripmockServer
 // for forward compatibility.
@@ -60,6 +72,7 @@ type GripmockServer interface {
 	// api.proto in particular has go_package alias with semicolon
 	// "google.golang.org/genproto/protobuf/api;api"
 	ApiInfo(context.Context, *emptypb.Empty) (*apipb.Api, error)
+	ApiInfoV2(context.Context, *ApiInfoV2Request) (*ApiInfoV2Response, error)
 	mustEmbedUnimplementedGripmockServer()
 }
 
@@ -72,6 +85,9 @@ type UnimplementedGripmockServer struct{}
 
 func (UnimplementedGripmockServer) ApiInfo(context.Context, *emptypb.Empty) (*apipb.Api, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ApiInfo not implemented")
+}
+func (UnimplementedGripmockServer) ApiInfoV2(context.Context, *ApiInfoV2Request) (*ApiInfoV2Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ApiInfoV2 not implemented")
 }
 func (UnimplementedGripmockServer) mustEmbedUnimplementedGripmockServer() {}
 func (UnimplementedGripmockServer) testEmbeddedByValue()                  {}
@@ -112,6 +128,24 @@ func _Gripmock_ApiInfo_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Gripmock_ApiInfoV2_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApiInfoV2Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(GripmockServer).ApiInfoV2(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Gripmock_ApiInfoV2_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(GripmockServer).ApiInfoV2(ctx, req.(*ApiInfoV2Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Gripmock_ServiceDesc is the grpc.ServiceDesc for Gripmock service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -122,6 +156,10 @@ var Gripmock_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ApiInfo",
 			Handler:    _Gripmock_ApiInfo_Handler,
+		},
+		{
+			MethodName: "ApiInfoV2",
+			Handler:    _Gripmock_ApiInfoV2_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
