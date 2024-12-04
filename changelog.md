@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.7.1 - 2024-12-04
+
+### What's Changed
+
+* wkt: expanding googleapis support by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/450 (Thank you [@Tom-Hudson](https://github.com/Tom-Hudson) #449)
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v2.7.0...v2.7.1
+
 ## v2.7.0 - 2024-11-15
 
 ### What's Changed
