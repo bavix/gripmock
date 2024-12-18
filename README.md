@@ -289,8 +289,3 @@ Headers can consist of a key and a value. If there are several values, then you 
   .
 }
 ```
-
----
-Supported by
-
-[![Supported by JetBrains](https://cdn.rawgit.com/bavix/development-through/46475b4b/jetbrains.svg)](https://www.jetbrains.com/)
