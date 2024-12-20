@@ -3,7 +3,7 @@ module github.com/bavix/gripmock
 go 1.23.2
 
 require (
-	github.com/bavix/features v1.0.0
+	github.com/bavix/features v1.0.1
 	github.com/bavix/gripmock-sdk-go v1.0.5
 	github.com/bavix/gripmock-ui v1.0.0-beta3
 	github.com/bavix/gripmock/protogen v0.0.0-20241216212113-e9ef5da35b5f
