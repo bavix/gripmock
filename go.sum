@@ -48,8 +48,8 @@ github.com/gripmock/deeply v1.2.3 h1:R2q5zitrV+eVdim0fBFSC5s0qrLx1vVMcdLiMLr/PYw
 github.com/gripmock/deeply v1.2.3/go.mod h1:qm612c85ziXnP30rGw/60uJ4Z/Le80FgEV2XtVicXz4=
 github.com/gripmock/environment v1.0.6 h1:RuD0jMReB57H1gtonKZKIW6RpRnLfnKl7CzToVjfm/Q=
 github.com/gripmock/environment v1.0.6/go.mod h1:DfByCxDAGCAJPz29GdWULfT8eM828iswFaRx5/x6CQ0=
-github.com/gripmock/grpc-interceptors v1.0.5 h1:V32RXeasyYxktG3p/0/7c3fSFf7S5JZnTUVgbt2nHaA=
-github.com/gripmock/grpc-interceptors v1.0.5/go.mod h1:1ntLm4r0eyDYg9zUQ83AZfjdc4Ew+lHwoqns2eXI0EU=
+github.com/gripmock/grpc-interceptors v1.0.6 h1:ZilPfwvFYGLs2eLhMIWstw7WEdEOxOahbZhZmVlqfSo=
+github.com/gripmock/grpc-interceptors v1.0.6/go.mod h1:dMNJ+G1DH3j/qOW3nQWbvkcEcC8lJF1mnLq7G15PagU=
 github.com/gripmock/shutdown v1.0.0 h1:ESDCCBeNHazgAstCpIskaORNWH3b+P03a2gznW+8IFY=
 github.com/gripmock/shutdown v1.0.0/go.mod h1:YwyI7uYgIPPdR9k8QNHwzDI2mQNpUSu+WT9mvqVoty4=
 github.com/gripmock/stuber v1.1.6 h1:pqm4Oc5kXQROLxt+yEkuGdun80FJh2kcgoBwkDcv9ms=
