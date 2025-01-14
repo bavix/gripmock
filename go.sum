@@ -52,8 +52,8 @@ github.com/gripmock/grpc-interceptors v1.0.6 h1:ZilPfwvFYGLs2eLhMIWstw7WEdEOxOah
 github.com/gripmock/grpc-interceptors v1.0.6/go.mod h1:dMNJ+G1DH3j/qOW3nQWbvkcEcC8lJF1mnLq7G15PagU=
 github.com/gripmock/shutdown v1.0.0 h1:ESDCCBeNHazgAstCpIskaORNWH3b+P03a2gznW+8IFY=
 github.com/gripmock/shutdown v1.0.0/go.mod h1:YwyI7uYgIPPdR9k8QNHwzDI2mQNpUSu+WT9mvqVoty4=
-github.com/gripmock/stuber v1.1.6 h1:pqm4Oc5kXQROLxt+yEkuGdun80FJh2kcgoBwkDcv9ms=
-github.com/gripmock/stuber v1.1.6/go.mod h1:J+/4HUVB4zwl/giSh08222ZXpqVhs5iXUFqLar6yi/Q=
+github.com/gripmock/stuber v1.1.7 h1:kIHBKiZIxfYZpOKRSM8WP9KT8TmbvHhiWu/8FYkeYTQ=
+github.com/gripmock/stuber v1.1.7/go.mod h1:t2Fj7b35MaQZkMVHlOAVl68UjfiHZ6c1Hv+yOJmfZ/k=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/jhump/protoreflect v1.17.0 h1:qOEr613fac2lOuTgWN4tPAtLL7fUSbuJL5X5XumQh94=
@@ -124,8 +124,8 @@ google.golang.org/genproto/googleapis/api v0.0.0-20241216192217-9240e9c98484 h1:
 google.golang.org/genproto/googleapis/api v0.0.0-20241216192217-9240e9c98484/go.mod h1:KRUmxRI4JmbpAm8gcZM4Jsffi859fo5LQjILwuqj9z8=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20241216192217-9240e9c98484 h1:Z7FRVJPSMaHQxD0uXU8WdgFh8PseLM8Q8NzhnpMrBhQ=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20241216192217-9240e9c98484/go.mod h1:lcTa1sDdWEIHMWlITnIczmw5w60CF9ffkb8Z+DVmmjA=
-google.golang.org/grpc v1.69.2 h1:U3S9QEtbXC0bYNvRtcoklF3xGtLViumSYxWykJS+7AU=
-google.golang.org/grpc v1.69.2/go.mod h1:vyjdE6jLBI76dgpDojsFGNaHlxdjXN9ghpnd2o7JGZ4=
+google.golang.org/grpc v1.69.4 h1:MF5TftSMkd8GLw/m0KM6V8CMOCY6NZ1NQDPGFgbTt4A=
+google.golang.org/grpc v1.69.4/go.mod h1:vyjdE6jLBI76dgpDojsFGNaHlxdjXN9ghpnd2o7JGZ4=
 google.golang.org/protobuf v1.36.2 h1:R8FeyR1/eLmkutZOM5CWghmo5itiG9z0ktFlTVLuTmU=
 google.golang.org/protobuf v1.36.2/go.mod h1:9fA7Ob0pmnwhb644+1+CVWFRbNajQ6iRojtC/QF5bRE=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
