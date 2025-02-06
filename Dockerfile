@@ -1,6 +1,6 @@
-FROM golang:1.23-alpine3.20 AS protoc-builder
+FROM golang:1.23-alpine3.21 AS protoc-builder
 
-ENV PROTOC_VERSION=29.1
+ENV PROTOC_VERSION=29.3
 ARG TARGETARCH
 
 #hadolint ignore=DL3018
@@ -21,7 +21,7 @@ RUN apk --no-cache add git unzip \
     && find /usr/include/protobuf -not -name "*.proto" -type f -delete \
     && find /usr/include/googleapis -not -name "*.proto" -type f -delete
 
-FROM golang:1.23-alpine3.20 AS builder
+FROM golang:1.23-alpine3.21 AS builder
 
 ARG version
 
@@ -41,7 +41,7 @@ WORKDIR /go/src/github.com/bavix/gripmock
 RUN go install -v -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:-dev}' -s -w" \
     && rm -rf /root/.cache
 
-FROM golang:1.23-alpine3.20
+FROM golang:1.23-alpine3.21
 
 LABEL org.opencontainers.image.source=https://github.com/bavix/gripmock
 LABEL org.opencontainers.image.description="gRPC Mock Server"
