@@ -7,12 +7,13 @@ linters:
   disable:
     # turn on later
     - godox
+    # deprecated
+    - tenv
     # not relevant
     - varnamelen
     - wrapcheck
     - paralleltest
     - exhaustruct
-    - exportloopref
 linters-settings:
   lll:
     line-length: 140
