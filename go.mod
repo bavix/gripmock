@@ -1,6 +1,7 @@
 module github.com/bavix/gripmock
 
 go 1.23.2
+toolchain go1.24.1
 
 require (
 	github.com/bavix/features v1.0.1
@@ -15,7 +16,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gripmock/environment v1.0.6
 	github.com/gripmock/grpc-interceptors v1.0.7
-	github.com/gripmock/shutdown v1.0.0
+	github.com/gripmock/shutdown v1.0.1
 	github.com/gripmock/stuber v1.1.8
 	github.com/jhump/protoreflect v1.17.0
 	github.com/oapi-codegen/runtime v1.1.1
