@@ -1,6 +1,7 @@
 module github.com/bavix/gripmock
 
 go 1.23.2
+toolchain go1.24.1
 
 require (
 	github.com/bavix/features v1.0.1
@@ -14,7 +15,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/gripmock/environment v1.0.6
-	github.com/gripmock/grpc-interceptors v1.0.7
+	github.com/gripmock/grpc-interceptors v1.0.8
 	github.com/gripmock/shutdown v1.0.0
 	github.com/gripmock/stuber v1.1.8
 	github.com/jhump/protoreflect v1.17.0
@@ -44,11 +45,11 @@ require (
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
-	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/net v0.37.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	google.golang.org/genproto v0.0.0-20241216192217-9240e9c98484 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250303144028-a0af3efb3deb // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
