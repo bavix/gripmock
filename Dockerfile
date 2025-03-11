@@ -28,6 +28,7 @@ FROM golang:1.24-alpine3.21 AS builder
 
 ARG version
 
+#hadolint ignore=DL3018
 RUN apk --no-cache add --virtual .build-deps binutils \
     && go install -v -ldflags "-s -w" google.golang.org/protobuf/cmd/protoc-gen-go@latest \
     && go install -v -ldflags "-s -w" google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest \
@@ -39,6 +40,7 @@ COPY . /go/src/github.com/bavix/gripmock
 
 WORKDIR /go/src/github.com/bavix/gripmock/protoc-gen-gripmock
 
+#hadolint ignore=DL3018
 RUN apk add --no-cache binutils \
     && go build -o /go/bin/protoc-gen-gripmock -ldflags "-s -w" . \
     && strip /go/bin/protoc-gen-gripmock \
@@ -47,6 +49,7 @@ RUN apk add --no-cache binutils \
 
 WORKDIR /go/src/github.com/bavix/gripmock
 
+#hadolint ignore=DL3018
 RUN apk add --no-cache binutils \
     && go build -o /go/bin/gripmock -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:-dev}' -s -w" . \
     && strip /go/bin/gripmock \
