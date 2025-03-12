@@ -1,6 +1,7 @@
 name: builder
 
 on:
+  pull_request:
   push:
     branches:
       - "master"
@@ -14,6 +15,8 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v4
+      - name: Install Slim
+        run: curl -sL https://raw.githubusercontent.com/slimtoolkit/slim/master/scripts/install-slim.sh | sudo -E bash -
       -
         name: Docker meta
         id: meta
@@ -60,3 +63,6 @@ jobs:
           build-args: |
             version=${{ github.ref_name }}
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
+      -
+        name: Build slim version
+        run: make build-slim version=${{ github.ref_name }}
