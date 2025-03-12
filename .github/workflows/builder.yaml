@@ -27,6 +27,7 @@ jobs:
             ghcr.io/bavix/gripmock
           tags: |
             type=ref,event=branch
+            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
@@ -65,4 +66,4 @@ jobs:
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
       -
         name: Build slim version
-        run: make build-slim version=${{ steps.meta.outputs.tags }}
+        run: make build-slim version="${{ steps.meta.outputs.tags }}"
