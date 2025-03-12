@@ -59,10 +59,10 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm64
+          # platforms: linux/amd64,linux/arm64
           build-args: |
             version=${{ github.ref_name }}
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
       -
         name: Build slim version
-        run: make build-slim version=${{ github.ref_name }}
+        run: make build-slim version=${{ steps.meta.outputs.tags }}
