@@ -3,9 +3,10 @@ OPENAPI=https://raw.githubusercontent.com/bavix/gripmock-openapi/master/api.yaml
 .PHONY: *
 
 version=latest
+target_image=bavix/gripmock:${version}
 
 build:
-	docker buildx build --load -t "bavix/gripmock:${version}" .
+	docker buildx build --load -t ${target_image} .
 
 build-slim:
 	slim --report=off build \
@@ -17,8 +18,8 @@ build-slim:
 		--include-workdir=true \
 		--workdir /go/src/github.com/bavix/gripmock \
 		--mount ./example/well_known_types/entrypoint.sh:/go/src/github.com/bavix/gripmock/entrypoint.sh \
-		--tag bavix/gripmock:${version}-slim \
-		--target bavix/gripmock:${version}
+		--tag ${target_image}-slim \
+		--target ${target_image}
 
 test:
 	go test -tags mock -race -cover ./...
