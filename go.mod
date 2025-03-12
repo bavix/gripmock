@@ -5,7 +5,7 @@ go 1.24
 require (
 	github.com/bavix/features v1.0.2
 	github.com/bavix/gripmock-sdk-go v1.0.5
-	github.com/bavix/gripmock-ui v1.0.0-beta3
+	github.com/bavix/gripmock-ui v1.0.0
 	github.com/bavix/gripmock/protogen v0.0.0-20250306201809-2fe4e5e02420
 	github.com/cristalhq/base64 v0.1.2
 	github.com/fsnotify/fsnotify v1.8.0
