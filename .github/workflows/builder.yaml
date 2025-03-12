@@ -71,4 +71,6 @@ jobs:
       -
         name: Build slim version
         run: |
-          make build-slim target_image=${{ steps.meta.outputs.tags }}
+          for tag in ${{ join(steps.meta.outputs.tags, ' ') }}; do
+            make build-slim target_image="$tag"
+          done
