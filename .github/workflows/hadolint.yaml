@@ -9,7 +9,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        # TODO: remove this step once this fix to support --start-interval 
+        # has been released: https://github.com/hadolint/language-docker/pull/98
+        # and the hadolint-action has been updated to use it.
+      - name: Temp hadolint workaround
+        run: sed 's/\--start-interval=1s //g' Dockerfile > Dockerfile.hadolint
       - name: Run hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: Dockerfile
+          dockerfile: Dockerfile.hadolint
