@@ -18,8 +18,8 @@ build-slim:
 		--include-workdir=true \
 		--workdir /go/src/github.com/bavix/gripmock \
 		--mount ./example/well_known_types/entrypoint.sh:/go/src/github.com/bavix/gripmock/entrypoint.sh \
-		--tag ${target_image}-slim \
-		--target ${target_image}
+		--tag "${target_image}-slim" \
+		--target "${target_image}"
 
 test:
 	go test -tags mock -race -cover ./...
