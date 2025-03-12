@@ -67,4 +67,4 @@ jobs:
       -
         name: Build slim version
         run: |
-          make build-slim target_image="${{ steps.meta.outputs.tags }}"
+          make build-slim target_image=${{ steps.meta.outputs.tags }}
