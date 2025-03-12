@@ -66,4 +66,5 @@ jobs:
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
       -
         name: Build slim version
-        run: make build-slim target_image="${{ steps.meta.outputs.tags }}"
+        run: |
+          make build-slim target_image="${{ steps.meta.outputs.tags }}"
