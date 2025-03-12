@@ -7,6 +7,19 @@ version=latest
 build:
 	docker buildx build --load -t "bavix/gripmock:${version}" .
 
+build-slim:
+	slim --report=off build \
+		--http-probe-cmd /api/health/readiness \
+		--http-probe-ports 4771 \
+		--preserve-path "/go,/stubs,/usr/bin/protoc,/protobuf,/googleapis,/root/.cache/go-build,/bin,/usr/bin" \
+		--preserve-path-file "/usr/bin/env" --preserve-path-file "/bin/sh" \
+		--include-path /usr/local/go \
+		--include-workdir=true \
+		--workdir /go/src/github.com/bavix/gripmock \
+		--mount ./example/well_known_types/entrypoint.sh:/go/src/github.com/bavix/gripmock/entrypoint.sh \
+		--tag bavix/gripmock:${version}-slim \
+		--target bavix/gripmock:${version}
+
 test:
 	go test -tags mock -race -cover ./...
 

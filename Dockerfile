@@ -82,4 +82,4 @@ EXPOSE 4770 4771
 HEALTHCHECK --start-interval=1s --start-period=30s \
     CMD gripmock check --silent
 
-ENTRYPOINT ["gripmock"]
+ENTRYPOINT ["/go/src/github.com/bavix/gripmock/entrypoint.sh"]
