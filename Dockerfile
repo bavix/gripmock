@@ -64,6 +64,7 @@ RUN go build -o /dev/null .
 
 EXPOSE 4770 4771
 
-HEALTHCHECK CMD gripmock check --silent
+HEALTHCHECK --start-interval=1s --start-period=30s \
+    CMD gripmock check --silent
 
 ENTRYPOINT ["gripmock"]
