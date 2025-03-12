@@ -65,12 +65,8 @@ jobs:
             version=${{ github.ref_name }}
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
       -
-        name: Extract first tag
-        id: first_tag
-        run: echo "TAG=$(echo ${{ steps.meta.outputs.tags }} | cut -d ',' -f1)" >> $GITHUB_OUTPUT
-      -
-        name: Verify image exists
-        run: docker images | grep "${{ steps.first_tag.outputs.TAG }}"
+        name: View docker images
+        run: docker images
       -
         name: Build slim version
         run: |
