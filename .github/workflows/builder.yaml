@@ -63,16 +63,19 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64,linux/arm64
           build-args: |
             version=${{ github.ref_name }}
-          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
-      -
-        name: View docker images
-        run: docker images
+          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Serve
       -
         name: Build slim version
         run: |
           echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
             make build-slim target_image="$tag"
+          done
+      - name: Push slim version
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
+            docker push "$tag-slim"
           done
