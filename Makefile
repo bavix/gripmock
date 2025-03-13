@@ -9,14 +9,10 @@ build:
 	docker buildx build --load -t ${target_image} .
 
 build-slim:
-	slim --report=off build \
-		--http-probe-cmd /api/health/readiness \
-		--http-probe-ports 4771 \
-		--preserve-path "/go,/stubs,/usr/bin/protoc,/protobuf,/googleapis,/root/.cache/go-build,/bin,/usr/bin" \
-		--preserve-path-file "/usr/bin/env" --preserve-path-file "/bin/sh" \
+	mint --report=off slim \
+		--obfuscate-metadata \
+		--preserve-path "/go/src/github.com/bavix/gripmock/example" \
 		--include-path /usr/local/go \
-		--include-workdir=true \
-		--workdir /go/src/github.com/bavix/gripmock \
 		--mount ./example/well_known_types/entrypoint.sh:/go/src/github.com/bavix/gripmock/entrypoint.sh \
 		--tag "${target_image}-slim" \
 		--target "${target_image}"
