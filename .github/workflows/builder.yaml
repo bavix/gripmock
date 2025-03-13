@@ -16,7 +16,7 @@ jobs:
         name: Checkout
         uses: actions/checkout@v4
       - name: Install jq
-        run: apt-get install -y jq
+        run: sudo apt-get install -y jq
       - name: Install Slim
         run: curl -sL https://raw.githubusercontent.com/slimtoolkit/slim/master/scripts/install-slim.sh | sudo -E bash -
       -
