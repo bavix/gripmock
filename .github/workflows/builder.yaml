@@ -15,6 +15,8 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v4
+      - name: Install jq
+        run: apt-get install -y jq
       - name: Install Slim
         run: curl -sL https://raw.githubusercontent.com/slimtoolkit/slim/master/scripts/install-slim.sh | sudo -E bash -
       -
@@ -71,6 +73,6 @@ jobs:
       -
         name: Build slim version
         run: |
-          for tag in ${{ join(steps.meta.outputs.tags, ' ') }}; do
+          echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
             make build-slim target_image="$tag"
           done
