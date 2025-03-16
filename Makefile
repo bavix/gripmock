@@ -11,6 +11,8 @@ build:
 build-slim:
 	mint --report=off slim \
 		--obfuscate-metadata \
+		--image-build-arch=amd64 \
+		--image-build-arch=arm64 \
 		--preserve-path "/go/src/github.com/bavix/gripmock/example" \
 		--include-path /usr/local/go \
 		--mount ./example/well_known_types/entrypoint.sh:/go/src/github.com/bavix/gripmock/entrypoint.sh \
