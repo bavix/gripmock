@@ -71,12 +71,11 @@ jobs:
         name: Build slim version
         run: |
           echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
-            make build-slim target_image="$tag" arch=amd64;
-            make build-slim target_image="$tag" arch=arm64;
+            make build-manifest target_image="$tag"
           done
       - name: Push slim version
         if: github.event_name != 'pull_request'
         run: |
           echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
-            docker push "$tag-slim"
+            docker manifest push "$tag-slim"
           done

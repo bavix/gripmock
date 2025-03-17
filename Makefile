@@ -8,6 +8,15 @@ target_image=bavix/gripmock:${version}
 build:
 	docker buildx build --load -t ${target_image} .
 
+build-manifest:
+	make build-slim arch=arm64
+	make build-slim arch=amd64
+	docker push "${target_image}-slim-amd64"
+	docker push "${target_image}-slim-arm64"
+	docker manifest create "${target_image}-slim" \
+		--amend "${target_image}-slim-arm64" \
+		--amend "${target_image}-slim-amd64"
+
 build-slim:
 	mint --report=off slim \
 		--obfuscate-metadata \
