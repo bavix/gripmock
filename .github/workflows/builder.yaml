@@ -1,9 +1,11 @@
 name: builder
 
 on:
+#  pull_request:
   push:
     branches:
       - "master"
+      - "debug"
     tags:
       - "v*.*.*"
 
@@ -14,6 +16,10 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get install -y jq
+      - name: Install Slim
+        run: curl -sL https://raw.githubusercontent.com/slimtoolkit/slim/master/scripts/install-slim.sh | sudo -E bash -
       -
         name: Docker meta
         id: meta
@@ -24,6 +30,7 @@ jobs:
             ghcr.io/bavix/gripmock
           tags: |
             type=ref,event=branch
+            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
@@ -60,3 +67,15 @@ jobs:
           build-args: |
             version=${{ github.ref_name }}
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
+      -
+        name: Build slim version
+        run: |
+          echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
+            make build-slim target_image="$tag"
+          done
+      - name: Push slim version
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
+            docker push "$tag-slim"
+          done
