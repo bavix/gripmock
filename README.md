@@ -21,6 +21,7 @@ This service is a fork of the service [tokopedia/gripmock](https://github.com/to
 - Reduced image size [tokopedia#91](https://github.com/tokopedia/gripmock/issues/91);
 - Active support [tokopedia#82](https://github.com/tokopedia/gripmock/issues/82);
 - Added [documentation](https://bavix.github.io/gripmock/);
+- Pre-alpha GripMock slim-version (there may be a lot of bugs) #512;
 
 UI will appear in 3.x:
 
