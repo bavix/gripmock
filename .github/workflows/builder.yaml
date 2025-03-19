@@ -37,6 +37,10 @@ jobs:
               http = true
               insecure = true
 
+      - name: Test local registry
+        run: |
+          curl -X GET http://localhost:5000/v2/_catalog
+
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
