@@ -1,10 +1,10 @@
 name: builder
 
 on:
-  pull_request:
   push:
     branches:
       - "master"
+      - "debug"
     tags:
       - "v*.*.*"
 
@@ -70,7 +70,6 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          load: true
           context: .
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
@@ -81,6 +80,7 @@ jobs:
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
 
       - name: Build manifest slim version
+        if: github.event_name != 'pull_request'
         run: |
           echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
             docker tag $tag localhost:6000/bavix/gripmock:latest;
