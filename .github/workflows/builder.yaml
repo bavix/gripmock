@@ -35,7 +35,6 @@ jobs:
           buildkitd-config-inline: |
             [registry."localhost:5000"]
               http = true
-              insecure = true
 
       - name: Test local registry
         run: |
