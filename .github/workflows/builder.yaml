@@ -32,9 +32,10 @@ jobs:
       - name: Set up Docker Buildx with insecure registry
         uses: docker/setup-buildx-action@v3
         with:
-          driver-opts: |
-            network=host
-            registry.insecure=localhost:6000
+          config-inline: |
+            [registry."localhost:6000"]
+              http = true
+              insecure = true
 
       - name: Docker meta
         id: meta
@@ -87,6 +88,9 @@ jobs:
 
           make build-slim target_image="localhost:6000/bavix/gripmock:latest" arch=arm64;
           make build-slim target_image="localhost:6000/bavix/gripmock:latest" arch=amd64;
+
+          docker push "localhost:6000/bavix/gripmock:latest-slim-amd64";
+          docker push "localhost:6000/bavix/gripmock:latest-slim-arm64";
 
           docker manifest create "localhost:6000/bavix/gripmock:latest-slim" \
             --amend "localhost:6000/bavix/gripmock:latest-slim-arm64" \
