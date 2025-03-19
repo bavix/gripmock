@@ -21,7 +21,7 @@ build-slim:
 	mint --report=off slim \
 		--obfuscate-metadata \
 		--image-build-arch=${arch} \
-		--preserve-path "/go/src/github.com/bavix/gripmock/example" \
+		--preserve-path "/go/src/github.com/bavix/gripmock/example,/protobuf,/googleapis" \
 		--include-path /usr/local/go \
 		--mount ./example/well_known_types/entrypoint.sh:/go/src/github.com/bavix/gripmock/entrypoint.sh \
 		--tag "${target_image}-slim-${arch}" \
