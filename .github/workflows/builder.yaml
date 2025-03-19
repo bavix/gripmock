@@ -32,7 +32,7 @@ jobs:
       - name: Set up Docker Buildx with insecure registry
         uses: docker/setup-buildx-action@v3
         with:
-          config-inline: |
+          buildkitd-config-inline: |
             [registry."localhost:6000"]
               http = true
               insecure = true
