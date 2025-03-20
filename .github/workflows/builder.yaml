@@ -75,7 +75,6 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            localhost:5000/bavix/gripmock
             bavix/gripmock
             ghcr.io/bavix/gripmock
           tags: |
