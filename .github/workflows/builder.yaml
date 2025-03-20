@@ -43,6 +43,11 @@ jobs:
             [registry."localhost:5000"]
               http = true
 
+      - name: Check port availability
+        run: |
+          echo "Checking port 5000:"
+          sudo netstat -tuln | grep ':5000'
+
       - name: Test local registry
         run: |
           for i in {1..30}; do
