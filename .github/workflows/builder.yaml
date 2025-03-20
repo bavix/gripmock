@@ -141,12 +141,10 @@ jobs:
           docker push "localhost:5000/bavix/gripmock:latest-slim-arm64";
           docker push "localhost:5000/bavix/gripmock:latest-slim-amd64";
 
-          docker manifest create "localhost:5000/bavix/gripmock:latest-slim" \
-            --amend "localhost:5000/bavix/gripmock:latest-slim-arm64" \
-            --amend "localhost:5000/bavix/gripmock:latest-slim-amd64";
-
           echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
-            docker tag localhost:5000/bavix/gripmock:latest-slim "${tag}-slim";
+            docker manifest create "${tag}-slim" \
+              --amend "localhost:5000/bavix/gripmock:latest-slim-arm64" \
+              --amend "localhost:5000/bavix/gripmock:latest-slim-amd64";
           done;
 
       - name: Push manifest slim version
