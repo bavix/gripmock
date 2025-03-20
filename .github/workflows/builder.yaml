@@ -20,6 +20,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Configure Docker daemon for insecure registry
+        run: |
+          sudo mkdir -p /etc/docker
+          echo '{"insecure-registries":["localhost:5000"]}' | sudo tee /etc/docker/daemon.json
+          sudo service docker restart
+      
       - name: Install jq
         run: sudo apt-get install -y jq
 
@@ -32,13 +38,14 @@ jobs:
       - name: Set up Docker Buildx with insecure registry
         uses: docker/setup-buildx-action@v3
         with:
+          driver-opts: network=host
           buildkitd-config-inline: |
             [registry."localhost:5000"]
               http = true
 
       - name: Test local registry
         run: |
-          curl -X GET http://localhost:5000/v2/_catalog
+          curl -X GET http://localhost:5000/v2/_catalog || (echo "Registry is not running" && exit 1)
 
       - name: Docker meta
         id: meta
@@ -98,7 +105,8 @@ jobs:
 
           docker manifest create "localhost:5000/bavix/gripmock:latest-slim" \
             --amend "localhost:5000/bavix/gripmock:latest-slim-arm64" \
-            --amend "localhost:5000/bavix/gripmock:latest-slim-amd64";
+            --amend "localhost:5000/bavix/gripmock:latest-slim-amd64"
+            --insecure;
 
           echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
             docker tag localhost:5000/bavix/gripmock:latest-slim "${tag}-slim";
