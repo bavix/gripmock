@@ -138,8 +138,8 @@ jobs:
           make build-slim target_image="localhost:5000/bavix/gripmock:latest" arch=arm64;
           make build-slim target_image="localhost:5000/bavix/gripmock:latest" arch=amd64;
 
-          docker push "localhost:5000/bavix/gripmock:latest-slim-amd64";
           docker push "localhost:5000/bavix/gripmock:latest-slim-arm64";
+          docker push "localhost:5000/bavix/gripmock:latest-slim-amd64";
 
           docker manifest create "localhost:5000/bavix/gripmock:latest-slim" \
             --amend "localhost:5000/bavix/gripmock:latest-slim-arm64" \
