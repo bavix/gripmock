@@ -11,11 +11,6 @@ on:
 jobs:
   docker:
     runs-on: ubuntu-latest
-    services:
-      registry:
-        image: registry:2
-        ports:
-          - 5000:5000
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,7 +20,11 @@ jobs:
           sudo mkdir -p /etc/docker
           echo '{"insecure-registries":["localhost:5000"]}' | sudo tee /etc/docker/daemon.json
           sudo service docker restart
-      
+
+      - name: Start local registry
+        run: |
+          docker run -d -p 5000:5000 --name registry registry:2
+
       - name: Install jq
         run: sudo apt-get install -y jq
 
