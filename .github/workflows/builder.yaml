@@ -26,8 +26,22 @@ jobs:
           docker pull registry:2
           docker run -d -p 5000:5000 --name registry registry:2
 
+      - name: Cache APT packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            /var/cache/apt
+            /var/lib/apt
+          key: ${{ runner.os }}-apt-cache
+  
       - name: Install jq
         run: sudo apt-get install -y jq
+
+      - name: Cache Slim
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/slim
+          key: ${{ runner.os }}-slim-${{ hashFiles('**/install-slim.sh') }}
 
       - name: Install Slim
         run: curl -sL https://raw.githubusercontent.com/slimtoolkit/slim/master/scripts/install-slim.sh | sudo -E bash -
@@ -97,6 +111,8 @@ jobs:
           build-args: |
             version=${{ github.ref_name }}
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build manifest slim version
         if: github.event_name != 'pull_request'
