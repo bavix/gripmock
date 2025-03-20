@@ -19,7 +19,6 @@ build-manifest:
 
 build-slim:
 	mint --report=off slim \
-		--obfuscate-metadata \
 		--image-build-arch=${arch} \
 		--preserve-path "/go/src/github.com/bavix/gripmock/example,/protobuf,/googleapis" \
 		--include-path /usr/local/go \
