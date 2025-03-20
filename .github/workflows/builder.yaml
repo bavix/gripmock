@@ -23,8 +23,8 @@ jobs:
 
       - name: Start local registry
         run: |
-          docker pull registry:2
-          docker run -d -p 5000:5000 --name registry registry:2
+          docker pull registry:3.0.0-rc.3
+          docker run -d -p 5000:5000 --name registry registry:3.0.0-rc.3
 
       - name: Cache APT packages
         uses: actions/cache@v4
