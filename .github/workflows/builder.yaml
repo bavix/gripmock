@@ -117,7 +117,6 @@ jobs:
       - name: Verify images
         run: |
           docker images
-          docker image inspect localhost:5000/bavix/gripmock:latest || exit 1
       
       - name: Build manifest slim version
         if: github.event_name != 'pull_request'
