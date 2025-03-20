@@ -113,7 +113,8 @@ jobs:
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      
+          load: true
+
       - name: Verify images
         run: |
           docker images
