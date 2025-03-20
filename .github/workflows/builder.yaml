@@ -112,7 +112,20 @@ jobs:
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          load: true
+
+      - name: Build and push (localhost)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: localhost:5000/bavix/gripmock:latest
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            version=${{ github.ref_name }}
+          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Verify images
         run: |
@@ -121,11 +134,6 @@ jobs:
       - name: Build manifest slim version
         if: github.event_name != 'pull_request'
         run: |
-          echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
-            docker tag $tag localhost:5000/bavix/gripmock:latest;
-            break
-          done;
-
           make build-slim target_image="localhost:5000/bavix/gripmock:latest" arch=arm64;
           make build-slim target_image="localhost:5000/bavix/gripmock:latest" arch=amd64;
 
