@@ -23,6 +23,7 @@ jobs:
 
       - name: Start local registry
         run: |
+          docker pull registry:2
           docker run -d -p 5000:5000 --name registry registry:2
 
       - name: Install jq
@@ -88,7 +89,6 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          load: true
           context: .
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
