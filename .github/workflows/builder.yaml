@@ -129,6 +129,7 @@ jobs:
 
       - name: Verify images
         run: |
+          docker pull localhost:5000/bavix/gripmock:latest
           docker images
       
       - name: Build manifest slim version
