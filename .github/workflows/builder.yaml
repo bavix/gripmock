@@ -113,7 +113,12 @@ jobs:
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
+      
+      - name: Verify images
+        run: |
+          docker images
+          docker image inspect localhost:5000/bavix/gripmock:latest || exit 1
+      
       - name: Build manifest slim version
         if: github.event_name != 'pull_request'
         run: |
