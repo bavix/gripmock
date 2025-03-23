@@ -149,25 +149,24 @@ jobs:
         run: |
           make build-slim target_image="localhost:5000/bavix/gripmock:latest" arch=arm64;
           docker push "localhost:5000/bavix/gripmock:latest-slim-arm64";
-          docker manifest inspect --insecure localhost:5000/bavix/gripmock:latest-slim-arm64;
 
           make build-slim target_image="localhost:5000/bavix/gripmock:latest" arch=amd64;
           docker push "localhost:5000/bavix/gripmock:latest-slim-amd64";
-          docker manifest inspect --insecure localhost:5000/bavix/gripmock:latest-slim-amd64;
 
-          echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
-            docker manifest create "${tag}-slim" \
-              --amend "localhost:5000/bavix/gripmock:latest-slim-arm64" \
-              --amend "localhost:5000/bavix/gripmock:latest-slim-amd64" \
-              --insecure;
-          done;
+          docker manifest create --insecure "localhost:5000/bavix/gripmock:latest-slim" \
+            --amend "localhost:5000/bavix/gripmock:latest-slim-arm64" \
+            --amend "localhost:5000/bavix/gripmock:latest-slim-amd64";
 
-      - name: Push manifest slim version
+          docker manifest push --insecure "localhost:5000/bavix/gripmock:latest-slim";
+
+      - name: Push multi-arch manifests to target registries
         if: github.event_name != 'pull_request'
         run: |
-          MANIFEST=$(regctl manifest get "localhost:5000/bavix/gripmock:latest-slim" \
-            --host "reg=localhost:5000,tls=disabled" \
-            --format raw-body)
           echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
-            echo "$MANIFEST" | regctl manifest put "${tag}-slim" --format oci;
+            regctl manifest get "localhost:5000/bavix/gripmock:latest-slim" \
+              --host "reg=localhost:5000,tls=disabled" \
+              --format raw-body | \
+            regctl manifest put "${tag}-slim" \
+              --format oci
+            docker manifest push "${tag}-slim";
           done
