@@ -165,7 +165,9 @@ jobs:
       - name: Push manifest slim version
         if: github.event_name != 'pull_request'
         run: |
-          MANIFEST=$(regctl manifest get --insecure localhost:5000/bavix/gripmock:latest-slim --format raw-body)
+          MANIFEST=$(regctl manifest get "localhost:5000/bavix/gripmock:latest-slim" \
+            --host "reg=localhost:5000,tls=disabled" \
+            --format raw-body)
           echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
             echo "$MANIFEST" | regctl manifest put "${tag}-slim" --format oci;
           done
