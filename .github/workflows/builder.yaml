@@ -43,8 +43,20 @@ jobs:
           path: /usr/local/bin/slim
           key: ${{ runner.os }}-slim-${{ hashFiles('**/install-slim.sh') }}
 
+      - name: Cache regctl
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/bin/slim
+          key: ${{ runner.os }}-regctl-${{ hashFiles('**/regctl-linux-amd64') }}
+  
       - name: Install Slim
         run: curl -sL https://raw.githubusercontent.com/slimtoolkit/slim/master/scripts/install-slim.sh | sudo -E bash -
+
+      - name: Install regctl
+        run: |
+          curl -sL "https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64" -o regctl
+          chmod +x regctl
+          sudo mv regctl /usr/local/bin/regctl
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -153,6 +165,7 @@ jobs:
       - name: Push manifest slim version
         if: github.event_name != 'pull_request'
         run: |
+          MANIFEST=$(regctl manifest get --insecure localhost:5000/bavix/gripmock:latest-slim --format raw-body)
           echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
-            docker manifest push "$tag-slim";
+            echo "$MANIFEST" | regctl manifest put "${tag}-slim" --format oci;
           done
