@@ -92,7 +92,7 @@ func main() {
 {{ template "find_stub" }}
 
 {{ define "services" }}
-type {{.Name}} struct{
+type {{.StructName}} struct{
     {{.Package}}Unsafe{{.Name}}Server
 }
 
@@ -114,7 +114,7 @@ type {{.Name}} struct{
 {{end}}
 
 {{ define "standard_method" }}
-func (s *{{.ServiceName}}) {{.Name}}(ctx context.Context, in *{{.Input}}) (*{{.Output}},error){
+func (s *{{.StructName}}) {{.Name}}(ctx context.Context, in *{{.Input}}) (*{{.Output}},error){
 	out := &{{.Output}}{}
 	md, _ := metadata.FromIncomingContext(ctx)
 	err := findStub(ctx, "{{.ServiceName}}", "{{.Name}}", md, in, out)
@@ -123,7 +123,7 @@ func (s *{{.ServiceName}}) {{.Name}}(ctx context.Context, in *{{.Input}}) (*{{.O
 {{ end }}
 
 {{ define "server_stream_method" }}
-func (s *{{.ServiceName}}) {{.Name}}(in *{{.Input}},srv {{.SvcPackage}}{{.ServiceName}}_{{.Name}}Server) error {
+func (s *{{.StructName}}) {{.Name}}(in *{{.Input}},srv {{.SvcPackage}}{{.ServiceName}}_{{.Name}}Server) error {
 	out := &{{.Output}}{}
 	ctx := srv.Context()
 	md, _ := metadata.FromIncomingContext(ctx)
@@ -137,7 +137,7 @@ func (s *{{.ServiceName}}) {{.Name}}(in *{{.Input}},srv {{.SvcPackage}}{{.Servic
 {{ end }}
 
 {{ define "client_stream_method"}}
-func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name}}Server) error {
+func (s *{{.StructName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name}}Server) error {
 	out := &{{.Output}}{}
 	ctx := srv.Context()
 	md, _ := metadata.FromIncomingContext(ctx)
@@ -155,7 +155,7 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 {{ end }}
 
 {{ define "bidirectional_method"}}
-func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name}}Server) error {
+func (s *{{.StructName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name}}Server) error {
 	ctx := srv.Context()
 	md, _ := metadata.FromIncomingContext(ctx)
 	for {
@@ -182,7 +182,7 @@ func (s *{{.ServiceName}}) {{.Name}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.Name
 
 
 {{ define "register_services" }}
-	{{.Package}}Register{{.Name}}Server(s, &{{.Name}}{})
+	{{.Package}}Register{{.Name}}Server(s, &{{.StructName}}{})
 {{ end }}
 
 {{ define "find_stub" }}

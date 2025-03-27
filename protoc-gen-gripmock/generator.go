@@ -12,6 +12,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/samber/lo"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/tools/imports"
@@ -101,12 +102,16 @@ type generatorParam struct {
 }
 
 type Service struct {
-	Name    string
-	Package string
-	Methods []methodTemplate
+	Name string
+	// Name of the rpc handler struct. The name will be concatenation of RPC service name & package
+	StructName string `json:"struct_name"`
+	Package    string
+	Methods    []methodTemplate
 }
 
 type methodTemplate struct {
+	// Name is the name of the service.
+	StructName  string `json:"struct_name"`
 	SvcPackage  string
 	Name        string
 	ServiceName string
@@ -275,9 +280,11 @@ func extractServices(protos []*descriptorpb.FileDescriptorProto) []Service {
 		for _, svc := range proto.GetService() {
 			var s Service
 			s.Name = svc.GetName()
+			s.StructName = svc.GetName()
 			alias, _ := getGoPackage(proto)
 			if alias != "" {
 				s.Package = alias + "."
+				s.StructName = lo.PascalCase(alias) + s.Name
 			}
 			methods := make([]methodTemplate, len(svc.Method))
 			for j, method := range svc.Method {
@@ -291,6 +298,7 @@ func extractServices(protos []*descriptorpb.FileDescriptorProto) []Service {
 				}
 
 				methods[j] = methodTemplate{
+					StructName:  s.StructName,
 					Name:        title.String(*method.Name),
 					SvcPackage:  s.Package,
 					ServiceName: svc.GetName(),
