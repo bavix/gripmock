@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package multifiles.nested;
+
+option go_package = "github.com/bavix/gripmock/example/multi-files/nested";
+
+// Using same service name as file2.proto
+service Gripmock2 {
+  // simple unary method
+  rpc SayHello (Request) returns (Reply);
+}
+
+// The request message containing the user's name.
+message Request {
+  string name = 1;
+}
+
+// The response message containing the greetings
+message Reply {
+  string message = 1;
+  int32 return_code = 2;
+}

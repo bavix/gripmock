@@ -11,6 +11,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/samber/lo"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"golang.org/x/tools/imports"
@@ -99,6 +100,8 @@ type generatorParam struct {
 type Service struct {
 	// Name is the name of the service.
 	Name string `json:"name"`
+	// Name of the rpc handler struct. The name will be concatenation of RPC service name & package
+	StructName string `json:"struct_name"`
 	// Package is the package name of the service.
 	Package string `json:"package"`
 	// Methods is a slice of methodTemplate representing the methods in the service.
@@ -108,6 +111,8 @@ type Service struct {
 // methodTemplate represents a method in a gRPC service.
 // methodTemplate represents a method in a gRPC service.
 type methodTemplate struct {
+	// Name is the name of the service.
+	StructName string `json:"struct_name"`
 	// SvcPackage is the package name of the service.
 	// For example, if the service name is "Greeter", SvcPackage would be "github.com/bavix/gripmock/protogen/example/Greeter".
 	SvcPackage string `json:"svc_package"`
@@ -343,11 +348,13 @@ func extractServices(protos []*descriptorpb.FileDescriptorProto) []Service {
 		for _, svc := range proto.GetService() {
 			var s Service
 			s.Name = svc.GetName()
+			s.StructName = svc.GetName()
 
 			// Get the package alias if available
 			alias, _ := getGoPackage(proto)
 			if alias != "" {
 				s.Package = alias + "."
+				s.StructName = lo.PascalCase(alias) + s.Name
 			}
 
 			// Populate the methods for the service
@@ -365,6 +372,7 @@ func extractServices(protos []*descriptorpb.FileDescriptorProto) []Service {
 
 				// Populate the methodTemplate struct
 				methods[j] = methodTemplate{
+					StructName:  s.StructName,
 					RpcName:     method.GetName(),
 					TitleName:   title.String(method.GetName()),
 					SvcPackage:  s.Package,

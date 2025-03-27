@@ -136,7 +136,7 @@ func main() {
 {{ template "find_stub" }}
 
 {{ define "services" }}
-type {{.Name}} struct{
+type {{.StructName}} struct{
     {{.Package}}Unsafe{{.Name}}Server
 	__httpAddr__ string
 }
@@ -159,7 +159,7 @@ type {{.Name}} struct{
 {{end}}
 
 {{ define "standard_method" }}
-func (s *{{.ServiceName}}) {{.TitleName}}(ctx context.Context, in *{{.Input}}) (*{{.Output}},error){
+func (s *{{.StructName}}) {{.TitleName}}(ctx context.Context, in *{{.Input}}) (*{{.Output}},error){
 	out := &{{.Output}}{}
 	// Retrieve metadata from the incoming context.
 	// The metadata is used to find the stub for the method being called.
@@ -177,7 +177,7 @@ func (s *{{.ServiceName}}) {{.TitleName}}(ctx context.Context, in *{{.Input}}) (
 {{ end }}
 
 {{ define "server_stream_method" }}
-func (s *{{.ServiceName}}) {{.TitleName}}(in *{{.Input}},srv {{.SvcPackage}}{{.ServiceName}}_{{.TitleName}}Server) error {
+func (s *{{.StructName}}) {{.TitleName}}(in *{{.Input}},srv {{.SvcPackage}}{{.ServiceName}}_{{.TitleName}}Server) error {
 	out := &{{.Output}}{}
 	// Retrieve metadata from the incoming context.
 	// The metadata is used to find the stub for the method being called.
@@ -202,7 +202,7 @@ func (s *{{.ServiceName}}) {{.TitleName}}(in *{{.Input}},srv {{.SvcPackage}}{{.S
 {{ end }}
 
 {{ define "client_stream_method"}}
-func (s *{{.ServiceName}}) {{.TitleName}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.TitleName}}Server) error {
+func (s *{{.StructName}}) {{.TitleName}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.TitleName}}Server) error {
 	out := &{{.Output}}{}
 	// Handle the client-streaming RPC.
 	// This loop will continue until the client closes the RPC.
@@ -234,7 +234,7 @@ func (s *{{.ServiceName}}) {{.TitleName}}(srv {{.SvcPackage}}{{.ServiceName}}_{{
 {{ end }}
 
 {{ define "bidirectional_method"}}
-func (s *{{.ServiceName}}) {{.TitleName}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.TitleName}}Server) error {
+func (s *{{.StructName}}) {{.TitleName}}(srv {{.SvcPackage}}{{.ServiceName}}_{{.TitleName}}Server) error {
 	// Handle the bidirectional RPC.
 	// This loop will continue until the client closes the RPC.
 	// For each input message received from the client, it will find the stub
@@ -278,7 +278,7 @@ func (s *{{.ServiceName}}) {{.TitleName}}(srv {{.SvcPackage}}{{.ServiceName}}_{{
 
 
 {{ define "register_services" }}
-	{{.Package}}Register{{.Name}}Server(s, &{{.Name}}{__httpAddr__: config.HTTPAddr})
+	{{.Package}}Register{{.Name}}Server(s, &{{.StructName}}{__httpAddr__: config.HTTPAddr})
 {{ end }}
 
 {{ define "find_stub" }}
