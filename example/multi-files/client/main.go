@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	pb "github.com/bavix/gripmock/protogen/example/multi-files"
+	nested_pb "github.com/bavix/gripmock/protogen/example/multi-files/nested"
 )
 
 //nolint:mnd
@@ -41,4 +42,13 @@ func main() {
 		log.Fatalf("error from grpc: %v", err)
 	}
 	log.Printf("Greeting: %s", r2.GetMessage())
+
+	c3 := nested_pb.NewGripmock2Client(conn)
+
+	// Contact the server and print out its response.
+	r3, err := c3.SayHello(context.Background(), &nested_pb.Request{Name: "tokopedia"})
+	if err != nil {
+		log.Fatalf("error from grpc: %v", err)
+	}
+	log.Printf("Greeting: %s", r3.GetMessage())
 }
