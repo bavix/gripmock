@@ -132,7 +132,7 @@ func stubNotFoundError(stub *findStubPayload, closestMatches []closeMatch) error
 	if len(closestMatches) == 0 {
 		//fixme
 		//nolint:goerr113
-		return fmt.Errorf(template)
+		return errors.New(template)
 	}
 
 	highestRank := struct {
@@ -166,7 +166,7 @@ func stubNotFoundError(stub *findStubPayload, closestMatches []closeMatch) error
 
 	//fixme
 	//nolint:goerr113
-	return fmt.Errorf(template)
+	return errors.New(template)
 }
 
 // we made our own simple ranking logic
