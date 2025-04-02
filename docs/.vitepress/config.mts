@@ -50,6 +50,7 @@ export default defineConfig({
         items: [
           { text: 'Introduction', link: '/guide/introduction' },
           { text: 'Quick Usage', link: '/guide/introduction/quick-usage' },
+          { text: 'Advanced Usage', link: '/guide/introduction/advanced-usage' },
         ],
         collapsed: false,
       },
