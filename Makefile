@@ -30,7 +30,7 @@ test:
 	go test -tags mock -race -cover ./...
 
 lint:
-	go run github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.6 run --color always ${args}
+	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.0.2 run --color always ${args}
 
 lint-fix:
 	make lint args=--fix
