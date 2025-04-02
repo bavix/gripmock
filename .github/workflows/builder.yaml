@@ -46,7 +46,7 @@ jobs:
       - name: Cache regctl
         uses: actions/cache@v4
         with:
-          path: /usr/local/bin/slim
+          path: /usr/local/bin/regctl
           key: ${{ runner.os }}-regctl-${{ hashFiles('**/regctl-linux-amd64') }}
   
       - name: Install Slim
