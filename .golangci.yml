@@ -36,7 +36,6 @@ linters:
           - dupl
         path: (.+)_test.go
     paths:
-      - pkg/deps/builder.go
       - example
       - third_party$
       - builtin$
@@ -56,7 +55,6 @@ formatters:
   exclusions:
     generated: lax
     paths:
-      - pkg/deps/builder.go
       - example
       - third_party$
       - builtin$
