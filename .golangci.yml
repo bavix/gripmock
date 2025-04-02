@@ -1,43 +1,63 @@
+version: "2"
 run:
-  timeout: 1m
   build-tags:
     - wireinject
 linters:
-  enable-all: true
+  default: all
   disable:
-    # turn on later
+    - exhaustruct
     - godox
-    # deprecated
-    - tenv
-    # not relevant
+    - paralleltest
     - varnamelen
     - wrapcheck
-    - paralleltest
-    - exhaustruct
-linters-settings:
-  lll:
-    line-length: 140
-  gci:
-    sections:
-      - Standard
-      - Default
-      - Prefix(github.com/bavix)
-  depguard:
+  settings:
+    depguard:
+      rules:
+        main:
+          allow:
+            - $gostd
+            - github.com
+            - google.golang.org
+    lll:
+      line-length: 140
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      main:
-        allow:
-          - $gostd
-          - github.com
-issues:
-  exclude-files:
-    - pkg/deps/builder.go
-  exclude-dirs:
-    - example
-  exclude-rules:
-    - path: cmd/*
-      linters:
-        - gochecknoglobals
-        - gochecknoinits
-    - path: (.+)_test.go
-      linters:
-        - dupl
+      - linters:
+          - gochecknoglobals
+          - gochecknoinits
+        path: cmd/*
+      - linters:
+          - dupl
+        path: (.+)_test.go
+    paths:
+      - pkg/deps/builder.go
+      - example
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    gci:
+      sections:
+        - Standard
+        - Default
+        - Prefix(github.com/bavix)
+  exclusions:
+    generated: lax
+    paths:
+      - pkg/deps/builder.go
+      - example
+      - third_party$
+      - builtin$
+      - examples$
