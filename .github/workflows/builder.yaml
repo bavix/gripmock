@@ -163,10 +163,9 @@ jobs:
         if: github.event_name != 'pull_request'
         run: |
           echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
-            regctl manifest get "localhost:5000/bavix/gripmock:latest-slim" \
-              --host "reg=localhost:5000,tls=disabled" \
-              --format raw-body | \
-            regctl manifest put "${tag}-slim" \
-              --format oci
-            docker manifest push "${tag}-slim";
+            docker manifest create "$tag-slim" \
+              --amend "localhost:5000/bavix/gripmock:latest-slim-arm64" \
+              --amend "localhost:5000/bavix/gripmock:latest-slim-amd64"
+      
+            docker manifest push "$tag-slim"
           done
