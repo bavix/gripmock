@@ -60,7 +60,7 @@ FROM golang:1.24-alpine3.21
 
 LABEL org.opencontainers.image.source="https://github.com/bavix/gripmock"
 LABEL org.opencontainers.image.description="gRPC Mock Server"
-LABEL org.opencontainers.image.licenses="Apache-2.0"
+LABEL org.opencontainers.image.licenses="MIT,Apache-2.0"
 
 COPY --from=protoc-builder /usr/bin/protoc /usr/bin/protoc
 COPY --from=protoc-builder /usr/include/protobuf /protobuf
