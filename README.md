@@ -290,3 +290,11 @@ Headers can consist of a key and a value. If there are several values, then you 
   .
 }
 ```
+
+## License
+
+This project is dual-licensed:
+- **Original code** (from the upstream project) is licensed under the **Apache License 2.0**.  
+  See [LICENSE-APACHE](LICENSE-APACHE) for details.  
+- **New contributions and modifications** (made in this fork) are licensed under the **MIT License**.  
+  See [LICENSE](LICENSE) for details.
