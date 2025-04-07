@@ -17,8 +17,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update && sudo apt-get install -y jq
-          go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
-
+          go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.8.7
       # protogen should be added automatically, but this bug has been around since tokopedia gripmock. 
       # I'll fix it someday...
       - name: Start GripMock Server
