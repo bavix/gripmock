@@ -32,7 +32,7 @@ jobs:
             --imports=/protobuf,/googleapis,protogen/proto/scalar,protogen/proto/specialized-utility,protogen/proto/composite-collection,protogen/proto/well-known-types \
             --stub=/stubs \
             /proto 
-          until grpcurl -plaintext localhost:$(SERVER_PORT) list; do sleep 1; done
+          until grpcurl -plaintext localhost:4770 list; do sleep 1; done
 
       - name: Run examples
         run: |
