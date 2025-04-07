@@ -30,6 +30,9 @@ export default defineConfig({
       }
     ],
   ],
+  ignoreDeadLinks: [
+      /^https?:\/\/localhost:4771/,
+  ],
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     search: {
