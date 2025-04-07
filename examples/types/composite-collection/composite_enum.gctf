@@ -1,0 +1,12 @@
+--- ENDPOINT ---
+composite.StatusService/GetStatus
+
+--- REQUEST ---
+{
+    "userId": "user_123"
+}
+
+--- RESPONSE ---
+{
+    "status": "ACTIVE"
+}

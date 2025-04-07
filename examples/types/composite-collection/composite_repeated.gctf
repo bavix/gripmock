@@ -1,0 +1,12 @@
+--- ENDPOINT ---
+composite.ListService/ProcessList
+
+--- REQUEST ---
+{
+    "items": ["apple", "banana", "cherry"]
+}
+
+--- RESPONSE ---
+{
+    "lengths": [5, 6, 6]
+}

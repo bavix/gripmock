@@ -1,0 +1,14 @@
+- service: MapService
+  method: ProcessMap
+  input:
+    equals:
+      scores:
+        alice: 90
+        bob: 75
+        charlie: 50
+  output:
+    data:
+      passed:
+        alice: true
+        bob: true
+        charlie: false

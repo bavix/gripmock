@@ -1,0 +1,9 @@
+- service: MathService
+  method: AddInt32
+  input:
+    equals:
+      a: 5
+      b: 10
+  output:
+    data:
+      result: 15

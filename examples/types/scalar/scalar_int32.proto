@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package scalar;
+
+service MathService {
+  rpc AddInt32(Int32Request) returns (Int32Response) {}
+}
+
+message Int32Request {
+  int32 a = 1;
+  int32 b = 2;
+}
+
+message Int32Response {
+  int32 result = 1;
+}

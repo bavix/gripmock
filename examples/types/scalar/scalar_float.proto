@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package scalar;
+
+service CalculatorService {
+  rpc MultiplyFloat(FloatRequest) returns (FloatResponse) {}
+}
+
+message FloatRequest {
+  float a = 1;
+  float b = 2;
+}
+
+message FloatResponse {
+  float result = 1;
+}

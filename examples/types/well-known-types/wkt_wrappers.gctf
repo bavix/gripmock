@@ -1,0 +1,12 @@
+--- ENDPOINT ---
+wkt.UserService/GetUser
+
+--- REQUEST ---
+{
+    "userId": "user_123"
+}
+
+--- RESPONSE ---
+{
+    "nickname": "alice"
+}

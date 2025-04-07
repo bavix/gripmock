@@ -1,29 +1,23 @@
-# Benefits YAML
+# Why YAML?
 
-Let's talk about the pros of yaml, shall we?
-- Short syntax that is difficult to get confused;
-- Support for Anchor and Alias;
-- Additional features to be added to the syntax;
+## 1. Concise Syntax
+YAML eliminates unnecessary punctuation while maintaining readability:
 
-Let's talk about each item separately.
-
-## Short Syntax
-
-I think there is nothing to discuss here. Let's look at the json format:
-```json
+**JSON Equivalent**  
+```json  
 [
   {
     "service": "Gripmock",
     "method": "SayHello",
     "input": {
       "equals": {
-        "name": "tokopedia"
+        "name": "gripmock"
       }
     },
     "output": {
       "data": {
-        "message": "Hello Tokopedia",
-        "return_code": 1
+        "message": "Hello GripMock",
+        "returnCode": 1
       }
     }
   },
@@ -38,24 +32,24 @@ I think there is nothing to discuss here. Let's look at the json format:
     "output": {
       "data": {
         "message": "Hello World",
-        "return_code": 1
+        "returnCode": 1
       }
     }
   }
 ]
-```
+```  
 
-And now the same thing, but in yaml:
-```yaml
+**YAML Simplification**  
+```yaml  
 - service: Gripmock
   method: SayHello
   input:
     equals:
-      name: tokopedia
+      name: gripmock
   output:
     data:
-      message: Hello Tokopedia
-      return_code: 1
+      message: Hello GripMock
+      returnCode: 1
 - service: Gripmock
   method: SayHello
   input:
@@ -64,24 +58,25 @@ And now the same thing, but in yaml:
   output:
     data:
       message: Hello World
-      return_code: 1
-```
+      returnCode: 1
+```  
 
-## Anchor and Alias
+---
 
-You can read more details here: https://github.com/goccy/go-yaml#2-reference-elements-declared-in-another-file
+## 2. Reusable Components
+Leverage anchors (`&`) and aliases (`*`) for DRY configurations:
 
-```yaml
+```yaml  
 - service: &service Gripmock
   method: &method SayHello
   input:
     equals:
-      name: tokopedia
+      name: gripmock
       code: &code 0ad1348f1403169275002100356696
   output:
     data: &result
-      message: Hello Tokopedia
-      return_code: 1
+      message: Hello GripMock
+      returnCode: 1
 - service: *service
   method: *method
   input:
@@ -90,69 +85,48 @@ You can read more details here: https://github.com/goccy/go-yaml#2-reference-ele
       code: *code
   output:
     data: *result
-```
+```  
 
-## Additional functions
+---
 
-You know these standards, right? Each developer starts creating their own guide standard, and you have to mock it all.
+## 3. Data Transformation
+Built-in template functions handle complex conversions:
 
-Yes, Yes. I even had to do something like this: https://bavix.github.io/uuid-ui/
-
-Option 1:
-```proto
-message .... {
-  bytes uuid = 1;
-}
-```
-
-Option 2:
-```proto
-message UUID {
-  int64 high = 1;
-  int64 low = 2;
-}
-```
-
-Option 3 (there is such an implementation, but so far it is not in the functions):
-```proto
-message UUID {
-  uint64 high = 1;
-  uint64 low = 2;
-}
-```
-
-I find it more convenient to read guides than the internal representation of a guide in a service.
-
-For the first option, it is enough to pack in base64:
+**UUID Handling**  
 ```yaml
+# For bytes fields (Base64 encoding)
 base64: {{ uuid2base64 "77465064-a0ce-48a3-b7e4-d50f88e55093" }}
-```
 
-Result:
-```json
-{"base64": "d0ZQZKDOSKO35NUPiOVQkw=="}
-```
-
-For the second option, it is enough to pack in high-low:
-```yaml
+# For int64 high/low representations
 highLow: {{ uuid2int64 "e351220b-4847-42f5-8abb-c052b87ff2d4" }}
-```
 
-Result:
-```json
-{"highLow": {"high":-773977811204288029,"low":-3102276763665777782}}
-```
-
-But what if you need to pass a string in bytes (base64)? Let's transform.
-```yaml
+# String to Base64 conversion
 string: {{ string2base64 "hello world" }}
 bytes: {{ bytes "hello world" | bytes2base64 }}
-```
+```  
 
-Result:
-```json
+**Output Results**  
+```json  
 {
+  "base64": "d0ZQZKDOSKO35NUPiOVQkw==",
+  "highLow": {
+    "high": -773977811204288029,
+    "low": -3102276763665777782
+  },
   "string": "aGVsbG8gd29ybGQ=",
   "bytes": "aGVsbG8gd29ybGQ="
 }
-```
+```  
+
+---
+
+## 4. Key Notes
+- 🔄 **Readability**: No braces/commas reduces visual noise  
+- ♻️ **Reusability**: Shared components via anchors prevent duplication  
+- 🛠 **Flexibility**: Template functions handle:  
+  - UUID format conversions  
+  - Base64 encoding/decoding  
+  - Byte manipulation  
+- 🔧 **Compatibility**: Works with both `.yaml` and `.yml` extensions  
+
+For advanced template functions, see [UUID Utilities Documentation](https://bavix.github.io/uuid-ui/).  

@@ -1,0 +1,13 @@
+--- ENDPOINT ---
+scalar.MathService/AddInt32
+
+--- REQUEST ---
+{
+    "a": 5,
+    "b": 10
+}
+
+--- RESPONSE ---
+{
+    "result": 15
+}

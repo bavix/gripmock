@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package scalar;
+
+service GreetingService {
+  rpc Greet(StringRequest) returns (StringResponse) {}
+}
+
+message StringRequest {
+  string name = 1;
+}
+
+message StringResponse {
+  string message = 1;
+}

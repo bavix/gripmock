@@ -1,0 +1,8 @@
+- service: EventService
+  method: GetEventTime
+  input:
+    equals:
+      eventId: "event_123"
+  output:
+    data:
+      eventTime: "2024-01-01T12:00:00Z"

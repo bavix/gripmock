@@ -1,0 +1,24 @@
+--- ENDPOINT ---
+wkt.ConfigService/GetConfig
+
+--- REQUEST ---
+{
+    "configId": "config_123"
+}
+
+--- RESPONSE ---
+{
+    "settings": {
+        "fields": {
+            "theme": {
+                "stringValue": "dark"
+            },
+            "max_users": {
+                "numberValue": 100
+            },
+            "enabled": {
+                "boolValue": true
+            }
+        }
+    }
+}

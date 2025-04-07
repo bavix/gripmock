@@ -1,0 +1,8 @@
+- service: StatusService
+  method: GetStatus
+  input:
+    equals:
+      userId: "user_123"
+  output:
+    data:
+      status: ACTIVE  # Use the enum name, not the integer value

@@ -1,0 +1,10 @@
+- service: DataService
+  method: StoreData
+  input:
+    equals:
+      payload:
+        type_url: "type.googleapis.com/google.protobuf.StringValue"
+        value: "CgR0ZXN0" # "test" in base64
+  output:
+    data:
+      success: true

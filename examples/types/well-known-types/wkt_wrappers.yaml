@@ -1,0 +1,9 @@
+- service: UserService
+  method: GetUser
+  input:
+    equals:
+      userId: "user_123"
+  output:
+    data:
+      nickname: "alice"
+      age: null # age is not set

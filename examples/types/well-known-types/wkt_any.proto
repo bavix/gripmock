@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+
+package wkt;
+
+service DataService {
+  rpc StoreData(DataRequest) returns (DataResponse) {}
+}
+
+message DataRequest {
+  google.protobuf.Any payload = 1;
+}
+
+message DataResponse {
+  bool success = 1;
+}

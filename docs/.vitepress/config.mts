@@ -3,6 +3,7 @@ import { defineConfig } from 'vitepress'
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: "GripMock",
+  titleTemplate: 'gRPC Mock Server Documentation',
   description: "GripMock is a mock server for gRPC services",
   base: '/',
   lastUpdated: true,
@@ -20,12 +21,13 @@ export default defineConfig({
       gtag('config', 'G-2T92M9S17S');`
     ],
     [
-      'link', {
-      rel: 'icon',
-      href: 'https://github.com/bavix/gripmock/assets/5111255/b835b1a7-f572-438d-9ddb-eda7e0842db0',
-      sizes: "any",
-      type: "image/svg+xml",
-    }
+      'link', 
+      {
+        rel: 'icon',
+        href: 'https://github.com/bavix/gripmock/assets/5111255/b835b1a7-f572-438d-9ddb-eda7e0842db0',
+        sizes: "any",
+        type: "image/svg+xml",
+      }
     ],
   ],
   themeConfig: {
@@ -72,6 +74,24 @@ export default defineConfig({
         collapsed: false,
       },
       {
+        text: 'Types',
+        items: [
+          { text: 'Scalar Types', link: '/guide/types/scalar-types' },
+          { text: 'Well-known Types', link: '/guide/types/well-known-types' },
+          { text: 'Composite Collection Types', link: '/guide/types/composite-collection-types' },
+          { text: 'Extended Types', link: '/guide/types/extended-types' },
+          { text: 'Specialized Utility Types', link: '/guide/types/specialized-utility-types' },
+        ],
+        collapsed: false,
+      },
+      {
+        text: 'Utility',
+        items: [
+          { text: 'gRPC Testify', link: '/guide/utility/grpc-testify' },
+        ],
+        collapsed: false,
+      },
+      {
         text: 'API',
         items: [
           {
@@ -104,8 +124,22 @@ export default defineConfig({
     ],
 
     footer: {
-      message: 'Released under the <a href="https://github.com/bavix/gripmock/blob/master/LICENSE">Apache-2.0 license</a>.',
-      copyright: 'Copyright © 2023-present <a href="https://github.com/rez1dent3">Babichev Maksim</a>'
+      message: `
+        <p>Project licensed under dual licenses:</p>
+        <ul style="list-style: none; padding-left: 20px;">
+          <li>
+            🔖 <a href="https://github.com/bavix/gripmock/blob/master/LICENSE-APACHE">
+              Apache-2.0 License</a> (original codebase from 
+              <a href="https://github.com/tokopedia/gripmock">Tokopedia</a> and community contributions)
+          </li>
+          <li>
+            📝 <a href="https://github.com/bavix/gripmock/blob/master/LICENSE">
+              MIT License</a> (new developments by 
+              <a href="https://github.com/bavix">Bavix</a>)
+          </li>
+        </ul>
+      `,
+      copyright: 'Copyright © 2023-present <a href="https://github.com/rez1dent3">Maksim Babichev</a>'
     }
   }
 })

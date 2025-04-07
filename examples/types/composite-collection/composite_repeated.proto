@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package composite;
+
+service ListService {
+  rpc ProcessList(ListRequest) returns (ListResponse) {}
+}
+
+message ListRequest {
+  repeated string items = 1;
+}
+
+message ListResponse {
+  repeated int32 lengths = 1;
+}
