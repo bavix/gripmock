@@ -43,6 +43,7 @@ jobs:
           done
       - name: Run examples
         run: |
-          curl -sSL https://raw.githubusercontent.com/gripmock/grpctestify/v0.0.6/grpctestify.sh | bash
+          curl -sSL https://raw.githubusercontent.com/gripmock/grpctestify/v0.0.6/grpctestify.sh -o grpctestify.sh
+          chmod +x grpctestify.sh
           ./grpctestify.sh --update
           ./grpctestify.sh examples/

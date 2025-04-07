@@ -173,7 +173,7 @@ jobs:
           sudo apt install -y grpcurl jq
       - name: Run tests
         run: |
-          curl -sSL https://raw.githubusercontent.com/gripmock/grpctestify/master/grpctestify.sh | bash
+          curl -sSL https://raw.githubusercontent.com/gripmock/grpctestify/master/grpctestify.sh -o grpctestify.sh
           ./grpctestify.sh tests/
 ```
 
