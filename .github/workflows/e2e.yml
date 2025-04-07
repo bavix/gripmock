@@ -1,0 +1,41 @@
+name: End-to-End
+on:
+  pull_request:
+
+jobs:
+  e2e:
+    name: Run examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+          go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+
+      # protogen should be added automatically, but this bug has been around since tokopedia gripmock. 
+      # I'll fix it someday...
+      - name: Start GripMock Server
+        run: |
+          docker build -t gripmock-server-local .
+          docker run -d --name gripmock-server \
+            -v ./examples:/proto \
+            -v ./examples:/stubs \
+            -p 4770:4770 \
+            gripmock-server-local \
+            --imports=/protobuf,/googleapis,protogen/proto/scalar,protogen/proto/specialized-utility,protogen/proto/composite-collection,protogen/proto/well-known-types \
+            --stub=/stubs \
+            /proto 
+          until grpcurl -plaintext localhost:$(SERVER_PORT) list; do sleep 1; done
+
+      - name: Run examples
+        run: |
+          curl -sSL https://raw.githubusercontent.com/gripmock/grpctestify/v0.0.6/grpctestify.sh | bash
+          ./grpctestify.sh --update
+          ./grpctestify.sh examples/
