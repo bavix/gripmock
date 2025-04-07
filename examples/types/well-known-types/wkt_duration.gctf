@@ -1,0 +1,12 @@
+--- ENDPOINT ---
+wkt.TaskService/GetDuration
+
+--- REQUEST ---
+{
+    "taskId": "task_123"
+}
+
+--- RESPONSE ---
+{
+    "timeTaken": "330s"
+}

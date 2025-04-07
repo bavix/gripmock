@@ -1,0 +1,6 @@
+- service: HealthService
+  method: CheckHealth
+  input:
+    equals: {}
+  output:
+    data: {}

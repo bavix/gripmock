@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+import "google/protobuf/field_mask.proto";
+
+package specialized;
+
+service ResourceService {
+  rpc UpdateResource(UpdateRequest) returns (UpdateResponse) {}
+}
+
+message UpdateRequest {
+  string resourceId = 1;
+  google.protobuf.FieldMask updateMask = 2;
+}
+
+message UpdateResponse {
+  bool success = 1;
+}

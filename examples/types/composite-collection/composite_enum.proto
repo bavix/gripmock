@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package composite;
+
+enum Status {
+  UNKNOWN = 0;
+  ACTIVE = 1;
+  INACTIVE = 2;
+}
+
+service StatusService {
+  rpc GetStatus(StatusRequest) returns (StatusResponse) {}
+}
+
+message StatusRequest {
+  string userId = 1;
+}
+
+message StatusResponse {
+  Status status = 1;
+}

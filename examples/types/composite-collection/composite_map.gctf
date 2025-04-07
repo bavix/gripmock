@@ -1,0 +1,20 @@
+--- ENDPOINT ---
+composite.MapService/ProcessMap
+
+--- REQUEST ---
+{
+    "scores": {
+        "alice": 90,
+        "bob": 75,
+        "charlie": 50
+    }
+}
+
+--- RESPONSE ---
+{
+    "passed": {
+        "alice": true,
+        "bob": true,
+        "charlie": false
+    }
+}

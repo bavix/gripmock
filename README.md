@@ -44,8 +44,6 @@ basic syntax to run GripMock is
 
 Check [`example`](https://github.com/bavix/gripmock/tree/master/example) folder for various usecase of gripmock.
 
----
-
 ## How It Works
 ![Operation of the gRPC service](https://github.com/bavix/gripmock/assets/5111255/076e796e-5213-4b64-a6f3-b4edffa331d6)
 
@@ -63,8 +61,6 @@ When the server sucessfully generated, it will be invoked in parallel with stub 
 The second binary is the protoc plugin which located in folder [protoc-gen-gripmock](/protoc-gen-gripmock). This plugin is the one who translates protobuf declaration into a gRPC server in Go programming language. 
 
 ![Inside GripMock](https://github.com/bavix/gripmock/assets/5111255/a4cd490a-96fd-4ad3-b9d8-872fb7d6e70c)
-
----
 
 ## Stubbing
 

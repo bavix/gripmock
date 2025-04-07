@@ -2,18 +2,14 @@
 
 ## Installation
 
-For ease of installation, the entire GripMock service is packaged into one dockerfile. You only need to install docker and get the image.
-
-I will skip the details of installing docker and using it. Read documentation: https://docs.docker.com/engine/install/.
+For ease of use, GripMock is packaged as a Docker image. Ensure Docker is installed:  
+[Install Docker](https://docs.docker.com/engine/install/).
 
 ## Preparation
 
-Let's imagine that we have a gRPC service that we want to mock.
-
-Let's imagine that our contract `simple.proto` looks something like this:
+Assume we have a gRPC service defined in `simple.proto`:  
 ```proto
 syntax = "proto3";
-option go_package = "github.com/bavix/gripmock/protogen/example/simple";
 
 package simple;
 
@@ -27,16 +23,13 @@ message Request {
 
 message Reply {
   string message = 1;
-  int32 return_code = 2;
+  int32 returnCode = 2;
 }
 ```
 
-## One service
+## Run GripMock
 
-GripMock service, at the moment, can only be run in a docker container.
-All proto-files must be mounted in the docker and the path to them must be specified for the gripmock service.
-
-The launch looks something like this:
+### Single Service
 ```bash
 docker run \
   -p 4770:4770 \
@@ -45,92 +38,112 @@ docker run \
   bavix/gripmock /proto/simple.proto
 ```
 
-We mounted the `api/proto` folder with our proto-files, there is a `simple.proto` file there.
-We have created this service.
-
-## Many services
-
-GripMock service, at the moment, can only be run in a docker container.
-All proto-files must be mounted in the docker and the path to them must be specified for the gripmock service.
-
-The launch looks something like this:
+### Multiple Services
+#### Option 1: Specify Multiple Files
 ```bash
 docker run \
   -p 4770:4770 \
   -p 4771:4771 \
-  -v ./api/proto:/proto:ro \
-  bavix/gripmock /proto/proto1.proto /proto/proto2.proto ... /proto/protoN.proto
+  -v ./protos:/proto:ro \
+  bavix/gripmock /proto/service1.proto /proto/service2.proto
 ```
 
-We mounted the api/proto folder with our protofiles, there were N-services there.
-We have created this service.
-
-## Mocking
-
-Let's start the GripMock server:
+#### Option 2: Auto-Load Folder
+Mount a directory containing **multiple `.proto` files**:
 ```bash
-docker run -p 4770:4770 -p 4771:4771 -v ./simple.proto:/proto/simple.proto:ro bavix/gripmock /proto/simple.proto
+docker run \
+  -p 4770:4770 \
+  -p 4771:4771 \
+  -v ./protos:/proto:ro \
+  bavix/gripmock /proto
 ```
+This will **automatically load all `.proto` files** in the `/proto` directory.
 
-After launch, you will see something like this:
-```bash
-➜  simple git:(docs) ✗ docker run -p 4770:4770 -p 4771:4771 -v ./api:/proto:ro bavix/gripmock /proto/simple.proto
-Starting GripMock
-Serving stub admin on http://:4771
-grpc server pid: 38
-Serving gRPC on tcp://:4770
-```
+> **Note**:  
+> - All `.proto` files in the specified directory will be processed  
+> - Ensure there are no conflicting service/message definitions across files  
+> - Subdirectories are scanned recursively  
 
-What is important to understand?
-1. gRPC Mock server started on port 4770;
-2. HTTP server for working with the stub server is running on port 4771;
-
-GripMock server supports [method reflection](https://github.com/grpc/grpc-go/blob/master/Documentation/server-reflection-tutorial.md). You can verify that all services have been created successfully by accessing the gripmock port.
+## Web UI (v3.0+)
+Access the admin panel at:  
+**http://localhost:4771/** (default port).  
+Features:
+- Create, edit, and delete stubs.
+- View lists of used/unused stubs.
+- Monitor real-time activity logs. (much later)
+- Access healthcheck status. (much later)
 
 ## Stubbing
 
-This means that everything went well. Now let's add the first stub:
+### Dynamic Stubs (API)
+Add a stub via `curl`:
 ```bash
-curl -X POST -d '{"service":"Gripmock","method":"SayHello","input":{"equals":{"name":"gripmock"}},"output":{"data":{"message":"Hello GripMock"}}}' 127.0.0.1:4771/api/stubs
+curl -X POST -d '{
+  "service": "Gripmock",
+  "method": "SayHello",
+  "input": { "equals": { "name": "gripmock" } },
+  "output": { "data": { "message": "Hello GripMock" } }
+}' http://127.0.0.1:4771/api/stubs
 ```
 
-The stub has been successfully added, you have received a stub ID:
-```bash
+Response (stub ID):
+```json
 ["6c85b0fa-caaf-4640-a672-f56b7dd8074d"]
 ```
 
-## Checking
-
-You can check the added stubs at the link: http://127.0.0.1:4771/api/stubs.
-The result will not make you wait long, you should see the following:
-```json
-[
-  {
-    "id": "6c85b0fa-caaf-4640-a672-f56b7dd8074d",
-    "service": "Gripmock",
-    "method": "SayHello",
-    "headers": {
-      "equals": null,
-      "contains": null,
-      "matches": null
-    },
-    "input": {
-      "equals": {
-        "name": "gripmock"
-      },
-      "contains": null,
-      "matches": null
-    },
-    "output": {
-      "data": {
-        "message": "Hello GripMock"
-      },
-      "error": ""
-    }
-  }
-]
+### Static Stubs (YAML/JSON)
+Mount a stubs directory and use `--stub`:
+```bash
+docker run ... -v ./stubs:/stubs bavix/gripmock --stub=/stubs /proto/simple.proto
 ```
 
-Now try to use the grpc client to our service with the data from the input.
+## Verification
 
-Happened? Well done. You are a fast learner.
+### Check Stubs
+- **API**:  
+  ```bash
+  curl http://127.0.0.1:4771/api/stubs
+  ```
+- **UI**: Visit **http://localhost:4771/** and navigate to the stubs section.
+
+## Advanced Features
+
+### Headers Matching
+Add headers to stubs for fine-grained control:
+```json
+{
+  "headers": {
+    "equals": { "authorization": "Bearer token123" }
+  },
+  "input": { ... },
+  "output": { ... }
+}
+```
+
+### Array Order Flexibility
+Use `ignoreArrayOrder: true` to disable array sorting checks:
+```json
+{
+  "input": {
+    "ignoreArrayOrder": true,
+    "equals": { "ids": ["id2", "id1"] }
+  }
+}
+```
+
+### Healthchecks
+Check service status:
+```bash
+curl http://127.0.0.1:4771/api/health/liveness
+curl http://127.0.0.1:4771/api/health/readiness
+```
+
+## Cleanup
+- **Delete all stubs**:  
+  ```bash
+  curl -X DELETE http://127.0.0.1:4771/api/stubs
+  ```
+- **Delete specific stub**:  
+  ```bash
+  curl -X DELETE http://127.0.0.1:4771/api/stubs/{uuid}
+  ```

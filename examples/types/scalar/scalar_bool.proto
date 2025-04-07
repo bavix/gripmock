@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package scalar;
+
+service AuthService {
+  rpc IsAdmin(AdminRequest) returns (AdminResponse) {}
+}
+
+message AdminRequest {
+  string username = 1;
+}
+
+message AdminResponse {
+  bool isAdmin = 1;
+}

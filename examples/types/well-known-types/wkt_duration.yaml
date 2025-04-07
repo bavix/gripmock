@@ -1,0 +1,8 @@
+- service: TaskService
+  method: GetDuration
+  input:
+    equals:
+      taskId: "task_123"
+  output:
+    data:
+      timeTaken: "330s"  # 5 minutes 30 seconds

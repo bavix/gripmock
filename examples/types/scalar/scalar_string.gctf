@@ -1,0 +1,12 @@
+--- ENDPOINT ---
+scalar.GreetingService/Greet
+
+--- REQUEST ---
+{
+    "name": "Alice"
+}
+
+--- RESPONSE ---
+{
+    "message": "Hello, Alice!"
+}

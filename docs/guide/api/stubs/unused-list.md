@@ -1,12 +1,9 @@
-# Stub API. Get Stubs Unused List
+### **Stub API. Get Stubs Unused List**  
+The `/api/stubs/unused` endpoint retrieves a list of **stubs that have never been matched by a search operation**. This helps identify "dead" stubs that are defined but not actively used in testing workflows.  
 
-Stubs Unused List — endpoint returns a list of unused stubs (all stubs that were not accessed through search).
-A very useful method that helps find dead stubs in the code.
-
-Let's imagine that our contract `simple.proto` looks something like this:
+#### **Example Contract (`simple.proto`)**  
 ```proto
 syntax = "proto3";
-option go_package = "github.com/bavix/gripmock/protogen/example/simple";
 
 package simple;
 
@@ -20,18 +17,27 @@ message Request {
 
 message Reply {
   string message = 1;
-  int32 return_code = 2;
+  int32 returnCode = 2;
 }
 ```
 
-## Search Query
+#### **Request**  
+- **Method**: `GET`  
+- **URL**: `/api/stubs/unused`  
+- **Parameters**: None required.  
+- **Headers**: Standard headers (e.g., `Content-Type: application/json`).  
 
-Enough to knock on the handle `GET /api/stubs/unused`:
+**Example Request**:  
 ```bash
 curl http://127.0.0.1:4771/api/stubs/unused
 ```
 
-Response:
+#### **Response**  
+- **Status Code**: `200 OK`  
+- **Content-Type**: `application/json`  
+- **Body**: An array of `Stub` objects (see schema below).  
+
+**Example Response**:  
 ```json
 [
   {
@@ -39,41 +45,77 @@ Response:
     "service": "Gripmock",
     "method": "SayHello",
     "input": {
-      "equals": {
-        "name": "gripmock"
-      },
-      "contains": null,
-      "matches": null
+      "equals": { "name": "gripmock" }
     },
     "output": {
-      "data": {
-        "message": "Hello GripMock",
-        "return_code": 42
-      },
+      "data": { "message": "Hello GripMock", "returnCode": 42 },
       "error": ""
     }
   }
 ]
 ```
 
-## Checking
+#### **Stub Object Schema**  
+| Field    | Type     | Description                                                                 |
+|----------|----------|-----------------------------------------------------------------------------|
+| `id`     | `string` | Unique identifier for the stub (UUID format).                              |
+| `service`| `string` | Name of the gRPC service (e.g., `Gripmock`).                              |
+| `method` | `string` | Name of the gRPC method (e.g., `SayHello`).                               |
+| `input`  | `object` | Input matching criteria (e.g., `equals`, `contains`, `matches`).          |
+| `output` | `object` | Response configuration, including `data`, `error`, and gRPC status `code`.|  
 
-Find stub by ID. Enough to knock on the handle `POST /api/stubs/search`:
-```bash
-curl -X POST -d '{ \
-  "id": "6c85b0fa-caaf-4640-a672-f56b7dd8074d", \
-  "service": "Gripmock", \
-  "method": "SayHello", \
-  "data":{} \
-}' http://127.0.0.1:4771/api/stubs/search
-```
+#### **Behavior Explanation**  
+- **Unused Definition**: A stub is considered "unused" if it has **never** been matched by a `POST /api/stubs/search` request.  
+- **Inverse of Used**: The `/api/stubs/used` endpoint returns stubs that **have** been matched by searches.  
+- **Persistence**: The "unused" state resets when the GripMock server restarts.  
 
-Now the stub is marked as used. Let's try to get a list of unused stubs.
-```bash
-curl http://127.0.0.1:4771/api/stubs/unused
-```
+#### **Example Workflow**  
+1. **Create a Stub**:  
+   ```bash
+   curl -X POST -d '{
+     "service": "Gripmock",
+     "method": "SayHello",
+     "input": { "equals": { "name": "gripmock" } },
+     "output": { "data": { "message": "Hello GripMock", "returnCode": 42 } }
+   }' http://127.0.0.1:4771/api/stubs
+   ```
 
-Response:
-```json
-[]
-```
+2. **Check Unused Stubs** (stub is unused):  
+   ```bash
+   curl http://127.0.0.1:4771/api/stubs/unused
+   ```
+   **Response**:  
+   ```json
+   [{"id": "...", ...}]
+   ```
+
+3. **Search for the Stub** (marks it as used):  
+   ```bash
+   curl -X POST -d '{
+     "service": "Gripmock",
+     "method": "SayHello",
+     "data": { "name": "gripmock" }
+   }' http://127.0.0.1:4771/api/stubs/search
+   ```
+
+4. **Check Unused Stubs Again** (stub is now used):  
+   ```bash
+   curl http://127.0.0.1:4771/api/stubs/unused
+   ```
+   **Response**:  
+   ```json
+   []
+   ```
+
+#### **Notes**  
+- **Edge Cases**:  
+  - If no stubs exist, the response is an empty array (`[]`).  
+  - Stubs added but never searched for will always appear in the unused list.  
+- **Related Endpoints**:  
+  - `GET /api/stubs/used`: List stubs that have been matched by searches.  
+  - `POST /api/stubs/search`: Mark stubs as used by matching criteria.  
+  - `POST /api/stubs`: Create or update stubs.  
+
+---
+
+This endpoint is essential for maintaining clean stub configurations by identifying and removing unused stubs.

@@ -1,0 +1,15 @@
+- service: ConfigService
+  method: GetConfig
+  input:
+    equals:
+      configId: "config_123"
+  output:
+    data:
+      settings:
+        fields:
+          theme:
+            stringValue: "dark"
+          max_users:
+            numberValue: 100
+          enabled:
+            boolValue: true

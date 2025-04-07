@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package scalar;
+
+service FileService {
+  rpc UploadFile(BytesRequest) returns (BytesResponse) {}
+}
+
+message BytesRequest {
+  bytes content = 1;
+}
+
+message BytesResponse {
+  string checksum = 1;
+}

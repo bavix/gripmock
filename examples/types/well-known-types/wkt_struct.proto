@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "google/protobuf/struct.proto";
+
+package wkt;
+
+service ConfigService {
+  rpc GetConfig(ConfigRequest) returns (ConfigResponse) {}
+}
+
+message ConfigRequest {
+  string configId = 1;
+}
+
+message ConfigResponse {
+  google.protobuf.Struct settings = 1;
+}

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package composite;
+
+service MapService {
+  rpc ProcessMap(MapRequest) returns (MapResponse) {}
+}
+
+message MapRequest {
+  map<string, int32> scores = 1;
+}
+
+message MapResponse {
+  map<string, bool> passed = 1;
+}

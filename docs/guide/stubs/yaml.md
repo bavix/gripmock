@@ -1,89 +1,118 @@
-# YAML
+# YAML Stubs
 
-> The syntax of the yaml file does not differ from json, it only adds additional functions.
+YAML provides human-readable syntax with advanced features like comments and multi-document support, while maintaining compatibility with JSON structures.
 
-With static stubs, you can use gripmock without the handle API.
-This is useful when you don't want to rely on the http protocol in your tests, or if your data is all static and doesn't change.
-It can also be useful when there are a lot of stubs.
+## Use Cases  
+Ideal for:  
+- Tests avoiding HTTP dependencies  
+- Immutable/Versioned stub configurations  
+- Large-scale stub management  
+- Teams preferring YAML's readability  
 
-So what do you need to work? It is enough to mount a folder with stubs in your container and tell the service the path to the stubs.
-
-Let's imagine that our contract `simple.proto` looks something like this:
-```proto
-syntax = "proto3";
-option go_package = "github.com/bavix/gripmock/protogen/example/simple";
-
-package simple;
-
-service Gripmock {
-  rpc SayHello (Request) returns (Reply);
-}
-
-message Request {
-  string name = 1;
-}
-
-message Reply {
-  string message = 1;
-  int32 return_code = 2;
-}
+## Project Structure  
+```
+project-root/  
+├── proto/  
+│   └── simple.proto    # gRPC contract  
+└── stubs/  
+    ├── single.yaml     # Single stub  
+    ├── multi-stubs.yml # Multiple stubs  
+    └── nested/         # Organize in subdirectories  
 ```
 
-## Static YAML-stubs
+## Stub Syntax  
 
-We have created a folder for `stubs` stubs.
-Now you need to create the first stub in this folder `single.yaml`.
+### Single Stub (`single.yaml`)  
+```yaml  
+service: Gripmock  
+method: SayHello  
+input:  
+  equals:  
+    name: yaml-single  
+output:  
+  data:  
+    message: Hello YAML  
+    returnCode: 1  
+```  
 
-```yaml
-service: Gripmock
-method: SayHello
-input:
-  equals:
-    name: tokopedia-single
-output:
-  data:
-    message: Hello Tokopedia
-    return_code: 1
-```
+### Multiple Stubs (`multi-stubs.yml`)  
+```yaml  
+- service: Gripmock  
+  method: SayHello  
+  input:  
+    equals:  
+      name: alpha  
+  output:  
+    data:  
+      message: Hello Alpha  
+      returnCode: 1  
 
-Let's create a second stub `multi-stabs.yml`.
+- service: Gripmock  
+  method: SayHello  
+  input:  
+    equals:  
+      name: beta  
+  output:  
+    data:  
+      message: Hello Beta  
+      returnCode: 2  
+```  
 
-```yaml
-- service: Gripmock
-  method: SayHello
-  input:
-    equals:
-      name: tokopedia
-  output:
-    data:
-      message: Hello Tokopedia
-      return_code: 1
-- service: Gripmock
-  method: SayHello
-  input:
-    equals:
-      name: world
-  output:
-    data:
-      message: Hello World
-      return_code: 1
-```
+## Docker Execution  
+```bash  
+docker run \  
+  -p 4770:4770 \  
+  -p 4771:4771 \  
+  -v $(pwd)/proto:/proto:ro \  
+  -v $(pwd)/stubs:/stubs:ro \  
+  bavix/gripmock \  
+  --stub=/stubs \  
+  /proto/simple.proto  
+```  
 
-## Launch
+## Verification  
+Check loaded stubs:  
+```bash  
+curl http://localhost:4771/api/stubs  
+```  
 
-The launch looks something like this:
-```bash
-docker run \
-  -p 4770:4770 \
-  -p 4771:4771 \
-  -v ./stubs:/stubs:ro \
-  -v ./api/proto:/proto:ro \
-  bavix/gripmock --stub=/stubs /proto/simple.proto
-```
+**Sample Response**:  
+```json  
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "service": "Gripmock",
+    "method": "SayHello",
+    "input": { "equals": { "name": "yaml-single" } },
+    "output": { "data": { "message": "Hello YAML" } }
+  },
+  ...
+]
+```  
 
-## Data checking
+## Advanced Features  
 
-You can verify that the stubs have been loaded successfully by running a query:
-```bash
-curl http://127.0.0.1:4771/api/stubs
-```
+### Array Order Handling  
+```yaml  
+input:  
+  ignoreArrayOrder: true  
+  equals:  
+    ids: [3, 1, 2]  
+```  
+
+### Nested Structures  
+```yaml  
+input:  
+  contains:  
+    metadata:  
+      env: production  
+      version: 2.1  
+```  
+
+## Key Notes  
+- 🔄 Auto-reloading: Changes in stub files are detected on container restart  
+- 📁 Recursive loading: All .yaml/.yml files in --stub directory are processed  
+- 🔍 Validation: Syntax errors in YAML files prevent server startup  
+- 🔄 API Compatibility: Works alongside HTTP API for hybrid setups  
+
+For schema details, see [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/).  

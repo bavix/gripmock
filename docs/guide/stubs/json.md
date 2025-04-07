@@ -1,107 +1,123 @@
-# JSON
+# Static JSON Stubs  
+Use static JSON/YAML files to predefine stubs without relying on the HTTP API. Ideal for:  
+- Tests avoiding HTTP dependencies  
+- Immutable stub configurations  
+- Large-scale stub setups  
 
-With static stubs, you can use gripmock without the handle API. 
-This is useful when you don't want to rely on the http protocol in your tests, or if your data is all static and doesn't change. 
-It can also be useful when there are a lot of stubs.
-
-So what do you need to work? It is enough to mount a folder with stubs in your container and tell the service the path to the stubs.
-
-Let's imagine that our contract `simple.proto` looks something like this:
-```proto
-syntax = "proto3";
-option go_package = "github.com/bavix/gripmock/protogen/example/simple";
-
-package simple;
-
-service Gripmock {
-  rpc SayHello (Request) returns (Reply);
-}
-
-message Request {
-  string name = 1;
-}
-
-message Reply {
-  string message = 1;
-  int32 return_code = 2;
-}
+## Project Structure  
 ```
+project-root/  
+├── proto/  
+│   └── simple.proto    # gRPC contract  
+└── stubs/  
+    ├── single.json     # Single stub  
+    └── multi.json      # Multiple stubs  
+```  
 
-## Static JSON-stubs
+## Stub Examples  
 
-We have created a folder for `stubs` stubs.
-Now you need to create the first stub in this folder `single.json`.
-
-```json
+### Single Stub (`single.json`)  
+```json  
 {
   "service": "Gripmock",
   "method": "SayHello",
   "input": {
     "equals": {
-      "name": "tokopedia-single"
+      "name": "single"
     }
   },
   "output": {
     "data": {
-      "message": "Hello Tokopedia",
+      "message": "Hello everyone",
       "return_code": 1
     }
   }
 }
-```
+```  
 
-Let's create a second stub `multi-stabs.json`.
-
-```json
+### Multiple Stubs (`multi.json`)  
+```json  
 [
   {
     "service": "Gripmock",
     "method": "SayHello",
-    "input": {
-      "equals": {
-        "name": "tokopedia"
-      }
-    },
-    "output": {
-      "data": {
-        "message": "Hello Tokopedia",
-        "return_code": 1
-      }
-    }
+    "input": { "equals": { "name": "New York" } },
+    "output": { "data": { "message": "Hello New York", "return_code": 1 } }
   },
   {
     "service": "Gripmock",
     "method": "SayHello",
-    "input": {
-      "equals": {
-        "name": "world"
-      }
-    },
-    "output": {
-      "data": {
-        "message": "Hello World",
-        "return_code": 1
-      }
-    }
+    "input": { "equals": { "name": "world" } },
+    "output": { "data": { "message": "Hello World", "return_code": 1 } }
   }
 ]
-```
+```  
 
-## Launch
+## Docker Configuration  
+Mount the `stubs` directory and specify the `--stub` flag:  
+```bash  
+docker run \  
+  -p 4770:4770 \  
+  -p 4771:4771 \  
+  -v $(pwd)/proto:/proto:ro \  
+  -v $(pwd)/stubs:/stubs:ro \  
+  bavix/gripmock \  
+  --stub=/stubs \  
+  /proto/simple.proto  
+```  
 
-The launch looks something like this:
-```bash
-docker run \
-  -p 4770:4770 \
-  -p 4771:4771 \
-  -v ./stubs:/stubs:ro \
-  -v ./api/proto:/proto:ro \
-  bavix/gripmock --stub=/stubs /proto/simple.proto
-```
+## Verification  
+Check loaded stubs via the API:  
+```bash  
+curl http://localhost:4771/api/stubs  
+```  
 
-## Data checking
+**Response**:  
+```json  
+[
+  {
+    "id": "a1b2c3d4-...",
+    "service": "Gripmock",
+    "method": "SayHello",
+    "input": { "equals": { "name": "single" } },
+    "output": { "data": { "message": "Hello everyone" } }
+  },
+  ...
+]
+```  
 
-You can verify that the stubs have been loaded successfully by running a query:
-```bash
-curl http://127.0.0.1:4771/api/stubs
-```
+## Advanced Usage  
+
+### YAML Support  
+Use `.yaml`/`.yml` files as alternatives to JSON:  
+```yaml  
+# stubs/example.yaml  
+service: Gripmock  
+method: SayHello  
+input:  
+  equals:  
+    name: yaml-stub  
+output:  
+  data:  
+    message: Hello YAML  
+```  
+
+### Array Order Flag  
+Disable array sorting checks with `ignoreArrayOrder`:  
+```json  
+{
+  "input": {
+    "ignoreArrayOrder": true,
+    "equals": { "ids": [2, 1] }
+  }
+}
+```  
+
+---
+
+**Key Notes**:  
+- Stubs are loaded **on startup** from the `--stub` directory.  
+- The HTTP API (`/api/stubs`) can still modify stubs dynamically.  
+- File extensions: `.json`, `.yaml`, `.yml` (auto-detected).  
+
+For schema details, see the [OpenAPI `Stub` definition](https://bavix.github.io/gripmock-openapi/).  

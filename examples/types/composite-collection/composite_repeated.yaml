@@ -1,0 +1,8 @@
+- service: ListService
+  method: ProcessList
+  input:
+    equals:
+      items: ["apple", "banana", "cherry"]
+  output:
+    data:
+      lengths: [5, 6, 6]  # Lengths of each input string

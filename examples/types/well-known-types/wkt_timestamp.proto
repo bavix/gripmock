@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package wkt;
+
+service EventService {
+  rpc GetEventTime(EventRequest) returns (EventResponse) {}
+}
+
+message EventRequest {
+  string eventId = 1;
+}
+
+message EventResponse {
+  google.protobuf.Timestamp eventTime = 1;
+}

@@ -1,0 +1,15 @@
+--- ENDPOINT ---
+specialized.ResourceService/UpdateResource
+
+--- REQUEST ---
+{
+    "resourceId": "resource_123",
+    "updateMask": {
+        "paths": ["name", "description"]
+    }
+}
+
+--- RESPONSE ---
+{
+    "success": true
+}

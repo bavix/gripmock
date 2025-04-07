@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "google/protobuf/duration.proto";
+
+package wkt;
+
+service TaskService {
+  rpc GetDuration(TaskRequest) returns (TaskResponse) {}
+}
+
+message TaskRequest {
+  string taskId = 1;
+}
+
+message TaskResponse {
+  google.protobuf.Duration timeTaken = 1;
+}

@@ -1,0 +1,11 @@
+- service: ResourceService
+  method: UpdateResource
+  input:
+    ignoreArrayOrder: true
+    equals:
+      resourceId: "resource_123"
+      updateMask:
+        paths: ["name", "description"]
+  output:
+    data:
+      success: true
