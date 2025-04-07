@@ -174,6 +174,7 @@ jobs:
       - name: Run tests
         run: |
           curl -sSL https://raw.githubusercontent.com/gripmock/grpctestify/master/grpctestify.sh -o grpctestify.sh
+          chmod +x grpctestify.sh
           ./grpctestify.sh tests/
 ```
 
