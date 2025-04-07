@@ -32,8 +32,16 @@ jobs:
             --imports=/protobuf,/googleapis,protogen/proto/scalar,protogen/proto/specialized-utility,protogen/proto/composite-collection,protogen/proto/well-known-types \
             --stub=/stubs \
             /proto 
-          until grpcurl -plaintext localhost:4770 list; do sleep 1; done
-
+          max_wait=60
+          waited=0
+          until grpcurl -plaintext localhost:4770 list; do
+            if [ $waited -ge $max_wait ]; then
+              echo "GripMock server failed to start within $max_wait seconds."
+              exit 1
+            fi
+            sleep 1
+            waited=$((waited + 1))
+          done
       - name: Run examples
         run: |
           curl -sSL https://raw.githubusercontent.com/gripmock/grpctestify/v0.0.6/grpctestify.sh | bash
