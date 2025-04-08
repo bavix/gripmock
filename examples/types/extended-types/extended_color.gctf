@@ -1,0 +1,17 @@
+--- ENDPOINT ---
+extended.DesignService/GetThemeColor
+
+--- REQUEST ---
+{
+  "themeId": "dark_theme"
+}
+
+--- RESPONSE ---
+{
+  "color": {
+    "red": 0.1,
+    "green": 0.2,
+    "blue": 0.3,
+    "alpha": 0.8
+  }
+}

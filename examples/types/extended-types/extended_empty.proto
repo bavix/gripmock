@@ -1,0 +1,11 @@
+syntax = "proto3";  
+import "google/protobuf/empty.proto";  
+package extended;  
+
+service EmptyService {  
+  rpc GetData(google.protobuf.Empty) returns (DataResponse) {}  
+}  
+
+message DataResponse {  
+  string content = 1;  
+}

@@ -1,0 +1,26 @@
+- service: LocationService
+  method: GetCoordinates
+  input:
+    equals:
+      address: "Eiffel Tower"
+  output:
+    data:
+      coordinates:
+        latitude: 48.8584
+        longitude: 2.2945
+
+--- ENDPOINT ---
+extended.LocationService/GetCoordinates
+
+--- REQUEST ---
+{
+  "address": "Eiffel Tower"
+}
+
+--- RESPONSE ---
+{
+  "coordinates": {
+    "latitude": 48.8584,
+    "longitude": 2.2945
+  }
+}

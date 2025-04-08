@@ -50,7 +50,7 @@ jobs:
             -v ./examples:/stubs \
             -p 4770:4770 \
             gripmock-server-local \
-            --imports=/protobuf,/googleapis,protogen/proto/types/scalar,protogen/proto/types/specialized-utility,protogen/proto/types/composite-collection,protogen/proto/types/well-known-types \
+            --imports=/protobuf,/googleapis,protogen/proto/types/scalar,protogen/proto/types/specialized-utility,protogen/proto/types/composite-collection,protogen/proto/types/well-known-types,protogen/proto/types/extended-types \
             --stub=/stubs \
             /proto 
           max_wait=60

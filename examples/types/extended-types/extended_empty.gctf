@@ -1,0 +1,9 @@
+--- ENDPOINT ---
+extended.EmptyService/GetData
+
+--- REQUEST ---
+
+--- RESPONSE ---
+{
+  "content": "test"
+}

@@ -1,0 +1,15 @@
+--- ENDPOINT ---
+extended.BookingService/GetBooking
+
+--- REQUEST ---
+{
+    "bookingId": "booking_123"
+}
+
+--- RESPONSE ---
+{
+  "bookingTime": {
+    "endTime": "2024-01-01T23:59:59Z",
+    "startTime": "2024-01-01T00:00:00Z"
+  }
+}

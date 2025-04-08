@@ -1,0 +1,14 @@
+- service: AddressService
+  method: ValidateAddress
+  input:
+    equals:
+      addressId: "addr_123"
+  output:
+    data:
+      validatedAddress:
+        regionCode: "US"
+        postalCode: "94043"
+        administrativeArea: "CA"
+        locality: "Mountain View"
+        addressLines: ["1600 Amphitheatre Parkway"]
+        recipients: ["Google Inc."]

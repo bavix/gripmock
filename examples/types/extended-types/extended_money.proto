@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "google/type/money.proto";
+
+package extended;
+
+service MoneyService {
+  rpc GetBalance(BalanceRequest) returns (BalanceResponse) {}
+}
+
+message BalanceRequest {
+  string accountId = 1;
+}
+
+message BalanceResponse {
+  google.type.Money balance = 1;
+}

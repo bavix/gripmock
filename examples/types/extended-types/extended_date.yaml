@@ -1,0 +1,16 @@
+- service: ScheduleService
+  method: GetBirthday
+  input:
+    equals:
+      userId: "user_123"
+  output:
+    data:
+      date:
+        year: 1990
+        month: 5
+        day: 15
+      reminderTime:
+        hours: 9
+        minutes: 1
+        seconds: 2
+        nanos: 3000000

@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+import "google/type/date.proto";
+import "google/type/timeofday.proto";
+
+package extended;
+
+service ScheduleService {
+  rpc GetBirthday(BirthdayRequest) returns (BirthdayResponse) {}
+}
+
+message BirthdayRequest {
+  string userId = 1;
+}
+
+message BirthdayResponse {
+  google.type.Date date = 1;
+  google.type.TimeOfDay reminderTime = 2;
+}

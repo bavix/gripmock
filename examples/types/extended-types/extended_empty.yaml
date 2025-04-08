@@ -1,0 +1,8 @@
+- service: EmptyService  
+  method: GetData  
+  input:  
+    matches: {}  # Required for empty input in Gripmock  
+  output:  
+    data:  
+      content: "test"  
+    code: 0

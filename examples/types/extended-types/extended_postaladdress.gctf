@@ -1,0 +1,19 @@
+--- ENDPOINT ---
+extended.AddressService/ValidateAddress
+
+--- REQUEST ---
+{
+  "addressId": "addr_123"
+}
+
+--- RESPONSE ---
+{
+  "validatedAddress": {
+    "regionCode": "US",
+    "postalCode": "94043",
+    "administrativeArea": "CA",
+    "locality": "Mountain View",
+    "addressLines": ["1600 Amphitheatre Parkway"],
+    "recipients": ["Google Inc."]
+  }
+}

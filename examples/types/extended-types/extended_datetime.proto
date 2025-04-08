@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+import "google/type/datetime.proto";
+
+package extended;
+
+service DateTimeService {
+  rpc GetEventTime(DateTimeRequest) returns (DateTimeResponse) {}
+}
+
+message DateTimeRequest {
+  string eventId = 1;
+}
+
+message DateTimeResponse {
+  google.type.DateTime eventTime = 1;
+  google.type.TimeZone timeZone = 2;
+}

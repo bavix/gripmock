@@ -1,0 +1,16 @@
+- service: DateTimeService
+  method: GetEventTime
+  input:
+    equals:
+      eventId: "event_123"
+  output:
+    data:
+      eventTime:
+        year: 2024
+        month: 12
+        day: 25
+        hours: 18
+        minutes: 30
+        seconds: 1
+      timeZone:
+        id: "Europe/London"

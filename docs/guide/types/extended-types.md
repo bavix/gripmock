@@ -65,7 +65,7 @@ grpcurl -plaintext -d '{"accountId": "user_123"}' localhost:4770 extended.MoneyS
 {
   "balance": {
     "currencyCode": "USD",
-    "units": 100,
+    "units": "100",
     "nanos": 500000000
   }
 }
@@ -144,7 +144,6 @@ Represents a date, time, and time zone.
 ### Syntax
 ```proto
 import "google/type/datetime.proto";
-import "google/type/timezone.proto";
 
 message EventResponse {
   google.type.DateTime eventTime = 1;
@@ -162,7 +161,6 @@ message EventResponse {
 syntax = "proto3";
 
 import "google/type/datetime.proto";
-import "google/type/timezone.proto";
 
 package extended;
 
@@ -195,7 +193,7 @@ message DateTimeResponse {
         day: 25
         hours: 18
         minutes: 30
-        seconds: 0
+        seconds: 1
       timeZone:
         id: "Europe/London"
 ```
@@ -209,12 +207,12 @@ grpcurl -plaintext -d '{"eventId": "event_123"}' localhost:4770 extended.DateTim
 ```json
 {
   "eventTime": {
-    "year": 2024,
-    "month": 12,
     "day": 25,
     "hours": 18,
     "minutes": 30,
-    "seconds": 0
+    "month": 12,
+    "seconds": 1,
+    "year": 2024
   },
   "timeZone": {
     "id": "Europe/London"
@@ -275,9 +273,9 @@ message BirthdayResponse {
         day: 15
       reminderTime:
         hours: 9
-        minutes: 0
-        seconds: 0
-        nanos: 0
+        minutes: 1
+        seconds: 2
+        nanos: 3000000
 ```
 
 **Test Command:**
@@ -295,8 +293,9 @@ grpcurl -plaintext -d '{"userId": "user_123"}' localhost:4770 extended.ScheduleS
   },
   "reminderTime": {
     "hours": 9,
-    "minutes": 0,
-    "seconds": 0
+    "minutes": 1,
+    "seconds": 2,
+    "nanos": 3000000
   }
 }
 ```
@@ -306,7 +305,7 @@ Represents a structured postal address.
 
 ### Syntax
 ```proto
-import "google/type/postaladdress.proto";
+import "google/type/postal_address.proto";
 
 message AddressResponse {
   google.type.PostalAddress address = 1;
@@ -322,7 +321,7 @@ message AddressResponse {
 ```proto
 syntax = "proto3";
 
-import "google/type/postaladdress.proto";
+import "google/type/postal_address.proto";
 
 package extended;
 
@@ -487,10 +486,8 @@ message BookingResponse {
   output:
     data:
       bookingTime:
-        startTime:
-          seconds: 1704000000  # 2024-01-01T00:00:00Z
-        endTime:
-          seconds: 1704086399  # 2024-01-01T23:59:59Z
+        startTime: "2024-01-01T00:00:00Z"
+        endTime: "2024-01-01T23:59:59Z"
 ```
 
 **Test Command:**
@@ -502,8 +499,8 @@ grpcurl -plaintext -d '{"bookingId": "booking_123"}' localhost:4770 extended.Boo
 ```json
 {
   "bookingTime": {
-    "startTime": "2024-01-01T00:00:00Z",
-    "endTime": "2024-01-01T23:59:59Z"
+    "endTime": "2024-01-01T23:59:59Z",
+    "startTime": "2024-01-01T00:00:00Z"
   }
 }
 ```
