@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "google/type/postal_address.proto";
+
+package extended;
+
+service AddressService {
+  rpc ValidateAddress(AddressRequest) returns (AddressResponse) {}
+}
+
+message AddressRequest {
+  string addressId = 1;
+}
+
+message AddressResponse {
+  google.type.PostalAddress validatedAddress = 1;
+}

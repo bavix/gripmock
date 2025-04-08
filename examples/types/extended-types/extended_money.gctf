@@ -1,0 +1,16 @@
+--- ENDPOINT ---
+extended.MoneyService/GetBalance
+
+--- REQUEST ---
+{
+  "accountId": "user_123"
+}
+
+--- RESPONSE ---
+{
+  "balance": {
+    "currencyCode": "USD",
+    "units": "100",
+    "nanos": 500000000 # $100.50
+  }
+}

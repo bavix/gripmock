@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "google/type/latlng.proto";
+
+package extended;
+
+service LocationService {
+  rpc GetCoordinates(LocationRequest) returns (LocationResponse) {}
+}
+
+message LocationRequest {
+  string address = 1;
+}
+
+message LocationResponse {
+  google.type.LatLng coordinates = 1;
+}

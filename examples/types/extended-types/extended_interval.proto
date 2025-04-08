@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "google/type/interval.proto";
+
+package extended;
+
+service BookingService {
+  rpc GetBooking(BookingRequest) returns (BookingResponse) {}
+}
+
+message BookingRequest {
+  string bookingId = 1;
+}
+
+message BookingResponse {
+  google.type.Interval bookingTime = 1;
+}

@@ -1,0 +1,22 @@
+--- ENDPOINT ---
+extended.DateTimeService/GetEventTime
+
+--- REQUEST ---
+{
+  "eventId": "event_123"
+}
+
+--- RESPONSE ---
+{
+  "eventTime": {
+    "day": 25,
+    "hours": 18,
+    "minutes": 30,
+    "month": 12,
+    "seconds": 1,
+    "year": 2024
+  },
+  "timeZone": {
+    "id": "Europe/London"
+  }
+}

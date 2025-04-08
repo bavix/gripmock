@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "google/type/color.proto";
+
+package extended;
+
+service DesignService {
+  rpc GetThemeColor(ColorRequest) returns (ColorResponse) {}
+}
+
+message ColorRequest {
+  string themeId = 1;
+}
+
+message ColorResponse {
+  google.type.Color color = 1;
+}
