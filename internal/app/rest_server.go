@@ -2,12 +2,13 @@ package app
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"sync/atomic"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
 
@@ -81,7 +82,7 @@ func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewEncoder(w).Encode(results); err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 	}
 }
 
@@ -97,13 +98,13 @@ func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, 
 	}
 
 	if err := json.NewEncoder(w).Encode(results); err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 	}
 }
 
 func (h *RestServer) liveness(w http.ResponseWriter) {
 	if err := json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 	}
 }
 
@@ -124,7 +125,7 @@ func (h *RestServer) Liveness(w http.ResponseWriter, _ *http.Request) {
 func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	byt, err := io.ReadAll(r.Body)
 	if err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 
 		return
 	}
@@ -134,21 +135,21 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	var inputs []*stuber.Stub
 
 	if err := jsondecoder.UnmarshalSlice(byt, &inputs); err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 
 		return
 	}
 
 	for _, stub := range inputs {
 		if err := validateStub(stub); err != nil {
-			h.responseError(err, w)
+			h.responseError(w, err)
 
 			return
 		}
 	}
 
 	if err := json.NewEncoder(w).Encode(h.budgerigar.PutMany(inputs...)); err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 
 		return
 	}
@@ -163,7 +164,7 @@ func (h *RestServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, uuid
 func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	byt, err := io.ReadAll(r.Body)
 	if err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 
 		return
 	}
@@ -173,7 +174,7 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	var inputs []uuid.UUID
 
 	if err := jsondecoder.UnmarshalSlice(byt, &inputs); err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 
 		return
 	}
@@ -185,19 +186,19 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 
 func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 	if err := json.NewEncoder(w).Encode(h.budgerigar.Used()); err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 	}
 }
 
 func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 	if err := json.NewEncoder(w).Encode(h.budgerigar.Unused()); err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 	}
 }
 
 func (h *RestServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
 	if err := json.NewEncoder(w).Encode(h.budgerigar.All()); err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 	}
 }
 
@@ -210,7 +211,7 @@ func (h *RestServer) PurgeStubs(w http.ResponseWriter, _ *http.Request) {
 func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 	query, err := stuber.NewQuery(r)
 	if err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 
 		return
 	}
@@ -220,20 +221,20 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 	result, err := h.budgerigar.FindByQuery(query)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
-		h.writeResponseError(err, w)
+		h.writeResponseError(w, err)
 
 		return
 	}
 
 	if result.Found() == nil {
 		w.WriteHeader(http.StatusNotFound)
-		h.writeResponseError(stubNotFoundError(query, result), w)
+		h.writeResponseError(w, stubNotFoundError(query, result))
 
 		return
 	}
 
 	if err := json.NewEncoder(w).Encode(result.Found().Output); err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 	}
 }
 
@@ -241,26 +242,33 @@ func (h *RestServer) FindByID(w http.ResponseWriter, _ *http.Request, uuid rest.
 	stub := h.budgerigar.FindByID(uuid)
 	if stub == nil {
 		w.WriteHeader(http.StatusNotFound)
+		h.writeResponse(w, map[string]string{
+			"error": fmt.Sprintf("Stub with ID '%s' not found", uuid),
+		})
 
 		return
 	}
 
 	if err := json.NewEncoder(w).Encode(stub); err != nil {
-		h.responseError(err, w)
+		h.responseError(w, err)
 	}
 }
 
-func (h *RestServer) responseError(err error, w http.ResponseWriter) {
+func (h *RestServer) responseError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
 
-	h.writeResponseError(err, w)
+	h.writeResponseError(w, err)
 }
 
-func (h *RestServer) writeResponseError(err error, w http.ResponseWriter) {
-	if err := json.NewEncoder(w).Encode(map[string]string{
+func (h *RestServer) writeResponseError(w http.ResponseWriter, err error) {
+	h.writeResponse(w, map[string]string{
 		"error": err.Error(),
-	}); err != nil {
-		h.responseError(err, w)
+	})
+}
+
+func (h *RestServer) writeResponse(w http.ResponseWriter, data any) {
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		h.responseError(w, err)
 	}
 }
 
@@ -275,11 +283,11 @@ func validateStub(stub *stuber.Stub) error {
 	}
 
 	if stub.Input.Contains == nil && stub.Input.Equals == nil && stub.Input.Matches == nil {
-		return errors.New("input cannot be empty") //nolint:err113
+		return errors.New("input cannot be empty")
 	}
 
 	if stub.Output.Error == "" && stub.Output.Data == nil && stub.Output.Code == nil {
-		return errors.New("output cannot be empty") //nolint:err113
+		return errors.New("output cannot be empty")
 	}
 
 	return nil
