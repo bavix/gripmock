@@ -6,12 +6,8 @@ require (
 	github.com/bavix/features v1.0.2
 	github.com/bavix/gripmock-sdk-go v1.1.0
 	github.com/bavix/gripmock-ui v1.0.0
-<<<<<<< HEAD
-	github.com/bavix/gripmock/protogen v0.0.0-20250407235529-bd97f6ee5c19
-=======
-	github.com/bavix/gripmock/protogen v0.0.0-20250402220343-cd0b4ee9f9bd
+	github.com/bavix/gripmock/protogen v0.0.0-20250408074646-6113b98e331d
 	github.com/cockroachdb/errors v1.11.3
->>>>>>> 8fc0a97 (stub not found fix response)
 	github.com/cristalhq/base64 v0.1.2
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/goccy/go-yaml v1.17.1
@@ -39,34 +35,25 @@ require (
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/getsentry/sentry-go v0.27.0 // indirect
+	github.com/felixge/httpsnoop v1.0.3 // indirect
+	github.com/getsentry/sentry-go v0.31.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gripmock/deeply v1.2.5 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
-<<<<<<< HEAD
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	google.golang.org/genproto v0.0.0-20250407143221-ac9807e6c755 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250407143221-ac9807e6c755 // indirect
-	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
-=======
-	golang.org/x/net v0.38.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
-	google.golang.org/genproto v0.0.0-20250324211829-b45e905df463 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
->>>>>>> 8fc0a97 (stub not found fix response)
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
