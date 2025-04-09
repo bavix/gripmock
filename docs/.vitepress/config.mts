@@ -65,7 +65,7 @@ export default defineConfig({
           { text: 'JSON', link: '/guide/stubs/json' },
           { text: 'YAML', link: '/guide/stubs/yaml' },
           { text: 'Benefits YAML', link: '/guide/stubs/benefits-yaml' },
-          { text: 'Why IDs are crucial', link: '/guide/stubs/why-ids-are-crucial' }
+          { text: 'Why IDs Are Critical', link: '/guide/stubs/why-ids-are-crucial' }
         ],
         collapsed: false,
       },
