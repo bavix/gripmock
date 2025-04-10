@@ -14,7 +14,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/gripmock/environment v1.1.0
+	github.com/gripmock/environment v1.1.1
 	github.com/gripmock/grpc-interceptors v1.1.0
 	github.com/gripmock/shutdown v1.1.0
 	github.com/gripmock/stuber v1.2.2
