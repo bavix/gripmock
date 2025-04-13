@@ -51,9 +51,8 @@ func (s *StubWatcher) Watch(ctx context.Context, folderPath string) (<-chan stri
 	}
 
 	zerolog.Ctx(ctx).Info().
-		Str("folder", folderPath).
 		Str("type", s.watcherType).
-		Msg("Watching stub files")
+		Msg("Tracking changes in stubs")
 
 	if s.watcherType == string(environment.WatcherFSNotify) {
 		return s.notify(ctx, folderPath)
@@ -89,7 +88,7 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 					zerolog.Ctx(ctx).
 						Debug().
 						Str("path", event.Name).
-						Msg("updating stub")
+						Msg("Updating stub")
 
 					ch <- event.Name
 				}
@@ -108,7 +107,7 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 
 		zerolog.Ctx(ctx).Err(watcher.Add(currentPath)).
 			Str("path", currentPath).
-			Msg("watching stub directory")
+			Msg("Adding directory to watcher")
 
 		return nil
 	})
@@ -120,6 +119,11 @@ func (s *StubWatcher) ticker(ctx context.Context, folderPath string) (<-chan str
 	ch := make(chan string)
 
 	stubFiles := make(map[string]time.Time)
+
+	zerolog.Ctx(ctx).
+		Info().
+		Str("interval", s.interval.String()).
+		Msg("Starting stub ticker watcher")
 
 	go func() {
 		ticker := time.NewTicker(s.interval)
@@ -147,7 +151,7 @@ func (s *StubWatcher) ticker(ctx context.Context, folderPath string) (<-chan str
 					zerolog.Ctx(ctx).
 						Debug().
 						Str("path", currentPath).
-						Msg("updating stub")
+						Msg("Updating stub")
 
 					ch <- currentPath
 

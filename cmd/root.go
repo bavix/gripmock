@@ -34,7 +34,7 @@ var rootCmd = &cobra.Command{
 
 		go func() {
 			if err := restServe(ctx, builder); err != nil {
-				zerolog.Ctx(ctx).Err(err).Msg("failed to start rest server")
+				zerolog.Ctx(ctx).Err(err).Msg("Failed to start rest server")
 			}
 		}()
 

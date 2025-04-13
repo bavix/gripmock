@@ -62,7 +62,7 @@ func (s *GRPCServer) newServer(ctx context.Context) (*exec.Cmd, chan error) {
 
 	// Start the command.
 	if err := run.Start(); err != nil {
-		zerolog.Ctx(ctx).Fatal().Err(err).Msg("unable to start gRPC service")
+		zerolog.Ctx(ctx).Fatal().Err(err).Msg("Unable to start gRPC service")
 	}
 
 	// Log the process ID.

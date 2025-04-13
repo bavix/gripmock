@@ -34,7 +34,7 @@ func ServerGenerate(ctx context.Context, param *proto.ProtocParam) error {
 	if _, err := os.Stat(param.Output()); os.IsNotExist(err) {
 		// Create output folder
 		if err := os.Mkdir(param.Output(), os.ModePerm); err != nil {
-			zerolog.Ctx(ctx).Fatal().Err(err).Msg("unable to create output folder")
+			zerolog.Ctx(ctx).Fatal().Err(err).Msg("Unable to create output folder")
 		}
 	}
 
