@@ -132,8 +132,7 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 		newIDs = append(newIDs, stub.ID)
 	}
 
-	if removedIDs := lo.Intersect(existingIDs, newIDs); len(removedIDs) > 0 {
-		s.storage.DeleteByID(removedIDs...)
+	if removedIDs := lo.Without(existingIDs, newIDs...); len(removedIDs) > 0 {
 	}
 
 	if len(stubs) > 0 {
