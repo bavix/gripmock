@@ -88,7 +88,7 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 					zerolog.Ctx(ctx).
 						Debug().
 						Str("path", event.Name).
-						Msg("updating stub")
+						Msg("Updating stub")
 
 					ch <- event.Name
 				}
@@ -151,7 +151,7 @@ func (s *StubWatcher) ticker(ctx context.Context, folderPath string) (<-chan str
 					zerolog.Ctx(ctx).
 						Debug().
 						Str("path", currentPath).
-						Msg("updating stub")
+						Msg("Updating stub")
 
 					ch <- currentPath
 

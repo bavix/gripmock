@@ -62,7 +62,7 @@ func main() {
 
 	lis, err := net.Listen(config.GRPCNetwork, config.GRPCAddr)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to listen")
+		logger.Fatal().Err(err).Msg("Failed to listen")
 	}
 
 	s := grpc.NewServer(
@@ -129,7 +129,7 @@ func main() {
 	}()
 
 	if err := s.Serve(lis); err != nil {
-		logger.Fatal().Err(err).Msg("failed to serve")
+		logger.Fatal().Err(err).Msg("Failed to serve")
 	}
 }
 
