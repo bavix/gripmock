@@ -51,9 +51,8 @@ func (s *StubWatcher) Watch(ctx context.Context, folderPath string) (<-chan stri
 	}
 
 	zerolog.Ctx(ctx).Info().
-		Str("folder", folderPath).
 		Str("type", s.watcherType).
-		Msg("Watching stub files")
+		Msg("Tracking changes in stubs")
 
 	if s.watcherType == string(environment.WatcherFSNotify) {
 		return s.notify(ctx, folderPath)
