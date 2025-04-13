@@ -39,7 +39,7 @@ jobs:
           echo "$(pwd)" >> $GITHUB_PATH
 
           if [ ! -f grpctestify.sh ]; then
-            curl -sSL https://raw.githubusercontent.com/gripmock/grpctestify/v0.0.7/grpctestify.sh -o grpctestify.sh
+            curl -sSL https://raw.githubusercontent.com/gripmock/grpctestify/v0.0.8/grpctestify.sh -o grpctestify.sh
             chmod +x grpctestify.sh
           fi
 
