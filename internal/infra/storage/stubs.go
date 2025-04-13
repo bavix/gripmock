@@ -95,55 +95,49 @@ func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
 	}
 }
 
-func (s *Extender) readByFile(ctx context.Context, currentFile string) {
-	// Read the stub file and add it to the server's stub store.
-	stubs, err := s.readStub(currentFile)
+func (s *Extender) readByFile(ctx context.Context, filePath string) {
+	stubs, err := s.readStub(filePath)
 	if err != nil {
 		zerolog.Ctx(ctx).
 			Err(err).
-			Str("file", currentFile).
-			Msg("read file")
+			Str("file", filePath).
+			Msg("failed to read file")
 
 		return
 	}
 
-	// Inserts or updates the stubs in the server's stub store.
-	oldIDs, ok := s.mapIDsByFile[currentFile]
-	if !ok {
-		s.mapIDsByFile[currentFile] = s.storage.PutMany(stubs...)
+	existingIDs, exists := s.mapIDsByFile[filePath]
+	if !exists {
+		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
 
 		return
 	}
 
-	// Get the IDs of the stubs that are already in the file.
-	fillIDs := make(uuid.UUIDs, 0, len(stubs))
+	currentIDs := make(uuid.UUIDs, 0, len(stubs))
+
 	for _, stub := range stubs {
 		if stub.ID != uuid.Nil {
-			fillIDs = append(fillIDs, stub.ID)
+			currentIDs = append(currentIDs, stub.ID)
 		}
 	}
 
-	// Get the IDs of the stubs that are not in the file.
-	freeIDs := lo.Without(oldIDs, fillIDs...)
-
-	// Generate new IDs for the stubs that are not in the file.
+	unusedIDs := lo.Without(existingIDs, currentIDs...)
 	newIDs := make(uuid.UUIDs, 0, len(stubs))
+
 	for _, stub := range stubs {
 		if stub.ID == uuid.Nil {
-			stub.ID, freeIDs = genID(stub, freeIDs)
+			stub.ID, unusedIDs = genID(stub, unusedIDs)
 		}
 
 		newIDs = append(newIDs, stub.ID)
 	}
 
-	// Delete the stubs that have been removed from the file.
-	if deletes := lo.Intersect(oldIDs, newIDs); len(deletes) > 0 {
-		s.storage.DeleteByID(deletes...)
+	if removedIDs := lo.Intersect(existingIDs, newIDs); len(removedIDs) > 0 {
+		s.storage.DeleteByID(removedIDs...)
 	}
 
-	// Upsert the stubs that have been added to the file.
 	if len(stubs) > 0 {
-		s.mapIDsByFile[currentFile] = s.storage.PutMany(stubs...)
+		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
 	}
 }
 
