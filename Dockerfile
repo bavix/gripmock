@@ -1,6 +1,6 @@
 FROM alpine:3.21 AS protoc-builder
 
-ENV PROTOC_VERSION=30.0
+ENV PROTOC_VERSION=30.2
 ARG TARGETARCH
 
 #hadolint ignore=DL3018

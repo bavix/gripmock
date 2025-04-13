@@ -4,10 +4,6 @@ title: "Why IDs Are Critical for Effective Stub Management"
 
 # Why You Should Always Specify IDs in Stubs
 
-::: danger
-At the moment, GripMock does not complain if there are identical IDs in different stubs, but simply replaces one stub with another. This should be taken into account during development. [gripmock#360](https://github.com/bavix/gripmock/issues/360)
-:::
-
 Explicitly defining **UUID-based IDs** in your stub configurations unlocks powerful capabilities in GripMock, from precise stub management to seamless developer workflows. Here's why IDs are non-negotiable:
 
 ## 1. Universal Identification 🔍  
@@ -51,19 +47,24 @@ curl -X DELETE http://localhost:4771/api/stubs/7f746310-a470-43dc-9eeb-355dff50d
 ```  
 
 ## 4. Live Reloading Magic 🔄  
+
+::: warning
+Warning! If you do not specify ID in stubs, then when you change the file, the ID may change. Keep this in mind.
+:::
+
 Enable automatic updates **without restarting GripMock**:  
 ```bash  
 # .env configuration  
-STUB_WATCHER_ENABLED=true # Default value: false
-STUB_WATCHER_INTERVAL=500ms # Default value: 1s. Half-second checks  
+STUB_WATCHER_ENABLED=true # Default value: true
+STUB_WATCHER_INTERVAL=5000ms # Default value: 1s.
 STUB_WATCHER_TYPE=fsnotify # Filesystem events. Default value: fsnotify. Other options: timer.  
 ```  
 1. Edit `stubs/feature_x.yaml` in your IDE  
 2. GripMock auto-updates **only modified stubs**  
 3. No API calls or restarts needed  
 
-::: warning
-In the future, it is planned to save the generated ID for a specific file and apply it to the file automatically. When moving a file, delete the stub from the storage.
+::: info
+In timer mode, GripMock will not stupidly unload and load all the stabilizers from the file system every N seconds. Only files with a changed modification time will be transferred.
 :::
 
 ## 5. Collision Prevention ⚠️  
