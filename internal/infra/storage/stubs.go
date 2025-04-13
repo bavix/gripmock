@@ -133,6 +133,7 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 	}
 
 	if removedIDs := lo.Without(existingIDs, newIDs...); len(removedIDs) > 0 {
+		s.storage.DeleteByID(removedIDs...)
 	}
 
 	if len(stubs) > 0 {
