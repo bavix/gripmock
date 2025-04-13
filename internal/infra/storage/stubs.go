@@ -6,6 +6,8 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
@@ -23,6 +25,9 @@ type Extender struct {
 	ch           chan struct{}
 	watcher      *watcher.StubWatcher
 	mapIDsByFile map[string]uuid.UUIDs
+	muUniqIDs    sync.Mutex
+	uniqIDs      map[uuid.UUID]struct{}
+	loaded       atomic.Bool
 }
 
 func NewStub(
@@ -36,11 +41,14 @@ func NewStub(
 		ch:           make(chan struct{}),
 		watcher:      watcher,
 		mapIDsByFile: make(map[string]uuid.UUIDs),
+		uniqIDs:      make(map[uuid.UUID]struct{}),
+		loaded:       atomic.Bool{},
 	}
 }
 
 func (s *Extender) Wait() {
 	<-s.ch
+	s.loaded.Store(true)
 }
 
 func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
@@ -106,6 +114,8 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 		return
 	}
 
+	s.checkUniqIDs(ctx, filePath, stubs)
+
 	existingIDs, exists := s.mapIDsByFile[filePath]
 	if !exists {
 		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
@@ -138,6 +148,42 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 
 	if len(stubs) > 0 {
 		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
+	}
+}
+
+// checkUniqIDs checks for unique IDs in the provided stubs.
+// It logs a warning if a duplicate ID is found.
+// If the Extender has already been loaded, it skips the check.
+func (s *Extender) checkUniqIDs(ctx context.Context, filePath string, stubs []*stuber.Stub) {
+	// If the Extender is already loaded, no need to check for unique IDs.
+	if s.loaded.Load() {
+		return
+	}
+
+	// The mutex is not needed now, but it may be useful in the future.
+	// Lock the mutex to prevent concurrent access to the uniqIDs map.
+	s.muUniqIDs.Lock()
+	defer s.muUniqIDs.Unlock()
+
+	// Iterate over each stub to verify uniqueness of IDs.
+	for _, stub := range stubs {
+		// Skip stubs without an ID.
+		if stub.ID == uuid.Nil {
+			continue
+		}
+
+		// Check if the ID already exists in the uniqIDs map.
+		if _, exists := s.uniqIDs[stub.ID]; exists {
+			// Log a warning if a duplicate ID is found.
+			zerolog.Ctx(ctx).
+				Warn().
+				Str("file", filePath).
+				Str("id", stub.ID.String()).
+				Msg("duplicate stub ID")
+		}
+
+		// Mark the stub ID as seen by adding it to the uniqIDs map.
+		s.uniqIDs[stub.ID] = struct{}{}
 	}
 }
 
