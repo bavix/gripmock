@@ -31,6 +31,76 @@ services:
 - **Explicit Files**: List all required `.proto` files in the command to prevent `File not found` errors  
 - **Path Consistency**: Ensure volume paths (`./src/proto:/proto`) match import paths in your `.proto` files  
 
+## TLS Configuration 🔒
+
+GripMock requires reverse proxies for TLS termination. Here's how to implement it:
+
+### 1. Self-Signed Certificate Setup
+```bash
+# Generate certificates (valid for localhost)
+mkdir certs && openssl req \
+  -x509 -newkey rsa:2048 \
+  -keyout certs/key.pem -out certs/cert.pem \
+  -days 365 -nodes \
+  -subj "/CN=localhost"
+```
+
+### 2. Caddy Integration (Simplest)  
+**docker-compose.yml**:
+```yaml
+services:
+  gripmock:
+    # ... existing configuration ...
+
+  caddy:
+    image: caddy:latest
+    ports:
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./certs:/certs
+    depends_on:
+      - gripmock
+    # ... other configuration ...
+```
+
+**Caddyfile**:
+```
+localhost:443 {
+  tls /certs/cert.pem /certs/key.pem
+  reverse_proxy gripmock:4770 {
+    transport http {
+      tls_insecure_skip_verify
+    }
+  }
+}
+```
+
+### 3. Nginx Configuration  
+**nginx.conf**:
+```nginx
+server {
+  listen 443 ssl http2;
+  ssl_certificate /etc/nginx/certs/cert.pem;
+  ssl_certificate_key /etc/nginx/certs/key.pem;
+  
+  location / {
+    grpc_pass grpc://gripmock:4770;
+    grpc_ssl_verify off;
+  }
+}
+```
+
+### 4. Verification  
+Test secure endpoint:
+```bash
+grpcurl -proto helloworld.proto \
+  -cacert certs/cert.pem \
+  -d '{"name": "TLS Test"}' \
+  localhost:443 \
+  helloworld.Greeter/SayHello
+```
+
 ## Advanced Stub Configuration
 
 ### Parameterless Methods
