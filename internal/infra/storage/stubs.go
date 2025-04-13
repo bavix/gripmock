@@ -25,8 +25,8 @@ type Extender struct {
 	ch           chan struct{}
 	watcher      *watcher.StubWatcher
 	mapIDsByFile map[string]uuid.UUIDs
-	muUniqIDs    sync.Mutex
-	uniqIDs      map[uuid.UUID]struct{}
+	muUniqueIDs  sync.Mutex
+	uniqueIDs    map[uuid.UUID]struct{}
 	loaded       atomic.Bool
 }
 
@@ -41,7 +41,7 @@ func NewStub(
 		ch:           make(chan struct{}),
 		watcher:      watcher,
 		mapIDsByFile: make(map[string]uuid.UUIDs),
-		uniqIDs:      make(map[uuid.UUID]struct{}),
+		uniqueIDs:    make(map[uuid.UUID]struct{}),
 		loaded:       atomic.Bool{},
 	}
 }
@@ -162,8 +162,8 @@ func (s *Extender) checkUniqIDs(ctx context.Context, filePath string, stubs []*s
 
 	// The mutex is not needed now, but it may be useful in the future.
 	// Lock the mutex to prevent concurrent access to the uniqIDs map.
-	s.muUniqIDs.Lock()
-	defer s.muUniqIDs.Unlock()
+	s.muUniqueIDs.Lock()
+	defer s.muUniqueIDs.Unlock()
 
 	// Iterate over each stub to verify uniqueness of IDs.
 	for _, stub := range stubs {
@@ -173,7 +173,7 @@ func (s *Extender) checkUniqIDs(ctx context.Context, filePath string, stubs []*s
 		}
 
 		// Check if the ID already exists in the uniqIDs map.
-		if _, exists := s.uniqIDs[stub.ID]; exists {
+		if _, exists := s.uniqueIDs[stub.ID]; exists {
 			// Log a warning if a duplicate ID is found.
 			zerolog.Ctx(ctx).
 				Warn().
@@ -183,7 +183,7 @@ func (s *Extender) checkUniqIDs(ctx context.Context, filePath string, stubs []*s
 		}
 
 		// Mark the stub ID as seen by adding it to the uniqIDs map.
-		s.uniqIDs[stub.ID] = struct{}{}
+		s.uniqueIDs[stub.ID] = struct{}{}
 	}
 }
 
