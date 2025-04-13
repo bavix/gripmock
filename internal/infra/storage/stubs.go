@@ -7,8 +7,10 @@ import (
 	"path"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
 	"github.com/rs/zerolog"
+	"github.com/samber/lo"
 
 	"github.com/bavix/gripmock/internal/infra/watcher"
 	"github.com/bavix/gripmock/pkg/jsondecoder"
@@ -16,10 +18,11 @@ import (
 )
 
 type Extender struct {
-	storage   *stuber.Budgerigar
-	convertor *yaml2json.Convertor
-	ch        chan struct{}
-	watcher   *watcher.StubWatcher
+	storage      *stuber.Budgerigar
+	convertor    *yaml2json.Convertor
+	ch           chan struct{}
+	watcher      *watcher.StubWatcher
+	mapIDsByFile map[string]uuid.UUIDs
 }
 
 func NewStub(
@@ -28,10 +31,11 @@ func NewStub(
 	watcher *watcher.StubWatcher,
 ) *Extender {
 	return &Extender{
-		storage:   storage,
-		convertor: convertor,
-		ch:        make(chan struct{}),
-		watcher:   watcher,
+		storage:      storage,
+		convertor:    convertor,
+		ch:           make(chan struct{}),
+		watcher:      watcher,
+		mapIDsByFile: make(map[string]uuid.UUIDs),
 	}
 }
 
@@ -55,7 +59,7 @@ func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
 	}
 
 	for file := range ch {
-		s.readByFile(ctx, file, true)
+		s.readByFile(ctx, file)
 	}
 }
 
@@ -87,28 +91,71 @@ func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
 			continue
 		}
 
-		s.readByFile(ctx, path.Join(pathDir, file.Name()), false)
+		s.readByFile(ctx, path.Join(pathDir, file.Name()))
 	}
 }
 
-func (s *Extender) readByFile(ctx context.Context, currentFile string, update bool) {
-	// Read the stub file and add it to the server's stub store.
-	stubs, err := s.readStub(currentFile)
+func (s *Extender) readByFile(ctx context.Context, filePath string) {
+	stubs, err := s.readStub(filePath)
 	if err != nil {
 		zerolog.Ctx(ctx).
 			Err(err).
-			Str("file", currentFile).
-			Msg("read file")
+			Str("file", filePath).
+			Msg("failed to read file")
 
 		return
 	}
 
-	// Update or add the stubs to the server's stub store.
-	if update {
-		s.storage.UpdateMany(stubs...)
-	} else {
-		s.storage.PutMany(stubs...)
+	existingIDs, exists := s.mapIDsByFile[filePath]
+	if !exists {
+		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
+
+		return
 	}
+
+	currentIDs := make(uuid.UUIDs, 0, len(stubs))
+
+	for _, stub := range stubs {
+		if stub.ID != uuid.Nil {
+			currentIDs = append(currentIDs, stub.ID)
+		}
+	}
+
+	unusedIDs := lo.Without(existingIDs, currentIDs...)
+	newIDs := make(uuid.UUIDs, 0, len(stubs))
+
+	for _, stub := range stubs {
+		if stub.ID == uuid.Nil {
+			stub.ID, unusedIDs = genID(stub, unusedIDs)
+		}
+
+		newIDs = append(newIDs, stub.ID)
+	}
+
+	if removedIDs := lo.Without(existingIDs, newIDs...); len(removedIDs) > 0 {
+		s.storage.DeleteByID(removedIDs...)
+	}
+
+	if len(stubs) > 0 {
+		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
+	}
+}
+
+// genID generates a new ID for a stub if it does not already have one.
+// It also returns the remaining free IDs after generating the new ID.
+func genID(stub *stuber.Stub, freeIDs uuid.UUIDs) (uuid.UUID, uuid.UUIDs) {
+	// If the stub already has an ID, return it.
+	if stub.ID != uuid.Nil {
+		return stub.ID, freeIDs
+	}
+
+	// If there are free IDs, use the first one.
+	if len(freeIDs) > 0 {
+		return freeIDs[0], freeIDs[1:]
+	}
+
+	// Otherwise, generate a new ID.
+	return uuid.New(), nil
 }
 
 // readStub reads a stub file and returns a slice of stubs.

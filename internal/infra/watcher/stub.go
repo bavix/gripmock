@@ -119,7 +119,7 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 func (s *StubWatcher) ticker(ctx context.Context, folderPath string) (<-chan string, error) {
 	ch := make(chan string)
 
-	stubFiles := make(map[string]time.Time, 128) //nolint:mnd
+	stubFiles := make(map[string]time.Time)
 
 	go func() {
 		ticker := time.NewTicker(s.interval)
