@@ -65,8 +65,8 @@ github.com/gripmock/grpc-interceptors v1.1.0 h1:MgNwpSBmcw/W6DG/HVglaoUSzNk1IYWk
 github.com/gripmock/grpc-interceptors v1.1.0/go.mod h1:mQwMMzgWyYV/+aBASAXSOZ3jLfZUnuKFJY9qFFWvN+A=
 github.com/gripmock/shutdown v1.1.0 h1:GXeZAjNSzPXSAThaEhfw/MU3QupSb/a0Hdlii53CfeE=
 github.com/gripmock/shutdown v1.1.0/go.mod h1:IrxdYb+QcHdWyKtI1cyATanT4h//6Bg0I/7Btcs1vDo=
-github.com/gripmock/stuber v1.2.3 h1:UKEDzNsJiCtiCpcScfx513+AobNRoNHReWcvcOxlxV0=
-github.com/gripmock/stuber v1.2.3/go.mod h1:7wLUxBnWNx9JdehQByRkxqlg4iH/zdPkwYZbkhgV4cc=
+github.com/gripmock/stuber v1.2.4 h1:lJ6VBlrb0M6Hgiif7j7UEnWbU+EZ3P9Jv5jOOxeywbs=
+github.com/gripmock/stuber v1.2.4/go.mod h1:7wLUxBnWNx9JdehQByRkxqlg4iH/zdPkwYZbkhgV4cc=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/jhump/protoreflect v1.17.0 h1:qOEr613fac2lOuTgWN4tPAtLL7fUSbuJL5X5XumQh94=
