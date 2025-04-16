@@ -6,7 +6,7 @@ require (
 	github.com/bavix/features v1.0.2
 	github.com/bavix/gripmock-sdk-go v1.1.0
 	github.com/bavix/gripmock-ui v1.0.0
-	github.com/bavix/gripmock/protogen v0.0.0-20250409162427-498a2cb6fdd0
+	github.com/bavix/gripmock/protogen v0.0.0-20250413121235-40af299cffef
 	github.com/cockroachdb/errors v1.11.3
 	github.com/cristalhq/base64 v0.1.2
 	github.com/fsnotify/fsnotify v1.9.0
@@ -17,14 +17,14 @@ require (
 	github.com/gripmock/environment v1.1.1
 	github.com/gripmock/grpc-interceptors v1.1.0
 	github.com/gripmock/shutdown v1.1.0
-	github.com/gripmock/stuber v1.2.2
+	github.com/gripmock/stuber v1.2.4
 	github.com/jhump/protoreflect v1.17.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.49.1
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20250409194420-de1ac958c67a
+	google.golang.org/genproto/googleapis/api v0.0.0-20250414145226-207652e42e2e
 	google.golang.org/grpc v1.71.1
 	google.golang.org/protobuf v1.36.6
 )
@@ -54,7 +54,7 @@ require (
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
-	google.golang.org/genproto v0.0.0-20250409194420-de1ac958c67a // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250409194420-de1ac958c67a // indirect
+	google.golang.org/genproto v0.0.0-20250414145226-207652e42e2e // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250414145226-207652e42e2e // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
