@@ -8,6 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.24
+          cache: true
 
       - name: Set up cache for dependencies
         uses: actions/cache@v4
@@ -16,15 +21,6 @@ jobs:
             grpcurl
             grpctestify.sh
           key: deps-cache-${{ runner.os }}-v1
-
-      - name: Build Docker image with BuildKit
-        env:
-          DOCKER_BUILDKIT: 1
-        run: |
-          docker build --progress=plain \
-            --cache-from type=gha,scope=e2e \
-            --cache-to type=gha,mode=max,scope=e2e \
-            -t gripmock-server-local .
 
       - name: Install dependencies
         run: |
@@ -43,16 +39,15 @@ jobs:
             chmod +x grpctestify.sh
           fi
 
+      - name: Build GripMock Server
+        run: |
+          go build -o /tmp/gripmock .
+          chmod +x /tmp/gripmock
+
       - name: Start GripMock Server
         run: |
-          docker run -d --name gripmock-server \
-            -v ./examples:/proto \
-            -v ./examples:/stubs \
-            -p 4770:4770 \
-            gripmock-server-local \
-            --imports=/protobuf,/googleapis,protogen/proto/types/scalar,protogen/proto/types/specialized-utility,protogen/proto/types/composite-collection,protogen/proto/types/well-known-types,protogen/proto/types/extended-types \
-            --stub=/stubs \
-            /proto 
+          /tmp/gripmock --stub=examples examples &
+          echo $! > /tmp/gripmock.pid
           max_wait=60
           waited=0
           until grpcurl -plaintext localhost:4770 list; do
@@ -67,3 +62,8 @@ jobs:
       - name: Run examples
         run: |
           ./grpctestify.sh examples/
+
+      - name: Stop GripMock Server
+        run: |
+          kill $(cat /tmp/gripmock.pid) || true
+          rm /tmp/gripmock.pid || true

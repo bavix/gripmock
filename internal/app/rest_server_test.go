@@ -25,8 +25,8 @@ func TestStub(t *testing.T) {
 	}
 
 	api, _ := app.NewRestServer(
+		t.Context(),
 		stuber.NewBudgerigar(features.New()),
-		nil,
 		nil,
 	)
 

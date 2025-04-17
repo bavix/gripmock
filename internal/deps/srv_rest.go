@@ -18,15 +18,10 @@ func (b *Builder) RestServe(
 	ctx context.Context,
 	stubPath string,
 ) (*http.Server, error) {
-	reflector, err := b.reflector()
-	if err != nil {
-		return nil, err
-	}
-
 	extender := b.Extender()
 	go extender.ReadFromPath(ctx, stubPath)
 
-	apiServer, err := app.NewRestServer(b.Budgerigar(), extender, reflector)
+	apiServer, err := app.NewRestServer(ctx, b.Budgerigar(), extender)
 	if err != nil {
 		return nil, err
 	}

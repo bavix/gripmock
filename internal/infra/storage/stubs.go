@@ -46,9 +46,13 @@ func NewStub(
 	}
 }
 
-func (s *Extender) Wait() {
-	<-s.ch
-	s.loaded.Store(true)
+func (s *Extender) Wait(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+		return
+	case <-s.ch:
+		s.loaded.Store(true)
+	}
 }
 
 func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
@@ -67,6 +71,11 @@ func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
 	}
 
 	for file := range ch {
+		zerolog.Ctx(ctx).
+			Debug().
+			Str("path", file).
+			Msg("Updating stub")
+
 		s.readByFile(ctx, file)
 	}
 }
@@ -110,6 +119,11 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 			Err(err).
 			Str("file", filePath).
 			Msg("failed to read file")
+
+		if existingIDs, exists := s.mapIDsByFile[filePath]; exists {
+			s.storage.DeleteByID(existingIDs...)
+			delete(s.mapIDsByFile, filePath)
+		}
 
 		return
 	}

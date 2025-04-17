@@ -85,11 +85,6 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 				stubPath := path.Join(folderPath, event.Name)
 
 				if isStub(stubPath) {
-					zerolog.Ctx(ctx).
-						Debug().
-						Str("path", event.Name).
-						Msg("Updating stub")
-
 					ch <- event.Name
 				}
 			}
@@ -147,11 +142,6 @@ func (s *StubWatcher) ticker(ctx context.Context, folderPath string) (<-chan str
 					if lastModifyTime, ok := stubFiles[currentPath]; ok && info.ModTime().Equal(lastModifyTime) {
 						return nil
 					}
-
-					zerolog.Ctx(ctx).
-						Debug().
-						Str("path", currentPath).
-						Msg("Updating stub")
 
 					ch <- currentPath
 

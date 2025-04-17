@@ -7,8 +7,8 @@ github.com/bavix/gripmock-sdk-go v1.1.0 h1:BuF/t0NU62v5qYFK2K+J+qypMGCFwM1y5Ixan
 github.com/bavix/gripmock-sdk-go v1.1.0/go.mod h1:ONC39GmCZ33Oco1gEAy6gdiGzr99BTSF9AG0LRsTu5M=
 github.com/bavix/gripmock-ui v1.0.0 h1:70G3xcFlhv0fw5yZixjGOROiKuMJHGbDg3qCsGWLA7s=
 github.com/bavix/gripmock-ui v1.0.0/go.mod h1:XEH4YYEKL+wEDtONntoWm6JxjbVWzl7XtDYztUTBfeA=
-github.com/bavix/gripmock/protogen v0.0.0-20250413121235-40af299cffef h1:bbP7+v2nPEPLwUhbl/hhuztcE5g9S1msV1X9rw/iB3c=
-github.com/bavix/gripmock/protogen v0.0.0-20250413121235-40af299cffef/go.mod h1:3wEcWlnUUHVhDibbqgAjnvLgN1wwapBNzmeCWeqjP9o=
+github.com/bavix/gripmock/protogen v0.0.0-20250416180900-dbd31b27099f h1:pOmbbqgd+gPUY39RbtUU7kPj80YnTxDrCqv5E2ANJDE=
+github.com/bavix/gripmock/protogen v0.0.0-20250416180900-dbd31b27099f/go.mod h1:fuZss2hYp0EM6mIwP/6LSF0WTovO6iW599XDULCqpNQ=
 github.com/bmatcuk/doublestar v1.1.1/go.mod h1:UD6OnuiIn0yFxxA2le/rnRU1G4RaI4UvFv1sNto9p6w=
 github.com/bufbuild/protocompile v0.14.1 h1:iA73zAf/fyljNjQKwYzUHD6AD4R8KMasmwa/FBatYVw=
 github.com/bufbuild/protocompile v0.14.1/go.mod h1:ppVdAIhbr2H8asPk6k4pY7t9zB1OU5DoEw9xY/FUi1c=
@@ -69,8 +69,6 @@ github.com/gripmock/stuber v1.2.4 h1:lJ6VBlrb0M6Hgiif7j7UEnWbU+EZ3P9Jv5jOOxeywbs
 github.com/gripmock/stuber v1.2.4/go.mod h1:7wLUxBnWNx9JdehQByRkxqlg4iH/zdPkwYZbkhgV4cc=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/jhump/protoreflect v1.17.0 h1:qOEr613fac2lOuTgWN4tPAtLL7fUSbuJL5X5XumQh94=
-github.com/jhump/protoreflect v1.17.0/go.mod h1:h9+vUUL38jiBzck8ck+6G/aeMX8Z4QUY/NiJPwPNi+8=
 github.com/juju/gnuflag v0.0.0-20171113085948-2ce1bb71843d/go.mod h1:2PavIy+JPciBPrBUjwbNvtwB6RQlve+hkpll6QSNmOE=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=

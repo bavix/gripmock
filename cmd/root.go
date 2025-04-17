@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"context"
+	"net/http"
 	"os"
 
+	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
@@ -12,7 +14,6 @@ import (
 )
 
 var (
-	outputFlag  string
 	stubFlag    string
 	importsFlag []string
 	version     = "development"
@@ -38,18 +39,41 @@ var rootCmd = &cobra.Command{
 			}
 		}()
 
-		return builder.GRPCServe(ctx, proto.NewProtocParam(args, outputFlag, importsFlag))
+		return builder.GRPCServe(ctx, proto.New(args, importsFlag))
 	},
 }
 
-func init() {
-	rootCmd.Flags().StringVarP(
-		&outputFlag,
-		"output",
-		"o",
-		os.Getenv("GOPATH")+"/src/grpc",
-		"Server generation directory server.go")
+func restServe(ctx context.Context, builder *deps.Builder) error {
+	srv, err := builder.RestServe(ctx, stubFlag)
+	if err != nil {
+		return err
+	}
 
+	ch := make(chan error)
+	defer close(ch)
+
+	go func() {
+		zerolog.Ctx(ctx).
+			Info().
+			Str("addr", builder.Config().HTTPAddr).
+			Msg("Serving stub-manager")
+
+		ch <- srv.ListenAndServe()
+	}()
+
+	select {
+	case err = <-ch:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func init() {
 	rootCmd.Flags().StringVarP(
 		&stubFlag,
 		"stub",
@@ -61,7 +85,7 @@ func init() {
 		&importsFlag,
 		"imports",
 		"i",
-		[]string{"/protobuf", "/googleapis"},
+		[]string{},
 		"Path to import proto-libraries")
 }
 

@@ -1,0 +1,34 @@
+# ConvertVolume Success
+- service: UnitConversionService
+  method: ConvertVolume
+  input:
+    equals:
+      value: 1
+      fromUnit: GALLONS
+      toUnit: LITERS
+  output:
+    data:
+      converted_value: 3.78541
+
+# ConvertVolume Error (division by zero)
+- service: UnitConversionService
+  method: ConvertVolume
+  input:
+    equals:
+      value: 0
+      fromUnit: LITERS
+      toUnit: MILLILITERS
+  output:
+    error: "Conversion factor undefined"
+    code: 3
+
+# ConvertVolume Error (missing fromUnit)
+- service: UnitConversionService
+  method: ConvertVolume
+  input:
+    equals:
+      value: 2
+      toUnit: FLUID_OUNCES
+  output:
+    error: "fromUnit must be specified"
+    code: 3
