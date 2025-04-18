@@ -1,0 +1,14 @@
+--- ENDPOINT ---
+unitconverter.v1.UnitConversionService/ConvertLength
+
+--- REQUEST ---
+{
+  "value": 3.28084,
+  "fromUnit": "FEET",
+  "toUnit": "METERS"
+}
+
+--- RESPONSE ---
+{
+  "convertedValue": 1
+}

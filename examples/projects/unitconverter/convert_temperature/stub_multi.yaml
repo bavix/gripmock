@@ -1,23 +1,11 @@
-# ConvertTemperature Success
-- service: UnitConversionService
-  method: ConvertTemperature
-  input:
-    equals:
-      value: 100
-      fromUnit: CELSIUS
-      toUnit: FAHRENHEIT
-  output:
-    data:
-      converted_value: 212.0
-
 # ConvertTemperature Error (invalid conversion)
 - service: UnitConversionService
   method: ConvertTemperature
   input:
     equals:
       value: -300
-      fromUnit: CELSIUS
-      toUnit: KELVIN
+      from_unit: CELSIUS
+      to_unit: KELVIN
   output:
     error: "Temperature below absolute zero"
     code: 3
@@ -28,7 +16,7 @@
   input:
     equals:
       value: 50
-      toUnit: FAHRENHEIT
+      to_unit: FAHRENHEIT
   output:
     error: "fromUnit must be specified"
     code: 3

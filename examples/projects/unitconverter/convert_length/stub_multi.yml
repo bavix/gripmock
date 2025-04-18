@@ -1,22 +1,10 @@
-# ConvertLength Success
-- service: UnitConversionService
-  method: ConvertLength
-  input:
-    equals:
-      value: 3.28084
-      fromUnit: FEET
-      toUnit: METERS
-  output:
-    data:
-      converted_value: 1.0
-
 # ConvertLength Error (missing toUnit)
 - service: UnitConversionService
   method: ConvertLength
   input:
     equals:
       value: 10
-      fromUnit: METERS
+      from_unit: METERS
   output:
     error: "toUnit must be specified"
     code: 3  # INVALID_ARGUMENT
@@ -27,7 +15,7 @@
   input:
     equals:
       value: 5
-      toUnit: METERS
+      to_unit: METERS
   output:
     error: "fromUnit must be specified"
     code: 3

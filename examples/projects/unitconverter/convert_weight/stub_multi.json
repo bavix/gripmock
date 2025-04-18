@@ -1,0 +1,31 @@
+[
+    {
+        "service": "UnitConversionService",
+        "method": "ConvertWeight",
+        "input": {
+            "equals": {
+                "value": 100,
+                "from_unit": "OUNCES"
+            }
+        },
+        "output": {
+            "error": "toUnit must be specified",
+            "code": 3
+        }
+    },
+    {
+        "service": "UnitConversionService",
+        "method": "ConvertWeight",
+        "input": {
+            "equals": {
+                "value": -5,
+                "from_unit": "KILOGRAMS",
+                "to_unit": "POUNDS"
+            }
+        },
+        "output": {
+            "error": "Value cannot be negative",
+            "code": 3
+        }
+    }
+]

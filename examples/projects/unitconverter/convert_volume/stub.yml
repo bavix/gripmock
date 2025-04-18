@@ -4,8 +4,8 @@
   input:
     equals:
       value: 1
-      fromUnit: GALLONS
-      toUnit: LITERS
+      from_unit: GALLONS
+      to_unit: LITERS
   output:
     data:
       converted_value: 3.78541
@@ -15,9 +15,8 @@
   method: ConvertVolume
   input:
     equals:
-      value: 0
-      fromUnit: LITERS
-      toUnit: MILLILITERS
+      from_unit: LITERS
+      to_unit: MILLILITERS
   output:
     error: "Conversion factor undefined"
     code: 3
@@ -28,7 +27,7 @@
   input:
     equals:
       value: 2
-      toUnit: FLUID_OUNCES
+      to_unit: FLUID_OUNCES
   output:
     error: "fromUnit must be specified"
     code: 3
