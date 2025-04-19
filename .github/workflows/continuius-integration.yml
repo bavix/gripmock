@@ -84,11 +84,12 @@ jobs:
           go tool covdata textfmt -i=/tmp/cover-all -o coverage.txt
           go tool covdata percent -i=/tmp/cover-all
 
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@v2
+      - name: Upload coverage to CodeClimate
+        uses: paambaati/codeclimate-action@v3.2.0
+        env:
+          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: coverage.txt
+          coverageCommand: cat coverage.txt
 
       - name: Upload coverage report as artifact
         uses: actions/upload-artifact@v4

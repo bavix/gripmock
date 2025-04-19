@@ -1,11 +1,11 @@
 ![GripMock](https://github.com/bavix/gripmock/assets/5111255/d1fc10ef-2149-4302-8e24-aef4fdfe043c)
 
+[![Maintainability](https://api.codeclimate.com/v1/badges/0002472a3a0b008dabe5/maintainability)](https://codeclimate.com/github/bavix/gripmock/maintainability) [![Test Coverage](https://api.codeclimate.com/v1/badges/0002472a3a0b008dabe5/test_coverage)](https://codeclimate.com/github/bavix/gripmock/test_coverage)
+
 # GripMock
 GripMock is a **mock server** for **gRPC** services. It's using a `.proto` file to generate implementation of gRPC service for you.
 You can use gripmock for setting up end-to-end testing or as a dummy server in a software development phase.
 The server implementation is in GoLang but the client can be any programming language that support gRPC.
-
-[![Coverage Status](https://coveralls.io/repos/github/bavix/gripmock/badge.svg?branch=master)](https://coveralls.io/github/bavix/gripmock?branch=master)
 
 [[Documentation]](https://bavix.github.io/gripmock/)
 
