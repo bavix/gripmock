@@ -515,18 +515,6 @@ func (s *GRPCServer) Serve(ctx context.Context) error {
 
 	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_NOT_SERVING)
 
-	go func() {
-		s.waiter.Wait(ctx)
-
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_SERVING)
-			logger.Info().Msg("gRPC server is ready to accept requests")
-		}
-	}()
-
 	healthgrpc.RegisterHealthServer(server, healthcheck)
 	reflection.Register(server)
 
@@ -580,9 +568,23 @@ func (s *GRPCServer) Serve(ctx context.Context) error {
 				}
 
 				server.RegisterService(&serviceDesc, nil)
+
+				zerolog.Ctx(ctx).Info().Str("service", serviceDesc.ServiceName).Msg("Registered gRPC service")
 			}
 		}
 	}
+
+	go func() {
+		s.waiter.Wait(ctx)
+
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_SERVING)
+			logger.Info().Msg("gRPC server is ready to accept requests")
+		}
+	}()
 
 	if err := server.Serve(listener); err != nil {
 		if errors.Is(err, context.Canceled) {

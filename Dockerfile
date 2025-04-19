@@ -13,6 +13,8 @@ RUN apk add --no-cache binutils \
     && apk del binutils \
     && rm -rf /root/.cache /go/pkg /tmp/* /var/cache/*
 
+RUN chmod +x /gripmock-src/entrypoint.sh && chmod +x /usr/local/bin/gripmock
+
 FROM alpine:3.21
 
 LABEL org.opencontainers.image.source="https://github.com/bavix/gripmock"
@@ -21,8 +23,6 @@ LABEL org.opencontainers.image.licenses="MIT,Apache-2.0"
 
 COPY --from=builder /usr/local/bin/gripmock /usr/local/bin/gripmock
 COPY --from=builder /gripmock-src/entrypoint.sh /entrypoint.sh
-
-RUN chmod +x /entrypoint.sh && chmod +x /usr/local/bin/gripmock
 
 EXPOSE 4770 4771
 

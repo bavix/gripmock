@@ -3,7 +3,7 @@ package watcher
 import (
 	"context"
 	"io/fs"
-	"path"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -82,9 +82,13 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 					continue
 				}
 
-				stubPath := path.Join(folderPath, event.Name)
+				if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
+					zerolog.Ctx(ctx).Err(watcher.Add(event.Name)).
+						Str("path", event.Name).
+						Msg("Adding directory to watcher")
+				}
 
-				if isStub(stubPath) {
+				if isStub(event.Name) {
 					ch <- event.Name
 				}
 			}
