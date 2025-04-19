@@ -39,15 +39,16 @@ jobs:
             chmod +x grpctestify.sh
           fi
 
-      - name: Build GripMock Server
+      - name: Build GripMock Server with coverage
         run: |
-          go build -o /tmp/gripmock .
+          mkdir -p /tmp/cover
+          GOCOVERDIR=/tmp/cover go build -cover -o /tmp/gripmock .
           chmod +x /tmp/gripmock
 
       - name: Start GripMock Server
         run: |
           find . -name "*.proto.src" -type f -delete
-          /tmp/gripmock --stub=examples examples &
+          GOCOVERDIR=/tmp/cover /tmp/gripmock --stub=examples examples &
           echo $! > /tmp/gripmock.pid
           /tmp/gripmock check --timeout=60s --silent
 
@@ -55,7 +56,26 @@ jobs:
         run: |
           ./grpctestify.sh examples/
 
-      - name: Stop GripMock Server
+      - name: Stop GripMock Server gracefully
         run: |
-          kill $(cat /tmp/gripmock.pid) || true
+          kill -INT $(cat /tmp/gripmock.pid) || true
+          sleep 5
+          kill -0 $(cat /tmp/gripmock.pid) || true
           rm /tmp/gripmock.pid || true
+
+      - name: Generate coverage report
+        run: |
+          go tool covdata textfmt -i=/tmp/cover -o coverage.txt
+          go tool covdata percent -i=/tmp/cover
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: coverage.txt
+
+      - name: Upload coverage report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.txt
