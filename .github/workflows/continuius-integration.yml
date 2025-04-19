@@ -90,6 +90,14 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: coverage.txt
 
+      - name: Upload coverage to CodeClimate
+        uses: paambaati/codeclimate-action@v9.0.0
+        env:
+          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+        with:
+          coverageLocations: |
+            ${{github.workspace}}/coverage.txt:lcov
+
       - name: Upload coverage report as artifact
         uses: actions/upload-artifact@v4
         with:
