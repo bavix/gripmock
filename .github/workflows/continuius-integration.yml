@@ -56,7 +56,11 @@ jobs:
           find . -name "*.proto.src" -type f -delete
           GOCOVERDIR=/tmp/cover-e2e /tmp/gripmock --stub=examples examples &
           echo $! > /tmp/gripmock.pid
-          /tmp/gripmock check --timeout=60s --silent
+
+      - name: Run gripmock check with coverage
+        run: |
+          mkdir -p /tmp/cover-check
+          GOCOVERDIR=/tmp/cover-check /tmp/gripmock check --timeout=60s --silent
 
       - name: Run examples
         run: |
@@ -68,10 +72,12 @@ jobs:
           sleep 5
           rm /tmp/gripmock.pid || true
 
-      - name: Merge coverage data
+      - name: Merge all coverage data
         run: |
           mkdir -p /tmp/cover-all
-          go tool covdata merge -i=/tmp/cover-e2e,/tmp/cover-unit -o=/tmp/cover-all
+          go tool covdata merge \
+            -i=/tmp/cover-unit,/tmp/cover-e2e,/tmp/cover-check \
+            -o=/tmp/cover-all
 
       - name: Generate coverage report
         run: |
