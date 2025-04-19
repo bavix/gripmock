@@ -61,6 +61,7 @@ func (s *StubWatcher) Watch(ctx context.Context, folderPath string) (<-chan stri
 	return s.ticker(ctx, folderPath)
 }
 
+//nolint:cyclop
 func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan string, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
