@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"reflect"
 	"slices"
 	"strings"
@@ -475,24 +474,14 @@ func NewGRPCServer(
 	}
 }
 
-//nolint:gocognit,cyclop,funlen
-func (s *GRPCServer) Serve(ctx context.Context) error {
-	listener, err := (&net.ListenConfig{}).Listen(ctx, s.network, s.address)
+//nolint:cyclop,funlen
+func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
+	descriptors, err := protoset.Build(ctx, s.params.Imports(), s.params.ProtoPath())
 	if err != nil {
-		return errors.Wrap(err, "failed to listen")
+		return nil, errors.Wrap(err, "failed to build descriptors")
 	}
 
 	logger := zerolog.Ctx(ctx)
-
-	logger.Info().
-		Str("addr", s.address).
-		Str("network", s.network).
-		Msg("Serving gRPC")
-
-	descriptors, err := protoset.Build(ctx, s.params.Imports(), s.params.ProtoPath())
-	if err != nil {
-		return errors.Wrap(err, "failed to build descriptors")
-	}
 
 	server := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
@@ -506,12 +495,6 @@ func (s *GRPCServer) Serve(ctx context.Context) error {
 	)
 
 	healthcheck := health.NewServer()
-
-	go func() {
-		<-ctx.Done()
-		healthcheck.Shutdown()
-		server.GracefulStop()
-	}()
 
 	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_NOT_SERVING)
 
@@ -586,15 +569,7 @@ func (s *GRPCServer) Serve(ctx context.Context) error {
 		}
 	}()
 
-	if err := server.Serve(listener); err != nil {
-		if errors.Is(err, context.Canceled) {
-			return nil
-		}
-
-		return errors.Wrap(err, "failed to serve")
-	}
-
-	return nil
+	return server, nil
 }
 
 func getMessageDescriptor(messageType string) (protoreflect.MessageDescriptor, error) { //nolint:ireturn

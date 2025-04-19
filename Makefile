@@ -16,10 +16,7 @@ lint:
 lint-fix:
 	make lint args=--fix
 
-intgr-test: build
-	docker compose -f deployments/docker-compose/docker-compose.yml up
-
-gen:
+gen-rest:
 	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest -generate gorilla,types -package rest ${OPENAPI} > internal/domain/rest/api.gen.go
 
 gen-imports:

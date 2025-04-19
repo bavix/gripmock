@@ -44,7 +44,7 @@ func (b *Builder) RestServe(
 
 	const timeout = time.Millisecond * 25
 
-	return &http.Server{
+	srv := &http.Server{
 		Addr:              b.config.HTTPAddr,
 		ReadHeaderTimeout: timeout,
 		BaseContext: func(_ net.Listener) context.Context {
@@ -58,5 +58,9 @@ func (b *Builder) RestServe(
 			}),
 			handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodDelete}),
 		)(router),
-	}, nil
+	}
+
+	b.ender.Add(srv.Shutdown)
+
+	return srv, nil
 }

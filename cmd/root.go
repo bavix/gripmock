@@ -39,6 +39,8 @@ var rootCmd = &cobra.Command{
 			}
 		}()
 
+		defer builder.Shutdown(context.WithoutCancel(ctx))
+
 		return builder.GRPCServe(ctx, proto.New(args, importsFlag))
 	},
 }
@@ -49,28 +51,30 @@ func restServe(ctx context.Context, builder *deps.Builder) error {
 		return err
 	}
 
+	zerolog.Ctx(ctx).Info().Str("addr", srv.Addr).Msg("HTTP server is now running")
+
 	ch := make(chan error)
-	defer close(ch)
 
 	go func() {
-		zerolog.Ctx(ctx).
-			Info().
-			Str("addr", builder.Config().HTTPAddr).
-			Msg("Serving stub-manager")
+		defer close(ch)
 
-		ch <- srv.ListenAndServe()
+		select {
+		case <-ctx.Done():
+			if !errors.Is(ctx.Err(), context.Canceled) {
+				ch <- ctx.Err()
+			}
+
+			return
+		case ch <- srv.ListenAndServe():
+			return
+		}
 	}()
 
-	select {
-	case err = <-ch:
-		if errors.Is(err, http.ErrServerClosed) {
-			return nil
-		}
-
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
+	if err := <-ch; !errors.Is(err, http.ErrServerClosed) {
+		return errors.Wrap(err, "http server failed")
 	}
+
+	return nil
 }
 
 func init() {
