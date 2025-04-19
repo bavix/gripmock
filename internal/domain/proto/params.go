@@ -1,55 +1,21 @@
 package proto
 
-import (
-	"os"
-	"path/filepath"
-	"strings"
-)
-
-// ProtocParam represents the parameters for the protoc command.
-type ProtocParam struct {
-	// output is the output directory for the generated files.
-	output string
-
-	// protoPath is a list of paths to the proto files.
+type Arguments struct {
 	protoPath []string
-
-	// imports is a list of import paths.
-	imports []string
+	imports   []string
 }
 
-func NewProtocParam(protoPath []string, output string, imports []string) *ProtocParam {
-	return &ProtocParam{
-		protoPath: getFilePaths(protoPath),
-		output:    output,
+func New(protoPath []string, imports []string) *Arguments {
+	return &Arguments{
+		protoPath: protoPath,
 		imports:   imports,
 	}
 }
 
-func getFilePaths(paths []string) []string {
-	files := make([]string, 0, len(paths))
-
-	for _, path := range paths {
-		_ = filepath.Walk(path, func(p string, info os.FileInfo, err error) error {
-			if err == nil && !info.IsDir() && strings.HasSuffix(p, ".proto") {
-				files = append(files, p)
-			}
-
-			return nil
-		})
-	}
-
-	return files
-}
-
-func (p *ProtocParam) ProtoPath() []string {
+func (p *Arguments) ProtoPath() []string {
 	return p.protoPath
 }
 
-func (p *ProtocParam) Imports() []string {
+func (p *Arguments) Imports() []string {
 	return p.imports
-}
-
-func (p *ProtocParam) Output() string {
-	return p.output
 }

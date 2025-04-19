@@ -26,15 +26,6 @@ jobs:
       - name: Install jq
         run: sudo apt-get install -y jq
 
-      - name: Cache Slim
-        uses: actions/cache@v4
-        with:
-          path: /usr/local/bin/slim
-          key: ${{ runner.os }}-slim-${{ hashFiles('**/install-slim.sh') }}
-
-      - name: Install Slim
-        run: curl -sL https://raw.githubusercontent.com/slimtoolkit/slim/master/scripts/install-slim.sh | sudo -E bash -
-      
       -
         name: Docker meta
         id: meta
@@ -74,6 +65,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_LOGIN }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -87,11 +79,3 @@ jobs:
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      -
-        name: Build and push slim version
-        if: github.event_name != 'pull_request'
-        run: |
-          echo "$DOCKER_METADATA_OUTPUT_JSON" | jq -r '.tags[]' | while IFS= read -r tag; do
-            make build-manifest target_image="$tag"
-            docker manifest push "$tag-slim"
-          done

@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package unitconverter.v1;
+
+option go_package = "github.com/example/unitconverter/v1;unitconverterv1";
+
+// UnitConversionService provides multi-category unit conversion capabilities
+service UnitConversionService {
+  // Length conversions
+  rpc ConvertLength(ConvertLengthRequest) returns (ConvertLengthResponse) {}
+  
+  // Temperature conversions
+  rpc ConvertTemperature(ConvertTemperatureRequest) returns (ConvertTemperatureResponse) {}
+  
+  // Weight/Mass conversions
+  rpc ConvertWeight(ConvertWeightRequest) returns (ConvertWeightResponse) {}
+  
+  // Volume conversions
+  rpc ConvertVolume(ConvertVolumeRequest) returns (ConvertVolumeResponse) {}
+}
+
+/* Length conversion messages */
+message ConvertLengthRequest {
+  double value = 1;       // Value to convert
+  LengthUnit from_unit = 2; // Original unit
+  LengthUnit to_unit = 3;   // Target unit
+}
+
+message ConvertLengthResponse {
+  double converted_value = 1; // Result of conversion
+}
+
+enum LengthUnit {
+  LENGTH_UNIT_UNSPECIFIED = 0;
+  METERS = 1;
+  KILOMETERS = 2;
+  CENTIMETERS = 3;
+  MILLIMETERS = 4;
+  FEET = 5;
+  INCHES = 6;
+  MILES = 7;
+}
+
+/* Temperature conversion messages */
+message ConvertTemperatureRequest {
+  double value = 1;
+  TemperatureUnit from_unit = 2;
+  TemperatureUnit to_unit = 3;
+}
+
+message ConvertTemperatureResponse {
+  double converted_value = 1;
+}
+
+enum TemperatureUnit {
+  TEMPERATURE_UNIT_UNSPECIFIED = 0;
+  CELSIUS = 1;
+  FAHRENHEIT = 2;
+  KELVIN = 3;
+}
+
+/* Weight/Mass conversion messages */
+message ConvertWeightRequest {
+  double value = 1;
+  WeightUnit from_unit = 2;
+  WeightUnit to_unit = 3;
+}
+
+message ConvertWeightResponse {
+  double converted_value = 1;
+}
+
+enum WeightUnit {
+  WEIGHT_UNIT_UNSPECIFIED = 0;
+  KILOGRAMS = 1;
+  GRAMS = 2;
+  POUNDS = 3;
+  OUNCES = 4;
+}
+
+/* Volume conversion messages */
+message ConvertVolumeRequest {
+  double value = 1;
+  VolumeUnit from_unit = 2;
+  VolumeUnit to_unit = 3;
+}
+
+message ConvertVolumeResponse {
+  double converted_value = 1;
+}
+
+enum VolumeUnit {
+  VOLUME_UNIT_UNSPECIFIED = 0;
+  LITERS = 1;
+  MILLILITERS = 2;
+  GALLONS = 3;
+  FLUID_OUNCES = 4;
+}

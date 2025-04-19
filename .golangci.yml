@@ -10,6 +10,7 @@ linters:
     - paralleltest
     - varnamelen
     - wrapcheck
+    - funcorder
   settings:
     depguard:
       rules:

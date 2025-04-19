@@ -1,0 +1,14 @@
+--- ENDPOINT ---
+unitconverter.v1.UnitConversionService/ConvertVolume
+
+--- REQUEST ---
+{
+  "value": 2,
+  "toUnit": "FLUID_OUNCES"
+}
+
+--- ERROR ---
+{
+  "message": "fromUnit must be specified",
+  "code": 3
+}

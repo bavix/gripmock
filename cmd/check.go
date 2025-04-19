@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -29,6 +30,8 @@ var checkCmd = &cobra.Command{
 		builder := deps.NewBuilder(deps.WithDefaultConfig())
 		ctx, cancel := builder.SignalNotify(cmd.Context())
 		defer cancel()
+
+		defer builder.Shutdown(context.WithoutCancel(ctx))
 
 		ctx = builder.Logger(ctx)
 

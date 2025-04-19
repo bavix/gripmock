@@ -1,0 +1,14 @@
+--- ENDPOINT ---
+unitconverter.v1.UnitConversionService/ConvertWeight
+
+--- REQUEST ---
+{
+  "value": 1,
+  "fromUnit": "POUNDS",
+  "toUnit": "KILOGRAMS"
+}
+
+--- RESPONSE ---
+{
+  "convertedValue": 0.453592
+}

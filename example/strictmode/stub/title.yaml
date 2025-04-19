@@ -1,9 +1,0 @@
-service: GripMock
-method: SayTitleHello
-input:
-  ignoreArrayOrder: true
-  equals:
-    name: "GripMock Request"
-output:
-  data:
-    message: "OK"

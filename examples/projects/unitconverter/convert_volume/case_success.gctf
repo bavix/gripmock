@@ -1,0 +1,14 @@
+--- ENDPOINT ---
+unitconverter.v1.UnitConversionService/ConvertVolume
+
+--- REQUEST ---
+{
+  "value": 1,
+  "fromUnit": "GALLONS",
+  "toUnit": "LITERS"
+}
+
+--- RESPONSE ---
+{
+  "convertedValue": 3.78541
+}

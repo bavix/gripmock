@@ -1,0 +1,11 @@
+# ConvertTemperature Success
+- service: UnitConversionService
+  method: ConvertTemperature
+  input:
+    equals:
+      value: 100
+      from_unit: CELSIUS
+      to_unit: FAHRENHEIT
+  output:
+    data:
+      converted_value: 212.0

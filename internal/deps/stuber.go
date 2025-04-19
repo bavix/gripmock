@@ -9,13 +9,17 @@ import (
 )
 
 func (b *Builder) Budgerigar() *stuber.Budgerigar {
-	if b.budgerigar == nil {
+	b.budgerigarOnce.Do(func() {
 		b.budgerigar = stuber.NewBudgerigar(b.toggles())
-	}
+	})
 
 	return b.budgerigar
 }
 
 func (b *Builder) Extender() *storage.Extender {
-	return storage.NewStub(b.Budgerigar(), yaml2json.New(), watcher.NewStubWatcher(b.config))
+	b.extenderOnce.Do(func() {
+		b.extender = storage.NewStub(b.Budgerigar(), yaml2json.New(), watcher.NewStubWatcher(b.config))
+	})
+
+	return b.extender
 }
