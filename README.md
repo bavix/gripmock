@@ -5,6 +5,8 @@ GripMock is a **mock server** for **gRPC** services. It's using a `.proto` file 
 You can use gripmock for setting up end-to-end testing or as a dummy server in a software development phase.
 The server implementation is in GoLang but the client can be any programming language that support gRPC.
 
+[![Coverage Status](https://coveralls.io/repos/github/bavix/gripmock/badge.svg?branch=master)](https://coveralls.io/github/bavix/gripmock?branch=master)
+
 [[Documentation]](https://bavix.github.io/gripmock/)
 
 This service is a fork of the service [tokopedia/gripmock](https://github.com/tokopedia/gripmock), but you should choose our fork. And here are the reasons:
