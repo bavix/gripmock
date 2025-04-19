@@ -49,16 +49,7 @@ jobs:
           find . -name "*.proto.src" -type f -delete
           /tmp/gripmock --stub=examples examples &
           echo $! > /tmp/gripmock.pid
-          max_wait=60
-          waited=0
-          until grpcurl -plaintext localhost:4770 list; do
-            if [ $waited -ge $max_wait ]; then
-              echo "GripMock server failed to start within $max_wait seconds."
-              exit 1
-            fi
-            sleep 1
-            waited=$((waited + 1))
-          done
+          /tmp/gripmock check --timeout=60s --silent
 
       - name: Run examples
         run: |
