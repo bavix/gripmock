@@ -35,6 +35,8 @@ import (
 	"github.com/bavix/gripmock/pkg/grpccontext"
 )
 
+const serviceReflection = "grpc.reflection.v1.ServerReflection"
+
 type GRPCServer struct {
 	network    string
 	address    string
@@ -105,7 +107,7 @@ func (m *grpcMocker) newQuery(ctx context.Context, msg *dynamicpb.Message) stube
 		}
 	}
 
-	zerolog.Ctx(ctx).Debug().Interface("query", query).Msg("New query")
+	zerolog.Ctx(ctx).Debug().Interface("data", query).Msg("New query")
 
 	return query
 }
@@ -595,7 +597,12 @@ func LogUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInf
 	grpcPeer, _ := peer.FromContext(ctx)
 	service, method := splitMethodName(info.FullMethod)
 
-	event := zerolog.Ctx(ctx).Info().
+	level := zerolog.InfoLevel
+	if service == serviceReflection {
+		level = zerolog.DebugLevel
+	}
+
+	event := zerolog.Ctx(ctx).WithLevel(level).
 		Str("grpc.component", "server").
 		Str("grpc.method", method).
 		Str("grpc.method_type", "unary").
@@ -630,7 +637,12 @@ func LogStreamInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamSe
 	wrapped := &loggingStream{stream, []any{}, []any{}}
 	err := handler(srv, wrapped)
 
-	zerolog.Ctx(stream.Context()).Info().
+	level := zerolog.InfoLevel
+	if service == serviceReflection {
+		level = zerolog.DebugLevel
+	}
+
+	zerolog.Ctx(stream.Context()).WithLevel(level).
 		Str("grpc.component", "server").
 		Str("grpc.method", method).
 		Str("grpc.method_type", "stream").
