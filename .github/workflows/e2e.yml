@@ -46,6 +46,7 @@ jobs:
 
       - name: Start GripMock Server
         run: |
+          find . -name "*.proto.src" -type f -delete
           /tmp/gripmock --stub=examples examples &
           echo $! > /tmp/gripmock.pid
           max_wait=60
