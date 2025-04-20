@@ -31,6 +31,71 @@ services:
 - **Explicit Files**: List all required `.proto` files in the command to prevent `File not found` errors  
 - **Path Consistency**: Ensure volume paths (`./src/proto:/proto`) match import paths in your `.proto` files  
 
+## Using Proto Descriptors (Binary Support)
+
+GripMock supports compiled Protocol Buffers descriptors (`.pb` files) for improved performance and simplified dependency management. This is especially useful for projects with multiple interdependent proto files.
+
+### Descriptor Generation
+Compile your proto files into a descriptor set:
+```bash
+protoc \
+  --proto_path=./src/proto \
+  --descriptor_set_out=service.pb \
+  --include_imports \
+  user/user.proto
+```
+
+### Docker Configuration
+```yaml
+services:
+  gripmock:
+    image: bavix/gripmock
+    volumes:
+      - ./service.pb:/proto/service.pb:ro
+      - ./mocks/user:/stubs:ro
+    command: |
+      --stub=/stubs \
+      /proto/service.pb
+```
+
+### Key Advantages
+- ✅ **Single artifact**: Bundle all services and dependencies into one `.pb` file
+- ✅ **Faster startup**: Pre-compiled definitions eliminate parsing overhead
+- ✅ **Version control**: Commit the binary descriptor for reproducible mocks
+- ✅ **Cross-platform**: Works seamlessly across different OS/architectures
+
+### Important Considerations
+1. **Conflict Prevention**:  
+   Avoid mixing `.proto` and `.pb` files in the same directory when using auto-load mode (`/proto` directory mount). GripMock will fail if duplicate service definitions exist in both formats.
+
+2. **Dependency Management**:  
+   Always use `--include_imports` when generating descriptors to include all transitive dependencies.
+
+3. **Stub Compatibility**:  
+   All stubbing features work identically with descriptors - no changes needed in stub definitions.
+
+### Example Workflow
+1. **Compile Descriptor**:
+   ```bash
+   protoc \
+     -I ./protos \
+     --descriptor_set_out=api.pb \
+     --include_imports \
+     common/*.proto services/*.proto
+   ```
+
+2. **Run with Descriptor**:
+   ```bash
+   docker run \
+     -v $(pwd)/api.pb:/proto/api.pb \
+     -v $(pwd)/stubs:/stubs \
+     bavix/gripmock \
+     --stub=/stubs \
+     /proto/api.pb
+   ```
+
+This approach ensures all proto definitions are pre-compiled and validated before runtime.
+
 ## TLS Configuration 🔒
 
 GripMock requires reverse proxies for TLS termination. Here's how to implement it:

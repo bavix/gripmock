@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package task.v1;
+
+option go_package = "github.com/your-org/task-service/api/task/v1;taskv1";
+option java_multiple_files = true;
+option java_package = "com.example.task.v1";
+
+service TaskService {
+  rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse) {}
+}
+
+message CreateTaskRequest {
+  string title = 1;
+  string description = 2;
+  oneof notification {
+    EmailNotification email = 3;
+    SmsNotification sms = 4;
+  }
+}
+
+message CreateTaskResponse {
+  oneof result {
+    SuccessResponse success = 1;
+    ErrorResponse error = 2;
+  }
+}
+
+message SuccessResponse {
+  string task_id = 1;
+  TaskStatus status = 2;
+}
+
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0;
+  TASK_CREATED = 1;
+  NOTIFICATION_SENT = 2;
+}
+
+message ErrorResponse {
+  ErrorCode code = 1;
+  string message = 2;
+  repeated ValidationError errors = 3;
+}
+
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  INVALID_INPUT = 1;
+  MISSING_REQUIRED_FIELD = 2;
+  NOTIFICATION_FAILED = 3;
+}
+
+message ValidationError {
+  string field = 1;
+  string description = 2;
+}
+
+message EmailNotification {
+  string email = 1;
+}
+
+message SmsNotification {
+  string phone_number = 1;
+}

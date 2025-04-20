@@ -1,0 +1,10 @@
+- service: WeatherService
+  method: GetCurrentForecast
+  input:
+    equals: {}
+  output:
+    data:
+      date: {year: 2023, month: 10, day: 5}
+      condition: "Sunny"
+      temperature_c: 22.5
+      precipitation_mm: 0.0

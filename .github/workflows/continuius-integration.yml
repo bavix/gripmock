@@ -1,0 +1,169 @@
+name: Continuous Integration
+on:
+  pull_request:
+
+env:
+  GRPC_TESTIFY_VERSION: "0.0.8"
+  GRPCURL_VERSION: "1.9.3"
+  GO_VERSION: "1.24"
+
+jobs:
+  unit-tests:
+    name: "Unit Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Set up cache for dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            grpcurl
+            grpctestify.sh
+          key: deps-cache-${{ runner.os }}-v1
+
+      - name: Run unit tests with coverage
+        run: |
+          mkdir -p /tmp/cover-unit
+          go test -coverprofile=/tmp/cover-unit/coverage.txt -covermode=atomic ./...
+        shell: bash
+
+      - name: Upload unit coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-unit
+          path: /tmp/cover-unit
+
+  e2e-tests:
+    name: "E2E Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Set up cache for dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            grpcurl
+            grpctestify.sh
+          key: deps-cache-${{ runner.os }}-v1
+
+      - name: Install dependencies
+        run: |
+          if ! which jq >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y jq
+          fi
+
+          if [ ! -f grpcurl ]; then
+            curl -sSL "https://github.com/fullstorydev/grpcurl/releases/download/v${{ env.GRPCURL_VERSION }}/grpcurl_${{ env.GRPCURL_VERSION }}_linux_x86_64.tar.gz" | tar -xz
+            chmod +x grpcurl
+          fi
+          echo "$(pwd)" >> $GITHUB_PATH
+
+          if [ ! -f grpctestify.sh ]; then
+            curl -sSL https://raw.githubusercontent.com/gripmock/grpctestify/v${{ env.GRPC_TESTIFY_VERSION }}/grpctestify.sh -o grpctestify.sh
+            chmod +x grpctestify.sh
+          fi
+
+      - name: Build GripMock Server with coverage
+        run: |
+          go build -cover -o /tmp/gripmock .
+          chmod +x /tmp/gripmock
+
+      - name: Start GripMock Server
+        run: |
+          find . -name "*.proto.src" -type f -delete
+          mkdir -p /tmp/cover-e2e
+          GOCOVERDIR=/tmp/cover-e2e /tmp/gripmock --stub=examples examples &
+          echo $! > /tmp/gripmock.pid
+
+      - name: Run gripmock check with coverage
+        run: |
+          mkdir -p /tmp/cover-check
+          GOCOVERDIR=/tmp/cover-check /tmp/gripmock check --timeout=60s --silent
+
+      - name: Run examples
+        run: |
+          ./grpctestify.sh examples/
+
+      - name: Stop GripMock Server gracefully
+        run: |
+          kill -INT $(cat /tmp/gripmock.pid) || true
+          sleep 5
+          rm /tmp/gripmock.pid || true
+
+      - name: Upload e2e coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-e2e
+          path: /tmp/cover-e2e
+
+      - name: Upload check coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-check
+          path: /tmp/cover-check
+
+  coverage-report:
+    name: "Coverage Report"
+    runs-on: ubuntu-latest
+    needs: [unit-tests, e2e-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Download unit coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-unit
+          path: /tmp/cover-unit
+
+      - name: Download e2e coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-e2e
+          path: /tmp/cover-e2e
+
+      - name: Download check coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-check
+          path: /tmp/cover-check
+
+      - name: Merge all coverage data
+        run: |
+          mkdir -p /tmp/cover-all
+          go tool covdata merge \
+            -i=/tmp/cover-unit,/tmp/cover-e2e,/tmp/cover-check \
+            -o=/tmp/cover-all
+
+      - name: Generate coverage report
+        run: |
+          go tool covdata textfmt -i=/tmp/cover-all -o coverage.txt
+          go tool covdata percent -i=/tmp/cover-all
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: coverage.txt
+
+      - name: Upload coverage report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.txt

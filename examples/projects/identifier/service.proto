@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package example.identifier.v1;
+
+service IdentifierService {
+  rpc ProcessUUIDs(ProcessUUIDsRequest) returns (ProcessUUIDsResponse);
+}
+
+message ProcessUUIDsRequest {
+  message UUID {
+    int64 high = 1;
+    int64 low = 2;
+  }
+  
+  repeated UUID uuids = 1;
+  repeated bytes binary_uuids = 2;  
+  repeated string string_uuids = 3;
+  optional int64 request_timestamp = 4;
+}
+
+message ProcessUUIDsResponse {
+  int64 process_id = 1;
+  int64 status_code = 2;
+  optional uint64 response_timestamp = 3;
+}

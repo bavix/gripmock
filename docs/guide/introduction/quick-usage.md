@@ -29,7 +29,7 @@ message Reply {
 
 ## Run GripMock
 
-### Single Service
+### Single Service (Traditional .proto)
 ```bash
 docker run \
   -p 4770:4770 \
@@ -37,6 +37,27 @@ docker run \
   -v ./api/proto:/proto:ro \
   bavix/gripmock /proto/simple.proto
 ```
+
+### Using Proto Descriptors (New)
+GripMock now supports compiled proto descriptors (`.pb` files) for better dependency management:
+
+1. **Generate descriptor file**:
+   ```bash
+   protoc --proto_path=. --descriptor_set_out=service.pb service.proto
+   ```
+
+2. **Run with descriptor**:
+   ```bash
+   docker run \
+     -p 4770:4770 \
+     -p 4771:4771 \
+     -v ./api/proto:/proto:ro \
+     bavix/gripmock /proto/service.pb
+   ```
+
+> **Note**:  
+> - Use `--include_imports` with `protoc` if your service depends on multiple proto files  
+> - Descriptors allow packaging multiple services and dependencies into a single binary file
 
 ### Multiple Services
 #### Option 1: Specify Multiple Files
@@ -49,7 +70,7 @@ docker run \
 ```
 
 #### Option 2: Auto-Load Folder
-Mount a directory containing **multiple `.proto` files**:
+Mount a directory containing **multiple `.proto` and `.pb` files**:
 ```bash
 docker run \
   -p 4770:4770 \
@@ -57,12 +78,13 @@ docker run \
   -v ./protos:/proto:ro \
   bavix/gripmock /proto
 ```
-This will **automatically load all `.proto` files** in the `/proto` directory.
+This will **automatically load all `.proto` and `.pb` files** in the `/proto` directory.
 
 > **Note**:  
-> - All `.proto` files in the specified directory will be processed  
+> - All `.proto` and `.pb` files in the specified directory will be processed  
 > - Ensure there are no conflicting service/message definitions across files  
 > - Subdirectories are scanned recursively  
+> - **Important**: If duplicate services are found in both `.proto` and `.pb` files, GripMock will fail to start. In such cases, specify files manually instead of using folder auto-load.
 
 ## Web UI (v3.0+)
 Access the admin panel at:  
@@ -70,8 +92,6 @@ Access the admin panel at:
 Features:
 - Create, edit, and delete stubs.
 - View lists of used/unused stubs.
-- Monitor real-time activity logs. (much later)
-- Access healthcheck status. (much later)
 
 ## Stubbing
 
@@ -107,6 +127,15 @@ docker run ... -v ./stubs:/stubs bavix/gripmock --stub=/stubs /proto/simple.prot
 - **UI**: Visit **http://localhost:4771/** and navigate to the stubs section.
 
 ## Advanced Features
+
+### Binary Descriptor Support
+When using `.pb` descriptors:
+- No need for original `.proto` files in the container
+- Faster startup with pre-compiled definitions
+- Better handling of complex proto dependencies
+- Supports all features available with regular `.proto` files
+
+> **Tip**: Use `protoc --include_imports` to bundle all dependencies into a single descriptor file for complex projects
 
 ### Headers Matching
 Add headers to stubs for fine-grained control:

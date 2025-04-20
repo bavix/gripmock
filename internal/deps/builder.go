@@ -1,9 +1,13 @@
 package deps
 
 import (
+	"sync"
+
 	"github.com/gripmock/environment"
 	"github.com/gripmock/shutdown"
 	"github.com/gripmock/stuber"
+
+	"github.com/bavix/gripmock/internal/infra/storage"
 )
 
 type Option func(*Builder)
@@ -12,7 +16,11 @@ type Builder struct {
 	config environment.Config
 	ender  *shutdown.Shutdown
 
-	budgerigar *stuber.Budgerigar
+	budgerigar     *stuber.Budgerigar
+	budgerigarOnce sync.Once
+
+	extender     *storage.Extender
+	extenderOnce sync.Once
 }
 
 func NewBuilder(opts ...Option) *Builder {

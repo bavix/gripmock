@@ -1,0 +1,11 @@
+--- ENDPOINT ---
+chat.ChatService/SendMessage
+
+--- REQUEST ---
+{"user": "Alice", "text": "Hello"}
+
+--- REQUEST ---
+{"user": "Alice", "text": "How are you?"}
+
+--- RESPONSE ---
+{"success": true, "message": "2 messages processed"}

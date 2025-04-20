@@ -3,7 +3,7 @@ package watcher
 import (
 	"context"
 	"io/fs"
-	"path"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -61,6 +61,7 @@ func (s *StubWatcher) Watch(ctx context.Context, folderPath string) (<-chan stri
 	return s.ticker(ctx, folderPath)
 }
 
+//nolint:cyclop
 func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan string, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -82,14 +83,13 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 					continue
 				}
 
-				stubPath := path.Join(folderPath, event.Name)
-
-				if isStub(stubPath) {
-					zerolog.Ctx(ctx).
-						Debug().
+				if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
+					zerolog.Ctx(ctx).Err(watcher.Add(event.Name)).
 						Str("path", event.Name).
-						Msg("Updating stub")
+						Msg("Adding directory to watcher")
+				}
 
+				if isStub(event.Name) {
 					ch <- event.Name
 				}
 			}
@@ -147,11 +147,6 @@ func (s *StubWatcher) ticker(ctx context.Context, folderPath string) (<-chan str
 					if lastModifyTime, ok := stubFiles[currentPath]; ok && info.ModTime().Equal(lastModifyTime) {
 						return nil
 					}
-
-					zerolog.Ctx(ctx).
-						Debug().
-						Str("path", currentPath).
-						Msg("Updating stub")
 
 					ch <- currentPath
 

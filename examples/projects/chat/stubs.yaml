@@ -1,0 +1,58 @@
+# Client Streaming Stub (SendMessage)
+- service: ChatService
+  method: SendMessage
+  input:
+    ignoreArrayOrder: true
+    equals:
+      user: Alice
+      text: "Hello"
+  output:
+    data: # skip
+      success: true
+      message: "1 messages processed"
+
+- service: ChatService
+  method: SendMessage
+  input:
+    ignoreArrayOrder: true
+    equals:
+      user: Alice
+      text: "How are you?"
+  output:
+    data:
+      success: true
+      message: "2 messages processed"
+
+# Server Streaming Stub (ReceiveMessages)
+- service: ChatService
+  method: ReceiveMessages
+  input:
+    equals:
+      user: Bob
+  output:
+    data:
+      user: Server
+      text: "Welcome Bob!"
+
+# Bidirectional Streaming Stub (Chat)
+- service: ChatService
+  method: Chat
+  input:
+    equals:
+      user: Charlie
+      text: "Hi everyone!"
+  output:
+    data:
+      user: Bot
+      text: "Hello Charlie!"
+
+- service: ChatService
+  method: Chat
+  input:
+    equals:
+      user: Charlie
+      text: "Anyone there?"
+  output:
+    data:
+      user: Bot
+      text: "We're here!"

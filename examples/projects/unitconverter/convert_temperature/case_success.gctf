@@ -1,0 +1,14 @@
+--- ENDPOINT ---
+unitconverter.v1.UnitConversionService/ConvertTemperature
+
+--- REQUEST ---
+{
+  "value": 100,
+  "fromUnit": "CELSIUS",
+  "toUnit": "FAHRENHEIT"
+}
+
+--- RESPONSE ---
+{
+  "convertedValue": 212
+}

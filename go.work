@@ -1,7 +1,0 @@
-go 1.24
-
-use (
-	.
-	./protoc-gen-gripmock
-	./protogen
-)

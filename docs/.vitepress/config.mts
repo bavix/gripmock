@@ -85,6 +85,7 @@ export default defineConfig({
           { text: 'Composite Collection Types', link: '/guide/types/composite-collection-types' },
           { text: 'Extended Types', link: '/guide/types/extended-types' },
           { text: 'Specialized Utility Types', link: '/guide/types/specialized-utility-types' },
+          { text: 'Union-like Constructs', link: '/guide/types/union-like-constructs' },
         ],
         collapsed: false,
       },
@@ -129,16 +130,11 @@ export default defineConfig({
 
     footer: {
       message: `
-        <p>Project licensed under dual licenses:</p>
+        <p>Project licensed under the MIT License:</p>
         <ul style="list-style: none; padding-left: 20px;">
           <li>
-            🔖 <a href="https://github.com/bavix/gripmock/blob/master/LICENSE-APACHE">
-              Apache-2.0 License</a> (original codebase from 
-              <a href="https://github.com/tokopedia/gripmock">Tokopedia</a> and community contributions)
-          </li>
-          <li>
             📝 <a href="https://github.com/bavix/gripmock/blob/master/LICENSE">
-              MIT License</a> (new developments by 
+              MIT License</a> (developments by 
               <a href="https://github.com/bavix">Bavix</a>)
           </li>
         </ul>

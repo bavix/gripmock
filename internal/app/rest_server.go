@@ -1,19 +1,22 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 
 	"github.com/bavix/gripmock/internal/domain/rest"
-	"github.com/bavix/gripmock/pkg/grpcreflector"
 	"github.com/bavix/gripmock/pkg/jsondecoder"
 )
 
@@ -23,30 +26,28 @@ var (
 )
 
 type Extender interface {
-	Wait()
+	Wait(ctx context.Context)
 }
 
 type RestServer struct {
 	ok         atomic.Bool
 	budgerigar *stuber.Budgerigar
-	reflector  *grpcreflector.GReflector
 }
 
 var _ rest.ServerInterface = &RestServer{}
 
 func NewRestServer(
+	ctx context.Context,
 	budgerigar *stuber.Budgerigar,
 	extender Extender,
-	reflector *grpcreflector.GReflector,
 ) (*RestServer, error) {
 	server := &RestServer{
-		reflector:  reflector,
 		budgerigar: budgerigar,
 	}
 
 	go func() {
 		if extender != nil {
-			extender.Wait()
+			extender.Wait(ctx)
 		}
 
 		server.ok.Store(true)
@@ -55,47 +56,78 @@ func NewRestServer(
 	return server, nil
 }
 
-func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
-	services, _ := h.reflector.Services(r.Context())
-	results := make([]rest.Service, 0, len(services))
+func (h *RestServer) ServicesList(w http.ResponseWriter, _ *http.Request) {
+	results := make([]rest.Service, 0)
 
-	for _, service := range services {
-		serviceMethods, err := h.reflector.Methods(r.Context(), service.ID)
-		if err != nil {
-			continue
-		}
+	protoregistry.GlobalFiles.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+		services := file.Services()
+		for i := range services.Len() {
+			service := services.Get(i)
+			methods := service.Methods()
 
-		restMethods := make([]rest.Method, len(serviceMethods))
-		for i, serviceMethod := range serviceMethods {
-			restMethods[i] = rest.Method{
-				Id:   serviceMethod.ID,
-				Name: serviceMethod.Name,
+			serviceResult := rest.Service{
+				Id:      string(service.FullName()),
+				Name:    string(service.Name()),
+				Package: string(file.Package()),
+				Methods: make([]rest.Method, 0, methods.Len()),
 			}
+
+			for j := range methods.Len() {
+				method := methods.Get(j)
+				serviceResult.Methods = append(serviceResult.Methods, rest.Method{
+					Id:   fmt.Sprintf("%s/%s", string(service.FullName()), string(method.Name())),
+					Name: string(method.Name()),
+				})
+			}
+
+			results = append(results, serviceResult)
 		}
 
-		results = append(results, rest.Service{
-			Id:      service.ID,
-			Name:    service.Name,
-			Package: service.Package,
-			Methods: restMethods,
-		})
-	}
+		return true
+	})
 
 	if err := json.NewEncoder(w).Encode(results); err != nil {
 		h.responseError(w, err)
 	}
 }
 
-func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, serviceID string) {
-	methods, _ := h.reflector.Methods(r.Context(), serviceID)
-	results := make([]rest.Method, len(methods))
-
-	for i, method := range methods {
-		results[i] = rest.Method{
-			Id:   method.ID,
-			Name: method.Name,
-		}
+func splitLast(s string, sep string) []string {
+	lastDot := strings.LastIndex(s, sep)
+	if lastDot == -1 {
+		return []string{s, ""}
 	}
+
+	return []string{s[:lastDot], s[lastDot+1:]}
+}
+
+func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, _ *http.Request, serviceID string) {
+	results := make([]rest.Method, 0)
+
+	packageName := splitLast(serviceID, ".")[0]
+
+	protoregistry.GlobalFiles.RangeFilesByPackage(protoreflect.FullName(packageName), func(file protoreflect.FileDescriptor) bool {
+		services := file.Services()
+		for i := range services.Len() {
+			service := services.Get(i)
+
+			if string(service.FullName()) != serviceID {
+				continue
+			}
+
+			methods := service.Methods()
+
+			for j := range methods.Len() {
+				method := methods.Get(j)
+
+				results = append(results, rest.Method{
+					Id:   fmt.Sprintf("%s/%s", string(service.FullName()), string(method.Name())),
+					Name: string(method.Name()),
+				})
+			}
+		}
+
+		return true
+	})
 
 	if err := json.NewEncoder(w).Encode(results); err != nil {
 		h.responseError(w, err)

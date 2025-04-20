@@ -1,0 +1,16 @@
+{
+    "service": "UnitConversionService",
+    "method": "ConvertWeight",
+    "input": {
+        "equals": {
+            "value": 1,
+            "from_unit": "POUNDS",
+            "to_unit": "KILOGRAMS"
+        }
+    },
+    "output": {
+        "data": {
+            "converted_value": 0.453592
+        }
+    }
+}
