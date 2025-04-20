@@ -325,6 +325,99 @@ grpcurl -plaintext -d '{"userId": "user_123"}' localhost:4770 wkt.UserService/Ge
 }
 ```
 
+## 6. `google.type.Date`
+Represents a calendar date (year, month, day) without time or timezone information.
+
+### Syntax
+```proto
+import "google/type/date.proto";
+
+message WeatherReport {
+  google.type.Date observation_date = 1;
+}
+```
+
+### Key Features
+- **JSON Format**: Serialized as `"YYYY-MM-DD"` string (e.g., `"2023-10-05"`).
+- **Validation**: Automatically checks for valid dates (no February 30th).
+- **Common Uses**: Birthdays, event scheduling, historical records.
+
+### Example: Weather Forecast Service
+Demonstrates gRPC service with HTTP endpoint mapping via grpc-gateway.
+
+**Proto File (`wkt_weather.proto`):**
+```proto
+syntax = "proto3";
+
+package weather;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/type/date.proto";
+
+option go_package = "github.com/bavix/gripmock/example/weather;weather";
+
+service WeatherService {
+  rpc GetCurrentForecast(google.protobuf.Empty) returns (WeatherReport) {
+    option (google.api.http) = {
+      get: "/v1/weather/current"  // REST endpoint mapping
+    };
+  }
+}
+
+message WeatherReport {
+  google.type.Date date = 1;
+  string condition = 2;
+  double temperature_c = 3;
+  double precipitation_mm = 4;
+}
+```
+
+**Stub Configuration (`wkt_weather.yaml`):**
+```yaml
+- service: WeatherService
+  method: GetCurrentForecast
+  input:
+    equals: {}
+  output:
+    data:
+      date: {year: 2023, month: 10, day: 5}
+      condition: "Sunny"
+      temperature_c: 22.5
+      precipitation_mm: 0.0
+```
+
+**Test Command:**
+```sh
+grpcurl -plaintext localhost:4770 weather.WeatherService/GetCurrentForecast
+```
+
+**Output:**
+```json
+{
+  "date": {
+    "year": 2023,
+    "month": 10,
+    "day": 5
+  },
+  "condition": "Sunny",
+  "temperatureC": 22.5
+}
+```
+
+**grpc-gateway Integration:**
+```sh
+curl http://localhost:8080/v1/weather/current
+```
+```json
+{
+  "date": "2023-10-05",
+  "condition": "Sunny",
+  "temperatureC": 22.5,
+  "precipitationMm": 0.0
+}
+```
+
 ## Best Practices
 1. **Timestamp/Duration**:
    - Always use UTC for `Timestamp`.
@@ -337,14 +430,21 @@ grpcurl -plaintext -d '{"userId": "user_123"}' localhost:4770 wkt.UserService/Ge
    - Use `Struct` for dynamic or rapidly changing data.
 4. **Wrappers**:
    - Use for optional fields where `null` has semantic meaning.
+5. **Date**:
+   - Combine with `Timestamp` when exact time matters
+   - Use for date-specific operations (e.g., birthday checks)
+   - Store timezone information separately when needed
 
 ## Common Pitfalls
 - **Timestamp Parsing**: Invalid RFC 3339 strings cause errors.
 - **Duration Ranges**: Values outside ±10,000 years are rejected.
 - **Any Type Safety**: Incorrect `type_url` leads to deserialization failures.
 - **Wrapper Defaults**: `null` vs. `0`/`""` distinctions must be documented.
+- **Date Validity**: Invalid dates like `2023-02-30` will cause errors
+- **Time Zone Assumptions**: Always document expected timezone context
 
 ## Further Reading
 - [Well-Known Types Reference](https://protobuf.dev/reference/protobuf/google.protobuf/)
 - [Protobuf Struct Documentation](https://protobuf.dev/reference/protobuf/google.protobuf/#struct)
 - [API Design Best Practices](https://cloud.google.com/apis/design/)
+- [grpc-gateway Documentation](https://grpc-ecosystem.github.io/grpc-gateway/)

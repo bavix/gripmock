@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package weather;
+
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/type/date.proto";
+
+option go_package = "github.com/bavix/gripmock/example/weather;weather";
+
+service WeatherService {
+  rpc GetCurrentForecast(google.protobuf.Empty) returns (WeatherReport) {
+    option (google.api.http) = {
+      get: "/v1/weather/current"  // REST endpoint mapping
+    };
+  }
+}
+
+message WeatherReport {
+  google.type.Date date = 1;
+  string condition = 2;
+  double temperature_c = 3;
+  double precipitation_mm = 4;
+}
