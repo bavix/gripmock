@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package chat;
+
+service ChatService {
+  // Client streaming: Send multiple messages in one request
+  rpc SendMessage(stream Message) returns (SendResponse);
+
+  // Server streaming: Receive multiple messages from server
+  rpc ReceiveMessages(UserRequest) returns (stream Message);
+
+  // Bidirectional streaming: Real-time chat
+  rpc Chat(stream Message) returns (stream Message);
+}
+
+message Message {
+  string user = 1;
+  string text = 2;
+}
+
+message UserRequest {
+  string user = 1;
+}
+
+message SendResponse {
+  bool success = 1;
+  string message = 2;
+}
