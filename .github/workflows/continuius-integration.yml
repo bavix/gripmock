@@ -30,7 +30,7 @@ jobs:
       - name: Run unit tests with coverage
         run: |
           mkdir -p /tmp/cover-unit
-          GOCOVERDIR=/tmp/cover-unit go test -cover ./...
+          go test -coverprofile=/tmp/cover-unit/coverage.txt -covermode=atomic ./...
         shell: bash
 
       - name: Upload unit coverage
@@ -77,13 +77,13 @@ jobs:
 
       - name: Build GripMock Server with coverage
         run: |
-          mkdir -p /tmp/cover-e2e
-          GOCOVERDIR=/tmp/cover-e2e go build -cover -o /tmp/gripmock .
+          go build -cover -o /tmp/gripmock .
           chmod +x /tmp/gripmock
 
       - name: Start GripMock Server
         run: |
           find . -name "*.proto.src" -type f -delete
+          mkdir -p /tmp/cover-e2e
           GOCOVERDIR=/tmp/cover-e2e /tmp/gripmock --stub=examples examples &
           echo $! > /tmp/gripmock.pid
 
