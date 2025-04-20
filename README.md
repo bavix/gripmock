@@ -24,7 +24,8 @@ This service is a fork of the service [tokopedia/gripmock](https://github.com/to
 - Active support [tokopedia#82](https://github.com/tokopedia/gripmock/issues/82);
 - Added [documentation](https://bavix.github.io/gripmock/);
 - **Binary descriptor support** (`.pb` files) for faster startup
-UI will appear in 3.x:
+
+## UI
 
 ![gripmock-ui](https://github.com/bavix/gripmock/assets/5111255/3d9ebb46-7810-4225-9a30-3e058fa5fe16)
 
