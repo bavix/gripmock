@@ -1,5 +1,27 @@
 # Changelog
 
+## v3.1.0 - 2025-04-20
+
+### What's Changed
+
+* [3.1] gRPC Descriptors by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/572
+  GripMock now supports Protocol Buffers descriptors for real-time generation, eliminating the need for code regeneration and Go-specific dependencies. This major update simplifies workflows, boosts performance, and removes Docker as a hard dependency.
+
+#### Key Improvements:
+
+- **Descriptor-Driven Workflow**: Users can now provide pre-compiled descriptor files (`.pb`) instead of relying on Go-based schema compilation. This aligns with modern practices and removes language-specific barriers.
+- **Standalone Binary**: GripMock is now a self-contained binary with zero external dependencies, making it easier to deploy and run anywhere.
+- **Optimized Docker Image**: The Docker image size has been drastically reduced, as it no longer requires compilers, build tools, or intermediate artifacts.
+
+This update addresses key pain points raised by the community, including [#268](https://github.com/bavix/gripmock/issues/268), [#442](https://github.com/bavix/gripmock/issues/442), and valuable feedback from [@holgerstolzenberg](https://github.com/holgerstolzenberg) and [@KenxinKun](https://github.com/KenxinKun).
+
+Special thanks to:
+
+- **[@holgerstolzenberg](https://github.com/holgerstolzenberg)** for their detailed feedback and suggestions, which helped shape this release and improve GripMock's usability for non-Go projects.
+- **[@KenxinKun](https://github.com/KenxinKun)** for proposing the use of pre-compiled proto descriptor files ([#442](https://github.com/bavix/gripmock/issues/442)).
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.0.5...v3.1.0
+
 ## v2.6.12 - 2024-03-07
 
 ### What's Changed
