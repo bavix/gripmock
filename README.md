@@ -20,10 +20,9 @@ This service is a fork of the service [tokopedia/gripmock](https://github.com/to
 - Fixed issues with int64/uint64 [tokopedia#67](https://github.com/tokopedia/gripmock/pull/148);
 - Add 404 error for stubs not found [tokopedia#142](https://github.com/tokopedia/gripmock/issues/142);
 - Support for deleting specific stub [tokopedia#123](https://github.com/tokopedia/gripmock/issues/123);
-- Reduced image size [tokopedia#91](https://github.com/tokopedia/gripmock/issues/91);
+- Reduced image size [tokopedia#91](https://github.com/tokopedia/gripmock/issues/91) [bavix#512](https://github.com/bavix/gripmock/issues/512);
 - Active support [tokopedia#82](https://github.com/tokopedia/gripmock/issues/82);
 - Added [documentation](https://bavix.github.io/gripmock/);
-- Pre-alpha GripMock slim-version (there may be a lot of bugs) [bavix#512](https://github.com/bavix/gripmock/issues/512);
 - **Binary descriptor support** (`.pb` files) for faster startup
 UI will appear in 3.x:
 
