@@ -3,7 +3,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/bavix/gripmock/badge.svg?branch=master)](https://coveralls.io/github/bavix/gripmock?branch=master)
 
 # GripMock
-GripMock is a **mock server** for **gRPC** services. It's using a `.proto` file to generate implementation of gRPC service for you.
+GripMock is a **mock server** for **gRPC** services. It's using a `.proto` file **or compiled .pb descriptor** to generate implementation of gRPC service for you.
 You can use gripmock for setting up end-to-end testing or as a dummy server in a software development phase.
 The server implementation is in GoLang but the client can be any programming language that support gRPC.
 
@@ -24,7 +24,7 @@ This service is a fork of the service [tokopedia/gripmock](https://github.com/to
 - Active support [tokopedia#82](https://github.com/tokopedia/gripmock/issues/82);
 - Added [documentation](https://bavix.github.io/gripmock/);
 - Pre-alpha GripMock slim-version (there may be a lot of bugs) [bavix#512](https://github.com/bavix/gripmock/issues/512);
-
+- **Binary descriptor support** (`.pb` files) for faster startup
 UI will appear in 3.x:
 
 ![gripmock-ui](https://github.com/bavix/gripmock/assets/5111255/3d9ebb46-7810-4225-9a30-3e058fa5fe16)
@@ -34,13 +34,40 @@ UI will appear in 3.x:
 - [Testing gRPC client with mock server and Testcontainers](https://medium.com/skyro-tech/testing-grpc-client-with-mock-server-and-testcontainers-f51cb8a6be9a) [@AndrewIISM](https://github.com/AndrewIISM)
 
 ## Quick Usage
-First, prepare your `.proto` file. Or you can use `hello.proto` in `example/simple/` folder. Suppose you put it in `/mypath/hello.proto`. We are gonna use Docker image for easier example test.
+
+First, prepare your `.proto` file **or compile a .pb descriptor**. Or you can use `hello.proto` in `example/simple/` folder. Suppose you put it in `/mypath/hello.proto`. We are gonna use Docker image for easier example test.
+
+**Option 1: Traditional .proto**
+```bash
+# Generate descriptor (optional)
+protoc --proto_path=. --descriptor_set_out=service.pb --include_imports hello.proto
+```
+
+**Option 2: Use existing .pb**
+```bash
+# If you already have a .pb file
+```
+
 basic syntax to run GripMock is
-`gripmock <protofile>`
+`gripmock [--stub=<stub_path>] <protofile_or_descriptor>`
 
 - Install [Docker](https://docs.docker.com/install/)
 - Run `docker pull bavix/gripmock` to pull the image
-- We are gonna mount `/mypath/hello.proto` (it must be a fullpath) into a container and also we expose ports needed. Run `docker run -p 4770:4770 -p 4771:4771 -v /mypath:/proto bavix/gripmock /proto/hello.proto`
+- We are gonna mount `/mypath/hello.proto` (it must be a fullpath) into a container and also we expose ports needed. 
+
+**Using .proto:**
+```bash
+docker run -p 4770:4770 -p 4771:4771 -v /mypath:/proto bavix/gripmock /proto/hello.proto
+```
+
+**Using .pb:**
+```bash
+docker run -p 4770:4770 -p 4771:4771 -v /mypath:/proto bavix/gripmock /proto/service.pb
+```
+
+> **⚠️ Important**  
+> When using auto-load mode (`/proto` directory), avoid mixing `.proto` and `.pb` files - this will cause conflicts
+
 - On a separate terminal we are gonna add a stub into the stub service. Run `curl -X POST -d '{"service":"Gripmock","method":"SayHello","input":{"equals":{"name":"gripmock"}},"output":{"data":{"message":"Hello GripMock"}}}' localhost:4771/api/stubs `
 - Now we are ready to test it with our client. You can find a client example file under `example/simple/client/`. Execute one of your preferred language. Example for go: `go run example/simple/client/*.go`
 
@@ -67,6 +94,8 @@ The second binary is the protoc plugin which located in folder [protoc-gen-gripm
 ## Stubbing
 
 Stubbing is the essential mocking of GripMock. It will match and return the expected result into gRPC service. This is where you put all your request expectation and response
+
+**Both .proto and .pb definitions work identically with all stubbing features**
 
 ### Dynamic stubbing
 You could add stubbing on the fly with a simple REST API. HTTP stub server is running on port `:4771`
@@ -122,7 +151,15 @@ For our `hello` service example we put a stub with the text below:
 You could initialize gripmock with stub json files and provide the path using `--stub` argument. For example you may
 mount your stub file in `/mystubs` folder then mount it to docker like
 
-`docker run -p 4770:4770 -p 4771:4771 -v /mypath:/proto -v /mystubs:/stub bavix/gripmock --stub=/stub /proto/hello.proto`
+**Using .proto:**
+```bash
+docker run -p 4770:4770 -p 4771:4771 -v /mypath:/proto -v /mystubs:/stub bavix/gripmock --stub=/stub /proto/hello.proto
+```
+
+**Using .pb:**
+```bash
+docker run -p 4770:4770 -p 4771:4771 -v /mypath:/proto -v /mystubs:/stub bavix/gripmock --stub=/stub /proto/service.pb
+```
 
 Please note that Gripmock still serves http stubbing to modify stored stubs on the fly.
 
@@ -206,7 +243,6 @@ Without this flag, the order of the transmitted values is important to us.
 ```
 
 **matches** using regex for matching fields expectation. example:
-
 ```json
 {
   .
@@ -274,7 +310,6 @@ Headers can consist of a key and a value. If there are several values, then you 
 ```
 
 **matches** using regex for matching fields expectation. example:
-
 ```json
 {
   .
@@ -291,8 +326,5 @@ Headers can consist of a key and a value. If there are several values, then you 
 
 ## License
 
-This project is dual-licensed:
-- **Original code** (from the upstream project) is licensed under the **Apache License 2.0**.  
-  See [LICENSE-APACHE](LICENSE-APACHE) for details.  
-- **New contributions and modifications** (made in this fork) are licensed under the **MIT License**.  
-  See [LICENSE](LICENSE) for details.
+This project is licensed under the **MIT License**.  
+See [LICENSE](LICENSE) for details.

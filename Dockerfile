@@ -19,7 +19,7 @@ FROM alpine:3.21
 
 LABEL org.opencontainers.image.source="https://github.com/bavix/gripmock"
 LABEL org.opencontainers.image.description="gRPC Mock Server"
-LABEL org.opencontainers.image.licenses="MIT,Apache-2.0"
+LABEL org.opencontainers.image.licenses="MIT"
 
 COPY --from=builder /usr/local/bin/gripmock /usr/local/bin/gripmock
 COPY --from=builder /gripmock-src/entrypoint.sh /entrypoint.sh

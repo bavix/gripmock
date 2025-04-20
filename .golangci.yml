@@ -35,6 +35,7 @@ linters:
         path: cmd/*
       - linters:
           - dupl
+          - lll
         path: (.+)_test.go
     paths:
       - example
