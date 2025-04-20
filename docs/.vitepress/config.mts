@@ -85,6 +85,7 @@ export default defineConfig({
           { text: 'Composite Collection Types', link: '/guide/types/composite-collection-types' },
           { text: 'Extended Types', link: '/guide/types/extended-types' },
           { text: 'Specialized Utility Types', link: '/guide/types/specialized-utility-types' },
+          { text: 'Union-like Constructs', link: '/guide/types/union-like-constructs' },
         ],
         collapsed: false,
       },
