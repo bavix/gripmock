@@ -1,0 +1,45 @@
+- service: TaskService
+  method: CreateTask
+  input:
+    equals:
+      title: Buy groceries
+      description: Milk, eggs, bread
+      email:
+          email: user@example.com
+  output:
+    data:
+      success:
+        task_id: TASK-456
+        status: TASK_CREATED
+
+- service: TaskService
+  method: CreateTask
+  input:
+    equals:
+      title: Team meeting
+      description: Project sync at 3 PM
+      sms:
+          phone_number: "+14155550123"
+  output:
+    data:
+      success:
+        task_id: TASK-789
+        status: NOTIFICATION_SENT
+
+- service: TaskService
+  method: CreateTask
+  input:
+    equals:
+      description: Invalid task
+      sms:
+        phone_number: invalid-phone
+  output:
+    data:
+      error:
+        code: INVALID_INPUT
+        message: Validation failed
+        errors:
+            - field: title
+              description: Title cannot be empty
+            - field: sms.phone_number
+              description: Invalid phone number format

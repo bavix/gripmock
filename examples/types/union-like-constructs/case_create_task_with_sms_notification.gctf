@@ -1,0 +1,19 @@
+--- ENDPOINT ---
+task.v1.TaskService/CreateTask
+
+--- REQUEST ---
+{
+  "title": "Team meeting",
+  "description": "Project sync at 3 PM",
+  "sms": {
+    "phone_number": "+14155550123"
+  }
+}
+
+--- RESPONSE ---
+{
+  "success": {
+    "taskId": "TASK-789",
+    "status": "NOTIFICATION_SENT"
+  }
+}
