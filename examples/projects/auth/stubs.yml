@@ -1,0 +1,27 @@
+- service: AuthService
+  method: CheckAccess
+  headers:
+    contains:
+      x-api-key: wrong-key
+  input:
+    equals:
+      resource: admin:tools
+      action: delete
+  output:
+    data:
+      allowed: false
+      reason: Invalid API key or insufficient permissions
+
+- service: AuthService
+  method: CheckAccess
+  headers:
+    contains:
+      x-api-key: secret-key-123
+  input:
+    equals:
+      resource: user:123
+      action: read
+  output:
+    data:
+      allowed: true
+      reason: Access granted
