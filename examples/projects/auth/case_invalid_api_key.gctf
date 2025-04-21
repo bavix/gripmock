@@ -1,0 +1,13 @@
+--- ENDPOINT ---
+auth.AuthService/CheckAccess
+
+--- HEADERS ---
+x-api-key: wrong-key
+
+--- REQUEST ---
+{"resource": "admin:tools", "action": "delete"}
+
+--- RESPONSE ---
+{
+    "reason": "Invalid API key or insufficient permissions"
+}

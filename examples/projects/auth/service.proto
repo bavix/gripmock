@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package auth;
+
+service AuthService {
+  rpc CheckAccess (CheckAccessRequest) returns (CheckAccessResponse);
+}
+
+message CheckAccessRequest {
+  string resource = 1;
+  string action = 2;  
+}
+
+message CheckAccessResponse {
+  bool allowed = 1;
+  string reason = 2;
+}
