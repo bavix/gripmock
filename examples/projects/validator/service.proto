@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package validator;
+
+service Validator {
+  rpc Validate (ValidateRequest) returns (ValidateResponse);
+}
+
+message ValidateRequest {
+  oneof value {
+    // For string types (email, URL and so on)
+    string data = 1;
+    // For numeric types
+    int64 number = 4;
+}
+  ValidationType validation_type = 2;
+  // For validation of numeric types
+  optional int64 min = 3;  
+  optional int64 max = 5; 
+}
+
+message ValidateResponse {
+  bool is_valid = 1;
+  string error_message = 2;
+}
+
+enum ValidationType {
+  UNKNOWN = 0;
+  EMAIL = 1;
+  URL = 2;
+  PHONE_NUMBER = 3;
+  NUMBER_RANGE = 4;
+}

@@ -36,7 +36,7 @@ services:
 GripMock supports compiled Protocol Buffers descriptors (`.pb` files) for improved performance and simplified dependency management. This is especially useful for projects with multiple interdependent proto files.
 
 ### Descriptor Generation
-Compile your proto files into a descriptor set:
+**Using Protocol Buffers Compiler (`protoc`)**:
 ```bash
 protoc \
   --proto_path=./src/proto \
@@ -44,6 +44,25 @@ protoc \
   --include_imports \
   user/user.proto
 ```
+
+**Using Buf (Modern Build Tool)**:
+1. Create `buf.yaml` in project root:
+   ```yaml
+   version: v1
+   name: buf.build/your-module
+   deps:
+     - buf.build/googleapis
+   lint:
+     use:
+       - DEFAULT
+   breaking:
+     use:
+       - FILE
+   ```
+2. Build descriptor:
+   ```bash
+   buf build -o service.pb
+   ```
 
 ### Docker Configuration
 ```yaml
@@ -63,18 +82,37 @@ services:
 - ✅ **Faster startup**: Pre-compiled definitions eliminate parsing overhead
 - ✅ **Version control**: Commit the binary descriptor for reproducible mocks
 - ✅ **Cross-platform**: Works seamlessly across different OS/architectures
+- ✅ **Dependency management**: Buf automatically resolves transitive dependencies
 
 ### Important Considerations
 1. **Conflict Prevention**:  
    Avoid mixing `.proto` and `.pb` files in the same directory when using auto-load mode (`/proto` directory mount). GripMock will fail if duplicate service definitions exist in both formats.
 
-2. **Dependency Management**:  
-   Always use `--include_imports` when generating descriptors to include all transitive dependencies.
+2. **Build Tools**:  
+   - With `protoc`: Always use `--include_imports`  
+   - With Buf: Dependencies are automatically included, no extra flags needed
 
 3. **Stub Compatibility**:  
    All stubbing features work identically with descriptors - no changes needed in stub definitions.
 
 ### Example Workflow
+**Using Buf**:
+1. **Compile Descriptor**:
+   ```bash
+   buf build -o api.pb
+   ```
+
+2. **Run with Descriptor**:
+   ```bash
+   docker run \
+     -v $(pwd)/api.pb:/proto/api.pb \
+     -v $(pwd)/stubs:/stubs \
+     bavix/gripmock \
+     --stub=/stubs \
+     /proto/api.pb
+   ```
+
+**Using Protoc**:
 1. **Compile Descriptor**:
    ```bash
    protoc \

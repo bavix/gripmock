@@ -66,7 +66,17 @@ func createDescriptorSet(ctx context.Context, configure *Configure) (*descriptor
 	}
 
 	for i, file := range files {
-		fds.File[i] = protodesc.ToFileDescriptorProto(file)
+		fdp := protodesc.ToFileDescriptorProto(file)
+		fds.File[i] = fdp
+
+		if value, _ := protoregistry.GlobalFiles.FindFileByPath(fdp.GetName()); value != nil {
+			zerolog.Ctx(ctx).Warn().
+				Str("name", fdp.GetName()).
+				Str("path", file.Path()).
+				Msg("File already registered")
+
+			continue
+		}
 
 		if err := protoregistry.GlobalFiles.RegisterFile(file); err != nil {
 			return nil, errors.Wrapf(err, "error registering file %s", file.Path())
@@ -76,6 +86,7 @@ func createDescriptorSet(ctx context.Context, configure *Configure) (*descriptor
 	return fds, nil
 }
 
+//nolint:cyclop
 func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDescriptorSet, error) {
 	capacity := len(configure.Descriptors())
 	if len(configure.Protos()) > 0 {
@@ -97,6 +108,15 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 		}
 
 		for _, fd := range fds.GetFile() {
+			if value, _ := protoregistry.GlobalFiles.FindFileByPath(fd.GetName()); value != nil {
+				zerolog.Ctx(ctx).Warn().
+					Str("name", fd.GetName()).
+					Str("path", descriptor).
+					Msg("File already registered")
+
+				continue
+			}
+
 			fileDesc, err := protodesc.NewFile(fd, protoregistry.GlobalFiles)
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to create file descriptor: %s", descriptor)

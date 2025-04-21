@@ -1,0 +1,39 @@
+- service: Validator
+  method: Validate
+  input:
+    equals:
+      number: 42
+      validation_type: NUMBER_RANGE
+      min: 10
+      max: 100
+  output:
+    data:
+      isValid: true
+
+- service: Validator
+  method: Validate
+  input:
+    equals:
+      number: 101
+      validation_type: NUMBER_RANGE
+      min: 10
+      max: 100
+  output:
+    data:
+      isValid: false
+      errorMessage: number must be between 10 and 100
+
+# regular expression
+- service: Validator
+  method: Validate
+  input:
+    contains:
+      validation_type: NUMBER_RANGE
+      min: 10011
+      max: 10022999
+
+    matches: # 10012
+      number: "^100[1-2]{2}\\d{0,3}$"
+  output:
+    data:
+      isValid: true

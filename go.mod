@@ -21,7 +21,7 @@ require (
 	github.com/samber/lo v1.49.1
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
-	google.golang.org/grpc v1.71.1
+	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
 )
 
