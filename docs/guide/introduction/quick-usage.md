@@ -42,8 +42,14 @@ docker run \
 GripMock now supports compiled proto descriptors (`.pb` files) for better dependency management:
 
 1. **Generate descriptor file**:
+   Using Protocol Buffers Compiler (`protoc`):
    ```bash
    protoc --proto_path=. --descriptor_set_out=service.pb service.proto
+   ```
+   
+   Or using Buf (modern build tool):
+   ```bash
+   buf build -o service.pb
    ```
 
 2. **Run with descriptor**:
@@ -56,8 +62,10 @@ GripMock now supports compiled proto descriptors (`.pb` files) for better depend
    ```
 
 > **Note**:  
-> - Use `--include_imports` with `protoc` if your service depends on multiple proto files  
-> - Descriptors allow packaging multiple services and dependencies into a single binary file
+> - When using `protoc`, add `--include_imports` for multi-file dependencies  
+> - Buf automatically handles dependencies and requires no extra flags  
+> - Descriptors package services/dependencies into a single binary file  
+> - Buf requires a valid `buf.yaml` configuration in your project
 
 ### Multiple Services
 #### Option 1: Specify Multiple Files
@@ -135,7 +143,11 @@ When using `.pb` descriptors:
 - Better handling of complex proto dependencies
 - Supports all features available with regular `.proto` files
 
-> **Tip**: Use `protoc --include_imports` to bundle all dependencies into a single descriptor file for complex projects
+> **Tip**: Use Buf for modern proto workflows:
+> ```bash
+> buf build --exclude-source-info -o service.pb
+> ```
+> This creates leaner descriptors optimized for runtime use
 
 ### Headers Matching
 Add headers to stubs for fine-grained control:

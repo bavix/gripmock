@@ -1,0 +1,10 @@
+--- ENDPOINT ---
+validator.Validator/Validate
+
+--- REQUEST ---
+{"number": 101, "validation_type": "NUMBER_RANGE", "min": 10, "max": 100}
+
+--- RESPONSE ---
+{
+    "errorMessage": "number must be between 10 and 100"
+}
