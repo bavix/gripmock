@@ -59,7 +59,7 @@ jobs:
           path: |
             grpcurl
             grpctestify.sh
-          key: deps-cache-${{ runner.os }}-v1
+          key: deps-cache-${{ runner.os }}-grpc-testify-${{ env.GRPC_TESTIFY_VERSION }}-grpcurl-${{ env.GRPCURL_VERSION }}-v1
 
       - name: Install dependencies
         run: |
