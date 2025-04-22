@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: wangyoucao577/go-release-action@v1.53
         with:
-          executable_compression: upx -v -9
+          # executable_compression: upx -v -9
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
