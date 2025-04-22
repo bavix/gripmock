@@ -54,7 +54,7 @@ brews:
       branch: master
     directory: Formula
     homepage: https://bavix.github.io/gripmock/
-    description: "A mock server for gRPC services using .proto, .pb files"
+    description: "A mock server for gRPC services using .proto files or compiled .pb descriptors"
     license: "MIT"
     url_template: "https://github.com/bavix/gripmock/releases/download/v{{ .Version }}/gripmock_{{ .Version }}_{{ .Os }}_{{ .Arch }}.tar.gz"
     commit_author:
@@ -62,4 +62,4 @@ brews:
       email: github-actions@users.noreply.github.com
     commit_msg_template: "Update GripMock to {{ .Version }}"
     test: |
-      system "#{bin}/gripmock --version"
+      assert_match "v#{version}", shell_output("#{bin}/gripmock --version")
