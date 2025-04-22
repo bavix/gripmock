@@ -1,0 +1,8 @@
+--- ENDPOINT ---
+com.bavix.echo.v1.EchoService/sendMessage
+
+--- REQUEST ---
+{"message":"hello"}
+
+--- RESPONSE ---
+{"response":"Hello from echo server v1 (sendMessage)"}

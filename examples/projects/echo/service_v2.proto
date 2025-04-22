@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package com.bavix.echo.v2;
+
+service EchoService {
+    rpc SendMessage (EchoRequest) returns (EchoResponse) {}
+    rpc sendMessage (EchoRequest) returns (EchoResponse) {}
+}
+
+message EchoRequest {
+    string message = 1;
+}
+
+message EchoResponse {
+    string response = 1;
+}
