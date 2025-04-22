@@ -51,10 +51,10 @@ type grpcMocker struct {
 	inputDesc  protoreflect.MessageDescriptor
 	outputDesc protoreflect.MessageDescriptor
 
-	packageName string
-	serviceName string
-	methodName  string
-	fullMethod  string
+	fullServiceName string
+	serviceName     string
+	methodName      string
+	fullMethod      string
 
 	serverStream bool
 	clientStream bool
@@ -87,7 +87,7 @@ func (m *grpcMocker) streamHandler(srv any, stream grpc.ServerStream) error {
 
 func (m *grpcMocker) newQuery(ctx context.Context, msg *dynamicpb.Message) stuber.Query {
 	query := stuber.Query{
-		Service: m.serviceName,
+		Service: m.fullServiceName,
 		Method:  m.methodName,
 		Data:    convertToMap(msg),
 	}
@@ -528,10 +528,10 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 						inputDesc:  inputDesc,
 						outputDesc: outputDesc,
 
-						packageName: file.GetPackage(),
-						serviceName: svc.GetName(),
-						methodName:  method.GetName(),
-						fullMethod:  fmt.Sprintf("/%s.%s/%s", file.GetPackage(), svc.GetName(), method.GetName()),
+						fullServiceName: fmt.Sprintf("%s.%s", file.GetPackage(), svc.GetName()),
+						serviceName:     svc.GetName(),
+						methodName:      method.GetName(),
+						fullMethod:      fmt.Sprintf("/%s.%s/%s", file.GetPackage(), svc.GetName(), method.GetName()),
 
 						serverStream: method.GetServerStreaming(),
 						clientStream: method.GetClientStreaming(),

@@ -1,0 +1,17 @@
+- service: com.bavix.echo.v2.EchoService
+  method: SendMessage
+  input:
+    equals:
+      message: "hello"
+  output:
+    data:
+      response: "Hello from echo server v2 (SendMessage)"
+
+- service: com.bavix.echo.v2.EchoService
+  method: sendMessage
+  input:
+    equals:
+      message: "hello"
+  output:
+    data:
+      response: "Hello from echo server v2 (sendMessage)"
