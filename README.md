@@ -39,16 +39,50 @@ If you have a simple service, you likely only need a single `.proto` file to sta
 
 ## Installation
 
-**Using Go:**
+GripMock can be installed using one of the following methods:
+
+### 1. **Using Homebrew (Recommended)**
+
+Homebrew provides an easy way to install GripMock on macOS and Linux.
+
+#### Step 1: Tap the Repository
+Tap the official Homebrew tap for GripMock:
 ```bash
-go install github.com/bavix/gripmock/v3@latest
+brew tap bavix/homebrew-gripmock
 ```
 
-**Or download a pre-built binary from the [Releases](https://github.com/bavix/gripmock/releases) page.**
+#### Step 2: Install GripMock
+Install GripMock with the following command:
+```bash
+brew install gripmock
+```
 
-**Docker Image:**
+#### Step 3: Verify Installation
+Verify that GripMock is installed correctly by checking its version:
+```bash
+gripmock --version
+```
+You should see output similar to:
+```
+gripmock version v3.2.4
+```
+
+### 2. **Download Pre-built Binaries**
+
+Pre-built binaries for various platforms are available on the [Releases](https://github.com/bavix/gripmock/releases) page. Download the appropriate binary for your system and add it to your `PATH`.
+
+### 3. **Using Docker**
+
+GripMock is also available as a Docker image. Pull the latest image with:
 ```bash
 docker pull bavix/gripmock
+```
+
+### 4. **Using Go**
+
+If you have Go installed, you can install GripMock directly:
+```bash
+go install github.com/bavix/gripmock/v3@latest
 ```
 
 ## Compiling `.pb` Files (Optional)
