@@ -7,7 +7,7 @@ import (
 	"github.com/gripmock/shutdown"
 	"github.com/gripmock/stuber"
 
-	"github.com/bavix/gripmock/internal/infra/storage"
+	"github.com/bavix/gripmock/v3/internal/infra/storage"
 )
 
 type Option func(*Builder)

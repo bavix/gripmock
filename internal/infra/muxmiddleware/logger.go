@@ -8,7 +8,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/bavix/gripmock/pkg/jsondecoder"
+	"github.com/bavix/gripmock/v3/pkg/jsondecoder"
 )
 
 // RequestLogger logs the request and response.

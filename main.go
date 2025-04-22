@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 
-	"github.com/bavix/gripmock/cmd"
+	"github.com/bavix/gripmock/v3/cmd"
 )
 
 func main() {

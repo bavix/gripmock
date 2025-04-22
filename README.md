@@ -35,46 +35,92 @@ This service is a fork of the service [tokopedia/gripmock](https://github.com/to
 
 ## Quick Usage
 
-First, prepare your `.proto` file **or compile a .pb descriptor**. Or you can use `hello.proto` in `example/simple/` folder. Suppose you put it in `/mypath/hello.proto`. We are gonna use Docker image for easier example test.
+If you have a simple service, you likely only need a single `.proto` file to start the GripMock server. However, for more complex projects, you can use the `--imports` flag to include additional proto files. This approach can become cumbersome, so the recommended solution is to compile a `.pb` (Protocol Buffers descriptor) file.
 
-**Option 1: Traditional .proto**
+## Installation
+
+**Using Go:**
 ```bash
-# Generate descriptor (optional)
+go install github.com/bavix/gripmock/v3@latest
+```
+
+**Or download a pre-built binary from the [Releases](https://github.com/bavix/gripmock/releases) page.**
+
+**Docker Image:**
+```bash
+docker pull bavix/gripmock
+```
+
+## Compiling `.pb` Files (Optional)
+
+**Example using `protoc`:**
+```bash
 protoc --proto_path=. --descriptor_set_out=service.pb --include_imports hello.proto
 ```
 
-**Option 2: Use existing .pb**
+**Example using `buf`:**
 ```bash
-# If you already have a .pb file
+buf build -o service.pb
 ```
 
-basic syntax to run GripMock is
-`gripmock [--stub=<stub_path>] <protofile_or_descriptor>`
+## Usage
 
-- Install [Docker](https://docs.docker.com/install/)
-- Run `docker pull bavix/gripmock` to pull the image
-- We are gonna mount `/mypath/hello.proto` (it must be a fullpath) into a container and also we expose ports needed. 
+### With Gripmock Installed Locally
 
-**Using .proto:**
+**Start with a `.pb` or `.proto` file:**
 ```bash
-docker run -p 4770:4770 -p 4771:4771 -v /mypath:/proto bavix/gripmock /proto/hello.proto
+gripmock service.pb
+# or
+gripmock service.proto
 ```
 
-**Using .pb:**
+**Use a folder containing multiple `.proto` files:**
 ```bash
-docker run -p 4770:4770 -p 4771:4771 -v /mypath:/proto bavix/gripmock /proto/service.pb
+gripmock protofolder/
 ```
 
-> **⚠️ Important**  
-> When using auto-load mode (`/proto` directory), avoid mixing `.proto` and `.pb` files - this will cause conflicts
+**Static Stubs (provide mock responses):**
+```bash
+# For a folder of proto files
+gripmock --stub stubfolder/ protofolder/
+# For a single proto file
+gripmock --stub stubfolder/ service.proto
+# For a pre-compiled .pb file
+gripmock --stub stubfolder/ service.pb
+```
 
-- On a separate terminal we are gonna add a stub into the stub service. Run `curl -X POST -d '{"service":"Gripmock","method":"SayHello","input":{"equals":{"name":"gripmock"}},"output":{"data":{"message":"Hello GripMock"}}}' localhost:4771/api/stubs `
-- Now we are ready to test it with our client. You can find a client example file under `example/simple/client/`. Execute one of your preferred language. Example for go: `go run example/simple/client/*.go`
+### With Docker
 
-Check [`example`](https://github.com/bavix/gripmock/tree/master/example) folder for various usecase of gripmock.
+**Folder of proto files:**
+```bash
+docker run -p 4770:4770 -p 4771:4771 \
+  -v stubfolder:/stubs \
+  -v /protofolder:/proto \
+  bavix/gripmock /proto/
+```
+
+**Single proto file:**
+```bash
+docker run -p 4770:4770 -p 4771:4771 \
+  -v stubfolder:/stubs \
+  -v /protofolder:/proto \
+  bavix/gripmock /proto/service.proto
+```
+
+**Pre-compiled .pb file:**
+```bash
+docker run -p 4770:4770 -p 4771:4771 \
+  -v stubfolder:/stubs \
+  -v /protofolder:/proto \
+  bavix/gripmock /proto/service.pb
+```
+
+- **4770**: gRPC port for mock server
+- **4771**: HTTP port for web UI and REST API
+
+Check [`examples`](https://github.com/bavix/gripmock/tree/master/examples) folder for various usecase of GripMock.
 
 ## How It Works
-![Operation of the gRPC service](https://github.com/bavix/gripmock/assets/5111255/076e796e-5213-4b64-a6f3-b4edffa331d6)
 
 From client perspective, GripMock has 2 main components:
 1. gRPC server that serves on `tcp://localhost:4770`. Its main job is to serve incoming rpc call from client and then parse the input so that it can be posted to Stub service to find the perfect stub match.
@@ -82,14 +128,7 @@ From client perspective, GripMock has 2 main components:
 
 Matched stub will be returned to gRPC service then further parse it to response the rpc call.
 
-
-From technical perspective, GripMock consists of 2 binaries. 
-The first binary is the gripmock itself, when it will generate the gRPC server using the plugin installed in the system (see [Dockerfile](Dockerfile)). 
-When the server sucessfully generated, it will be invoked in parallel with stub server which ends up opening 2 ports for client to use.
-
-The second binary is the protoc plugin which located in folder [protoc-gen-gripmock](/protoc-gen-gripmock). This plugin is the one who translates protobuf declaration into a gRPC server in Go programming language. 
-
-![Inside GripMock](https://github.com/bavix/gripmock/assets/5111255/a4cd490a-96fd-4ad3-b9d8-872fb7d6e70c)
+![Inside GripMock](https://github.com/user-attachments/assets/26ce5fb7-853a-4205-badd-9b006d4d419b)
 
 ## Stubbing
 

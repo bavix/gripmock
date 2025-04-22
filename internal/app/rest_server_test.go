@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bavix/features"
-	"github.com/bavix/gripmock/internal/app"
+	"github.com/bavix/gripmock/v3/internal/app"
 )
 
 //nolint:funlen,maintidx

@@ -7,8 +7,8 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog"
 
-	"github.com/bavix/gripmock/internal/app"
-	"github.com/bavix/gripmock/internal/domain/proto"
+	"github.com/bavix/gripmock/v3/internal/app"
+	"github.com/bavix/gripmock/v3/internal/domain/proto"
 )
 
 func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
