@@ -60,4 +60,4 @@ brews:
     commit_author:
       name: github-actions
       email: github-actions@users.noreply.github.com
-    commit_msg_template: "Update Gripmock to v{{ .Version }}"
+    commit_msg_template: "Update GripMock to {{ .Version }}"
