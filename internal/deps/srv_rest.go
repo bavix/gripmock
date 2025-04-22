@@ -9,9 +9,9 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
-	"github.com/bavix/gripmock/internal/app"
-	"github.com/bavix/gripmock/internal/domain/rest"
-	"github.com/bavix/gripmock/internal/infra/muxmiddleware"
+	"github.com/bavix/gripmock/v3/internal/app"
+	"github.com/bavix/gripmock/v3/internal/domain/rest"
+	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
 )
 
 func (b *Builder) RestServe(

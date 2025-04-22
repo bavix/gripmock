@@ -14,9 +14,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 
-	"github.com/bavix/gripmock/internal/infra/watcher"
-	"github.com/bavix/gripmock/pkg/jsondecoder"
-	"github.com/bavix/gripmock/pkg/yaml2json"
+	"github.com/bavix/gripmock/v3/internal/infra/watcher"
+	"github.com/bavix/gripmock/v3/pkg/jsondecoder"
+	"github.com/bavix/gripmock/v3/pkg/yaml2json"
 )
 
 type Extender struct {

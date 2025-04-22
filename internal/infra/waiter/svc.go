@@ -7,7 +7,7 @@ import (
 	"google.golang.org/grpc"
 	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/bavix/gripmock/internal/domain/waiter"
+	"github.com/bavix/gripmock/v3/internal/domain/waiter"
 )
 
 type Service struct {

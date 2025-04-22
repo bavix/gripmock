@@ -7,8 +7,8 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/bavix/gripmock/internal/deps"
-	"github.com/bavix/gripmock/internal/domain/waiter"
+	"github.com/bavix/gripmock/v3/internal/deps"
+	"github.com/bavix/gripmock/v3/internal/domain/waiter"
 )
 
 var (

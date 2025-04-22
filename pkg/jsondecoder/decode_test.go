@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/gripmock/pkg/jsondecoder"
+	"github.com/bavix/gripmock/v3/pkg/jsondecoder"
 )
 
 type demo struct {

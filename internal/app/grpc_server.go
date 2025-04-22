@@ -30,9 +30,9 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/dynamicpb"
 
-	protoloc "github.com/bavix/gripmock/internal/domain/proto"
-	"github.com/bavix/gripmock/internal/domain/protoset"
-	"github.com/bavix/gripmock/pkg/grpccontext"
+	protoloc "github.com/bavix/gripmock/v3/internal/domain/proto"
+	"github.com/bavix/gripmock/v3/internal/domain/protoset"
+	"github.com/bavix/gripmock/v3/pkg/grpccontext"
 )
 
 const serviceReflection = "grpc.reflection.v1.ServerReflection"

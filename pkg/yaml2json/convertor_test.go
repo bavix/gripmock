@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/gripmock/pkg/yaml2json"
+	"github.com/bavix/gripmock/v3/pkg/yaml2json"
 )
 
 func TestConvertor(t *testing.T) {
