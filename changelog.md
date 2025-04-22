@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.2.5 - 2025-04-22
+
+### What's Changed
+
+* Add Homebrew Support by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/581
+* goreleaser v2 by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/582
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.4...v3.2.5
+
 ## v3.2.4 - 2025-04-22
 
 ### What's Changed
