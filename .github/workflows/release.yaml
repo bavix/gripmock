@@ -1,26 +1,26 @@
 name: GripMock Release
 
 on:
-    release:
-        types: [created]
+  release:
+    types: [created]
 
 jobs:
-  releases-matrix:
-    permissions:
-      contents: write
-    name: Release binary
+  release:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goos: [linux, darwin]
-        goarch: [amd64, arm64]
     steps:
-      - uses: actions/checkout@v4
-      - uses: wangyoucao577/go-release-action@v1.53
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          # executable_compression: upx -v -9
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          goos: ${{ matrix.goos }}
-          goarch: ${{ matrix.goarch }}
-          extra_files: LICENSE README.md
-          ldflags: -X "github.com/bavix/gripmock/v3/cmd.version=${{ github.ref_name }}" -s -w
+          go-version: '1.24'
+
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HOMEBREW_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

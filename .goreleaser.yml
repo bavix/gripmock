@@ -1,0 +1,63 @@
+version: 2
+
+project_name: gripmock
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: gripmock
+    main: .
+    binary: gripmock
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/bavix/gripmock/v3/cmd.version={{.Version}}
+    env:
+      - CGO_ENABLED=0
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}.tar.gz"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: 'checksums.txt'
+
+release:
+  github:
+    owner: bavix
+    name: gripmock
+  draft: true
+  prerelease: auto
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+
+brews:
+  - name: gripmock
+    repository:
+      owner: bavix
+      name: homebrew-gripmock
+      branch: main
+    directory: Formula
+    homepage: https://bavix.github.io/gripmock/
+    description: "A mock server for gRPC services using .proto, .pb files"
+    license: "MIT"
+    url_template: "https://github.com/bavix/gripmock/releases/download/v{{ .Version }}/gripmock_{{ .Version }}_{{ .Os }}_{{ .Arch }}.tar.gz"
+    commit_author:
+      name: github-actions
+      email: github-actions@users.noreply.github.com
+    commit_msg_template: "Update Gripmock to v{{ .Version }}"
