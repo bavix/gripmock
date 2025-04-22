@@ -8,7 +8,7 @@ WORKDIR /gripmock-src
 
 #hadolint ignore=DL3018
 RUN apk add --no-cache binutils \
-    && go build -o /usr/local/bin/gripmock -ldflags "-X 'github.com/bavix/gripmock/cmd.version=${version:-dev}' -s -w" . \
+    && go build -o /usr/local/bin/gripmock -ldflags "-X 'github.com/bavix/gripmock/v3/cmd.version=${version:-dev}' -s -w" . \
     && strip /usr/local/bin/gripmock \
     && apk del binutils \
     && rm -rf /root/.cache /go/pkg /tmp/* /var/cache/*
