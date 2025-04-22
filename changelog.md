@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.2.3 - 2025-04-22
+
+### What's Changed
+
+* ldflags fix by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/579
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.2...v3.2.3
+
 ## v3.2.2 - 2025-04-22
 
 ### What's Changed
