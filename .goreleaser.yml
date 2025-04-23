@@ -50,7 +50,7 @@ brews:
   - name: gripmock
     repository:
       owner: gripmock
-      name: homebrew
+      name: homebrew-tap
       branch: master
     directory: Formula
     homepage: https://bavix.github.io/gripmock/
