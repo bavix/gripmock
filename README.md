@@ -48,7 +48,7 @@ Homebrew provides an easy way to install GripMock on macOS and Linux.
 #### Step 1: Tap the Repository
 Tap the official Homebrew tap for GripMock:
 ```bash
-brew tap gripmock/homebrew
+brew tap gripmock/tap
 ```
 
 #### Step 2: Install GripMock
