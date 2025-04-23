@@ -326,7 +326,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 	found := result.Found()
 
 	if found == nil {
-		return nil, stubNotFoundError(query, result)
+		return nil, status.Error(codes.NotFound, stubNotFoundError(query, result).Error())
 	}
 
 	if found.Output.Error != "" || found.Output.Code != nil {
