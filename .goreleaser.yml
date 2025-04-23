@@ -49,8 +49,8 @@ changelog:
 brews:
   - name: gripmock
     repository:
-      owner: bavix
-      name: homebrew-gripmock
+      owner: gripmock
+      name: homebrew
       branch: master
     directory: Formula
     homepage: https://bavix.github.io/gripmock/
