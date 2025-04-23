@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.2.8 - 2025-04-23
+
+### What's Changed
+
+* update docs grpctestify by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/588
+* [3.2] bugfix stub not found by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/589
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.7...v3.2.8
+
 ## v3.2.7 - 2025-04-23
 
 ### What's Changed
