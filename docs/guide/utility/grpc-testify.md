@@ -15,13 +15,57 @@ description: Declarative gRPC Testing Framework
 - 📄 Human-readable reports
 - 📂 Recursive directory processing
 
-## Requirements
+## Installation
+
+### Recommended Installation (macOS/Linux)
+```bash
+brew tap gripmock/tap
+brew install grpctestify
+```
+
+In this case, `grpctestify` will automatically install `grpcurl` and `jq` as dependencies.
+
+### Manual Installation
+
+#### Install Dependencies
 ```bash
 # macOS
 brew install grpcurl jq
 
 # Ubuntu/Debian
-sudo apt install grpcurl jq
+sudo apt install -y grpcurl jq
+
+# Verify installation
+grpcurl --version
+jq --version
+```
+
+#### Download the Script
+Use `curl` or `wget` to download the `grpctestify.sh` script from the latest release:
+```bash
+# Using curl
+curl -LO https://github.com/gripmock/grpctestify/releases/latest/download/grpctestify.sh
+
+# Using wget
+wget https://github.com/gripmock/grpctestify/releases/latest/download/grpctestify.sh
+```
+
+#### Make the Script Executable
+After downloading, make the script executable:
+```bash
+chmod +x grpctestify.sh
+```
+
+#### Move the Script to a Directory in Your PATH (Optional)
+For easier access, move the script to a directory in your `PATH`:
+```bash
+sudo mv grpctestify.sh /usr/local/bin/grpctestify
+```
+
+#### Verify Installation
+Check that the script is working correctly:
+```bash
+grpctestify --version
 ```
 
 ## Test File Format
