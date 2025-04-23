@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.2.7 - 2025-04-23
+
+### What's Changed
+
+* fix tap name by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/587
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.6...v3.2.7
+
 ## v3.2.6 - 2025-04-23
 
 ### What's Changed
