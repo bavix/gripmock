@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.2.9 - 2025-04-24
+
+### What's Changed
+
+* [3.2] add setup.sh & migrate from encoding/json to goccy by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/590
+* fix by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/591
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.8...v3.2.9
+
 ## v3.2.8 - 2025-04-23
 
 ### What's Changed
