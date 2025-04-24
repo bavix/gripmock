@@ -88,7 +88,7 @@ detect_os_and_architecture() {
 
 get_latest_version() {
     log_info "Fetching the latest version of GripMock from GitHub..."
-    LATEST_RELEASE=$(curl -s https://api.github.com/repos/bavix/gripmock/releases/latest)
+    LATEST_RELEASE=$(curl --retry 12 --retry-delay 5 --retry-all-errors -s https://api.github.com/repos/bavix/gripmock/releases/latest)
     LATEST_VERSION=$(echo "$LATEST_RELEASE" | grep '"tag_name":' | awk -F '"' '{print $4}')
     if [ -z "$LATEST_VERSION" ]; then
         log_error "Failed to fetch the latest version of GripMock from GitHub."
@@ -106,7 +106,7 @@ download_checksums() {
 
     log_info "Downloading checksums file..."
     (
-        curl -sL "$CHECKSUM_URL" -o "$CHECKSUM_FILE" &
+        curl --retry 12 --retry-delay 5 --retry-all-errors -sL "$CHECKSUM_URL" -o "$CHECKSUM_FILE" &
         spinner $! "Downloading checksums"
     ) || log_error "Failed to download checksums file."
 
@@ -120,7 +120,7 @@ download_gripmock() {
 
     log_info "Downloading GripMock for ${BLUE}${OS}/${ARCH}${NC}..."
     (
-        curl -sL "$DOWNLOAD_URL" -o "$DOWNLOAD_FILE" &
+        curl --retry 12 --retry-delay 5 --retry-all-errors -sL "$DOWNLOAD_URL" -o "$DOWNLOAD_FILE" &
         spinner $! "Downloading GripMock"
     ) || log_error "Download failed. Try again later."
 
