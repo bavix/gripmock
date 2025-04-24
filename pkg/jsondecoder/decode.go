@@ -2,7 +2,8 @@ package jsondecoder
 
 import (
 	"bytes"
-	"encoding/json"
+
+	"github.com/goccy/go-json"
 )
 
 const minJSONLength = 2

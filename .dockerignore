@@ -1,6 +1,5 @@
 .git
 .github
-deployments
 docs
+examples
 node_modules
-*.pb.go

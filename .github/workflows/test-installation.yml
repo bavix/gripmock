@@ -1,0 +1,62 @@
+name: Test GripMock Installation Script
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test-installation:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: ubuntu-22.04-arm
+          - os: macos-13
+          - os: macos-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install dependencies (Linux)
+      if: startsWith(matrix.os, 'ubuntu')
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y curl tar grep coreutils
+
+    - name: Install dependencies (macOS)
+      if: startsWith(matrix.os, 'macos')
+      run: |
+        brew install curl coreutils
+
+    - name: First installation
+      shell: sh
+      run: |
+        chmod +x ./setup.sh
+        sudo ./setup.sh
+
+    - name: Verify installation
+      shell: sh
+      run: |
+        test -f /usr/local/bin/gripmock
+        gripmock --version
+
+    - name: Second installation (upgrade check)
+      shell: sh
+      run: |
+        sudo ./setup.sh
+
+    - name: Verify after second installation
+      shell: sh
+      run: |
+        test -f /usr/local/bin/gripmock
+        gripmock --version
+
+    - name: Cleanup
+      if: always()
+      run: |
+        sudo rm -f /usr/local/bin/gripmock || true
+      shell: sh

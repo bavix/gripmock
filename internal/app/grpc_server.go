@@ -4,7 +4,6 @@ package app
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/goccy/go-json"
 	"github.com/gripmock/stuber"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
