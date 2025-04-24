@@ -2,10 +2,10 @@ package yaml2json
 
 import (
 	"bytes"
-	"encoding/json"
 	"text/template"
 
 	"github.com/cristalhq/base64"
+	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 )
 

@@ -41,7 +41,7 @@ If you have a simple service, you likely only need a single `.proto` file to sta
 
 GripMock can be installed using one of the following methods:
 
-### 1. **Using Homebrew (Recommended)**
+### 1. **Using Homebrew (macOS/Linux Recommended)**
 
 Homebrew provides an easy way to install GripMock on macOS and Linux.
 
@@ -67,18 +67,52 @@ You should see output similar to:
 gripmock version v3.2.4
 ```
 
-### 2. **Download Pre-built Binaries**
+### 2. **Using Shell Script (curl)**
+For Unix-based systems (Linux/macOS) on **arm64/amd64** architectures:
+```bash
+curl -s https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.sh | sh -s -- --install
+```
+
+**Example installation output:**
+```bash
+ℹ Starting GripMock installation... 🚀
+ℹ Checking dependencies...
+✔ Dependencies are ready.
+ℹ Detecting system information...
+✔ Detected OS: linux 🌍
+✔ Detected architecture: amd64 💻
+ℹ Fetching the latest version of GripMock from GitHub...
+✔ Latest version: 3.2.8 🎉
+ℹ Downloading checksums file...
+✔ Checksums file downloaded.
+ℹ Downloading GripMock for linux/amd64...
+✔ Downloaded GripMock (9.59 MB)
+✔ Checksum verified successfully.
+ℹ Installing GripMock...
+✔ GripMock has been successfully installed.
+ℹ You can now run 'gripmock --help' to get started.
+✔ Installation complete! You're all set to use GripMock 🎉
+```
+
+This script automatically:
+1. Detects your OS (Linux/macOS) and architecture (arm64/amd64)
+2. Verifies system dependencies
+3. Downloads the latest release securely
+4. Validates checksums
+5. Installs to your system PATH
+
+### 3. **Download Pre-built Binaries**
 
 Pre-built binaries for various platforms are available on the [Releases](https://github.com/bavix/gripmock/releases) page. Download the appropriate binary for your system and add it to your `PATH`.
 
-### 3. **Using Docker**
+### 4. **Using Docker**
 
 GripMock is also available as a Docker image. Pull the latest image with:
 ```bash
 docker pull bavix/gripmock
 ```
 
-### 4. **Using Go**
+### 5. **Using Go**
 
 If you have Go installed, you can install GripMock directly:
 ```bash

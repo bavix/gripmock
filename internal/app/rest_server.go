@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
 	"google.golang.org/protobuf/reflect/protoreflect"
