@@ -70,7 +70,7 @@ gripmock version v3.2.4
 ### 2. **Using Shell Script (curl)**
 For Unix-based systems (Linux/macOS) on **arm64/amd64** architectures:
 ```bash
-curl -s https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.sh | sh -s -- --install
+curl -s https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.sh | sh -s
 ```
 
 **Example installation output:**
