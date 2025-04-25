@@ -17,9 +17,13 @@ RUN chmod +x /gripmock-src/entrypoint.sh && chmod +x /usr/local/bin/gripmock
 
 FROM alpine:3.21
 
+LABEL org.opencontainers.image.title="GripMock" 
+LABEL org.opencontainers.image.description="Mock server for gRPC services with dynamic stubbing capabilities"
 LABEL org.opencontainers.image.source="https://github.com/bavix/gripmock"
-LABEL org.opencontainers.image.description="gRPC Mock Server"
+LABEL org.opencontainers.image.documentation="https://bavix.github.io/gripmock/"
+LABEL org.opencontainers.image.authors="Babichev Maksim <info@babichev.net>"
 LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.vendor="bavix"
 
 COPY --from=builder /usr/local/bin/gripmock /usr/local/bin/gripmock
 COPY --from=builder /gripmock-src/entrypoint.sh /entrypoint.sh
