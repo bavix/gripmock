@@ -21,7 +21,7 @@ func stubNotFoundError(expect stuber.Query, result *stuber.Result) error {
 		return fmt.Errorf("%s", template) //nolint:err113
 	}
 
-	addClosestMatch := func(key string, match map[string]interface{}) {
+	addClosestMatch := func(key string, match map[string]any) {
 		if len(match) > 0 {
 			matchString, err := json.MarshalIndent(match, "", "\t")
 			if err != nil {

@@ -14,7 +14,7 @@ const minJSONLength = 2
 // Examples:
 //
 //	data := []byte(`{"name": "Bob"}`)
-//	var result []map[string]interface{}
+//	var result []map[string]any
 //	err := UnmarshalSlice(data, &result)
 //	// result is now [{"name": "Bob"}]
 //
@@ -24,7 +24,7 @@ const minJSONLength = 2
 //	// result is now [{"name": "Bob"}]
 //
 //	data := []byte(`{"name": "Bob"}`)
-//	var result []interface{}
+//	var result []any
 //	err := UnmarshalSlice(data, &result)
 //	// result is now [{"name": "Bob"}]
 //
@@ -33,7 +33,7 @@ const minJSONLength = 2
 //	err := UnmarshalSlice(data, &result)
 //	// result is now [{"name": "Bob"}]
 //	// NOTE: if the input data is not a JSON array, it is wrapped in an array before decoding
-func UnmarshalSlice(data []byte, v interface{}) error {
+func UnmarshalSlice(data []byte, v any) error {
 	input := bytes.TrimSpace(data)
 
 	if len(input) < minJSONLength {
