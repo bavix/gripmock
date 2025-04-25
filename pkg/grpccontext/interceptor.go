@@ -19,10 +19,10 @@ func UnaryInterceptor(logger *zerolog.Logger) grpc.UnaryServerInterceptor {
 	// It returns the response and an error.
 	return func(
 		innerCtx context.Context, // The context of the gRPC request.
-		req interface{}, // The request object.
+		req any, // The request object.
 		_ *grpc.UnaryServerInfo, // The server info.
 		handler grpc.UnaryHandler, // The handler function for the request.
-	) (interface{}, error) {
+	) (any, error) {
 		// Add the logger to the context and call the handler.
 		// The logger can be accessed using grpc.GetLogger(ctx).
 		return handler(logger.WithContext(innerCtx), req)
@@ -35,8 +35,8 @@ type serverStreamWrapper struct {
 }
 
 func (w serverStreamWrapper) Context() context.Context        { return w.ctx }
-func (w serverStreamWrapper) RecvMsg(msg interface{}) error   { return w.ss.RecvMsg(msg) }
-func (w serverStreamWrapper) SendMsg(msg interface{}) error   { return w.ss.SendMsg(msg) }
+func (w serverStreamWrapper) RecvMsg(msg any) error           { return w.ss.RecvMsg(msg) }
+func (w serverStreamWrapper) SendMsg(msg any) error           { return w.ss.SendMsg(msg) }
 func (w serverStreamWrapper) SendHeader(md metadata.MD) error { return w.ss.SendHeader(md) }
 func (w serverStreamWrapper) SetHeader(md metadata.MD) error  { return w.ss.SetHeader(md) }
 func (w serverStreamWrapper) SetTrailer(md metadata.MD)       { w.ss.SetTrailer(md) }
@@ -51,7 +51,7 @@ func StreamInterceptor(logger *zerolog.Logger) grpc.StreamServerInterceptor {
 	// It takes the server, the stream, the server info, and the handler.
 	// It returns an error.
 	return func(
-		srv interface{}, // The server object.
+		srv any, // The server object.
 		ss grpc.ServerStream, // The stream object.
 		_ *grpc.StreamServerInfo, // The server info.
 		handler grpc.StreamHandler, // The handler function for the stream.

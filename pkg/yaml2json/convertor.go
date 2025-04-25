@@ -9,7 +9,7 @@ type Convertor struct {
 }
 
 func New() *Convertor {
-	return &Convertor{engine: &engine{}}
+	return &Convertor{engine: newEngine()}
 }
 
 // Execute executes the given YAML data and returns the JSON representation.

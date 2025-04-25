@@ -35,7 +35,7 @@ type Method struct {
 
 // SearchRequest defines model for SearchRequest.
 type SearchRequest struct {
-	Data    interface{}       `json:"data"`
+	Data    any               `json:"data"`
 	Headers map[string]string `json:"headers,omitempty"`
 	Id      *ID               `json:"id,omitempty"`
 	Method  string            `json:"method"`
@@ -45,7 +45,7 @@ type SearchRequest struct {
 // SearchResponse defines model for SearchResponse.
 type SearchResponse struct {
 	Code    *codes.Code       `json:"code,omitempty"`
-	Data    interface{}       `json:"data"`
+	Data    any               `json:"data"`
 	Error   string            `json:"error"`
 	Headers map[string]string `json:"headers,omitempty"`
 }
@@ -77,10 +77,10 @@ type StubHeaders struct {
 
 // StubInput defines model for StubInput.
 type StubInput struct {
-	Contains         map[string]interface{} `json:"contains,omitempty"`
-	Equals           map[string]interface{} `json:"equals,omitempty"`
-	IgnoreArrayOrder *bool                  `json:"ignoreArrayOrder,omitempty"`
-	Matches          map[string]interface{} `json:"matches,omitempty"`
+	Contains         map[string]any `json:"contains,omitempty"`
+	Equals           map[string]any `json:"equals,omitempty"`
+	IgnoreArrayOrder *bool          `json:"ignoreArrayOrder,omitempty"`
+	Matches          map[string]any `json:"matches,omitempty"`
 }
 
 // StubList defines model for StubList.
@@ -88,10 +88,10 @@ type StubList = []Stub
 
 // StubOutput defines model for StubOutput.
 type StubOutput struct {
-	Code    *codes.Code            `json:"code,omitempty"`
-	Data    map[string]interface{} `json:"data"`
-	Error   string                 `json:"error"`
-	Headers map[string]string      `json:"headers,omitempty"`
+	Code    *codes.Code       `json:"code,omitempty"`
+	Data    map[string]any    `json:"data"`
+	Error   string            `json:"error"`
+	Headers map[string]string `json:"headers,omitempty"`
 }
 
 // AddStubJSONBody defines parameters for AddStub.
