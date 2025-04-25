@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.2.10 - 2025-04-25
+
+### What's Changed
+
+* remove on.push for Test GripMock Installation Script by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/592
+* optimize internal api by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/593
+* add opencontainers labels by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/594
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.9...v3.2.10
+
 ## v3.2.9 - 2025-04-24
 
 ### What's Changed
