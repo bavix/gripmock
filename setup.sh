@@ -87,6 +87,9 @@ detect_os_and_architecture() {
 }
 
 get_latest_version() {
+    TMP_DIR=$(mktemp -d)
+    log_info "Created temporary directory: ${BLUE}$TMP_DIR${NC}"
+
     log_info "Fetching the latest version of GripMock from GitHub..."
     
     GITHUB_API_URL="https://api.github.com/repos/bavix/gripmock/releases/latest"
