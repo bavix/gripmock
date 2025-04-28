@@ -7,7 +7,6 @@ require (
 	github.com/bavix/gripmock-ui v1.0.0
 	github.com/bufbuild/protocompile v0.14.1
 	github.com/cockroachdb/errors v1.11.3
-	github.com/cristalhq/base64 v0.1.2
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/goccy/go-json v0.10.5
 	github.com/goccy/go-yaml v1.17.1
@@ -19,7 +18,7 @@ require (
 	github.com/gripmock/stuber v1.4.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/rs/zerolog v1.34.0
-	github.com/samber/lo v1.49.1
+	github.com/samber/lo v1.50.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.72.0
