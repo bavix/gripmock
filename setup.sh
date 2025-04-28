@@ -87,49 +87,27 @@ detect_os_and_architecture() {
 }
 
 get_latest_version() {
+    log_info "Fetching the latest version of GripMock from GitHub..."
     TMP_DIR=$(mktemp -d)
     log_info "Created temporary directory: ${BLUE}$TMP_DIR${NC}"
-
-    log_info "Fetching the latest version of GripMock from GitHub..."
-    
-    GITHUB_API_URL="https://api.github.com/repos/bavix/gripmock/releases/latest"
-    log_info "Requesting URL: ${BLUE}$GITHUB_API_URL${NC}"
-    
     TMP_RESPONSE="$TMP_DIR/github_api_response.txt"
-
-    HTTP_STATUS=$(curl \
-        --retry 1 \
-        --retry-delay 1 \
-        --retry-all-errors \
-        --retry-connrefused \
-        -s \
-        -D - \
-        -o "$TMP_RESPONSE" \
-        -w "%{http_code}" \ 
-        -H "User-Agent: gripmock-installer" \ 
-        "$GITHUB_API_URL")
-    
-    # Читаем заголовки и тело ответа
-    RESPONSE_HEADERS=$(head -n 20 "$TMP_RESPONSE" | grep -v '^$')
-    RESPONSE_BODY=$(tail -n +21 "$TMP_RESPONSE")
-    
-    log_info "HTTP Status Code: ${BLUE}$HTTP_STATUS${NC}"
+    TMP_HEADERS="$TMP_DIR/github_headers.txt"
+    HTTP_STATUS=$(curl --retry 15 --retry-delay 10 --retry-all-errors --retry-connrefused -s -D "$TMP_HEADERS" -o "$TMP_RESPONSE" -w "%{http_code}" -H "User-Agent: gripmock-installer" "https://api.github.com/repos/bavix/gripmock/releases/latest")
+    RESPONSE_HEADERS=$(cat "$TMP_HEADERS")
+    RESPONSE_BODY=$(cat "$TMP_RESPONSE")
+    log_info "HTTP Status Code: ${BLUE}${HTTP_STATUS}${NC}"
     log_info "Response Headers:\n${BLUE}${RESPONSE_HEADERS}${NC}"
-    
     if [ "$HTTP_STATUS" -ne 200 ]; then
-        log_error "GitHub API request failed with status $HTTP_STATUS. Check network connectivity and GitHub API limits."
-        log_info "Full response body for debugging:\n${RED}${RESPONSE_BODY}${NC}"
+        log_error "GitHub API request failed with status $HTTP_STATUS."
+        log_info "Full response body:\n${RED}${RESPONSE_BODY}${NC}"
     fi
-
     LATEST_VERSION=$(echo "$RESPONSE_BODY" | grep '"tag_name":' | awk -F '"' '{print $4}')
-    
     if [ -z "$LATEST_VERSION" ]; then
-        log_error "Failed to parse GitHub response. No version tag found in the response."
-        log_info "Unexpected GitHub API response format:\n${RED}${RESPONSE_BODY}${NC}"
+        log_error "Failed to parse GitHub response. No version tag found."
+        log_info "Unexpected response format:\n${RED}${RESPONSE_BODY}${NC}"
     fi
-
     LATEST_VERSION=${LATEST_VERSION#v}
-    log_success "Latest version: ${BLUE}$LATEST_VERSION 🎉${NC}"
+    log_success "Latest version: ${BLUE}${LATEST_VERSION} 🎉${NC}"
 }
 
 download_checksums() {
