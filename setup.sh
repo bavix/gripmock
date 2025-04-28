@@ -88,12 +88,43 @@ detect_os_and_architecture() {
 
 get_latest_version() {
     log_info "Fetching the latest version of GripMock from GitHub..."
-    LATEST_RELEASE=$(curl --retry 15 --retry-delay 10 --retry-all-errors --retry-connrefused -s https://api.github.com/repos/bavix/gripmock/releases/latest)
-    LATEST_VERSION=$(echo "$LATEST_RELEASE" | grep '"tag_name":' | awk -F '"' '{print $4}')
-    if [ -z "$LATEST_VERSION" ]; then
-        log_error "Failed to fetch the latest version of GripMock from GitHub."
+    
+    GITHUB_API_URL="https://api.github.com/repos/bavix/gripmock/releases/latest"
+    log_info "Requesting URL: ${BLUE}$GITHUB_API_URL${NC}"
+    
+    TMP_RESPONSE="$TMP_DIR/github_api_response.txt"
+
+    HTTP_STATUS=$(curl \
+        --retry 15 \
+        --retry-delay 10 \
+        --retry-all-errors \
+        --retry-connrefused \
+        -s \
+        -D - \
+        -o "$TMP_RESPONSE" \
+        -w "%{http_code}" \ 
+        -H "User-Agent: gripmock-installer" \ 
+        "$GITHUB_API_URL")
+    
+    # Читаем заголовки и тело ответа
+    RESPONSE_HEADERS=$(head -n 20 "$TMP_RESPONSE" | grep -v '^$')
+    RESPONSE_BODY=$(tail -n +21 "$TMP_RESPONSE")
+    
+    log_info "HTTP Status Code: ${BLUE}$HTTP_STATUS${NC}"
+    log_info "Response Headers:\n${BLUE}${RESPONSE_HEADERS}${NC}"
+    
+    if [ "$HTTP_STATUS" -ne 200 ]; then
+        log_error "GitHub API request failed with status $HTTP_STATUS. Check network connectivity and GitHub API limits."
+        log_info "Full response body for debugging:\n${RED}${RESPONSE_BODY}${NC}"
     fi
-    # Remove the 'v' prefix from the version tag
+
+    LATEST_VERSION=$(echo "$RESPONSE_BODY" | grep '"tag_name":' | awk -F '"' '{print $4}')
+    
+    if [ -z "$LATEST_VERSION" ]; then
+        log_error "Failed to parse GitHub response. No version tag found in the response."
+        log_info "Unexpected GitHub API response format:\n${RED}${RESPONSE_BODY}${NC}"
+    fi
+
     LATEST_VERSION=${LATEST_VERSION#v}
     log_success "Latest version: ${BLUE}$LATEST_VERSION 🎉${NC}"
 }
