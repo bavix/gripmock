@@ -33,7 +33,6 @@ jobs:
     - name: First installation
       shell: sh
       run: |
-        sleep 5
         chmod +x ./setup.sh
         sudo ./setup.sh
 

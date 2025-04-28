@@ -95,8 +95,8 @@ get_latest_version() {
     TMP_RESPONSE="$TMP_DIR/github_api_response.txt"
 
     HTTP_STATUS=$(curl \
-        --retry 15 \
-        --retry-delay 10 \
+        --retry 1 \
+        --retry-delay 1 \
         --retry-all-errors \
         --retry-connrefused \
         -s \
