@@ -13,14 +13,8 @@ import (
 )
 
 type engine struct {
-	funcs template.FuncMap
-}
-
-//nolint:gochecknoglobals
-var bufferPool = sync.Pool{
-	New: func() any {
-		return new(bytes.Buffer)
-	},
+	funcs      template.FuncMap
+	bufferPool *sync.Pool
 }
 
 func newEngine() *engine {
@@ -33,6 +27,11 @@ func newEngine() *engine {
 			"uuid2bytes":    uuid2bytes,
 			"uuid2int64":    uuid2int64,
 		},
+		bufferPool: &sync.Pool{
+			New: func() any {
+				return new(bytes.Buffer)
+			},
+		},
 	}
 }
 
@@ -44,10 +43,10 @@ func (e *engine) Execute(name string, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	buf, _ := bufferPool.Get().(*bytes.Buffer)
+	buf, _ := e.bufferPool.Get().(*bytes.Buffer)
 	defer func() {
 		buf.Reset()
-		bufferPool.Put(buf)
+		e.bufferPool.Put(buf)
 	}()
 
 	if err := t.Execute(buf, nil); err != nil {
