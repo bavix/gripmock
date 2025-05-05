@@ -80,7 +80,7 @@ jobs:
 
       - name: Build GripMock Server with coverage
         run: |
-          go build -cover -o /tmp/gripmock .
+          go build -cover -covermode=atomic -o /tmp/gripmock .
           chmod +x /tmp/gripmock
 
       - name: Start GripMock Server
