@@ -1,5 +1,18 @@
 # Changelog
 
+## v3.2.11 - 2025-05-05
+
+### What's Changed
+
+* Bump github.com/samber/lo from 1.49.1 to 1.50.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/595
+* Bump github.com/cockroachdb/errors from 1.11.3 to 1.12.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/598
+* Bump vite from 5.4.18 to 5.4.19 in the npm_and_yarn group by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/599
+* retry by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/600
+* Bump golangci/golangci-lint-action from 7 to 8 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/597
+* bump deps by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/601
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.10...v3.2.11
+
 ## v3.2.10 - 2025-04-25
 
 ### What's Changed
