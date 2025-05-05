@@ -6,7 +6,7 @@ require (
 	github.com/bavix/features v1.0.2
 	github.com/bavix/gripmock-ui v1.0.0
 	github.com/bufbuild/protocompile v0.14.1
-	github.com/cockroachdb/errors v1.11.3
+	github.com/cockroachdb/errors v1.12.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/goccy/go-json v0.10.5
 	github.com/goccy/go-yaml v1.17.1
