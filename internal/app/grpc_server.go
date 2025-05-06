@@ -577,7 +577,7 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 
 func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.ServiceDescriptorProto) string {
 	if file.GetPackage() != "" {
-		fmt.Sprintf("%s.%s", file.GetPackage(), svc.GetName())
+		return fmt.Sprintf("%s.%s", file.GetPackage(), svc.GetName())
 	}
 
 	return svc.GetName()
