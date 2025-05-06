@@ -28,6 +28,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
 
 	protoloc "github.com/bavix/gripmock/v3/internal/domain/proto"
@@ -507,7 +508,7 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 		for _, file := range descriptor.GetFile() {
 			for _, svc := range file.GetService() {
 				serviceDesc := grpc.ServiceDesc{
-					ServiceName: fmt.Sprintf("%s.%s", file.GetPackage(), svc.GetName()),
+					ServiceName: getServiceName(file, svc),
 					HandlerType: (*any)(nil),
 				}
 
@@ -528,10 +529,10 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 						inputDesc:  inputDesc,
 						outputDesc: outputDesc,
 
-						fullServiceName: fmt.Sprintf("%s.%s", file.GetPackage(), svc.GetName()),
+						fullServiceName: serviceDesc.ServiceName,
 						serviceName:     svc.GetName(),
 						methodName:      method.GetName(),
-						fullMethod:      fmt.Sprintf("/%s.%s/%s", file.GetPackage(), svc.GetName(), method.GetName()),
+						fullMethod:      fmt.Sprintf("/%s/%s", serviceDesc.ServiceName, method.GetName()),
 
 						serverStream: method.GetServerStreaming(),
 						clientStream: method.GetClientStreaming(),
@@ -572,6 +573,14 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	}()
 
 	return server, nil
+}
+
+func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.ServiceDescriptorProto) string {
+	if file.GetPackage() != "" {
+		fmt.Sprintf("%s.%s", file.GetPackage(), svc.GetName())
+	}
+
+	return svc.GetName()
 }
 
 func getMessageDescriptor(messageType string) (protoreflect.MessageDescriptor, error) { //nolint:ireturn
