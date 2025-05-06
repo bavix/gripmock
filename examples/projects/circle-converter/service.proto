@@ -1,4 +1,3 @@
-// circle_converter.proto
 syntax = "proto3";
 
 option optimize_for = SPEED;
