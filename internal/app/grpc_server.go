@@ -575,6 +575,9 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	return server, nil
 }
 
+// getServiceName constructs the fully qualified service name by combining the package name
+// and the service name. If the package name is empty, it returns only the service name,
+// avoiding a leading dot in the result.
 func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.ServiceDescriptorProto) string {
 	if file.GetPackage() != "" {
 		return fmt.Sprintf("%s.%s", file.GetPackage(), svc.GetName())
