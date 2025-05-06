@@ -1,5 +1,18 @@
 # Changelog
 
+## v3.2.12 - 2025-05-06
+
+### What's Changed
+
+* [3.2] fix: service name without leading dot by [@flrossetto](https://github.com/flrossetto) in https://github.com/bavix/gripmock/pull/602
+* add examples/projects/circle-convertor by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/603
+
+### New Contributors
+
+* [@flrossetto](https://github.com/flrossetto) made their first contribution in https://github.com/bavix/gripmock/pull/602
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.11...v3.2.12
+
 ## v3.2.11 - 2025-05-05
 
 ### What's Changed
