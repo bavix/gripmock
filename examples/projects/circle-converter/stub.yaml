@@ -1,0 +1,8 @@
+service: CircleService
+method: ConvertRadiusToDiameter
+input:
+  equals:
+    radius: 5
+output:
+  data:
+    diameter: 10
