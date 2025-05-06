@@ -1,0 +1,8 @@
+--- ENDPOINT ---
+CircleService/ConvertRadiusToDiameter
+
+--- REQUEST ---
+{"radius": 5.0}
+
+--- RESPONSE ---
+{"diameter": 10}

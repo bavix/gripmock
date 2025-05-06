@@ -1,0 +1,16 @@
+// circle_converter.proto
+syntax = "proto3";
+
+option optimize_for = SPEED;
+
+service CircleService {
+  rpc ConvertRadiusToDiameter (CircleRadius) returns (CircleDiameter);
+}
+
+message CircleRadius {
+  float radius = 1;
+}
+
+message CircleDiameter {
+  float diameter = 1;
+}
