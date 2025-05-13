@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.2.13 - 2025-05-13
+
+### What's Changed
+
+* Bump github.com/gripmock/stuber from 1.4.1 to 1.4.2 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/604
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.12...v3.2.13
+
 ## v3.2.12 - 2025-05-06
 
 ### What's Changed
