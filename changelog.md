@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.2.14 - 2025-05-14
+
+### What's Changed
+
+* [3.2] fix case input.{contains,equals,matches} object empty by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/606
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.13...v3.2.14
+
 ## v3.2.13 - 2025-05-13
 
 ### What's Changed
