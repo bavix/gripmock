@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.2.15 - 2025-05-14
+
+### What's Changed
+
+* bump gripmock-ui by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/607
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.14...v3.2.15
+
 ## v3.2.14 - 2025-05-14
 
 ### What's Changed
