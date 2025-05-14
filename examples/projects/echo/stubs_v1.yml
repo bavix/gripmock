@@ -15,3 +15,11 @@
   output:
     data:
       response: "Hello from echo server v1 (sendMessage)"
+
+- service: com.bavix.echo.v1.EchoService
+  method: SendMessage
+  input:
+    contains: {}
+  output:
+    data:
+      response: hit
