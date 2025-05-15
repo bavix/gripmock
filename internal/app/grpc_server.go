@@ -227,16 +227,16 @@ func convertScalar(fd protoreflect.FieldDescriptor, value protoreflect.Value) an
 	}
 }
 
-func (m *grpcMocker) delay(ctx context.Context, delayDur time.Duration) error {
+func (m *grpcMocker) delay(ctx context.Context, delayDur time.Duration) {
 	if delayDur == 0 {
-		return nil
+		return
 	}
 
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return
 	case <-time.After(delayDur):
-		return nil
+		return
 	}
 }
 
