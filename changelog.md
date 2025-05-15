@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.2.16 - 2025-05-15
+
+### What's Changed
+
+* [3.2] Add delay support by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/608
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.15...v3.2.16
+
 ## v3.2.15 - 2025-05-14
 
 ### What's Changed
