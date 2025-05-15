@@ -232,10 +232,13 @@ func (m *grpcMocker) delay(ctx context.Context, delayDur time.Duration) {
 		return
 	}
 
+	timer := time.NewTimer(delayDur)
+	defer timer.Stop()
+
 	select {
 	case <-ctx.Done():
 		return
-	case <-time.After(delayDur):
+	case <-timer.C:
 		return
 	}
 }
