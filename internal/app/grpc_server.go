@@ -227,6 +227,19 @@ func convertScalar(fd protoreflect.FieldDescriptor, value protoreflect.Value) an
 	}
 }
 
+func (m *grpcMocker) delay(ctx context.Context, delayDur time.Duration) error {
+	if delayDur == 0 {
+		return nil
+	}
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(delayDur):
+		return nil
+	}
+}
+
 //nolint:cyclop
 func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	for {
@@ -252,6 +265,8 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		if found == nil {
 			return status.Errorf(codes.NotFound, "No response found: %v", result.Similar())
 		}
+
+		m.delay(stream.Context(), found.Output.Delay)
 
 		if found.Output.Headers != nil {
 			mdResp := make(metadata.MD, len(found.Output.Headers))
@@ -330,6 +345,8 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		return nil, status.Error(codes.NotFound, stubNotFoundError(query, result).Error())
 	}
 
+	m.delay(ctx, found.Output.Delay)
+
 	if found.Output.Error != "" || found.Output.Code != nil {
 		if found.Output.Code == nil {
 			return nil, status.Error(codes.Aborted, found.Output.Error)
@@ -390,6 +407,8 @@ func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 			return status.Errorf(codes.NotFound, "No response found: %v", result.Similar())
 		}
 
+		m.delay(stream.Context(), found.Output.Delay)
+
 		allResponses = append(allResponses, found.Output.Data)
 
 		if found.Output.Headers != nil {
@@ -439,6 +458,8 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 		if found == nil {
 			return status.Errorf(codes.NotFound, "No response found: %v", result.Similar())
 		}
+
+		m.delay(stream.Context(), found.Output.Delay)
 
 		outputMsg, err := m.newOutputMessage(found.Output.Data)
 		if err != nil {
