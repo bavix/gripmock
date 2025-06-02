@@ -1,5 +1,19 @@
 # Changelog
 
+## v3.2.17 - 2025-06-02
+
+### What's Changed
+
+* Bump github.com/bavix/features from 1.0.2 to 1.0.3 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/609
+* Bump github.com/gripmock/stuber from 1.4.4 to 1.4.5 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/610
+* Bump github.com/gripmock/stuber from 1.4.5 to 1.4.6 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/611
+* Bump google.golang.org/grpc from 1.72.1 to 1.72.2 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/612
+* Bump github.com/goccy/go-yaml from 1.17.1 to 1.18.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/613
+* Bump alpine from 3.21 to 3.22 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/614
+* Update Dockerfile by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/615
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.16...v3.2.17
+
 ## v3.2.16 - 2025-05-15
 
 ### What's Changed
