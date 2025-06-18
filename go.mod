@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	github.com/bavix/features v1.0.3
-	github.com/bavix/gripmock-ui v1.0.1
+	github.com/bavix/gripmock-ui v1.0.2
 	github.com/bufbuild/protocompile v0.14.1
 	github.com/cockroachdb/errors v1.12.0
 	github.com/fsnotify/fsnotify v1.9.0
