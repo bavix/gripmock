@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.2.18 - 2025-06-19
+
+### What's Changed
+
+* Bump github.com/gripmock/stuber from 1.4.6 to 1.4.7 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/616
+* Bump github.com/gripmock/stuber from 1.4.7 to 1.4.8 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/618
+* Bump github.com/samber/lo from 1.50.0 to 1.51.0 by [@dependabot](https://github.com/dependabot) in https://github.com/bavix/gripmock/pull/619
+* bump packages by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/621
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.2.17...v3.2.18
+
 ## v3.2.17 - 2025-06-02
 
 ### What's Changed
