@@ -31,14 +31,9 @@ jobs:
         brew install curl coreutils
 
     - name: First installation
-      uses: nick-fields/retry@v3
-      with:
-        timeout_seconds: 30
-        max_attempts: 30
-        shell: sh
-        command: |
-          chmod +x ./setup.sh
-          sudo ./setup.sh
+      run: |
+        chmod +x ./setup.sh
+        sudo ./setup.sh
 
     - name: Verify installation
       shell: sh
@@ -47,13 +42,8 @@ jobs:
         gripmock --version
 
     - name: Second installation (upgrade check)
-      uses: nick-fields/retry@v3
-      with:
-        timeout_seconds: 30
-        max_attempts: 30
-        shell: sh
-        command: |
-          sudo ./setup.sh
+      run: |
+        sudo ./setup.sh
 
     - name: Verify after second installation
       shell: sh
