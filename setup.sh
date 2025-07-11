@@ -90,12 +90,12 @@ get_latest_version() {
     log_info "Fetching the latest version of GripMock from GitHub..."
     GITHUB_API_URL="https://api.github.com/repos/bavix/gripmock/releases/latest"
     if [ -n "$GITHUB_TOKEN" ]; then
-        AUTH_HEADER="Authorization: Bearer $GITHUB_TOKEN"
+        AUTH_HEADER="-H Authorization: Bearer $GITHUB_TOKEN"
     else
         AUTH_HEADER=""
     fi
 
-    LATEST_RELEASE=$(curl --retry 3 --retry-delay 5 --retry-all-errors -s -H "$AUTH_HEADER" "$GITHUB_API_URL")
+    LATEST_RELEASE=$(curl --retry 3 --retry-delay 5 --retry-all-errors -s "$AUTH_HEADER" "$GITHUB_API_URL")
     LATEST_VERSION=$(echo "$LATEST_RELEASE" | grep '"tag_name":' | awk -F '"' '{print $4}')
     if [ -z "$LATEST_VERSION" ]; then
         log_error "Failed to fetch the latest version of GripMock from GitHub."
