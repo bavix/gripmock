@@ -16,7 +16,7 @@ require (
 	github.com/gripmock/environment v1.2.0
 	github.com/gripmock/shutdown v1.1.0
 	github.com/gripmock/stuber v1.4.8
-	github.com/oapi-codegen/runtime v1.1.1
+	github.com/oapi-codegen/runtime v1.1.2
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0
 	github.com/spf13/cobra v1.9.1
