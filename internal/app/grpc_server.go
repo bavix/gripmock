@@ -39,15 +39,17 @@ import (
 const serviceReflection = "grpc.reflection.v1.ServerReflection"
 
 type GRPCServer struct {
-	network    string
-	address    string
-	params     *protoloc.Arguments
-	budgerigar *stuber.Budgerigar
-	waiter     Extender
+	network        string
+	address        string
+	params         *protoloc.Arguments
+	budgerigar     *stuber.Budgerigar
+	waiter         Extender
+	streamInterval time.Duration
 }
 
 type grpcMocker struct {
-	budgerigar *stuber.Budgerigar
+	budgerigar     *stuber.Budgerigar
+	streamInterval time.Duration
 
 	inputDesc  protoreflect.MessageDescriptor
 	outputDesc protoreflect.MessageDescriptor
@@ -245,50 +247,130 @@ func (m *grpcMocker) delay(ctx context.Context, delayDur time.Duration) {
 
 //nolint:cyclop
 func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
-	for {
-		inputMsg := dynamicpb.NewMessage(m.inputDesc)
+	inputMsg := dynamicpb.NewMessage(m.inputDesc)
 
-		err := stream.RecvMsg(inputMsg)
-		if errors.Is(err, io.EOF) {
-			return nil
+	err := stream.RecvMsg(inputMsg)
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
+
+	if err != nil {
+		return errors.Wrap(err, "failed to receive message")
+	}
+
+	query := m.newQuery(stream.Context(), inputMsg)
+
+	result, err := m.budgerigar.FindByQuery(query)
+	if err != nil {
+		return errors.Wrap(err, "failed to find response")
+	}
+
+	found := result.Found()
+	if found == nil {
+		return status.Errorf(codes.NotFound, "No response found: %v", result.Similar())
+	}
+
+	// Set headers once at the beginning
+	if found.Output.Headers != nil {
+		mdResp := make(metadata.MD, len(found.Output.Headers))
+		for k, v := range found.Output.Headers {
+			mdResp.Append(k, strings.Split(v, ";")...)
 		}
 
-		if err != nil {
-			return errors.Wrap(err, "failed to receive message")
+		if err := stream.SetHeader(mdResp); err != nil {
+			return errors.Wrap(err, "failed to set headers")
 		}
+	}
 
-		query := m.newQuery(stream.Context(), inputMsg)
-
-		result, err := m.budgerigar.FindByQuery(query)
-		if err != nil {
-			return errors.Wrap(err, "failed to find response")
+	// Check if the output data contains streaming array data
+	var dataArray []any
+	var found_array bool
+	
+	if streamArray, ok := found.Output.Data["stream"].([]any); ok {
+		dataArray = streamArray
+		found_array = true
+	}
+	
+	// Original method, it uses single data field for streaming
+	if !found_array {
+		if directArray, ok := found.Output.Data["data"].([]any); ok {
+			dataArray = directArray
+			found_array = true
 		}
+	}
+	
+	if found_array {
+		// Stream array data in a loop
+		index := 0
+		for {
+			select {
+			case <-stream.Context().Done():
+				return stream.Context().Err()
+			default:
+				if len(dataArray) == 0 {
+					return status.Error(codes.Internal, "empty data array for streaming")
+				}
+				
+				currentData := dataArray[index%len(dataArray)]
+				
+				var outputData map[string]any
+				if currentMap, ok := currentData.(map[string]any); ok {
+					outputData = currentMap
+				} else {
+					return status.Error(codes.Internal, "invalid data format in stream array")
+				}
+				
+				outputMsg, err := m.newOutputMessage(outputData)
+				if err != nil {
+					return errors.Wrap(err, "failed to convert response to dynamic message")
+				}
 
-		found := result.Found()
-		if found == nil {
-			return status.Errorf(codes.NotFound, "No response found: %v", result.Similar())
+				m.delay(stream.Context(), found.Output.Delay)
+
+				if err := stream.SendMsg(outputMsg); err != nil {
+					return errors.Wrap(err, "failed to send response")
+				}
+
+				index++
+				
+				var effectiveDelay time.Duration
+				if found.Output.Delay > 0 {
+					effectiveDelay = found.Output.Delay
+				} else {
+					effectiveDelay = m.streamInterval
+				}
+				
+				if effectiveDelay > 0 {
+					select {
+					case <-stream.Context().Done():
+						return stream.Context().Err()
+					case <-time.After(effectiveDelay):
+						// Continue to next iteration
+					}
+				}
+			}
 		}
+	} else {
+		// Original behavior for non-array data
+		for {
+			m.delay(stream.Context(), found.Output.Delay)
 
-		m.delay(stream.Context(), found.Output.Delay)
-
-		if found.Output.Headers != nil {
-			mdResp := make(metadata.MD, len(found.Output.Headers))
-			for k, v := range found.Output.Headers {
-				mdResp.Append(k, strings.Split(v, ";")...)
+			outputMsg, err := m.newOutputMessage(found.Output.Data)
+			if err != nil {
+				return errors.Wrap(err, "failed to convert response to dynamic message")
 			}
 
-			if err := stream.SetHeader(mdResp); err != nil {
-				return errors.Wrap(err, "failed to set headers")
+			if err := stream.SendMsg(outputMsg); err != nil {
+				return errors.Wrap(err, "failed to send response")
 			}
-		}
 
-		outputMsg, err := m.newOutputMessage(found.Output.Data)
-		if err != nil {
-			return errors.Wrap(err, "failed to convert response to dynamic message")
-		}
-
-		if err := stream.SendMsg(outputMsg); err != nil {
-			return errors.Wrap(err, "failed to send response")
+			nextInputMsg := dynamicpb.NewMessage(m.inputDesc)
+			if err := stream.RecvMsg(nextInputMsg); err != nil {
+				if errors.Is(err, io.EOF) {
+					return nil
+				}
+				return errors.Wrap(err, "failed to receive message")
+			}
 		}
 	}
 }
@@ -491,13 +573,15 @@ func NewGRPCServer(
 	params *protoloc.Arguments,
 	budgerigar *stuber.Budgerigar,
 	waiter Extender,
+	streamInterval time.Duration,
 ) *GRPCServer {
 	return &GRPCServer{
-		network:    network,
-		address:    address,
-		params:     params,
-		budgerigar: budgerigar,
-		waiter:     waiter,
+		network:        network,
+		address:        address,
+		params:         params,
+		budgerigar:     budgerigar,
+		waiter:         waiter,
+		streamInterval: streamInterval,
 	}
 }
 
@@ -548,7 +632,8 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 					}
 
 					m := &grpcMocker{
-						budgerigar: s.budgerigar,
+						budgerigar:     s.budgerigar,
+						streamInterval: s.streamInterval,
 
 						inputDesc:  inputDesc,
 						outputDesc: outputDesc,

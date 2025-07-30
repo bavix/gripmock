@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+service TrackService {
+  rpc StreamTrack (TrackRequest) returns (stream TrackData);
+}
+
+message TrackRequest {
+  string stn = 1;
+}
+
+message TrackData {
+  string stn = 1;
+  string identity = 2;
+  double latitude = 3;
+  double longitude = 4;
+  double speed = 5;
+  string updatedAt = 6;
+}

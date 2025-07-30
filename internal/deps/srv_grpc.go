@@ -3,6 +3,7 @@ package deps
 import (
 	"context"
 	"net"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog"
@@ -11,7 +12,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/proto"
 )
 
-func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
+func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments, streamInterval time.Duration) error {
 	listener, err := (&net.ListenConfig{}).Listen(ctx, b.config.GRPCNetwork, b.config.GRPCAddr)
 	if err != nil {
 		return errors.Wrap(err, "failed to listen")
@@ -30,6 +31,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		param,
 		b.Budgerigar(),
 		b.Extender(),
+		streamInterval,
 	)
 
 	server, err := grpcServer.Build(ctx)

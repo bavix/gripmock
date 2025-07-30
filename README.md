@@ -23,7 +23,8 @@ This service is a fork of the service [tokopedia/gripmock](https://github.com/to
 - Reduced image size [tokopedia#91](https://github.com/tokopedia/gripmock/issues/91) [bavix#512](https://github.com/bavix/gripmock/issues/512);
 - Active support [tokopedia#82](https://github.com/tokopedia/gripmock/issues/82);
 - Added [documentation](https://bavix.github.io/gripmock/);
-- **Binary descriptor support** (`.pb` files) for faster startup
+- **Binary descriptor support** (`.pb` files) for faster startup;
+- **Array streaming support** for server streaming methods with configurable intervals;
 
 ## UI
 
@@ -157,6 +158,20 @@ gripmock --stub stubfolder/ service.proto
 gripmock --stub stubfolder/ service.pb
 ```
 
+**Stream Interval Configuration:**
+```bash
+# Default streaming interval (100ms between messages)
+gripmock --stub stubfolder/ service.proto
+
+# Custom streaming interval for server streaming responses
+gripmock --stream-interval=50ms --stub stubfolder/ service.proto
+
+# Slower streaming (useful for debugging or demo purposes)
+gripmock --stream-interval=1s --stub stubfolder/ service.proto
+```
+
+The `--stream-interval` flag controls the delay between messages in server streaming responses when using array-based stubs. This helps prevent overwhelming clients and allows for more realistic streaming behavior.
+
 ### With Docker
 
 **Folder of proto files:**
@@ -253,6 +268,51 @@ For our `hello` service example we put a stub with the text below:
     }
   }
 ```
+
+### Array Streaming for Server Streaming Methods
+
+For server streaming gRPC methods, GripMock supports continuous array streaming. When the `output.data` contains a `stream` field with an array, GripMock will:
+
+1. **Continuously stream** each item in the array
+2. **Loop back** to the first item when reaching the end
+3. **Continue indefinitely** until the client disconnects
+
+**Example array streaming stub:**
+```json
+{
+  "service": "TrackService",
+  "method": "StreamTrack",
+  "input": {
+    "equals": {
+      "station": "GPS001"
+    }
+  },
+  "output": {
+    "data": {
+      "stream": [
+        {
+          "id": "track1",
+          "position": {"lat": 40.7128, "lng": -74.0060},
+          "timestamp": "2024-01-01T12:00:00Z"
+        },
+        {
+          "id": "track2", 
+          "position": {"lat": 40.7130, "lng": -74.0062},
+          "timestamp": "2024-01-01T12:00:05Z"
+        }
+      ]
+    }
+  }
+}
+```
+
+**Stream behavior:**
+- Each array item is sent as a separate streaming response
+- Configurable delay between messages using `--stream-interval` flag
+- Respects individual stub `delay` settings (takes precedence over global interval)
+- Supports both JSON and YAML stub formats
+
+See the [`track-streaming` example](https://github.com/bavix/gripmock/tree/master/examples/projects/track-streaming) for a complete implementation.
 
 ### Static stubbing
 You could initialize gripmock with stub json files and provide the path using `--stub` argument. For example you may
