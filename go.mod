@@ -2,8 +2,6 @@ module github.com/bavix/gripmock/v3
 
 go 1.24
 
-toolchain go1.24.5
-
 require (
 	github.com/bavix/features v1.0.3
 	github.com/bavix/gripmock-ui v1.0.2
@@ -15,7 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/gripmock/environment v1.1.0
+	github.com/gripmock/environment v1.2.0
 	github.com/gripmock/shutdown v1.1.0
 	github.com/gripmock/stuber v1.4.8
 	github.com/oapi-codegen/runtime v1.1.2
