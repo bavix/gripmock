@@ -245,7 +245,6 @@ func (m *grpcMocker) delay(ctx context.Context, delayDur time.Duration) {
 	}
 }
 
-//nolint:cyclop
 func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	inputMsg := dynamicpb.NewMessage(m.inputDesc)
 
@@ -286,107 +285,117 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		if _, ok := data["stream"].([]any); ok {
 			return true
 		}
+
 		if _, ok := data["data"].([]any); ok {
 			return true
 		}
+
 		return false
 	}
-	
+
 	if hasArrayData(found.Output.Data) {
-		// Stream array data in a loop
-		index := 0
-		for {
+		return m.handleArrayStreamData(stream, query, found)
+	}
+
+	return m.handleNonArrayStreamData(stream, found)
+}
+
+func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, query stuber.Query, found *stuber.Stub) error {
+	index := 0
+
+	for {
+		select {
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		default:
+		}
+
+		result, err := m.budgerigar.FindByQuery(query)
+		if err != nil {
+			return errors.Wrap(err, "failed to refresh response data")
+		}
+
+		currentFound := result.Found()
+		if currentFound == nil {
+			return status.Errorf(codes.NotFound, "No response found during refresh: %v", result.Similar())
+		}
+
+		var dataArray []any
+		if streamArray, ok := currentFound.Output.Data["stream"].([]any); ok {
+			dataArray = streamArray
+		} else if directArray, ok := currentFound.Output.Data["data"].([]any); ok {
+			dataArray = directArray
+		} else {
+			return status.Error(codes.Internal, "data array not found during refresh")
+		}
+
+		if len(dataArray) == 0 {
+			return status.Error(codes.Internal, "empty data array for streaming")
+		}
+
+		currentData := dataArray[index%len(dataArray)]
+
+		var outputData map[string]any
+		if currentMap, ok := currentData.(map[string]any); ok {
+			outputData = currentMap
+		} else {
+			return status.Error(codes.Internal, "invalid data format in stream array")
+		}
+
+		outputMsg, err := m.newOutputMessage(outputData)
+		if err != nil {
+			return errors.Wrap(err, "failed to convert response to dynamic message")
+		}
+
+		m.delay(stream.Context(), found.Output.Delay)
+
+		if err := stream.SendMsg(outputMsg); err != nil {
+			return errors.Wrap(err, "failed to send response")
+		}
+
+		index++
+
+		var effectiveDelay time.Duration
+		if found.Output.Delay > 0 {
+			effectiveDelay = found.Output.Delay
+		} else {
+			effectiveDelay = m.streamInterval
+		}
+
+		if effectiveDelay > 0 {
+			timer := time.NewTimer(effectiveDelay)
 			select {
 			case <-stream.Context().Done():
+				timer.Stop()
 				return stream.Context().Err()
-			default:
-				result, err := m.budgerigar.FindByQuery(query)
-                if err != nil {
-                    return errors.Wrap(err, "failed to refresh response data")
-                }
-
-                currentFound := result.Found()
-                if currentFound == nil {
-                    return status.Errorf(codes.NotFound, "No response found during refresh: %v", result.Similar())
-                }
-
-                var dataArray []any
-                if streamArray, ok := currentFound.Output.Data["stream"].([]any); ok {
-                    dataArray = streamArray
-                } else if directArray, ok := currentFound.Output.Data["data"].([]any); ok {
-                    dataArray = directArray
-                } else {
-                    return status.Error(codes.Internal, "data array not found during refresh")
-                }
-
-                if len(dataArray) == 0 {
-                    return status.Error(codes.Internal, "empty data array for streaming")
-                }
-
-				if len(dataArray) == 0 {
-					return status.Error(codes.Internal, "empty data array for streaming")
-				}
-				
-				currentData := dataArray[index%len(dataArray)]
-				
-				var outputData map[string]any
-				if currentMap, ok := currentData.(map[string]any); ok {
-					outputData = currentMap
-				} else {
-					return status.Error(codes.Internal, "invalid data format in stream array")
-				}
-				
-				outputMsg, err := m.newOutputMessage(outputData)
-				if err != nil {
-					return errors.Wrap(err, "failed to convert response to dynamic message")
-				}
-
-				m.delay(stream.Context(), found.Output.Delay)
-
-				if err := stream.SendMsg(outputMsg); err != nil {
-					return errors.Wrap(err, "failed to send response")
-				}
-
-				index++
-				
-				var effectiveDelay time.Duration
-				if found.Output.Delay > 0 {
-					effectiveDelay = found.Output.Delay
-				} else {
-					effectiveDelay = m.streamInterval
-				}
-				
-				if effectiveDelay > 0 {
-					select {
-					case <-stream.Context().Done():
-						return stream.Context().Err()
-					case <-time.After(effectiveDelay):
-						// Continue to next iteration
-					}
-				}
+			case <-timer.C:
+				// Continue to next iteration
 			}
 		}
-	} else {
-		// Original behavior for non-array data
-		for {
-			m.delay(stream.Context(), found.Output.Delay)
+	}
+}
 
-			outputMsg, err := m.newOutputMessage(found.Output.Data)
-			if err != nil {
-				return errors.Wrap(err, "failed to convert response to dynamic message")
+func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *stuber.Stub) error {
+	// Original behavior for non-array data
+	for {
+		m.delay(stream.Context(), found.Output.Delay)
+
+		outputMsg, err := m.newOutputMessage(found.Output.Data)
+		if err != nil {
+			return errors.Wrap(err, "failed to convert response to dynamic message")
+		}
+
+		if err := stream.SendMsg(outputMsg); err != nil {
+			return errors.Wrap(err, "failed to send response")
+		}
+
+		nextInputMsg := dynamicpb.NewMessage(m.inputDesc)
+		if err := stream.RecvMsg(nextInputMsg); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
 			}
 
-			if err := stream.SendMsg(outputMsg); err != nil {
-				return errors.Wrap(err, "failed to send response")
-			}
-
-			nextInputMsg := dynamicpb.NewMessage(m.inputDesc)
-			if err := stream.RecvMsg(nextInputMsg); err != nil {
-				if errors.Is(err, io.EOF) {
-					return nil
-				}
-				return errors.Wrap(err, "failed to receive message")
-			}
+			return errors.Wrap(err, "failed to receive message")
 		}
 	}
 }
