@@ -282,24 +282,17 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		}
 	}
 
-	// Check if the output data contains streaming array data
-	var dataArray []any
-	var found_array bool
-	
-	if streamArray, ok := found.Output.Data["stream"].([]any); ok {
-		dataArray = streamArray
-		found_array = true
-	}
-	
-	// Original method, it uses single data field for streaming
-	if !found_array {
-		if directArray, ok := found.Output.Data["data"].([]any); ok {
-			dataArray = directArray
-			found_array = true
+	hasArrayData := func(data map[string]any) bool {
+		if _, ok := data["stream"].([]any); ok {
+			return true
 		}
+		if _, ok := data["data"].([]any); ok {
+			return true
+		}
+		return false
 	}
 	
-	if found_array {
+	if hasArrayData(found.Output.Data) {
 		// Stream array data in a loop
 		index := 0
 		for {
@@ -307,6 +300,29 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 			case <-stream.Context().Done():
 				return stream.Context().Err()
 			default:
+				result, err := m.budgerigar.FindByQuery(query)
+                if err != nil {
+                    return errors.Wrap(err, "failed to refresh response data")
+                }
+
+                currentFound := result.Found()
+                if currentFound == nil {
+                    return status.Errorf(codes.NotFound, "No response found during refresh: %v", result.Similar())
+                }
+
+                var dataArray []any
+                if streamArray, ok := currentFound.Output.Data["stream"].([]any); ok {
+                    dataArray = streamArray
+                } else if directArray, ok := currentFound.Output.Data["data"].([]any); ok {
+                    dataArray = directArray
+                } else {
+                    return status.Error(codes.Internal, "data array not found during refresh")
+                }
+
+                if len(dataArray) == 0 {
+                    return status.Error(codes.Internal, "empty data array for streaming")
+                }
+
 				if len(dataArray) == 0 {
 					return status.Error(codes.Internal, "empty data array for streaming")
 				}
