@@ -229,7 +229,7 @@ grpcurl -plaintext -d '{"stn":"MS#00001"}' localhost:4770 TrackService/StreamTra
 ```
 
 ### Using gRPC Testify
-```gctf
+```yaml
 --- ENDPOINT ---
 TrackService/StreamTrack
 
