@@ -1,5 +1,24 @@
 # Changelog
 
+## v3.3.0 - 2025-08-02
+
+### What's Changed
+
+* Bump github.com/oapi-codegen/runtime from 1.1.1 to 1.1.2 by [@dependabot](https://github.com/dependabot)[bot] in [https://github.com/bavix/gripmock/pull/625](https://github.com/bavix/gripmock/pull/625)
+* Server Stream v2 by [@rez1dent3](https://github.com/rez1dent3) in [https://github.com/bavix/gripmock/pull/631](https://github.com/bavix/gripmock/pull/631)
+* Added support for Server-Side Streaming from Array Output by [@aryrk](https://github.com/aryrk) in [https://github.com/bavix/gripmock/pull/629](https://github.com/bavix/gripmock/pull/629)
+* Support for stub prioritization [issue #630](https://github.com/bavix/gripmock/issues/630)
+  * Initial implementation by [@micronull](https://github.com/micronull) in [gripmock/stuber#80](https://github.com/gripmock/stuber/pull/80)
+  * Follow-up improvements by [@rez1dent3](https://github.com/rez1dent3) in [gripmock/stuber#81](https://github.com/gripmock/stuber/pull/81)
+  
+
+### New Contributors
+
+* [@aryrk](https://github.com/aryrk) made their first contribution in [https://github.com/bavix/gripmock/pull/629](https://github.com/bavix/gripmock/pull/629)
+* [@micronull](https://github.com/micronull) made their first contribution in [https://github.com/gripmock/stuber/pull/80](https://github.com/gripmock/stuber/pull/80)
+
+**Full Changelog**: [https://github.com/bavix/gripmock/compare/v3.2.18...v3.3.0](https://github.com/bavix/gripmock/compare/v3.2.18...v3.3.0)
+
 ## v3.2.18 - 2025-06-19
 
 ### What's Changed
