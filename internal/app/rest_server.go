@@ -168,10 +168,7 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer func() {
-		if closeErr := r.Body.Close(); closeErr != nil {
-			_ = closeErr // ignore error
-			// Log error but don't fail the request
-		}
+		_ = r.Body.Close()
 	}()
 
 	var inputs []*stuber.Stub
@@ -214,10 +211,7 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer func() {
-		if closeErr := r.Body.Close(); closeErr != nil {
-			_ = closeErr // ignore error
-			// Log error but don't fail the request
-		}
+		_ = r.Body.Close()
 	}()
 
 	var inputs []uuid.UUID
@@ -271,10 +265,7 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer func() {
-		if closeErr := r.Body.Close(); closeErr != nil {
-			_ = closeErr // ignore error
-			// Log error but don't fail the request
-		}
+		_ = r.Body.Close()
 	}()
 
 	result, err := h.budgerigar.FindByQuery(query)

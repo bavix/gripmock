@@ -290,19 +290,26 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 }
 
 func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stuber.Stub) error {
-	// Send all messages from the stream array
-	for _, streamData := range found.Output.Stream {
-		select {
-		case <-stream.Context().Done():
-			return stream.Context().Err()
-		default:
+	// Validate all elements are map[string]any before entering the loop
+	streamArray := make([]map[string]any, len(found.Output.Stream))
+	for i, streamData := range found.Output.Stream {
+		currentMap, ok := streamData.(map[string]any)
+		if !ok {
+			return status.Error(codes.Internal, "invalid data format in stream array")
 		}
 
-		var outputData map[string]any
-		if currentMap, ok := streamData.(map[string]any); ok {
-			outputData = currentMap
-		} else {
-			return status.Error(codes.Internal, "invalid data format in stream array")
+		streamArray[i] = currentMap
+	}
+
+	// Store context done channel outside the loop for performance
+	done := stream.Context().Done()
+
+	// Send all messages from the validated stream array
+	for _, outputData := range streamArray {
+		select {
+		case <-done:
+			return stream.Context().Err()
+		default:
 		}
 
 		// Apply delay before sending each message
