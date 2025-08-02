@@ -55,7 +55,7 @@ gripmock --stub examples/projects/identifier examples/projects/identifier/servic
 ```
 
 ### Run Tests  
-Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify)**:  
+Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify)**:
 ```bash
 grpctestify examples/projects/identifier/
 ```  

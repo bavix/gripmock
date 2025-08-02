@@ -52,7 +52,7 @@ gripmock --stub examples/projects/fingerprint examples/projects/fingerprint/serv
 ```
 
 ### Run Tests  
-Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify)**:  
+Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify)**:
 ```bash
 grpctestify examples/projects/fingerprint/
 ```  

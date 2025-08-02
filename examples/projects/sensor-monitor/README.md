@@ -50,7 +50,7 @@ gripmock --stub examples/projects/sensor-monitor examples/projects/sensor-monito
 ```
 
 ### Run Tests  
-Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify)**:  
+Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify)**:
 ```bash
 grpctestify examples/projects/sensor-monitor/
 ```  

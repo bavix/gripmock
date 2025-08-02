@@ -54,7 +54,7 @@ gripmock --stub examples/projects/validator examples/projects/validator/service.
 ```
 
 ### Run Tests  
-Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify)**:  
+Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify)**:
 ```bash
 grpctestify examples/projects/validator/
 ```  

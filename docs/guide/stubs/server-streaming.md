@@ -251,23 +251,31 @@ grpcurl -plaintext -d '{"stn":"MS#00001"}' localhost:4770 TrackService/StreamTra
 
 ### Using gRPC Testify
 ```gctf
-name: test_streaming
-endpoint: TrackService/StreamTrack
-request:
-  stn: "MS#00001"
-response:
-  - stn: "MS#00001"
-    identity: "00"
-    latitude: 0.1
-    longitude: 0.005
-    speed: 45
-    updatedAt: "2024-01-01T12:00:00.000Z"
-  - stn: "MS#00001"
-    identity: "01"
-    latitude: 0.10001
-    longitude: 0.00501
-    speed: 46
-    updatedAt: "2024-01-01T12:00:01.000Z"
+--- ENDPOINT ---
+TrackService/StreamTrack
+
+--- REQUEST ---
+{
+  "stn": "MS#00001"
+}
+
+--- RESPONSE ---
+{
+  "stn": "MS#00001",
+  "identity": "00",
+  "latitude": 0.1,
+  "longitude": 0.005,
+  "speed": 45,
+  "updatedAt": "2024-01-01T12:00:00.000Z"
+}
+{
+  "stn": "MS#00001",
+  "identity": "01",
+  "latitude": 0.10001,
+  "longitude": 0.00501,
+  "speed": 46,
+  "updatedAt": "2024-01-01T12:00:01.000Z"
+}
 ```
 
 ## Best Practices

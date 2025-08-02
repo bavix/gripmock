@@ -76,7 +76,7 @@ gripmock --stub examples/projects/unitconverter examples/projects/unitconverter/
 ```
 
 ### Run Tests  
-Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify)**:  
+Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify)**:
 ```bash
 grpctestify examples/projects/unitconverter/
 ```  
