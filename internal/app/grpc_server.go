@@ -280,7 +280,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		}
 	}
 
-	// For server streaming, prioritize Stream field, fallback to Data if Stream is empty
+	// For server streaming, prioritize Stream field if it is not empty; fallback to Data if Stream is empty
 	if len(found.Output.Stream) > 0 {
 		return m.handleArrayStreamData(stream, found)
 	}
@@ -295,7 +295,11 @@ func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stub
 	for i, streamData := range found.Output.Stream {
 		currentMap, ok := streamData.(map[string]any)
 		if !ok {
-			return status.Error(codes.Internal, "invalid data format in stream array")
+			return status.Errorf(
+				codes.Internal,
+				"invalid data format in stream array at index %d: expected map[string]any, got %T",
+				i, streamData,
+			)
 		}
 
 		streamArray[i] = currentMap
@@ -342,8 +346,7 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 			return errors.Wrap(err, "failed to send response")
 		}
 
-		nextInputMsg := dynamicpb.NewMessage(m.inputDesc)
-		if err := stream.RecvMsg(nextInputMsg); err != nil {
+		if err := stream.RecvMsg(nil); err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil
 			}
