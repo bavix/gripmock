@@ -39,11 +39,12 @@ import (
 const serviceReflection = "grpc.reflection.v1.ServerReflection"
 
 type GRPCServer struct {
-	network    string
-	address    string
-	params     *protoloc.Arguments
-	budgerigar *stuber.Budgerigar
-	waiter     Extender
+	network     string
+	address     string
+	params      *protoloc.Arguments
+	budgerigar  *stuber.Budgerigar
+	waiter      Extender
+	healthcheck *health.Server
 }
 
 type grpcMocker struct {
@@ -627,6 +628,9 @@ func (s *GRPCServer) setupHealthCheck(server *grpc.Server) {
 	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_NOT_SERVING)
 	healthgrpc.RegisterHealthServer(server, healthcheck)
 	reflection.Register(server)
+
+	// Store healthcheck server for later status updates
+	s.healthcheck = healthcheck
 }
 
 func (s *GRPCServer) registerServices(ctx context.Context, server *grpc.Server, descriptors []*descriptorpb.FileDescriptorSet) {
@@ -711,6 +715,7 @@ func (s *GRPCServer) startHealthCheckRoutine(ctx context.Context) {
 			return
 		default:
 			logger.Info().Msg("gRPC server is ready to accept requests")
+			s.healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_SERVING)
 		}
 	}()
 }
