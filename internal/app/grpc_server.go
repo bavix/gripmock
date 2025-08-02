@@ -485,6 +485,7 @@ func (m *grpcMocker) processClientStreamMessages(stream grpc.ServerStream) ([]ma
 		}
 
 		allResponses = append(allResponses, response)
+
 		if headers != nil {
 			lastHeaders = headers
 		}
@@ -525,10 +526,6 @@ func (m *grpcMocker) setStreamHeaders(stream grpc.ServerStream, headers metadata
 	}
 
 	return stream.SetHeader(headers)
-}
-
-func (m *grpcMocker) createNotFoundError(result *stuber.Result) error {
-	return status.Errorf(codes.NotFound, "No response found: %v", result.Similar())
 }
 
 //nolint:cyclop
@@ -846,6 +843,7 @@ func protoToJSON(msg any) []byte {
 	}
 
 	marshaller := protojson.MarshalOptions{EmitUnpopulated: false}
+
 	data, err := marshaller.Marshal(message)
 	if err != nil {
 		return nil
