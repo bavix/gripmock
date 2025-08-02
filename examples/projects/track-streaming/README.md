@@ -24,29 +24,11 @@ This example includes both YAML and JSON stub formats:
 - `stubs.yaml` - YAML format with examples for both single and array streaming
 - `stubs.json` - JSON format with additional streaming examples
 
-## Stream Throttling
-
-You can control the streaming speed using the `--stream-interval` flag:
-
-```bash
-# Default: 100ms between messages
-gripmock --stub=./stubs.yaml ./service.proto
-
-# Fast streaming: 50ms between messages  
-gripmock --stream-interval=50ms --stub=./stubs.yaml ./service.proto
-
-# Slow streaming: 1 second between messages
-gripmock --stream-interval=1s --stub=./stubs.yaml ./service.proto
-
-# Very fast streaming: 10ms between messages
-gripmock --stream-interval=10ms --stub=./stubs.yaml ./service.proto
-```
-
 ## Usage Examples
 
-1. Start gripmock with custom stream interval:
+1. Start gripmock:
    ```bash
-   gripmock --stream-interval=200ms --stub=./stubs.yaml ./service.proto
+   gripmock --stub=./stubs.yaml ./service.proto
    ```
 
 2. Test with a gRPC client (like BloomRPC):
@@ -61,7 +43,7 @@ gripmock --stream-interval=10ms --stub=./stubs.yaml ./service.proto
 
 - **Array streaming**: Messages are sent continuously with the configured interval
 - **Loop behavior**: When the array ends, it starts from the first item again
-- **Delay priority**: If a stub specifies a `delay`, it takes precedence over `--stream-interval`
+- **Delay priority**: If a stub specifies a `delay`, it takes precedence over default timing
 - **Context cancellation**: Streaming stops immediately when the client disconnects
 
 The array streaming will loop indefinitely until the client closes the connection.

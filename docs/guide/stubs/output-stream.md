@@ -284,14 +284,14 @@ output:
 ### Priority Field
 ```yaml
 output:
-  priority: 1  # Higher priority (lower number = higher priority)
+  priority: 100  # Higher priority (higher number = higher priority)
   data:
     message: "High priority response"
 ```
 
 ### Multiple Matching Stubs
 When multiple stubs match a request, GripMock uses:
-1. Priority (lower number = higher priority)
+1. Priority (higher number = higher priority)
 2. Order of definition (first defined wins)
 
 ## Error Codes

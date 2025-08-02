@@ -160,22 +160,6 @@ gripmock --stub stubfolder/ service.proto
 gripmock --stub stubfolder/ service.pb
 ```
 
-**Stream Interval Configuration:**
-```bash
-# Default streaming interval (100ms between messages)
-gripmock --stub stubfolder/ service.proto
-
-# Custom streaming interval for server streaming responses
-gripmock --stream-interval=50ms --stub stubfolder/ service.proto
-
-# Slower streaming (useful for debugging or demo purposes)
-gripmock --stream-interval=1s --stub stubfolder/ service.proto
-```
-
-The `--stream-interval` flag controls the delay between messages in server streaming responses when using array-based stubs. This helps prevent overwhelming clients and allows for more realistic streaming behavior.
-
-
-
 ### With Docker
 
 **Folder of proto files:**
@@ -375,8 +359,7 @@ For server streaming gRPC methods, GripMock supports continuous array streaming.
 
 **Stream behavior:**
 - Each array item is sent as a separate streaming response
-- Configurable delay between messages using `--stream-interval` flag
-- Respects individual stub `delay` settings (takes precedence over global interval)
+- Respects individual stub `delay` settings
 - Supports both JSON and YAML stub formats
 
 See the [`track-streaming` example](https://github.com/bavix/gripmock/tree/master/examples/projects/track-streaming) for a complete implementation.

@@ -226,8 +226,9 @@ curl -X POST -d '{
 }' http://127.0.0.1:4771/api/stubs/search
 ```
 
+**Note**: When searching by ID, the `id` field is used for exact ID matching, but `service` and `method` fields are still required as they are mandatory in the SearchRequest structure.
+
 ## **Behavior**  
-- **ID Priority**: If `id` is provided, it takes precedence (ignores other fields).  
 - **Stub Priority**: When multiple stubs match, higher `priority` values are selected first.
 - **First Match**: Returns the **first stub** that matches the criteria.  
 - **No Match**: Returns `error` with code `5` (Not Found) if no stub matches.  
