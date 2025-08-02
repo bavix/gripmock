@@ -190,27 +190,6 @@ output:
       message: "Processing completed"
 ```
 
-## Backward Compatibility
-
-GripMock supports both new and legacy streaming syntax:
-
-### New Syntax (Recommended)
-```yaml
-output:
-  stream:
-    - message: "First"
-    - message: "Second"
-```
-
-### Legacy Syntax (Deprecated)
-```yaml
-output:
-  data:
-    stream:
-      - message: "First"
-      - message: "Second"
-```
-
 ## Headers in Streaming
 
 You can set headers for streaming responses:
