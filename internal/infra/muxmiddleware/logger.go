@@ -20,7 +20,9 @@ func RequestLogger(next http.Handler) http.Handler {
 		start := time.Now()
 
 		bodyBytes, _ := io.ReadAll(r.Body)
-		r.Body.Close()
+
+		_ = r.Body.Close()
+
 		r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
 		next.ServeHTTP(ww, r)
@@ -36,7 +38,9 @@ func RequestLogger(next http.Handler) http.Handler {
 			Int("code", ww.status)
 
 		var result []any
-		if err := jsondecoder.UnmarshalSlice(bodyBytes, &result); err == nil {
+
+		err = jsondecoder.UnmarshalSlice(bodyBytes, &result)
+		if err == nil {
 			event.RawJSON("input", bodyBytes)
 		}
 

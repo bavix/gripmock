@@ -3,6 +3,7 @@ package deps
 import (
 	"context"
 
+	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -13,7 +14,7 @@ func (b *Builder) grpcClientConn(_ bool, dsn string) (*grpc.ClientConn, error) {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to create gRPC client connection")
 	}
 
 	b.ender.Add(func(_ context.Context) error {

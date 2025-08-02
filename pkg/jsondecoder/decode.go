@@ -48,5 +48,5 @@ func UnmarshalSlice(data []byte, v any) error {
 	decoder := json.NewDecoder(bytes.NewReader(input))
 	decoder.UseNumber()
 
-	return decoder.Decode(v)
+	return decoder.Decode(v) //nolint:wrapcheck
 }

@@ -2,7 +2,7 @@
 **A robust unit conversion service built with protocol buffers and tested with GripMock**
 
 ## 📌 Overview  
-UnitConvertor is a lightweight application designed to seamlessly convert between different units of measurement. It leverages **protocol buffers** for service definition and employs **GripMock** for rigorous testing of both API contracts and edge cases.  
+UnitConvertor is a **special test project** designed to validate GripMock's ability to create mock servers from **compiled proto descriptors** (`.pb` files) rather than source proto files. It leverages **protocol buffers** for service definition and employs **GripMock** for rigorous testing of both API contracts and edge cases.  
 
 ## 🚀 Features  
 ✅ **Unary Methods Only** – Simple, fast, and predictable conversions  
@@ -13,7 +13,7 @@ UnitConvertor is a lightweight application designed to seamlessly convert betwee
 The CI pipeline enforces strict testing standards:  
 
 ### 1. **Proto Descriptor Integrity**  
-- 🛠️ **Service Creation**: Validates that the service is built **only from `.pb` descriptors** (not `.proto` sources).  
+- 🛠️ **Service Creation**: Validates that the service is built **only from `.pb` descriptors** (not `.proto.src` sources).  
 - 🗑️ **Pre-Test Cleanup**: Deletes all `*.proto.src` files to prevent accidental compilation from source code.  
 
 ### 2. **Stub File Scenarios**  
@@ -76,12 +76,13 @@ gripmock --stub examples/projects/unitconverter examples/projects/unitconverter/
 ```
 
 ### Run Tests  
-Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify)**:  
+Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify)**:
 ```bash
 grpctestify examples/projects/unitconverter/
 ```  
 
 ## ⚠️ Important Notes  
+- This is a **special test project** that validates GripMock's proto descriptor functionality.  
 - The pipeline **deletes `service.proto.src`** before testing to enforce descriptor-based builds.  
 - All methods are **unary** (no streaming support).  
 - Ensure `gripmock` and `grpctestify` are installed (see their documentation for setup).  

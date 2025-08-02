@@ -22,7 +22,7 @@ func getIP(r *http.Request) (net.IP, error) {
 
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	return net.ParseIP(host), nil

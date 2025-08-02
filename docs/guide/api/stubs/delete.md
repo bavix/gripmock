@@ -74,6 +74,11 @@ curl -X DELETE http://127.0.0.1:4771/api/stubs/6c85b0fa-caaf-4640-a672-f56b7dd80
   - `POST /api/stubs`: Create or update stubs.  
   - `GET /api/stubs/used` and `GET /api/stubs/unused`: Track stub usage.  
 
+## **Schema References**
+For complete schema details, see:
+- [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
+- [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)
+
 ---
 
 This endpoint is critical for precise management of stubs during testing. Use it to remove outdated or redundant configurations.

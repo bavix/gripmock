@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# High priority: Specific user ID
+- service: Fingerprint
+  method: Check
+  priority: 100
+  input:
+    equals:
+      id: "user123"
+  output:
+    data:
+      valid: true
+
+# Low priority: General fallback for any user
+- service: Fingerprint
+  method: Check
+  priority: 1
+  input:
+    contains: {}  # Matches any input
+  output:
+    data:
+      valid: false

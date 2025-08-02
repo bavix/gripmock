@@ -1,0 +1,8 @@
+--- ENDPOINT ---
+TrackService/StreamTrack
+
+--- REQUEST ---
+{"stn":"MS#00004"}
+
+--- RESPONSE ---
+{"stn":"MS#00004","identity":"00","latitude":0.1,"longitude":0.005,"speed":45,"updatedAt":"2024-01-01T12:00:00.000Z"} 

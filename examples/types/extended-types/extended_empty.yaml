@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
 - service: EmptyService  
   method: GetData  
   input:  

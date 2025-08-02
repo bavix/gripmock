@@ -108,6 +108,11 @@ curl http://127.0.0.1:4771/api/stubs
   - `GET /api/stubs/unused`: List stubs never matched by searches.  
   - `DELETE /api/stubs`: Purge all stubs.  
 
+#### **Schema References**
+For complete schema details, see:
+- [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
+- [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)
+
 ---
 
 This endpoint is essential for debugging and verifying stub configurations during test setup.

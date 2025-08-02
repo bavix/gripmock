@@ -1,0 +1,11 @@
+--- ENDPOINT ---
+TrackService/StreamTrack
+
+--- REQUEST ---
+{"stn":"MS#00005"}
+
+--- RESPONSE ---
+{"stn":"MS#00005","identity":"00","latitude":0.11,"longitude":0.006,"speed":50,"updatedAt":"2024-01-01T13:00:00.000Z"}
+{"stn":"MS#00005","identity":"01","latitude":0.11001,"longitude":0.00601,"speed":51,"updatedAt":"2024-01-01T13:00:01.000Z"}
+{"stn":"MS#00005","identity":"02","latitude":0.11002,"longitude":0.00602,"speed":52,"updatedAt":"2024-01-01T13:00:02.000Z"}
+{"stn":"MS#00005","identity":"03","latitude":0.11003,"longitude":0.00603,"speed":53,"updatedAt":"2024-01-01T13:00:03.000Z"} 

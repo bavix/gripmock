@@ -65,13 +65,15 @@ func (s *StubWatcher) Watch(ctx context.Context, folderPath string) (<-chan stri
 func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan string, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	ch := make(chan string)
 
 	go func() {
-		defer watcher.Close()
+		defer func() {
+			_ = watcher.Close()
+		}()
 		defer close(ch)
 
 		for {
@@ -83,7 +85,8 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 					continue
 				}
 
-				if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
+				info, err := os.Stat(event.Name)
+				if err == nil && info.IsDir() {
 					zerolog.Ctx(ctx).Err(watcher.Add(event.Name)).
 						Str("path", event.Name).
 						Msg("Adding directory to watcher")

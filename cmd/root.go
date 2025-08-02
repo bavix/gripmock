@@ -31,7 +31,9 @@ var rootCmd = &cobra.Command{
 
 		ctx = builder.Logger(ctx)
 
-		zerolog.Ctx(ctx).Info().Str("release", version).Msg("Starting GripMock")
+		zerolog.Ctx(ctx).Info().
+			Str("release", version).
+			Msg("Starting GripMock")
 
 		go func() {
 			if err := restServe(ctx, builder); err != nil {
@@ -48,7 +50,7 @@ var rootCmd = &cobra.Command{
 func restServe(ctx context.Context, builder *deps.Builder) error {
 	srv, err := builder.RestServe(ctx, stubFlag)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to start rest server")
 	}
 
 	zerolog.Ctx(ctx).Info().Str("addr", srv.Addr).Msg("HTTP server is now running")
@@ -93,6 +95,7 @@ func init() {
 		"Path to import proto-libraries")
 }
 
+// Execute runs the root command with the given context.
 func Execute(ctx context.Context) {
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		os.Exit(1)

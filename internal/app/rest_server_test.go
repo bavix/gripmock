@@ -47,7 +47,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodGet, "/api/stubs", nil)
 			},
 			endpoint: server.ListStubs,
-			expected: `[{"id":"43739ed8-2810-4f57-889b-4d3ff5795bce","service":"MammalService","method":"CheckHabitat","headers":{"equals":null,"contains":null,"matches":null},"input":{"equals":{"Hola":"Mundo"},"contains":null,"matches":null},"output":{"data":{"Hello":"World"},"error":"","headers":null}}]`,
+			expected: `[{"id":"43739ed8-2810-4f57-889b-4d3ff5795bce","service":"MammalService","method":"CheckHabitat","headers":{"equals":null,"contains":null,"matches":null},"input":{"equals":{"Hola":"Mundo"},"contains":null,"matches":null},"output":{"data":{"Hello":"World"},"error":"","headers":null},"priority":0}]`,
 		},
 		{
 			description: "list_inactive_stubs",
@@ -55,7 +55,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodGet, "/api/stubs/unused", nil)
 			},
 			endpoint: server.ListUnusedStubs,
-			expected: `[{"id":"43739ed8-2810-4f57-889b-4d3ff5795bce","service":"MammalService","method":"CheckHabitat","headers":{"equals":null,"contains":null,"matches":null},"input":{"equals":{"Hola":"Mundo"},"contains":null,"matches":null},"output":{"data":{"Hello":"World"},"error":"","headers":null}}]`,
+			expected: `[{"id":"43739ed8-2810-4f57-889b-4d3ff5795bce","service":"MammalService","method":"CheckHabitat","headers":{"equals":null,"contains":null,"matches":null},"input":{"equals":{"Hola":"Mundo"},"contains":null,"matches":null},"output":{"data":{"Hello":"World"},"error":"","headers":null},"priority":0}]`,
 		},
 		{
 			description: "check_empty_active_stubs",
@@ -109,7 +109,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodGet, "/api/stubs/used", nil)
 			},
 			endpoint: server.ListUsedStubs,
-			expected: `[{"id":"43739ed8-2810-4f57-889b-4d3ff5795bce","service":"MammalService","method":"CheckHabitat","headers":{"equals":null,"contains":null,"matches":null},"input":{"equals":{"Hola":"Mundo"},"contains":null,"matches":null},"output":{"data":{"Hello":"World"},"error":"","headers":null}}]`,
+			expected: `[{"id":"43739ed8-2810-4f57-889b-4d3ff5795bce","service":"MammalService","method":"CheckHabitat","headers":{"equals":null,"contains":null,"matches":null},"input":{"equals":{"Hola":"Mundo"},"contains":null,"matches":null},"output":{"data":{"Hello":"World"},"error":"","headers":null},"priority":0}]`,
 		},
 		{
 			description: "find_stub_by_identifier",
@@ -199,7 +199,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			endpoint: server.SearchStubs,
-			expected: `{"data":null,"error":"error msg","code":3,"headers":null}` + "\n",
+			expected: `{"error":"error msg","code":3,"headers":null}` + "\n",
 		},
 		{
 			description: "add_error_stub_without_code",
@@ -219,7 +219,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 			},
 			endpoint: server.SearchStubs,
-			expected: `{"data":null,"error":"error msg","headers":null}` + "\n",
+			expected: `{"error":"error msg","headers":null}` + "\n",
 		},
 		{
 			description: "match_nested_partial_stub",

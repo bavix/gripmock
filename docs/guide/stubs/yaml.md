@@ -2,6 +2,20 @@
 
 YAML provides human-readable syntax with advanced features like comments and multi-document support, while maintaining compatibility with JSON structures.
 
+## Schema Validation
+
+GripMock provides a JSON Schema for validating stub definitions. Add this to your YAML files for IDE support:
+
+```yaml
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+service: MyService
+method: MyMethod
+output:
+  data:
+    result: success
+```
+
 ## Use Cases  
 Ideal for:  
 - Tests avoiding HTTP dependencies  
@@ -39,6 +53,7 @@ output:
 ```yaml  
 - service: Gripmock  
   method: SayHello  
+  priority: 100
   input:  
     equals:  
       name: alpha  
@@ -49,6 +64,7 @@ output:
 
 - service: Gripmock  
   method: SayHello  
+  priority: 1
   input:  
     equals:  
       name: beta  
@@ -113,6 +129,7 @@ input:
 - 🔄 Auto-reloading: Changes in stub files are detected on container restart  
 - 📁 Recursive loading: All .yaml/.yml files in --stub directory are processed  
 - 🔍 Validation: Syntax errors in YAML files prevent server startup  
-- 🔄 API Compatibility: Works alongside HTTP API for hybrid setups  
+- 🔄 API Compatibility: Works alongside HTTP API for hybrid setups
+- 🎯 Priority System: Use `priority` field to control stub matching order  
 
-For schema details, see [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/).  
+For schema details, see [JSON Schema for stubs](https://bavix.github.io/gripmock/schema/stub.json).  

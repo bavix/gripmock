@@ -226,8 +226,10 @@ curl -X POST -d '{
 }' http://127.0.0.1:4771/api/stubs/search
 ```
 
+**Note**: When searching by ID, the `id` field is used for exact ID matching, but `service` and `method` fields are still required as they are mandatory in the SearchRequest structure.
+
 ## **Behavior**  
-- **Priority**: If `id` is provided, it takes precedence (ignores other fields).  
+- **Stub Priority**: When multiple stubs match, higher `priority` values are selected first.
 - **First Match**: Returns the **first stub** that matches the criteria.  
 - **No Match**: Returns `error` with code `5` (Not Found) if no stub matches.  
 
@@ -238,6 +240,11 @@ curl -X POST -d '{
 - **Related Endpoints**:  
   - `GET /api/stubs/used`: Track stubs matched by this endpoint.  
   - `POST /api/stubs`: Create/update stubs for testing.  
+
+## **Schema References**
+For complete schema details, see:
+- [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
+- [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)
 
 ---
 

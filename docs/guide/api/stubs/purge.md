@@ -59,6 +59,11 @@ curl -X DELETE http://127.0.0.1:4771/api/stubs
   - `POST /api/stubs`: Add new stubs.  
   - `POST /api/stubs/batchDelete`: Delete specific stubs by ID.  
 
+#### **Schema References**
+For complete schema details, see:
+- [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
+- [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)
+
 ---
 
 This endpoint is useful for resetting stub storage between test runs or cleaning up outdated configurations. Use with caution.

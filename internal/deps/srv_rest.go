@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 
@@ -23,12 +24,12 @@ func (b *Builder) RestServe(
 
 	apiServer, err := app.NewRestServer(ctx, b.Budgerigar(), extender)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to create rest server")
 	}
 
 	ui, err := b.ui()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "failed to get UI assets")
 	}
 
 	router := mux.NewRouter()

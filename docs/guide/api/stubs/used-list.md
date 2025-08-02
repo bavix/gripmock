@@ -84,3 +84,8 @@ curl http://127.0.0.1:4771/api/stubs/used
 - **Edge Cases**:
   - If no stubs have been used, the response is an empty array (`[]`).
   - Stubs are **not** marked as used when fetched by `GET /api/stubs` or `GET /stubs/{uuid}`.
+
+#### **Schema References**
+For complete schema details, see:
+- [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
+- [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)

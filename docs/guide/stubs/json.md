@@ -2,7 +2,24 @@
 Use static JSON/YAML files to predefine stubs without relying on the HTTP API. Ideal for:  
 - Tests avoiding HTTP dependencies  
 - Immutable stub configurations  
-- Large-scale stub setups  
+- Large-scale stub setups
+
+## Schema Validation
+
+GripMock provides a JSON Schema for validating stub definitions. Add this to your JSON files for IDE support:
+
+```json
+{
+  "$schema": "https://bavix.github.io/gripmock/schema/stub.json",
+  "service": "MyService",
+  "method": "MyMethod",
+  "output": {
+    "data": {
+      "result": "success"
+    }
+  }
+}
+```  
 
 ## Project Structure  
 ```
@@ -41,12 +58,14 @@ project-root/
   {
     "service": "Gripmock",
     "method": "SayHello",
+    "priority": 100,
     "input": { "equals": { "name": "New York" } },
     "output": { "data": { "message": "Hello New York", "return_code": 1 } }
   },
   {
     "service": "Gripmock",
     "method": "SayHello",
+    "priority": 1,
     "input": { "equals": { "name": "world" } },
     "output": { "data": { "message": "Hello World", "return_code": 1 } }
   }
@@ -118,6 +137,7 @@ Disable array sorting checks with `ignoreArrayOrder`:
 **Key Notes**:  
 - Stubs are loaded **on startup** from the `--stub` directory.  
 - The HTTP API (`/api/stubs`) can still modify stubs dynamically.  
-- File extensions: `.json`, `.yaml`, `.yml` (auto-detected).  
+- File extensions: `.json`, `.yaml`, `.yml` (auto-detected).
+- **Priority System**: Use `priority` field to control stub matching order (higher numbers = higher priority).  
 
-For schema details, see the [OpenAPI `Stub` definition](https://bavix.github.io/gripmock-openapi/).  
+For schema details, see the [JSON Schema for stubs](https://bavix.github.io/gripmock/schema/stub.json).  
