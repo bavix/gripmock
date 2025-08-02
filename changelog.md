@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.3.1 - 2025-08-02
+
+### What's Changed
+
+* Remove deprecated stub schema file from documentation by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/632
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.3.0...v3.3.1
+
 ## v3.3.0 - 2025-08-02
 
 ### What's Changed
