@@ -322,7 +322,7 @@ In this example, the first stub (priority 100) will be selected for specific use
 
 ### Array Streaming for Server Streaming Methods
 
-For server streaming gRPC methods, GripMock supports continuous array streaming. When the `output.data` contains a `stream` field with an array, GripMock will:
+For server streaming gRPC methods, GripMock supports continuous array streaming. When the `output` contains a `stream` field with an array, GripMock will:
 
 1. **Continuously stream** each item in the array
 2. **Loop back** to the first item when reaching the end
@@ -339,20 +339,18 @@ For server streaming gRPC methods, GripMock supports continuous array streaming.
     }
   },
   "output": {
-    "data": {
-      "stream": [
-        {
-          "id": "track1",
-          "position": {"lat": 40.7128, "lng": -74.0060},
-          "timestamp": "2024-01-01T12:00:00Z"
-        },
-        {
-          "id": "track2", 
-          "position": {"lat": 40.7130, "lng": -74.0062},
-          "timestamp": "2024-01-01T12:00:05Z"
-        }
-      ]
-    }
+    "stream": [
+      {
+        "id": "track1",
+        "position": {"lat": 40.7128, "lng": -74.0060},
+        "timestamp": "2024-01-01T12:00:00Z"
+      },
+      {
+        "id": "track2", 
+        "position": {"lat": 40.7130, "lng": -74.0062},
+        "timestamp": "2024-01-01T12:00:05Z"
+      }
+    ]
   }
 }
 ```
