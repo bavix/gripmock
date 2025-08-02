@@ -290,30 +290,25 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 }
 
 func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stuber.Stub) error {
-	// Validate all elements are map[string]any before entering the loop
-	streamArray := make([]map[string]any, len(found.Output.Stream))
+	// Store context done channel outside the loop for performance
+	done := stream.Context().Done()
+
+	// Send all messages, validating each element incrementally
 	for i, streamData := range found.Output.Stream {
-		currentMap, ok := streamData.(map[string]any)
+		select {
+		case <-done:
+			return stream.Context().Err()
+		default:
+		}
+
+		// Validate type of each streamData just before sending
+		outputData, ok := streamData.(map[string]any)
 		if !ok {
 			return status.Errorf(
 				codes.Internal,
 				"invalid data format in stream array at index %d: expected map[string]any, got %T",
 				i, streamData,
 			)
-		}
-
-		streamArray[i] = currentMap
-	}
-
-	// Store context done channel outside the loop for performance
-	done := stream.Context().Done()
-
-	// Send all messages from the validated stream array
-	for _, outputData := range streamArray {
-		select {
-		case <-done:
-			return stream.Context().Err()
-		default:
 		}
 
 		// Apply delay before sending each message
@@ -333,8 +328,16 @@ func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stub
 }
 
 func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *stuber.Stub) error {
-	// Original behavior for non-array data
+	// Original behavior for non-array data, with context cancellation check
+	done := stream.Context().Done()
+
 	for {
+		select {
+		case <-done:
+			return stream.Context().Err()
+		default:
+		}
+
 		m.delay(stream.Context(), found.Output.Delay)
 
 		outputMsg, err := m.newOutputMessage(found.Output.Data)
@@ -346,7 +349,8 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 			return errors.Wrap(err, "failed to send response")
 		}
 
-		if err := stream.RecvMsg(nil); err != nil {
+		inputMsg := dynamicpb.NewMessage(m.inputDesc)
+		if err := stream.RecvMsg(inputMsg); err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil
 			}
