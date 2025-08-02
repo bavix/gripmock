@@ -91,11 +91,11 @@ type StubList = []Stub
 
 // StubOutput defines model for StubOutput.
 type StubOutput struct {
-	Code    *codes.Code               `json:"code,omitempty"`
-	Data    map[string]any    `json:"data"`
-	Error   string                    `json:"error"`
-	Headers map[string]string         `json:"headers,omitempty"`
-	Stream  *[]map[string]any `json:"stream,omitempty"`
+	Code    *codes.Code              `json:"code,omitempty"`
+	Data    map[string]any   `json:"data"`
+	Error   string                   `json:"error"`
+	Headers map[string]string        `json:"headers,omitempty"`
+	Stream  []map[string]any `json:"stream,omitempty"`
 }
 
 // AddStubJSONBody defines parameters for AddStub.

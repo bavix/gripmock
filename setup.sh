@@ -160,9 +160,9 @@ install_gripmock() {
 }
 
 cleanup() {
-    if [ -d "$TMP_DIR" ]; then
-        rm -rf "$TMP_DIR" 2>/dev/null || true
-    fi
+	if [ -d "$TMP_DIR" ]; then
+		rm -rf "$TMP_DIR"
+	fi
 }
 
 if [ -f "/usr/local/bin/gripmock" ]; then

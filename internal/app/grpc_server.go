@@ -290,7 +290,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 }
 
 func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stuber.Stub) error {
-	// Store context done channel outside the loop for performance
+	// Store context done channel outside the loop for clarity; context.Done() is already cached
 	done := stream.Context().Done()
 
 	// Send all messages, validating each element incrementally
@@ -306,7 +306,7 @@ func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stub
 		if !ok {
 			return status.Errorf(
 				codes.Internal,
-				"invalid data format in stream array at index %d: expected map[string]any, got %T",
+				"invalid data format in stream array at index %d: got %T, expected map[string]any",
 				i, streamData,
 			)
 		}
@@ -349,8 +349,10 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 			return errors.Wrap(err, "failed to send response")
 		}
 
-		inputMsg := dynamicpb.NewMessage(m.inputDesc)
-		if err := stream.RecvMsg(inputMsg); err != nil {
+		// In server streaming, do not receive further messages from the client after the initial request.
+		// The server should only send messages to the client.
+		// Check for EOF to determine if client has closed the stream
+		if err := stream.RecvMsg(nil); err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil
 			}
