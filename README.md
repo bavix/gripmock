@@ -7,7 +7,7 @@ GripMock is a **mock server** for **gRPC** services. It's using a `.proto` file 
 You can use gripmock for setting up end-to-end testing or as a dummy server in a software development phase.
 The server implementation is in GoLang but the client can be any programming language that support gRPC.
 
-[[Documentation]](https://bavix.github.io/gripmock/)
+[Documentation](https://bavix.github.io/gripmock/)
 
 This service is a fork of the service [tokopedia/gripmock](https://github.com/tokopedia/gripmock), but you should choose our fork. And here are the reasons:
 - Updated all deprecated dependencies [tokopedia#64](https://github.com/tokopedia/gripmock/issues/64);
@@ -22,9 +22,11 @@ This service is a fork of the service [tokopedia/gripmock](https://github.com/to
 - Support for deleting specific stub [tokopedia#123](https://github.com/tokopedia/gripmock/issues/123);
 - Reduced image size [tokopedia#91](https://github.com/tokopedia/gripmock/issues/91) [bavix#512](https://github.com/bavix/gripmock/issues/512);
 - Active support [tokopedia#82](https://github.com/tokopedia/gripmock/issues/82);
-- Added [documentation](https://bavix.github.io/gripmock/);
+- Added [documentation](https://bavix.github.io/gripmock/) with [JSON Schema](https://bavix.github.io/gripmock/schema/stub.json);
 - **Binary descriptor support** (`.pb` files) for faster startup;
 - **Array streaming support** for server streaming methods with configurable intervals;
+- **Priority system** for controlling stub matching order;
+- **JSON Schema validation** for stub definitions with IDE support;
 
 ## UI
 
@@ -172,6 +174,8 @@ gripmock --stream-interval=1s --stub stubfolder/ service.proto
 
 The `--stream-interval` flag controls the delay between messages in server streaming responses when using array-based stubs. This helps prevent overwhelming clients and allows for more realistic streaming behavior.
 
+
+
 ### With Docker
 
 **Folder of proto files:**
@@ -219,6 +223,37 @@ Stubbing is the essential mocking of GripMock. It will match and return the expe
 
 **Both .proto and .pb definitions work identically with all stubbing features**
 
+### JSON Schema Support
+
+GripMock provides a comprehensive JSON Schema for validating stub definitions. Add schema validation to your stub files for IDE support:
+
+**For JSON files:**
+```json
+{
+  "$schema": "https://bavix.github.io/gripmock/schema/stub.json",
+  "service": "MyService",
+  "method": "MyMethod",
+  "output": {
+    "data": {
+      "result": "success"
+    }
+  }
+}
+```
+
+**For YAML files:**
+```yaml
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+service: MyService
+method: MyMethod
+output:
+  data:
+    result: success
+```
+
+The schema provides validation for all stub features including priority, headers, input matching, and output configuration.
+
 ### Dynamic stubbing
 You could add stubbing on the fly with a simple REST API. HTTP stub server is running on port `:4771`
 
@@ -232,6 +267,7 @@ Stub Format is JSON text format. It has a skeleton as follows:
 {
   "service":"<servicename>", // name of service defined in proto
   "method":"<methodname>", // name of method that we want to mock
+  "priority": 100, // Optional. Higher numbers = higher priority (default: 0)
   "headers":{ // Optional. headers matching rule. see Headers Matching Rule section below
     // put rule here
   },
@@ -256,6 +292,7 @@ For our `hello` service example we put a stub with the text below:
   {
     "service":"Greeter",
     "method":"SayHello",
+    "priority": 100,
     "input":{
       "equals":{
         "name":"gripmock"
@@ -268,6 +305,36 @@ For our `hello` service example we put a stub with the text below:
     }
   }
 ```
+
+### Priority System
+
+When multiple stubs match a request, GripMock uses the `priority` field to determine which stub to select:
+
+- **Higher priority values** are selected first
+- **Default priority** is 0 if not specified
+- **Useful for** creating fallback stubs or specific test scenarios
+
+**Example with priority:**
+```json
+[
+  {
+    "service": "UserService",
+    "method": "GetUser",
+    "priority": 100,
+    "input": { "equals": { "id": "user123" } },
+    "output": { "data": { "id": "user123", "name": "John Doe" } }
+  },
+  {
+    "service": "UserService", 
+    "method": "GetUser",
+    "priority": 1,
+    "input": { "contains": { "id": "user" } },
+    "output": { "data": { "id": "unknown", "name": "Unknown User" } }
+  }
+]
+```
+
+In this example, the first stub (priority 100) will be selected for specific user "user123", while the second stub (priority 1) serves as a fallback for any user ID containing "user".
 
 ### Array Streaming for Server Streaming Methods
 

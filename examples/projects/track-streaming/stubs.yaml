@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
 # Example: Single response streaming (original behavior)
 - service: TrackService
   method: StreamTrack
@@ -20,26 +21,25 @@
     equals:
       stn: "MS#00001"
   output:
-    data:
-      stream:
-        - stn: "MS#00001"
-          identity: "00"
-          latitude: 0.08333
-          longitude: 0.00298
-          speed: 30.0
-          updatedAt: "2024-01-01T11:00:00.500Z"
-        - stn: "MS#00001"
-          identity: "01"
-          latitude: 0.08334
-          longitude: 0.00299
-          speed: 30.5
-          updatedAt: "2024-01-01T11:00:00.750Z"
-        - stn: "MS#00001"
-          identity: "02"
-          latitude: 0.08335
-          longitude: 0.00300
-          speed: 31.0
-          updatedAt: "2024-01-01T11:00:01.000Z"
+    stream:
+      - stn: "MS#00001"
+        identity: "00"
+        latitude: 0.08333
+        longitude: 0.00298
+        speed: 30.0
+        updatedAt: "2024-01-01T11:00:00.500Z"
+      - stn: "MS#00001"
+        identity: "01"
+        latitude: 0.08334
+        longitude: 0.00299
+        speed: 30.5
+        updatedAt: "2024-01-01T11:00:00.750Z"
+      - stn: "MS#00001"
+        identity: "02"
+        latitude: 0.08335
+        longitude: 0.00300
+        speed: 31.0
+        updatedAt: "2024-01-01T11:00:01.000Z"
 
 # Example: Another array streaming with different station
 - service: TrackService
@@ -48,17 +48,16 @@
     equals:
       stn: "MS#00003"
   output:
-    data:
-      stream:
-        - stn: "MS#00003"
-          identity: "00"
-          latitude: 0.09000
-          longitude: 0.00400
-          speed: 25.0
-          updatedAt: "2024-01-01T11:00:00.000Z"
-        - stn: "MS#00003"
-          identity: "01"
-          latitude: 0.09001
-          longitude: 0.00401
-          speed: 26.0
-          updatedAt: "2024-01-01T11:00:01.000Z"
+    stream:
+      - stn: "MS#00003"
+        identity: "00"
+        latitude: 0.09000
+        longitude: 0.00400
+        speed: 25.0
+        updatedAt: "2024-01-01T11:00:00.000Z"
+      - stn: "MS#00003"
+        identity: "01"
+        latitude: 0.09001
+        longitude: 0.00401
+        speed: 26.0
+        updatedAt: "2024-01-01T11:00:01.000Z"

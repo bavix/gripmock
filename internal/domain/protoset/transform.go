@@ -78,7 +78,8 @@ func createDescriptorSet(ctx context.Context, configure *Configure) (*descriptor
 			continue
 		}
 
-		if err := protoregistry.GlobalFiles.RegisterFile(file); err != nil {
+		err := protoregistry.GlobalFiles.RegisterFile(file)
+		if err != nil {
 			return nil, errors.Wrapf(err, "error registering file %s", file.Path())
 		}
 	}
@@ -96,14 +97,15 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 	results := make([]*descriptorpb.FileDescriptorSet, 0, capacity)
 
 	for _, descriptor := range configure.Descriptors() {
-		descriptorBytes, err := os.ReadFile(descriptor)
+		descriptorBytes, err := os.ReadFile(descriptor) //nolint:gosec
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to read descriptor: %s", descriptor)
 		}
 
 		fds := &descriptorpb.FileDescriptorSet{}
 
-		if err := proto.Unmarshal(descriptorBytes, fds); err != nil {
+		err = proto.Unmarshal(descriptorBytes, fds)
+		if err != nil {
 			return nil, errors.Wrapf(err, "failed to unmarshal descriptor: %s", descriptor)
 		}
 
@@ -122,7 +124,8 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 				return nil, errors.Wrapf(err, "failed to create file descriptor: %s", descriptor)
 			}
 
-			if err := protoregistry.GlobalFiles.RegisterFile(fileDesc); err != nil {
+			err = protoregistry.GlobalFiles.RegisterFile(fileDesc)
+			if err != nil {
 				return nil, errors.Wrapf(err, "error registering file %s", descriptor)
 			}
 		}
@@ -144,7 +147,9 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 
 func newConfigure(ctx context.Context, imports []string, paths []string) (*Configure, error) {
 	p := newProcessor(imports)
-	if err := p.process(ctx, paths); err != nil {
+
+	err := p.process(ctx, paths)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to create configuration")
 	}
 
@@ -238,7 +243,7 @@ func (p *processor) process(ctx context.Context, paths []string) error {
 	for _, path := range paths {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return ctx.Err() //nolint:wrapcheck
 		default:
 		}
 
@@ -258,13 +263,15 @@ func (p *processor) process(ctx context.Context, paths []string) error {
 		case info.IsDir():
 			logger.Debug().Str("directory", absPath).Msg("Processing directory")
 
-			if err := p.processDirectory(ctx, absPath); err != nil {
+			err := p.processDirectory(ctx, absPath)
+			if err != nil {
 				return errors.Wrapf(err, "failed to process directory: %s", absPath)
 			}
 		default:
 			logger.Debug().Str("file", absPath).Msg("Processing file")
 
-			if err := p.processFile(ctx, absPath); err != nil {
+			err := p.processFile(ctx, absPath)
+			if err != nil {
 				return errors.Wrapf(err, "failed to process file: %s", absPath)
 			}
 		}
@@ -342,7 +349,8 @@ func (p *processor) addImport(ctx context.Context, dir string) {
 		err    error
 	)
 
-	if dirAbs, err = filepath.Abs(dir); err != nil {
+	dirAbs, err = filepath.Abs(dir)
+	if err != nil {
 		zerolog.Ctx(ctx).Err(err).Str("dir", dir).Msg("Failed to resolve absolute path for import")
 
 		return
@@ -398,7 +406,8 @@ func (p *processor) addFile(ctx context.Context, filePath, fileType string) {
 		err     error
 	)
 
-	if fileAbs, err = filepath.Abs(filePath); err != nil {
+	fileAbs, err = filepath.Abs(filePath)
+	if err != nil {
 		zerolog.Ctx(ctx).Err(err).Str("file", filePath).Msg("Failed to resolve absolute path")
 
 		return

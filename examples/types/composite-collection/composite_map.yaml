@@ -1,4 +1,5 @@
-- service: MapService
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: composite.MapService
   method: ProcessMap
   input:
     equals:

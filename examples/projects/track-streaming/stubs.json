@@ -27,42 +27,40 @@
       }
     },
     "output": {
-      "data": {
-        "stream": [
-          {
-            "stn": "MS#00005",
-            "identity": "00",
-            "latitude": 0.11000,
-            "longitude": 0.00600,
-            "speed": 50.0,
-            "updatedAt": "2024-01-01T13:00:00.000Z"
-          },
-          {
-            "stn": "MS#00005",
-            "identity": "01",
-            "latitude": 0.11001,
-            "longitude": 0.00601,
-            "speed": 51.0,
-            "updatedAt": "2024-01-01T13:00:01.000Z"
-          },
-          {
-            "stn": "MS#00005",
-            "identity": "02",
-            "latitude": 0.11002,
-            "longitude": 0.00602,
-            "speed": 52.0,
-            "updatedAt": "2024-01-01T13:00:02.000Z"
-          },
-          {
-            "stn": "MS#00005",
-            "identity": "03",
-            "latitude": 0.11003,
-            "longitude": 0.00603,
-            "speed": 53.0,
-            "updatedAt": "2024-01-01T13:00:03.000Z"
-          }
-        ]
-      }
+      "stream": [
+        {
+          "stn": "MS#00005",
+          "identity": "00",
+          "latitude": 0.11000,
+          "longitude": 0.00600,
+          "speed": 50.0,
+          "updatedAt": "2024-01-01T13:00:00.000Z"
+        },
+        {
+          "stn": "MS#00005",
+          "identity": "01",
+          "latitude": 0.11001,
+          "longitude": 0.00601,
+          "speed": 51.0,
+          "updatedAt": "2024-01-01T13:00:01.000Z"
+        },
+        {
+          "stn": "MS#00005",
+          "identity": "02",
+          "latitude": 0.11002,
+          "longitude": 0.00602,
+          "speed": 52.0,
+          "updatedAt": "2024-01-01T13:00:02.000Z"
+        },
+        {
+          "stn": "MS#00005",
+          "identity": "03",
+          "latitude": 0.11003,
+          "longitude": 0.00603,
+          "speed": 53.0,
+          "updatedAt": "2024-01-01T13:00:03.000Z"
+        }
+      ]
     }
   },
   {
@@ -74,26 +72,24 @@
       }
     },
     "output": {
-      "data": {
-        "stream": [
-          {
-            "stn": "MS#00006",
-            "identity": "00",
-            "latitude": 0.12000,
-            "longitude": 0.00700,
-            "speed": 35.0,
-            "updatedAt": "2024-01-01T14:00:00.000Z"
-          },
-          {
-            "stn": "MS#00006",
-            "identity": "01",
-            "latitude": 0.12005,
-            "longitude": 0.00705,
-            "speed": 36.0,
-            "updatedAt": "2024-01-01T14:00:05.000Z"
-          }
-        ]
-      }
+      "stream": [
+        {
+          "stn": "MS#00006",
+          "identity": "00",
+          "latitude": 0.12000,
+          "longitude": 0.00700,
+          "speed": 35.0,
+          "updatedAt": "2024-01-01T14:00:00.000Z"
+        },
+        {
+          "stn": "MS#00006",
+          "identity": "01",
+          "latitude": 0.12005,
+          "longitude": 0.00705,
+          "speed": 36.0,
+          "updatedAt": "2024-01-01T14:00:05.000Z"
+        }
+      ]
     }
   }
 ]

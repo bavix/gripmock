@@ -36,7 +36,7 @@ func (s *Service) Ping(ctx context.Context, service string) (waiter.ServingStatu
 		grpc.WaitForReady(true),
 	)
 	if err != nil {
-		return waiter.Unknown, err
+		return waiter.Unknown, err //nolint:wrapcheck
 	}
 
 	switch check.GetStatus() {

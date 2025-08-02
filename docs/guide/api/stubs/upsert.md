@@ -117,4 +117,9 @@ curl -X POST -d '[
 - `DELETE /api/stubs`: Delete all stubs.  
 - `DELETE /api/stubs/{uuid}`: Delete a specific stub by ID.  
 
+## **Schema References**
+For complete schema details, see:
+- [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
+- [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)
+
 This endpoint is critical for dynamically managing stubs during testing.

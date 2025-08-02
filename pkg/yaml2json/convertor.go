@@ -4,10 +4,12 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
+// Convertor provides functionality for converting YAML data to JSON format.
 type Convertor struct {
 	engine *engine
 }
 
+// New creates a new Convertor instance.
 func New() *Convertor {
 	return &Convertor{engine: newEngine()}
 }
@@ -27,5 +29,5 @@ func (t *Convertor) Execute(name string, data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return yaml.YAMLToJSON(jsonData)
+	return yaml.YAMLToJSON(jsonData) //nolint:wrapcheck
 }

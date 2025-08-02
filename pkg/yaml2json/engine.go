@@ -40,17 +40,19 @@ func (e *engine) Execute(name string, data []byte) ([]byte, error) {
 
 	t, err := t.Parse(string(data))
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	buf, _ := e.bufferPool.Get().(*bytes.Buffer)
+
 	defer func() {
 		buf.Reset()
 		e.bufferPool.Put(buf)
 	}()
 
-	if err := t.Execute(buf, nil); err != nil {
-		return nil, err
+	err = t.Execute(buf, nil)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
 	}
 
 	return buf.Bytes(), nil
@@ -59,7 +61,7 @@ func (e *engine) Execute(name string, data []byte) ([]byte, error) {
 func uuid2int64(str string) string {
 	v := uuid.MustParse(str)
 
-	ptr := unsafe.Pointer(&v[0])
+	ptr := unsafe.Pointer(&v[0]) //nolint:gosec
 	high := *(*int64)(ptr)
 	low := *(*int64)(unsafe.Add(ptr, 8)) //nolint:mnd
 

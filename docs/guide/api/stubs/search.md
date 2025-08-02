@@ -227,7 +227,8 @@ curl -X POST -d '{
 ```
 
 ## **Behavior**  
-- **Priority**: If `id` is provided, it takes precedence (ignores other fields).  
+- **ID Priority**: If `id` is provided, it takes precedence (ignores other fields).  
+- **Stub Priority**: When multiple stubs match, higher `priority` values are selected first.
 - **First Match**: Returns the **first stub** that matches the criteria.  
 - **No Match**: Returns `error` with code `5` (Not Found) if no stub matches.  
 
@@ -238,6 +239,11 @@ curl -X POST -d '{
 - **Related Endpoints**:  
   - `GET /api/stubs/used`: Track stubs matched by this endpoint.  
   - `POST /api/stubs`: Create/update stubs for testing.  
+
+## **Schema References**
+For complete schema details, see:
+- [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
+- [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)
 
 ---
 

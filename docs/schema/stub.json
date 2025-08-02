@@ -1,0 +1,334 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://bavix.github.io/gripmock/schema/stub.json",
+  "title": "GripMock Stub Schema",
+  "description": "Unified schema for GripMock stub definitions (supports both JSON and YAML formats)",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique identifier for the stub (auto-generated if omitted)"
+        },
+        "service": {
+          "type": "string",
+          "description": "gRPC service name (e.g., 'Gripmock', 'com.bavix.echo.v1.EchoService')",
+          "minLength": 1
+        },
+        "method": {
+          "type": "string",
+          "description": "gRPC method name (e.g., 'SayHello', 'SendMessage')",
+          "minLength": 1
+        },
+        "priority": {
+          "type": "integer",
+          "description": "Stub priority for matching (higher numbers = higher priority)",
+          "default": 0
+        },
+        "input": {
+          "$ref": "#/definitions/inputMatcher",
+          "description": "Input matching rules"
+        },
+        "headers": {
+          "$ref": "#/definitions/headerMatcher",
+          "description": "Header matching rules"
+        },
+        "output": {
+          "$ref": "#/definitions/output",
+          "description": "Response configuration"
+        }
+      },
+      "required": ["service", "method", "output"],
+      "additionalProperties": false
+    },
+    {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for the stub (auto-generated if omitted)"
+          },
+          "service": {
+            "type": "string",
+            "description": "gRPC service name (e.g., 'Gripmock', 'com.bavix.echo.v1.EchoService')",
+            "minLength": 1
+          },
+          "method": {
+            "type": "string",
+            "description": "gRPC method name (e.g., 'SayHello', 'SendMessage')",
+            "minLength": 1
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Stub priority for matching (higher numbers = higher priority)",
+            "default": 0
+          },
+          "input": {
+            "$ref": "#/definitions/inputMatcher",
+            "description": "Input matching rules"
+          },
+          "headers": {
+            "$ref": "#/definitions/headerMatcher",
+            "description": "Header matching rules"
+          },
+          "output": {
+            "$ref": "#/definitions/output",
+            "description": "Response configuration"
+          }
+        },
+        "required": ["service", "method", "output"],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  ],
+  "definitions": {
+    "inputMatcher": {
+      "type": "object",
+      "properties": {
+        "ignoreArrayOrder": {
+          "type": "boolean",
+          "default": false,
+          "description": "Disable array order checks for matching"
+        },
+        "equals": {
+          "type": "object",
+          "description": "Exact match for field names and values (case-sensitive)",
+          "additionalProperties": true
+        },
+        "contains": {
+          "oneOf": [
+            {
+              "type": "object",
+              "description": "Partial match (substring) for field values",
+              "additionalProperties": true
+            },
+            {
+              "type": "null",
+              "description": "Empty contains matcher (matches any input)"
+            }
+          ]
+        },
+        "matches": {
+          "type": "object",
+          "description": "Regex match for field values",
+          "additionalProperties": {
+            "type": "string",
+            "description": "Regular expression pattern"
+          }
+        }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "headerMatcher": {
+      "type": "object",
+      "properties": {
+        "equals": {
+          "type": "object",
+          "description": "Exact match for header names and values",
+          "additionalProperties": {
+            "type": "string",
+            "description": "Header value (multiple values separated by ';')"
+          }
+        },
+        "contains": {
+          "type": "object",
+          "description": "Partial match for header values",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "matches": {
+          "type": "object",
+          "description": "Regex match for header values",
+          "additionalProperties": {
+            "type": "string",
+            "description": "Regular expression pattern"
+          }
+        }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "outputData": {
+      "type": "object",
+      "description": "Response data matching protobuf message structure",
+      "additionalProperties": true
+    },
+    "streamMessage": {
+      "type": "object",
+      "description": "Single message in a stream response",
+      "additionalProperties": true
+    },
+    "output": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/outputData",
+          "description": "Response data for unary calls"
+        },
+        "stream": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/streamMessage"
+          },
+          "description": "Array of messages for streaming responses"
+        },
+        "error": {
+          "type": "string",
+          "description": "gRPC error message"
+        },
+        "code": {
+          "type": "integer",
+          "description": "gRPC status code (e.g., 3 for InvalidArgument, 14 for Unavailable)",
+          "minimum": 0,
+          "maximum": 16
+        },
+        "delay": {
+          "type": "string",
+          "description": "Delay timing: for unary calls - before response; for streaming - between messages (e.g., '100ms', '2.5s', '1m')",
+          "pattern": "^(\\d+(\\.\\d+)?(ms|s|m|h))+$"
+        },
+        "headers": {
+          "type": "object",
+          "description": "Response headers",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    }
+  },
+  "examples": [
+    {
+      "description": "Single stub object",
+      "value": {
+        "service": "Gripmock",
+        "method": "SayHello",
+        "input": {
+          "equals": {
+            "name": "gripmock"
+          }
+        },
+        "output": {
+          "data": {
+            "message": "Hello GripMock",
+            "returnCode": 42
+          }
+        }
+      }
+    },
+    {
+      "description": "Array of stubs",
+      "value": [
+        {
+          "service": "Gripmock",
+          "method": "SayHello",
+          "input": {
+            "equals": {
+              "name": "alpha"
+            }
+          },
+          "output": {
+            "data": {
+              "message": "Hello Alpha",
+              "returnCode": 1
+            }
+          }
+        },
+        {
+          "service": "Gripmock",
+          "method": "SayHello",
+          "input": {
+            "equals": {
+              "name": "beta"
+            }
+          },
+          "output": {
+            "data": {
+              "message": "Hello Beta",
+              "returnCode": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "description": "Streaming stub",
+      "value": {
+        "service": "TrackService",
+        "method": "StreamTrack",
+        "priority": 100,
+        "input": {
+          "equals": {
+            "stn": "MS#00001"
+          }
+        },
+        "output": {
+          "delay": "100ms",
+          "stream": [
+            {
+              "stn": "MS#00001",
+              "identity": "00",
+              "latitude": 0.1,
+              "longitude": 0.005,
+              "speed": 45,
+              "updatedAt": "2024-01-01T12:00:00.000Z"
+            },
+            {
+              "stn": "MS#00001",
+              "identity": "01",
+              "latitude": 0.10001,
+              "longitude": 0.00501,
+              "speed": 46,
+              "updatedAt": "2024-01-01T12:00:01.000Z"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "description": "Header-based authentication",
+      "value": {
+        "service": "AuthService",
+        "method": "ValidateToken",
+        "headers": {
+          "equals": {
+            "authorization": "Bearer token123"
+          }
+        },
+        "output": {
+          "data": {
+            "valid": true,
+            "userId": "user123"
+          }
+        }
+      }
+    },
+    {
+      "description": "Error response",
+      "value": {
+        "service": "ErrorService",
+        "method": "SimulateError",
+        "input": {
+          "contains": {
+            "trigger": "error"
+          }
+        },
+        "output": {
+          "delay": "500ms",
+          "error": "Service temporarily unavailable",
+          "code": 14
+        }
+      }
+    }
+  ]
+} 

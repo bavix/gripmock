@@ -104,4 +104,11 @@ curl -X POST \
 - **Nested Fields**: All rules work recursively (e.g., `equals.details.code`).  
 - **Data Types**: Supports `string`, `number`, `boolean`, `null`, and arrays.  
 - **Combining Rules**: Use multiple rules (e.g., `contains` + `matches`) for stricter conditions.  
-- **Performance**: Complex regex/nested structures may impact matching speed.  
+- **Performance**: Complex regex/nested structures may impact matching speed.
+- **Priority**: When multiple stubs match, use `priority` field to control selection order.
+
+## Related Documentation
+
+- [Stub Priority](../stubs/priority.md) - Control stub matching order
+- [Header Matching](./headers.md) - Match request headers
+- [JSON Schema](../schema/) - Complete schema reference  

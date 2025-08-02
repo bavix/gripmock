@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 
+	"github.com/cockroachdb/errors"
 	"github.com/goccy/go-json"
 	"github.com/gripmock/stuber"
 )
@@ -12,7 +13,7 @@ func stubNotFoundError(expect stuber.Query, result *stuber.Result) error {
 
 	expectString, err := json.MarshalIndent(expect.Data, "", "\t")
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to marshal expect data")
 	}
 
 	template += string(expectString)

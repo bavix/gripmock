@@ -35,10 +35,10 @@ type serverStreamWrapper struct {
 }
 
 func (w serverStreamWrapper) Context() context.Context        { return w.ctx }
-func (w serverStreamWrapper) RecvMsg(msg any) error           { return w.ss.RecvMsg(msg) }
-func (w serverStreamWrapper) SendMsg(msg any) error           { return w.ss.SendMsg(msg) }
-func (w serverStreamWrapper) SendHeader(md metadata.MD) error { return w.ss.SendHeader(md) }
-func (w serverStreamWrapper) SetHeader(md metadata.MD) error  { return w.ss.SetHeader(md) }
+func (w serverStreamWrapper) RecvMsg(msg any) error           { return w.ss.RecvMsg(msg) }   //nolint:wrapcheck
+func (w serverStreamWrapper) SendMsg(msg any) error           { return w.ss.SendMsg(msg) }   //nolint:wrapcheck
+func (w serverStreamWrapper) SendHeader(md metadata.MD) error { return w.ss.SendHeader(md) } //nolint:wrapcheck
+func (w serverStreamWrapper) SetHeader(md metadata.MD) error  { return w.ss.SetHeader(md) }  //nolint:wrapcheck
 func (w serverStreamWrapper) SetTrailer(md metadata.MD)       { w.ss.SetTrailer(md) }
 
 // StreamInterceptor is a gRPC interceptor that adds a logger to the context.

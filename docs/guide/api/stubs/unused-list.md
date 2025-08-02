@@ -116,6 +116,11 @@ curl http://127.0.0.1:4771/api/stubs/unused
   - `POST /api/stubs/search`: Mark stubs as used by matching criteria.  
   - `POST /api/stubs`: Create or update stubs.  
 
+#### **Schema References**
+For complete schema details, see:
+- [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
+- [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)
+
 ---
 
 This endpoint is essential for maintaining clean stub configurations by identifying and removing unused stubs.

@@ -20,15 +20,18 @@ import (
 	"github.com/bavix/gripmock/v3/pkg/jsondecoder"
 )
 
-var (
-	ErrServiceIsMissing = errors.New("service name is missing")
-	ErrMethodIsMissing  = errors.New("method name is missing")
-)
+// ErrServiceIsMissing is returned when the service name is not provided in the request.
+var ErrServiceIsMissing = errors.New("service name is missing")
 
+// ErrMethodIsMissing is returned when the method name is not provided in the request.
+var ErrMethodIsMissing = errors.New("method name is missing")
+
+// Extender defines the interface for extending stub functionality.
 type Extender interface {
 	Wait(ctx context.Context)
 }
 
+// RestServer handles HTTP REST API requests for stub management.
 type RestServer struct {
 	ok         atomic.Bool
 	budgerigar *stuber.Budgerigar
@@ -36,6 +39,7 @@ type RestServer struct {
 
 var _ rest.ServerInterface = &RestServer{}
 
+// NewRestServer creates a new REST server instance with the specified dependencies.
 func NewRestServer(
 	ctx context.Context,
 	budgerigar *stuber.Budgerigar,
@@ -56,6 +60,7 @@ func NewRestServer(
 	return server, nil
 }
 
+// ServicesList returns a list of all available gRPC services.
 func (h *RestServer) ServicesList(w http.ResponseWriter, _ *http.Request) {
 	results := make([]rest.Service, 0)
 
@@ -86,7 +91,8 @@ func (h *RestServer) ServicesList(w http.ResponseWriter, _ *http.Request) {
 		return true
 	})
 
-	if err := json.NewEncoder(w).Encode(results); err != nil {
+	err := json.NewEncoder(w).Encode(results)
+	if err != nil {
 		h.responseError(w, err)
 	}
 }
@@ -100,6 +106,7 @@ func splitLast(s string, sep string) []string {
 	return []string{s[:lastDot], s[lastDot+1:]}
 }
 
+// ServiceMethodsList returns a list of methods for the specified service.
 func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, _ *http.Request, serviceID string) {
 	results := make([]rest.Method, 0)
 
@@ -129,17 +136,13 @@ func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, _ *http.Request, 
 		return true
 	})
 
-	if err := json.NewEncoder(w).Encode(results); err != nil {
+	err := json.NewEncoder(w).Encode(results)
+	if err != nil {
 		h.responseError(w, err)
 	}
 }
 
-func (h *RestServer) liveness(w http.ResponseWriter) {
-	if err := json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
-		h.responseError(w, err)
-	}
-}
-
+// Readiness handles the readiness probe endpoint.
 func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
 	if !h.ok.Load() {
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -150,10 +153,12 @@ func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
 	h.liveness(w)
 }
 
+// Liveness handles the liveness probe endpoint.
 func (h *RestServer) Liveness(w http.ResponseWriter, _ *http.Request) {
 	h.liveness(w)
 }
 
+// AddStub adds a new stub to the server.
 func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	byt, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -162,7 +167,12 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer r.Body.Close()
+	defer func() {
+		if closeErr := r.Body.Close(); closeErr != nil {
+			_ = closeErr // ignore error
+			// Log error but don't fail the request
+		}
+	}()
 
 	var inputs []*stuber.Stub
 
@@ -187,12 +197,14 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// DeleteStubByID deletes a stub by its ID.
 func (h *RestServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
 	h.budgerigar.DeleteByID(uuid)
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// BatchStubsDelete deletes multiple stubs in a batch operation.
 func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	byt, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -201,7 +213,12 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer r.Body.Close()
+	defer func() {
+		if closeErr := r.Body.Close(); closeErr != nil {
+			_ = closeErr // ignore error
+			// Log error but don't fail the request
+		}
+	}()
 
 	var inputs []uuid.UUID
 
@@ -216,30 +233,35 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ListUsedStubs returns a list of stubs that have been used.
 func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 	if err := json.NewEncoder(w).Encode(h.budgerigar.Used()); err != nil {
 		h.responseError(w, err)
 	}
 }
 
+// ListUnusedStubs returns a list of stubs that have not been used.
 func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 	if err := json.NewEncoder(w).Encode(h.budgerigar.Unused()); err != nil {
 		h.responseError(w, err)
 	}
 }
 
+// ListStubs returns a list of all stubs.
 func (h *RestServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
 	if err := json.NewEncoder(w).Encode(h.budgerigar.All()); err != nil {
 		h.responseError(w, err)
 	}
 }
 
+// PurgeStubs clears all stubs from the server.
 func (h *RestServer) PurgeStubs(w http.ResponseWriter, _ *http.Request) {
 	h.budgerigar.Clear()
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// SearchStubs searches for stubs based on a query.
 func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 	query, err := stuber.NewQuery(r)
 	if err != nil {
@@ -248,7 +270,12 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	defer r.Body.Close()
+	defer func() {
+		if closeErr := r.Body.Close(); closeErr != nil {
+			_ = closeErr // ignore error
+			// Log error but don't fail the request
+		}
+	}()
 
 	result, err := h.budgerigar.FindByQuery(query)
 	if err != nil {
@@ -270,6 +297,7 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// FindByID retrieves a stub by its ID.
 func (h *RestServer) FindByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
 	stub := h.budgerigar.FindByID(uuid)
 	if stub == nil {
@@ -286,18 +314,28 @@ func (h *RestServer) FindByID(w http.ResponseWriter, _ *http.Request, uuid rest.
 	}
 }
 
+// liveness handles the liveness probe response.
+func (h *RestServer) liveness(w http.ResponseWriter) {
+	if err := json.NewEncoder(w).Encode(rest.MessageOK{Message: "ok", Time: time.Now()}); err != nil {
+		h.responseError(w, err)
+	}
+}
+
+// responseError writes an error response to the HTTP writer.
 func (h *RestServer) responseError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
 
 	h.writeResponseError(w, err)
 }
 
+// writeResponseError writes an error response to the HTTP writer.
 func (h *RestServer) writeResponseError(w http.ResponseWriter, err error) {
 	h.writeResponse(w, map[string]string{
 		"error": err.Error(),
 	})
 }
 
+// writeResponse writes a successful response to the HTTP writer.
 func (h *RestServer) writeResponse(w http.ResponseWriter, data any) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		h.responseError(w, err)

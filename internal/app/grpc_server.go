@@ -39,17 +39,15 @@ import (
 const serviceReflection = "grpc.reflection.v1.ServerReflection"
 
 type GRPCServer struct {
-	network        string
-	address        string
-	params         *protoloc.Arguments
-	budgerigar     *stuber.Budgerigar
-	waiter         Extender
-	streamInterval time.Duration
+	network    string
+	address    string
+	params     *protoloc.Arguments
+	budgerigar *stuber.Budgerigar
+	waiter     Extender
 }
 
 type grpcMocker struct {
-	budgerigar     *stuber.Budgerigar
-	streamInterval time.Duration
+	budgerigar *stuber.Budgerigar
 
 	inputDesc  protoreflect.MessageDescriptor
 	outputDesc protoreflect.MessageDescriptor
@@ -281,98 +279,45 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		}
 	}
 
-	hasArrayData := func(data map[string]any) bool {
-		if _, ok := data["stream"].([]any); ok {
-			return true
-		}
-
-		if _, ok := data["data"].([]any); ok {
-			return true
-		}
-
-		return false
+	// For server streaming, prioritize Stream field, fallback to Data if Stream is empty
+	if len(found.Output.Stream) > 0 {
+		return m.handleArrayStreamData(stream, found)
 	}
 
-	if hasArrayData(found.Output.Data) {
-		return m.handleArrayStreamData(stream, query, found)
-	}
-
+	// Fallback to Data for single message streaming
 	return m.handleNonArrayStreamData(stream, found)
 }
 
-func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, query stuber.Query, found *stuber.Stub) error {
-	index := 0
-
-	for {
+func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stuber.Stub) error {
+	// Send all messages from the stream array
+	for _, streamData := range found.Output.Stream {
 		select {
 		case <-stream.Context().Done():
 			return stream.Context().Err()
 		default:
 		}
 
-		result, err := m.budgerigar.FindByQuery(query)
-		if err != nil {
-			return errors.Wrap(err, "failed to refresh response data")
-		}
-
-		currentFound := result.Found()
-		if currentFound == nil {
-			return status.Errorf(codes.NotFound, "No response found during refresh: %v", result.Similar())
-		}
-
-		var dataArray []any
-		if streamArray, ok := currentFound.Output.Data["stream"].([]any); ok {
-			dataArray = streamArray
-		} else if directArray, ok := currentFound.Output.Data["data"].([]any); ok {
-			dataArray = directArray
-		} else {
-			return status.Error(codes.Internal, "data array not found during refresh")
-		}
-
-		if len(dataArray) == 0 {
-			return status.Error(codes.Internal, "empty data array for streaming")
-		}
-
-		currentData := dataArray[index%len(dataArray)]
-
 		var outputData map[string]any
-		if currentMap, ok := currentData.(map[string]any); ok {
+		if currentMap, ok := streamData.(map[string]any); ok {
 			outputData = currentMap
 		} else {
 			return status.Error(codes.Internal, "invalid data format in stream array")
 		}
+
+		// Apply delay before sending each message
+		m.delay(stream.Context(), found.Output.Delay)
 
 		outputMsg, err := m.newOutputMessage(outputData)
 		if err != nil {
 			return errors.Wrap(err, "failed to convert response to dynamic message")
 		}
 
-		m.delay(stream.Context(), found.Output.Delay)
-
 		if err := stream.SendMsg(outputMsg); err != nil {
 			return errors.Wrap(err, "failed to send response")
 		}
-
-		index++
-
-		var effectiveDelay time.Duration
-		if found.Output.Delay > 0 {
-			effectiveDelay = found.Output.Delay
-		} else {
-			effectiveDelay = m.streamInterval
-		}
-
-		if effectiveDelay > 0 {
-			timer := time.NewTimer(effectiveDelay)
-			select {
-			case <-stream.Context().Done():
-				timer.Stop()
-				return stream.Context().Err()
-			case <-timer.C:
-				// Continue to next iteration
-			}
-		}
 	}
+
+	return nil
 }
 
 func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *stuber.Stub) error {
@@ -440,7 +385,6 @@ func (m *grpcMocker) unaryHandler() grpc.MethodHandler {
 	}
 }
 
-//nolint:cyclop
 func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*dynamicpb.Message, error) {
 	query := m.newQuery(ctx, req)
 
@@ -450,21 +394,14 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 	}
 
 	found := result.Found()
-
 	if found == nil {
 		return nil, status.Error(codes.NotFound, stubNotFoundError(query, result).Error())
 	}
 
 	m.delay(ctx, found.Output.Delay)
 
-	if found.Output.Error != "" || found.Output.Code != nil {
-		if found.Output.Code == nil {
-			return nil, status.Error(codes.Aborted, found.Output.Error)
-		}
-
-		if *found.Output.Code != codes.OK {
-			return nil, status.Error(*found.Output.Code, found.Output.Error)
-		}
+	if err := m.handleOutputError(found.Output); err != nil {
+		return nil, err
 	}
 
 	outputMsg, err := m.newOutputMessage(found.Output.Data)
@@ -472,22 +409,59 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		return nil, err
 	}
 
-	if found.Output.Headers != nil {
-		mdResp := make(metadata.MD, len(found.Output.Headers))
-		for k, v := range found.Output.Headers {
-			mdResp.Append(k, strings.Split(v, ";")...)
-		}
-
-		if err := grpc.SetHeader(ctx, mdResp); err != nil {
-			return nil, errors.Wrap(err, "failed to set headers")
-		}
+	if err := m.setResponseHeaders(ctx, found.Output.Headers); err != nil {
+		return nil, err
 	}
 
 	return outputMsg, nil
 }
 
-//nolint:cyclop
+func (m *grpcMocker) handleOutputError(output stuber.Output) error {
+	if output.Error != "" || output.Code != nil {
+		if output.Code == nil {
+			return status.Error(codes.Aborted, output.Error)
+		}
+
+		if *output.Code != codes.OK {
+			return status.Error(*output.Code, output.Error)
+		}
+	}
+
+	return nil
+}
+
+func (m *grpcMocker) setResponseHeaders(ctx context.Context, headers map[string]string) error {
+	if headers == nil {
+		return nil
+	}
+
+	mdResp := make(metadata.MD, len(headers))
+	for k, v := range headers {
+		mdResp.Append(k, strings.Split(v, ";")...)
+	}
+
+	return grpc.SetHeader(ctx, mdResp)
+}
+
 func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
+	responses, lastHeaders, err := m.processClientStreamMessages(stream)
+	if err != nil {
+		return err
+	}
+
+	if err := m.setStreamHeaders(stream, lastHeaders); err != nil {
+		return err
+	}
+
+	outputMsg, err := m.newOutputMessage(responses[len(responses)-1])
+	if err != nil {
+		return errors.Wrap(err, "failed to convert response to dynamic message")
+	}
+
+	return stream.SendMsg(outputMsg)
+}
+
+func (m *grpcMocker) processClientStreamMessages(stream grpc.ServerStream) ([]map[string]any, metadata.MD, error) {
 	var (
 		allResponses []map[string]any
 		lastHeaders  metadata.MD
@@ -502,45 +476,59 @@ func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 		}
 
 		if err != nil {
-			return errors.Wrap(err, "failed to receive message")
+			return nil, nil, errors.Wrap(err, "failed to receive message")
 		}
 
-		query := m.newQuery(stream.Context(), inputMsg)
-
-		result, err := m.budgerigar.FindByQuery(query)
+		response, headers, err := m.processStreamMessage(stream.Context(), inputMsg)
 		if err != nil {
-			return errors.Wrap(err, "failed to find response")
+			return nil, nil, err
 		}
 
-		found := result.Found()
-		if found == nil {
-			return status.Errorf(codes.NotFound, "No response found: %v", result.Similar())
-		}
-
-		m.delay(stream.Context(), found.Output.Delay)
-
-		allResponses = append(allResponses, found.Output.Data)
-
-		if found.Output.Headers != nil {
-			lastHeaders = make(metadata.MD, len(found.Output.Headers))
-			for k, v := range found.Output.Headers {
-				lastHeaders.Append(k, strings.Split(v, ";")...)
-			}
+		allResponses = append(allResponses, response)
+		if headers != nil {
+			lastHeaders = headers
 		}
 	}
 
-	if lastHeaders != nil {
-		if err := stream.SetHeader(lastHeaders); err != nil {
-			return errors.Wrap(err, "failed to set headers")
-		}
-	}
+	return allResponses, lastHeaders, nil
+}
 
-	outputMsg, err := m.newOutputMessage(allResponses[len(allResponses)-1])
+func (m *grpcMocker) processStreamMessage(ctx context.Context, inputMsg *dynamicpb.Message) (map[string]any, metadata.MD, error) {
+	query := m.newQuery(ctx, inputMsg)
+
+	result, err := m.budgerigar.FindByQuery(query)
 	if err != nil {
-		return errors.Wrap(err, "failed to convert response to dynamic message")
+		return nil, nil, errors.Wrap(err, "failed to find response")
 	}
 
-	return stream.SendMsg(outputMsg)
+	found := result.Found()
+	if found == nil {
+		return nil, nil, status.Errorf(codes.NotFound, "No response found: %v", result.Similar())
+	}
+
+	m.delay(ctx, found.Output.Delay)
+
+	var headers metadata.MD
+	if found.Output.Headers != nil {
+		headers = make(metadata.MD, len(found.Output.Headers))
+		for k, v := range found.Output.Headers {
+			headers.Append(k, strings.Split(v, ";")...)
+		}
+	}
+
+	return found.Output.Data, headers, nil
+}
+
+func (m *grpcMocker) setStreamHeaders(stream grpc.ServerStream, headers metadata.MD) error {
+	if headers == nil {
+		return nil
+	}
+
+	return stream.SetHeader(headers)
+}
+
+func (m *grpcMocker) createNotFoundError(result *stuber.Result) error {
+	return status.Errorf(codes.NotFound, "No response found: %v", result.Similar())
 }
 
 //nolint:cyclop
@@ -598,28 +586,34 @@ func NewGRPCServer(
 	params *protoloc.Arguments,
 	budgerigar *stuber.Budgerigar,
 	waiter Extender,
-	streamInterval time.Duration,
 ) *GRPCServer {
 	return &GRPCServer{
-		network:        network,
-		address:        address,
-		params:         params,
-		budgerigar:     budgerigar,
-		waiter:         waiter,
-		streamInterval: streamInterval,
+		network:    network,
+		address:    address,
+		params:     params,
+		budgerigar: budgerigar,
+		waiter:     waiter,
 	}
 }
 
-//nolint:cyclop,funlen
 func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	descriptors, err := protoset.Build(ctx, s.params.Imports(), s.params.ProtoPath())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build descriptors")
 	}
 
+	server := s.createServer(ctx)
+	s.setupHealthCheck(server)
+	s.registerServices(ctx, server, descriptors)
+	s.startHealthCheckRoutine(ctx)
+
+	return server, nil
+}
+
+func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 	logger := zerolog.Ctx(ctx)
 
-	server := grpc.NewServer(
+	return grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			grpccontext.UnaryInterceptor(logger),
 			LogUnaryInterceptor,
@@ -629,70 +623,88 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 			LogStreamInterceptor,
 		),
 	)
+}
 
+func (s *GRPCServer) setupHealthCheck(server *grpc.Server) {
 	healthcheck := health.NewServer()
-
 	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_NOT_SERVING)
-
 	healthgrpc.RegisterHealthServer(server, healthcheck)
 	reflection.Register(server)
+}
+
+func (s *GRPCServer) registerServices(ctx context.Context, server *grpc.Server, descriptors []*descriptorpb.FileDescriptorSet) {
+	logger := zerolog.Ctx(ctx)
 
 	for _, descriptor := range descriptors {
 		for _, file := range descriptor.GetFile() {
 			for _, svc := range file.GetService() {
-				serviceDesc := grpc.ServiceDesc{
-					ServiceName: getServiceName(file, svc),
-					HandlerType: (*any)(nil),
-				}
-
-				for _, method := range svc.GetMethod() {
-					inputDesc, err := getMessageDescriptor(method.GetInputType())
-					if err != nil {
-						logger.Fatal().Err(err).Msg("Failed to get input message descriptor")
-					}
-
-					outputDesc, err := getMessageDescriptor(method.GetOutputType())
-					if err != nil {
-						logger.Fatal().Err(err).Msg("Failed to get output message descriptor")
-					}
-
-					m := &grpcMocker{
-						budgerigar:     s.budgerigar,
-						streamInterval: s.streamInterval,
-
-						inputDesc:  inputDesc,
-						outputDesc: outputDesc,
-
-						fullServiceName: serviceDesc.ServiceName,
-						serviceName:     svc.GetName(),
-						methodName:      method.GetName(),
-						fullMethod:      fmt.Sprintf("/%s/%s", serviceDesc.ServiceName, method.GetName()),
-
-						serverStream: method.GetServerStreaming(),
-						clientStream: method.GetClientStreaming(),
-					}
-
-					if method.GetServerStreaming() || method.GetClientStreaming() {
-						serviceDesc.Streams = append(serviceDesc.Streams, grpc.StreamDesc{
-							StreamName:    method.GetName(),
-							Handler:       m.streamHandler,
-							ServerStreams: m.serverStream,
-							ClientStreams: m.clientStream,
-						})
-					} else {
-						serviceDesc.Methods = append(serviceDesc.Methods, grpc.MethodDesc{
-							MethodName: method.GetName(),
-							Handler:    m.unaryHandler(),
-						})
-					}
-				}
-
+				serviceDesc := s.createServiceDesc(file, svc)
+				s.registerServiceMethods(ctx, &serviceDesc, svc)
 				server.RegisterService(&serviceDesc, nil)
-
-				zerolog.Ctx(ctx).Info().Str("service", serviceDesc.ServiceName).Msg("Registered gRPC service")
+				logger.Info().Str("service", serviceDesc.ServiceName).Msg("Registered gRPC service")
 			}
 		}
 	}
+}
+
+func (s *GRPCServer) createServiceDesc(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.ServiceDescriptorProto) grpc.ServiceDesc {
+	return grpc.ServiceDesc{
+		ServiceName: getServiceName(file, svc),
+		HandlerType: (*any)(nil),
+	}
+}
+
+func (s *GRPCServer) registerServiceMethods(ctx context.Context, serviceDesc *grpc.ServiceDesc, svc *descriptorpb.ServiceDescriptorProto) {
+	logger := zerolog.Ctx(ctx)
+
+	for _, method := range svc.GetMethod() {
+		inputDesc, err := getMessageDescriptor(method.GetInputType())
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to get input message descriptor")
+		}
+
+		outputDesc, err := getMessageDescriptor(method.GetOutputType())
+		if err != nil {
+			logger.Fatal().Err(err).Msg("Failed to get output message descriptor")
+		}
+
+		m := s.createGrpcMocker(serviceDesc, svc, method, inputDesc, outputDesc)
+
+		if method.GetServerStreaming() || method.GetClientStreaming() {
+			serviceDesc.Streams = append(serviceDesc.Streams, grpc.StreamDesc{
+				StreamName:    method.GetName(),
+				Handler:       m.streamHandler,
+				ServerStreams: m.serverStream,
+				ClientStreams: m.clientStream,
+			})
+		} else {
+			serviceDesc.Methods = append(serviceDesc.Methods, grpc.MethodDesc{
+				MethodName: method.GetName(),
+				Handler:    m.unaryHandler(),
+			})
+		}
+	}
+}
+
+func (s *GRPCServer) createGrpcMocker(serviceDesc *grpc.ServiceDesc, svc *descriptorpb.ServiceDescriptorProto, method *descriptorpb.MethodDescriptorProto, inputDesc, outputDesc protoreflect.MessageDescriptor) *grpcMocker {
+	return &grpcMocker{
+		budgerigar: s.budgerigar,
+
+		inputDesc:  inputDesc,
+		outputDesc: outputDesc,
+
+		fullServiceName: serviceDesc.ServiceName,
+		serviceName:     svc.GetName(),
+		methodName:      method.GetName(),
+		fullMethod:      fmt.Sprintf("/%s/%s", serviceDesc.ServiceName, method.GetName()),
+
+		serverStream: method.GetServerStreaming(),
+		clientStream: method.GetClientStreaming(),
+	}
+}
+
+func (s *GRPCServer) startHealthCheckRoutine(ctx context.Context) {
+	logger := zerolog.Ctx(ctx)
 
 	go func() {
 		s.waiter.Wait(ctx)
@@ -701,12 +713,9 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 		case <-ctx.Done():
 			return
 		default:
-			healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_SERVING)
 			logger.Info().Msg("gRPC server is ready to accept requests")
 		}
 	}()
-
-	return server, nil
 }
 
 // getServiceName constructs the fully qualified service name by combining the package name
@@ -832,12 +841,15 @@ func protoToJSON(msg any) []byte {
 	}
 
 	message, ok := msg.(proto.Message)
-	if !ok {
+	if !ok || message == nil {
 		return nil
 	}
 
 	marshaller := protojson.MarshalOptions{EmitUnpopulated: false}
-	data, _ := marshaller.Marshal(message)
+	data, err := marshaller.Marshal(message)
+	if err != nil {
+		return nil
+	}
 
 	return data
 }
@@ -860,6 +872,7 @@ func toLogArray(items ...any) *zerolog.Array {
 
 type loggingStream struct {
 	grpc.ServerStream
+
 	requests  []any
 	responses []any
 }

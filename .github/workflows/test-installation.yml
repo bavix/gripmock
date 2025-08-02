@@ -30,27 +30,37 @@ jobs:
       run: |
         brew install curl coreutils
 
+    - name: Prepare environment
+      run: |
+        chmod +x ./setup.sh
+        # Ensure /usr/local/bin exists and is writable
+        sudo mkdir -p /usr/local/bin
+        sudo chmod 755 /usr/local/bin
+
     - name: First installation
       uses: nick-fields/retry@v3
       with:
-        timeout_seconds: 30
-        max_attempts: 30
+        timeout_seconds: 60
+        max_attempts: 2
         shell: sh
         command: |
-          chmod +x ./setup.sh
+          # Clean up any existing installation
+          sudo rm -f /usr/local/bin/gripmock || true
+          # Run installation
           sudo ./setup.sh
 
     - name: Verify installation
       shell: sh
       run: |
         test -f /usr/local/bin/gripmock
+        test -x /usr/local/bin/gripmock
         gripmock --version
 
     - name: Second installation (upgrade check)
       uses: nick-fields/retry@v3
       with:
-        timeout_seconds: 30
-        max_attempts: 30
+        timeout_seconds: 60
+        max_attempts: 2
         shell: sh
         command: |
           sudo ./setup.sh
@@ -59,7 +69,13 @@ jobs:
       shell: sh
       run: |
         test -f /usr/local/bin/gripmock
+        test -x /usr/local/bin/gripmock
         gripmock --version
+
+    - name: Test basic functionality
+      shell: sh
+      run: |
+        gripmock --help | head -5
 
     - name: Cleanup
       if: always()

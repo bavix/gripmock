@@ -2,13 +2,13 @@ package storage
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
 	"github.com/rs/zerolog"
@@ -222,21 +222,21 @@ func genID(stub *stuber.Stub, freeIDs uuid.UUIDs) (uuid.UUID, uuid.UUIDs) {
 // The stub file can be in yaml or json format.
 // If the file is in yaml format, it will be converted to json format.
 func (s *Extender) readStub(path string) ([]*stuber.Stub, error) {
-	file, err := os.ReadFile(path)
+	file, err := os.ReadFile(path) //nolint:gosec
 	if err != nil {
-		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
+		return nil, errors.Wrapf(err, "failed to read file %s", path)
 	}
 
 	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
 		file, err = s.convertor.Execute(path, file)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal file %s: %w", path, err)
+			return nil, errors.Wrapf(err, "failed to unmarshal file %s", path)
 		}
 	}
 
 	var stubs []*stuber.Stub
 	if err := jsondecoder.UnmarshalSlice(file, &stubs); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal file %s: %v %w", path, string(file), err)
+		return nil, errors.Wrapf(err, "failed to unmarshal file %s: %v", path, string(file))
 	}
 
 	return stubs, nil

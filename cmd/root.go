@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog"
@@ -15,10 +14,9 @@ import (
 )
 
 var (
-	stubFlag           string
-	importsFlag        []string
-	streamIntervalFlag string
-	version            = "development"
+	stubFlag    string
+	importsFlag []string
+	version     = "development"
 )
 
 var rootCmd = &cobra.Command{
@@ -27,11 +25,6 @@ var rootCmd = &cobra.Command{
 	Version: version,
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		streamInterval, err := time.ParseDuration(streamIntervalFlag)
-		if err != nil {
-			return errors.Wrapf(err, "invalid stream-interval: %s", streamIntervalFlag)
-		}
-
 		builder := deps.NewBuilder(deps.WithDefaultConfig())
 		ctx, cancel := builder.SignalNotify(cmd.Context())
 		defer cancel()
@@ -40,7 +33,6 @@ var rootCmd = &cobra.Command{
 
 		zerolog.Ctx(ctx).Info().
 			Str("release", version).
-			Dur("stream_interval", streamInterval).
 			Msg("Starting GripMock")
 
 		go func() {
@@ -51,14 +43,14 @@ var rootCmd = &cobra.Command{
 
 		defer builder.Shutdown(context.WithoutCancel(ctx))
 
-		return builder.GRPCServe(ctx, proto.New(args, importsFlag), streamInterval)
+		return builder.GRPCServe(ctx, proto.New(args, importsFlag))
 	},
 }
 
 func restServe(ctx context.Context, builder *deps.Builder) error {
 	srv, err := builder.RestServe(ctx, stubFlag)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to start rest server")
 	}
 
 	zerolog.Ctx(ctx).Info().Str("addr", srv.Addr).Msg("HTTP server is now running")
@@ -101,14 +93,9 @@ func init() {
 		"i",
 		[]string{},
 		"Path to import proto-libraries")
-
-	rootCmd.Flags().StringVar(
-		&streamIntervalFlag,
-		"stream-interval",
-		"100ms",
-		"Interval between stream messages (e.g., 100ms, 1s, 500ms)")
 }
 
+// Execute runs the root command with the given context.
 func Execute(ctx context.Context) {
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		os.Exit(1)

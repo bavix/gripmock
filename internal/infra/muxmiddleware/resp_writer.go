@@ -19,7 +19,7 @@ func (rw *responseWriter) Write(bytes []byte) (int, error) {
 	n, err := rw.w.Write(bytes)
 	rw.bytesWritten += n
 
-	return n, err
+	return n, err //nolint:wrapcheck
 }
 
 func (rw *responseWriter) WriteHeader(statusCode int) {

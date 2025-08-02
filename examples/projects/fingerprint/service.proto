@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package fingerprint;
+
+service Fingerprint {
+  rpc Check(CheckRequest) returns (CheckResponse);
+}
+
+message CheckRequest {
+  string id = 1;
+}
+
+message CheckResponse {
+  bool valid = 1;
+}

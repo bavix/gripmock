@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
 # ConvertLength Error (missing toUnit)
 - service: UnitConversionService
   method: ConvertLength

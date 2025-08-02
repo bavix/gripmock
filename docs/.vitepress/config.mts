@@ -64,8 +64,21 @@ export default defineConfig({
         items: [
           { text: 'JSON', link: '/guide/stubs/json' },
           { text: 'YAML', link: '/guide/stubs/yaml' },
+          { text: 'Priority', link: '/guide/stubs/priority' },
           { text: 'Benefits YAML', link: '/guide/stubs/benefits-yaml' },
-          { text: 'Why IDs Are Critical', link: '/guide/stubs/why-ids-are-crucial' }
+          { text: 'Why IDs Are Critical', link: '/guide/stubs/why-ids-are-crucial' },
+          { text: 'Delay Configuration', link: '/guide/stubs/delay' },
+          { text: 'Server-Side Streaming', link: '/guide/stubs/server-streaming' },
+          { text: 'Output Stream Configuration', link: '/guide/stubs/output-stream' }
+        ],
+        collapsed: false,
+      },
+      {
+        text: 'Schema',
+        items: [
+          { text: 'Overview', link: '/guide/schema/' },
+          { text: 'Validation', link: '/guide/schema/validation' },
+          { text: 'Examples', link: '/guide/schema/examples' },
         ],
         collapsed: false,
       },
@@ -113,6 +126,7 @@ export default defineConfig({
             collapsed: false,
           },
           { text: 'OpenAPI', link: 'https://bavix.github.io/gripmock-openapi/' },
+          { text: 'JSON Schema', link: 'https://bavix.github.io/gripmock/schema/stub.json' },
         ],
         collapsed: false,
       },

@@ -32,8 +32,8 @@ features:
     details: "Lightweight Docker image with minimal footprint for CI/CD workflows."
   - title: "Static Stub Initialization 📄"
     details: "Load predefined stubs from YAML/JSON files at startup."
-  - title: "Active Development 🌟"
-    details: "Regular updates and upcoming UI in version 3.x (preview available)."
+  - title: "JSON Schema Validation 📋"
+    details: "Comprehensive schema for validating stub definitions with IDE support."
 ---
 
 
