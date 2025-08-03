@@ -59,8 +59,8 @@ github.com/gripmock/environment v1.2.0 h1:7oZwoprwuhGs35MOKhrUcegUpI0CKJXRe1b6SJ
 github.com/gripmock/environment v1.2.0/go.mod h1:flmJpgcZHSFbJ6F0SkTHJ/CEMRSPA5igXjsqBzoakAM=
 github.com/gripmock/shutdown v1.1.0 h1:GXeZAjNSzPXSAThaEhfw/MU3QupSb/a0Hdlii53CfeE=
 github.com/gripmock/shutdown v1.1.0/go.mod h1:IrxdYb+QcHdWyKtI1cyATanT4h//6Bg0I/7Btcs1vDo=
-github.com/gripmock/stuber v1.6.0 h1:/y848xejNYCQR6Zv4sQOeTH49mK5vEYQ09iTcdpZP10=
-github.com/gripmock/stuber v1.6.0/go.mod h1:40012IR6rFLt6e2V+uiPC9QIByCA1uzmbEs5HoO2/jE=
+github.com/gripmock/stuber v1.6.1-0.20250803094800-c13158a7411c h1:ZtdJJ1ZP5n6Wfe4OGNRRa4nmSYmwpSvjxjyQ55jPcxM=
+github.com/gripmock/stuber v1.6.1-0.20250803094800-c13158a7411c/go.mod h1:40012IR6rFLt6e2V+uiPC9QIByCA1uzmbEs5HoO2/jE=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/juju/gnuflag v0.0.0-20171113085948-2ce1bb71843d/go.mod h1:2PavIy+JPciBPrBUjwbNvtwB6RQlve+hkpll6QSNmOE=

@@ -47,7 +47,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodGet, "/api/stubs", nil)
 			},
 			endpoint: server.ListStubs,
-			expected: `[{"id":"43739ed8-2810-4f57-889b-4d3ff5795bce","service":"MammalService","method":"CheckHabitat","headers":{"equals":null,"contains":null,"matches":null},"input":{"equals":{"Hola":"Mundo"},"contains":null,"matches":null},"output":{"data":{"Hello":"World"},"error":"","headers":null},"priority":0}]`,
+			expected: `[{"id":"43739ed8-2810-4f57-889b-4d3ff5795bce","service":"MammalService","method":"CheckHabitat","headers":{"equals":null,"contains":null,"matches":null},"input":{"equals":{"Hola":"Mundo"},"contains":null,"matches":null},"output":{"data":{"Hello":"World"},"error":"","headers":null},"priority":0,"stream":null}]`,
 		},
 		{
 			description: "list_inactive_stubs",
@@ -55,7 +55,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodGet, "/api/stubs/unused", nil)
 			},
 			endpoint: server.ListUnusedStubs,
-			expected: `[{"id":"43739ed8-2810-4f57-889b-4d3ff5795bce","service":"MammalService","method":"CheckHabitat","headers":{"equals":null,"contains":null,"matches":null},"input":{"equals":{"Hola":"Mundo"},"contains":null,"matches":null},"output":{"data":{"Hello":"World"},"error":"","headers":null},"priority":0}]`,
+			expected: `[{"id":"43739ed8-2810-4f57-889b-4d3ff5795bce","service":"MammalService","method":"CheckHabitat","headers":{"equals":null,"contains":null,"matches":null},"input":{"equals":{"Hola":"Mundo"},"contains":null,"matches":null},"output":{"data":{"Hello":"World"},"error":"","headers":null},"priority":0,"stream":null}]`,
 		},
 		{
 			description: "check_empty_active_stubs",
@@ -109,7 +109,7 @@ func TestStub(t *testing.T) {
 				return httptest.NewRequest(http.MethodGet, "/api/stubs/used", nil)
 			},
 			endpoint: server.ListUsedStubs,
-			expected: `[{"id":"43739ed8-2810-4f57-889b-4d3ff5795bce","service":"MammalService","method":"CheckHabitat","headers":{"equals":null,"contains":null,"matches":null},"input":{"equals":{"Hola":"Mundo"},"contains":null,"matches":null},"output":{"data":{"Hello":"World"},"error":"","headers":null},"priority":0}]`,
+			expected: `[{"id":"43739ed8-2810-4f57-889b-4d3ff5795bce","service":"MammalService","method":"CheckHabitat","headers":{"equals":null,"contains":null,"matches":null},"input":{"equals":{"Hola":"Mundo"},"contains":null,"matches":null},"output":{"data":{"Hello":"World"},"error":"","headers":null},"priority":0,"stream":null}]`,
 		},
 		{
 			description: "find_stub_by_identifier",
