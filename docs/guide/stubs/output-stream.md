@@ -60,18 +60,15 @@ Defines server-side streaming responses (array of messages).
 ```yaml
 output:
   stream:
-    - data:
-        message: "First message"
-        timestamp: "2024-01-01T12:00:00.000Z"
-    - data:
-        message: "Second message"
-        timestamp: "2024-01-01T12:00:01.000Z"
-    - data:
-        message: "Third message"
-        timestamp: "2024-01-01T12:00:02.000Z"
+    - message: "First message"
+      timestamp: "2024-01-01T12:00:00.000Z"
+    - message: "Second message"
+      timestamp: "2024-01-01T12:00:01.000Z"
+    - message: "Third message"
+      timestamp: "2024-01-01T12:00:02.000Z"
 ```
 
-**Note**: Each stream element should contain a `data` field for consistency with the V2 API.
+**Note**: Each stream element contains the message data directly, without a `data` wrapper.
 
 ### `error`
 Error message for error responses.
@@ -126,21 +123,18 @@ For methods that return multiple responses over time:
       chunk_count: 5
   output:
     stream:
-      - data:
-          chunk_id: "chunk_001"
-          sequence: 1
-          content: "First chunk"
-          timestamp: "2024-01-01T12:00:00.000Z"
-      - data:
-          chunk_id: "chunk_002"
-          sequence: 2
-          content: "Second chunk"
-          timestamp: "2024-01-01T12:00:01.000Z"
-      - data:
-          chunk_id: "chunk_003"
-          sequence: 3
-          content: "Third chunk"
-          timestamp: "2024-01-01T12:00:02.000Z"
+      - chunk_id: "chunk_001"
+        sequence: 1
+        content: "First chunk"
+        timestamp: "2024-01-01T12:00:00.000Z"
+      - chunk_id: "chunk_002"
+        sequence: 2
+        content: "Second chunk"
+        timestamp: "2024-01-01T12:00:01.000Z"
+      - chunk_id: "chunk_003"
+        sequence: 3
+        content: "Third chunk"
+        timestamp: "2024-01-01T12:00:02.000Z"
 ```
 
 ### Bidirectional Streaming
@@ -160,16 +154,14 @@ For bidirectional streaming, responses are selected based on incoming messages:
         type: "MESSAGE_TYPE_TEXT"
   output:
     stream:
-      - data:
-          user_id: "bob"
-          content: "Hello Alice!"
-          type: "MESSAGE_TYPE_TEXT"
-          timestamp: "2024-01-01T12:00:00.000Z"
-      - data:
-          user_id: "bob"
-          content: "I'm doing great!"
-          type: "MESSAGE_TYPE_TEXT"
-          timestamp: "2024-01-01T12:00:01.000Z"
+      - user_id: "bob"
+        content: "Hello Alice!"
+        type: "MESSAGE_TYPE_TEXT"
+        timestamp: "2024-01-01T12:00:00.000Z"
+      - user_id: "bob"
+        content: "I'm doing great!"
+        type: "MESSAGE_TYPE_TEXT"
+        timestamp: "2024-01-01T12:00:01.000Z"
 ```
 
 **Bidirectional Streaming Behavior:**
@@ -323,19 +315,17 @@ GripMock uses sophisticated ranking algorithms to select the best matching stub:
 # Good: Consistent structure
 output:
   stream:
-    - data:
-        message: "First"
-        timestamp: "2024-01-01T12:00:00.000Z"
-    - data:
-        message: "Second"
-        timestamp: "2024-01-01T12:00:01.000Z"
+    - message: "First"
+      timestamp: "2024-01-01T12:00:00.000Z"
+    - message: "Second"
+      timestamp: "2024-01-01T12:00:01.000Z"
 
 # Avoid: Inconsistent structure
 output:
   stream:
     - message: "First"
-    - data:
-        message: "Second"
+    - message: "Second"
+      timestamp: "2024-01-01T12:00:01.000Z"
 ```
 
 ### 2. Provide Meaningful Error Messages

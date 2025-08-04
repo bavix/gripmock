@@ -98,12 +98,10 @@ YAML handles all types of gRPC streaming scenarios with ease:
         message: "How are you?"
   output:
     stream:
-      - data:
-          user_id: "bot"
-          message: "Hello, Alice!"
-      - data:
-          user_id: "bot"
-          message: "I'm doing great!"
+      - user_id: "bot"
+        message: "Hello, Alice!"
+      - user_id: "bot"
+        message: "I'm doing great!"
 ```
 
 ---

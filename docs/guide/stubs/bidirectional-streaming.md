@@ -28,16 +28,14 @@ Bidirectional streaming is useful for:
         type: "MESSAGE_TYPE_TEXT"
   output:
     stream:
-      - data:
-          user_id: "bob"
-          content: "Hello Alice!"
-          type: "MESSAGE_TYPE_TEXT"
-          timestamp: "2024-01-01T12:00:00.000Z"
-      - data:
-          user_id: "bob"
-          content: "I'm doing great!"
-          type: "MESSAGE_TYPE_TEXT"
-          timestamp: "2024-01-01T12:00:01.000Z"
+      - user_id: "bob"
+        content: "Hello Alice!"
+        type: "MESSAGE_TYPE_TEXT"
+        timestamp: "2024-01-01T12:00:00.000Z"
+      - user_id: "bob"
+        content: "I'm doing great!"
+        type: "MESSAGE_TYPE_TEXT"
+        timestamp: "2024-01-01T12:00:01.000Z"
 ```
 
 ### Legacy V1 API Format (Backward Compatible)
@@ -91,20 +89,17 @@ Bidirectional streaming is useful for:
   output:
     stream:
       # Response to first message
-      - data:
-          user_id: "bob"
-          content: "Hello Alice!"
-          type: "MESSAGE_TYPE_TEXT"
+      - user_id: "bob"
+        content: "Hello Alice!"
+        type: "MESSAGE_TYPE_TEXT"
       # Response to second message
-      - data:
-          user_id: "bob"
-          content: "I'm doing great!"
-          type: "MESSAGE_TYPE_TEXT"
+      - user_id: "bob"
+        content: "I'm doing great!"
+        type: "MESSAGE_TYPE_TEXT"
       # Response to third message
-      - data:
-          user_id: "bob"
-          content: "Sure, let's chat!"
-          type: "MESSAGE_TYPE_TEXT"
+      - user_id: "bob"
+        content: "Sure, let's chat!"
+        type: "MESSAGE_TYPE_TEXT"
 ```
 
 ## Advanced Examples
@@ -131,21 +126,18 @@ Bidirectional streaming is useful for:
         type: "MESSAGE_TYPE_TEXT"
   output:
     stream:
-      - data:
-          user_id: "system"
-          content: "Alice joined the chat"
-          type: "MESSAGE_TYPE_SYSTEM"
-          timestamp: "2024-01-01T12:00:00.000Z"
-      - data:
-          user_id: "bob"
-          content: "Hi Alice!"
-          type: "MESSAGE_TYPE_TEXT"
-          timestamp: "2024-01-01T12:00:01.000Z"
-      - data:
-          user_id: "charlie"
-          content: "Hello there!"
-          type: "MESSAGE_TYPE_TEXT"
-          timestamp: "2024-01-01T12:00:02.000Z"
+      - user_id: "system"
+        content: "Alice joined the chat"
+        type: "MESSAGE_TYPE_SYSTEM"
+        timestamp: "2024-01-01T12:00:00.000Z"
+      - user_id: "bob"
+        content: "Hi Alice!"
+        type: "MESSAGE_TYPE_TEXT"
+        timestamp: "2024-01-01T12:00:01.000Z"
+      - user_id: "charlie"
+        content: "Hello there!"
+        type: "MESSAGE_TYPE_TEXT"
+        timestamp: "2024-01-01T12:00:02.000Z"
 ```
 
 ### Interactive Data Processing
@@ -165,21 +157,18 @@ Bidirectional streaming is useful for:
         total_records: 50000
   output:
     stream:
-      - data:
-          status: "STARTED"
-          message: "Processing started"
-          dataset: "large_dataset"
-          timestamp: "2024-01-01T12:00:00.000Z"
-      - data:
-          status: "PROCESSING"
-          message: "Processing batch of 1000 records"
-          progress: 20
-          timestamp: "2024-01-01T12:00:01.000Z"
-      - data:
-          status: "COMPLETED"
-          message: "Processing completed"
-          total_processed: 50000
-          timestamp: "2024-01-01T12:00:02.000Z"
+      - status: "STARTED"
+        message: "Processing started"
+        dataset: "large_dataset"
+        timestamp: "2024-01-01T12:00:00.000Z"
+      - status: "PROCESSING"
+        message: "Processing batch of 1000 records"
+        progress: 20
+        timestamp: "2024-01-01T12:00:01.000Z"
+      - status: "COMPLETED"
+        message: "Processing completed"
+        total_processed: 50000
+        timestamp: "2024-01-01T12:00:02.000Z"
 ```
 
 ### Real-Time Collaboration
@@ -202,22 +191,19 @@ Bidirectional streaming is useful for:
         position: {"x": 150, "y": 250}
   output:
     stream:
-      - data:
-          user_id: "editor_1"
-          action: "CURSOR_MOVE"
-          position: {"x": 100, "y": 200}
-          timestamp: "2024-01-01T12:00:00.000Z"
-      - data:
-          user_id: "editor_1"
-          action: "TEXT_INSERT"
-          text: "Hello world"
-          position: {"line": 1, "column": 1}
-          timestamp: "2024-01-01T12:00:01.000Z"
-      - data:
-          user_id: "editor_2"
-          action: "CURSOR_MOVE"
-          position: {"x": 150, "y": 250}
-          timestamp: "2024-01-01T12:00:02.000Z"
+      - user_id: "editor_1"
+        action: "CURSOR_MOVE"
+        position: {"x": 100, "y": 200}
+        timestamp: "2024-01-01T12:00:00.000Z"
+      - user_id: "editor_1"
+        action: "TEXT_INSERT"
+        text: "Hello world"
+        position: {"line": 1, "column": 1}
+        timestamp: "2024-01-01T12:00:01.000Z"
+      - user_id: "editor_2"
+        action: "CURSOR_MOVE"
+        position: {"x": 150, "y": 250}
+        timestamp: "2024-01-01T12:00:02.000Z"
 ```
 
 ## Stub Ranking and Selection
@@ -247,10 +233,9 @@ GripMock uses sophisticated algorithms for bidirectional streaming:
         type: "MESSAGE_TYPE_TEXT"
   output:
     stream:
-      - data:
-          user_id: "bob"
-          content: "Hello Alice! (High priority)"
-          type: "MESSAGE_TYPE_TEXT"
+      - user_id: "bob"
+        content: "Hello Alice! (High priority)"
+        type: "MESSAGE_TYPE_TEXT"
 
 # Lower priority fallback
 - service: ChatService
@@ -263,10 +248,9 @@ GripMock uses sophisticated algorithms for bidirectional streaming:
         type: "MESSAGE_TYPE_TEXT"
   output:
     stream:
-      - data:
-          user_id: "bob"
-          content: "Hello Alice! (Fallback)"
-          type: "MESSAGE_TYPE_TEXT"
+      - user_id: "bob"
+        content: "Hello Alice! (Fallback)"
+        type: "MESSAGE_TYPE_TEXT"
 ```
 
 ## Best Practices
@@ -301,24 +285,20 @@ stream:
 # Good: Include timestamps for message ordering
 output:
   stream:
-    - data:
-        user_id: "bob"
-        content: "Hello Alice!"
-        timestamp: "2024-01-01T12:00:00.000Z"
-    - data:
-        user_id: "bob"
-        content: "I'm doing great!"
-        timestamp: "2024-01-01T12:00:01.000Z"
+    - user_id: "bob"
+      content: "Hello Alice!"
+      timestamp: "2024-01-01T12:00:00.000Z"
+    - user_id: "bob"
+      content: "I'm doing great!"
+      timestamp: "2024-01-01T12:00:01.000Z"
 
 # Avoid: Missing timestamps
 output:
   stream:
-    - data:
-        user_id: "bob"
-        content: "Hello Alice!"
-    - data:
-        user_id: "bob"
-        content: "I'm doing great!"
+    - user_id: "bob"
+      content: "Hello Alice!"
+    - user_id: "bob"
+      content: "I'm doing great!"
 ```
 
 ### 3. Handle Message Sequences
@@ -374,26 +354,22 @@ stream:
 # Good: Contextual responses
 output:
   stream:
-    - data:
-        user_id: "bob"
-        content: "Hello Alice! Nice to see you."
-        type: "MESSAGE_TYPE_TEXT"
-    - data:
-        user_id: "bob"
-        content: "I'm doing great! How about you?"
-        type: "MESSAGE_TYPE_TEXT"
+    - user_id: "bob"
+      content: "Hello Alice! Nice to see you."
+      type: "MESSAGE_TYPE_TEXT"
+    - user_id: "bob"
+      content: "I'm doing great! How about you?"
+      type: "MESSAGE_TYPE_TEXT"
 
 # Avoid: Generic responses
 output:
   stream:
-    - data:
-        user_id: "bob"
-        content: "Response 1"
-        type: "MESSAGE_TYPE_TEXT"
-    - data:
-        user_id: "bob"
-        content: "Response 2"
-        type: "MESSAGE_TYPE_TEXT"
+    - user_id: "bob"
+      content: "Response 1"
+      type: "MESSAGE_TYPE_TEXT"
+    - user_id: "bob"
+      content: "Response 2"
+      type: "MESSAGE_TYPE_TEXT"
 ```
 
 ## Error Handling
@@ -483,9 +459,8 @@ output:
         content: "Hello"
   output:
     stream:
-      - data:
-          user_id: "bob"
-          content: "Hello Alice!"
+      - user_id: "bob"
+        content: "Hello Alice!"
 ```
 
 **Migration Benefits:**
