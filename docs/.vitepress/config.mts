@@ -51,7 +51,7 @@ export default defineConfig({
 
     sidebar: [
       {
-        text: 'Getting started',
+        text: 'Getting Started',
         items: [
           { text: 'Introduction', link: '/guide/introduction' },
           { text: 'Quick Usage', link: '/guide/introduction/quick-usage' },
@@ -64,12 +64,23 @@ export default defineConfig({
         items: [
           { text: 'JSON', link: '/guide/stubs/json' },
           { text: 'YAML', link: '/guide/stubs/yaml' },
-          { text: 'Priority', link: '/guide/stubs/priority' },
           { text: 'Benefits YAML', link: '/guide/stubs/benefits-yaml' },
           { text: 'Why IDs Are Critical', link: '/guide/stubs/why-ids-are-crucial' },
+          { text: 'Priority', link: '/guide/stubs/priority' },
           { text: 'Delay Configuration', link: '/guide/stubs/delay' },
+          { text: 'Output Stream Configuration', link: '/guide/stubs/output-stream' },
           { text: 'Server-Side Streaming', link: '/guide/stubs/server-streaming' },
-          { text: 'Output Stream Configuration', link: '/guide/stubs/output-stream' }
+          { text: 'Client-Side Streaming', link: '/guide/stubs/client-streaming' },
+          { text: 'Bidirectional Streaming', link: '/guide/stubs/bidirectional-streaming' },
+          { text: 'Enhanced Performance', link: '/guide/stubs/enhanced-performance' }
+        ],
+        collapsed: false,
+      },
+      {
+        text: 'Matcher',
+        items: [
+          { text: 'Input', link: '/guide/matcher/input' },
+          { text: 'Headers', link: '/guide/matcher/headers' },
         ],
         collapsed: false,
       },
@@ -77,16 +88,8 @@ export default defineConfig({
         text: 'Schema',
         items: [
           { text: 'Overview', link: '/guide/schema/' },
-          { text: 'Validation', link: '/guide/schema/validation' },
           { text: 'Examples', link: '/guide/schema/examples' },
-        ],
-        collapsed: false,
-      },
-      {
-        text: 'Matcher',
-        items: [
-          { text: 'Headers', link: '/guide/matcher/headers' },
-          { text: 'Input', link: '/guide/matcher/input' },
+          { text: 'Validation', link: '/guide/schema/validation' },
         ],
         collapsed: false,
       },
@@ -95,17 +98,10 @@ export default defineConfig({
         items: [
           { text: 'Scalar Types', link: '/guide/types/scalar-types' },
           { text: 'Well-known Types', link: '/guide/types/well-known-types' },
-          { text: 'Composite Collection Types', link: '/guide/types/composite-collection-types' },
           { text: 'Extended Types', link: '/guide/types/extended-types' },
+          { text: 'Composite Collection Types', link: '/guide/types/composite-collection-types' },
           { text: 'Specialized Utility Types', link: '/guide/types/specialized-utility-types' },
           { text: 'Union-like Constructs', link: '/guide/types/union-like-constructs' },
-        ],
-        collapsed: false,
-      },
-      {
-        text: 'Utility',
-        items: [
-          { text: 'gRPC Testify', link: '/guide/utility/grpc-testify' },
         ],
         collapsed: false,
       },
@@ -117,16 +113,23 @@ export default defineConfig({
             items: [
               { text: 'Stubs Upsert', link: '/guide/api/stubs/upsert' },
               { text: 'Stubs Search', link: '/guide/api/stubs/search' },
-              { text: 'Stubs Delete', link: '/guide/api/stubs/delete' },
-              { text: 'Stubs Purge', link: '/guide/api/stubs/purge' },
               { text: 'Stubs List', link: '/guide/api/stubs/list' },
               { text: 'Stubs Used List', link: '/guide/api/stubs/used-list' },
               { text: 'Stubs Unused List', link: '/guide/api/stubs/unused-list' },
+              { text: 'Stubs Delete', link: '/guide/api/stubs/delete' },
+              { text: 'Stubs Purge', link: '/guide/api/stubs/purge' },
             ],
             collapsed: false,
           },
           { text: 'OpenAPI', link: 'https://bavix.github.io/gripmock-openapi/' },
           { text: 'JSON Schema', link: 'https://bavix.github.io/gripmock/schema/stub.json' },
+        ],
+        collapsed: false,
+      },
+      {
+        text: 'Utility',
+        items: [
+          { text: 'gRPC Testify', link: '/guide/utility/grpc-testify' },
         ],
         collapsed: false,
       },

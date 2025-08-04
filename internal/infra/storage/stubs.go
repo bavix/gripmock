@@ -62,7 +62,15 @@ func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
 		return
 	}
 
+	// Clear all existing stubs before loading new ones
+	zerolog.Ctx(ctx).Info().Msg("Clearing all existing stubs before loading new ones")
+	s.storage.Clear()
+	s.mapIDsByFile = make(map[string]uuid.UUIDs)
+	s.uniqueIDs = make(map[uuid.UUID]struct{})
+	zerolog.Ctx(ctx).Info().Msgf("After Clear: stub count = %d", len(s.storage.All()))
+
 	s.readFromPath(ctx, pathDir)
+	zerolog.Ctx(ctx).Info().Msgf("After load: stub count = %d", len(s.storage.All()))
 	close(s.ch)
 
 	ch, err := s.watcher.Watch(ctx, pathDir)

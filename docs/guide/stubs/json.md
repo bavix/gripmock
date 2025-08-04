@@ -1,6 +1,6 @@
 # Static JSON Stubs  
-Use static JSON/YAML files to predefine stubs without relying on the HTTP API. Ideal for:  
-- Tests avoiding HTTP dependencies  
+Use static JSON/YAML files to predefine stubs without relying on the HTTP API. Perfect for:  
+- Tests that don't need HTTP dependencies  
 - Immutable stub configurations  
 - Large-scale stub setups
 

@@ -10,6 +10,7 @@ The `output` section in stub configuration controls:
 - HTTP/gRPC headers
 - Streaming behavior
 - Response timing (delays)
+- Bidirectional streaming responses
 
 ## Basic Output Structure
 
@@ -59,13 +60,18 @@ Defines server-side streaming responses (array of messages).
 ```yaml
 output:
   stream:
-    - message: "First message"
-      timestamp: "2024-01-01T12:00:00.000Z"
-    - message: "Second message"
-      timestamp: "2024-01-01T12:00:01.000Z"
-    - message: "Third message"
-      timestamp: "2024-01-01T12:00:02.000Z"
+    - data:
+        message: "First message"
+        timestamp: "2024-01-01T12:00:00.000Z"
+    - data:
+        message: "Second message"
+        timestamp: "2024-01-01T12:00:01.000Z"
+    - data:
+        message: "Third message"
+        timestamp: "2024-01-01T12:00:02.000Z"
 ```
+
+**Note**: Each stream element should contain a `data` field for consistency with the V2 API.
 
 ### `error`
 Error message for error responses.
@@ -101,253 +107,289 @@ Artificial delay before sending the response.
 
 ```yaml
 output:
-  delay: 500ms
+  delay: 100ms
   data:
     message: "Delayed response"
 ```
 
-## Response Types
+## Streaming Response Types
 
-### 1. Data Response
+### Server Streaming
+For methods that return multiple responses over time:
+
 ```yaml
-service: UserService
-method: GetUser
-input:
-  equals:
-    userId: 123
-output:
-  data:
-    userId: 123
-    name: "John Doe"
-    email: "john@example.com"
-    createdAt: "2024-01-01T12:00:00.000Z"
-```
-
-### 2. Error Response
-```yaml
-service: UserService
-method: GetUser
-input:
-  equals:
-    userId: 999
-output:
-  error: "User not found"
-  code: 5  # NOT_FOUND
-```
-
-### 3. Streaming Response
-```yaml
-service: NotificationService
-method: StreamNotifications
-input:
-  equals:
-    userId: 123
-output:
-  delay: 100ms
-  stream:
-    - type: "INFO"
-      message: "Welcome to the service"
-      timestamp: "2024-01-01T12:00:00.000Z"
-    - type: "WARNING"
-      message: "Your session will expire soon"
-      timestamp: "2024-01-01T12:00:01.000Z"
-    - type: "SUCCESS"
-      message: "Operation completed successfully"
-      timestamp: "2024-01-01T12:00:02.000Z"
-```
-
-### 4. Response with Headers
-```yaml
-service: AuthService
-method: Login
-input:
-  equals:
-    username: "admin"
-    password: "secret"
-output:
-  headers:
-    "x-auth-token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-    "x-refresh-token": "refresh_token_123"
-    "x-session-id": "session_456"
-  data:
-    userId: 123
-    username: "admin"
-    role: "administrator"
-    lastLogin: "2024-01-01T12:00:00.000Z"
-```
-
-## Advanced Examples
-
-### Conditional Responses
-```yaml
-# Success case
-- service: PaymentService
-  method: ProcessPayment
+- service: DataService
+  method: StreamData
   input:
     equals:
-      amount: 100
+      request_id: "req_001"
+      chunk_count: 5
+  output:
+    stream:
+      - data:
+          chunk_id: "chunk_001"
+          sequence: 1
+          content: "First chunk"
+          timestamp: "2024-01-01T12:00:00.000Z"
+      - data:
+          chunk_id: "chunk_002"
+          sequence: 2
+          content: "Second chunk"
+          timestamp: "2024-01-01T12:00:01.000Z"
+      - data:
+          chunk_id: "chunk_003"
+          sequence: 3
+          content: "Third chunk"
+          timestamp: "2024-01-01T12:00:02.000Z"
+```
+
+### Bidirectional Streaming
+For bidirectional streaming, responses are selected based on incoming messages:
+
+```yaml
+- service: ChatService
+  method: Chat
+  stream:
+    - equals:
+        user_id: "alice"
+        content: "Hello"
+        type: "MESSAGE_TYPE_TEXT"
+    - equals:
+        user_id: "alice"
+        content: "How are you?"
+        type: "MESSAGE_TYPE_TEXT"
+  output:
+    stream:
+      - data:
+          user_id: "bob"
+          content: "Hello Alice!"
+          type: "MESSAGE_TYPE_TEXT"
+          timestamp: "2024-01-01T12:00:00.000Z"
+      - data:
+          user_id: "bob"
+          content: "I'm doing great!"
+          type: "MESSAGE_TYPE_TEXT"
+          timestamp: "2024-01-01T12:00:01.000Z"
+```
+
+**Bidirectional Streaming Behavior:**
+- Each incoming message is matched against the `stream` input patterns
+- Responses are selected from the `output.stream` array based on message index
+- If no exact match is found, the best matching stub is selected based on ranking
+- Stub ranking considers exact matches, partial matches, and specificity
+
+### Client Streaming Response
+For client streaming methods, a single response is returned after all messages:
+
+```yaml
+- service: UploadService
+  method: UploadFile
+  stream:
+    - equals:
+        chunk_id: "chunk_001"
+        sequence: 1
+        total_chunks: 3
+    - equals:
+        chunk_id: "chunk_001"
+        sequence: 2
+        total_chunks: 3
+    - equals:
+        chunk_id: "chunk_001"
+        sequence: 3
+        total_chunks: 3
   output:
     data:
-      transactionId: "txn-123"
-      status: "SUCCESS"
-      amount: 100
-      timestamp: "2024-01-01T12:00:00.000Z"
+      upload_id: "upload_001"
+      success: true
+      total_chunks: 3
+      total_size: "1500"
+      status: "completed"
+      completed_at: "2024-01-15T10:05:00Z"
+```
 
-# Insufficient funds
-- service: PaymentService
-  method: ProcessPayment
+## Advanced Output Features
+
+### Conditional Responses
+Use different outputs based on input conditions:
+
+```yaml
+- service: UserService
+  method: GetUser
   input:
     equals:
-      amount: 10000
+      user_id: "12345"
   output:
-    error: "Insufficient funds"
-    code: 9  # FAILED_PRECONDITION
+    data:
+      name: "John Doe"
+      email: "john@example.com"
+      status: "active"
+
+- service: UserService
+  method: GetUser
+  input:
+    equals:
+      user_id: "99999"
+  output:
+    error: "User not found"
+    code: 5  # NOT_FOUND
 ```
 
-### Real-Time Data Feed
+### Response with Metadata
+Include additional metadata in responses:
+
 ```yaml
-service: SensorService
-method: StreamReadings
-input:
-  equals:
-    sensorId: "TEMP_001"
 output:
-  delay: 200ms
   headers:
-    "x-sensor-id": "TEMP_001"
-    "x-stream-type": "temperature"
-  stream:
-    - sensorId: "TEMP_001"
-      temperature: 22.5
-      humidity: 45.2
-      pressure: 1013.25
-      timestamp: "2024-01-01T10:00:00.000Z"
-    - sensorId: "TEMP_001"
-      temperature: 22.7
-      humidity: 45.8
-      pressure: 1013.30
-      timestamp: "2024-01-01T10:00:02.000Z"
-    - sensorId: "TEMP_001"
-      temperature: 23.1
-      humidity: 46.1
-      pressure: 1013.35
-      timestamp: "2024-01-01T10:00:04.000Z"
-```
-
-### Batch Processing
-```yaml
-service: ProcessingService
-method: StreamProgress
-input:
-  equals:
-    batchId: "BATCH_001"
-output:
-  delay: 1s
-  headers:
-    "x-batch-id": "BATCH_001"
-    "x-total-items": "100"
-  stream:
-    - batchId: "BATCH_001"
-      status: "STARTED"
-      progress: 0
-      processed: 0
-      total: 100
-      message: "Processing started"
-    - batchId: "BATCH_001"
-      status: "PROCESSING"
-      progress: 25
-      processed: 25
-      total: 100
-      message: "25% complete"
-    - batchId: "BATCH_001"
-      status: "PROCESSING"
-      progress: 50
-      processed: 50
-      total: 100
-      message: "50% complete"
-    - batchId: "BATCH_001"
-      status: "PROCESSING"
-      progress: 75
-      processed: 75
-      total: 100
-      message: "75% complete"
-    - batchId: "BATCH_001"
-      status: "COMPLETED"
-      progress: 100
-      processed: 100
-      total: 100
-      message: "Processing completed"
-```
-
-## Priority and Matching
-
-### Priority Field
-```yaml
-output:
-  priority: 100  # Higher priority (higher number = higher priority)
+    "x-response-time": "150ms"
+    "x-cache-hit": "true"
   data:
-    message: "High priority response"
+    result: "success"
+    metadata:
+      processed_at: "2024-01-01T12:00:00.000Z"
+      version: "1.0.0"
+      source: "mock"
 ```
 
-### Multiple Matching Stubs
-When multiple stubs match a request, GripMock uses:
-1. Priority (higher number = higher priority)
-2. Order of definition (first defined wins)
+### Error with Details
+Provide detailed error information:
 
-## Error Codes
+```yaml
+output:
+  error: "Validation failed"
+  code: 3  # INVALID_ARGUMENT
+  data:
+    details:
+      field: "email"
+      reason: "Invalid email format"
+      suggestion: "Use valid email format"
+```
 
-Common gRPC status codes:
+## API Version Compatibility
 
-| Code | Name | Description |
-|------|------|-------------|
-| 0 | OK | Success |
-| 1 | CANCELLED | Request cancelled |
-| 2 | UNKNOWN | Unknown error |
-| 3 | INVALID_ARGUMENT | Invalid argument |
-| 4 | DEADLINE_EXCEEDED | Deadline exceeded |
-| 5 | NOT_FOUND | Resource not found |
-| 6 | ALREADY_EXISTS | Resource already exists |
-| 7 | PERMISSION_DENIED | Permission denied |
-| 8 | RESOURCE_EXHAUSTED | Resource exhausted |
-| 9 | FAILED_PRECONDITION | Failed precondition |
-| 10 | ABORTED | Operation aborted |
-| 11 | OUT_OF_RANGE | Out of range |
-| 12 | UNIMPLEMENTED | Not implemented |
-| 13 | INTERNAL | Internal error |
-| 14 | UNAVAILABLE | Service unavailable |
-| 15 | DATA_LOSS | Data loss |
+### V1 API (Legacy)
+```yaml
+- service: ChatService
+  method: SendMessage
+  input:
+    equals:
+      user: Alice
+      text: "Hello"
+  output:
+    data:
+      success: true
+      message: "1 messages processed"
+```
+
+### V2 API (Streaming)
+```yaml
+- service: ChatService
+  method: SendMessage
+  stream:
+    - equals:
+        user: Alice
+        text: "Hello"
+  output:
+    data:
+      success: true
+      message: "1 messages processed"
+```
+
+**Automatic Detection:**
+- GripMock automatically detects V1 vs V2 format based on presence of `stream` field
+- V1 stubs use `input` for matching
+- V2 stubs use `stream` for matching
+- Both formats are supported simultaneously for backward compatibility
+
+## Performance Considerations
+
+### Stub Ranking
+GripMock uses sophisticated ranking algorithms to select the best matching stub:
+
+1. **Exact Matches**: Highest priority for perfect matches
+2. **Partial Matches**: Ranked based on field overlap
+3. **Specificity**: More specific stubs rank higher
+4. **Priority**: Explicit priority values override ranking
+5. **Length Matching**: For streaming, length compatibility is considered
+
+### Memory Efficiency
+- Stubs are loaded once and cached in memory
+- Streaming responses are generated on-demand
+- Bidirectional streaming maintains minimal state per connection
 
 ## Best Practices
 
-### 1. Response Structure
-- Use consistent data structures
-- Include meaningful field names
-- Add timestamps for time-sensitive data
+### 1. Use Consistent Data Structure
+```yaml
+# Good: Consistent structure
+output:
+  stream:
+    - data:
+        message: "First"
+        timestamp: "2024-01-01T12:00:00.000Z"
+    - data:
+        message: "Second"
+        timestamp: "2024-01-01T12:00:01.000Z"
 
-### 2. Error Handling
-- Use appropriate error codes
-- Provide descriptive error messages
-- Test error scenarios
+# Avoid: Inconsistent structure
+output:
+  stream:
+    - message: "First"
+    - data:
+        message: "Second"
+```
 
-### 3. Headers
-- Use headers for metadata
-- Follow naming conventions (e.g., `x-` prefix)
-- Keep headers relevant to the response
+### 2. Provide Meaningful Error Messages
+```yaml
+# Good: Descriptive error
+output:
+  error: "User with ID '12345' not found in database"
+  code: 5
 
-### 4. Streaming
-- Use realistic delays
-- Include proper message structure
-- Test with various stream lengths
+# Avoid: Generic error
+output:
+  error: "Not found"
+  code: 5
+```
 
-### 5. Testing
-- Test all response types
-- Verify error conditions
-- Check header delivery
-- Validate streaming behavior
+### 3. Use Appropriate Delays
+```yaml
+# Good: Reasonable delay for testing
+output:
+  delay: 100ms
+  data:
+    message: "Response"
 
-## Limitations
+# Avoid: Excessive delays
+output:
+  delay: 30s
+  data:
+    message: "Response"
+```
 
-- Stream responses terminate after sending all messages
-- Maximum response size depends on gRPC limits
-- Headers are set once per response/stream
-- Delay affects the entire response timing 
+### 4. Leverage Priority for Complex Scenarios
+```yaml
+# High priority for specific cases
+- service: UserService
+  method: GetUser
+  priority: 100
+  input:
+    equals:
+      user_id: "12345"
+      exact_match: true
+  output:
+    data:
+      name: "John Doe"
+      exact: true
+
+# Lower priority fallback
+- service: UserService
+  method: GetUser
+  priority: 50
+  input:
+    equals:
+      user_id: "12345"
+  output:
+    data:
+      name: "John Doe"
+      fallback: true
+``` 

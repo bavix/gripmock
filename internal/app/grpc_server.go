@@ -98,18 +98,67 @@ func (m *grpcMocker) newQuery(ctx context.Context, msg *dynamicpb.Message) stube
 
 	md, ok := metadata.FromIncomingContext(ctx)
 	if ok {
-		query.Headers = make(map[string]any, len(md))
+		headers := make(map[string]any)
 
-		for key, values := range md {
-			if slices.Contains(excludes, key) {
-				continue
+		for k, v := range md {
+			if !slices.Contains(excludes, k) {
+				headers[k] = v[0]
 			}
-
-			query.Headers[key] = strings.Join(values, ";")
 		}
+
+		query.Headers = headers
 	}
 
-	zerolog.Ctx(ctx).Debug().Interface("data", query).Msg("New query")
+	return query
+}
+
+// newQueryV2 creates a new V2 query for improved performance.
+func (m *grpcMocker) newQueryV2(ctx context.Context, msg *dynamicpb.Message) stuber.QueryV2 {
+	query := stuber.QueryV2{
+		Service: m.fullServiceName,
+		Method:  m.methodName,
+		Input:   []map[string]any{convertToMap(msg)},
+	}
+
+	excludes := []string{":authority", "content-type", "grpc-accept-encoding", "user-agent", "accept-encoding"}
+
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		headers := make(map[string]any)
+
+		for k, v := range md {
+			if !slices.Contains(excludes, k) {
+				headers[k] = v[0]
+			}
+		}
+
+		query.Headers = headers
+	}
+
+	return query
+}
+
+// newQueryBidi creates a new bidirectional streaming query.
+func (m *grpcMocker) newQueryBidi(ctx context.Context) stuber.QueryBidi {
+	query := stuber.QueryBidi{
+		Service: m.fullServiceName,
+		Method:  m.methodName,
+	}
+
+	excludes := []string{":authority", "content-type", "grpc-accept-encoding", "user-agent", "accept-encoding"}
+
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		headers := make(map[string]any)
+
+		for k, v := range md {
+			if !slices.Contains(excludes, k) {
+				headers[k] = v[0]
+			}
+		}
+
+		query.Headers = headers
+	}
 
 	return query
 }
@@ -403,16 +452,23 @@ func (m *grpcMocker) unaryHandler() grpc.MethodHandler {
 }
 
 func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*dynamicpb.Message, error) {
-	query := m.newQuery(ctx, req)
+	// Try V2 API first for better performance
+	queryV2 := m.newQueryV2(ctx, req)
 
-	result, err := m.budgerigar.FindByQuery(query)
+	result, err := m.budgerigar.FindByQueryV2(queryV2)
 	if err != nil {
-		return nil, err
+		// Fallback to V1 API for backward compatibility
+		query := m.newQuery(ctx, req)
+
+		result, err = m.budgerigar.FindByQuery(query)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	found := result.Found()
 	if found == nil {
-		return nil, status.Error(codes.NotFound, stubNotFoundError(query, result).Error())
+		return nil, status.Error(codes.NotFound, stubNotFoundErrorV2(queryV2, result).Error())
 	}
 
 	m.delay(ctx, found.Output.Delay)
@@ -460,29 +516,10 @@ func (m *grpcMocker) setResponseHeaders(ctx context.Context, headers map[string]
 	return grpc.SetHeader(ctx, mdResp)
 }
 
+//nolint:gocognit,cyclop,funlen
 func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
-	responses, lastHeaders, err := m.processClientStreamMessages(stream)
-	if err != nil {
-		return err
-	}
-
-	if err := m.setStreamHeaders(stream, lastHeaders); err != nil {
-		return err
-	}
-
-	outputMsg, err := m.newOutputMessage(responses[len(responses)-1])
-	if err != nil {
-		return errors.Wrap(err, "failed to convert response to dynamic message")
-	}
-
-	return stream.SendMsg(outputMsg)
-}
-
-func (m *grpcMocker) processClientStreamMessages(stream grpc.ServerStream) ([]map[string]any, metadata.MD, error) {
-	var (
-		allResponses []map[string]any
-		lastHeaders  metadata.MD
-	)
+	// Collect all messages from client
+	var messages []map[string]any
 
 	for {
 		inputMsg := dynamicpb.NewMessage(m.inputDesc)
@@ -493,60 +530,121 @@ func (m *grpcMocker) processClientStreamMessages(stream grpc.ServerStream) ([]ma
 		}
 
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "failed to receive message")
+			return errors.Wrap(err, "failed to receive message")
 		}
 
-		response, headers, err := m.processStreamMessage(stream.Context(), inputMsg)
-		if err != nil {
-			return nil, nil, err
-		}
+		messages = append(messages, convertToMap(inputMsg))
+	}
 
-		allResponses = append(allResponses, response)
+	// For client streaming, try V2 API first, then fallback to V1 API for backward compatibility
+	var (
+		result   *stuber.Result
+		foundErr error
+	)
 
-		if headers != nil {
-			lastHeaders = headers
+	// Add headers
+	excludes := []string{":authority", "content-type", "grpc-accept-encoding", "user-agent", "accept-encoding"}
+	md, ok := metadata.FromIncomingContext(stream.Context())
+
+	// Try V2 API first
+	queryV2 := stuber.QueryV2{
+		Service: m.fullServiceName,
+		Method:  m.methodName,
+		Input:   messages,
+	}
+
+	// Add headers to V2 query
+	if ok {
+		queryV2.Headers = make(map[string]any)
+
+		for k, v := range md {
+			if !slices.Contains(excludes, k) {
+				queryV2.Headers[k] = v[0]
+			}
 		}
 	}
 
-	return allResponses, lastHeaders, nil
-}
+	result, foundErr = m.budgerigar.FindByQueryV2(queryV2)
 
-func (m *grpcMocker) processStreamMessage(ctx context.Context, inputMsg *dynamicpb.Message) (map[string]any, metadata.MD, error) {
-	query := m.newQuery(ctx, inputMsg)
+	// If V2 API fails, try V1 API for backward compatibility
+	//nolint:nestif
+	if foundErr != nil || result == nil || result.Found() == nil {
+		// Try each message individually (from last to first for better matching) using V1 API
+		for i := len(messages) - 1; i >= 0; i-- {
+			message := messages[i]
 
-	result, err := m.budgerigar.FindByQuery(query)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "failed to find response")
+			// Skip empty messages
+			if len(message) == 0 {
+				continue
+			}
+
+			query := stuber.Query{
+				Service: m.fullServiceName,
+				Method:  m.methodName,
+				Data:    message,
+			}
+
+			// Add headers to V1 query
+			if ok {
+				query.Headers = make(map[string]any)
+
+				for k, v := range md {
+					if !slices.Contains(excludes, k) {
+						query.Headers[k] = v[0]
+					}
+				}
+			}
+
+			result, foundErr = m.budgerigar.FindByQuery(query)
+			if foundErr == nil && result != nil && result.Found() != nil {
+				break
+			}
+		}
+	}
+
+	if foundErr != nil || result == nil || result.Found() == nil {
+		// Return a more descriptive error for debugging
+		return status.Errorf(codes.NotFound, "failed to find response for client stream. Messages: %v", messages)
 	}
 
 	found := result.Found()
 	if found == nil {
-		return nil, nil, status.Errorf(codes.NotFound, "No response found: %v", result.Similar())
+		return status.Errorf(codes.NotFound, "No response found for client stream: %v", result.Similar())
 	}
 
-	m.delay(ctx, found.Output.Delay)
+	m.delay(stream.Context(), found.Output.Delay)
 
-	var headers metadata.MD
+	// Handle headers
 	if found.Output.Headers != nil {
-		headers = make(metadata.MD, len(found.Output.Headers))
+		mdResp := make(metadata.MD, len(found.Output.Headers))
 		for k, v := range found.Output.Headers {
-			headers.Append(k, strings.Split(v, ";")...)
+			mdResp.Append(k, strings.Split(v, ";")...)
+		}
+
+		if err := stream.SetHeader(mdResp); err != nil {
+			return errors.Wrap(err, "failed to set headers")
 		}
 	}
 
-	return found.Output.Data, headers, nil
-}
-
-func (m *grpcMocker) setStreamHeaders(stream grpc.ServerStream, headers metadata.MD) error {
-	if headers == nil {
-		return nil
+	// Send response
+	outputMsg, err := m.newOutputMessage(found.Output.Data)
+	if err != nil {
+		return errors.Wrap(err, "failed to convert response to dynamic message")
 	}
 
-	return stream.SetHeader(headers)
+	return stream.SendMsg(outputMsg)
 }
 
 //nolint:cyclop
 func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
+	// Initialize bidirectional streaming session
+	queryBidi := m.newQueryBidi(stream.Context())
+
+	bidiResult, err := m.budgerigar.FindByQueryBidi(queryBidi)
+	if err != nil {
+		return errors.Wrap(err, "failed to initialize bidirectional streaming session")
+	}
+
 	for {
 		inputMsg := dynamicpb.NewMessage(m.inputDesc)
 
@@ -559,28 +657,37 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			return errors.Wrap(err, "failed to receive message")
 		}
 
-		query := m.newQuery(stream.Context(), inputMsg)
-
-		result, err := m.budgerigar.FindByQuery(query)
+		// Process message through bidirectional streaming
+		stub, err := bidiResult.Next(convertToMap(inputMsg))
 		if err != nil {
-			return errors.Wrap(err, "failed to find response")
+			return errors.Wrap(err, "failed to process bidirectional message")
 		}
 
-		found := result.Found()
-		if found == nil {
-			return status.Errorf(codes.NotFound, "No response found: %v", result.Similar())
+		m.delay(stream.Context(), stub.Output.Delay)
+
+		// For bidirectional streaming, use Stream output if available
+		var outputData map[string]any
+		if len(stub.Output.Stream) > 0 && bidiResult.GetMessageIndex() < len(stub.Output.Stream) {
+			// Get the corresponding response from the stream
+			if streamData, ok := stub.Output.Stream[bidiResult.GetMessageIndex()].(map[string]any); ok {
+				outputData = streamData
+			} else {
+				// Fallback to Data if Stream element is not a map
+				outputData = stub.Output.Data
+			}
+		} else {
+			// Fallback to Data if no Stream available
+			outputData = stub.Output.Data
 		}
 
-		m.delay(stream.Context(), found.Output.Delay)
-
-		outputMsg, err := m.newOutputMessage(found.Output.Data)
+		outputMsg, err := m.newOutputMessage(outputData)
 		if err != nil {
 			return errors.Wrap(err, "failed to convert response to dynamic message")
 		}
 
-		if found.Output.Headers != nil {
-			mdResp := make(metadata.MD, len(found.Output.Headers))
-			for k, v := range found.Output.Headers {
+		if stub.Output.Headers != nil {
+			mdResp := make(metadata.MD, len(stub.Output.Headers))
+			for k, v := range stub.Output.Headers {
 				mdResp.Append(k, strings.Split(v, ";")...)
 			}
 

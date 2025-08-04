@@ -1,0 +1,14 @@
+--- ENDPOINT ---
+multiverse.v1.MultiverseService/UploadData
+
+--- REQUEST ---
+{"chunk_id": "chunk_001", "sequence": 1, "total_chunks": 3, "content_type": "text/plain"}
+
+--- REQUEST ---
+{"chunk_id": "chunk_001", "sequence": 2, "total_chunks": 3, "content_type": "text/plain"}
+
+--- REQUEST ---
+{"chunk_id": "chunk_001", "sequence": 3, "total_chunks": 3, "content_type": "text/plain"}
+
+--- RESPONSE ---
+{"upload_id": "upload_001", "success": true, "total_chunks": 3, "total_size": "1500", "status": "completed", "completed_at": "2024-01-15T10:05:00Z"} 
