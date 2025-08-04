@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../../docs/public/schema/stub.json
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
 - service: multiverse.v1.MultiverseService
   method: UploadData
   stream:
