@@ -5,7 +5,7 @@ import (
 
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
-	"github.com/bavix/gripmock/v3/pkg/yaml2json"
+	"github.com/bavix/gripmock/v3/internal/infra/yaml2json"
 )
 
 func (b *Builder) Budgerigar() *stuber.Budgerigar {

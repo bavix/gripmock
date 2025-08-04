@@ -33,7 +33,7 @@ import (
 
 	protoloc "github.com/bavix/gripmock/v3/internal/domain/proto"
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
-	"github.com/bavix/gripmock/v3/pkg/grpccontext"
+	"github.com/bavix/gripmock/v3/internal/infra/grpccontext"
 )
 
 // excludedHeaders contains headers that should be excluded from stub matching.
@@ -499,7 +499,9 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 	if found == nil {
 		// Use appropriate error function based on which API was used
 		if queryV2.Service != "" {
-			return nil, status.Error(codes.NotFound, formatStubNotFoundErrorV2(queryV2, result).Error())
+			errorFormatter := NewErrorFormatter()
+
+			return nil, status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundErrorV2(queryV2, result).Error())
 		}
 
 		// Fallback to V1 error format
@@ -895,7 +897,7 @@ func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.Se
 	return svc.GetName()
 }
 
-func getMessageDescriptor(messageType string) (protoreflect.MessageDescriptor, error) { //nolint:ireturn
+func getMessageDescriptor(messageType string) (protoreflect.MessageDescriptor, error) { //nolint:ireturn // Returns protobuf interface which is required for compatibility
 	msgName := protoreflect.FullName(strings.TrimPrefix(messageType, "."))
 
 	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(msgName)

@@ -17,7 +17,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
-	"github.com/bavix/gripmock/v3/pkg/jsondecoder"
+	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
 )
 
 // ErrServiceIsMissing is returned when the service name is not provided in the request.
