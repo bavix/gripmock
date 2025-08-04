@@ -67,26 +67,44 @@ func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
 	s.readFromPath(ctx, pathDir)
 	close(s.ch)
 
-	ch, err := s.watcher.Watch(ctx, pathDir)
-	if err != nil {
-		return
-	}
+	// Only watch directories, not individual files
+	if isDirectory(pathDir) {
+		ch, err := s.watcher.Watch(ctx, pathDir)
+		if err != nil {
+			return
+		}
 
-	for file := range ch {
-		zerolog.Ctx(ctx).
-			Debug().
-			Str("path", file).
-			Msg("Updating stub")
+		for file := range ch {
+			zerolog.Ctx(ctx).
+				Debug().
+				Str("path", file).
+				Msg("Updating stub")
 
-		s.readByFile(ctx, file)
+			s.readByFile(ctx, file)
+		}
 	}
 }
 
 // readFromPath reads all the stubs from the given directory and its subdirectories,
-// and adds them to the server's stub store.
+// or from a single file if a file path is provided.
 // The stub files can be in yaml or json format.
 // If a file is in yaml format, it will be converted to json format.
+//
+//nolint:cyclop
 func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
+	// Check if the path is a file or directory
+	if !isDirectory(pathDir) {
+		// It's a file, check if it's a stub file
+		if strings.HasSuffix(pathDir, ".json") ||
+			strings.HasSuffix(pathDir, ".yaml") ||
+			strings.HasSuffix(pathDir, ".yml") {
+			s.readByFile(ctx, pathDir)
+		}
+
+		return
+	}
+
+	// It's a directory, read all files recursively
 	files, err := os.ReadDir(pathDir)
 	if err != nil {
 		zerolog.Ctx(ctx).
@@ -257,4 +275,14 @@ func (s *Extender) readStub(path string) ([]*stuber.Stub, error) {
 	}
 
 	return stubs, nil
+}
+
+// isDirectory checks if the given path is a directory.
+func isDirectory(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	return info.IsDir()
 }

@@ -897,7 +897,7 @@ func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.Se
 	return svc.GetName()
 }
 
-func getMessageDescriptor(messageType string) (protoreflect.MessageDescriptor, error) { //nolint:ireturn // Returns protobuf interface which is required for compatibility
+func getMessageDescriptor(messageType string) (protoreflect.MessageDescriptor, error) {
 	msgName := protoreflect.FullName(strings.TrimPrefix(messageType, "."))
 
 	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(msgName)

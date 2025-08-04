@@ -43,7 +43,7 @@ func (c *MessageConverter) ConvertToMap(msg proto.Message) map[string]any {
 
 // GetMessageDescriptor retrieves a message descriptor by its full name.
 //
-//nolint:ireturn // Returns protobuf interface which is required for compatibility
+
 func (c *MessageConverter) GetMessageDescriptor(messageType string) (protoreflect.MessageDescriptor, error) {
 	msgType, err := protoregistry.GlobalTypes.FindMessageByName(protoreflect.FullName(messageType))
 	if err != nil {

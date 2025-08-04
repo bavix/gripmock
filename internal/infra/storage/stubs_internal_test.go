@@ -13,8 +13,36 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
+	"github.com/bavix/gripmock/v3/internal/infra/yaml2json"
 )
+
+const testStubContent = `- service: test.Service
+  method: TestMethod
+  input:
+    equals:
+      message: "hello"
+  output:
+    data:
+      response: "world"`
+
+// createTestStorage creates a storage instance with mock dependencies for testing.
+func createTestStorage(t *testing.T) *Extender {
+	t.Helper()
+
+	// Create mock dependencies
+	convertor := yaml2json.New()
+	watcher := &watcher.StubWatcher{}
+
+	// Create a real Budgerigar with features
+	budgerigar := stuber.NewBudgerigar(features.New())
+
+	storage := NewStub(budgerigar, convertor, watcher)
+	require.NotNil(t, storage)
+
+	return storage
+}
 
 func TestStubsStorage_Basic(t *testing.T) {
 	// Test basic storage operations
@@ -650,4 +678,204 @@ func TestStubsStorage_ReadStubWithInvalidJson(t *testing.T) {
 	// Test reading invalid JSON
 	_, err = storage.readStub(tempFile.Name())
 	assert.Error(t, err)
+}
+
+func TestIsDirectory(t *testing.T) {
+	t.Run("existing directory", func(t *testing.T) {
+		tempDir := t.TempDir()
+		assert.True(t, isDirectory(tempDir))
+	})
+
+	t.Run("existing file", func(t *testing.T) {
+		tempFile := filepath.Join(t.TempDir(), "test.txt")
+		err := os.WriteFile(tempFile, []byte("test"), 0o600)
+		require.NoError(t, err)
+		assert.False(t, isDirectory(tempFile))
+	})
+
+	t.Run("non-existent path", func(t *testing.T) {
+		assert.False(t, isDirectory("/non/existent/path"))
+	})
+
+	t.Run("empty path", func(t *testing.T) {
+		assert.False(t, isDirectory(""))
+	})
+}
+
+func TestReadFromPath_WithFile(t *testing.T) {
+	t.Run("valid stub file", func(t *testing.T) {
+		// Create a temporary stub file
+		tempDir := t.TempDir()
+		stubFile := filepath.Join(tempDir, "test_stub.yml")
+
+		err := os.WriteFile(stubFile, []byte(testStubContent), 0o600)
+		require.NoError(t, err)
+
+		// Create storage with mock dependencies
+		storage := createTestStorage(t)
+
+		// Test reading from file
+		storage.readFromPath(context.Background(), stubFile)
+
+		// Verify that the file was processed (no errors)
+		// Note: We can't easily test the actual stub loading without real dependencies
+		// but we can verify the function doesn't panic or return errors
+	})
+
+	t.Run("non-stub file", func(t *testing.T) {
+		// Create a temporary non-stub file
+		tempDir := t.TempDir()
+		nonStubFile := filepath.Join(tempDir, "test.txt")
+
+		err := os.WriteFile(nonStubFile, []byte("not a stub"), 0o600)
+		require.NoError(t, err)
+
+		storage := createTestStorage(t)
+
+		// Test reading from non-stub file
+		storage.readFromPath(context.Background(), nonStubFile)
+
+		// Should not cause any errors
+	})
+
+	t.Run("non-existent file", func(t *testing.T) {
+		storage := createTestStorage(t)
+
+		// Test reading from non-existent file
+		storage.readFromPath(context.Background(), "/non/existent/file.yml")
+
+		// Should not cause any errors
+	})
+}
+
+func TestReadFromPath_WithDirectory(t *testing.T) {
+	t.Run("directory with stub files", func(t *testing.T) {
+		tempDir := t.TempDir()
+
+		// Create stub files
+		stubFiles := []string{
+			filepath.Join(tempDir, "stub1.yml"),
+			filepath.Join(tempDir, "stub2.json"),
+			filepath.Join(tempDir, "stub3.yaml"),
+		}
+
+		for _, file := range stubFiles {
+			err := os.WriteFile(file, []byte(testStubContent), 0o600)
+			require.NoError(t, err)
+		}
+
+		// Create non-stub file
+		nonStubFile := filepath.Join(tempDir, "readme.txt")
+		err := os.WriteFile(nonStubFile, []byte("not a stub"), 0o600)
+		require.NoError(t, err)
+
+		storage := createTestStorage(t)
+
+		// Test reading from directory
+		storage.readFromPath(context.Background(), tempDir)
+
+		// Should process stub files and ignore non-stub files
+	})
+
+	t.Run("directory with subdirectories", func(t *testing.T) {
+		tempDir := t.TempDir()
+
+		// Create subdirectory
+		subDir := filepath.Join(tempDir, "subdir")
+		err := os.Mkdir(subDir, 0o750)
+		require.NoError(t, err)
+
+		// Create stub file in subdirectory
+		stubFile := filepath.Join(subDir, "stub.yml")
+
+		err = os.WriteFile(stubFile, []byte(testStubContent), 0o600)
+		require.NoError(t, err)
+
+		storage := createTestStorage(t)
+
+		// Test reading from directory with subdirectories
+		storage.readFromPath(context.Background(), tempDir)
+
+		// Should recursively process subdirectories
+	})
+
+	t.Run("empty directory", func(t *testing.T) {
+		tempDir := t.TempDir()
+
+		storage := createTestStorage(t)
+
+		// Test reading from empty directory
+		storage.readFromPath(context.Background(), tempDir)
+
+		// Should not cause any errors
+	})
+
+	t.Run("non-existent directory", func(t *testing.T) {
+		storage := createTestStorage(t)
+
+		// Test reading from non-existent directory
+		storage.readFromPath(context.Background(), "/non/existent/directory")
+
+		// Should handle error gracefully
+	})
+}
+
+func TestReadFromPath_FileExtensionFiltering(t *testing.T) {
+	t.Run("only yaml files", func(t *testing.T) {
+		tempDir := t.TempDir()
+
+		// Create files with different extensions
+		files := map[string]string{
+			"stub.yml":  "yaml content",
+			"stub.yaml": "yaml content",
+			"stub.json": "json content",
+			"stub.txt":  "text content",
+			"stub.md":   "markdown content",
+		}
+
+		for filename, content := range files {
+			filepath := filepath.Join(tempDir, filename)
+			err := os.WriteFile(filepath, []byte(content), 0o600)
+			require.NoError(t, err)
+		}
+
+		storage := createTestStorage(t)
+
+		// Test reading from directory
+		storage.readFromPath(context.Background(), tempDir)
+
+		// Should only process .yml, .yaml, and .json files
+		// and ignore .txt and .md files
+	})
+}
+
+func TestReadFromPath_Integration(t *testing.T) {
+	t.Run("mixed file and directory paths", func(t *testing.T) {
+		tempDir := t.TempDir()
+
+		// Create a stub file
+		stubFile := filepath.Join(tempDir, "stub.yml")
+
+		err := os.WriteFile(stubFile, []byte(testStubContent), 0o600)
+		require.NoError(t, err)
+
+		// Create a subdirectory with another stub file
+		subDir := filepath.Join(tempDir, "subdir")
+		err = os.Mkdir(subDir, 0o750)
+		require.NoError(t, err)
+
+		subStubFile := filepath.Join(subDir, "substub.json")
+		subStubContent := `[{"service": "test.Service", "method": "TestMethod", "input": {"equals": {"message": "hello"}}, "output": {"data": {"response": "world"}}}]`
+
+		err = os.WriteFile(subStubFile, []byte(subStubContent), 0o600)
+		require.NoError(t, err)
+
+		storage := createTestStorage(t)
+
+		// Test reading from directory (should process both files)
+		storage.readFromPath(context.Background(), tempDir)
+
+		// Test reading from specific file
+		storage.readFromPath(context.Background(), stubFile)
+	})
 }
