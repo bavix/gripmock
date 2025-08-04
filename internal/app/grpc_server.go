@@ -39,9 +39,6 @@ import (
 // excludedHeaders contains headers that should be excluded from stub matching.
 var excludedHeaders = []string{":authority", "content-type", "grpc-accept-encoding", "user-agent", "accept-encoding"}
 
-// Error messages.
-const errMsgFailedToFindResponseForClientStream = "failed to find response for client stream"
-
 // processHeaders converts metadata to headers map, excluding specified headers.
 func processHeaders(md metadata.MD) map[string]any {
 	if len(md) == 0 {
@@ -427,7 +424,7 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 		}
 
 		if err := sendStreamMessage(stream, outputMsg); err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		// In server streaming, do not receive further messages from the client after the initial request.
@@ -463,7 +460,7 @@ func (m *grpcMocker) unaryHandler() grpc.MethodHandler {
 	return func(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
 		req := dynamicpb.NewMessage(m.inputDesc)
 		if err := dec(req); err != nil {
-			return nil, err
+			return nil, err //nolint:wrapcheck
 		}
 
 		if interceptor != nil {
@@ -494,7 +491,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 
 		result, err = m.budgerigar.FindByQuery(query)
 		if err != nil {
-			return nil, err
+			return nil, err //nolint:wrapcheck
 		}
 	}
 
@@ -502,7 +499,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 	if found == nil {
 		// Use appropriate error function based on which API was used
 		if queryV2.Service != "" {
-			return nil, status.Error(codes.NotFound, stubNotFoundErrorV2(queryV2, result).Error())
+			return nil, status.Error(codes.NotFound, formatStubNotFoundErrorV2(queryV2, result).Error())
 		}
 
 		// Fallback to V1 error format
@@ -514,16 +511,16 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 	m.delay(ctx, found.Output.Delay)
 
 	if err := m.handleOutputError(found.Output); err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	outputMsg, err := m.newOutputMessage(found.Output.Data)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	if err := m.setResponseHeaders(ctx, found.Output.Headers); err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	return outputMsg, nil
@@ -598,9 +595,25 @@ func (m *grpcMocker) tryV1APIFallback(messages []map[string]any, md metadata.MD)
 	return nil, status.Errorf(codes.NotFound, "failed to find response for client stream")
 }
 
-//nolint:cyclop
 func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 	// Collect all messages from client
+	messages, err := m.collectClientMessages(stream)
+	if err != nil {
+		return err
+	}
+
+	// Try to find stub
+	found, err := m.tryFindStub(stream, messages)
+	if err != nil {
+		return err
+	}
+
+	// Send response
+	return m.sendClientStreamResponse(stream, found)
+}
+
+// collectClientMessages collects all messages from the client stream.
+func (m *grpcMocker) collectClientMessages(stream grpc.ServerStream) ([]map[string]any, error) {
 	var messages []map[string]any
 
 	for {
@@ -612,23 +625,22 @@ func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 		}
 
 		if err != nil {
-			return err
+			return nil, err //nolint:wrapcheck
 		}
 
 		messages = append(messages, convertToMap(inputMsg))
 	}
 
-	// For client streaming, try V2 API first, then fallback to V1 API for backward compatibility
-	var (
-		result   *stuber.Result
-		foundErr error
-	)
+	return messages, nil
+}
 
+// tryFindStub attempts to find a matching stub using V2 API first, then falls back to V1 API.
+func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string]any) (*stuber.Stub, error) {
 	// Add headers
 	md, _ := metadata.FromIncomingContext(stream.Context())
 
 	// Try V2 API first
-	result, foundErr = m.tryV2API(messages, md)
+	result, foundErr := m.tryV2API(messages, md)
 
 	// If V2 API fails, try V1 API for backward compatibility
 	if foundErr != nil || result == nil || result.Found() == nil {
@@ -636,15 +648,25 @@ func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 	}
 
 	if foundErr != nil || result == nil || result.Found() == nil {
-		// Return a generic error message to avoid exposing internal details
-		return status.Errorf(codes.NotFound, errMsgFailedToFindResponseForClientStream)
+		// Return an error message with service and method context to aid debugging
+		errorMsg := fmt.Sprintf("Failed to find response for client stream (service: %s, method: %s)", m.serviceName, m.methodName)
+		if foundErr != nil {
+			errorMsg += fmt.Sprintf(" - Error: %v", foundErr)
+		}
+
+		return nil, status.Error(codes.NotFound, errorMsg)
 	}
 
 	found := result.Found()
 	if found == nil {
-		return status.Errorf(codes.NotFound, "No response found for client stream: %v", result.Similar())
+		return nil, status.Errorf(codes.NotFound, "No response found for client stream: %v", result.Similar())
 	}
 
+	return found, nil
+}
+
+// sendClientStreamResponse sends the response for client streaming.
+func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *stuber.Stub) error {
 	m.delay(stream.Context(), found.Output.Delay)
 
 	// Handle headers
@@ -680,7 +702,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 		}
 
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 
 		// Process message through bidirectional streaming
@@ -716,7 +738,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 		}
 
 		if err := sendStreamMessage(stream, outputMsg); err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 	}
 }

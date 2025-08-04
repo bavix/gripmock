@@ -40,7 +40,7 @@ func stubNotFoundError(expect stuber.Query, result *stuber.Result) error {
 	return fmt.Errorf("%s", template) //nolint:err113
 }
 
-func stubNotFoundErrorV2(expect stuber.QueryV2, result *stuber.Result) error {
+func formatStubNotFoundErrorV2(expect stuber.QueryV2, result *stuber.Result) error {
 	template := fmt.Sprintf("Can't find stub \n\nService: %s \n\nMethod: %s \n\n", expect.Service, expect.Method)
 
 	// Handle streaming input
@@ -80,6 +80,9 @@ func formatStreamInput(input []map[string]any) string {
 
 		expectString, err := json.MarshalIndent(msg, "", "\t")
 		if err != nil {
+			// If JSON marshaling fails, include the raw message as fallback
+			result += fmt.Sprintf("Error marshaling message: %v\nRaw message: %+v\n\n", err, msg)
+
 			continue
 		}
 
@@ -97,7 +100,8 @@ func formatSingleInput(input map[string]any) string {
 
 	expectString, err := json.MarshalIndent(input, "", "\t")
 	if err != nil {
-		return result
+		// If JSON marshaling fails, include the raw message as fallback
+		return result + fmt.Sprintf("Error marshaling input: %v\nRaw input: %+v\n\n", err, input)
 	}
 
 	return result + string(expectString) + "\n\n"
@@ -111,7 +115,8 @@ func formatClosestMatches(result *stuber.Result) string {
 		if len(match) > 0 {
 			matchString, err := json.MarshalIndent(match, "", "\t")
 			if err != nil {
-				return ""
+				// If JSON marshaling fails, include the raw match as fallback
+				return fmt.Sprintf("\n\nClosest Match \n\n%s: Error marshaling match: %v\nRaw match: %+v", key, err, match)
 			}
 
 			return fmt.Sprintf("\n\nClosest Match \n\n%s:%s", key, matchString)
