@@ -897,6 +897,7 @@ func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.Se
 	return svc.GetName()
 }
 
+//nolint:ireturn
 func getMessageDescriptor(messageType string) (protoreflect.MessageDescriptor, error) {
 	msgName := protoreflect.FullName(strings.TrimPrefix(messageType, "."))
 
