@@ -12,11 +12,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
 	"github.com/rs/zerolog"
-	"github.com/samber/lo"
 
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
 	"github.com/bavix/gripmock/v3/pkg/jsondecoder"
 	"github.com/bavix/gripmock/v3/pkg/yaml2json"
+	"github.com/samber/lo"
 )
 
 type Extender struct {
@@ -62,15 +62,9 @@ func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
 		return
 	}
 
-	// Clear all existing stubs before loading new ones
-	zerolog.Ctx(ctx).Info().Msg("Clearing all existing stubs before loading new ones")
-	s.storage.Clear()
-	s.mapIDsByFile = make(map[string]uuid.UUIDs)
-	s.uniqueIDs = make(map[uuid.UUID]struct{})
-	zerolog.Ctx(ctx).Info().Msgf("After Clear: stub count = %d", len(s.storage.All()))
+	zerolog.Ctx(ctx).Info().Msg("Loading stubs from directory (preserving API stubs)")
 
 	s.readFromPath(ctx, pathDir)
-	zerolog.Ctx(ctx).Info().Msgf("After load: stub count = %d", len(s.storage.All()))
 	close(s.ch)
 
 	ch, err := s.watcher.Watch(ctx, pathDir)
@@ -128,6 +122,7 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 			Str("file", filePath).
 			Msg("failed to read file")
 
+		// Remove existing stubs from this file if it was previously loaded
 		if existingIDs, exists := s.mapIDsByFile[filePath]; exists {
 			s.storage.DeleteByID(existingIDs...)
 			delete(s.mapIDsByFile, filePath)
@@ -140,36 +135,46 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 
 	existingIDs, exists := s.mapIDsByFile[filePath]
 	if !exists {
+		// First time loading this file - generate new IDs for stubs without them
+		for _, stub := range stubs {
+			if stub.ID == uuid.Nil {
+				stub.ID = uuid.New()
+			}
+		}
 		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
-
 		return
 	}
 
+	// File was previously loaded - handle ID reuse logic
 	currentIDs := make(uuid.UUIDs, 0, len(stubs))
-
 	for _, stub := range stubs {
 		if stub.ID != uuid.Nil {
 			currentIDs = append(currentIDs, stub.ID)
 		}
 	}
 
+	// Find IDs that are no longer used in this file
 	unusedIDs := lo.Without(existingIDs, currentIDs...)
 	newIDs := make(uuid.UUIDs, 0, len(stubs))
 
+	// Generate IDs for stubs that don't have them, reusing unused IDs first
 	for _, stub := range stubs {
 		if stub.ID == uuid.Nil {
 			stub.ID, unusedIDs = genID(stub, unusedIDs)
 		}
-
 		newIDs = append(newIDs, stub.ID)
 	}
 
+	// Remove stubs that are no longer in the file
 	if removedIDs := lo.Without(existingIDs, newIDs...); len(removedIDs) > 0 {
 		s.storage.DeleteByID(removedIDs...)
 	}
 
+	// Add/update stubs and update file mapping
 	if len(stubs) > 0 {
 		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
+	} else {
+		delete(s.mapIDsByFile, filePath)
 	}
 }
 

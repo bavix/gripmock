@@ -41,15 +41,28 @@ func stubNotFoundError(expect stuber.Query, result *stuber.Result) error {
 }
 
 func stubNotFoundErrorV2(expect stuber.QueryV2, result *stuber.Result) error {
-	template := fmt.Sprintf("Can't find stub \n\nService: %s \n\nMethod: %s \n\nInput\n\n", expect.Service, expect.Method)
+	template := fmt.Sprintf("Can't find stub \n\nService: %s \n\nMethod: %s \n\n", expect.Service, expect.Method)
 
-	if len(expect.Input) > 0 {
+	// Handle streaming input
+	if len(expect.Input) > 1 {
+		template += "Stream Input (multiple messages):\n\n"
+		for i, input := range expect.Input {
+			template += fmt.Sprintf("Message %d:\n", i)
+			expectString, err := json.MarshalIndent(input, "", "\t")
+			if err != nil {
+				return errors.Wrapf(err, "failed to marshal expect data for message %d", i)
+			}
+			template += string(expectString) + "\n\n"
+		}
+	} else if len(expect.Input) == 1 {
+		template += "Input:\n\n"
 		expectString, err := json.MarshalIndent(expect.Input[0], "", "\t")
 		if err != nil {
 			return errors.Wrapf(err, "failed to marshal expect data")
 		}
-
-		template += string(expectString)
+		template += string(expectString) + "\n\n"
+	} else {
+		template += "Input: (empty)\n\n"
 	}
 
 	if result.Similar() == nil {
@@ -67,9 +80,27 @@ func stubNotFoundErrorV2(expect stuber.QueryV2, result *stuber.Result) error {
 		}
 	}
 
-	addClosestMatch("equals", result.Similar().Input.Equals)
-	addClosestMatch("contains", result.Similar().Input.Contains)
-	addClosestMatch("matches", result.Similar().Input.Matches)
+	// Check if similar stub has stream input
+	if result.Similar().Stream != nil && len(result.Similar().Stream) > 0 {
+		template += "\n\nSimilar stub found with stream input:\n"
+		for i, streamInput := range result.Similar().Stream {
+			template += fmt.Sprintf("\nStream Message %d:\n", i)
+			if streamInput.Equals != nil {
+				addClosestMatch("equals", streamInput.Equals)
+			}
+			if streamInput.Contains != nil {
+				addClosestMatch("contains", streamInput.Contains)
+			}
+			if streamInput.Matches != nil {
+				addClosestMatch("matches", streamInput.Matches)
+			}
+		}
+	} else {
+		// Fallback to regular input matching
+		addClosestMatch("equals", result.Similar().Input.Equals)
+		addClosestMatch("contains", result.Similar().Input.Contains)
+		addClosestMatch("matches", result.Similar().Input.Matches)
+	}
 
 	return fmt.Errorf("%s", template) //nolint:err113
 }

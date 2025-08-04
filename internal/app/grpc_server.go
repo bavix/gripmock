@@ -573,11 +573,6 @@ func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 		for i := len(messages) - 1; i >= 0; i-- {
 			message := messages[i]
 
-			// Skip empty messages
-			if len(message) == 0 {
-				continue
-			}
-
 			query := stuber.Query{
 				Service: m.fullServiceName,
 				Method:  m.methodName,
