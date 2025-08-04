@@ -57,6 +57,8 @@ func stubNotFoundErrorV2(expect stuber.QueryV2, result *stuber.Result) error {
 }
 
 // formatInputSection formats the input section of the error message.
+// It takes a slice of input messages (each represented as a map) and returns a formatted string.
+// If there are multiple messages, it formats them as a stream; if one, as a single input; if none, indicates empty input.
 func formatInputSection(input []map[string]any) string {
 	switch {
 	case len(input) > 1:
@@ -69,6 +71,8 @@ func formatInputSection(input []map[string]any) string {
 }
 
 // formatStreamInput formats multiple input messages.
+// It iterates through each message in the input slice and formats them with proper indentation.
+// Each message is numbered and formatted as JSON for better readability.
 func formatStreamInput(input []map[string]any) string {
 	result := "Stream Input (multiple messages):\n\n"
 	for i, msg := range input {
@@ -86,6 +90,8 @@ func formatStreamInput(input []map[string]any) string {
 }
 
 // formatSingleInput formats a single input message.
+// It takes a single message map and formats it as JSON with proper indentation.
+// Returns a formatted string with "Input:" prefix for consistency.
 func formatSingleInput(input map[string]any) string {
 	result := "Input:\n\n"
 
@@ -98,6 +104,8 @@ func formatSingleInput(input map[string]any) string {
 }
 
 // formatClosestMatches formats the closest matches section.
+// It processes the similar stub result and formats the closest matches for either stream or regular input.
+// Returns a formatted string containing the closest matching stub information.
 func formatClosestMatches(result *stuber.Result) string {
 	addClosestMatch := func(key string, match map[string]any) string {
 		if len(match) > 0 {
@@ -128,6 +136,8 @@ func formatClosestMatches(result *stuber.Result) string {
 }
 
 // formatStreamClosestMatches formats closest matches for stream input.
+// It processes stream-specific closest matches and formats them with proper message numbering.
+// The addClosestMatch function is used to format individual match types (equals, contains, matches).
 func formatStreamClosestMatches(result *stuber.Result, addClosestMatch func(string, map[string]any) string) string {
 	template := "\n\nSimilar stub found with stream input:\n"
 	for i, streamInput := range result.Similar().Stream {

@@ -39,6 +39,9 @@ import (
 // excludedHeaders contains headers that should be excluded from stub matching.
 var excludedHeaders = []string{":authority", "content-type", "grpc-accept-encoding", "user-agent", "accept-encoding"}
 
+// Error messages.
+const errMsgFailedToFindResponseForClientStream = "failed to find response for client stream"
+
 // processHeaders converts metadata to headers map, excluding specified headers.
 func processHeaders(md metadata.MD) map[string]any {
 	if len(md) == 0 {
@@ -88,6 +91,11 @@ func receiveStreamMessage(stream grpc.ServerStream, msg *dynamicpb.Message) erro
 	}
 
 	return nil
+}
+
+// shouldUseStreamOutput checks if stream output should be used based on stub configuration and message index.
+func shouldUseStreamOutput(stream []any, messageIndex int) bool {
+	return len(stream) > 0 && messageIndex >= 0 && messageIndex < len(stream)
 }
 
 const serviceReflection = "grpc.reflection.v1.ServerReflection"
@@ -629,7 +637,7 @@ func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 
 	if foundErr != nil || result == nil || result.Found() == nil {
 		// Return a generic error message to avoid exposing internal details
-		return status.Errorf(codes.NotFound, "failed to find response for client stream")
+		return status.Errorf(codes.NotFound, errMsgFailedToFindResponseForClientStream)
 	}
 
 	found := result.Found()
@@ -685,7 +693,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 
 		// For bidirectional streaming, use Stream output if available
 		var outputData map[string]any
-		if len(stub.Output.Stream) > 0 && bidiResult.GetMessageIndex() >= 0 && bidiResult.GetMessageIndex() < len(stub.Output.Stream) {
+		if shouldUseStreamOutput(stub.Output.Stream, bidiResult.GetMessageIndex()) {
 			// Get the corresponding response from the stream
 			if streamData, ok := stub.Output.Stream[bidiResult.GetMessageIndex()].(map[string]any); ok {
 				outputData = streamData
