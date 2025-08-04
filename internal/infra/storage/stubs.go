@@ -12,11 +12,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
 	"github.com/rs/zerolog"
+	"github.com/samber/lo"
 
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
 	"github.com/bavix/gripmock/v3/pkg/jsondecoder"
 	"github.com/bavix/gripmock/v3/pkg/yaml2json"
-	"github.com/samber/lo"
 )
 
 type Extender struct {
@@ -114,6 +114,7 @@ func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
 	}
 }
 
+//nolint:cyclop
 func (s *Extender) readByFile(ctx context.Context, filePath string) {
 	stubs, err := s.readStub(filePath)
 	if err != nil {
@@ -141,7 +142,9 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 				stub.ID = uuid.New()
 			}
 		}
+
 		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
+
 		return
 	}
 
@@ -162,6 +165,7 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 		if stub.ID == uuid.Nil {
 			stub.ID, unusedIDs = genID(stub, unusedIDs)
 		}
+
 		newIDs = append(newIDs, stub.ID)
 	}
 

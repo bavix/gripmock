@@ -44,63 +44,107 @@ func stubNotFoundErrorV2(expect stuber.QueryV2, result *stuber.Result) error {
 	template := fmt.Sprintf("Can't find stub \n\nService: %s \n\nMethod: %s \n\n", expect.Service, expect.Method)
 
 	// Handle streaming input
-	if len(expect.Input) > 1 {
-		template += "Stream Input (multiple messages):\n\n"
-		for i, input := range expect.Input {
-			template += fmt.Sprintf("Message %d:\n", i)
-			expectString, err := json.MarshalIndent(input, "", "\t")
-			if err != nil {
-				return errors.Wrapf(err, "failed to marshal expect data for message %d", i)
-			}
-			template += string(expectString) + "\n\n"
-		}
-	} else if len(expect.Input) == 1 {
-		template += "Input:\n\n"
-		expectString, err := json.MarshalIndent(expect.Input[0], "", "\t")
-		if err != nil {
-			return errors.Wrapf(err, "failed to marshal expect data")
-		}
-		template += string(expectString) + "\n\n"
-	} else {
-		template += "Input: (empty)\n\n"
-	}
+	template += formatInputSection(expect.Input)
 
 	if result.Similar() == nil {
 		return fmt.Errorf("%s", template) //nolint:err113
 	}
 
-	addClosestMatch := func(key string, match map[string]any) {
+	// Add closest matches
+	template += formatClosestMatches(result)
+
+	return fmt.Errorf("%s", template) //nolint:err113
+}
+
+// formatInputSection formats the input section of the error message.
+func formatInputSection(input []map[string]any) string {
+	switch {
+	case len(input) > 1:
+		return formatStreamInput(input)
+	case len(input) == 1:
+		return formatSingleInput(input[0])
+	default:
+		return "Input: (empty)\n\n"
+	}
+}
+
+// formatStreamInput formats multiple input messages.
+func formatStreamInput(input []map[string]any) string {
+	result := "Stream Input (multiple messages):\n\n"
+	for i, msg := range input {
+		result += fmt.Sprintf("Message %d:\n", i)
+
+		expectString, err := json.MarshalIndent(msg, "", "\t")
+		if err != nil {
+			continue
+		}
+
+		result += string(expectString) + "\n\n"
+	}
+
+	return result
+}
+
+// formatSingleInput formats a single input message.
+func formatSingleInput(input map[string]any) string {
+	result := "Input:\n\n"
+
+	expectString, err := json.MarshalIndent(input, "", "\t")
+	if err != nil {
+		return result
+	}
+
+	return result + string(expectString) + "\n\n"
+}
+
+// formatClosestMatches formats the closest matches section.
+func formatClosestMatches(result *stuber.Result) string {
+	addClosestMatch := func(key string, match map[string]any) string {
 		if len(match) > 0 {
 			matchString, err := json.MarshalIndent(match, "", "\t")
 			if err != nil {
-				return
+				return ""
 			}
 
-			template += fmt.Sprintf("\n\nClosest Match \n\n%s:%s", key, matchString)
+			return fmt.Sprintf("\n\nClosest Match \n\n%s:%s", key, matchString)
 		}
+
+		return ""
 	}
 
 	// Check if similar stub has stream input
-	if result.Similar().Stream != nil && len(result.Similar().Stream) > 0 {
-		template += "\n\nSimilar stub found with stream input:\n"
-		for i, streamInput := range result.Similar().Stream {
-			template += fmt.Sprintf("\nStream Message %d:\n", i)
-			if streamInput.Equals != nil {
-				addClosestMatch("equals", streamInput.Equals)
-			}
-			if streamInput.Contains != nil {
-				addClosestMatch("contains", streamInput.Contains)
-			}
-			if streamInput.Matches != nil {
-				addClosestMatch("matches", streamInput.Matches)
-			}
-		}
-	} else {
-		// Fallback to regular input matching
-		addClosestMatch("equals", result.Similar().Input.Equals)
-		addClosestMatch("contains", result.Similar().Input.Contains)
-		addClosestMatch("matches", result.Similar().Input.Matches)
+	if len(result.Similar().Stream) > 0 {
+		return formatStreamClosestMatches(result, addClosestMatch)
 	}
 
-	return fmt.Errorf("%s", template) //nolint:err113
+	// Fallback to regular input matching
+	var template string
+
+	template += addClosestMatch("equals", result.Similar().Input.Equals)
+	template += addClosestMatch("contains", result.Similar().Input.Contains)
+	template += addClosestMatch("matches", result.Similar().Input.Matches)
+
+	return template
+}
+
+// formatStreamClosestMatches formats closest matches for stream input.
+func formatStreamClosestMatches(result *stuber.Result, addClosestMatch func(string, map[string]any) string) string {
+	template := "\n\nSimilar stub found with stream input:\n"
+	for i, streamInput := range result.Similar().Stream {
+		template += fmt.Sprintf("\nStream Message %d:\n", i)
+
+		if streamInput.Equals != nil {
+			template += addClosestMatch("equals", streamInput.Equals)
+		}
+
+		if streamInput.Contains != nil {
+			template += addClosestMatch("contains", streamInput.Contains)
+		}
+
+		if streamInput.Matches != nil {
+			template += addClosestMatch("matches", streamInput.Matches)
+		}
+	}
+
+	return template
 }
