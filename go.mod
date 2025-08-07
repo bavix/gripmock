@@ -15,7 +15,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gripmock/environment v1.2.0
 	github.com/gripmock/shutdown v1.1.0
-	github.com/gripmock/stuber v1.6.0
+	github.com/gripmock/stuber v1.8.0
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0
@@ -35,6 +35,7 @@ require (
 	github.com/getsentry/sentry-go v0.35.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gripmock/deeply v1.3.3 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
