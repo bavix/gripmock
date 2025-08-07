@@ -29,14 +29,14 @@
         },
         "input": {
           "$ref": "#/definitions/inputMatcher",
-          "description": "Input matching rules for unary requests (mutually exclusive with stream)"
+          "description": "Input matching rules for unary requests (mutually exclusive with inputs)"
         },
-        "stream": {
+        "inputs": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/inputMatcher"
           },
-          "description": "Stream matching rules for client streaming requests (mutually exclusive with input)"
+          "description": "Inputs matching rules for client streaming requests (mutually exclusive with input)"
         },
         "headers": {
           "$ref": "#/definitions/headerMatcher",
@@ -77,14 +77,14 @@
           },
           "input": {
             "$ref": "#/definitions/inputMatcher",
-            "description": "Input matching rules for unary requests (mutually exclusive with stream)"
+            "description": "Input matching rules for unary requests (mutually exclusive with inputs)"
           },
-          "stream": {
+          "inputs": {
             "type": "array",
             "items": {
               "$ref": "#/definitions/inputMatcher"
             },
-            "description": "Stream matching rules for client streaming requests (mutually exclusive with input)"
+            "description": "Inputs matching rules for client streaming requests (mutually exclusive with input)"
           },
           "headers": {
             "$ref": "#/definitions/headerMatcher",

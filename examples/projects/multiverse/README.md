@@ -67,7 +67,7 @@ grpctestify tests/*/case_*.gctf
 ## Features Demonstrated
 
 - **Individual Stub Files**: Each test has its own `.stub.yaml` file for clarity
-- **Stream Keys**: All streaming stubs use `stream` keys for input/output
+- **Stream Keys**: All streaming stubs use `inputs` keys for input and `stream` keys for output
 - **Multiple Scenarios**: Each streaming type has multiple test scenarios
 - **Real-world Patterns**: Practical examples like file uploads and chat
 - **Large Data**: Tests with many chunks to verify stability
@@ -80,4 +80,4 @@ grpctestify tests/*/case_*.gctf
 - **Server Streaming**: Client sends one message, server responds multiple times
 - **Bidirectional**: Both client and server send multiple messages in real-time
 
-This project serves as a comprehensive example of how to use GripMock with all streaming types using the modern `stream` key format. 
+This project serves as a comprehensive example of how to use GripMock with all streaming types using the modern `inputs` key format. 

@@ -91,8 +91,8 @@ func receiveStreamMessage(stream grpc.ServerStream, msg *dynamicpb.Message) erro
 }
 
 // shouldUseStreamOutput checks if stream output should be used based on stub configuration and message index.
-func shouldUseStreamOutput(stream []any, messageIndex int) bool {
-	return len(stream) > 0 && messageIndex >= 0 && messageIndex < len(stream)
+func shouldUseStreamOutput(stub *stuber.Stub, messageIndex int) bool {
+	return stub.IsServerStream() && messageIndex >= 0 && messageIndex < len(stub.Output.Stream)
 }
 
 const serviceReflection = "grpc.reflection.v1.ServerReflection"
@@ -359,7 +359,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	}
 
 	// For server streaming, prioritize Stream field if it is not empty; fallback to Data if Stream is empty
-	if len(found.Output.Stream) > 0 {
+	if found.IsServerStream() {
 		return m.handleArrayStreamData(stream, found)
 	}
 
@@ -717,7 +717,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 
 		// For bidirectional streaming, use Stream output if available
 		var outputData map[string]any
-		if shouldUseStreamOutput(stub.Output.Stream, bidiResult.GetMessageIndex()) {
+		if shouldUseStreamOutput(stub, bidiResult.GetMessageIndex()) {
 			// Get the corresponding response from the stream
 			if streamData, ok := stub.Output.Stream[bidiResult.GetMessageIndex()].(map[string]any); ok {
 				outputData = streamData

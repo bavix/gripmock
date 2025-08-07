@@ -17,7 +17,7 @@ Bidirectional streaming is useful for:
 ```yaml
 - service: ChatService
   method: Chat
-  stream:
+  inputs:
     - equals:
         user_id: "alice"
         content: "Hello"
@@ -54,7 +54,7 @@ Bidirectional streaming is useful for:
       type: "MESSAGE_TYPE_TEXT"
 ```
 
-**Note**: V2 API format with `stream` input is recommended for bidirectional streaming. V1 format is supported for backward compatibility.
+**Note**: V2 API format with `inputs` is recommended for bidirectional streaming. V1 format is supported for backward compatibility.
 
 ## How Bidirectional Streaming Works
 
@@ -70,7 +70,7 @@ Bidirectional streaming is useful for:
 # Example: Chat conversation
 - service: ChatService
   method: Chat
-  stream:
+  inputs:
     # First message pattern
     - equals:
         user_id: "alice"
@@ -108,7 +108,7 @@ Bidirectional streaming is useful for:
 ```yaml
 - service: ChatService
   method: Chat
-  stream:
+  inputs:
     - equals:
         user_id: "alice"
         room_id: "room_001"
@@ -144,7 +144,7 @@ Bidirectional streaming is useful for:
 ```yaml
 - service: DataProcessorService
   method: ProcessData
-  stream:
+  inputs:
     - equals:
         command: "START"
         dataset: "large_dataset"
@@ -175,7 +175,7 @@ Bidirectional streaming is useful for:
 ```yaml
 - service: CollaborationService
   method: Collaborate
-  stream:
+  inputs:
     - equals:
         user_id: "editor_1"
         action: "CURSOR_MOVE"
@@ -226,7 +226,7 @@ GripMock uses sophisticated algorithms for bidirectional streaming:
 - service: ChatService
   method: Chat
   priority: 100
-  stream:
+  inputs:
     - equals:
         user_id: "alice"
         content: "Hello"
@@ -241,7 +241,7 @@ GripMock uses sophisticated algorithms for bidirectional streaming:
 - service: ChatService
   method: Chat
   priority: 50
-  stream:
+  inputs:
     - equals:
         user_id: "alice"
         content: "Hello"
@@ -258,7 +258,7 @@ GripMock uses sophisticated algorithms for bidirectional streaming:
 ### 1. Use Consistent Message Structure
 ```yaml
 # Good: Consistent structure
-stream:
+inputs:
   - equals:
       user_id: "alice"
       content: "Hello"
@@ -271,7 +271,7 @@ stream:
       timestamp: "2024-01-01T12:00:01.000Z"
 
 # Avoid: Inconsistent structure
-stream:
+inputs:
   - equals:
       user_id: "alice"
       content: "Hello"
@@ -304,7 +304,7 @@ output:
 ### 3. Handle Message Sequences
 ```yaml
 # Good: Clear message sequence
-stream:
+inputs:
   - equals:
       sequence: 1
       content: "First message"
@@ -316,7 +316,7 @@ stream:
       content: "Third message"
 
 # Avoid: Ambiguous sequence
-stream:
+inputs:
   - equals:
       content: "First message"
   - equals:
@@ -328,7 +328,7 @@ stream:
 ### 4. Use Appropriate Message Types
 ```yaml
 # Good: Clear message types
-stream:
+inputs:
   - equals:
       type: "MESSAGE_TYPE_TEXT"
       content: "Hello"
@@ -340,7 +340,7 @@ stream:
       file_id: "file_001"
 
 # Avoid: Mixed message types
-stream:
+inputs:
   - equals:
       content: "Hello"
   - equals:
@@ -378,7 +378,7 @@ output:
 ```yaml
 - service: ChatService
   method: Chat
-  stream:
+  inputs:
     - equals:
         user_id: "alice"
         content: "Hello"
@@ -391,7 +391,7 @@ output:
 ```yaml
 - service: ChatService
   method: Chat
-  stream:
+  inputs:
     - equals:
         user_id: "alice"
         content: "invalid_message"
@@ -453,7 +453,7 @@ output:
 ```yaml
 - service: ChatService
   method: Chat
-  stream:
+  inputs:
     - equals:
         user_id: "alice"
         content: "Hello"

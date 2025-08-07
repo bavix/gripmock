@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
 - service: multiverse.v1.MultiverseService
   method: Chat
-  stream:
+  inputs:
     - equals:
         user_id: "alice"
         room_id: "room_001"

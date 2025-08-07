@@ -20,7 +20,7 @@ Imagine uploading a large file in pieces. Your client sends multiple messages (l
 ```yaml
 - service: FileService
   method: UploadFile
-  stream:
+  inputs:
     - equals:
         chunk_id: "chunk_001"
         sequence: 1
@@ -76,7 +76,7 @@ Imagine uploading a large file in pieces. Your client sends multiple messages (l
 # Example: Uploading a file in 3 chunks
 - service: UploadService
   method: UploadFile
-  stream:
+  inputs:
     # First chunk pattern
     - equals:
         chunk_id: "chunk_001"
@@ -110,7 +110,7 @@ Imagine uploading a large file in pieces. Your client sends multiple messages (l
 ```yaml
 - service: UploadService
   method: UploadLargeFile
-  stream:
+  inputs:
     - equals:
         chunk_id: "large_file_001"
         sequence: 1
@@ -141,7 +141,7 @@ Imagine uploading a large file in pieces. Your client sends multiple messages (l
 ```yaml
 - service: SensorService
   method: CollectReadings
-  stream:
+  inputs:
     - equals:
         sensor_id: "TEMP_001"
         reading: 22.5
@@ -174,7 +174,7 @@ Imagine uploading a large file in pieces. Your client sends multiple messages (l
 ```yaml
 - service: ProcessingService
   method: ProcessBatch
-  stream:
+  inputs:
     - equals:
         item_id: "item_001"
         data: "first_item_data"
@@ -222,7 +222,7 @@ GripMock uses clever algorithms to pick the best matching stub:
 - service: UploadService
   method: UploadFile
   priority: 100
-  stream:
+  inputs:
     - equals:
         chunk_id: "chunk_001"
         content_type: "video/mp4"
@@ -238,7 +238,7 @@ GripMock uses clever algorithms to pick the best matching stub:
 - service: UploadService
   method: UploadFile
   priority: 50
-  stream:
+  inputs:
     - equals:
         chunk_id: "chunk_001"
         sequence: 1
@@ -255,7 +255,7 @@ GripMock uses clever algorithms to pick the best matching stub:
 ### 1. Keep Your Structure Consistent
 ```yaml
 # Good: Consistent structure
-stream:
+inputs:
   - equals:
       chunk_id: "chunk_001"
       sequence: 1
@@ -273,7 +273,7 @@ stream:
       content_type: "text/plain"
 
 # Avoid: Inconsistent structure
-stream:
+inputs:
   - equals:
       chunk: 1
       data: "file_header"
@@ -289,7 +289,7 @@ stream:
 ### 2. Include Sequence Information
 ```yaml
 # Good: Clear sequence information
-stream:
+inputs:
   - equals:
       chunk_id: "chunk_001"
       sequence: 1
@@ -307,7 +307,7 @@ stream:
       content_type: "text/plain"
 
 # Avoid: Missing sequence information
-stream:
+inputs:
   - equals:
       chunk_id: "chunk_001"
       content_type: "text/plain"
@@ -347,7 +347,7 @@ output:
 # Small file (3 chunks)
 - service: UploadService
   method: UploadFile
-  stream:
+  inputs:
     - equals:
         chunk_id: "small_file_001"
         sequence: 1
@@ -373,7 +373,7 @@ output:
 # Large file (10 chunks)
 - service: UploadService
   method: UploadFile
-  stream:
+  inputs:
     - equals:
         chunk_id: "large_file_001"
         sequence: 1
@@ -396,7 +396,7 @@ output:
 ### 5. Use Appropriate Content Types
 ```yaml
 # Good: Specific content types
-stream:
+inputs:
   - equals:
       chunk_id: "chunk_001"
       content_type: "text/plain"
@@ -409,7 +409,7 @@ stream:
       total_chunks: 10
 
 # Avoid: Generic content types
-stream:
+inputs:
   - equals:
       chunk_id: "chunk_001"
       content_type: "file"
@@ -423,7 +423,7 @@ stream:
 ```yaml
 - service: UploadService
   method: UploadFile
-  stream:
+  inputs:
     - equals:
         chunk_id: "invalid_chunk"
         sequence: 1
@@ -437,7 +437,7 @@ stream:
 ```yaml
 - service: UploadService
   method: UploadFile
-  stream:
+  inputs:
     - equals:
         chunk_id: "chunk_001"
         sequence: 1
@@ -506,7 +506,7 @@ stream:
 ```yaml
 - service: FileService
   method: UploadFile
-  stream:
+  inputs:
     - equals:
         chunk_id: "chunk_001"
         sequence: 1

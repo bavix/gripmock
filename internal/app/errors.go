@@ -2,11 +2,25 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/gripmock/stuber"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+)
+
+// Validation errors.
+var (
+	ErrInputCannotBeEmpty           = errors.New("input/inputs cannot be empty")
+	ErrOutputCannotBeEmpty          = errors.New("output/output.stream cannot be empty")
+	ErrInputsCannotBeEmptyForClient = errors.New("inputs cannot be empty for client streaming")
+	ErrStreamCannotBeEmptyForServer = errors.New("output.stream cannot be empty for server streaming")
+	ErrInputsCannotBeEmptyForBidi   = errors.New("inputs cannot be empty for bidirectional streaming")
+	ErrStreamCannotBeEmptyForBidi   = errors.New("output.stream cannot be empty for bidirectional streaming")
+	ErrInvalidStubConfiguration     = errors.New("invalid stub configuration")
+	ErrInvalidInputConfiguration    = errors.New("cannot have both input and inputs configured")
+	ErrInvalidOutputConfiguration   = errors.New("cannot have both output.data and output.stream configured")
 )
 
 // ErrorFormatter provides methods for formatting error messages.
@@ -87,7 +101,7 @@ func (f *ErrorFormatter) formatInputSection(input []map[string]any) string {
 
 // formatStreamInput formats multiple input messages.
 func (f *ErrorFormatter) formatStreamInput(input []map[string]any) string {
-	result := "Stream Input (multiple messages):\n\n"
+	result := "Inputs (multiple messages):\n\n"
 	for i, msg := range input {
 		result += fmt.Sprintf("Message %d:\n", i)
 
@@ -134,9 +148,9 @@ func (f *ErrorFormatter) formatClosestMatches(result *stuber.Result) string {
 		return ""
 	}
 
-	// Check if similar stub has stream input
+	// Check if similar stub has inputs
 	similar := result.Similar()
-	if similar != nil && len(similar.Stream) > 0 {
+	if similar != nil && similar.IsClientStream() {
 		return f.formatStreamClosestMatches(similar, addClosestMatch)
 	}
 
@@ -150,18 +164,18 @@ func (f *ErrorFormatter) formatClosestMatches(result *stuber.Result) string {
 	return template
 }
 
-// formatStreamClosestMatches formats closest matches for stream input.
+// formatStreamClosestMatches formats closest matches for inputs.
 func (f *ErrorFormatter) formatStreamClosestMatches(stub *stuber.Stub, addClosestMatch func(string, map[string]any) string) string {
 	var template string
 
-	for i, streamMsg := range stub.Stream {
+	for i, inputMsg := range stub.Inputs {
 		// Convert InputData to map representation
-		streamData := map[string]any{
-			"equals":   streamMsg.Equals,
-			"contains": streamMsg.Contains,
-			"matches":  streamMsg.Matches,
+		inputData := map[string]any{
+			"equals":   inputMsg.Equals,
+			"contains": inputMsg.Contains,
+			"matches":  inputMsg.Matches,
 		}
-		template += addClosestMatch(fmt.Sprintf("stream[%d]", i), streamData)
+		template += addClosestMatch(fmt.Sprintf("inputs[%d]", i), inputData)
 	}
 
 	return template

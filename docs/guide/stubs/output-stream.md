@@ -165,7 +165,7 @@ For bidirectional streaming, responses are selected based on incoming messages:
 ```
 
 **Bidirectional Streaming Behavior:**
-- Each incoming message is matched against the `stream` input patterns
+- Each incoming message is matched against the `inputs` patterns
 - Responses are selected from the `output.stream` array based on message index
 - If no exact match is found, the best matching stub is selected based on ranking
 - Stub ranking considers exact matches, partial matches, and specificity

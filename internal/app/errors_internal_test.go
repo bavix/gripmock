@@ -146,7 +146,7 @@ func TestErrorFormatter_formatInputSection(t *testing.T) {
 		{
 			name:     "multiple inputs",
 			input:    []map[string]any{{"key1": "value1"}, {"key2": "value2"}},
-			expected: "Stream Input (multiple messages):",
+			expected: "Inputs (multiple messages):",
 		},
 	}
 
@@ -168,7 +168,7 @@ func TestErrorFormatter_formatStreamInput(t *testing.T) {
 
 	result := formatter.formatStreamInput(input)
 
-	assert.Contains(t, result, "Stream Input (multiple messages):")
+	assert.Contains(t, result, "Inputs (multiple messages):")
 	assert.Contains(t, result, "Message 0:")
 	assert.Contains(t, result, "Message 1:")
 	assert.Contains(t, result, `"key1"`)
@@ -198,7 +198,7 @@ func TestErrorFormatter_formatStreamClosestMatches(t *testing.T) {
 	formatter := NewErrorFormatter()
 
 	stub := &stuber.Stub{
-		Stream: []stuber.InputData{
+		Inputs: []stuber.InputData{
 			{
 				Equals:   map[string]any{"equals_key": "equals_value"},
 				Contains: map[string]any{"contains_key": "contains_value"},
@@ -213,5 +213,5 @@ func TestErrorFormatter_formatStreamClosestMatches(t *testing.T) {
 
 	result := formatter.formatStreamClosestMatches(stub, addClosestMatch)
 
-	assert.Contains(t, result, "test match for stream[0]")
+	assert.Contains(t, result, "test match for inputs[0]")
 }

@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
 - service: multiverse.v1.MultiverseService
   method: UploadData
-  stream:
+  inputs:
     - equals:
         chunk_id: "large_file_001"
         sequence: 1
