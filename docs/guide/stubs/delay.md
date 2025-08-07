@@ -4,7 +4,7 @@ Delay configuration allows you to simulate network latency and processing time i
 
 ## Overview
 
-The `delay` field in stub output configuration enables you to add artificial delays before sending responses. This is useful for:
+The `delay` field in stub output configuration lets you add artificial delays before sending responses. This is useful for:
 - Testing timeout scenarios
 - Simulating slow network conditions
 - Validating client-side retry logic

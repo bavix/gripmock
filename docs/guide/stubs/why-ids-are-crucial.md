@@ -4,7 +4,7 @@ title: "Why IDs Are Critical for Effective Stub Management"
 
 # Why You Should Always Specify IDs in Stubs
 
-Explicitly defining **UUID-based IDs** in your stub configurations unlocks powerful capabilities in GripMock, from precise stub management to seamless developer workflows. Here's why IDs are non-negotiable:
+Explicitly defining **UUID-based IDs** in your stub configurations unlocks powerful capabilities in GripMock, from precise stub management to seamless developer workflows. Here's why IDs are essential:
 
 ## 1. Universal Identification 🔍  
 Every stub **MUST** have a UUIDv4 identifier:  
@@ -22,8 +22,8 @@ Every stub **MUST** have a UUIDv4 identifier:
         endTime: "2024-01-01T23:59:59Z"
 ```  
 
-- ❌ Never use custom strings like `my_stub_123`  
-- ✅ Generates with `uuidgen` or [online tools](https://bavix.github.io/uuid-ui/)
+- ❌ Don't use custom strings like `my_stub_123`  
+- ✅ Generate with `uuidgen` or [online tools](https://bavix.github.io/uuid-ui/)
 
 ## 2. Admin Panel Efficiency 🚀  
 Instantly locate stubs in the web UI:  
@@ -37,7 +37,7 @@ Search by ID in the admin panel will be available later, but now you can only go
 :::
 
 ## 3. Dead Stub Detection 🧹  
-Cleanup abandoned stubs via API:  
+Clean up abandoned stubs via API:  
 ```bash  
 # Find unused stubs  
 curl http://localhost:4771/api/stubs/unused
@@ -49,7 +49,7 @@ curl -X DELETE http://localhost:4771/api/stubs/7f746310-a470-43dc-9eeb-355dff50d
 ## 4. Live Reloading Magic 🔄  
 
 ::: warning
-Warning! If you do not specify ID in stubs, then when you change the file, the ID may change. Keep this in mind.
+Warning! If you don't specify ID in stubs, then when you change the file, the ID may change. Keep this in mind.
 :::
 
 Enable automatic updates **without restarting GripMock**:  
@@ -64,7 +64,7 @@ STUB_WATCHER_TYPE=fsnotify # Filesystem events. Default value: fsnotify. Other o
 3. No API calls or restarts needed  
 
 ::: info
-In timer mode, GripMock will not stupidly unload and load all the stabilizers from the file system every N seconds. Only files with a changed modification time will be transferred.
+In timer mode, GripMock won't unload and load all the stubs from the file system every N seconds. Only files with a changed modification time will be transferred.
 :::
 
 ## 5. Collision Prevention ⚠️  

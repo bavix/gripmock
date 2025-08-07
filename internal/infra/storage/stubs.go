@@ -14,9 +14,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 
+	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
-	"github.com/bavix/gripmock/v3/pkg/jsondecoder"
-	"github.com/bavix/gripmock/v3/pkg/yaml2json"
+	"github.com/bavix/gripmock/v3/internal/infra/yaml2json"
 )
 
 type Extender struct {
@@ -62,29 +62,49 @@ func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
 		return
 	}
 
+	zerolog.Ctx(ctx).Info().Msg("Loading stubs from directory (preserving API stubs)")
+
 	s.readFromPath(ctx, pathDir)
 	close(s.ch)
 
-	ch, err := s.watcher.Watch(ctx, pathDir)
-	if err != nil {
-		return
-	}
+	// Only watch directories, not individual files
+	if isDirectory(pathDir) {
+		ch, err := s.watcher.Watch(ctx, pathDir)
+		if err != nil {
+			return
+		}
 
-	for file := range ch {
-		zerolog.Ctx(ctx).
-			Debug().
-			Str("path", file).
-			Msg("Updating stub")
+		for file := range ch {
+			zerolog.Ctx(ctx).
+				Debug().
+				Str("path", file).
+				Msg("Updating stub")
 
-		s.readByFile(ctx, file)
+			s.readByFile(ctx, file)
+		}
 	}
 }
 
 // readFromPath reads all the stubs from the given directory and its subdirectories,
-// and adds them to the server's stub store.
+// or from a single file if a file path is provided.
 // The stub files can be in yaml or json format.
 // If a file is in yaml format, it will be converted to json format.
+//
+//nolint:cyclop
 func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
+	// Check if the path is a file or directory
+	if !isDirectory(pathDir) {
+		// It's a file, check if it's a stub file
+		if strings.HasSuffix(pathDir, ".json") ||
+			strings.HasSuffix(pathDir, ".yaml") ||
+			strings.HasSuffix(pathDir, ".yml") {
+			s.readByFile(ctx, pathDir)
+		}
+
+		return
+	}
+
+	// It's a directory, read all files recursively
 	files, err := os.ReadDir(pathDir)
 	if err != nil {
 		zerolog.Ctx(ctx).
@@ -112,6 +132,7 @@ func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
 	}
 }
 
+//nolint:cyclop
 func (s *Extender) readByFile(ctx context.Context, filePath string) {
 	stubs, err := s.readStub(filePath)
 	if err != nil {
@@ -120,6 +141,7 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 			Str("file", filePath).
 			Msg("failed to read file")
 
+		// Remove existing stubs from this file if it was previously loaded
 		if existingIDs, exists := s.mapIDsByFile[filePath]; exists {
 			s.storage.DeleteByID(existingIDs...)
 			delete(s.mapIDsByFile, filePath)
@@ -132,22 +154,31 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 
 	existingIDs, exists := s.mapIDsByFile[filePath]
 	if !exists {
+		// First time loading this file - generate new IDs for stubs without them
+		for _, stub := range stubs {
+			if stub.ID == uuid.Nil {
+				stub.ID = uuid.New()
+			}
+		}
+
 		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
 
 		return
 	}
 
+	// File was previously loaded - handle ID reuse logic
 	currentIDs := make(uuid.UUIDs, 0, len(stubs))
-
 	for _, stub := range stubs {
 		if stub.ID != uuid.Nil {
 			currentIDs = append(currentIDs, stub.ID)
 		}
 	}
 
+	// Find IDs that are no longer used in this file
 	unusedIDs := lo.Without(existingIDs, currentIDs...)
 	newIDs := make(uuid.UUIDs, 0, len(stubs))
 
+	// Generate IDs for stubs that don't have them, reusing unused IDs first
 	for _, stub := range stubs {
 		if stub.ID == uuid.Nil {
 			stub.ID, unusedIDs = genID(stub, unusedIDs)
@@ -156,12 +187,16 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 		newIDs = append(newIDs, stub.ID)
 	}
 
+	// Remove stubs that are no longer in the file
 	if removedIDs := lo.Without(existingIDs, newIDs...); len(removedIDs) > 0 {
 		s.storage.DeleteByID(removedIDs...)
 	}
 
+	// Add/update stubs and update file mapping
 	if len(stubs) > 0 {
 		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
+	} else {
+		delete(s.mapIDsByFile, filePath)
 	}
 }
 
@@ -240,4 +275,14 @@ func (s *Extender) readStub(path string) ([]*stuber.Stub, error) {
 	}
 
 	return stubs, nil
+}
+
+// isDirectory checks if the given path is a directory.
+func isDirectory(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	return info.IsDir()
 }

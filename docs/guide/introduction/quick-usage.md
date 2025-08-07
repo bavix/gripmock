@@ -2,13 +2,13 @@
 
 ## Installation
 
-GripMock can be installed using one of the following methods:
+Choose your preferred way to install GripMock:
 
 ### 1. **Using Homebrew (Recommended)**
 Homebrew provides an easy way to install GripMock on macOS and Linux.
 
-#### Step 1: Tap the Repository
-Tap the official Homebrew tap for GripMock:
+#### Step 1: Add the Repository
+Add the official Homebrew repository for GripMock:
 ```bash
 brew tap gripmock/tap
 ```
@@ -19,8 +19,8 @@ Install GripMock with the following command:
 brew install gripmock
 ```
 
-#### Step 3: Verify Installation
-Verify that GripMock is installed correctly by checking its version:
+#### Step 3: Check Installation
+Make sure GripMock is installed correctly by checking its version:
 ```bash
 gripmock --version
 ```
@@ -57,17 +57,17 @@ curl -s https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup
 ```
 
 This script automatically:
-1. Detects your OS (Linux/macOS) and architecture (arm64/amd64)
-2. Verifies system dependencies
+1. Detects your system (Linux/macOS) and architecture (arm64/amd64)
+2. Checks system dependencies
 3. Downloads the latest release securely
 4. Validates checksums
 5. Installs to your system PATH
 
 ### 3. **Download Pre-built Binaries**
-Pre-built binaries for various platforms are available on the [Releases](https://github.com/bavix/gripmock/releases) page. Download the appropriate binary for your system and add it to your `PATH`.
+Ready-to-use binaries for various platforms are available on the [Releases](https://github.com/bavix/gripmock/releases) page. Download the right binary for your system and add it to your `PATH`.
 
 ### 4. **Using Docker**
-GripMock is packaged as a Docker image for ease of use. Ensure Docker is installed:  
+GripMock comes as a Docker image for easy use. Make sure Docker is installed:  
 [Install Docker](https://docs.docker.com/engine/install/).
 
 Pull the latest GripMock Docker image:

@@ -1,0 +1,12 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: multiverse.v1.MultiverseService
+  method: Ping
+  input:
+    equals:
+      message: "Hello"
+      user_id: "user_001"
+  output:
+    data:
+      reply: "Pong"
+      user_id: "user_001"
+      timestamp: "2024-01-15T10:00:00Z" 
