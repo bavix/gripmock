@@ -38,16 +38,22 @@
 # Bidirectional Streaming Stub (Chat)
 - service: ChatService
   method: Chat
-  inputs:
-    - equals:
-        user: Charlie
-        text: "Hi everyone!"
-    - equals:
-        user: Charlie
-        text: "Anyone there?"
+  input:
+    equals:
+      user: Charlie
+      text: "Hi everyone!"
   output:
-    stream:
-      - user: Bot
-        text: "Hello Charlie!"
-      - user: Bot
-        text: "We're here!"
+    data:
+      user: Bot
+      text: "Hello Charlie!"
+
+- service: ChatService
+  method: Chat
+  input:
+    equals:
+      user: Charlie
+      text: "Anyone there?"
+  output:
+    data:
+      user: Bot
+      text: "We're here!"
