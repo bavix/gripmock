@@ -8,7 +8,8 @@ const (
 	// DefaultTimeout is the default timeout for operations.
 	DefaultTimeout = 30
 
-	// HealthServiceName is the name of the health check service.
+	// HealthServiceName defines the service name used for gRPC health checks.
+	// It is referenced by health check mechanisms to identify the service being checked.
 	HealthServiceName = "gripmock"
 )
 
