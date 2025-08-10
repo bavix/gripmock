@@ -12,7 +12,7 @@ The `TrackService` has a server streaming method `StreamTrack` that returns a st
 When the `data` field contains a single object, gripmock behaves as before - it sends the same response repeatedly for each client request.
 
 ### Array Response Streaming (New Behavior)
-When the `data` field contains an `stream` array, gripmock will:
+When the `data` field contains a `stream` array, gripmock will:
 1. Continuously stream each item in the array
 2. Loop back to the first item when reaching the end
 3. Continue streaming until the client disconnects
