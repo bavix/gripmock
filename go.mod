@@ -9,6 +9,7 @@ require (
 	github.com/bufbuild/protocompile v0.14.1
 	github.com/cockroachdb/errors v1.12.0
 	github.com/fsnotify/fsnotify v1.9.0
+	github.com/go-playground/validator/v10 v10.27.0
 	github.com/goccy/go-json v0.10.5
 	github.com/goccy/go-yaml v1.18.0
 	github.com/google/uuid v1.6.0
@@ -16,7 +17,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gripmock/environment v1.2.0
 	github.com/gripmock/shutdown v1.1.0
-	github.com/gripmock/stuber v1.8.0
+	github.com/gripmock/stuber v1.8.1
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0
@@ -33,11 +34,10 @@ require (
 	github.com/cockroachdb/redact v1.1.6 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.9 // indirect
 	github.com/getsentry/sentry-go v0.35.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.27.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gripmock/deeply v1.3.3 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect

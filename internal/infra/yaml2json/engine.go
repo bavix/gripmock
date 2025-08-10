@@ -2,15 +2,10 @@ package yaml2json
 
 import (
 	"bytes"
-	"encoding/base64"
-	"strconv"
-	"strings"
 	"sync"
 	"text/template"
 
-	"github.com/google/uuid"
-
-	"github.com/bavix/apis/pkg/uuidconv"
+	"github.com/bavix/gripmock/v3/internal/infra/encoding"
 )
 
 type engine struct {
@@ -19,14 +14,16 @@ type engine struct {
 }
 
 func newEngine() *engine {
+	utils := encoding.NewTemplateUtils()
+
 	return &engine{
 		funcs: template.FuncMap{
-			"bytes":         convBytes,
-			"string2base64": string2base64,
-			"bytes2base64":  bytes2base64,
-			"uuid2base64":   uuid2base64,
-			"uuid2bytes":    uuid2bytes,
-			"uuid2int64":    uuid2int64,
+			"bytes":         utils.Conversion.StringToBytes,
+			"string2base64": utils.Base64.StringToBase64,
+			"bytes2base64":  utils.Base64.BytesToBase64,
+			"uuid2base64":   utils.UUID.UUIDToBase64,
+			"uuid2bytes":    utils.UUID.UUIDToBytes,
+			"uuid2int64":    utils.UUID.UUIDToInt64,
 		},
 		bufferPool: &sync.Pool{
 			New: func() any {
@@ -57,46 +54,4 @@ func (e *engine) Execute(name string, data []byte) ([]byte, error) {
 	}
 
 	return buf.Bytes(), nil
-}
-
-func uuid2int64(str string) string {
-	v := uuid.MustParse(str)
-
-	high, low := uuidconv.UUID2DoubleInt(v)
-
-	var sb strings.Builder
-
-	sb.Grow(32) //nolint:mnd
-	sb.WriteString(`{"high":`)
-	sb.WriteString(strconv.FormatInt(high, 10))
-	sb.WriteString(`,"low":`)
-	sb.WriteString(strconv.FormatInt(low, 10))
-	sb.WriteString(`}`)
-
-	return sb.String()
-}
-
-func uuid2base64(input string) string {
-	v := uuid.MustParse(input)
-
-	return base64.StdEncoding.EncodeToString(v[:])
-}
-
-// uuid2bytes converts a UUID string to a byte slice.
-func uuid2bytes(input string) []byte {
-	v := uuid.MustParse(input)
-
-	return v[:]
-}
-
-func convBytes(v string) []byte {
-	return []byte(v)
-}
-
-func string2base64(v string) string {
-	return base64.StdEncoding.EncodeToString([]byte(v))
-}
-
-func bytes2base64(v []byte) string {
-	return base64.StdEncoding.EncodeToString(v)
 }

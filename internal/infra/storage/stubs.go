@@ -21,7 +21,7 @@ import (
 
 type Extender struct {
 	storage      *stuber.Budgerigar
-	convertor    *yaml2json.Convertor
+	converter    *yaml2json.Convertor
 	ch           chan struct{}
 	watcher      *watcher.StubWatcher
 	mapIDsByFile map[string]uuid.UUIDs
@@ -32,12 +32,12 @@ type Extender struct {
 
 func NewStub(
 	storage *stuber.Budgerigar,
-	convertor *yaml2json.Convertor,
+	converter *yaml2json.Convertor,
 	watcher *watcher.StubWatcher,
 ) *Extender {
 	return &Extender{
 		storage:      storage,
-		convertor:    convertor,
+		converter:    converter,
 		ch:           make(chan struct{}),
 		watcher:      watcher,
 		mapIDsByFile: make(map[string]uuid.UUIDs),
@@ -263,7 +263,7 @@ func (s *Extender) readStub(path string) ([]*stuber.Stub, error) {
 	}
 
 	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
-		file, err = s.convertor.Execute(path, file)
+		file, err = s.converter.Execute(path, file)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to unmarshal file %s", path)
 		}

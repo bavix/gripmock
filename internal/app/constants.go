@@ -13,7 +13,7 @@ const (
 )
 
 // ExcludedHeaders contains headers that should be excluded from stub matching.
-var ExcludedHeaders = []string{
+var ExcludedHeaders = []string{ //nolint:gochecknoglobals
 	":authority",
 	"content-type",
 	"grpc-accept-encoding",

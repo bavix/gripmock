@@ -14,12 +14,12 @@ import (
 )
 
 var (
-	stubFlag    string
-	importsFlag []string
+	stubFlag    string   //nolint:gochecknoglobals
+	importsFlag []string //nolint:gochecknoglobals
 	version     = "development"
 )
 
-var rootCmd = &cobra.Command{
+var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 	Use:     "gripmock",
 	Short:   "gRPC Mock Server",
 	Version: version,
@@ -79,7 +79,7 @@ func restServe(ctx context.Context, builder *deps.Builder) error {
 	return nil
 }
 
-func init() {
+func init() { //nolint:gochecknoinits
 	rootCmd.Flags().StringVarP(
 		&stubFlag,
 		"stub",

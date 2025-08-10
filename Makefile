@@ -41,6 +41,11 @@ gen-imports:
 	# Remove files that depend on unittest files
 	find /tmp/gm-protobuf-sdk -name "json_format*.proto" -type f -delete
 	find /tmp/gm-protobuf-sdk -name "late_loaded_option*.proto" -type f -delete
+	# Remove sample_messages_edition.proto which has invalid import syntax
+	find /tmp/gm-protobuf-sdk -name "sample_messages_edition.proto" -type f -delete
+	# Remove files with edition 2024 which is not supported
+	find /tmp/gm-protobuf-sdk -name "internal_options.proto" -type f -delete
+	find /tmp/gm-protobuf-sdk -name "*edition*.proto" -type f -delete
 	mkdir -p internal/pbs 
 	protoc --proto_path=/tmp/gm-googleapis-sdk --descriptor_set_out=internal/pbs/googleapis.pb --include_imports $$(find /tmp/gm-googleapis-sdk -name '*.proto')
 	protoc --proto_path=/tmp/gm-protobuf-sdk --descriptor_set_out=internal/pbs/protobuf.pb --include_imports $$(find /tmp/gm-protobuf-sdk -name '*.proto')

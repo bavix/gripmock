@@ -35,7 +35,7 @@ type Method struct {
 
 // SearchRequest defines model for SearchRequest.
 type SearchRequest struct {
-	Data    any               `json:"data"`
+	Data    any       `json:"data"`
 	Headers map[string]string `json:"headers,omitempty"`
 	Id      *ID               `json:"id,omitempty"`
 	Method  string            `json:"method"`
@@ -45,7 +45,7 @@ type SearchRequest struct {
 // SearchResponse defines model for SearchResponse.
 type SearchResponse struct {
 	Code    *codes.Code       `json:"code,omitempty"`
-	Data    any               `json:"data"`
+	Data    any       `json:"data"`
 	Error   string            `json:"error"`
 	Headers map[string]string `json:"headers,omitempty"`
 }
@@ -63,9 +63,11 @@ type Stub struct {
 	Headers StubHeaders `json:"headers,omitempty"`
 	Id      *ID         `json:"id,omitempty"`
 	Input   StubInput   `json:"input"`
-	Inputs  []StubInput `json:"inputs,omitempty"`
-	Method  string      `json:"method"`
-	Output  StubOutput  `json:"output"`
+
+	// Inputs Inputs to match against. If multiple inputs are provided, the stub will be matched if any of the inputs match.
+	Inputs *[]StubInput `json:"inputs,omitempty"`
+	Method string       `json:"method"`
+	Output StubOutput   `json:"output"`
 
 	// Priority Priority of the stub. Higher priority stubs are matched first.
 	Priority *int   `json:"priority,omitempty"`
@@ -83,7 +85,7 @@ type StubHeaders struct {
 type StubInput struct {
 	Contains         map[string]any `json:"contains,omitempty"`
 	Equals           map[string]any `json:"equals,omitempty"`
-	IgnoreArrayOrder *bool          `json:"ignoreArrayOrder,omitempty"`
+	IgnoreArrayOrder *bool                  `json:"ignoreArrayOrder,omitempty"`
 	Matches          map[string]any `json:"matches,omitempty"`
 }
 
@@ -92,11 +94,11 @@ type StubList = []Stub
 
 // StubOutput defines model for StubOutput.
 type StubOutput struct {
-	Code    *codes.Code       `json:"code,omitempty"`
-	Data    map[string]any    `json:"data"`
-	Error   string            `json:"error"`
-	Headers map[string]string `json:"headers,omitempty"`
-	Inputs  []map[string]any  `json:"inputs,omitempty"`
+	Code    *codes.Code              `json:"code,omitempty"`
+	Data    map[string]any   `json:"data"`
+	Error   string                   `json:"error"`
+	Headers map[string]string        `json:"headers,omitempty"`
+	Stream  []map[string]any `json:"stream,omitempty"`
 }
 
 // AddStubJSONBody defines parameters for AddStub.
@@ -136,7 +138,7 @@ type ServerInterface interface {
 	// Add a new stub to the store
 	// (POST /stubs)
 	AddStub(w http.ResponseWriter, r *http.Request)
-	// Deletes a pack by IDs
+	// Deletes a batch of stubs by IDs
 	// (POST /stubs/batchDelete)
 	BatchStubsDelete(w http.ResponseWriter, r *http.Request)
 	// Stub storage search
@@ -167,6 +169,7 @@ type MiddlewareFunc func(http.Handler) http.Handler
 
 // Liveness operation middleware
 func (siw *ServerInterfaceWrapper) Liveness(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Liveness(w, r)
 	}))
@@ -180,6 +183,7 @@ func (siw *ServerInterfaceWrapper) Liveness(w http.ResponseWriter, r *http.Reque
 
 // Readiness operation middleware
 func (siw *ServerInterfaceWrapper) Readiness(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Readiness(w, r)
 	}))
@@ -193,6 +197,7 @@ func (siw *ServerInterfaceWrapper) Readiness(w http.ResponseWriter, r *http.Requ
 
 // ServicesList operation middleware
 func (siw *ServerInterfaceWrapper) ServicesList(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ServicesList(w, r)
 	}))
@@ -206,6 +211,7 @@ func (siw *ServerInterfaceWrapper) ServicesList(w http.ResponseWriter, r *http.R
 
 // ServiceMethodsList operation middleware
 func (siw *ServerInterfaceWrapper) ServiceMethodsList(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// ------------- Path parameter "serviceID" -------------
@@ -230,6 +236,7 @@ func (siw *ServerInterfaceWrapper) ServiceMethodsList(w http.ResponseWriter, r *
 
 // PurgeStubs operation middleware
 func (siw *ServerInterfaceWrapper) PurgeStubs(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PurgeStubs(w, r)
 	}))
@@ -243,6 +250,7 @@ func (siw *ServerInterfaceWrapper) PurgeStubs(w http.ResponseWriter, r *http.Req
 
 // ListStubs operation middleware
 func (siw *ServerInterfaceWrapper) ListStubs(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListStubs(w, r)
 	}))
@@ -256,6 +264,7 @@ func (siw *ServerInterfaceWrapper) ListStubs(w http.ResponseWriter, r *http.Requ
 
 // AddStub operation middleware
 func (siw *ServerInterfaceWrapper) AddStub(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.AddStub(w, r)
 	}))
@@ -269,6 +278,7 @@ func (siw *ServerInterfaceWrapper) AddStub(w http.ResponseWriter, r *http.Reques
 
 // BatchStubsDelete operation middleware
 func (siw *ServerInterfaceWrapper) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.BatchStubsDelete(w, r)
 	}))
@@ -282,6 +292,7 @@ func (siw *ServerInterfaceWrapper) BatchStubsDelete(w http.ResponseWriter, r *ht
 
 // SearchStubs operation middleware
 func (siw *ServerInterfaceWrapper) SearchStubs(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.SearchStubs(w, r)
 	}))
@@ -295,6 +306,7 @@ func (siw *ServerInterfaceWrapper) SearchStubs(w http.ResponseWriter, r *http.Re
 
 // ListUnusedStubs operation middleware
 func (siw *ServerInterfaceWrapper) ListUnusedStubs(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListUnusedStubs(w, r)
 	}))
@@ -308,6 +320,7 @@ func (siw *ServerInterfaceWrapper) ListUnusedStubs(w http.ResponseWriter, r *htt
 
 // ListUsedStubs operation middleware
 func (siw *ServerInterfaceWrapper) ListUsedStubs(w http.ResponseWriter, r *http.Request) {
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListUsedStubs(w, r)
 	}))
@@ -321,6 +334,7 @@ func (siw *ServerInterfaceWrapper) ListUsedStubs(w http.ResponseWriter, r *http.
 
 // DeleteStubByID operation middleware
 func (siw *ServerInterfaceWrapper) DeleteStubByID(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// ------------- Path parameter "uuid" -------------
@@ -345,6 +359,7 @@ func (siw *ServerInterfaceWrapper) DeleteStubByID(w http.ResponseWriter, r *http
 
 // FindByID operation middleware
 func (siw *ServerInterfaceWrapper) FindByID(w http.ResponseWriter, r *http.Request) {
+
 	var err error
 
 	// ------------- Path parameter "uuid" -------------

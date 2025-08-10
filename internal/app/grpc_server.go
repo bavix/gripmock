@@ -37,7 +37,7 @@ import (
 )
 
 // excludedHeaders contains headers that should be excluded from stub matching.
-var excludedHeaders = []string{":authority", "content-type", "grpc-accept-encoding", "user-agent", "accept-encoding"}
+var excludedHeaders = []string{":authority", "content-type", "grpc-accept-encoding", "user-agent", "accept-encoding"} //nolint:gochecknoglobals
 
 // processHeaders converts metadata to headers map, excluding specified headers.
 func processHeaders(md metadata.MD) map[string]any {

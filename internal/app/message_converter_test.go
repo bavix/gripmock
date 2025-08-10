@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -14,68 +13,84 @@ import (
 )
 
 func TestNewMessageConverter(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
-	assert.NotNil(t, converter)
+	require.NotNil(t, converter)
 }
 
 func TestMessageConverter_ConvertToMap_NilMessage(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	result := converter.ConvertToMap(nil)
-	assert.Nil(t, result)
+	require.Nil(t, result)
 }
 
 func TestMessageConverter_ConvertToMap_StringValue(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	msg := wrapperspb.String("test value")
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Equal(t, "test value", result["value"])
+	require.NotNil(t, result)
+	require.Equal(t, "test value", result["value"])
 }
 
 func TestMessageConverter_ConvertToMap_Int32Value(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	msg := wrapperspb.Int32(42)
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Contains(t, result, "value")
+	require.NotNil(t, result)
+	require.Contains(t, result, "value")
 }
 
 func TestMessageConverter_ConvertToMap_BoolValue(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	msg := wrapperspb.Bool(true)
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Contains(t, result, "value")
+	require.NotNil(t, result)
+	require.Contains(t, result, "value")
 }
 
 func TestMessageConverter_ConvertToMap_DoubleValue(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	msg := wrapperspb.Double(3.14)
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Contains(t, result, "value")
+	require.NotNil(t, result)
+	require.Contains(t, result, "value")
 }
 
 func TestMessageConverter_ConvertToMap_BytesValue(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	msg := wrapperspb.Bytes([]byte("hello"))
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Equal(t, "aGVsbG8=", result["value"]) // base64 encoded "hello"
+	require.NotNil(t, result)
+	require.Equal(t, "aGVsbG8=", result["value"]) // base64 encoded "hello"
 }
 
 func TestMessageConverter_ConvertToMap_Struct(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	fields := map[string]*structpb.Value{
@@ -89,28 +104,32 @@ func TestMessageConverter_ConvertToMap_Struct(t *testing.T) {
 	}
 
 	result := converter.ConvertToMap(msg)
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	fieldsMap, ok := result["fields"].(map[string]any)
 	require.True(t, ok)
-	assert.Contains(t, fieldsMap, "string_field")
-	assert.Contains(t, fieldsMap, "number_field")
-	assert.Contains(t, fieldsMap, "bool_field")
+	require.Contains(t, fieldsMap, "string_field")
+	require.Contains(t, fieldsMap, "number_field")
+	require.Contains(t, fieldsMap, "bool_field")
 }
 
 func TestMessageConverter_GetMessageDescriptor(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Test with a known message type
 	desc, err := converter.GetMessageDescriptor("google.protobuf.StringValue")
 	require.NoError(t, err)
-	assert.NotNil(t, desc)
+	require.NotNil(t, desc)
 
 	// Test with unknown message type
 	_, err = converter.GetMessageDescriptor("unknown.MessageType")
-	assert.Error(t, err)
+	require.Error(t, err)
 }
 
 func TestMessageConverter_convertValue_List(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Create a message with repeated fields
@@ -122,10 +141,12 @@ func TestMessageConverter_convertValue_List(t *testing.T) {
 	}
 
 	result := converter.ConvertToMap(msg)
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 }
 
 func TestMessageConverter_convertValue_Map(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	fields := map[string]*structpb.Value{
@@ -138,25 +159,29 @@ func TestMessageConverter_convertValue_Map(t *testing.T) {
 	}
 
 	result := converter.ConvertToMap(msg)
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	fieldsMap, ok := result["fields"].(map[string]any)
 	require.True(t, ok)
-	assert.Contains(t, fieldsMap, "key1")
-	assert.Contains(t, fieldsMap, "key2")
+	require.Contains(t, fieldsMap, "key1")
+	require.Contains(t, fieldsMap, "key2")
 }
 
 func TestMessageConverter_convertScalar_Enum(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Test with a simple enum value
 	msg := wrapperspb.Int32(1) // This will be treated as enum in some contexts
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Contains(t, result, "value")
+	require.NotNil(t, result)
+	require.Contains(t, result, "value")
 }
 
 func TestMessageConverter_convertScalar_Message(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	outerMsg := &structpb.Struct{
@@ -166,89 +191,105 @@ func TestMessageConverter_convertScalar_Message(t *testing.T) {
 	}
 
 	result := converter.ConvertToMap(outerMsg)
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	fieldsMap, ok := result["fields"].(map[string]any)
 	require.True(t, ok)
-	assert.Contains(t, fieldsMap, "nested")
+	require.Contains(t, fieldsMap, "nested")
 }
 
 func TestMessageConverter_convertScalar_GroupKind(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// GroupKind is deprecated, but we should handle it gracefully
 	msg := wrapperspb.String("test")
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Equal(t, "test", result["value"])
+	require.NotNil(t, result)
+	require.Equal(t, "test", result["value"])
 }
 
 func TestMessageConverter_convertScalar_UnknownKind(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Test with a known type that should work
 	msg := wrapperspb.String("test")
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Equal(t, "test", result["value"])
+	require.NotNil(t, result)
+	require.Equal(t, "test", result["value"])
 }
 
 // Additional tests for better coverage
 
 func TestMessageConverter_ConvertToMap_Int64Value(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	msg := wrapperspb.Int64(9223372036854775807)
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Contains(t, result, "value")
+	require.NotNil(t, result)
+	require.Contains(t, result, "value")
 }
 
 func TestMessageConverter_ConvertToMap_UInt32Value(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	msg := wrapperspb.UInt32(4294967295)
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Contains(t, result, "value")
+	require.NotNil(t, result)
+	require.Contains(t, result, "value")
 }
 
 func TestMessageConverter_ConvertToMap_UInt64Value(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	msg := wrapperspb.UInt64(18446744073709551615)
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Contains(t, result, "value")
+	require.NotNil(t, result)
+	require.Contains(t, result, "value")
 }
 
 func TestMessageConverter_ConvertToMap_FloatValue(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	msg := wrapperspb.Float(3.14159)
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Contains(t, result, "value")
+	require.NotNil(t, result)
+	require.Contains(t, result, "value")
 }
 
 func TestMessageConverter_ConvertToMap_Timestamp(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	now := time.Now()
 	msg := timestamppb.New(now)
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Contains(t, result, "seconds")
-	assert.Contains(t, result, "nanos")
+	require.NotNil(t, result)
+	require.Contains(t, result, "seconds")
+	require.Contains(t, result, "nanos")
 }
 
 func TestMessageConverter_ConvertToMap_EmptyStruct(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	msg := &structpb.Struct{
@@ -258,11 +299,13 @@ func TestMessageConverter_ConvertToMap_EmptyStruct(t *testing.T) {
 	result := converter.ConvertToMap(msg)
 
 	// Empty struct returns empty map
-	assert.NotNil(t, result)
-	assert.Empty(t, result)
+	require.NotNil(t, result)
+	require.Empty(t, result)
 }
 
 func TestMessageConverter_ConvertToMap_NestedStruct(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	nestedStruct := &structpb.Struct{
@@ -278,7 +321,7 @@ func TestMessageConverter_ConvertToMap_NestedStruct(t *testing.T) {
 	}
 
 	result := converter.ConvertToMap(outerStruct)
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 
 	fieldsMap, ok := result["fields"].(map[string]any)
 	require.True(t, ok)
@@ -294,10 +337,12 @@ func TestMessageConverter_ConvertToMap_NestedStruct(t *testing.T) {
 
 	innerFieldValue, ok := nestedFieldsMap["inner_field"].(map[string]any)
 	require.True(t, ok)
-	assert.Equal(t, "inner_value", innerFieldValue["string_value"])
+	require.Equal(t, "inner_value", innerFieldValue["string_value"])
 }
 
 func TestMessageConverter_ConvertToMap_ListWithMessages(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Create a list value with struct values
@@ -317,11 +362,11 @@ func TestMessageConverter_ConvertToMap_ListWithMessages(t *testing.T) {
 	}
 
 	result := converter.ConvertToMap(listValue)
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 
 	values, ok := result["values"].([]any)
 	require.True(t, ok)
-	assert.Len(t, values, 2)
+	require.Len(t, values, 2)
 
 	// Check first item
 	firstItem, ok := values[0].(map[string]any)
@@ -332,10 +377,12 @@ func TestMessageConverter_ConvertToMap_ListWithMessages(t *testing.T) {
 	require.True(t, ok)
 	firstFieldValue, ok := firstFields["name"].(map[string]any)
 	require.True(t, ok)
-	assert.Equal(t, "item1", firstFieldValue["string_value"])
+	require.Equal(t, "item1", firstFieldValue["string_value"])
 }
 
 func TestMessageConverter_ConvertToMap_MapWithMessages(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Create a struct with map-like behavior
@@ -355,7 +402,7 @@ func TestMessageConverter_ConvertToMap_MapWithMessages(t *testing.T) {
 	}
 
 	result := converter.ConvertToMap(msg)
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 
 	fieldsMap, ok := result["fields"].(map[string]any)
 	require.True(t, ok)
@@ -369,10 +416,12 @@ func TestMessageConverter_ConvertToMap_MapWithMessages(t *testing.T) {
 	require.True(t, ok)
 	nested1Value, ok := nested1Fields["value"].(map[string]any)
 	require.True(t, ok)
-	assert.Equal(t, "nested_value1", nested1Value["string_value"])
+	require.Equal(t, "nested_value1", nested1Value["string_value"])
 }
 
 func TestMessageConverter_ConvertToMap_InvalidMessage(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Test with a message that has invalid fields
@@ -383,17 +432,19 @@ func TestMessageConverter_ConvertToMap_InvalidMessage(t *testing.T) {
 	}
 
 	result := converter.ConvertToMap(msg)
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 }
 
 func TestMessageConverter_ConvertToMap_ComplexNested(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Create a complex nested structure
 	outerStruct := createComplexNestedStruct()
 
 	result := converter.ConvertToMap(outerStruct)
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 
 	fieldsMap, ok := result["fields"].(map[string]any)
 	require.True(t, ok)
@@ -433,7 +484,7 @@ func checkOuterStringField(t *testing.T, fieldsMap map[string]any) {
 
 	outerStringValue, ok := fieldsMap["outer_string"].(map[string]any)
 	require.True(t, ok)
-	assert.Equal(t, "outer_string", outerStringValue["string_value"])
+	require.Equal(t, "outer_string", outerStringValue["string_value"])
 }
 
 func checkNestedStruct(t *testing.T, fieldsMap map[string]any) {
@@ -460,7 +511,7 @@ func checkInnerStringField(t *testing.T, nestedFields map[string]any) {
 
 	innerStringValue, ok := nestedFields["string_field"].(map[string]any)
 	require.True(t, ok)
-	assert.Equal(t, "inner_string", innerStringValue["string_value"])
+	require.Equal(t, "inner_string", innerStringValue["string_value"])
 }
 
 func checkListField(t *testing.T, nestedFields map[string]any) {
@@ -474,7 +525,7 @@ func checkListField(t *testing.T, nestedFields map[string]any) {
 
 	listValues, ok := listValue["values"].([]any)
 	require.True(t, ok)
-	assert.Len(t, listValues, 2)
+	require.Len(t, listValues, 2)
 
 	// Check list items are string values
 	checkListItems(t, listValues)
@@ -485,16 +536,18 @@ func checkListItems(t *testing.T, listValues []any) {
 
 	firstItem, ok := listValues[0].(map[string]any)
 	require.True(t, ok)
-	assert.Equal(t, "list_item1", firstItem["string_value"])
+	require.Equal(t, "list_item1", firstItem["string_value"])
 
 	secondItem, ok := listValues[1].(map[string]any)
 	require.True(t, ok)
-	assert.Equal(t, "list_item2", secondItem["string_value"])
+	require.Equal(t, "list_item2", secondItem["string_value"])
 }
 
 // Additional tests for edge cases
 
 func TestMessageConverter_ConvertToMap_MessageWithNilFields(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Test with a message that has nil fields
@@ -505,90 +558,104 @@ func TestMessageConverter_ConvertToMap_MessageWithNilFields(t *testing.T) {
 	}
 
 	result := converter.ConvertToMap(msg)
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 }
 
 func TestMessageConverter_ConvertToMap_MessageWithEmptyString(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	msg := wrapperspb.String("")
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	// Empty string returns nil value
-	assert.Nil(t, result["value"])
+	require.Nil(t, result["value"])
 }
 
 func TestMessageConverter_ConvertToMap_MessageWithZeroValues(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Test with zero values
 	int32Msg := wrapperspb.Int32(0)
 	int32Result := converter.ConvertToMap(int32Msg)
-	assert.NotNil(t, int32Result)
+	require.NotNil(t, int32Result)
 
 	boolMsg := wrapperspb.Bool(false)
 	boolResult := converter.ConvertToMap(boolMsg)
-	assert.NotNil(t, boolResult)
+	require.NotNil(t, boolResult)
 
 	doubleMsg := wrapperspb.Double(0.0)
 	doubleResult := converter.ConvertToMap(doubleMsg)
-	assert.NotNil(t, doubleResult)
+	require.NotNil(t, doubleResult)
 }
 
 func TestMessageConverter_ConvertToMap_MessageWithNegativeValues(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Test with negative values
 	int32Msg := wrapperspb.Int32(-42)
 	int32Result := converter.ConvertToMap(int32Msg)
-	assert.NotNil(t, int32Result)
+	require.NotNil(t, int32Result)
 
 	int64Msg := wrapperspb.Int64(-9223372036854775808)
 	int64Result := converter.ConvertToMap(int64Msg)
-	assert.NotNil(t, int64Result)
+	require.NotNil(t, int64Result)
 
 	doubleMsg := wrapperspb.Double(-3.14159)
 	doubleResult := converter.ConvertToMap(doubleMsg)
-	assert.NotNil(t, doubleResult)
+	require.NotNil(t, doubleResult)
 }
 
 func TestMessageConverter_ConvertToMap_MessageWithLargeValues(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Test with large values
 	uint32Msg := wrapperspb.UInt32(4294967295)
 	uint32Result := converter.ConvertToMap(uint32Msg)
-	assert.NotNil(t, uint32Result)
+	require.NotNil(t, uint32Result)
 
 	uint64Msg := wrapperspb.UInt64(18446744073709551615)
 	uint64Result := converter.ConvertToMap(uint64Msg)
-	assert.NotNil(t, uint64Result)
+	require.NotNil(t, uint64Result)
 }
 
 func TestMessageConverter_ConvertToMap_MessageWithSpecialCharacters(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Test with special characters
 	msg := wrapperspb.String("test\n\t\r\"'\\")
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Equal(t, "test\n\t\r\"'\\", result["value"])
+	require.NotNil(t, result)
+	require.Equal(t, "test\n\t\r\"'\\", result["value"])
 }
 
 func TestMessageConverter_ConvertToMap_Unicode(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Test with unicode characters (ASCII only to avoid gosmopolitan issues)
 	msg := wrapperspb.String("test 🚀 rocket")
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
-	assert.Equal(t, "test 🚀 rocket", result["value"])
+	require.NotNil(t, result)
+	require.Equal(t, "test 🚀 rocket", result["value"])
 }
 
 func TestMessageConverter_ConvertToMap_MessageWithBinaryData(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Test with binary data
@@ -596,35 +663,39 @@ func TestMessageConverter_ConvertToMap_MessageWithBinaryData(t *testing.T) {
 	msg := wrapperspb.Bytes(binaryData)
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	// Should be base64 encoded - let's check the actual value
 	value, ok := result["value"].(string)
-	assert.True(t, ok)
-	assert.NotEmpty(t, value)
+	require.True(t, ok)
+	require.NotEmpty(t, value)
 	// Verify it's valid base64
-	assert.Len(t, value, 8) // 6 bytes should encode to 8 base64 characters
+	require.Len(t, value, 8) // 6 bytes should encode to 8 base64 characters
 }
 
 func TestMessageConverter_ConvertToMap_MessageWithEmptyBytes(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Test with empty bytes
 	msg := wrapperspb.Bytes([]byte{})
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	// Empty bytes returns nil value
-	assert.Nil(t, result["value"])
+	require.Nil(t, result["value"])
 }
 
 func TestMessageConverter_ConvertToMap_MessageWithNilBytes(t *testing.T) {
+	t.Parallel()
+
 	converter := app.NewMessageConverter()
 
 	// Test with nil bytes
 	msg := wrapperspb.Bytes(nil)
 	result := converter.ConvertToMap(msg)
 
-	assert.NotNil(t, result)
+	require.NotNil(t, result)
 	// Nil bytes returns nil value
-	assert.Nil(t, result["value"])
+	require.Nil(t, result["value"])
 }

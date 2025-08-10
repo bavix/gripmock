@@ -3,34 +3,27 @@ package app
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestConstants(t *testing.T) {
-	// Test gRPC server constants
-	assert.NotEmpty(t, ServiceReflection)
-	assert.NotEmpty(t, ErrMsgFailedToSendResponse)
-	assert.NotEmpty(t, ErrMsgFailedToReceiveMessage)
-
-	// Test excluded headers
-	assert.NotNil(t, ExcludedHeaders)
-	assert.Contains(t, ExcludedHeaders, "content-type")
-	assert.Contains(t, ExcludedHeaders, ":authority")
-
-	// Test logging fields
-	assert.NotEmpty(t, LogFieldService)
-	assert.NotEmpty(t, LogFieldMethod)
-	assert.NotEmpty(t, LogFieldPeerAddress)
-	assert.NotEmpty(t, LogFieldProtocol)
-
-	// Test error messages
-	assert.NotEmpty(t, ErrMsgFailedToFindStub)
-	assert.NotEmpty(t, ErrMsgFailedToProcessMessage)
-	assert.NotEmpty(t, ErrMsgFailedToMarshalData)
+// ConstantsTestSuite provides test suite for application constants.
+type ConstantsTestSuite struct {
+	suite.Suite
 }
 
-func TestExcludedHeadersContent(t *testing.T) {
-	// Verify all expected headers are excluded
+// TestConstants tests that all constants are properly defined.
+func (s *ConstantsTestSuite) TestConstants() {
+	// Test excluded headers list
+	s.Require().NotEmpty(excludedHeaders)
+	s.Require().Contains(excludedHeaders, ":authority")
+	s.Require().Contains(excludedHeaders, "content-type")
+	s.Require().Contains(excludedHeaders, "grpc-accept-encoding")
+	s.Require().Contains(excludedHeaders, "user-agent")
+	s.Require().Contains(excludedHeaders, "accept-encoding")
+}
+
+// TestExcludedHeadersContent tests the content of excluded headers.
+func (s *ConstantsTestSuite) TestExcludedHeadersContent() {
 	expectedHeaders := []string{
 		":authority",
 		"content-type",
@@ -39,15 +32,21 @@ func TestExcludedHeadersContent(t *testing.T) {
 		"accept-encoding",
 	}
 
-	for _, header := range expectedHeaders {
-		assert.Contains(t, ExcludedHeaders, header, "Header %s should be excluded", header)
-	}
+	s.Require().Equal(expectedHeaders, excludedHeaders)
 }
 
-func TestLoggingFieldsFormat(t *testing.T) {
-	// Test that logging fields are properly formatted
-	assert.Equal(t, "service", LogFieldService)
-	assert.Equal(t, "method", LogFieldMethod)
-	assert.Equal(t, "peer.address", LogFieldPeerAddress)
-	assert.Equal(t, "protocol", LogFieldProtocol)
+// TestLoggingFieldsFormat tests logging fields format constants.
+func (s *ConstantsTestSuite) TestLoggingFieldsFormat() {
+	// Test that logging fields are properly formatted strings
+	s.Require().Equal("peer.address", LogFieldPeerAddress)
+	s.Require().Equal("service", LogFieldService)
+	s.Require().Equal("method", LogFieldMethod)
+	s.Require().Equal("grpc.component", LogFieldComponent)
+}
+
+// TestConstantsTestSuite runs the constants test suite.
+func TestConstantsTestSuite(t *testing.T) {
+	t.Parallel()
+
+	suite.Run(t, new(ConstantsTestSuite))
 }

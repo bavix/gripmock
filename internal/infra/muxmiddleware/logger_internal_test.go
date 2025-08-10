@@ -6,25 +6,29 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLogger_Basic(t *testing.T) {
+	t.Parallel()
 	// Test basic logger functionality
-	assert.NotNil(t, "logger package exists")
+	require.NotNil(t, "logger package exists")
 }
 
 func TestLogger_Empty(t *testing.T) {
+	t.Parallel()
 	// Test empty logger case
-	assert.NotNil(t, "logger package exists")
+	require.NotNil(t, "logger package exists")
 }
 
 func TestLogger_Initialization(t *testing.T) {
+	t.Parallel()
 	// Test logger initialization
-	assert.NotNil(t, "logger package initialized")
+	require.NotNil(t, "logger package initialized")
 }
 
 func TestLogger_RequestLogger(t *testing.T) {
+	t.Parallel()
 	// Test RequestLogger middleware
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -36,7 +40,7 @@ func TestLogger_RequestLogger(t *testing.T) {
 	})
 
 	middleware := RequestLogger(handler)
-	assert.NotNil(t, middleware)
+	require.NotNil(t, middleware)
 
 	// Test that middleware works
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
@@ -44,21 +48,23 @@ func TestLogger_RequestLogger(t *testing.T) {
 
 	middleware.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "test response", w.Body.String())
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "test response", w.Body.String())
 }
 
 func TestLogger_ResponseWriter(t *testing.T) {
+	t.Parallel()
 	// Test responseWriter struct
 	w := httptest.NewRecorder()
 	rw := &responseWriter{w: w, status: http.StatusOK}
 
-	assert.NotNil(t, rw)
-	assert.Equal(t, http.StatusOK, rw.status)
-	assert.Equal(t, 0, rw.bytesWritten)
+	require.NotNil(t, rw)
+	require.Equal(t, http.StatusOK, rw.status)
+	require.Equal(t, 0, rw.bytesWritten)
 }
 
 func TestLogger_RequestLoggerWithBody(t *testing.T) {
+	t.Parallel()
 	// Test RequestLogger with request body
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -70,7 +76,7 @@ func TestLogger_RequestLoggerWithBody(t *testing.T) {
 	})
 
 	middleware := RequestLogger(handler)
-	assert.NotNil(t, middleware)
+	require.NotNil(t, middleware)
 
 	// Test with JSON body
 	req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewBufferString(`{"key":"value"}`))
@@ -80,11 +86,12 @@ func TestLogger_RequestLoggerWithBody(t *testing.T) {
 
 	middleware.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "test response", w.Body.String())
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "test response", w.Body.String())
 }
 
 func TestLogger_RequestLoggerWithInvalidJSON(t *testing.T) {
+	t.Parallel()
 	// Test RequestLogger with invalid JSON body
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -96,7 +103,7 @@ func TestLogger_RequestLoggerWithInvalidJSON(t *testing.T) {
 	})
 
 	middleware := RequestLogger(handler)
-	assert.NotNil(t, middleware)
+	require.NotNil(t, middleware)
 
 	// Test with invalid JSON body
 	req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewBufferString(`invalid json`))
@@ -106,11 +113,12 @@ func TestLogger_RequestLoggerWithInvalidJSON(t *testing.T) {
 
 	middleware.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "test response", w.Body.String())
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "test response", w.Body.String())
 }
 
 func TestLogger_RequestLoggerWithEmptyBody(t *testing.T) {
+	t.Parallel()
 	// Test RequestLogger with empty body
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -122,7 +130,7 @@ func TestLogger_RequestLoggerWithEmptyBody(t *testing.T) {
 	})
 
 	middleware := RequestLogger(handler)
-	assert.NotNil(t, middleware)
+	require.NotNil(t, middleware)
 
 	// Test with empty body
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
@@ -130,6 +138,6 @@ func TestLogger_RequestLoggerWithEmptyBody(t *testing.T) {
 
 	middleware.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "test response", w.Body.String())
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "test response", w.Body.String())
 }
