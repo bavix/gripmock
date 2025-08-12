@@ -2,7 +2,7 @@
 fingerprint.Fingerprint/Check
 
 --- REQUEST ---
-{"id":"user123"}
+{"id":"hello"}
 
 --- RESPONSE ---
-{"valid":true, "id": 123} 
+{}
