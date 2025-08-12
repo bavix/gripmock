@@ -37,7 +37,15 @@ import (
 )
 
 // excludedHeaders contains headers that should be excluded from stub matching.
-var excludedHeaders = []string{":authority", "content-type", "grpc-accept-encoding", "user-agent", "accept-encoding"} //nolint:gochecknoglobals
+//
+//nolint:gochecknoglobals
+var excludedHeaders = []string{
+	":authority",
+	"content-type",
+	"grpc-accept-encoding",
+	"user-agent",
+	"accept-encoding",
+}
 
 // processHeaders converts metadata to headers map, excluding specified headers.
 func processHeaders(md metadata.MD) map[string]any {
@@ -853,7 +861,12 @@ func (s *GRPCServer) registerServiceMethods(ctx context.Context, serviceDesc *gr
 	}
 }
 
-func (s *GRPCServer) createGrpcMocker(serviceDesc *grpc.ServiceDesc, svc *descriptorpb.ServiceDescriptorProto, method *descriptorpb.MethodDescriptorProto, inputDesc, outputDesc protoreflect.MessageDescriptor) *grpcMocker {
+func (s *GRPCServer) createGrpcMocker(
+	serviceDesc *grpc.ServiceDesc,
+	svc *descriptorpb.ServiceDescriptorProto,
+	method *descriptorpb.MethodDescriptorProto,
+	inputDesc, outputDesc protoreflect.MessageDescriptor,
+) *grpcMocker {
 	return &grpcMocker{
 		budgerigar: s.budgerigar,
 

@@ -537,7 +537,17 @@ func TestStubsStorage_ReadFromPathWithJsonFiles(t *testing.T) {
 
 	// Create a JSON stub file
 	jsonFile := filepath.Join(tempDir, "test.json")
-	jsonContent := `[{"id":"test-id","service":"test-service","method":"test-method","input":{},"output":{"data":{}}}]`
+	jsonContent := `[
+		{
+			"id": "test-id",
+			"service": "test-service",
+			"method": "test-method",
+			"input": {},
+			"output": {
+				"data": {}
+			}
+		}
+	]`
 	err := os.WriteFile(jsonFile, []byte(jsonContent), 0o600)
 	require.NoError(t, err)
 
@@ -569,7 +579,17 @@ func TestStubsStorage_ReadByFileWithValidJson(t *testing.T) {
 		}
 	}()
 
-	jsonContent := `[{"id":"test-id","service":"test-service","method":"test-method","input":{},"output":{"data":{}}}]`
+	jsonContent := `[
+		{
+			"id": "test-id",
+			"service": "test-service",
+			"method": "test-method",
+			"input": {},
+			"output": {
+				"data": {}
+			}
+		}
+	]`
 	_, err = tempFile.WriteString(jsonContent)
 	require.NoError(t, err)
 
@@ -728,7 +748,17 @@ func TestStubsStorage_ReadStubWithValidJson(t *testing.T) {
 
 	// Use valid UUID for ID
 	testID := uuid.New()
-	jsonContent := fmt.Sprintf(`[{"id":"%s","service":"test-service","method":"test-method","input":{},"output":{"data":{}}}]`, testID.String())
+	jsonContent := fmt.Sprintf(`[
+		{
+			"id": "%s",
+			"service": "test-service",
+			"method": "test-method",
+			"input": {},
+			"output": {
+				"data": {}
+			}
+		}
+	]`, testID.String())
 	_, err = tempFile.WriteString(jsonContent)
 	require.NoError(t, err)
 
@@ -981,7 +1011,22 @@ func TestReadFromPath_Integration(t *testing.T) {
 		require.NoError(t, err)
 
 		subStubFile := filepath.Join(subDir, "substub.json")
-		subStubContent := `[{"service": "test.Service", "method": "TestMethod", "input": {"equals": {"message": "hello"}}, "output": {"data": {"response": "world"}}}]`
+		subStubContent := `[
+			{
+				"service": "test.Service",
+				"method": "TestMethod",
+				"input": {
+					"equals": {
+						"message": "hello"
+					}
+				},
+				"output": {
+					"data": {
+						"response": "world"
+					}
+				}
+			}
+		]`
 
 		err = os.WriteFile(subStubFile, []byte(subStubContent), 0o600)
 		require.NoError(t, err)
