@@ -1,17 +1,18 @@
-package grpccontext //nolint:testpackage
+package grpccontext
 
 import (
 	"context"
 	"testing"
 
 	"github.com/rs/zerolog"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
 
 func TestUnaryInterceptor(t *testing.T) {
+	t.Parallel()
+
 	logger := zerolog.New(zerolog.NewTestWriter(t))
 	interceptor := UnaryInterceptor(&logger)
 
@@ -22,17 +23,19 @@ func TestUnaryInterceptor(t *testing.T) {
 	handler := func(ctx context.Context, req any) (any, error) {
 		// Verify logger is in context
 		ctxLogger := zerolog.Ctx(ctx)
-		assert.NotNil(t, ctxLogger)
+		require.NotNil(t, ctxLogger)
 
 		return resp, nil
 	}
 
 	result, err := interceptor(context.Background(), req, nil, handler)
 	require.NoError(t, err)
-	assert.Equal(t, resp, result)
+	require.Equal(t, resp, result)
 }
 
 func TestStreamInterceptor(t *testing.T) {
+	t.Parallel()
+
 	logger := zerolog.New(zerolog.NewTestWriter(t))
 	interceptor := StreamInterceptor(&logger)
 
@@ -45,7 +48,7 @@ func TestStreamInterceptor(t *testing.T) {
 	handler := func(srv any, stream grpc.ServerStream) error {
 		// Verify logger is in context
 		ctxLogger := zerolog.Ctx(stream.Context())
-		assert.NotNil(t, ctxLogger)
+		require.NotNil(t, ctxLogger)
 
 		return nil
 	}
@@ -55,6 +58,8 @@ func TestStreamInterceptor(t *testing.T) {
 }
 
 func TestServerStreamWrapper(t *testing.T) {
+	t.Parallel()
+
 	originalCtx := context.Background()
 	mockStream := &mockServerStream{ctx: originalCtx}
 
@@ -65,7 +70,7 @@ func TestServerStreamWrapper(t *testing.T) {
 
 	// Test Context method
 	ctx := wrapper.Context()
-	assert.Equal(t, originalCtx, ctx)
+	require.Equal(t, originalCtx, ctx)
 
 	// Test RecvMsg method
 	msg := "test message"

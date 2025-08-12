@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package multiverse.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/bavix/gripmock/examples/projects/multiverse";
+
+// MultiverseService demonstrates all types of gRPC streaming
+service MultiverseService {
+  // Unary: single request, single response
+  rpc Ping(PingRequest) returns (PingResponse);
+  
+  // Client Streaming: multiple requests from client, single response from server
+  rpc UploadData(stream DataChunk) returns (UploadResult);
+  
+  // Server Streaming: single request from client, multiple responses from server
+  rpc StreamData(StreamRequest) returns (stream DataChunk);
+  
+  // Bidirectional Streaming: multiple requests and responses exchanged in real-time
+  rpc Chat(stream ChatMessage) returns (stream ChatMessage);
+}
+
+// Unary messages
+message PingRequest {
+  string message = 1 [json_name = "message"];
+  string user_id = 2 [json_name = "user_id"];
+}
+
+message PingResponse {
+  string reply = 1 [json_name = "reply"];
+  string user_id = 2 [json_name = "user_id"];
+  google.protobuf.Timestamp timestamp = 3 [json_name = "timestamp"];
+}
+
+// Client Streaming messages
+message DataChunk {
+  string chunk_id = 1 [json_name = "chunk_id"];
+  bytes data = 2 [json_name = "data"];
+  int32 sequence = 3 [json_name = "sequence"];
+  int32 total_chunks = 4 [json_name = "total_chunks"];
+  string content_type = 5 [json_name = "content_type"];
+}
+
+message UploadResult {
+  string upload_id = 1 [json_name = "upload_id"];
+  bool success = 2 [json_name = "success"];
+  int32 total_chunks = 3 [json_name = "total_chunks"];
+  int64 total_size = 4 [json_name = "total_size"];
+  string status = 5 [json_name = "status"];
+  google.protobuf.Timestamp completed_at = 6 [json_name = "completed_at"];
+}
+
+// Server Streaming messages
+message StreamRequest {
+  string stream_id = 1 [json_name = "stream_id"];
+  int32 chunk_count = 2 [json_name = "chunk_count"];
+  int32 delay_ms = 3 [json_name = "delay_ms"];
+  string pattern = 4 [json_name = "pattern"];
+}
+
+// Bidirectional Streaming messages
+message ChatMessage {
+  string user_id = 1 [json_name = "user_id"];
+  string room_id = 2 [json_name = "room_id"];
+  string content = 3 [json_name = "content"];
+  MessageType type = 4 [json_name = "type"];
+  google.protobuf.Timestamp timestamp = 5 [json_name = "timestamp"];
+}
+
+enum MessageType {
+  MESSAGE_TYPE_UNSPECIFIED = 0;
+  MESSAGE_TYPE_TEXT = 1;
+  MESSAGE_TYPE_COMMAND = 2;
+  MESSAGE_TYPE_SYSTEM = 3;
+} 

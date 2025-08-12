@@ -4,7 +4,7 @@ Stub priority allows you to control which stub is selected when multiple stubs m
 
 ## Overview
 
-When multiple stubs match a gRPC request, GripMock uses priority to determine which stub to use:
+When multiple stubs match a gRPC request, GripMock uses priority to pick which stub to use:
 
 1. **Higher priority** stubs are selected first
 2. **Lower priority** stubs serve as fallbacks

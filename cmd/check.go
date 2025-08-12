@@ -12,21 +12,18 @@ import (
 )
 
 var (
-	silenceErrorsFlag     bool
-	pingTimeout           time.Duration
+	pingTimeout           time.Duration //nolint:gochecknoglobals
 	errServerIsNotRunning = errors.New("server is not running")
 )
 
 const serviceName = "gripmock"
 
-var checkCmd = &cobra.Command{
+var checkCmd = &cobra.Command{ //nolint:gochecknoglobals
 	Use:          "check",
 	Args:         cobra.NoArgs,
 	SilenceUsage: true,
 	Short:        "The command checks whether the gripmock server is alive or dead by accessing it via the API",
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		cmd.SilenceErrors = silenceErrorsFlag
-
 		builder := deps.NewBuilder(deps.WithDefaultConfig())
 		ctx, cancel := builder.SignalNotify(cmd.Context())
 		defer cancel()
@@ -53,11 +50,11 @@ var checkCmd = &cobra.Command{
 	},
 }
 
-func init() {
+func init() { //nolint:gochecknoinits
 	rootCmd.AddCommand(checkCmd)
 
 	const defaultPingTimeout = time.Second * 5
 
 	checkCmd.Flags().DurationVarP(&pingTimeout, "timeout", "t", defaultPingTimeout, "timeout")
-	checkCmd.Flags().BoolVar(&silenceErrorsFlag, "silent", false, "silence errors")
+	checkCmd.Flags().BoolVar(&checkCmd.SilenceErrors, "silent", false, "silence errors")
 }

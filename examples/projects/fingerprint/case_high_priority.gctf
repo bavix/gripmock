@@ -5,4 +5,4 @@ fingerprint.Fingerprint/Check
 {"id":"user123"}
 
 --- RESPONSE ---
-{"valid":true} 
+{"valid":true, "id": 123} 

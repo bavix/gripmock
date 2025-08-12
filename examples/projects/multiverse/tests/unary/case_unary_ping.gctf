@@ -1,0 +1,8 @@
+--- ENDPOINT ---
+multiverse.v1.MultiverseService/Ping
+
+--- REQUEST ---
+{"message": "Hello", "user_id": "user_001"}
+
+--- RESPONSE ---
+{"reply": "Pong", "user_id": "user_001", "timestamp": "2024-01-15T10:00:00Z"} 

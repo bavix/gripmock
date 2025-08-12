@@ -16,12 +16,12 @@ output:
     result: success
 ```
 
-## Use Cases  
-Ideal for:  
-- Tests avoiding HTTP dependencies  
+## When to Use YAML  
+Perfect for:  
+- Tests that don't need HTTP dependencies  
 - Immutable/Versioned stub configurations  
 - Large-scale stub management  
-- Teams preferring YAML's readability  
+- Teams who prefer YAML's readability  
 
 ## Project Structure  
 ```

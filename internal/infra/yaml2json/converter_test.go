@@ -5,10 +5,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/gripmock/v3/pkg/yaml2json"
+	"github.com/bavix/gripmock/v3/internal/infra/yaml2json"
 )
 
-func TestConvertor(t *testing.T) {
+func TestConverter(t *testing.T) {
+	t.Parallel()
+
 	convertor := yaml2json.New()
 
 	// see: https://bavix.github.io/uuid-ui/
@@ -36,6 +38,8 @@ yaml2json:
 }
 
 func TestPanic2Error(t *testing.T) {
+	t.Parallel()
+
 	_, err := yaml2json.New().Execute("hello", []byte(`
 yaml2json:
   base64: {{ uuid2base64 "no-uuid" }}

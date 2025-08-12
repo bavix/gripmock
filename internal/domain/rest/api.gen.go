@@ -63,8 +63,11 @@ type Stub struct {
 	Headers StubHeaders `json:"headers,omitempty"`
 	Id      *ID         `json:"id,omitempty"`
 	Input   StubInput   `json:"input"`
-	Method  string      `json:"method"`
-	Output  StubOutput  `json:"output"`
+
+	// Inputs Inputs to match against. If multiple inputs are provided, the stub will be matched if any of the inputs match.
+	Inputs *[]StubInput `json:"inputs,omitempty"`
+	Method string       `json:"method"`
+	Output StubOutput   `json:"output"`
 
 	// Priority Priority of the stub. Higher priority stubs are matched first.
 	Priority *int   `json:"priority,omitempty"`
@@ -135,7 +138,7 @@ type ServerInterface interface {
 	// Add a new stub to the store
 	// (POST /stubs)
 	AddStub(w http.ResponseWriter, r *http.Request)
-	// Deletes a pack by IDs
+	// Deletes a batch of stubs by IDs
 	// (POST /stubs/batchDelete)
 	BatchStubsDelete(w http.ResponseWriter, r *http.Request)
 	// Stub storage search

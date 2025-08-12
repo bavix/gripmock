@@ -11,5 +11,6 @@ message CheckRequest {
 }
 
 message CheckResponse {
-  bool valid = 1;
+  int32 id = 1;
+  bool valid = 2;
 }

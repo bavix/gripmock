@@ -14,14 +14,14 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 
+	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
-	"github.com/bavix/gripmock/v3/pkg/jsondecoder"
-	"github.com/bavix/gripmock/v3/pkg/yaml2json"
+	"github.com/bavix/gripmock/v3/internal/infra/yaml2json"
 )
 
 type Extender struct {
 	storage      *stuber.Budgerigar
-	convertor    *yaml2json.Convertor
+	converter    *yaml2json.Convertor
 	ch           chan struct{}
 	watcher      *watcher.StubWatcher
 	mapIDsByFile map[string]uuid.UUIDs
@@ -32,12 +32,12 @@ type Extender struct {
 
 func NewStub(
 	storage *stuber.Budgerigar,
-	convertor *yaml2json.Convertor,
+	converter *yaml2json.Convertor,
 	watcher *watcher.StubWatcher,
 ) *Extender {
 	return &Extender{
 		storage:      storage,
-		convertor:    convertor,
+		converter:    converter,
 		ch:           make(chan struct{}),
 		watcher:      watcher,
 		mapIDsByFile: make(map[string]uuid.UUIDs),
@@ -62,29 +62,52 @@ func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
 		return
 	}
 
+	zerolog.Ctx(ctx).Info().Msg("Loading stubs from directory (preserving API stubs)")
+
 	s.readFromPath(ctx, pathDir)
 	close(s.ch)
 
-	ch, err := s.watcher.Watch(ctx, pathDir)
-	if err != nil {
-		return
-	}
+	// Only watch directories, not individual files
+	if isDirectory(pathDir) {
+		ch, err := s.watcher.Watch(ctx, pathDir)
+		if err != nil {
+			return
+		}
 
-	for file := range ch {
-		zerolog.Ctx(ctx).
-			Debug().
-			Str("path", file).
-			Msg("Updating stub")
+		for file := range ch {
+			zerolog.Ctx(ctx).
+				Debug().
+				Str("path", file).
+				Msg("Updating stub")
 
-		s.readByFile(ctx, file)
+			s.readByFile(ctx, file)
+		}
 	}
 }
 
 // readFromPath reads all the stubs from the given directory and its subdirectories,
-// and adds them to the server's stub store.
+// or from a single file if a file path is provided.
 // The stub files can be in yaml or json format.
 // If a file is in yaml format, it will be converted to json format.
 func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
+	if !isDirectory(pathDir) {
+		s.handleFilePath(ctx, pathDir)
+
+		return
+	}
+
+	s.handleDirectoryPath(ctx, pathDir)
+}
+
+// handleFilePath processes a single file path.
+func (s *Extender) handleFilePath(ctx context.Context, filePath string) {
+	if s.isStubFile(filePath) {
+		s.readByFile(ctx, filePath)
+	}
+}
+
+// handleDirectoryPath processes a directory path recursively.
+func (s *Extender) handleDirectoryPath(ctx context.Context, pathDir string) {
 	files, err := os.ReadDir(pathDir)
 	if err != nil {
 		zerolog.Ctx(ctx).
@@ -101,29 +124,23 @@ func (s *Extender) readFromPath(ctx context.Context, pathDir string) {
 			continue
 		}
 
-		// If the file is not a stub file, skip it.
-		if !strings.HasSuffix(file.Name(), ".json") &&
-			!strings.HasSuffix(file.Name(), ".yaml") &&
-			!strings.HasSuffix(file.Name(), ".yml") {
-			continue
+		if s.isStubFile(file.Name()) {
+			s.readByFile(ctx, path.Join(pathDir, file.Name()))
 		}
-
-		s.readByFile(ctx, path.Join(pathDir, file.Name()))
 	}
+}
+
+// isStubFile checks if the given filename has a stub file extension.
+func (s *Extender) isStubFile(filename string) bool {
+	return strings.HasSuffix(filename, ".json") ||
+		strings.HasSuffix(filename, ".yaml") ||
+		strings.HasSuffix(filename, ".yml")
 }
 
 func (s *Extender) readByFile(ctx context.Context, filePath string) {
 	stubs, err := s.readStub(filePath)
 	if err != nil {
-		zerolog.Ctx(ctx).
-			Err(err).
-			Str("file", filePath).
-			Msg("failed to read file")
-
-		if existingIDs, exists := s.mapIDsByFile[filePath]; exists {
-			s.storage.DeleteByID(existingIDs...)
-			delete(s.mapIDsByFile, filePath)
-		}
+		s.handleFileReadError(ctx, filePath, err)
 
 		return
 	}
@@ -132,22 +149,74 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 
 	existingIDs, exists := s.mapIDsByFile[filePath]
 	if !exists {
-		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
+		s.handleFirstTimeLoad(filePath, stubs)
 
 		return
 	}
 
-	currentIDs := make(uuid.UUIDs, 0, len(stubs))
+	s.handleExistingFileUpdate(filePath, stubs, existingIDs)
+}
 
+// handleFileReadError handles errors when reading stub files.
+func (s *Extender) handleFileReadError(ctx context.Context, filePath string, err error) {
+	zerolog.Ctx(ctx).
+		Err(err).
+		Str("file", filePath).
+		Msg("failed to read file")
+
+	// Remove existing stubs from this file if it was previously loaded
+	if existingIDs, exists := s.mapIDsByFile[filePath]; exists {
+		s.storage.DeleteByID(existingIDs...)
+		delete(s.mapIDsByFile, filePath)
+	}
+}
+
+// handleFirstTimeLoad handles the first time loading of a file.
+func (s *Extender) handleFirstTimeLoad(filePath string, stubs []*stuber.Stub) {
+	// Generate new IDs for stubs without them
+	for _, stub := range stubs {
+		if stub.ID == uuid.Nil {
+			stub.ID = uuid.New()
+		}
+	}
+
+	s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
+}
+
+// handleExistingFileUpdate handles updating an existing file with ID reuse logic.
+func (s *Extender) handleExistingFileUpdate(filePath string, stubs []*stuber.Stub, existingIDs uuid.UUIDs) {
+	currentIDs := s.extractCurrentIDs(stubs)
+	unusedIDs := lo.Without(existingIDs, currentIDs...)
+	newIDs := s.generateNewIDs(stubs, unusedIDs)
+
+	// Remove stubs that are no longer in the file
+	if removedIDs := lo.Without(existingIDs, newIDs...); len(removedIDs) > 0 {
+		s.storage.DeleteByID(removedIDs...)
+	}
+
+	// Add/update stubs and update file mapping
+	if len(stubs) > 0 {
+		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
+	} else {
+		delete(s.mapIDsByFile, filePath)
+	}
+}
+
+// extractCurrentIDs extracts current IDs from stubs.
+func (s *Extender) extractCurrentIDs(stubs []*stuber.Stub) uuid.UUIDs {
+	currentIDs := make(uuid.UUIDs, 0, len(stubs))
 	for _, stub := range stubs {
 		if stub.ID != uuid.Nil {
 			currentIDs = append(currentIDs, stub.ID)
 		}
 	}
 
-	unusedIDs := lo.Without(existingIDs, currentIDs...)
-	newIDs := make(uuid.UUIDs, 0, len(stubs))
+	return currentIDs
+}
 
+// generateNewIDs generates new IDs for stubs, reusing unused IDs first.
+func (s *Extender) generateNewIDs(stubs []*stuber.Stub, unusedIDs uuid.UUIDs) uuid.UUIDs {
+	newIDs := make(uuid.UUIDs, 0, len(stubs))
 	for _, stub := range stubs {
 		if stub.ID == uuid.Nil {
 			stub.ID, unusedIDs = genID(stub, unusedIDs)
@@ -156,13 +225,7 @@ func (s *Extender) readByFile(ctx context.Context, filePath string) {
 		newIDs = append(newIDs, stub.ID)
 	}
 
-	if removedIDs := lo.Without(existingIDs, newIDs...); len(removedIDs) > 0 {
-		s.storage.DeleteByID(removedIDs...)
-	}
-
-	if len(stubs) > 0 {
-		s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
-	}
+	return newIDs
 }
 
 // checkUniqIDs checks for unique IDs in the provided stubs.
@@ -228,7 +291,7 @@ func (s *Extender) readStub(path string) ([]*stuber.Stub, error) {
 	}
 
 	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
-		file, err = s.convertor.Execute(path, file)
+		file, err = s.converter.Execute(path, file)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to unmarshal file %s", path)
 		}
@@ -240,4 +303,14 @@ func (s *Extender) readStub(path string) ([]*stuber.Stub, error) {
 	}
 
 	return stubs, nil
+}
+
+// isDirectory checks if the given path is a directory.
+func isDirectory(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	return info.IsDir()
 }

@@ -1,5 +1,5 @@
 # **Stub API. Stubs Upsert**  
-**Upsert** (insert or update) stubs via the `/api/stubs` endpoint. This allows adding new stubs or updating existing ones by specifying their `id`.  
+**Upsert** (insert or update) stubs via the `/api/stubs` endpoint. This lets you add new stubs or update existing ones by specifying their `id`.  
 
 ## **Example Contract (`simple.proto`)**  
 ```proto

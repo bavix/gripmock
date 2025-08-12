@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
@@ -17,7 +18,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
-	"github.com/bavix/gripmock/v3/pkg/jsondecoder"
+	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
 )
 
 // ErrServiceIsMissing is returned when the service name is not provided in the request.
@@ -181,7 +182,7 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 
 	for _, stub := range inputs {
 		if err := validateStub(stub); err != nil {
-			h.responseError(w, err)
+			h.validationError(w, err)
 
 			return
 		}
@@ -319,6 +320,13 @@ func (h *RestServer) responseError(w http.ResponseWriter, err error) {
 	h.writeResponseError(w, err)
 }
 
+// validationError writes a validation error response to the HTTP writer.
+func (h *RestServer) validationError(w http.ResponseWriter, err error) {
+	w.WriteHeader(http.StatusBadRequest)
+
+	h.writeResponseError(w, err)
+}
+
 // writeResponseError writes an error response to the HTTP writer.
 func (h *RestServer) writeResponseError(w http.ResponseWriter, err error) {
 	h.writeResponse(w, map[string]string{
@@ -335,20 +343,45 @@ func (h *RestServer) writeResponse(w http.ResponseWriter, data any) {
 
 // validateStub validates if the stub is valid or not.
 func validateStub(stub *stuber.Stub) error {
-	if stub.Service == "" {
-		return ErrServiceIsMissing
+	validate := validator.New()
+
+	// Register custom validation functions
+	if err := validate.RegisterValidation("valid_input_config", validateInputConfiguration); err != nil {
+		return err
 	}
 
-	if stub.Method == "" {
-		return ErrMethodIsMissing
+	if err := validate.RegisterValidation("valid_output_config", validateOutputConfiguration); err != nil {
+		return err
 	}
 
-	if stub.Input.Contains == nil && stub.Input.Equals == nil && stub.Input.Matches == nil {
-		return errors.New("input cannot be empty")
+	// Create a validation struct with tags
+	vStub := &validationStub{
+		Service: stub.Service,
+		Method:  stub.Method,
+		Input:   stub.Input,
+		Inputs:  stub.Inputs,
+		Output:  stub.Output,
 	}
 
-	if stub.Output.Error == "" && stub.Output.Data == nil && stub.Output.Code == nil {
-		return errors.New("output cannot be empty")
+	if err := validate.Struct(vStub); err != nil {
+		var validationErrors validator.ValidationErrors
+		if errors.As(err, &validationErrors) {
+			for _, fieldError := range validationErrors {
+				return &ValidationError{
+					Field:   fieldError.Field(),
+					Tag:     fieldError.Tag(),
+					Value:   fieldError.Value(),
+					Message: getValidationMessage(fieldError),
+				}
+			}
+		}
+
+		return err
+	}
+
+	// Additional validation based on stub type
+	if err := validateStubType(stub); err != nil {
+		return err
 	}
 
 	return nil

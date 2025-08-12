@@ -11,12 +11,11 @@ linters:
     - revive  # too strict for this project - requires comments on all exported items
     - varnamelen  # too strict for this project - requires longer variable names
     - noinlineerr  # too strict for this project - requires separate error assignment
-    - lll  # too strict for this project - line length limit too restrictive
-    - gochecknoglobals  # too strict for this project - flags legitimate global vars (should be disabled only for cmd/)
-    - gochecknoinits  # too strict for this project - flags legitimate init functions (should be disabled only for cmd/)
-    - paralleltest  # should be disabled only for _test.go files, but golangci-lint v2.3.0 doesn't support path-specific exclusions
     - wrapcheck  # too strict for this project - requires wrapping all errors
   settings:
+    lll:
+      tab-width: 1
+      line-length: 140
     depguard:
       rules:
         main:

@@ -9,6 +9,19 @@
       id: "user123"
   output:
     data:
+      id: 123
+      valid: true
+
+# Medium priority: General fallback for any user with id
+- service: Fingerprint
+  method: Check
+  priority: 2
+  input:
+    matches:
+      id: "user\\d+"
+  output:
+    data:
+      id: 321 # because of the matches, it will be 321
       valid: true
 
 # Low priority: General fallback for any user
@@ -16,7 +29,8 @@
   method: Check
   priority: 1
   input:
-    contains: {}  # Matches any input
+    contains: {}
   output:
     data:
+      id: 0
       valid: false
