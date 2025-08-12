@@ -1014,7 +1014,12 @@ func protoToJSON(msg any) []byte {
 		return nil
 	}
 
-	marshaller := protojson.MarshalOptions{EmitUnpopulated: false}
+	// Use more robust marshalling options for better JSON output
+	marshaller := protojson.MarshalOptions{
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+		Indent:          "",
+	}
 
 	data, err := marshaller.Marshal(message)
 	if err != nil {
@@ -1025,15 +1030,34 @@ func protoToJSON(msg any) []byte {
 }
 
 func isNilInterface(v any) bool {
-	return v == nil || (reflect.ValueOf(v).Kind() == reflect.Ptr && reflect.ValueOf(v).IsNil())
+	if v == nil {
+		return true
+	}
+
+	rv := reflect.ValueOf(v)
+	//nolint:exhaustive
+	switch rv.Kind() {
+	case reflect.Ptr, reflect.Interface, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func:
+		return rv.IsNil()
+	default:
+		return false
+	}
 }
 
 func toLogArray(items ...any) *zerolog.Array {
 	arr := zerolog.Arr()
 
 	for _, item := range items {
+		// Skip nil items (they shouldn't be in the array anymore, but just in case)
+		if item == nil || isNilInterface(item) {
+			continue
+		}
+
 		if value := protoToJSON(item); value != nil {
 			arr = arr.RawJSON(value)
+		} else {
+			// Fallback to string representation for non-proto messages
+			arr = arr.Str(fmt.Sprintf("%v", item))
 		}
 	}
 
@@ -1048,13 +1072,19 @@ type loggingStream struct {
 }
 
 func (s *loggingStream) SendMsg(m any) error {
-	s.responses = append(s.responses, m)
+	// Only log non-nil messages
+	if m != nil && !isNilInterface(m) {
+		s.responses = append(s.responses, m)
+	}
 
 	return s.ServerStream.SendMsg(m)
 }
 
 func (s *loggingStream) RecvMsg(m any) error {
-	s.requests = append(s.requests, m)
+	// Only log non-nil messages
+	if m != nil && !isNilInterface(m) {
+		s.requests = append(s.requests, m)
+	}
 
 	return s.ServerStream.RecvMsg(m)
 }

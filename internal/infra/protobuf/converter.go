@@ -18,54 +18,27 @@ func NewScalarConverter() *ScalarConverter {
 }
 
 // ConvertScalar converts a protobuf field value to its Go representation.
-//
-//nolint:cyclop
 func (c *ScalarConverter) ConvertScalar(fd protoreflect.FieldDescriptor, value protoreflect.Value) any {
 	const nullValue = "google.protobuf.NullValue"
 
+	// Handle special cases first
+	//nolint:exhaustive
 	switch fd.Kind() {
-	case protoreflect.BoolKind:
-		return value.Bool()
-	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
-		return json.Number(value.String())
-	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind:
-		return json.Number(value.String())
-	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
-		return json.Number(value.String())
-	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
-		return json.Number(value.String())
-	case protoreflect.FloatKind:
-		return json.Number(value.String())
-	case protoreflect.DoubleKind:
-		return json.Number(value.String())
-	case protoreflect.StringKind:
-		return value.String()
-	case protoreflect.BytesKind:
-		return base64.StdEncoding.EncodeToString(value.Bytes())
 	case protoreflect.EnumKind:
-		if fd.Enum().FullName() == nullValue {
-			return nil
-		}
-
-		// Get the enum descriptor for the value
-		desc := fd.Enum().Values().ByNumber(value.Enum())
-		if desc != nil {
-			return string(desc.Name())
-		}
-
-		return value.Enum()
+		return c.handleEnum(fd, value, nullValue)
 	case protoreflect.MessageKind:
-		if value.Message().IsValid() {
-			return c.ConvertMessage(value.Message().Interface())
-		}
-
-		return nil
+		return c.handleMessage(value)
 	case protoreflect.GroupKind:
-		// GroupKind is deprecated and not commonly used
 		return fmt.Sprintf("group type: %v", fd.Kind())
-	default:
-		return fmt.Sprintf("unknown type: %v", fd.Kind())
 	}
+
+	// Use map-based approach for scalar types
+	handlers := c.scalarHandlers()
+	if handler, ok := handlers[fd.Kind()]; ok {
+		return handler(value)
+	}
+
+	return fmt.Sprintf("unknown type: %v", fd.Kind())
 }
 
 // ConvertMessage converts a protobuf message to a map representation.
@@ -124,4 +97,60 @@ func (c *ScalarConverter) convertMap(fd protoreflect.FieldDescriptor, mapVal pro
 	})
 
 	return result
+}
+
+// scalarHandlers maps protobuf field kinds to their conversion functions.
+func (c *ScalarConverter) scalarHandlers() map[protoreflect.Kind]func(protoreflect.Value) any {
+	return map[protoreflect.Kind]func(protoreflect.Value) any{
+		protoreflect.BoolKind: func(value protoreflect.Value) any {
+			return value.Bool()
+		},
+		protoreflect.Int32Kind:    c.handleNumber,
+		protoreflect.Sint32Kind:   c.handleNumber,
+		protoreflect.Sfixed32Kind: c.handleNumber,
+		protoreflect.Int64Kind:    c.handleNumber,
+		protoreflect.Sint64Kind:   c.handleNumber,
+		protoreflect.Sfixed64Kind: c.handleNumber,
+		protoreflect.Uint32Kind:   c.handleNumber,
+		protoreflect.Fixed32Kind:  c.handleNumber,
+		protoreflect.Uint64Kind:   c.handleNumber,
+		protoreflect.Fixed64Kind:  c.handleNumber,
+		protoreflect.FloatKind:    c.handleNumber,
+		protoreflect.DoubleKind:   c.handleNumber,
+		protoreflect.StringKind: func(value protoreflect.Value) any {
+			return value.String()
+		},
+		protoreflect.BytesKind: func(value protoreflect.Value) any {
+			return base64.StdEncoding.EncodeToString(value.Bytes())
+		},
+	}
+}
+
+// handleNumber handles all numeric kinds and returns a json.Number.
+func (c *ScalarConverter) handleNumber(value protoreflect.Value) any {
+	return json.Number(value.String())
+}
+
+// handleEnum handles EnumKind fields, including google.protobuf.NullValue.
+func (c *ScalarConverter) handleEnum(fd protoreflect.FieldDescriptor, value protoreflect.Value, nullValue string) any {
+	if string(fd.Enum().FullName()) == nullValue {
+		return nil
+	}
+
+	// Get the enum descriptor for the value
+	desc := fd.Enum().Values().ByNumber(value.Enum())
+	if desc != nil {
+		return string(desc.Name())
+	}
+
+	return value.Enum()
+}
+
+// handleMessage handles MessageKind fields.
+func (c *ScalarConverter) handleMessage(value protoreflect.Value) any {
+	if value.Message().IsValid() {
+		return c.ConvertMessage(value.Message().Interface())
+	}
+
+	return nil
 }
