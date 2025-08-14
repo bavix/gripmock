@@ -98,9 +98,30 @@ detect_os_and_architecture() {
 
 get_latest_version() {
     log_info "Fetching the latest version of GripMock from GitHub..."
-    LATEST_RELEASE=$(curl --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 60 -s https://api.github.com/repos/bavix/gripmock/releases/latest)
+    
+    # Prepare curl command with authentication if token is available
+    CURL_CMD="curl --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 60 -s"
+    if [ -n "$GITHUB_TOKEN" ]; then
+        CURL_CMD="$CURL_CMD -H \"Authorization: token $GITHUB_TOKEN\""
+    fi
+    
+    LATEST_RELEASE=$($CURL_CMD https://api.github.com/repos/bavix/gripmock/releases/latest)
     if [ $? -ne 0 ]; then
         log_error "Failed to connect to GitHub API. Check your internet connection."
+    fi
+    
+    # Check for rate limit error
+    if echo "$LATEST_RELEASE" | grep -q "API rate limit exceeded"; then
+        log_info "GitHub API rate limit exceeded, trying alternative method..."
+        # Try to get version from releases page as fallback
+        LATEST_VERSION=$(curl --retry 3 --retry-delay 2 --retry-all-errors --connect-timeout 30 --max-time 60 -s https://github.com/bavix/gripmock/releases | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+' | head -1)
+        if [ -z "$LATEST_VERSION" ]; then
+            log_error "GitHub API rate limit exceeded and fallback method failed. Please try again later or set GITHUB_TOKEN environment variable."
+        fi
+        # Remove the 'v' prefix from the version tag
+        LATEST_VERSION=${LATEST_VERSION#v}
+        log_success "Latest version (fallback): ${BLUE}$LATEST_VERSION 🎉${NC}"
+        return
     fi
     
     LATEST_VERSION=$(echo "$LATEST_RELEASE" | grep '"tag_name":' | awk -F '"' '{print $4}')

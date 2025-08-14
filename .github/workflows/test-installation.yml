@@ -48,8 +48,8 @@ jobs:
         command: |
           # Clean up any existing installation
           sudo rm -f /usr/local/bin/gripmock || true
-          # Run installation
-          sudo ./setup.sh
+          # Run installation with GitHub token for API access
+          sudo GITHUB_TOKEN=${{ github.token }} ./setup.sh
 
     - name: Verify installation
       shell: sh
@@ -65,7 +65,7 @@ jobs:
         max_attempts: 3
         shell: sh
         command: |
-          sudo ./setup.sh
+          sudo GITHUB_TOKEN=${{ github.token }} ./setup.sh
 
     - name: Verify after second installation
       shell: sh
