@@ -9,8 +9,9 @@ Dynamic templates use Go's `text/template` syntax to process request data and ge
 ## Basic Syntax
 
 ### Request Data Access
-Use `{{.Request.field}}` to access request data:
+Use <code v-pre>`{{.Request.field}}`</code> to access request data:
 
+::: v-pre
 ```yaml
 - service: example.Service
   method: GetUser
@@ -23,10 +24,12 @@ Use `{{.Request.field}}` to access request data:
       name: "User {{.Request.id}}"
       email: "user{{.Request.id}}@example.com"
 ```
+:::
 
 ### Header Access
-Use `{{.Headers.field}}` to access request headers:
+Use <code v-pre>`{{.Headers.field}}`</code> to access request headers:
 
+::: v-pre
 ```yaml
 - service: example.Service
   method: GetUser
@@ -40,6 +43,7 @@ Use `{{.Headers.field}}` to access request headers:
       id: "{{.Request.id}}"
       role: "admin"
 ```
+:::
 
 ## Template Functions
 
@@ -78,8 +82,8 @@ GripMock provides several built-in template functions:
 
 ### State Management
 You can access and modify request state directly using `.State`:
-- `{{.State.key}}`: Get value from request state
-- `{{setState "key" "value"}}`: Set value in request state (returns empty string)
+- <code v-pre>`{{.State.key}}`</code>: Get value from request state
+- <code v-pre>`{{setState "key" "value"}}`</code>: Set value in request state (returns empty string)
 
 State is isolated per request and can be used to track calculations across multiple template evaluations.
 
@@ -88,14 +92,14 @@ State is isolated per request and can be used to track calculations across multi
 Dynamic templates provide access to essential technical parameters:
 
 ### Core Parameters
-- `{{.MessageIndex}}`: Current message index (0-based) for streaming
-- `{{.RequestTime}}`: Atomic request time for consistent timestamps
-- `{{.State}}`: Request-scoped state for tracking calculations across templates
+- <code v-pre>`{{.MessageIndex}}`</code>: Current message index (0-based) for streaming
+- <code v-pre>`{{.RequestTime}}`</code>: Atomic request time for consistent timestamps
+- <code v-pre>`{{.State}}`</code>: Request-scoped state for tracking calculations across templates
 
 ### Streaming Context
-- `{{.Requests}}`: Slice of all non-empty client messages for client streaming
-- Use `{{len .Requests}}` to get the count of messages
-- Use `{{(index .Requests 0).field}}` to access a specific message
+- <code v-pre>`{{.Requests}}`</code>: Slice of all non-empty client messages for client streaming
+- Use <code v-pre>`{{len .Requests}}`</code> to get the count of messages
+- Use <code v-pre>`{{(index .Requests 0).field}}`</code> to access a specific message
 
 ## Streaming Support
 
@@ -107,21 +111,22 @@ Templates are processed once before streaming starts. The same processed data is
 
 ### Client Streaming
 Templates are processed after all client messages are received. You have access to:
-- `{{.Requests}}`: All received non-empty messages
-- `{{len .Requests}}`: Total number of messages
-- `{{(index .Requests N)}}`: Access message by index, then field via `{{(index .Requests 0).value}}`
+- <code v-pre>`{{.Requests}}`</code>: All received non-empty messages
+- <code v-pre>`{{len .Requests}}`</code>: Total number of messages
+- <code v-pre>`{{(index .Requests N)}}`</code>: Access message by index, then field via <code v-pre>`{{(index .Requests 0).value}}`</code>
 - The last message is used as primary `.Request`
 
 ### Bidirectional Streaming
 Templates are processed for each message with:
-- `{{.MessageIndex}}`: Current message index (0-based)
+- <code v-pre>`{{.MessageIndex}}`</code>: Current message index (0-based)
 - Current message data as primary request data
 
 ## Examples
 
-See the complete [ecommerce example](/examples/projects/ecommerce/) and [calculator example](/examples/projects/calculator/) for full demonstrations of dynamic templates with all streaming types.
+See the complete ecommerce and calculator examples in the `examples/projects/` directory for full demonstrations of dynamic templates with all streaming types.
 
 ### E-commerce Product Lookup
+::: v-pre
 ```yaml
 - service: ecommerce.EcommerceService
   method: GetProduct
@@ -136,8 +141,10 @@ See the complete [ecommerce example](/examples/projects/ecommerce/) and [calcula
       description: "Dynamic product for user {{.Request.user_id}}"
       user_discount: "{{.Request.user_id | split \"_\" | index 1 | title}}"
 ```
+:::
 
 ### Order Creation with Dynamic ID
+::: v-pre
 ```yaml
 - service: ecommerce.EcommerceService
   method: CreateOrder
@@ -151,8 +158,10 @@ See the complete [ecommerce example](/examples/projects/ecommerce/) and [calcula
       total_amount: "{{.Request.items | len | mul 25.50}}"
       status: "processing"
 ```
+:::
 
 ### Customer Support Chat
+::: v-pre
 ```yaml
 - service: ecommerce.EcommerceService
   method: CustomerSupportChat
@@ -167,8 +176,10 @@ See the complete [ecommerce example](/examples/projects/ecommerce/) and [calcula
         timestamp: "{{now | format \"2006-01-02T15:04:05Z\"}}"
         sender_type: "support"
 ```
+:::
 
 ### Mathematical Calculator with Real Calculations
+::: v-pre
 ```yaml
 - service: calculator.CalculatorService
   method: CalculateAverage
@@ -197,12 +208,14 @@ See the complete [ecommerce example](/examples/projects/ecommerce/) and [calcula
       result: "{{div (index (extract .Requests `value`) 0) (index (extract .Requests `value`) 1)}}"
       count: "{{len .Requests}}"
 ```
+:::
 
 ## Advanced Usage
 
 ### Conditional Responses
 You can create different responses based on request data:
 
+::: v-pre
 ```yaml
 # Different responses for different users
 - service: example.Service
@@ -225,8 +238,10 @@ You can create different responses based on request data:
       user_id: "SUPPORT_SPECIAL"
       content: "Special support for user 999, message {{.MessageIndex}}"
 ```
+:::
 
 ### Complex Calculations
+::: v-pre
 ```yaml
 - service: example.Service
   method: CalculateTotal
@@ -239,8 +254,10 @@ You can create different responses based on request data:
       discount: "{{.Request.user_tier | mul 0.1}}"
       final_total: "{{.Request.total | mul 0.9}}"
 ```
+:::
 
 ### Error Handling with Dynamic Messages
+::: v-pre
 ```yaml
 - service: ecommerce.EcommerceService
   method: GetProduct
@@ -252,8 +269,10 @@ You can create different responses based on request data:
     error: "Product {{.Request.product_id}} not found for user {{.Request.user_id}}. Please check your request."
     code: 5
 ```
+:::
 
 ### State Management Example
+::: v-pre
 ```yaml
 - service: example.Service
   method: ProcessOrder
@@ -266,11 +285,12 @@ You can create different responses based on request data:
       processing_step: "{{if .State.step}}{{.State.step}}{{else}}1{{end}}"
       message: "{{setState \"step\" (add (.State.step | default 0) 1)}}Processing step {{.State.step}}"
 ```
+:::
 
 ## Implementation Details
 
 ### Template Processing Flow
-1. **Detection**: Templates containing `{{.Request.}}`, `{{.Headers.}}`, `{{.MessageIndex}}`, `{{.Requests.}}`, or `{{.State}}` are identified as dynamic
+1. **Detection**: Templates containing <code v-pre>`{{.Request.}}`</code>, <code v-pre>`{{.Headers.}}`</code>, <code v-pre>`{{.MessageIndex}}`</code>, <code v-pre>`{{.Requests.}}`</code>, or <code v-pre>`{{.State}}`</code> are identified as dynamic
 2. **Processing**: Dynamic templates are processed at runtime, not at load time
 3. **Execution**: Go's `text/template` engine processes templates with custom functions
 4. **Integration**: Processed data is integrated into gRPC responses
@@ -283,7 +303,7 @@ You can create different responses based on request data:
 ## Backward Compatibility
 
 Dynamic templates are fully backward compatible:
-- Static templates (without `{{.Request.}}` or `{{.Headers.}}`) continue to work unchanged
+- Static templates (without <code v-pre>`{{.Request.}}`</code> or <code v-pre>`{{.Headers.}}`</code>) continue to work unchanged
 - No migration required for existing stubs
 - Dynamic templates are opt-in only
 
@@ -337,20 +357,24 @@ Template errors are handled gracefully:
 ### From Static to Dynamic Templates
 
 **Before (Static)**:
+::: v-pre
 ```yaml
 output:
   data:
     id: "123"
     name: "User 123"
 ```
+:::
 
 **After (Dynamic)**:
+::: v-pre
 ```yaml
 output:
   data:
     id: "{{.Request.id}}"
     name: "User {{.Request.id}}"
 ```
+:::
 
 ### Testing Dynamic Templates
 
