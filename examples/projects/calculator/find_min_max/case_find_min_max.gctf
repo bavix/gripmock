@@ -1,0 +1,12 @@
+--- ENDPOINT ---
+calculator.CalculatorService/FindMinMax
+
+--- REQUEST ---
+{"value": 5.0}
+--- REQUEST ---
+{"value": 15.0}
+--- REQUEST ---
+{"value": 10.0}
+
+--- RESPONSE ---
+{"min": 5, "max": 15, "count": 3}

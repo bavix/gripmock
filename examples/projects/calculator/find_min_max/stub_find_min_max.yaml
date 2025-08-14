@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Client Streaming - Find min and max in stream (universal - works with any numbers)
+- service: calculator.CalculatorService
+  method: FindMinMax
+  inputs:
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+  output:
+    data:
+      min: "{{min (extract .Requests `value`)}}"
+      max: "{{max (extract .Requests `value`)}}"
+      count: "{{len .Requests}}"

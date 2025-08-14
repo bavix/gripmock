@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Client Streaming with matching inputs and output.stream
+- service: ecommerce.EcommerceService
+  method: SubmitProductReviews
+  inputs:
+    - equals:
+        product_id: "PROD_MATCH"
+        user_id: "USER_001"
+        rating: 5
+    - equals:
+        product_id: "PROD_MATCH"
+        user_id: "USER_002"
+        rating: 4
+    - equals:
+        product_id: "PROD_MATCH"
+        user_id: "USER_003"
+        rating: 3
+  output:
+    data:
+      submissionId: "REVIEW_0_USER_{{(index .Requests 0).user_id}}"
+      reviewsCount: 1
+      status: "processed"
+      averageRating: "{{(index .Requests 0).rating}}"
+
+# Client Streaming - Process reviews with aggregation
+- service: ecommerce.EcommerceService
+  method: SubmitProductReviews
+  priority: 5
+  inputs:
+    - equals:
+        product_id: "PROD_789"
+  output:
+    data:
+      submissionId: "REVIEW_{{len .Requests}}_1734038400"
+      reviewsCount: "{{len .Requests}}"
+      status: "processed"
+      averageRating: "{{floor (div (sum (extract .Requests \"rating\")) (len .Requests))}}"
+
+# Client Streaming with multiple inputs - Process multiple reviews with validation
+- service: ecommerce.EcommerceService
+  method: SubmitProductReviews
+  priority: 1
+  inputs:
+    - equals:
+        product_id: "PROD_999"
+        user_id: "USER_001"
+    - equals:
+        product_id: "PROD_999"
+        user_id: "USER_002"
+    - equals:
+        product_id: "PROD_999"
+        user_id: "USER_003"
+  output:
+    data:
+      submissionId: "BATCH_REVIEW_{{len .Requests}}_1755022760"
+      reviewsCount: "{{len .Requests}}"
+      status: "batch_processed"
+      averageRating: "{{floor (div (sum (extract .Requests \"rating\")) (len .Requests))}}"

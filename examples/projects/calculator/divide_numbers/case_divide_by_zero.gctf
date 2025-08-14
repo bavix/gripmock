@@ -1,0 +1,13 @@
+--- ENDPOINT ---
+calculator.CalculatorService/DivideNumbers
+
+--- REQUEST ---
+{"value": 100.0}
+--- REQUEST ---
+{"value": 0.0}
+
+--- ERROR ---
+{
+    "code": 2,
+    "message": "Division by zero"
+}

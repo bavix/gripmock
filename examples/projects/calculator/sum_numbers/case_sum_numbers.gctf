@@ -1,0 +1,12 @@
+--- ENDPOINT ---
+calculator.CalculatorService/SumNumbers
+
+--- REQUEST ---
+{"value": 10.0}
+--- REQUEST ---
+{"value": 20.0}
+--- REQUEST ---
+{"value": 30.0}
+
+--- RESPONSE ---
+{"result": 60, "count": 3}

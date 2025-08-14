@@ -1,0 +1,8 @@
+--- ENDPOINT ---
+ecommerce.EcommerceService/CreateOrder
+
+--- REQUEST ---
+{"user_id":"USER_123","items":[{"product_id":"PROD_001","quantity":2,"unit_price":25.50},{"product_id":"PROD_002","quantity":1,"unit_price":30.00}],"shipping_address":"123 Main St","payment_method":"credit_card"}
+
+--- RESPONSE ---
+{"orderId":"ORDER_123_1734038400","userId":"USER_123","totalAmount":51,"status":"processing","estimatedDelivery":"2024-01-20","items":[{"productId":"PROD_001","quantity":2,"unitPrice":25.5},{"productId":"PROD_002","quantity":1,"unitPrice":30}]}

@@ -1,0 +1,11 @@
+--- ENDPOINT ---
+ecommerce.EcommerceService/GetProduct
+
+--- REQUEST ---
+{"product_id":"INVALID_PROD","user_id":"USER_ERROR"}
+
+--- ERROR ---
+{
+  "code": 5,
+  "message": "Product INVALID_PROD not found for user USER_ERROR. Please check your request."
+}

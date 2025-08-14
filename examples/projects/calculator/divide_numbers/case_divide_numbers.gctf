@@ -1,0 +1,10 @@
+--- ENDPOINT ---
+calculator.CalculatorService/DivideNumbers
+
+--- REQUEST ---
+{"value": 100.0}
+--- REQUEST ---
+{"value": 2.0}
+
+--- RESPONSE ---
+{"result": 50, "count": 2}

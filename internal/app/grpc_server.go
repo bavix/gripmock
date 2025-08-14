@@ -98,11 +98,6 @@ func receiveStreamMessage(stream grpc.ServerStream, msg *dynamicpb.Message) erro
 	return nil
 }
 
-// shouldUseStreamOutput checks if stream output should be used based on stub configuration and message index.
-func shouldUseStreamOutput(stub *stuber.Stub, messageIndex int) bool {
-	return stub.IsServerStream() && messageIndex >= 0 && messageIndex < len(stub.Output.Stream)
-}
-
 const serviceReflection = "grpc.reflection.v1.ServerReflection"
 
 type GRPCServer struct {
@@ -330,6 +325,7 @@ func (m *grpcMocker) delay(ctx context.Context, delayDur time.Duration) {
 	}
 }
 
+//nolint:nestif,cyclop,funlen
 func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	inputMsg := dynamicpb.NewMessage(m.inputDesc)
 
@@ -354,6 +350,20 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		return status.Errorf(codes.NotFound, "No response found: %v", result.Similar())
 	}
 
+	// Process dynamic templates if the output contains them
+	if found.Output.HasTemplates() {
+		requestData := convertToMap(inputMsg)
+
+		headers := make(map[string]any)
+		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+			headers = processHeaders(md)
+		}
+
+		if err := found.Output.ProcessDynamicOutput(requestData, headers, 0, nil); err != nil {
+			return status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
+		}
+	}
+
 	// Set headers once at the beginning
 	if found.Output.Headers != nil {
 		mdResp := make(metadata.MD, len(found.Output.Headers))
@@ -366,9 +376,28 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		}
 	}
 
-	// For server streaming, prioritize Stream field if it is not empty; fallback to Data if Stream is empty
+	// For server streaming, if Stream is not empty, send it first, then throw error if specified
 	if found.IsServerStream() {
-		return m.handleArrayStreamData(stream, found)
+		if len(found.Output.Stream) > 0 {
+			if err := m.handleArrayStreamData(stream, found); err != nil {
+				return err
+			}
+
+			// After sending the stream, if output.error is set, return it now
+			if err := m.handleOutputError(found.Output); err != nil { //nolint:wrapcheck
+				return err
+			}
+
+			return nil
+		}
+
+		// If stream is empty and error is specified, return it immediately
+		if err := m.handleOutputError(found.Output); err != nil { //nolint:wrapcheck
+			return err
+		}
+
+		// Fallback: no stream and no error – treat as single message
+		return m.handleNonArrayStreamData(stream, found)
 	}
 
 	// Fallback to Data for single message streaming
@@ -488,6 +517,7 @@ func (m *grpcMocker) unaryHandler() grpc.MethodHandler {
 	}
 }
 
+//nolint:cyclop
 func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*dynamicpb.Message, error) {
 	// Try V2 API first for better performance
 	queryV2 := m.newQueryV2(ctx, req)
@@ -520,16 +550,36 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 
 	m.delay(ctx, found.Output.Delay)
 
-	if err := m.handleOutputError(found.Output); err != nil {
+	// Process dynamic templates on a deep copy to avoid mutating the stub
+	outputToUse := found.Output
+	if found.Output.HasTemplates() || found.Output.Error != "" {
+		requestData := convertToMap(req)
+
+		headers := make(map[string]any)
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			headers = processHeaders(md)
+		}
+
+		// deep copy Output fields
+		outputToUse.Data = deepCopyMapAny(found.Output.Data)
+		outputToUse.Stream = deepCopySliceAny(found.Output.Stream)
+		outputToUse.Headers = deepCopyStringMap(found.Output.Headers)
+
+		if err := outputToUse.ProcessDynamicOutput(requestData, headers, 0, nil); err != nil {
+			return nil, status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
+		}
+	}
+
+	if err := m.handleOutputError(outputToUse); err != nil {
 		return nil, err //nolint:wrapcheck
 	}
 
-	outputMsg, err := m.newOutputMessage(found.Output.Data)
+	outputMsg, err := m.newOutputMessage(outputToUse.Data)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
 
-	if err := m.setResponseHeaders(ctx, found.Output.Headers); err != nil {
+	if err := m.setResponseHeaders(ctx, outputToUse.Headers); err != nil {
 		return nil, err //nolint:wrapcheck
 	}
 
@@ -619,7 +669,7 @@ func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 	}
 
 	// Send response
-	return m.sendClientStreamResponse(stream, found)
+	return m.sendClientStreamResponse(stream, found, messages)
 }
 
 // collectClientMessages collects all messages from the client stream.
@@ -676,10 +726,62 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 }
 
 // sendClientStreamResponse sends the response for client streaming.
-func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *stuber.Stub) error {
+//
+//nolint:nestif,cyclop
+func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *stuber.Stub, messages []map[string]any) error {
 	m.delay(stream.Context(), found.Output.Delay)
 
+	// Process dynamic templates if the output contains them
+	if found.Output.HasTemplates() {
+		// For client streaming, we can use different strategies:
+		// 1. Use the last message (most common case)
+		// 2. Use all messages as an array
+		// 3. Use a combined approach
+		var requestData map[string]any
+
+		if len(messages) > 0 {
+			// Use the last non-empty message as primary data
+			for i := len(messages) - 1; i >= 0; i-- {
+				if len(messages[i]) > 0 {
+					requestData = messages[i]
+
+					break
+				}
+			}
+
+			if requestData == nil {
+				requestData = make(map[string]any)
+			}
+		} else {
+			requestData = make(map[string]any)
+		}
+
+		headers := make(map[string]any)
+		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+			headers = processHeaders(md)
+		}
+
+		// Provide only non-empty client messages to template context via .Requests
+		allMessages := make([]any, 0, len(messages))
+		for _, m := range messages {
+			if len(m) == 0 {
+				continue
+			}
+
+			allMessages = append(allMessages, m)
+		}
+
+		if err := found.Output.ProcessDynamicOutput(requestData, headers, 0, allMessages); err != nil {
+			return status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
+		}
+	}
+
 	// Handle headers
+	// If the output specifies an error, return it instead of sending a message
+	if err := m.handleOutputError(found.Output); err != nil { //nolint:wrapcheck
+		return err
+	}
+
 	if err := setStreamHeaders(stream, found.Output.Headers); err != nil {
 		return errors.Wrap(err, "failed to set headers")
 	}
@@ -693,7 +795,7 @@ func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *s
 	return stream.SendMsg(outputMsg)
 }
 
-//nolint:cyclop
+//nolint:cyclop,gocognit,funlen
 func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 	// Initialize bidirectional streaming session
 	queryBidi := m.newQueryBidi(stream.Context())
@@ -723,19 +825,51 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 
 		m.delay(stream.Context(), stub.Output.Delay)
 
+		// Make a deep copy of the output and process dynamic templates per message
+		outputToUse := stub.Output
+		if stub.Output.HasTemplates() {
+			requestData := convertToMap(inputMsg)
+			// Add message index for bidirectional streaming
+			requestData["_message_index"] = bidiResult.GetMessageIndex()
+
+			headers := make(map[string]any)
+			if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+				headers = processHeaders(md)
+			}
+
+			// Deep copy Output fields so each message is rendered independently
+			outputToUse.Data = deepCopyMapAny(stub.Output.Data)
+			outputToUse.Stream = deepCopySliceAny(stub.Output.Stream)
+			outputToUse.Headers = deepCopyStringMap(stub.Output.Headers)
+
+			if err := outputToUse.ProcessDynamicOutput(requestData, headers, bidiResult.GetMessageIndex(), nil); err != nil {
+				return status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
+			}
+		}
+
+		// If the output specifies an error, return it instead of sending a message
+		if err := m.handleOutputError(outputToUse); err != nil { //nolint:wrapcheck
+			return err
+		}
+
 		// For bidirectional streaming, use Stream output if available
 		var outputData map[string]any
-		if shouldUseStreamOutput(stub, bidiResult.GetMessageIndex()) {
-			// Get the corresponding response from the stream
-			if streamData, ok := stub.Output.Stream[bidiResult.GetMessageIndex()].(map[string]any); ok {
+
+		if len(outputToUse.Stream) > 0 {
+			// Select stream element by message index (cyclic)
+			sel := 0
+			if n := len(outputToUse.Stream); n > 0 {
+				sel = bidiResult.GetMessageIndex() % n
+			}
+
+			if streamData, ok := outputToUse.Stream[sel].(map[string]any); ok {
 				outputData = streamData
 			} else {
-				// Fallback to Data if Stream element is not a map
-				outputData = stub.Output.Data
+				outputData = outputToUse.Data
 			}
 		} else {
 			// Fallback to Data if no Stream available
-			outputData = stub.Output.Data
+			outputData = outputToUse.Data
 		}
 
 		outputMsg, err := m.newOutputMessage(outputData)
@@ -743,7 +877,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			return errors.Wrap(err, "failed to convert response to dynamic message")
 		}
 
-		if err := setStreamHeaders(stream, stub.Output.Headers); err != nil {
+		if err := setStreamHeaders(stream, outputToUse.Headers); err != nil {
 			return errors.Wrap(err, "failed to set headers")
 		}
 

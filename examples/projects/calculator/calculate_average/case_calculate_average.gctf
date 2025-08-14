@@ -1,0 +1,12 @@
+--- ENDPOINT ---
+calculator.CalculatorService/CalculateAverage
+
+--- REQUEST ---
+{"value": 15.0}
+--- REQUEST ---
+{"value": 25.0}
+--- REQUEST ---
+{"value": 35.0}
+
+--- RESPONSE ---
+{"result": 25, "count": 3, "sum": 75}

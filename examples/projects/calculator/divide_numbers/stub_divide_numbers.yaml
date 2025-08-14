@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Client Streaming - Divide all numbers in stream (universal - works with any numbers)
+- service: calculator.CalculatorService
+  method: DivideNumbers
+  inputs:
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+  output:
+    data:
+      result: "{{div (index .Requests 0).value (index .Requests 1).value}}"
+      count: "{{len .Requests}}"
+
+# Client Streaming - Division by zero test (error case) - HIGH PRIORITY
+- service: calculator.CalculatorService
+  method: DivideNumbers
+  priority: 1
+  inputs:
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+    - equals:
+        value: 0.0
+  output:
+    error: "Division by zero"
+    code: 2
