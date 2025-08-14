@@ -71,7 +71,8 @@ export default defineConfig({
           { text: 'Output Stream Configuration', link: '/guide/stubs/output-stream' },
           { text: 'Server-Side Streaming', link: '/guide/stubs/server-streaming' },
           { text: 'Client-Side Streaming', link: '/guide/stubs/client-streaming' },
-          { text: 'Bidirectional Streaming', link: '/guide/stubs/bidirectional-streaming' }
+          { text: 'Bidirectional Streaming', link: '/guide/stubs/bidirectional-streaming' },
+          { text: 'Dynamic Templates', link: '/guide/stubs/dynamic-templates' }
         ],
         collapsed: false,
       },
