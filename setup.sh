@@ -57,11 +57,21 @@ spinner() {
 
 check_dependencies() {
     log_info "Checking dependencies..."
-    for cmd in curl tar grep awk sha256sum uname stat; do
+    for cmd in curl tar grep awk uname stat; do
         if ! command -v "$cmd" >/dev/null 2>&1; then
             log_error "Command '${BLUE}$cmd${NC}' is missing. Please install it and try again."
         fi
     done
+    
+    # Check for checksum command (sha256sum or shasum)
+    if command -v sha256sum >/dev/null 2>&1; then
+        CHECKSUM_CMD="sha256sum"
+    elif command -v shasum >/dev/null 2>&1; then
+        CHECKSUM_CMD="shasum -a 256"
+    else
+        log_error "Neither 'sha256sum' nor 'shasum' command found. Please install one of them."
+    fi
+    
     log_success "Dependencies are ready."
 }
 
@@ -88,10 +98,14 @@ detect_os_and_architecture() {
 
 get_latest_version() {
     log_info "Fetching the latest version of GripMock from GitHub..."
-    LATEST_RELEASE=$(curl --retry 3 --retry-delay 2 --retry-all-errors -s https://api.github.com/repos/bavix/gripmock/releases/latest)
+    LATEST_RELEASE=$(curl --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 60 -s https://api.github.com/repos/bavix/gripmock/releases/latest)
+    if [ $? -ne 0 ]; then
+        log_error "Failed to connect to GitHub API. Check your internet connection."
+    fi
+    
     LATEST_VERSION=$(echo "$LATEST_RELEASE" | grep '"tag_name":' | awk -F '"' '{print $4}')
     if [ -z "$LATEST_VERSION" ]; then
-        log_error "Failed to fetch the latest version of GripMock from GitHub."
+        log_error "Failed to fetch the latest version of GripMock from GitHub. Response: $LATEST_RELEASE"
     fi
     # Remove the 'v' prefix from the version tag
     LATEST_VERSION=${LATEST_VERSION#v}
@@ -105,12 +119,17 @@ download_checksums() {
     CHECKSUM_FILE="$TMP_DIR/checksums.txt"
 
     log_info "Downloading checksums file..."
-    (
-        curl --retry 3 --retry-delay 2 --retry-all-errors -sL "$CHECKSUM_URL" -o "$CHECKSUM_FILE" &
-        spinner $! "Downloading checksums"
-    ) || log_error "Failed to download checksums file."
-
-    log_success "Checksums file downloaded."
+    if [ -t 1 ] && [ -t 2 ]; then
+        # Interactive terminal - use spinner
+        (
+            curl --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 120 -sL "$CHECKSUM_URL" -o "$CHECKSUM_FILE" &
+            spinner $! "Downloading checksums"
+        ) || log_error "Failed to download checksums file."
+    else
+        # Non-interactive (CI) - direct download
+        curl --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 120 -sL "$CHECKSUM_URL" -o "$CHECKSUM_FILE" || log_error "Failed to download checksums file."
+        log_success "Checksums file downloaded."
+    fi
 }
 
 download_gripmock() {
@@ -119,10 +138,22 @@ download_gripmock() {
     DOWNLOAD_FILE="$TMP_DIR/gripmock.tar.gz"
 
     log_info "Downloading GripMock for ${BLUE}${OS}/${ARCH}${NC}..."
-    (
-        curl --retry 3 --retry-delay 2 --retry-all-errors -sL "$DOWNLOAD_URL" -o "$DOWNLOAD_FILE" &
-        spinner $! "Downloading GripMock"
-    ) || log_error "Download failed. Try again later."
+    if [ -t 1 ] && [ -t 2 ]; then
+        # Interactive terminal - use spinner
+        (
+            curl --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 300 -sL "$DOWNLOAD_URL" -o "$DOWNLOAD_FILE" &
+            spinner $! "Downloading GripMock"
+        ) || log_error "Download failed. Try again later."
+    else
+        # Non-interactive (CI) - direct download
+        curl --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 300 -sL "$DOWNLOAD_URL" -o "$DOWNLOAD_FILE" || log_error "Download failed. Try again later."
+        log_success "Downloading GripMock... Done"
+    fi
+
+    # Verify file was downloaded and has size > 0
+    if [ ! -f "$DOWNLOAD_FILE" ] || [ ! -s "$DOWNLOAD_FILE" ]; then
+        log_error "Downloaded file is empty or missing. URL: $DOWNLOAD_URL"
+    fi
 
     # Get file size with two decimal places using stat
     FILE_SIZE_BYTES=$(stat --version >/dev/null 2>&1 && stat -c%s "$DOWNLOAD_FILE" || stat -f%z "$DOWNLOAD_FILE")
@@ -136,7 +167,7 @@ verify_checksum() {
         log_error "Checksum not found for GripMock_${BLUE}${LATEST_VERSION}_${OS}_${ARCH}${NC}.tar.gz."
     fi
 
-    ACTUAL_CHECKSUM=$(sha256sum "$DOWNLOAD_FILE" | awk '{print $1}')
+    ACTUAL_CHECKSUM=$($CHECKSUM_CMD "$DOWNLOAD_FILE" | awk '{print $1}')
     if [ "$ACTUAL_CHECKSUM" != "$EXPECTED_CHECKSUM" ]; then
         log_error "Checksum mismatch for GripMock! Expected: ${BLUE}$EXPECTED_CHECKSUM${NC}, Got: ${BLUE}$ACTUAL_CHECKSUM${NC}. File corrupted?"
     fi

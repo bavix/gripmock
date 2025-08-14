@@ -29,6 +29,8 @@ jobs:
       if: startsWith(matrix.os, 'macos')
       run: |
         brew install curl coreutils
+        # Ensure shasum is available (it should be by default on macOS)
+        which shasum || echo "shasum not found, will use sha256sum if available"
 
     - name: Prepare environment
       run: |
@@ -40,8 +42,8 @@ jobs:
     - name: First installation
       uses: nick-fields/retry@v3
       with:
-        timeout_seconds: 60
-        max_attempts: 2
+        timeout_seconds: 300
+        max_attempts: 3
         shell: sh
         command: |
           # Clean up any existing installation
@@ -59,8 +61,8 @@ jobs:
     - name: Second installation (upgrade check)
       uses: nick-fields/retry@v3
       with:
-        timeout_seconds: 60
-        max_attempts: 2
+        timeout_seconds: 300
+        max_attempts: 3
         shell: sh
         command: |
           sudo ./setup.sh
