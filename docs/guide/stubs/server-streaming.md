@@ -320,6 +320,15 @@ output:
         error_code: "INSUFFICIENT_RESOURCES"
 ```
 
+### Error Ordering with output.stream
+
+When both `output.stream` and `output.error`/`output.code` are specified:
+
+- If `output.stream` has messages, GripMock will send all stream messages first, then terminate the RPC with the specified gRPC status error
+- If `output.stream` is empty, the error is returned immediately without sending any messages
+
+This ordering allows you to simulate scenarios where a stream emits data and then fails.
+
 ## Testing Considerations
 
 ### 1. Test Different Stream Lengths

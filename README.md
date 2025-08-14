@@ -115,6 +115,43 @@ Check out our comprehensive examples in the [`examples`](https://github.com/bavi
 - 🔐 **Authentication** - Header-based auth testing
 - ⚡ **Performance** - High-throughput scenarios
 
+### Greeter: dynamic stub demo
+
+Stub (universal):
+
+```yaml
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+# examples/projects/greeter/stub_say_hello.yaml
+- service: helloworld.Greeter
+  method: SayHello
+  input:
+    matches:
+      name: ".+"
+  output:
+    data:
+      message: "Hello, {{.Request.name}}!"  # dynamic template lives in output
+```
+
+Notes:
+- Put dynamic templates only in `output` (e.g., `data`, `headers`, `stream`).
+- Keep `input` matching static (no `{{ ... }}` in `equals`/`contains`/`matches`).
+
+```bash
+# Start server
+go run main.go examples/projects/greeter/service.proto --stub examples/projects/greeter
+
+# Call via grpcurl
+grpcurl -plaintext -d '{"name":"Alex"}' localhost:4770 helloworld.Greeter/SayHello
+```
+
+Expected response:
+
+```json
+{
+  "message": "Hello, Alex!"
+}
+```
+
 ## 🔧 Stubbing
 
 ### Basic Stub Example
@@ -169,6 +206,21 @@ output:
     - position: {"lat": 40.7130, "lng": -74.0062}
       timestamp: "2024-01-01T12:00:05Z"
 ```
+
+### Dynamic Templates
+
+GripMock supports dynamic templates in the `output` section using Go's `text/template` syntax.
+
+- Access request fields: `{{.Request.field}}`
+- Access headers: `{{.Headers.header_name}}`
+- Client streaming context: `{{.Requests}}` (slice of received messages), `{{len .Requests}}`, `{{(index .Requests 0).field}}`
+- Bidirectional streaming: `{{.MessageIndex}}` gives the current message index (0-based)
+- Math helpers: `sum`, `avg`, `mul`, `min`, `max`, `add`, `sub`, `div`
+- Utility: `json`, `split`, `join`, `upper`, `lower`, `title`, `sprintf`, `int`, `int64`, `float`, `round`, `floor`, `ceil`
+
+Important rules:
+- Do not use dynamic templates inside `input.equals`, `input.contains`, or `input.matches` (matching must be static)
+- For server streaming, if both `output.stream` and `output.error`/`output.code` are set, messages are sent first and then the error is returned. If `output.stream` is empty, the error is returned immediately
 
 **Header Matching:**
 ```yaml

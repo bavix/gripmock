@@ -1,0 +1,29 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Unary - Get product with personalized discount
+- service: ecommerce.EcommerceService
+  method: GetProduct
+  input:
+    matches:
+      product_id: "PROD_\\w+"
+      user_id: "USER_\\w+"
+  output:
+    data:
+      productId: "{{.Request.product_id}}"
+      name: "Product {{.Request.product_id}}"
+      price: 99.99
+      description: "Dynamic product for user {{.Request.user_id}}"
+      stockQuantity: 50
+      category: "electronics"
+      userDiscount: 456
+
+# Dynamic error stub - error message uses request data
+- service: ecommerce.EcommerceService
+  method: GetProduct
+  input:
+    equals:
+      product_id: "INVALID_PROD"
+      user_id: "USER_ERROR"
+  output:
+    error: "Product {{.Request.product_id}} not found for user {{.Request.user_id}}. Please check your request."
+    code: 5

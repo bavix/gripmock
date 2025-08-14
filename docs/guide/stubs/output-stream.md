@@ -292,6 +292,15 @@ output:
 - V2 stubs use `stream` for matching
 - Both formats are supported simultaneously for backward compatibility
 
+## Error Ordering with Streams
+
+When both `output.stream` and `output.error`/`output.code` are specified for a server-streaming method:
+
+- If `output.stream` contains messages, GripMock will send all stream messages first and then finish the RPC with the specified gRPC status error
+- If `output.stream` is empty, the error is returned immediately without sending messages
+
+This mirrors real-world scenarios where a stream may emit data before failing.
+
 ## Performance Considerations
 
 ### Stub Ranking

@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Server Streaming - Order history with dynamic data
+- service: ecommerce.EcommerceService
+  method: GetOrderHistory
+  input:
+    equals:
+      user_id: "USER_456"
+      limit: 3
+  output:
+    stream:
+      - orderId: 'ORDER_{{index (split .Request.user_id "_") 1}}_001'
+        orderDate: "2024-01-15"
+        totalAmount: 150
+        status: "delivered"
+        itemCount: 3
+      - orderId: 'ORDER_{{index (split .Request.user_id "_") 1}}_002'
+        orderDate: "2024-01-10"
+        totalAmount: 75.5
+        status: "shipped"
+        itemCount: 2
+      - orderId: 'ORDER_{{index (split .Request.user_id "_") 1}}_003'
+        orderDate: "2024-01-05"
+        totalAmount: 200
+        status: "processing"
+        itemCount: 4

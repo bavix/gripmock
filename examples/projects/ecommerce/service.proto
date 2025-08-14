@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package ecommerce;
+
+service EcommerceService {
+  // Unary - Get product information
+  rpc GetProduct (GetProductRequest) returns (GetProductResponse);
+  
+  // Unary - Create order
+  rpc CreateOrder (CreateOrderRequest) returns (CreateOrderResponse);
+  
+  // Server Streaming - Get order history
+  rpc GetOrderHistory (GetOrderHistoryRequest) returns (stream OrderHistoryItem);
+  
+  // Client Streaming - Submit product reviews
+  rpc SubmitProductReviews (stream ProductReview) returns (SubmitReviewsResponse);
+  
+  // Bidirectional Streaming - Customer support chat
+  rpc CustomerSupportChat (stream ChatMessage) returns (stream ChatMessage);
+}
+
+message GetProductRequest {
+  string product_id = 1;
+  string user_id = 2;
+}
+
+message GetProductResponse {
+  string product_id = 1;
+  string name = 2;
+  double price = 3;
+  string description = 4;
+  int32 stock_quantity = 5;
+  string category = 6;
+  double user_discount = 7;
+}
+
+message CreateOrderRequest {
+  string user_id = 1;
+  repeated OrderItem items = 2;
+  string shipping_address = 3;
+  string payment_method = 4;
+}
+
+message OrderItem {
+  string product_id = 1;
+  int32 quantity = 2;
+  double unit_price = 3;
+}
+
+message CreateOrderResponse {
+  string order_id = 1;
+  string user_id = 2;
+  double total_amount = 3;
+  string status = 4;
+  string estimated_delivery = 5;
+  repeated OrderItem items = 6;
+}
+
+message GetOrderHistoryRequest {
+  string user_id = 1;
+  int32 limit = 2;
+}
+
+message OrderHistoryItem {
+  string order_id = 1;
+  string order_date = 2;
+  double total_amount = 3;
+  string status = 4;
+  int32 item_count = 5;
+}
+
+message ProductReview {
+  string product_id = 1;
+  string user_id = 2;
+  int32 rating = 3;
+  string comment = 4;
+  string review_date = 5;
+}
+
+message SubmitReviewsResponse {
+  string submission_id = 1;
+  int32 reviews_count = 2;
+  string status = 3;
+  double average_rating = 4;
+}
+
+message ChatMessage {
+  string message_id = 1;
+  string user_id = 2;
+  string content = 3;
+  string timestamp = 4;
+  string sender_type = 5; // "customer" or "support"
+}

@@ -1,0 +1,14 @@
+--- ENDPOINT ---
+ecommerce.EcommerceService/SubmitProductReviews
+
+--- REQUEST ---
+{"product_id":"PROD_MATCH","user_id":"USER_001","rating":5,"comment":"Excellent product!","review_date":"2024-01-15"}
+
+--- REQUEST ---
+{"product_id":"PROD_MATCH","user_id":"USER_002","rating":4,"comment":"Very good quality","review_date":"2024-01-16"}
+
+--- REQUEST ---
+{"product_id":"PROD_MATCH","user_id":"USER_003","rating":3,"comment":"Good but could be better","review_date":"2024-01-17"}
+
+--- RESPONSE ---
+{"submissionId":"REVIEW_0_USER_USER_001","reviewsCount":1,"status":"processed","averageRating":5}

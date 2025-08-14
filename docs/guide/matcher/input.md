@@ -106,6 +106,22 @@ input:
 - Arrays are matched element-wise
 - Supports all standard regex features
 
+**Important:** Matching expressions must be static. Do not use dynamic templates (`{{ ... }}`) inside `equals`, `contains`, or `matches`. Example of incorrect usage:
+
+```yaml
+input:
+  matches:
+    value: "{{someDynamic}}"   # ❌ not allowed
+```
+
+Use static regex strings instead:
+
+```yaml
+input:
+  matches:
+    value: "^\\d+(\\.\\d+)?$"  # ✅ allowed
+```
+
 ## Array Handling
 
 ### Order-Sensitive Matching (Default)

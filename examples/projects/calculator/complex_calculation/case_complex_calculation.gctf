@@ -1,0 +1,12 @@
+--- ENDPOINT ---
+calculator.CalculatorService/ComplexCalculation
+
+--- REQUEST ---
+{"value": 10.0}
+--- REQUEST ---
+{"value": 20.0}
+--- REQUEST ---
+{"value": 30.0}
+
+--- RESPONSE ---
+{"sum": 60, "product": 6000, "average": 20, "min": 10, "max": 30, "count": 3}

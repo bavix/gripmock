@@ -1,0 +1,26 @@
+--- ENDPOINT ---
+ecommerce.EcommerceService/CustomerSupportChat
+
+--- REQUEST ---
+{"message_id":"MSG_001","user_id":"USER_789","content":"Hello, I need help","timestamp":"2024-01-15T10:00:00Z","sender_type":"customer"}
+
+--- RESPONSE ---
+{"messageId":"MSG_0_SUPPORT","userId":"SUPPORT_001","content":"Hello! I'm support agent for message 0. How can I help you with: Hello, I need help","timestamp":"2024-01-15T10:00:00Z","senderType":"support"}
+
+--- REQUEST ---
+{"message_id":"MSG_002","user_id":"USER_789","content":"I have a problem with my order","timestamp":"2024-01-15T10:01:00Z","sender_type":"customer"}
+
+--- RESPONSE ---
+{"messageId":"MSG_1_SUPPORT","userId":"SUPPORT_001","content":"Hello! I'm support agent for message 1. How can I help you with: I have a problem with my order","timestamp":"2024-01-15T10:01:00Z","senderType":"support"}
+
+--- REQUEST ---
+{"message_id":"MSG_003","user_id":"USER_789","content":"Can you check order status?","timestamp":"2024-01-15T10:02:00Z","sender_type":"customer"}
+
+--- RESPONSE ---
+{"messageId":"MSG_2_SUPPORT","userId":"SUPPORT_001","content":"Hello! I'm support agent for message 2. How can I help you with: Can you check order status?","timestamp":"2024-01-15T10:02:00Z","senderType":"support"}
+
+--- REQUEST ---
+{"message_id":"MSG_004","user_id":"USER_789","content":"Thank you for your help","timestamp":"2024-01-15T10:03:00Z","sender_type":"customer"}
+
+--- RESPONSE ---
+{"messageId":"MSG_3_SUPPORT","userId":"SUPPORT_001","content":"Hello! I'm support agent for message 3. How can I help you with: Thank you for your help","timestamp":"2024-01-15T10:03:00Z","senderType":"support"}

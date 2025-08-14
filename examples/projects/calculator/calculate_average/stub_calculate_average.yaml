@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Client Streaming - Calculate average with dynamic processing (universal - works with any numbers)
+- service: calculator.CalculatorService
+  method: CalculateAverage
+  inputs:
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+  output:
+    data:
+      result: "{{avg (extract .Requests `value`)}}"
+      count: "{{len .Requests}}"
+      sum: "{{sum (extract .Requests `value`)}}"
+
+
+# Client Streaming - Single number case
+- service: calculator.CalculatorService
+  method: CalculateAverage
+  inputs:
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+  output:
+    data:
+      result: "{{(index .Requests 0).value}}"
+      count: "{{len .Requests}}"
+      sum: "{{(index .Requests 0).value}}"

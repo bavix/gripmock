@@ -1,0 +1,8 @@
+--- ENDPOINT ---
+ecommerce.EcommerceService/GetProduct
+
+--- REQUEST ---
+{"product_id":"PROD_ATOMIC","user_id":"USER_ATOMIC"}
+
+--- RESPONSE ---
+{"productId":"PROD_ATOMIC","name":"Product PROD_ATOMIC","price":99.99,"description":"Dynamic product for user USER_ATOMIC","stockQuantity":50,"category":"electronics","userDiscount":456}

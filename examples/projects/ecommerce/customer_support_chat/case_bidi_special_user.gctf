@@ -1,0 +1,26 @@
+--- ENDPOINT ---
+ecommerce.EcommerceService/CustomerSupportChat
+
+--- REQUEST ---
+{"message_id":"MSG_001","user_id":"USER_999","content":"I have a special problem","timestamp":"2024-01-15T10:00:00Z","sender_type":"customer"}
+
+--- RESPONSE ---
+{"messageId":"SPECIAL_0","userId":"SUPPORT_SPECIAL","content":"Special support for user 999, message 0: I have a special problem","timestamp":"2024-01-15T10:00:00Z","senderType":"support"}
+
+--- REQUEST ---
+{"message_id":"MSG_002","user_id":"USER_999","content":"This is urgent","timestamp":"2024-01-15T10:01:00Z","sender_type":"customer"}
+
+--- RESPONSE ---
+{"messageId":"SPECIAL_1","userId":"SUPPORT_SPECIAL","content":"Special support for user 999, message 1: This is urgent","timestamp":"2024-01-15T10:01:00Z","senderType":"support"}
+
+--- REQUEST ---
+{"message_id":"MSG_003","user_id":"USER_999","content":"Please escalate this","timestamp":"2024-01-15T10:02:00Z","sender_type":"customer"}
+
+--- RESPONSE ---
+{"messageId":"SPECIAL_2","userId":"SUPPORT_SPECIAL","content":"Special support for user 999, message 2: Please escalate this","timestamp":"2024-01-15T10:02:00Z","senderType":"support"}
+
+--- REQUEST ---
+{"message_id":"MSG_004","user_id":"USER_999","content":"Thank you for special attention","timestamp":"2024-01-15T10:03:00Z","sender_type":"customer"}
+
+--- RESPONSE ---
+{"messageId":"SPECIAL_3","userId":"SUPPORT_SPECIAL","content":"Special support for user 999, message 3: Thank you for special attention","timestamp":"2024-01-15T10:03:00Z","senderType":"support"}

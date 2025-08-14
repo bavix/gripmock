@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Unary - Create order with dynamic calculation
+- service: ecommerce.EcommerceService
+  method: CreateOrder
+  input:
+    equals:
+      user_id: "USER_123"
+      payment_method: "credit_card"
+  output:
+    data:
+      orderId: 'ORDER_{{index (split .Request.user_id "_") 1}}_1734038400'
+      userId: "{{.Request.user_id}}"
+      totalAmount: "{{mul (len .Request.items) 25.50}}"
+      status: "processing"
+      estimatedDelivery: "2024-01-20"
+      items:
+        - productId: "{{(index .Request.items 0).product_id}}"
+          quantity: "{{(index .Request.items 0).quantity}}"
+          unitPrice: "{{(index .Request.items 0).unit_price}}"
+        - productId: "{{(index .Request.items 1).product_id}}"
+          quantity: "{{(index .Request.items 1).quantity}}"
+          unitPrice: "{{(index .Request.items 1).unit_price}}"

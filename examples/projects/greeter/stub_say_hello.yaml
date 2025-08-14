@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Unary - Dynamic greeting using request data
+- service: helloworld.Greeter
+  method: SayHello
+  input:
+    matches:
+      name: ".+"
+  output:
+    data:
+      message: "Hello, {{.Request.name}}!"

@@ -29,6 +29,8 @@ jobs:
       if: startsWith(matrix.os, 'macos')
       run: |
         brew install curl coreutils
+        # Ensure shasum is available (it should be by default on macOS)
+        which shasum || echo "shasum not found, will use sha256sum if available"
 
     - name: Prepare environment
       run: |
@@ -38,16 +40,12 @@ jobs:
         sudo chmod 755 /usr/local/bin
 
     - name: First installation
-      uses: nick-fields/retry@v3
-      with:
-        timeout_seconds: 60
-        max_attempts: 2
-        shell: sh
-        command: |
-          # Clean up any existing installation
-          sudo rm -f /usr/local/bin/gripmock || true
-          # Run installation
-          sudo ./setup.sh
+      shell: sh
+      run: |
+        # Clean up any existing installation
+        sudo rm -f /usr/local/bin/gripmock || true
+        # Run installation with GitHub token for API access
+        sudo GITHUB_TOKEN=${{ github.token }} ./setup.sh
 
     - name: Verify installation
       shell: sh
@@ -57,13 +55,9 @@ jobs:
         gripmock --version
 
     - name: Second installation (upgrade check)
-      uses: nick-fields/retry@v3
-      with:
-        timeout_seconds: 60
-        max_attempts: 2
-        shell: sh
-        command: |
-          sudo ./setup.sh
+      shell: sh
+      run: |
+        sudo GITHUB_TOKEN=${{ github.token }} ./setup.sh
 
     - name: Verify after second installation
       shell: sh

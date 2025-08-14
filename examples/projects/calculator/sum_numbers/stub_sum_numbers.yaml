@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Client Streaming - Sum all numbers in stream (universal - works with any numbers)
+- service: calculator.CalculatorService
+  method: SumNumbers
+  inputs:
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+  output:
+    data:
+      result: "{{sum (extract .Requests `value`)}}"
+      count: "{{len .Requests}}"
+
+# Client Streaming - Large numbers test (universal - works with any numbers)
+- service: calculator.CalculatorService
+  method: SumNumbers
+  inputs:
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+    - matches:
+        value: "\\d+(\\.\\d+)?"
+  output:
+    data:
+      result: "{{sum (extract .Requests `value`)}}"
+      count: "{{len .Requests}}"
