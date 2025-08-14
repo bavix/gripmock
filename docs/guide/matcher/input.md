@@ -106,13 +106,15 @@ input:
 - Arrays are matched element-wise
 - Supports all standard regex features
 
-**Important:** Matching expressions must be static. Do not use dynamic templates (`{{ ... }}`) inside `equals`, `contains`, or `matches`. Example of incorrect usage:
+**Important:** Matching expressions must be static. Do not use dynamic templates (<code v-pre>`{{ ... }}`</code>) inside `equals`, `contains`, or `matches`. Example of incorrect usage:
 
+::: v-pre
 ```yaml
 input:
   matches:
     value: "{{someDynamic}}"   # ❌ not allowed
 ```
+:::
 
 Use static regex strings instead:
 
