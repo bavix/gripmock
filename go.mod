@@ -5,7 +5,7 @@ go 1.25
 require (
 	github.com/bavix/apis v1.1.0
 	github.com/bavix/features v1.0.3
-	github.com/bavix/gripmock-ui v1.0.2
+	github.com/bavix/gripmock-ui v1.1.1
 	github.com/bufbuild/protocompile v0.14.1
 	github.com/cockroachdb/errors v1.12.0
 	github.com/fsnotify/fsnotify v1.9.0
