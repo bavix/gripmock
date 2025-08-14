@@ -1,5 +1,21 @@
 # Changelog
 
+## v3.4.0 - 2025-08-14
+
+### What's Changed
+
+* feat: Enhanced gRPC Streaming Support with Comprehensive Testing & Documentation by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/633
+* Bump actions/download-artifact from 4 to 5 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/635
+* Bump actions/checkout from 4 to 5 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/640
+* Bump vitepress from 1.6.3 to 1.6.4 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/636
+* Bump golang from 1.24-alpine3.22 to 1.25-alpine3.22 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/641
+* Feature: Dynamic stubs — runtime templated responses across all gRPC modes by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/642
+* Add 'Dynamic Templates' link to VitePress configuration for enhanced … by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/644
+* Update go.mod and go.sum to upgrade github.com/bavix/gripmock-ui from… by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/643
+* Enhance documentation for dynamic templates by adding code formatting… by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/645
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.3.1...v3.4.0
+
 ## v3.3.1 - 2025-08-02
 
 ### What's Changed
