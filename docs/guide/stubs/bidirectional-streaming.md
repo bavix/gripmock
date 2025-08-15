@@ -1,4 +1,4 @@
-# Bidirectional Streaming
+# Bidirectional Streaming <VersionTag version="v3.4.0" />
 
 Bidirectional streaming enables real-time two-way communication between client and server, where both sides can send multiple messages independently. This is ideal for chat applications, real-time collaboration, and interactive data processing.
 

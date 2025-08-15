@@ -1,4 +1,4 @@
-# Server-Side Streaming
+# Server-Side Streaming <VersionTag version="v3.3.0" />
 
 Server-side streaming allows you to send multiple messages in a single gRPC call, simulating real-time data feeds, batch processing, or progressive data delivery.
 

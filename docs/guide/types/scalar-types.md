@@ -1,4 +1,4 @@
-# Scalar Types in Protocol Buffers
+# Scalar Types in Protocol Buffers <VersionTag version="v1.13.0" />
 
 Scalar types in Protobuf represent primitive values such as numbers, strings, and booleans. They form the building blocks of more complex data structures. This documentation covers **all scalar types** with examples, usage guidelines, and best practices.
 

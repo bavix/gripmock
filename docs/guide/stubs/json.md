@@ -1,4 +1,4 @@
-# Static JSON Stubs  
+# Static JSON Stubs <VersionTag version="v1.13.0" />  
 Use static JSON/YAML files to predefine stubs without relying on the HTTP API. Perfect for:  
 - Tests that don't need HTTP dependencies  
 - Immutable stub configurations  

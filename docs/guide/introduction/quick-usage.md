@@ -13,7 +13,7 @@ Add the official Homebrew repository for GripMock:
 brew tap gripmock/tap
 ```
 
-#### Step 2: Install GripMock
+#### Step 2: Install GripMock <VersionTag version="v3.2.4" />
 Install GripMock with the following command:
 ```bash
 brew install gripmock
@@ -212,7 +212,7 @@ docker run ... -v ./stubs:/stubs bavix/gripmock --stub=/stubs /proto/simple.prot
 
 ## Advanced Features
 
-### Binary Descriptor Support
+### Binary Descriptor Support <VersionTag version="v3.1.0" />
 When using `.pb` descriptors:
 - No need for original `.proto` files in the container
 - Faster startup with pre-compiled definitions
@@ -225,7 +225,7 @@ When using `.pb` descriptors:
 > ```
 > This creates leaner descriptors optimized for runtime use
 
-### Headers Matching
+### Headers Matching <VersionTag version="v2.1.0" />
 Add headers to stubs for fine-grained control:
 ```json
 {
@@ -237,7 +237,7 @@ Add headers to stubs for fine-grained control:
 }
 ```
 
-### Array Order Flexibility
+### Array Order Flexibility <VersionTag version="v2.6.0" />
 Use `ignoreArrayOrder: true` to disable array sorting checks:
 ```json
 {
@@ -248,7 +248,7 @@ Use `ignoreArrayOrder: true` to disable array sorting checks:
 }
 ```
 
-### Healthchecks
+### Healthchecks <VersionTag version="v2.0.2" />
 Check service status:
 ```bash
 curl http://127.0.0.1:4771/api/health/liveness

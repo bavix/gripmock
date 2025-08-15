@@ -1,4 +1,8 @@
-# Header Matching Rules
+---
+title: Headers
+---
+
+# Header Matching Rules <VersionTag version="v2.1.0" />
 
 GripMock supports powerful header matching capabilities to control stub responses based on gRPC request headers. Use **equals**, **contains**, and **matches** rules to create precise header matching patterns for authentication, versioning, and request routing.
 

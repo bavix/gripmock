@@ -1,4 +1,8 @@
-# Dynamic Templates
+---
+title: Dynamic Templates
+---
+
+# Dynamic Templates <VersionTag version="v3.4.0" />
 
 Dynamic templates allow you to use request data in your stub responses at runtime. This feature enables creating more realistic and flexible mock responses that adapt based on the incoming request.
 

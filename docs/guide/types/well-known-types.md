@@ -1,4 +1,8 @@
-# Well-Known Types (`google.protobuf.*`) in Protocol Buffers
+---
+title: Well-known Types
+---
+
+# Well-Known Types (`google.protobuf.*`) in Protocol Buffers <VersionTag version="v2.7.1" />
 
 Well-known types are predefined Protobuf types that provide common utility functionality. They are part of the `google.protobuf` package and are automatically included in most Protobuf implementations. This documentation covers **all major well-known types** with examples, usage guidelines, and best practices.
 

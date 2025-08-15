@@ -1,4 +1,4 @@
-# Client-Side Streaming
+# Client-Side Streaming <VersionTag version="v3.4.0" />
 
 Client-side streaming lets you send multiple messages and get one response back - perfect for file uploads, batch processing, and data collection. Think of it like sending a package in multiple boxes and getting one confirmation when everything arrives.
 
