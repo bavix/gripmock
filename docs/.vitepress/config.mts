@@ -130,7 +130,6 @@ export default defineConfig({
         text: 'Utility',
         items: [
           { text: 'gRPC Testify', link: '/guide/utility/grpc-testify' },
-          { text: 'Color Test', link: '/test-colors' },
         ],
         collapsed: false,
       },
