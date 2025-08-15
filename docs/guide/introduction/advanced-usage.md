@@ -220,7 +220,7 @@ For RPC methods with empty input (e.g., `rpc GetData(google.protobuf.Empty)`):
 }
 ```
 
-### Array Order Flexibility
+### Array Order Flexibility <VersionTag version="v2.6.0" />
 Disable array sorting checks with `ignoreArrayOrder`:
 ```json
 {
@@ -233,7 +233,7 @@ Disable array sorting checks with `ignoreArrayOrder`:
 }
 ```
 
-### Custom gRPC Error Codes
+### Custom gRPC Error Codes <VersionTag version="v2.0.0" />
 Return errors with specific status codes:
 ```json
 {
@@ -244,7 +244,7 @@ Return errors with specific status codes:
 }
 ```
 
-### Header Matching
+### Header Matching <VersionTag version="v2.1.0" />
 Match requests based on headers:
 ```json
 {

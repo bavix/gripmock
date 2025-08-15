@@ -1,4 +1,4 @@
-# Specialized Utility Types in Protocol Buffers
+# Specialized Utility Types in Protocol Buffers <VersionTag version="v2.7.1" />
 
 Specialized utility types in Protobuf address specific API patterns, such as partial updates or empty responses. This documentation covers **`FieldMask`** and **`google.protobuf.Empty`** with examples, usage guidelines, and best practices.
 

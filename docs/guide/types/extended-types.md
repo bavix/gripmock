@@ -1,4 +1,4 @@
-# Extended Types (`google.type.*`) in Protocol Buffers
+# Extended Types (`google.type.*`) in Protocol Buffers <VersionTag version="v2.7.1" />
 
 Extended types (`google.type.*`) are domain-specific Protobuf types that standardize complex data structures. They are part of the `googleapis` repository and provide reusable definitions for common use cases like money, geolocation, and dates. This documentation covers **all major extended types** with examples, usage guidelines, and best practices.
 

@@ -1,4 +1,4 @@
-# Output Stream Configuration
+# Output Stream Configuration <VersionTag version="v1.13.0" />
 
 Output stream configuration defines how GripMock responds to gRPC requests, supporting various response types including data, errors, headers, and streaming.
 
@@ -42,7 +42,7 @@ output:
 
 ## Output Fields
 
-### `data`
+### `data` <VersionTag version="v1.13.0" />
 Contains the response payload for successful requests.
 
 ```yaml
@@ -54,7 +54,7 @@ output:
     active: true
 ```
 
-### `stream`
+### `stream` <VersionTag version="v3.3.0" />
 Defines server-side streaming responses (array of messages).
 
 ```yaml
@@ -70,7 +70,7 @@ output:
 
 **Note**: Each stream element contains the message data directly, without a `data` wrapper.
 
-### `error`
+### `error` <VersionTag version="v2.0.0" />
 Error message for error responses.
 
 ```yaml
@@ -78,7 +78,7 @@ output:
   error: "User not found"
 ```
 
-### `code`
+### `code` <VersionTag version="v2.0.0" />
 gRPC status code for error responses.
 
 ```yaml
@@ -87,7 +87,7 @@ output:
   code: 7  # PERMISSION_DENIED
 ```
 
-### `headers`
+### `headers` <VersionTag version="v2.1.0" />
 HTTP/gRPC headers to include in the response.
 
 ```yaml
@@ -99,7 +99,7 @@ output:
     "x-rate-limit-remaining": "100"
 ```
 
-### `delay`
+### `delay` <VersionTag version="v3.2.16" />
 Artificial delay before sending the response.
 
 ```yaml
@@ -111,7 +111,7 @@ output:
 
 ## Streaming Response Types
 
-### Server Streaming
+### Server Streaming <VersionTag version="v3.3.0" />
 For methods that return multiple responses over time:
 
 ```yaml
@@ -137,7 +137,7 @@ For methods that return multiple responses over time:
         timestamp: "2024-01-01T12:00:02.000Z"
 ```
 
-### Bidirectional Streaming
+### Bidirectional Streaming <VersionTag version="v3.4.0" />
 For bidirectional streaming, responses are selected based on incoming messages:
 
 ```yaml
@@ -170,7 +170,7 @@ For bidirectional streaming, responses are selected based on incoming messages:
 - If no exact match is found, the best matching stub is selected based on ranking
 - Stub ranking considers exact matches, partial matches, and specificity
 
-### Client Streaming Response
+### Client Streaming Response <VersionTag version="v3.4.0" />
 For client streaming methods, a single response is returned after all messages:
 
 ```yaml
@@ -272,7 +272,7 @@ output:
       message: "1 messages processed"
 ```
 
-### V2 API (Streaming)
+### V2 API (Streaming) <VersionTag version="v3.3.0" />
 ```yaml
 - service: ChatService
   method: SendMessage
