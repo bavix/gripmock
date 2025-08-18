@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	gptypes "github.com/gripmock/types"
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	codes "google.golang.org/grpc/codes"
@@ -44,7 +45,7 @@ type SearchRequest struct {
 
 // SearchResponse defines model for SearchResponse.
 type SearchResponse struct {
-	Code    *codes.Code       `json:"code,omitempty"`
+	Code    codes.Code        `json:"code,omitempty"`
 	Data    any       `json:"data"`
 	Error   string            `json:"error"`
 	Headers map[string]string `json:"headers,omitempty"`
@@ -65,12 +66,12 @@ type Stub struct {
 	Input   StubInput   `json:"input"`
 
 	// Inputs Inputs to match against. If multiple inputs are provided, the stub will be matched if any of the inputs match.
-	Inputs *[]StubInput `json:"inputs,omitempty"`
-	Method string       `json:"method"`
-	Output StubOutput   `json:"output"`
+	Inputs []StubInput `json:"inputs,omitempty"`
+	Method string      `json:"method"`
+	Output StubOutput  `json:"output"`
 
 	// Priority Priority of the stub. Higher priority stubs are matched first.
-	Priority *int   `json:"priority,omitempty"`
+	Priority int    `json:"priority,omitempty"`
 	Service  string `json:"service"`
 }
 
@@ -85,7 +86,7 @@ type StubHeaders struct {
 type StubInput struct {
 	Contains         map[string]any `json:"contains,omitempty"`
 	Equals           map[string]any `json:"equals,omitempty"`
-	IgnoreArrayOrder *bool                  `json:"ignoreArrayOrder,omitempty"`
+	IgnoreArrayOrder bool                   `json:"ignoreArrayOrder,omitempty"`
 	Matches          map[string]any `json:"matches,omitempty"`
 }
 
@@ -94,9 +95,12 @@ type StubList = []Stub
 
 // StubOutput defines model for StubOutput.
 type StubOutput struct {
-	Code    *codes.Code              `json:"code,omitempty"`
-	Data    map[string]any   `json:"data"`
-	Error   string                   `json:"error"`
+	Code codes.Code             `json:"code,omitempty"`
+	Data map[string]any `json:"data,omitempty"`
+
+	// Delay before sending the response. Specify as a duration string (e.g., "100ms", "2s").
+	Delay   gptypes.Duration         `json:"delay,omitempty,omitzero"`
+	Error   string                   `json:"error,omitempty"`
 	Headers map[string]string        `json:"headers,omitempty"`
 	Stream  []map[string]any `json:"stream,omitempty"`
 }

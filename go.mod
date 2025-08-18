@@ -17,7 +17,8 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gripmock/environment v1.2.0
 	github.com/gripmock/shutdown v1.1.0
-	github.com/gripmock/stuber v1.8.3
+	github.com/gripmock/stuber v1.8.6
+	github.com/gripmock/types v0.0.1
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0

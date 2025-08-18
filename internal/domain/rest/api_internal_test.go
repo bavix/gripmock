@@ -104,10 +104,10 @@ func (s *APITestSuite) TestStubOutputValidation() {
 		{
 			name: "valid output with code",
 			output: StubOutput{
-				Code: func() *codes.Code {
+				Code: func() codes.Code {
 					c := codes.Code(14)
 
-					return &c
+					return c
 				}(),
 			},
 			valid: true,
@@ -118,7 +118,7 @@ func (s *APITestSuite) TestStubOutputValidation() {
 				Data:   nil,
 				Stream: nil,
 				Error:  "",
-				Code:   nil,
+				Code:   0,
 			},
 			valid: false,
 		},
@@ -137,7 +137,7 @@ func (s *APITestSuite) TestStubOutputValidation() {
 			hasData := tt.output.Data != nil
 			hasStream := len(tt.output.Stream) > 0
 			hasError := tt.output.Error != ""
-			hasCode := tt.output.Code != nil
+			hasCode := tt.output.Code != 0
 
 			isValid := (hasData || hasStream || hasError || hasCode) && (!hasData || !hasStream)
 
@@ -174,7 +174,7 @@ func (s *APITestSuite) TestStubValidation() {
 			stub: Stub{
 				Service: "TestService",
 				Method:  "TestMethod",
-				Inputs: &[]StubInput{
+				Inputs: []StubInput{
 					{Contains: map[string]any{"key": "value"}},
 				},
 				Output: StubOutput{
@@ -231,7 +231,7 @@ func (s *APITestSuite) TestStubValidation() {
 				Input: StubInput{
 					Contains: map[string]any{"key": "value"},
 				},
-				Inputs: &[]StubInput{
+				Inputs: []StubInput{
 					{Contains: map[string]any{"key": "value"}},
 				},
 				Output: StubOutput{
@@ -247,9 +247,9 @@ func (s *APITestSuite) TestStubValidation() {
 			hasService := tt.stub.Service != ""
 			hasMethod := tt.stub.Method != ""
 			hasInput := (len(tt.stub.Input.Contains) > 0) || (len(tt.stub.Input.Equals) > 0) || (len(tt.stub.Input.Matches) > 0)
-			hasInputs := tt.stub.Inputs != nil && len(*tt.stub.Inputs) > 0
+			hasInputs := len(tt.stub.Inputs) > 0
 			hasValidOutput := tt.stub.Output.Data != nil || len(tt.stub.Output.Stream) > 0 ||
-				tt.stub.Output.Error != "" || tt.stub.Output.Code != nil
+				tt.stub.Output.Error != "" || tt.stub.Output.Code != 0
 
 			isValid := hasService && hasMethod && (hasInput || hasInputs) && (!hasInput || !hasInputs) && hasValidOutput
 
