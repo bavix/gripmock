@@ -98,7 +98,7 @@ type StubOutput struct {
 	Code codes.Code             `json:"code,omitempty"`
 	Data map[string]any `json:"data,omitempty"`
 
-	// Delay Delay before sending the response
+	// Delay before sending the response. Specify as a duration string (e.g., "100ms", "2s").
 	Delay   gptypes.Duration         `json:"delay,omitempty,omitzero"`
 	Error   string                   `json:"error,omitempty"`
 	Headers map[string]string        `json:"headers,omitempty"`
