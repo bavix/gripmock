@@ -512,6 +512,156 @@ func (s *RestServerTestSuite) TestValidateStubIntegration() {
 	}
 }
 
+// TestAddStubWithDelay tests stub addition with delay functionality via REST API.
+//
+//nolint:funlen // Test function requires multiple scenarios
+func (s *RestServerTestSuite) TestAddStubWithDelay() {
+	tests := []struct {
+		name           string
+		jsonData       string
+		expectedStatus int
+		description    string
+	}{
+		{
+			name: "unary stub with string delay",
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestMethod",
+				"input": {"contains": {"key": "value"}},
+				"output": {
+					"data": {"result": "success"},
+					"delay": "100ms"
+				}
+			}]`,
+			expectedStatus: http.StatusOK,
+			description:    "should accept delay in string format (100ms)",
+		},
+		{
+			name: "unary stub with longer delay",
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestMethod",
+				"input": {"contains": {"key": "value"}},
+				"output": {
+					"data": {"result": "success"},
+					"delay": "2s"
+				}
+			}]`,
+			expectedStatus: http.StatusOK,
+			description:    "should accept delay in string format (2s)",
+		},
+		{
+			name: "client stream stub with delay",
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestClientStream",
+				"inputs": [{"contains": {"key": "value"}}],
+				"output": {
+					"data": {"result": "success"},
+					"delay": "500ms"
+				}
+			}]`,
+			expectedStatus: http.StatusOK,
+			description:    "should accept delay in client streaming stub",
+		},
+		{
+			name: "server stream stub with delay",
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestServerStream",
+				"input": {"contains": {"key": "value"}},
+				"output": {
+					"stream": [{"result": "response"}],
+					"delay": "1s"
+				}
+			}]`,
+			expectedStatus: http.StatusOK,
+			description:    "should accept delay in server streaming stub",
+		},
+		{
+			name: "bidirectional stub with delay",
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestBidirectional",
+				"inputs": [{"contains": {"key": "value"}}],
+				"output": {
+					"stream": [{"result": "response"}],
+					"delay": "750ms"
+				}
+			}]`,
+			expectedStatus: http.StatusOK,
+			description:    "should accept delay in bidirectional streaming stub",
+		},
+		{
+			name: "unary stub without delay",
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestMethod",
+				"input": {"contains": {"key": "value"}},
+				"output": {
+					"data": {"result": "success"}
+				}
+			}]`,
+			expectedStatus: http.StatusOK,
+			description:    "should work without delay field",
+		},
+		{
+			name: "unary stub with zero delay",
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestMethod",
+				"input": {"contains": {"key": "value"}},
+				"output": {
+					"data": {"result": "success"},
+					"delay": "0s"
+				}
+			}]`,
+			expectedStatus: http.StatusOK,
+			description:    "should work with zero delay",
+		},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			// Clear storage before each test
+			s.budgerigar.Clear()
+
+			req := httptest.NewRequest(http.MethodPost, "/stubs", bytes.NewBufferString(tt.jsonData))
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+
+			s.server.AddStub(w, req)
+
+			s.Equal(tt.expectedStatus, w.Code, tt.description)
+
+			if tt.expectedStatus == http.StatusOK {
+				// Verify that stub was added successfully
+				var response []string
+
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				s.Require().NoError(err, "should unmarshal response as array of UUIDs")
+				s.Len(response, 1, "should return exactly one UUID")
+
+				// Verify that the stub exists in storage
+				stubs := s.budgerigar.All()
+				s.Len(stubs, 1, "should have exactly one stub in storage")
+
+				// Verify that stub was added correctly
+				stub := stubs[0]
+				s.Equal("test.Service", stub.Service)
+
+				// Check delay based on test case
+				if tt.name == "unary stub without delay" || tt.name == "unary stub with zero delay" {
+					s.Zero(stub.Output.Delay, "delay should be zero for this test case")
+				} else {
+					s.NotZero(stub.Output.Delay, "delay should be set for this test case")
+				}
+			}
+		})
+	}
+}
+
 // TestRestServerTestSuite runs the test suite.
 func TestRestServerTestSuite(t *testing.T) {
 	t.Parallel()
