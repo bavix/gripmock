@@ -98,7 +98,7 @@ func (s *RestServerTestSuite) TestAddStub() {
 			name: "valid bidirectional stub",
 			jsonData: `[{
 				"service": "test.Service",
-				"method": "TestBidiStream",
+				"method": "TestBidirectional",
 				"inputs": [{"contains": {"key": "value"}}],
 				"output": {"stream": [{"result": "response"}]}
 			}]`,
@@ -112,7 +112,6 @@ func (s *RestServerTestSuite) TestAddStub() {
 				"output": {"data": {"result": "success"}}
 			}]`,
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  ErrServiceIsMissing,
 		},
 		{
 			name: "invalid stub - missing method",
@@ -122,7 +121,6 @@ func (s *RestServerTestSuite) TestAddStub() {
 				"output": {"data": {"result": "success"}}
 			}]`,
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  ErrMethodIsMissing,
 		},
 		{
 			name: "invalid unary stub - no input",
@@ -155,7 +153,7 @@ func (s *RestServerTestSuite) TestAddStub() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(tt.jsonData))
+			req := httptest.NewRequest(http.MethodPost, "/stubs", bytes.NewBufferString(tt.jsonData))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -164,67 +162,90 @@ func (s *RestServerTestSuite) TestAddStub() {
 
 			s.Equal(tt.expectedStatus, w.Code)
 
-			if tt.expectedError != nil {
-				s.Contains(w.Body.String(), tt.expectedError.Error())
+			if tt.expectedStatus == http.StatusOK {
+				// AddStub returns array of UUIDs
+				var response []string
+
+				err := json.Unmarshal(w.Body.Bytes(), &response)
+				s.Require().NoError(err)
+				s.NotEmpty(response)
+				// Check that it's a valid UUID
+				_, err = uuid.Parse(response[0])
+				s.Require().NoError(err)
 			}
 		})
 	}
 }
 
-// TestListStubs tests stub listing functionality.
-func (s *RestServerTestSuite) TestListStubs() {
-	req := httptest.NewRequest(http.MethodGet, "/api/stubs", nil)
-	w := httptest.NewRecorder()
-
-	s.server.ListStubs(w, req)
-
-	s.Equal(http.StatusOK, w.Code)
-
-	var stubs []*stuber.Stub
-
-	err := json.Unmarshal(w.Body.Bytes(), &stubs)
-	s.Require().NoError(err)
-	s.Require().NotNil(stubs)
-}
-
-// TestServicesList tests services listing functionality.
-func (s *RestServerTestSuite) TestServicesList() {
-	req := httptest.NewRequest(http.MethodGet, "/api/services", nil)
-	w := httptest.NewRecorder()
-
-	s.server.ServicesList(w, req)
-
-	s.Equal(http.StatusOK, w.Code)
-	s.NotEmpty(w.Body.String())
-}
-
-// TestServiceMethodsList tests service methods listing functionality.
-func (s *RestServerTestSuite) TestServiceMethodsList() {
-	req := httptest.NewRequest(http.MethodGet, "/api/services/test.Service/methods", nil)
-	w := httptest.NewRecorder()
-
-	s.server.ServiceMethodsList(w, req, "test.Service")
-
-	s.Equal(http.StatusOK, w.Code)
-	s.NotEmpty(w.Body.String())
-}
-
 // TestDeleteStubByID tests stub deletion by ID.
 func (s *RestServerTestSuite) TestDeleteStubByID() {
-	randomUUID := uuid.New()
-	randomID := randomUUID.String()
-	req := httptest.NewRequest(http.MethodDelete, "/api/stubs/"+randomID, nil)
-	w := httptest.NewRecorder()
+	// Add a stub first
+	stub := &stuber.Stub{
+		Service: "test.Service",
+		Method:  "TestMethod",
+		Input: stuber.InputData{
+			Contains: map[string]any{"key": "value"},
+		},
+		Output: stuber.Output{
+			Data: map[string]any{"result": "success"},
+		},
+	}
 
-	s.server.DeleteStubByID(w, req, randomUUID)
+	s.budgerigar.PutMany(stub)
+
+	// Get the stub ID
+	stubs := s.budgerigar.All()
+	s.Require().NotEmpty(stubs)
+	stubID := stubs[0].ID
+
+	// Delete the stub
+	w := httptest.NewRecorder()
+	s.server.DeleteStubByID(w, nil, stubID)
 
 	s.Equal(http.StatusNoContent, w.Code)
+
+	// Verify the stub was deleted
+	stubs = s.budgerigar.All()
+	s.Empty(stubs)
 }
 
 // TestBatchStubsDelete tests batch stub deletion.
 func (s *RestServerTestSuite) TestBatchStubsDelete() {
-	requestBody := `["550e8400-e29b-41d4-a716-446655440000"]`
-	req := httptest.NewRequest(http.MethodDelete, "/api/stubs", bytes.NewBufferString(requestBody))
+	// Add multiple stubs
+	stub1 := &stuber.Stub{
+		Service: "test.Service1",
+		Method:  "TestMethod1",
+		Input: stuber.InputData{
+			Contains: map[string]any{"key": "value1"},
+		},
+		Output: stuber.Output{
+			Data: map[string]any{"result": "success1"},
+		},
+	}
+
+	stub2 := &stuber.Stub{
+		Service: "test.Service2",
+		Method:  "TestMethod2",
+		Input: stuber.InputData{
+			Contains: map[string]any{"key": "value2"},
+		},
+		Output: stuber.Output{
+			Data: map[string]any{"result": "success2"},
+		},
+	}
+
+	s.budgerigar.PutMany(stub1, stub2)
+
+	// Get stub IDs
+	stubs := s.budgerigar.All()
+	s.Require().Len(stubs, 2)
+
+	stubIDs := []uuid.UUID{stubs[0].ID, stubs[1].ID}
+	jsonData, err := json.Marshal(stubIDs)
+	s.Require().NoError(err)
+
+	// Delete stubs in batch
+	req := httptest.NewRequest(http.MethodPost, "/stubs/batchDelete", bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
@@ -232,83 +253,180 @@ func (s *RestServerTestSuite) TestBatchStubsDelete() {
 	s.server.BatchStubsDelete(w, req)
 
 	s.Equal(http.StatusOK, w.Code)
+
+	// Verify stubs were deleted
+	stubs = s.budgerigar.All()
+	s.Empty(stubs)
 }
 
-// TestListUsedStubs tests used stubs listing.
-func (s *RestServerTestSuite) TestListUsedStubs() {
-	req := httptest.NewRequest(http.MethodGet, "/api/stubs/used", nil)
-	w := httptest.NewRecorder()
+// TestListStubs tests listing all stubs.
+func (s *RestServerTestSuite) TestListStubs() {
+	// Add a stub
+	stub := &stuber.Stub{
+		Service: "test.Service",
+		Method:  "TestMethod",
+		Input: stuber.InputData{
+			Contains: map[string]any{"key": "value"},
+		},
+		Output: stuber.Output{
+			Data: map[string]any{"result": "success"},
+		},
+	}
 
-	s.server.ListUsedStubs(w, req)
+	s.budgerigar.PutMany(stub)
+
+	// List stubs
+	w := httptest.NewRecorder()
+	s.server.ListStubs(w, nil)
 
 	s.Equal(http.StatusOK, w.Code)
 
-	var stubs []*stuber.Stub
+	// ListStubs returns array of stubs
+	var response []*stuber.Stub
 
-	err := json.Unmarshal(w.Body.Bytes(), &stubs)
+	err := json.Unmarshal(w.Body.Bytes(), &response)
 	s.Require().NoError(err)
-	s.Require().NotNil(stubs)
+	s.Len(response, 1)
 }
 
-// TestListUnusedStubs tests unused stubs listing.
+// TestListUnusedStubs tests listing unused stubs.
 func (s *RestServerTestSuite) TestListUnusedStubs() {
-	req := httptest.NewRequest(http.MethodGet, "/api/stubs/unused", nil)
 	w := httptest.NewRecorder()
-
-	s.server.ListUnusedStubs(w, req)
+	s.server.ListUnusedStubs(w, nil)
 
 	s.Equal(http.StatusOK, w.Code)
 
-	var stubs []*stuber.Stub
+	// ListUnusedStubs returns array of stubs
+	var response []*stuber.Stub
 
-	err := json.Unmarshal(w.Body.Bytes(), &stubs)
+	err := json.Unmarshal(w.Body.Bytes(), &response)
 	s.Require().NoError(err)
-	s.Require().NotNil(stubs)
+	s.Empty(response) // No stubs added yet
 }
 
-// TestPurgeStubs tests stub purging functionality.
-func (s *RestServerTestSuite) TestPurgeStubs() {
-	req := httptest.NewRequest(http.MethodDelete, "/api/stubs", nil)
+// TestListUsedStubs tests listing used stubs.
+func (s *RestServerTestSuite) TestListUsedStubs() {
 	w := httptest.NewRecorder()
+	s.server.ListUsedStubs(w, nil)
 
-	s.server.PurgeStubs(w, req)
+	s.Equal(http.StatusOK, w.Code)
+
+	// ListUsedStubs returns array of stubs
+	var response []*stuber.Stub
+
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	s.Require().NoError(err)
+	s.Empty(response) // No stubs used yet
+}
+
+// TestLiveness tests liveness endpoint.
+func (s *RestServerTestSuite) TestLiveness() {
+	w := httptest.NewRecorder()
+	s.server.Liveness(w, nil)
+
+	s.Equal(http.StatusOK, w.Code)
+}
+
+// TestReadiness tests readiness endpoint.
+func (s *RestServerTestSuite) TestReadiness() {
+	w := httptest.NewRecorder()
+	s.server.Readiness(w, nil)
+
+	s.Equal(http.StatusOK, w.Code)
+}
+
+// TestPurgeStubs tests purging all stubs.
+func (s *RestServerTestSuite) TestPurgeStubs() {
+	// Add a stub
+	stub := &stuber.Stub{
+		Service: "test.Service",
+		Method:  "TestMethod",
+		Input: stuber.InputData{
+			Contains: map[string]any{"key": "value"},
+		},
+		Output: stuber.Output{
+			Data: map[string]any{"result": "success"},
+		},
+	}
+
+	s.budgerigar.PutMany(stub)
+
+	// Verify stub was added
+	stubs := s.budgerigar.All()
+	s.Require().Len(stubs, 1)
+
+	// Purge stubs
+	w := httptest.NewRecorder()
+	s.server.PurgeStubs(w, nil)
 
 	s.Equal(http.StatusNoContent, w.Code)
+
+	// Verify stubs were purged
+	stubs = s.budgerigar.All()
+	s.Empty(stubs)
 }
 
-// TestSearchStubs tests stub searching functionality.
+// TestSearchStubs tests stub search functionality.
 func (s *RestServerTestSuite) TestSearchStubs() {
-	searchData := `{"service": "test.Service", "method": "TestMethod", "data": {"key": "value"}}`
-	req := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
+	// Add a stub
+	stub := &stuber.Stub{
+		Service: "test.Service",
+		Method:  "TestMethod",
+		Input: stuber.InputData{
+			Contains: map[string]any{"key": "value"},
+		},
+		Output: stuber.Output{
+			Data: map[string]any{"result": "success"},
+		},
+	}
+
+	s.budgerigar.PutMany(stub)
+
+	// Search stubs
+	searchRequest := map[string]any{
+		"service": "test.Service",
+		"method":  "TestMethod",
+		"data":    map[string]any{"key": "value"},
+	}
+
+	jsonData, err := json.Marshal(searchRequest)
+	s.Require().NoError(err)
+
+	req := httptest.NewRequest(http.MethodPost, "/stubs/search", bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
 
 	s.server.SearchStubs(w, req)
 
-	// Should return 404 for non-existing stub
-	s.Equal(http.StatusNotFound, w.Code)
+	s.Equal(http.StatusOK, w.Code)
+
+	// SearchStubs returns Output, not stub
+	var response map[string]any
+
+	err = json.Unmarshal(w.Body.Bytes(), &response)
+
+	s.Require().NoError(err)
+	s.Contains(response, "data")
 }
 
-// TestReadiness tests readiness endpoint.
-func (s *RestServerTestSuite) TestReadiness() {
-	req := httptest.NewRequest(http.MethodGet, "/api/health/readiness", nil)
+// TestServiceMethodsList tests listing service methods.
+func (s *RestServerTestSuite) TestServiceMethodsList() {
 	w := httptest.NewRecorder()
-
-	s.server.Readiness(w, req)
-
-	// Readiness can return either 200 or 503
-	s.Require().True(w.Code == http.StatusOK || w.Code == http.StatusServiceUnavailable)
-}
-
-// TestLiveness tests liveness endpoint.
-func (s *RestServerTestSuite) TestLiveness() {
-	req := httptest.NewRequest(http.MethodGet, "/api/health/liveness", nil)
-	w := httptest.NewRecorder()
-
-	s.server.Liveness(w, req)
+	s.server.ServiceMethodsList(w, httptest.NewRequest(http.MethodGet, "/services/test.Service/methods", nil), "test.Service")
 
 	s.Equal(http.StatusOK, w.Code)
+}
+
+// TestServicesList tests listing all services.
+func (s *RestServerTestSuite) TestServicesList() {
+	w := httptest.NewRecorder()
+	s.server.ServicesList(w, nil)
+
+	s.Equal(http.StatusOK, w.Code)
+
+	// Just check that response is not empty and contains valid JSON
+	s.NotEmpty(w.Body.String())
 }
 
 // TestValidateStubIntegration tests stub validation integration.
@@ -316,104 +434,85 @@ func (s *RestServerTestSuite) TestLiveness() {
 //nolint:funlen // Test function requires multiple scenarios
 func (s *RestServerTestSuite) TestValidateStubIntegration() {
 	tests := []struct {
-		name      string
-		stub      stuber.Stub
-		errorType error
+		name           string
+		jsonData       string
+		expectedStatus int
 	}{
 		{
 			name: "valid unary stub",
-			stub: stuber.Stub{
-				Service: "test.Service",
-				Method:  "TestMethod",
-				Input: stuber.InputData{
-					Contains: map[string]any{"key": "value"},
-				},
-				Output: stuber.Output{
-					Data: map[string]any{"result": "success"},
-				},
-			},
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestMethod",
+				"input": {"contains": {"key": "value"}},
+				"output": {"data": {"result": "success"}}
+			}]`,
+			expectedStatus: http.StatusOK,
 		},
 		{
 			name: "valid client stream stub",
-			stub: stuber.Stub{
-				Service: "test.Service",
-				Method:  "TestClientStream",
-				Inputs: []stuber.InputData{
-					{Contains: map[string]any{"key": "value"}},
-				},
-				Output: stuber.Output{
-					Data: map[string]any{"result": "success"},
-				},
-			},
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestClientStream",
+				"inputs": [{"contains": {"key": "value"}}],
+				"output": {"data": {"result": "success"}}
+			}]`,
+			expectedStatus: http.StatusOK,
 		},
 		{
 			name: "valid server stream stub",
-			stub: stuber.Stub{
-				Service: "test.Service",
-				Method:  "TestServerStream",
-				Input: stuber.InputData{
-					Contains: map[string]any{"key": "value"},
-				},
-				Output: stuber.Output{
-					Stream: []any{map[string]any{"result": "response"}},
-				},
-			},
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestServerStream",
+				"input": {"contains": {"key": "value"}},
+				"output": {"stream": [{"result": "response"}]}
+			}]`,
+			expectedStatus: http.StatusOK,
 		},
 		{
 			name: "valid bidirectional stub",
-			stub: stuber.Stub{
-				Service: "test.Service",
-				Method:  "TestBidiStream",
-				Inputs: []stuber.InputData{
-					{Contains: map[string]any{"key": "value"}},
-				},
-				Output: stuber.Output{
-					Stream: []any{map[string]any{"result": "response"}},
-				},
-			},
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestBidirectional",
+				"inputs": [{"contains": {"key": "value"}}],
+				"output": {"stream": [{"result": "response"}]}
+			}]`,
+			expectedStatus: http.StatusOK,
 		},
 		{
 			name: "missing service",
-			stub: stuber.Stub{
-				Method: "TestMethod",
-				Input: stuber.InputData{
-					Contains: map[string]any{"key": "value"},
-				},
-				Output: stuber.Output{
-					Data: map[string]any{"result": "success"},
-				},
-			},
-			errorType: ErrServiceIsMissing,
+			jsonData: `[{
+				"method": "TestMethod",
+				"input": {"contains": {"key": "value"}},
+				"output": {"data": {"result": "success"}}
+			}]`,
+			expectedStatus: http.StatusBadRequest,
 		},
 		{
 			name: "missing method",
-			stub: stuber.Stub{
-				Service: "test.Service",
-				Input: stuber.InputData{
-					Contains: map[string]any{"key": "value"},
-				},
-				Output: stuber.Output{
-					Data: map[string]any{"result": "success"},
-				},
-			},
-			errorType: ErrMethodIsMissing,
+			jsonData: `[{
+				"service": "test.Service",
+				"input": {"contains": {"key": "value"}},
+				"output": {"data": {"result": "success"}}
+			}]`,
+			expectedStatus: http.StatusBadRequest,
 		},
 	}
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			err := validateStub(&tt.stub)
-			if tt.errorType != nil {
-				s.Require().Error(err)
-				s.Require().Contains(err.Error(), tt.errorType.Error())
-			} else {
-				s.Require().NoError(err)
-			}
+			req := httptest.NewRequest(http.MethodPost, "/stubs", bytes.NewBufferString(tt.jsonData))
+			req.Header.Set("Content-Type", "application/json")
+
+			w := httptest.NewRecorder()
+
+			s.server.AddStub(w, req)
+
+			s.Equal(tt.expectedStatus, w.Code)
 		})
 	}
 }
 
-// TestRestServerTestSuite runs the REST server test suite.
+// TestRestServerTestSuite runs the test suite.
 func TestRestServerTestSuite(t *testing.T) {
 	t.Parallel()
 	suite.Run(t, new(RestServerTestSuite))

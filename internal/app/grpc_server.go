@@ -14,6 +14,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/goccy/go-json"
 	"github.com/gripmock/stuber"
+	"github.com/gripmock/types"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -309,12 +310,12 @@ func convertScalar(fd protoreflect.FieldDescriptor, value protoreflect.Value) an
 	}
 }
 
-func (m *grpcMocker) delay(ctx context.Context, delayDur time.Duration) {
+func (m *grpcMocker) delay(ctx context.Context, delayDur types.Duration) {
 	if delayDur == 0 {
 		return
 	}
 
-	timer := time.NewTimer(delayDur)
+	timer := time.NewTimer(time.Duration(delayDur))
 	defer timer.Stop()
 
 	select {
