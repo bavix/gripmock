@@ -65,21 +65,6 @@ func processHeaders(md metadata.MD) map[string]any {
 	return headers
 }
 
-// setStreamHeaders sets response headers on a gRPC stream.
-func setStreamHeaders(stream grpc.ServerStream, headers map[string]string) error {
-	if headers == nil {
-		return nil
-	}
-
-	mdResp := make(metadata.MD, len(headers))
-
-	for k, v := range headers {
-		mdResp.Append(k, strings.Split(v, ";")...)
-	}
-
-	return stream.SetHeader(mdResp)
-}
-
 // sendStreamMessage sends a message on a gRPC stream with error handling.
 func sendStreamMessage(stream grpc.ServerStream, msg *dynamicpb.Message) error {
 	if err := stream.SendMsg(msg); err != nil {
@@ -385,7 +370,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 			}
 
 			// After sending the stream, if output.error is set, return it now
-			if err := m.handleOutputError(found.Output); err != nil { //nolint:wrapcheck
+			if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
 				return err
 			}
 
@@ -393,7 +378,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		}
 
 		// If stream is empty and error is specified, return it immediately
-		if err := m.handleOutputError(found.Output); err != nil { //nolint:wrapcheck
+		if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
 			return err
 		}
 
@@ -571,7 +556,12 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		}
 	}
 
-	if err := m.handleOutputError(outputToUse); err != nil {
+	// Always send headers first (both for success and error cases)
+	if err := m.setResponseHeadersAny(ctx, nil, outputToUse.Headers); err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	if err := m.handleOutputError(ctx, nil, outputToUse); err != nil {
 		return nil, err //nolint:wrapcheck
 	}
 
@@ -580,14 +570,38 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		return nil, err //nolint:wrapcheck
 	}
 
-	if err := m.setResponseHeaders(ctx, outputToUse.Headers); err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-
 	return outputMsg, nil
 }
 
-func (m *grpcMocker) handleOutputError(output stuber.Output) error {
+// buildResponseMetadata builds gRPC metadata from headers map.
+func buildResponseMetadata(headers map[string]string) (metadata.MD, bool) {
+	if len(headers) == 0 {
+		return nil, false
+	}
+
+	mdResp := make(metadata.MD, len(headers))
+	for k, v := range headers {
+		mdResp.Append(k, strings.Split(v, ";")...)
+	}
+
+	return mdResp, true
+}
+
+// setResponseHeadersAny sets headers for success responses.
+func (m *grpcMocker) setResponseHeadersAny(ctx context.Context, stream grpc.ServerStream, headers map[string]string) error {
+	mdResp, ok := buildResponseMetadata(headers)
+	if !ok {
+		return nil
+	}
+
+	if stream != nil {
+		return stream.SetHeader(mdResp)
+	}
+
+	return grpc.SetHeader(ctx, mdResp)
+}
+
+func (m *grpcMocker) handleOutputError(_ context.Context, _ grpc.ServerStream, output stuber.Output) error {
 	if output.Error != "" || output.Code != nil {
 		if output.Code == nil {
 			return status.Error(codes.Aborted, output.Error)
@@ -599,19 +613,6 @@ func (m *grpcMocker) handleOutputError(output stuber.Output) error {
 	}
 
 	return nil
-}
-
-func (m *grpcMocker) setResponseHeaders(ctx context.Context, headers map[string]string) error {
-	if headers == nil {
-		return nil
-	}
-
-	mdResp := make(metadata.MD, len(headers))
-	for k, v := range headers {
-		mdResp.Append(k, strings.Split(v, ";")...)
-	}
-
-	return grpc.SetHeader(ctx, mdResp)
 }
 
 // tryV2API attempts to find a stub using V2 API.
@@ -779,11 +780,11 @@ func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *s
 
 	// Handle headers
 	// If the output specifies an error, return it instead of sending a message
-	if err := m.handleOutputError(found.Output); err != nil { //nolint:wrapcheck
+	if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
 		return err
 	}
 
-	if err := setStreamHeaders(stream, found.Output.Headers); err != nil {
+	if err := m.setResponseHeadersAny(stream.Context(), stream, found.Output.Headers); err != nil {
 		return errors.Wrap(err, "failed to set headers")
 	}
 
@@ -848,8 +849,13 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			}
 		}
 
+		// Always send headers first (both for success and error cases)
+		if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
+			return errors.Wrap(err, "failed to set headers")
+		}
+
 		// If the output specifies an error, return it instead of sending a message
-		if err := m.handleOutputError(outputToUse); err != nil { //nolint:wrapcheck
+		if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil { //nolint:wrapcheck
 			return err
 		}
 
@@ -876,10 +882,6 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 		outputMsg, err := m.newOutputMessage(outputData)
 		if err != nil {
 			return errors.Wrap(err, "failed to convert response to dynamic message")
-		}
-
-		if err := setStreamHeaders(stream, outputToUse.Headers); err != nil {
-			return errors.Wrap(err, "failed to set headers")
 		}
 
 		if err := sendStreamMessage(stream, outputMsg); err != nil {
