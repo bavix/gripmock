@@ -71,8 +71,6 @@ github.com/gripmock/environment v1.2.0 h1:7oZwoprwuhGs35MOKhrUcegUpI0CKJXRe1b6SJ
 github.com/gripmock/environment v1.2.0/go.mod h1:flmJpgcZHSFbJ6F0SkTHJ/CEMRSPA5igXjsqBzoakAM=
 github.com/gripmock/shutdown v1.1.0 h1:GXeZAjNSzPXSAThaEhfw/MU3QupSb/a0Hdlii53CfeE=
 github.com/gripmock/shutdown v1.1.0/go.mod h1:IrxdYb+QcHdWyKtI1cyATanT4h//6Bg0I/7Btcs1vDo=
-github.com/gripmock/stuber v1.8.3 h1:zwGgpdkt/18/7KptlimH2RiPjqMYzE2pthdjNbg+tVY=
-github.com/gripmock/stuber v1.8.3/go.mod h1:Hzx5DDWDAuLV5CZNrEDX58KCRvgGcxUB1iX+bLjTD08=
 github.com/gripmock/stuber v1.8.6 h1:mP26Qw3wibrlWFrwjKMZGMTvWMJHGjLwmGf+JNoKAyc=
 github.com/gripmock/stuber v1.8.6/go.mod h1:fc5XCuWBDoLW2HjdBzzWMCIbM7FhRWPNmLTJACa5dt8=
 github.com/gripmock/types v0.0.1 h1:rn91Jf9UwOKvlYdXGCsCm6V517rFS5XiZM+HLrqjGt0=

@@ -18,6 +18,7 @@ require (
 	github.com/gripmock/environment v1.2.0
 	github.com/gripmock/shutdown v1.1.0
 	github.com/gripmock/stuber v1.8.6
+	github.com/gripmock/types v0.0.1
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0
@@ -40,7 +41,6 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gripmock/deeply v1.3.3 // indirect
-	github.com/gripmock/types v0.0.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
