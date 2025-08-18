@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.4.1 - 2025-08-18
+
+### What's Changed
+
+* Update package-lock.json and enhance documentation with version tags … by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/646
+* Fix time.Duration (Delay) by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/651
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.4.0...v3.4.1
+
 ## v3.4.0 - 2025-08-14
 
 ### What's Changed
