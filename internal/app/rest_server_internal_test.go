@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
@@ -329,10 +330,32 @@ func (s *RestServerTestSuite) TestLiveness() {
 
 // TestReadiness tests readiness endpoint.
 func (s *RestServerTestSuite) TestReadiness() {
-	w := httptest.NewRecorder()
-	s.server.Readiness(w, nil)
+	// Wait for server to be ready with timeout
+	timeout := time.After(2 * time.Second)
 
-	s.Equal(http.StatusOK, w.Code)
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timeout:
+			s.Fail("Server did not become ready within timeout")
+
+			return
+		case <-ticker.C:
+			w := httptest.NewRecorder()
+			s.server.Readiness(w, nil)
+
+			if w.Code == http.StatusOK {
+				// Server is ready, final check
+				w := httptest.NewRecorder()
+				s.server.Readiness(w, nil)
+				s.Equal(http.StatusOK, w.Code)
+
+				return
+			}
+		}
+	}
 }
 
 // TestPurgeStubs tests purging all stubs.

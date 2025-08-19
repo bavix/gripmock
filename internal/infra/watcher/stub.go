@@ -61,7 +61,6 @@ func (s *StubWatcher) Watch(ctx context.Context, folderPath string) (<-chan stri
 	return s.ticker(ctx, folderPath)
 }
 
-//nolint:cyclop
 func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan string, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -72,6 +71,13 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 
 	go func() {
 		defer func() {
+			if r := recover(); r != nil {
+				zerolog.Ctx(ctx).
+					Error().
+					Interface("panic", r).
+					Msg("Panic recovered in fsnotify watcher goroutine")
+			}
+
 			_ = watcher.Close()
 		}()
 		defer close(ch)
@@ -85,16 +91,7 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 					continue
 				}
 
-				info, err := os.Stat(event.Name)
-				if err == nil && info.IsDir() {
-					zerolog.Ctx(ctx).Err(watcher.Add(event.Name)).
-						Str("path", event.Name).
-						Msg("Adding directory to watcher")
-				}
-
-				if isStub(event.Name) {
-					ch <- event.Name
-				}
+				s.handleFsnotifyEvent(ctx, watcher, ch, event)
 			}
 		}
 	}()
@@ -168,4 +165,28 @@ func isStub(path string) bool {
 	return strings.HasSuffix(path, ".json") ||
 		strings.HasSuffix(path, ".yaml") ||
 		strings.HasSuffix(path, ".yml")
+}
+
+// handleFsnotifyEvent handles a single fsnotify event with panic recovery.
+func (s *StubWatcher) handleFsnotifyEvent(ctx context.Context, watcher *fsnotify.Watcher, ch chan<- string, event fsnotify.Event) {
+	defer func() {
+		if r := recover(); r != nil {
+			zerolog.Ctx(ctx).
+				Error().
+				Interface("panic", r).
+				Str("file", event.Name).
+				Msg("Panic recovered while processing fsnotify event")
+		}
+	}()
+
+	info, err := os.Stat(event.Name)
+	if err == nil && info.IsDir() {
+		zerolog.Ctx(ctx).Err(watcher.Add(event.Name)).
+			Str("path", event.Name).
+			Msg("Adding directory to watcher")
+	}
+
+	if isStub(event.Name) {
+		ch <- event.Name
+	}
 }

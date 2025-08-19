@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gripmock/stuber"
@@ -215,15 +216,35 @@ func (s *RestComprehensiveTestSuite) TestServiceMethodsListComprehensive() {
 // TestReadinessComprehensive tests readiness endpoint.
 func (s *RestComprehensiveTestSuite) TestReadinessComprehensive() {
 	s.Run("readiness_check", func() {
-		req := httptest.NewRequest(http.MethodGet, "/api/health/readiness", nil)
-		w := httptest.NewRecorder()
+		// Wait for server to be ready with timeout
+		timeout := time.After(2 * time.Second)
 
-		s.server.Readiness(w, req)
+		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
 
-		// Readiness can return either 200 or 503 depending on timing
-		s.True(w.Code == http.StatusOK || w.Code == http.StatusServiceUnavailable,
-			"Readiness should return 200 or 503")
-		s.NotEmpty(w.Body.String(), "Response should not be empty")
+		for {
+			select {
+			case <-timeout:
+				s.Fail("Server did not become ready within timeout")
+
+				return
+			case <-ticker.C:
+				req := httptest.NewRequest(http.MethodGet, "/api/health/readiness", nil)
+				w := httptest.NewRecorder()
+				s.server.Readiness(w, req)
+
+				if w.Code == http.StatusOK {
+					// Server is ready, final check
+					req := httptest.NewRequest(http.MethodGet, "/api/health/readiness", nil)
+					w := httptest.NewRecorder()
+					s.server.Readiness(w, req)
+					s.Equal(http.StatusOK, w.Code)
+					s.NotEmpty(w.Body.String(), "Response should not be empty")
+
+					return
+				}
+			}
+		}
 	})
 }
 

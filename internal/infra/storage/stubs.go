@@ -74,14 +74,30 @@ func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
 			return
 		}
 
+		var wg sync.WaitGroup
+
 		for file := range ch {
 			zerolog.Ctx(ctx).
 				Debug().
 				Str("path", file).
 				Msg("Updating stub")
 
-			s.readByFile(ctx, file)
+			wg.Go(func() {
+				defer func() {
+					if r := recover(); r != nil {
+						zerolog.Ctx(ctx).
+							Error().
+							Interface("panic", r).
+							Str("file", file).
+							Msg("Panic recovered while processing stub file")
+					}
+				}()
+
+				s.readByFile(ctx, file)
+			})
 		}
+
+		wg.Wait()
 	}
 }
 

@@ -9,3 +9,16 @@
   output:
     data:
       message: "Hello, {{.Request.name}}!"
+
+- service: helloworld.Greeter
+  method: SayHello
+  headers:
+    equals:
+      x-user: "Ivan"
+      x-token: "123"
+  input:
+    equals:
+      name: "Alex"
+  output:
+    data:
+      message: "Hello, {{index .Headers \"x-user\"}}!"

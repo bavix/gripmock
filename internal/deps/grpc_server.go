@@ -46,6 +46,13 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 	ch := make(chan error)
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Fatal().
+					Interface("panic", r).
+					Msg("Fatal panic in gRPC server goroutine - terminating server")
+			}
+		}()
 		defer close(ch)
 
 		ch <- server.Serve(listener)
