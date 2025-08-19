@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.4.2 - 2025-08-19
+
+### What's Changed
+
+* Fix Trailers by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/653
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.4.1...v3.4.2
+
 ## v3.4.1 - 2025-08-18
 
 ### What's Changed
