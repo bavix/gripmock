@@ -36,8 +36,16 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 			Msg("Starting GripMock")
 
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					zerolog.Ctx(ctx).
+						Fatal().
+						Interface("panic", r).
+						Msg("Fatal panic in REST server goroutine - terminating server")
+				}
+			}()
 			if err := restServe(ctx, builder); err != nil {
-				zerolog.Ctx(ctx).Err(err).Msg("Failed to start rest server")
+				zerolog.Ctx(ctx).Fatal().Err(err).Msg("Fatal error in REST server - terminating server")
 			}
 		}()
 
@@ -58,6 +66,14 @@ func restServe(ctx context.Context, builder *deps.Builder) error {
 	ch := make(chan error)
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				zerolog.Ctx(ctx).
+					Fatal().
+					Interface("panic", r).
+					Msg("Fatal panic in HTTP server goroutine - terminating server")
+			}
+		}()
 		defer close(ch)
 
 		select {

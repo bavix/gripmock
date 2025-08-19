@@ -1,29 +1,45 @@
 # yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
 
-# Bidirectional Streaming - Customer support chat (important: each response depends on message index)
+## Bidirectional Streaming - Customer support chat (explicit inputs and outputs)
 - service: ecommerce.EcommerceService
   method: CustomerSupportChat
   inputs:
-    - equals:
+    - &user789
+      equals:
         user_id: "USER_789"
+    - *user789
+    - *user789
+    - *user789
   output:
     stream:
-      - messageId: "MSG_{{.MessageIndex}}_SUPPORT"
+      - &support_resp
+        messageId: "MSG_{{.MessageIndex}}_SUPPORT"
         userId: "SUPPORT_001"
         content: "Hello! I'm support agent for message {{.MessageIndex}}. How can I help you with: {{.Request.content}}"
         timestamp: "{{.Request.timestamp}}"
         senderType: "support"
+      - *support_resp
+      - *support_resp
+      - *support_resp
 
 # Additional stub to verify that bidi doesn't substitute wrong responses
 - service: ecommerce.EcommerceService
   method: CustomerSupportChat
   inputs:
-    - equals:
+    - &user999
+      equals:
         user_id: "USER_999"
+    - *user999
+    - *user999
+    - *user999
   output:
     stream:
-      - messageId: "SPECIAL_{{.MessageIndex}}"
+      - &support_special
+        messageId: "SPECIAL_{{.MessageIndex}}"
         userId: "SUPPORT_SPECIAL"
         content: "Special support for user 999, message {{.MessageIndex}}: {{.Request.content}}"
         timestamp: "{{.Request.timestamp}}"
         senderType: "support"
+      - *support_special
+      - *support_special
+      - *support_special

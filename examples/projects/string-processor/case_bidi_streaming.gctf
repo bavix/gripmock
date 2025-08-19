@@ -1,0 +1,20 @@
+--- ENDPOINT ---
+stringprocessor.StringProcessorService/BidiStream
+
+--- REQUEST ---
+{"text": "Hello"}
+
+--- RESPONSE ---
+{"result": "Hello"}
+
+--- REQUEST ---
+{"text": "World from gRPC"}
+
+--- RESPONSE ---
+{"result": "World"}
+
+--- RESPONSE ---
+{"result": "from"}
+
+--- RESPONSE ---
+{"result": "gRPC"}

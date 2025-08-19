@@ -797,7 +797,7 @@ func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *s
 	return stream.SendMsg(outputMsg)
 }
 
-//nolint:cyclop,gocognit,funlen
+//nolint:cyclop
 func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 	// Initialize bidirectional streaming session
 	queryBidi := m.newQueryBidi(stream.Context())
@@ -849,9 +849,11 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			}
 		}
 
-		// Always send headers first (both for success and error cases)
-		if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
-			return errors.Wrap(err, "failed to set headers")
+		// Send headers only once at the beginning of the stream
+		if bidiResult.GetMessageIndex() == 0 {
+			if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
+				return errors.Wrap(err, "failed to set headers")
+			}
 		}
 
 		// If the output specifies an error, return it instead of sending a message
@@ -859,33 +861,9 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			return err
 		}
 
-		// For bidirectional streaming, use Stream output if available
-		var outputData map[string]any
-
-		if len(outputToUse.Stream) > 0 {
-			// Select stream element by message index (cyclic)
-			sel := 0
-			if n := len(outputToUse.Stream); n > 0 {
-				sel = bidiResult.GetMessageIndex() % n
-			}
-
-			if streamData, ok := outputToUse.Stream[sel].(map[string]any); ok {
-				outputData = streamData
-			} else {
-				outputData = outputToUse.Data
-			}
-		} else {
-			// Fallback to Data if no Stream available
-			outputData = outputToUse.Data
-		}
-
-		outputMsg, err := m.newOutputMessage(outputData)
-		if err != nil {
-			return errors.Wrap(err, "failed to convert response to dynamic message")
-		}
-
-		if err := sendStreamMessage(stream, outputMsg); err != nil {
-			return err //nolint:wrapcheck
+		// Send response(s) based on output configuration
+		if err := m.sendBidiResponses(stream, outputToUse, stub, bidiResult.GetMessageIndex()); err != nil {
+			return err
 		}
 	}
 }
@@ -924,10 +902,12 @@ func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 
 	return grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
+			grpccontext.PanicRecoveryUnaryInterceptor,
 			grpccontext.UnaryInterceptor(logger),
 			LogUnaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
+			grpccontext.PanicRecoveryStreamInterceptor,
 			grpccontext.StreamInterceptor(logger),
 			LogStreamInterceptor,
 		),
@@ -1024,6 +1004,14 @@ func (s *GRPCServer) startHealthCheckRoutine(ctx context.Context) {
 	logger := zerolog.Ctx(ctx)
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.Error().
+					Interface("panic", r).
+					Msg("Panic recovered in health check routine")
+			}
+		}()
+
 		s.waiter.Wait(ctx)
 
 		select {
@@ -1237,4 +1225,76 @@ func (s *loggingStream) RecvMsg(m any) error {
 	}
 
 	return s.ServerStream.RecvMsg(m)
+}
+
+// sendBidiResponses sends response(s) for bidirectional streaming.
+//
+
+func (m *grpcMocker) sendBidiResponses(stream grpc.ServerStream, output stuber.Output, stub *stuber.Stub, messageIndex int) error {
+	// For bidirectional streaming, send all elements from Stream if available.
+	if len(output.Stream) > 0 {
+		return m.sendStreamResponses(stream, output, stub, messageIndex)
+	}
+
+	// Fallback to Data if no Stream available.
+	outputMsg, err := m.newOutputMessage(output.Data)
+	if err != nil {
+		return errors.Wrap(err, "failed to convert response to dynamic message")
+	}
+
+	return sendStreamMessage(stream, outputMsg)
+}
+
+// sendStreamResponses sends responses from output stream.
+//
+//nolint:cyclop,nestif
+func (m *grpcMocker) sendStreamResponses(stream grpc.ServerStream, output stuber.Output, stub *stuber.Stub, messageIndex int) error {
+	// For stubs with Inputs (multiple input messages), send one response per input message
+	if stub.IsClientStream() {
+		// If only one element is provided in the stream, treat it as a template to be used for every message
+		// The MessageIndex is already applied in handleBidiStream during template processing
+		var idx int
+
+		if len(output.Stream) == 0 {
+			return nil
+		}
+
+		if len(output.Stream) == 1 {
+			idx = 0
+		} else {
+			if messageIndex < 0 || messageIndex >= len(output.Stream) {
+				return nil
+			}
+
+			idx = messageIndex
+		}
+
+		streamData, ok := output.Stream[idx].(map[string]any)
+		if !ok {
+			return nil
+		}
+
+		outputMsg, err := m.newOutputMessage(streamData)
+		if err != nil {
+			return errors.Wrap(err, "failed to convert response to dynamic message")
+		}
+
+		return sendStreamMessage(stream, outputMsg)
+	}
+
+	// For stubs with Input (single input message), send all elements from the stream array
+	for _, streamElement := range output.Stream {
+		if streamData, ok := streamElement.(map[string]any); ok {
+			outputMsg, err := m.newOutputMessage(streamData)
+			if err != nil {
+				return errors.Wrap(err, "failed to convert response to dynamic message")
+			}
+
+			if err := sendStreamMessage(stream, outputMsg); err != nil {
+				return err //nolint:wrapcheck
+			}
+		}
+	}
+
+	return nil
 }

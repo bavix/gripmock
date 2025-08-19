@@ -8,6 +8,38 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+// PanicRecoveryUnaryInterceptor recovers from panics in unary gRPC handlers.
+func PanicRecoveryUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			zerolog.Ctx(ctx).
+				Error().
+				Interface("panic", r).
+				Str("grpc.service", info.FullMethod).
+				Str("grpc.method_type", "unary").
+				Msg("Panic recovered in unary gRPC handler")
+		}
+	}()
+
+	return handler(ctx, req)
+}
+
+// PanicRecoveryStreamInterceptor recovers from panics in streaming gRPC handlers.
+func PanicRecoveryStreamInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	defer func() {
+		if r := recover(); r != nil {
+			zerolog.Ctx(stream.Context()).
+				Error().
+				Interface("panic", r).
+				Str("grpc.service", info.FullMethod).
+				Str("grpc.method_type", "stream").
+				Msg("Panic recovered in streaming gRPC handler")
+		}
+	}()
+
+	return handler(srv, stream)
+}
+
 // UnaryInterceptor is a gRPC interceptor that adds a logger to the context.
 // The logger can be used to log messages related to the gRPC request.
 //

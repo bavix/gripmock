@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package stringprocessor;
+
+service StringProcessorService {
+  // Bidirectional streaming: Process text and return multiple responses
+  rpc BidiStream(stream TextRequest) returns (stream TextResponse);
+}
+
+message TextRequest {
+  string text = 1;
+}
+
+message TextResponse {
+  string result = 1;
+}

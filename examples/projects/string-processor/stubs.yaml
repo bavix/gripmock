@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Bidirectional Streaming Stub (BidiStream)
+- service: StringProcessorService
+  method: BidiStream
+  input:
+    equals:
+      text: "Hello"
+  output:
+    data:
+      result: "Hello"
+
+- service: StringProcessorService
+  method: BidiStream
+  input:
+    equals:
+      text: "World from gRPC"
+  output:
+    stream:
+      - result: "World"
+      - result: "from"
+      - result: "gRPC"
+
+

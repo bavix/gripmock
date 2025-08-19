@@ -37,6 +37,7 @@ func (b *Builder) RestServe(
 		BaseURL:    "/api",
 		BaseRouter: router,
 		Middlewares: []rest.MiddlewareFunc{
+			muxmiddleware.PanicRecoveryMiddleware,
 			muxmiddleware.ContentType,
 			muxmiddleware.RequestLogger,
 		},
