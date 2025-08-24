@@ -3,115 +3,118 @@ package app
 import (
 	"testing"
 
-	"github.com/stretchr/testify/suite"
-	"google.golang.org/grpc/peer"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/bavix/gripmock/v3/internal/domain/types"
 )
 
-// GRPCServerTestSuite provides test suite for gRPC server internal functionality.
-type GRPCServerTestSuite struct {
-	suite.Suite
-}
+//nolint:funlen
+func TestParseAsV4StreamStep(t *testing.T) {
+	t.Parallel()
 
-// TestSplitMethodName tests method name splitting functionality.
-func (s *GRPCServerTestSuite) TestSplitMethodName() {
-	tests := []struct {
-		name           string
-		fullMethod     string
-		expectedSvc    string
-		expectedMethod string
-	}{
-		{
-			name:           "simple service method",
-			fullMethod:     "/TestService/TestMethod",
-			expectedSvc:    "TestService",
-			expectedMethod: "TestMethod",
-		},
-		{
-			name:           "packaged service method",
-			fullMethod:     "/test.v1.TestService/TestMethod",
-			expectedSvc:    "test.v1.TestService",
-			expectedMethod: "TestMethod",
-		},
-		{
-			name:           "deeply nested package",
-			fullMethod:     "/com.example.api.v1.TestService/TestMethod",
-			expectedSvc:    "com.example.api.v1.TestService",
-			expectedMethod: "TestMethod",
-		},
-		{
-			name:           "no package",
-			fullMethod:     "/Service/Method",
-			expectedSvc:    "Service",
-			expectedMethod: "Method",
-		},
-		{
-			name:           "invalid format",
-			fullMethod:     "invalid",
-			expectedSvc:    "unknown",
-			expectedMethod: "unknown",
-		},
-	}
+	mocker := &grpcMocker{}
 
-	for _, tt := range tests {
-		s.Run(tt.name, func() {
-			svc, method := splitMethodName(tt.fullMethod)
-			s.Equal(tt.expectedSvc, svc)
-			s.Equal(tt.expectedMethod, method)
-		})
-	}
-}
-
-// TestGetPeerAddress tests peer address extraction functionality.
-func (s *GRPCServerTestSuite) TestGetPeerAddress() {
 	tests := []struct {
 		name     string
-		peer     *peer.Peer
-		expected string
+		input    any
+		expected *types.StreamStep
+		hasError bool
 	}{
 		{
-			name:     "nil peer",
-			peer:     nil,
-			expected: "unknown",
+			name: "valid v4 StreamStep with send",
+			input: map[string]any{
+				"send": map[string]any{
+					"message": "Hello",
+					"id":      123,
+				},
+			},
+			expected: &types.StreamStep{
+				Send: map[string]any{
+					"message": "Hello",
+					"id":      123,
+				},
+			},
+			hasError: false,
 		},
 		{
-			name: "peer with address",
-			peer: &peer.Peer{
-				Addr: &mockAddr{addr: "127.0.0.1:12345"},
+			name: "valid v4 StreamStep with delay",
+			input: map[string]any{
+				"delay": "100ms",
 			},
-			expected: "127.0.0.1:12345",
+			expected: &types.StreamStep{
+				Delay: "100ms",
+			},
+			hasError: false,
 		},
 		{
-			name: "peer with nil address",
-			peer: &peer.Peer{
-				Addr: nil,
+			name: "valid v4 StreamStep with end",
+			input: map[string]any{
+				"end": map[string]any{
+					"code":    "OK",
+					"message": "Stream completed",
+				},
 			},
-			expected: "unknown",
+			expected: &types.StreamStep{
+				End: &types.GrpcStatus{
+					Code:    "OK",
+					Message: "Stream completed",
+				},
+			},
+			hasError: false,
+		},
+		{
+			name: "valid v4 StreamStep with all fields",
+			input: map[string]any{
+				"send": map[string]any{
+					"message": "Hello",
+				},
+				"delay": "50ms",
+				"end": map[string]any{
+					"code":    "OK",
+					"message": "Done",
+				},
+			},
+			expected: &types.StreamStep{
+				Send: map[string]any{
+					"message": "Hello",
+				},
+				Delay: "50ms",
+				End: &types.GrpcStatus{
+					Code:    "OK",
+					Message: "Done",
+				},
+			},
+			hasError: false,
+		},
+		{
+			name:     "no v4 fields",
+			input:    map[string]any{"legacy": "data"},
+			expected: nil,
+			hasError: true,
+		},
+		{
+			name:     "not a map",
+			input:    "string data",
+			expected: nil,
+			hasError: true,
 		},
 	}
 
 	for _, tt := range tests {
-		s.Run(tt.name, func() {
-			result := getPeerAddress(tt.peer)
-			s.Equal(tt.expected, result)
+		// capture range variable
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result, err := mocker.parseAsV4StreamStep(tt.input)
+
+			if tt.hasError {
+				require.Error(t, err)
+				assert.Nil(t, result)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
 		})
 	}
-}
-
-// mockAddr is a mock implementation of net.Addr for testing.
-type mockAddr struct {
-	addr string
-}
-
-func (m *mockAddr) Network() string {
-	return "tcp"
-}
-
-func (m *mockAddr) String() string {
-	return m.addr
-}
-
-// TestGRPCServerTestSuite runs the gRPC server test suite.
-func TestGRPCServerTestSuite(t *testing.T) {
-	t.Parallel()
-	suite.Run(t, new(GRPCServerTestSuite))
 }

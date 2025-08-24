@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gripmock/stuber"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	errorFormatter "github.com/bavix/gripmock/v3/internal/infra/errors"
+	localstuber "github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 // Validation errors.
@@ -33,14 +33,14 @@ func NewErrorFormatter() *ErrorFormatter {
 }
 
 // FormatStubNotFoundErrorV2 formats error messages for V2 API stub not found scenarios.
-func (f *ErrorFormatter) FormatStubNotFoundErrorV2(expect stuber.QueryV2, result *stuber.Result) error {
+func (f *ErrorFormatter) FormatStubNotFoundErrorV2(expect localstuber.QueryV2, result *localstuber.Result) error {
 	formatter := errorFormatter.NewStubNotFoundFormatter()
 
 	return formatter.FormatV2(expect, result)
 }
 
 // FormatStubNotFoundError formats error messages for V1 API stub not found scenarios.
-func (f *ErrorFormatter) FormatStubNotFoundError(expect stuber.Query, result *stuber.Result) error {
+func (f *ErrorFormatter) FormatStubNotFoundError(expect localstuber.Query, result *localstuber.Result) error {
 	formatter := errorFormatter.NewStubNotFoundFormatter()
 
 	return formatter.FormatV1(expect, result)

@@ -1,7 +1,7 @@
 --- ENDPOINT ---
 auth.AuthService/CheckAccess
 
---- HEADERS ---
+--- REQUEST_HEADERS ---
 x-api-key: secret-key-123
 
 --- REQUEST ---

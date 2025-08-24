@@ -3,8 +3,9 @@ package app
 import (
 	"testing"
 
-	"github.com/gripmock/stuber"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 func TestNewErrorFormatter(t *testing.T) {

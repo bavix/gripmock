@@ -10,10 +10,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gripmock/stuber"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bavix/features"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 // mockExtender is imported from test_utils.go

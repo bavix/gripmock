@@ -1,0 +1,25 @@
+--- ENDPOINT ---
+banking.PaymentsService/UploadReceipts
+
+--- REQUEST ---
+{
+  "receipt_id": "r1",
+  "receipt_type": "pdf",
+  "total": 9.99
+}
+
+--- REQUEST ---
+{
+  "receipt_id": "r2",
+  "receipt_type": "image",
+  "total": 5.00
+}
+
+--- RESPONSE ---
+{
+  "uploaded": true,
+  "status": "RECEIVED"
+}
+
+
+
