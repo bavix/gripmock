@@ -430,7 +430,7 @@ func convertMatcher(dm domain.Matcher) matcher.Matcher {
 	out := matcher.Matcher{
 		Equals:           map[string]any{},
 		Contains:         map[string]any{},
-		Matches:          map[string]string{},
+		Matches:          map[string]any{},
 		IgnoreArrayOrder: dm.IgnoreArrayOrder,
 	}
 	if dm.Equals != nil {

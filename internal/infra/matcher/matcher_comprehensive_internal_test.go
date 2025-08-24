@@ -25,7 +25,7 @@ func TestMatcherComprehensive(t *testing.T) {
 			Contains: map[string]any{
 				"message": "hello",
 			},
-			Matches: map[string]string{
+			Matches: map[string]any{
 				"email": "^[a-z]+@example\\.com$",
 			},
 		}
@@ -234,7 +234,7 @@ func TestMatcherComprehensive(t *testing.T) {
 					"tags": []any{"important"},
 				},
 			},
-			Matches: map[string]string{
+			Matches: map[string]any{
 				"email": "^[a-z]+@example\\.com$",
 			},
 			IgnoreArrayOrder: true,
@@ -294,7 +294,7 @@ func TestMatcherComprehensive(t *testing.T) {
 					"amount": 100.0,
 				},
 			},
-			Matches: map[string]string{
+			Matches: map[string]any{
 				"user_id": "^user_[0-9]+$",
 			},
 			Any: []Matcher{

@@ -102,18 +102,10 @@ func convertInputsArray(inputs []stuber.InputData) []domain.Matcher {
 
 // convertInputData converts a single InputData to Matcher.
 func convertInputData(input stuber.InputData) domain.Matcher {
-	// Convert Matches from map[string]any to map[string]string
-	matches := make(map[string]string)
-	for k, v := range input.Matches {
-		if str, ok := v.(string); ok {
-			matches[k] = str
-		}
-	}
-
 	return domain.Matcher{
 		Equals:           input.Equals,
 		Contains:         input.Contains,
-		Matches:          matches,
+		Matches:          input.Matches,
 		IgnoreArrayOrder: input.IgnoreArrayOrder,
 	}
 }

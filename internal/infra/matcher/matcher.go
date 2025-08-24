@@ -15,11 +15,11 @@ import (
 type (
 	// Matcher mirrors domain Matcher to avoid import cycles in infra layer.
 	Matcher struct {
-		Equals           map[string]any    `json:"equals,omitempty"`
-		Contains         map[string]any    `json:"contains,omitempty"`
-		Matches          map[string]string `json:"matches,omitempty"`
-		Any              []Matcher         `json:"any,omitempty"`
-		IgnoreArrayOrder bool              `json:"ignoreArrayOrder,omitempty"`
+		Equals           map[string]any `json:"equals,omitempty"`
+		Contains         map[string]any `json:"contains,omitempty"`
+		Matches          map[string]any `json:"matches,omitempty"`
+		Any              []Matcher      `json:"any,omitempty"`
+		IgnoreArrayOrder bool           `json:"ignoreArrayOrder,omitempty"`
 	}
 )
 
@@ -164,7 +164,7 @@ func deepContains(candidate any, expected any, ignoreArrayOrder bool) bool {
 	}
 }
 
-func regexMatchAll(candidate map[string]any, patterns map[string]string) bool {
+func regexMatchAll(candidate map[string]any, patterns map[string]any) bool {
 	for key, pat := range patterns {
 		v, ok := candidate[key]
 		if !ok {
@@ -176,7 +176,12 @@ func regexMatchAll(candidate map[string]any, patterns map[string]string) bool {
 			return false
 		}
 
-		rx, err := regexp.Compile(pat)
+		patternStr, ok := pat.(string)
+		if !ok {
+			return false
+		}
+
+		rx, err := regexp.Compile(patternStr)
 		if err != nil {
 			return false
 		}

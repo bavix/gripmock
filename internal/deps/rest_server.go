@@ -13,10 +13,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/bavix/gripmock/v3/internal/app"
-	"github.com/bavix/gripmock/v3/internal/app/port"
-	domain "github.com/bavix/gripmock/v3/internal/domain/types"
 	modern "github.com/bavix/gripmock/v3/internal/infra/http/modern"
 	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
+	"github.com/bavix/gripmock/v3/internal/infra/repository"
 	"github.com/bavix/gripmock/v3/internal/infra/store/memory"
 )
 
@@ -68,8 +67,8 @@ func (b *Builder) RestServe(
 		strings.Join(b.config.HistoryRedactKeys, ","),
 	)
 
-	// Create a simple stub repository for now
-	stubRepo := &simpleStubRepository{}
+	// Create a stub repository that uses the same Budgerigar as legacy API
+	stubRepo := repository.NewStubRepository(b.Budgerigar())
 	v4Server := modern.NewServer(stubRepo, analyticsRepo, historyRepo)
 	v4Server.Mount(router, "/api/v4")
 
@@ -99,36 +98,4 @@ func (b *Builder) RestServe(
 	b.ender.Add(srv.Shutdown)
 
 	return srv, nil
-}
-
-// simpleStubRepository is a minimal implementation for testing.
-type simpleStubRepository struct{}
-
-func (s *simpleStubRepository) Create(ctx context.Context, stub domain.Stub) (domain.Stub, error) {
-	return stub, nil
-}
-
-func (s *simpleStubRepository) Update(ctx context.Context, id string, stub domain.Stub) (domain.Stub, error) {
-	return stub, nil
-}
-
-func (s *simpleStubRepository) Delete(ctx context.Context, id string) error {
-	return nil
-}
-
-func (s *simpleStubRepository) DeleteMany(ctx context.Context, ids []string) error {
-	return nil
-}
-
-func (s *simpleStubRepository) GetByID(ctx context.Context, id string) (domain.Stub, bool) {
-	return domain.Stub{}, false
-}
-
-func (s *simpleStubRepository) List(
-	ctx context.Context,
-	filter port.StubFilter,
-	sort port.SortOption,
-	rng port.RangeOption,
-) ([]domain.Stub, int) {
-	return []domain.Stub{}, 0
 }
