@@ -28,13 +28,14 @@
 - service: Validator
   method: Validate
   input:
-    contains:
-      validation_type: NUMBER_RANGE
-      min: 10011
-      max: 10022999
-
-    matches: # 10012
-      number: "^100[1-2]{2}\\d{0,3}$"
+    any:
+      - equals:
+          validation_type: NUMBER_RANGE
+          min: 10011
+          max: 10022999
+          number: 10012
+      - matches:
+          number: "^100[1-2]{2}\\d{0,3}$"
   output:
     data:
       isValid: true

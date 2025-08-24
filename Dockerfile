@@ -21,7 +21,7 @@ LABEL org.opencontainers.image.title="GripMock"
 LABEL org.opencontainers.image.description="Mock server for gRPC services with dynamic stubbing capabilities"
 LABEL org.opencontainers.image.source="https://github.com/bavix/gripmock"
 LABEL org.opencontainers.image.documentation="https://bavix.github.io/gripmock/"
-LABEL org.opencontainers.image.authors="Babichev Maksim <info@babichev.net>"
+LABEL org.opencontainers.image.authors="Babichev Maxim <info@babichev.net>"
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.vendor="bavix"
 

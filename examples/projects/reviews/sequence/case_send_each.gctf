@@ -1,0 +1,34 @@
+--- ENDPOINT ---
+reviews.v1.ReviewsService/ListProductReviews
+
+--- REQUEST ---
+{
+  "product_id": "PROD_EACH"
+}
+
+--- RESPONSE ---
+{
+  "reviewId": "E-HEAD",
+  "productId": "PROD_EACH",
+  "userId": "USER_X",
+  "comment": "header",
+  "createdAt": "2024-01-01T10:00:00Z"
+}
+{
+  "reviewId": "E-001",
+  "productId": "PROD_EACH",
+  "userId": "USER_X",
+  "rating": 5,
+  "comment": "01",
+  "createdAt": "2024-01-01T10:00:01Z"
+}
+{
+  "reviewId": "E-002",
+  "productId": "PROD_EACH",
+  "userId": "USER_X",
+  "rating": 4,
+  "comment": "02",
+  "createdAt": "2024-01-01T10:00:02Z"
+}
+
+

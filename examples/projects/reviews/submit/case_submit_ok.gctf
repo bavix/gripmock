@@ -1,0 +1,21 @@
+--- ENDPOINT ---
+reviews.v1.ReviewsService/SubmitReview
+
+--- REQUEST ---
+{
+  "product_id": "PROD_123",
+  "user_id": "USER_999",
+  "rating": 5,
+  "comment": "Fast delivery and great quality"
+}
+
+--- RESPONSE ---
+{
+  "productId": "PROD_123",
+  "userId": "USER_999",
+  "rating": 5,
+  "comment": "Fast delivery and great quality",
+  "status": "CREATED"
+}
+
+

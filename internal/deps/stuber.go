@@ -1,16 +1,15 @@
 package deps
 
 import (
-	"github.com/gripmock/stuber"
-
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
+	localstuber "github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
 	"github.com/bavix/gripmock/v3/internal/infra/yaml2json"
 )
 
-func (b *Builder) Budgerigar() *stuber.Budgerigar {
+func (b *Builder) Budgerigar() *localstuber.Budgerigar {
 	b.budgerigarOnce.Do(func() {
-		b.budgerigar = stuber.NewBudgerigar(b.toggles())
+		b.budgerigar = localstuber.NewBudgerigar(b.toggles())
 	})
 
 	return b.budgerigar

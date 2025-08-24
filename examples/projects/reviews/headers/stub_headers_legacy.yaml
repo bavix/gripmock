@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+- service: reviews.v1.ReviewsService
+  method: SubmitReview
+  priority: 1000
+  headers:
+    equals:
+      x-user: alice
+      x-token: secret-123
+  input:
+    equals:
+      product_id: "PROD_777"
+  output:
+    headers:
+      content-type: "application/grpc"
+    data:
+      productId: "PROD_777"
+      userId: "USER_777"
+      rating: 5
+      comment: "Header check"
+      status: "CREATED"
+
+

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/gripmock/stuber"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 // Result interface for testing - allows mocking stuber.Result.

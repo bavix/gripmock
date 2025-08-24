@@ -8,10 +8,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gripmock/stuber"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bavix/features"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 // AdminPanelTestSuite provides test suite for admin panel clever cases.
@@ -39,7 +39,6 @@ func (s *AdminPanelTestSuite) SetupTest() {
 //
 //nolint:funlen // Test function requires multiple scenarios
 func (s *AdminPanelTestSuite) TestSearchStubsWithRequestInternalHeader() {
-	// Add a test stub
 	stubData := `[{
 		"service": "TestService",
 		"method": "TestMethod",
@@ -126,7 +125,6 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithRequestInternalHeader() {
 
 // TestSearchStubsWithoutRequestInternalHeader tests normal stub usage tracking.
 func (s *AdminPanelTestSuite) TestSearchStubsWithoutRequestInternalHeader() {
-	// Add a test stub
 	stubData := `[{
 		"service": "TestService",
 		"method": "TestMethod",

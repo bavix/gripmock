@@ -1,0 +1,1373 @@
+openapi: 3.1.0
+servers:
+  - url: /api
+security:
+  - {}
+info:
+  version: 3.5.0
+  title: GripMock API Schema
+  description: Documentation and API specification GripMock.
+  contact:
+    name: Maksim Babichev
+    url: https://github.com/rez1dent3
+  license:
+    name: MIT
+    url: https://github.com/bavix/gripmock/blob/master/LICENSE
+tags:
+  - name: stubs
+    description: Stubs storage management
+  - name: services
+    description: Services reflection
+  - name: dashboard
+    description: Dashboard
+  - name: healthcheck
+    description: Healthcheck
+  - name: utilities
+    description: Utility operations
+  - name: analytics
+    description: Analytics and metrics
+  - name: history
+    description: Request history
+paths:
+  # healthcheck
+  /health/liveness:
+    get:
+      tags:
+        - healthcheck
+      summary: Liveness check
+      description: This endpoint indicates that the service is alive and ready to handle requests
+      operationId: liveness
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOK'
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+  /health/readiness:
+    get:
+      tags:
+        - healthcheck
+      summary: Readiness check
+      description: The test indicates readiness to receive traffic
+      operationId: readiness
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOK'
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+
+  # internal
+  /services:
+    get:
+      tags:
+        - services
+      summary: Services
+      deprecated: true
+      description: List of registered services
+      operationId: servicesList
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+        '404':
+          description: No services found
+        '500':
+          description: Internal Server Error
+  /services/{serviceID}/methods:
+    get:
+      tags:
+        - services
+      summary: Service methods
+      deprecated: true
+      description: List of registered service methods
+      operationId: serviceMethodsList
+      parameters:
+        - name: serviceID
+          in: path
+          description: ID of service
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Method'
+        '400':
+          description: Invalid service ID
+        '404':
+          description: Service not found
+        '500':
+          description: Internal Server Error
+
+  # stubs
+  /stubs/used:
+    get:
+      tags:
+        - stubs
+      summary: Getting a list of used stubs
+      deprecated: true
+      description: The list is needed to quickly find used stubs
+      operationId: listUsedStubs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubList'
+        '404':
+          description: No used stubs found
+        '500':
+          description: Internal Server Error
+  /stubs/unused:
+    get:
+      tags:
+        - stubs
+      summary: Getting a list of unused stubs
+      deprecated: true
+      description: The list is needed to quickly find unused stubs
+      operationId: listUnusedStubs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubList'
+        '404':
+          description: No unused stubs found
+        '500':
+          description: Internal Server Error
+  /stubs:
+    get:
+      tags:
+        - stubs
+      summary: Getting a list of stubs
+      deprecated: true
+      description: The list of stubs is required to view all added stubs
+      operationId: listStubs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubList'
+        '404':
+          description: No stubs found
+        '500':
+          description: Internal Server Error
+    post:
+      tags:
+        - stubs
+      summary: Add a new stub to the store
+      deprecated: true
+      description: Creates a new stub or multiple stubs and adds them to the storage
+      operationId: addStub
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ListID'
+        '400':
+          description: Invalid stub data
+        '422':
+          description: Validation error
+        '500':
+          description: Internal Server Error
+      requestBody:
+        description: Create a new stub in the store
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/StubList'
+                - $ref: '#/components/schemas/Stub'
+    delete:
+      tags:
+        - stubs
+      summary: Remove all stubs
+      deprecated: true
+      description: Completely clears the stub storage
+      operationId: purgeStubs
+      responses:
+        '204':
+          description: Successful operation
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+  /stubs/batchDelete:
+    post:
+      tags:
+        - stubs
+      summary: Deletes a batch of stubs by IDs
+      deprecated: true
+      description: Takes IDs as input and deletes them
+      operationId: batchStubsDelete
+      responses:
+        '204':
+          description: Successful operation
+        '400':
+          description: Invalid IDs provided
+        '404':
+          description: Some stubs not found
+        '500':
+          description: Internal Server Error
+      requestBody:
+        description: Delete stubs by their IDs
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListID'
+  '/stubs/{uuid}':
+    get:
+      tags:
+        - stubs
+      summary: Get Stub by ID
+      deprecated: true
+      description: Searches for Stub by ID
+      operationId: findByID
+      parameters:
+        - name: uuid
+          in: path
+          description: ID of stub
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stub'
+        '400':
+          description: Invalid UUID format
+        '404':
+          description: Stub not found
+        '500':
+          description: Internal Server Error
+    delete:
+      tags:
+        - stubs
+      summary: Deletes stub by ID
+      deprecated: true
+      description: The method removes the stub by ID
+      operationId: deleteStubByID
+      parameters:
+        - name: uuid
+          in: path
+          description: ID of stub
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          description: successful operation
+        '400':
+          description: Invalid UUID format
+        '404':
+          description: Stub not found
+        '500':
+          description: Internal Server Error
+  '/stubs/search':
+    post:
+      tags:
+        - stubs
+      summary: Stub storage search
+      deprecated: true
+      description: Performs a search for a stub by the given conditions
+      operationId: searchStubs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: Invalid search criteria
+        '422':
+          description: Validation error
+        '500':
+          description: Internal Server Error
+      requestBody:
+        description: Search criteria including service, method, headers and data to match against stubs
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+
+  # V4 API endpoints
+  '/v4/stubs':
+    get:
+      tags:
+        - stubs
+      summary: List stubs with filtering, sorting and pagination
+      description: Returns a list of stubs with support for filtering, sorting and pagination. Supports Content-Range headers.
+      operationId: listStubsV4
+      parameters:
+        - name: _start
+          in: query
+          description: Start index for pagination
+          schema:
+            type: integer
+            default: 0
+        - name: _end
+          in: query
+          description: End index for pagination
+          schema:
+            type: integer
+            default: 50
+        - name: _sort
+          in: query
+          description: Field to sort by
+          schema:
+            type: string
+        - name: _order
+          in: query
+          description: Sort order (ASC or DESC)
+          schema:
+            type: string
+            enum: [ASC, DESC]
+        - name: service
+          in: query
+          description: Filter by service name
+          schema:
+            type: string
+        - name: method
+          in: query
+          description: Filter by method name
+          schema:
+            type: string
+        - name: used
+          in: query
+          description: Filter by usage status
+          schema:
+            type: boolean
+        - name: q
+          in: query
+          description: Search query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          headers:
+            Content-Range:
+              description: Range of items returned
+              schema:
+                type: string
+                example: "stubs 0-49/100"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StubV4'
+        '400':
+          description: Invalid parameters
+        '500':
+          description: Internal Server Error
+    post:
+      tags:
+        - stubs
+      summary: Create stub(s)
+      description: Creates one or more stubs with v4 format. Accepts both single stub object and array of stubs.
+      operationId: createStubV4
+      requestBody:
+        description: Stub(s) to create
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/StubV4'
+                - type: array
+                  items:
+                    $ref: '#/components/schemas/StubV4'
+                  minItems: 1
+      responses:
+        '201':
+          description: Stub(s) created successfully
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/StubV4'
+                  - type: array
+                    items:
+                      $ref: '#/components/schemas/StubV4'
+        '400':
+          description: Invalid stub data
+        '422':
+          description: Validation error
+        '500':
+          description: Internal Server Error
+
+  '/v4/stubs/{id}':
+    get:
+      tags:
+        - stubs
+      summary: Get stub by ID
+      description: Retrieves a specific stub by its ID
+      operationId: getStubV4
+      parameters:
+        - name: id
+          in: path
+          description: Stub ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubV4'
+        '404':
+          description: Stub not found
+        '500':
+          description: Internal Server Error
+    put:
+      tags:
+        - stubs
+      summary: Update stub
+      description: Updates an existing stub
+      operationId: updateStubV4
+      parameters:
+        - name: id
+          in: path
+          description: Stub ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Updated stub data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StubV4'
+      responses:
+        '200':
+          description: Stub updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubV4'
+        '400':
+          description: Invalid stub data
+        '404':
+          description: Stub not found
+        '422':
+          description: Validation error
+        '500':
+          description: Internal Server Error
+    delete:
+      tags:
+        - stubs
+      summary: Delete stub
+      description: Deletes a stub by ID
+      operationId: deleteStubV4
+      parameters:
+        - name: id
+          in: path
+          description: Stub ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Stub deleted successfully
+        '404':
+          description: Stub not found
+        '500':
+          description: Internal Server Error
+
+  '/v4/stubs/search':
+    get:
+      tags:
+        - stubs
+      summary: Search stubs
+      description: Search stubs with query parameter
+      operationId: searchStubsV4
+      parameters:
+        - name: q
+          in: query
+          description: Search query
+          required: true
+          schema:
+            type: string
+        - name: _start
+          in: query
+          description: Start index for pagination
+          schema:
+            type: integer
+            default: 0
+        - name: _end
+          in: query
+          description: End index for pagination
+          schema:
+            type: integer
+            default: 50
+        - name: _sort
+          in: query
+          description: Field to sort by
+          schema:
+            type: string
+        - name: _order
+          in: query
+          description: Sort order (ASC or DESC)
+          schema:
+            type: string
+            enum: [ASC, DESC]
+      responses:
+        '200':
+          description: Successful operation
+          headers:
+            Content-Range:
+              description: Range of items returned
+              schema:
+                type: string
+                example: "stubs 0-49/100"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StubV4'
+        '400':
+          description: Invalid search query
+        '500':
+          description: Internal Server Error
+
+  '/v4/stubs/batchDelete':
+    post:
+      tags:
+        - stubs
+      summary: Delete multiple stubs
+      description: Deletes multiple stubs by their IDs
+      operationId: batchDeleteStubsV4
+      requestBody:
+        description: Array of stub IDs to delete
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+      responses:
+        '200':
+          description: Stubs deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: integer
+                    description: Number of stubs deleted
+        '400':
+          description: Invalid IDs
+        '500':
+          description: Internal Server Error
+
+  '/v4/stubs/{id}/resetTimes':
+    post:
+      tags:
+        - stubs
+      summary: Reset stub times
+      description: Resets the times counter for a stub
+      operationId: resetStubTimesV4
+      parameters:
+        - name: id
+          in: path
+          description: Stub ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Times reset successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  times:
+                    type: integer
+                    default: 0
+        '404':
+          description: Stub not found
+        '500':
+          description: Internal Server Error
+
+  '/v4/stubs/lint':
+    post:
+      tags:
+        - stubs
+      summary: Lint stubs
+      description: Validates stub format and syntax
+      operationId: lintStubsV4
+      requestBody:
+        description: Stubs to validate
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/StubV4'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  count:
+                    type: integer
+                  format:
+                    type: string
+                    enum: [v4, legacy]
+        '400':
+          description: Invalid stub format
+        '500':
+          description: Internal Server Error
+
+  '/v4/stubs/match:dryRun':
+    post:
+      tags:
+        - stubs
+      summary: Dry run stub matching
+      description: Tests stub matching without executing
+      operationId: dryRunStubMatchV4
+      requestBody:
+        description: Request to test matching against
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+      responses:
+        '200':
+          description: Matching result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matched:
+                    type: boolean
+                  stub:
+                    $ref: '#/components/schemas/StubV4'
+        '400':
+          description: Invalid request
+        '500':
+          description: Internal Server Error
+
+
+
+  '/v4/analytics/stubs':
+    get:
+      tags:
+        - analytics
+      summary: List stub analytics
+      description: Returns analytics data for stubs
+      operationId: listStubAnalyticsV4
+      parameters:
+        - name: _start
+          in: query
+          description: Start index for pagination
+          schema:
+            type: integer
+            default: 0
+        - name: _end
+          in: query
+          description: End index for pagination
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Analytics data
+          headers:
+            Content-Range:
+              description: Range of items returned
+              schema:
+                type: string
+                example: "analytics 0-49/100"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StubAnalytics'
+        '500':
+          description: Internal Server Error
+
+  '/v4/stubs/{id}/analytics':
+    get:
+      tags:
+        - analytics
+      summary: Get stub analytics
+      description: Returns analytics data for a specific stub
+      operationId: getStubAnalyticsV4
+      parameters:
+        - name: id
+          in: path
+          description: Stub ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stub analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubAnalytics'
+        '404':
+          description: Stub not found
+        '500':
+          description: Internal Server Error
+
+  '/v4/history':
+    get:
+      tags:
+        - history
+      summary: List request history
+      description: Returns request history with pagination
+      operationId: listHistoryV4
+      parameters:
+        - name: _start
+          in: query
+          description: Start index for pagination
+          schema:
+            type: integer
+            default: 0
+        - name: _end
+          in: query
+          description: End index for pagination
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: History data
+          headers:
+            Content-Range:
+              description: Range of items returned
+              schema:
+                type: string
+                example: "history 0-49/100"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RequestHistory'
+        '500':
+          description: Internal Server Error
+    delete:
+      tags:
+        - history
+      summary: Clear request history
+      description: Clears all request history
+      operationId: clearHistoryV4
+      responses:
+        '204':
+          description: History cleared successfully
+        '500':
+          description: Internal Server Error
+
+  '/v4/history/{id}':
+    get:
+      tags:
+        - history
+      summary: Get request history item
+      description: Returns a specific request history item
+      operationId: getHistoryItemV4
+      parameters:
+        - name: id
+          in: path
+          description: History item ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: History item
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestHistory'
+        '404':
+          description: History item not found
+        '500':
+          description: Internal Server Error
+components:
+  schemas:
+    # health
+    MessageOK:
+      type: object
+      required:
+        - message
+        - time
+      properties:
+        message:
+          type: string
+          x-omitzero: false
+        time:
+          type: string
+          format: date-time
+          x-omitzero: false
+    # services
+    Service:
+      type: object
+      required:
+        - id
+        - package
+        - name
+        - methods
+      properties:
+        id:
+          type: string
+          x-omitzero: false
+        package:
+          type: string
+          x-omitzero: false
+        name:
+          type: string
+          x-omitzero: false
+        methods:
+          type: array
+          items:
+            $ref: '#/components/schemas/Method'
+          x-omitzero: false
+    Method:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          x-omitzero: false
+        name:
+          type: string
+          x-omitzero: false
+    # stubs
+    ID:
+      type: string
+      format: uuid
+      example: 51c50050-ec27-4dae-a583-a32ca71a1dd5
+      x-omitzero: false
+    ListID:
+      type: array
+      items:
+        $ref: '#/components/schemas/ID'
+      x-omitzero: false
+    StubList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Stub'
+      x-omitzero: false
+    SearchRequest:
+      type: object
+      required:
+        - service
+        - method
+        - data
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        service:
+          type: string
+          example: Gripmock
+          x-omitzero: false
+        method:
+          type: string
+          example: SayHello
+          x-omitzero: false
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        data:
+          type: object
+          x-go-type: interface{}
+          additionalProperties: true
+          x-omitzero: false
+    SearchResponse:
+      type: object
+      required:
+        - data
+        - error
+      properties:
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        data:
+          type: object
+          x-go-type: interface{}
+          additionalProperties: true
+          x-omitzero: false
+        error:
+          type: string
+          example: Message not found
+          x-omitzero: false
+        code:
+          type: integer
+          format: uint32
+          x-go-type: codes.Code
+          x-go-type-import:
+            name: codes
+            path: google.golang.org/grpc/codes
+          example: 3
+          x-go-type-skip-optional-pointer: true
+    Stub:
+      type: object
+      required:
+        - service
+        - method
+        - input
+        - output
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        service:
+          type: string
+          example: Gripmock
+          x-omitzero: false
+        method:
+          type: string
+          example: SayHello
+          x-omitzero: false
+        priority:
+          type: integer
+          default: 0
+          description: Priority of the stub. Higher priority stubs are matched first.
+          x-go-type-skip-optional-pointer: true
+        headers:
+          $ref: '#/components/schemas/StubHeaders'
+        input:
+          $ref: '#/components/schemas/StubInput'
+          x-omitzero: false
+        inputs:
+          type: array
+          description: Inputs to match against. If multiple inputs are provided, the stub will be matched if any of the inputs match.
+          items:
+            $ref: '#/components/schemas/StubInput'
+          x-go-type-skip-optional-pointer: true
+        output:
+          $ref: '#/components/schemas/StubOutput'
+          x-omitzero: false
+    StubInput:
+      type: object
+      properties:
+        ignoreArrayOrder:
+          type: boolean
+          default: false
+          x-go-type-skip-optional-pointer: true
+        equals:
+          type: object
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+        contains:
+          type: object
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+        matches:
+          type: object
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+    StubHeaders:
+      type: object
+      x-go-type-skip-optional-pointer: true
+      properties:
+        equals:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        contains:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        matches:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+    StubOutput:
+      type: object
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+        stream:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        error:
+          type: string
+          example: Message not found
+          x-go-type-skip-optional-pointer: true
+        code:
+          type: integer
+          format: uint32
+          x-go-type: codes.Code
+          x-go-type-import:
+            name: codes
+            path: google.golang.org/grpc/codes
+          example: 3
+          x-go-type-skip-optional-pointer: true
+        delay:
+          type: string
+          x-go-type: gptypes.Duration
+          x-go-type-import:
+            name: gptypes
+            path: github.com/bavix/gripmock/v3/internal/infra/types
+          description: Delay before sending the response
+          example: "1s"
+          x-omitzero: true
+          x-go-type-skip-optional-pointer: true
+
+    # V4 schemas
+    Matcher:
+      type: object
+      description: Unified matcher for v4 stubs
+      properties:
+        equals:
+          type: object
+          additionalProperties: true
+          description: Exact match criteria
+        contains:
+          type: object
+          additionalProperties: true
+          description: Partial match criteria
+        matches:
+          type: object
+          additionalProperties:
+            type: string
+          description: Regex match criteria
+        any:
+          type: array
+          items:
+            $ref: '#/components/schemas/Matcher'
+          description: OR logic - any of these matchers can match
+        ignoreArrayOrder:
+          type: boolean
+          default: false
+          description: Treat arrays as sets (ignore order)
+
+    GrpcStatus:
+      type: object
+      description: gRPC status information
+      properties:
+        code:
+          type: string
+          description: gRPC status code
+        message:
+          type: string
+          description: Status message
+
+    StreamStep:
+      type: object
+      description: A step in streaming response
+      properties:
+        send:
+          type: object
+          additionalProperties: true
+          description: Data to send
+        delay:
+          type: string
+          description: Delay before next step
+        end:
+          $ref: '#/components/schemas/GrpcStatus'
+          description: End the stream with status
+
+    SendEach:
+      type: object
+      description: Template for sending multiple messages
+      properties:
+        items:
+          type: string
+          description: Template expression for items
+        as:
+          type: string
+          description: Variable name for current item
+        message:
+          type: object
+          additionalProperties: true
+          description: Message template
+        delay:
+          type: string
+          description: Delay between messages
+
+    StreamRule:
+      type: object
+      description: Rule for streaming responses
+      properties:
+        match:
+          $ref: '#/components/schemas/Matcher'
+          description: Match criteria
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/StreamStep'
+          description: Stream steps
+        sendEach:
+          $ref: '#/components/schemas/SendEach'
+          description: Send each template
+        delay:
+          type: string
+          description: Delay before streaming
+
+    DataRule:
+      type: object
+      description: Rule for data responses
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+          description: Response data
+        status:
+          $ref: '#/components/schemas/GrpcStatus'
+          description: gRPC status
+
+    SequenceItem:
+      type: object
+      description: Item in a sequence rule
+      properties:
+        match:
+          $ref: '#/components/schemas/Matcher'
+          description: Match criteria
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/StreamStep'
+          description: Stream steps
+        sendEach:
+          $ref: '#/components/schemas/SendEach'
+          description: Send each template
+        data:
+          type: object
+          additionalProperties: true
+          description: Response data
+        status:
+          $ref: '#/components/schemas/GrpcStatus'
+          description: gRPC status
+
+    SequenceRule:
+      type: object
+      description: Sequence of responses
+      properties:
+        sequence:
+          type: array
+          items:
+            $ref: '#/components/schemas/SequenceItem'
+          description: Sequence items
+
+    StubV4:
+      type: object
+      description: V4 stub format with unified inputs and multiple outputs
+      required:
+        - service
+        - method
+        - outputs
+      properties:
+        id:
+          type: string
+          description: Unique identifier
+        service:
+          type: string
+          description: gRPC service name
+          example: "banking.PaymentsService"
+        method:
+          type: string
+          description: gRPC method name
+          example: "ProcessPayment"
+        priority:
+          type: integer
+          default: 0
+          description: Priority for matching (higher = first)
+        headers:
+          $ref: '#/components/schemas/Matcher'
+          description: Header matching criteria
+        inputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/Matcher'
+          description: Input matching criteria (unified for unary/streaming)
+        outputs:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/DataOutput'
+              - $ref: '#/components/schemas/StreamOutput'
+              - $ref: '#/components/schemas/SequenceOutput'
+          description: Multiple possible outputs. Each output can be one of three types - data for unary responses, stream for server/bidirectional streaming, sequence for complex multi-step responses
+          minItems: 1
+        responseHeaders:
+          type: object
+          additionalProperties:
+            type: string
+          description: Response headers to send
+        responseTrailers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Response trailers to send
+        times:
+          type: integer
+          default: 0
+          description: Maximum number of times this stub can be used (0 = unlimited)
+
+    StubAnalytics:
+      type: object
+      description: Analytics data for a stub
+      properties:
+        id:
+          type: string
+          description: Stub ID
+        service:
+          type: string
+          description: Service name
+        method:
+          type: string
+          description: Method name
+        used:
+          type: integer
+          description: Number of times used
+        lastUsed:
+          type: string
+          format: date-time
+          description: Last usage timestamp
+        averageResponseTime:
+          type: number
+          description: Average response time in milliseconds
+
+    # V4 Output schemas
+    DataOutput:
+      type: object
+      description: Output for unary responses
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+          description: Response data
+        status:
+          $ref: '#/components/schemas/GrpcStatus'
+          description: gRPC status
+
+    StreamOutput:
+      type: object
+      description: Output for streaming responses
+      properties:
+        stream:
+          type: array
+          items:
+            $ref: '#/components/schemas/StreamStep'
+          description: Stream steps
+        sendEach:
+          $ref: '#/components/schemas/SendEach'
+          description: Send each template
+        delay:
+          type: string
+          description: Delay before streaming
+
+    SequenceOutput:
+      type: object
+      description: Output for complex multi-step responses
+      required:
+        - sequence
+      properties:
+        sequence:
+          type: array
+          items:
+            $ref: '#/components/schemas/SequenceItem'
+          description: Sequence items
+
+    RequestHistory:
+      type: object
+      description: Request history item
+      properties:
+        id:
+          type: string
+          description: History item ID
+        timestamp:
+          type: string
+          format: date-time
+          description: Request timestamp
+        service:
+          type: string
+          description: Service name
+        method:
+          type: string
+          description: Method name
+        request:
+          type: object
+          additionalProperties: true
+          description: Request data
+        response:
+          type: object
+          additionalProperties: true
+          description: Response data
+        duration:
+          type: number
+          description: Request duration in milliseconds
+        status:
+          type: string
+          description: Response status

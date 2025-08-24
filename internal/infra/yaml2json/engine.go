@@ -6,9 +6,8 @@ import (
 	"sync"
 	"text/template"
 
-	"github.com/gripmock/stuber"
-
 	"github.com/bavix/gripmock/v3/internal/infra/encoding"
+	templatepkg "github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
 type engine struct {
@@ -18,9 +17,9 @@ type engine struct {
 
 func newEngine() *engine {
 	utils := encoding.NewTemplateUtils()
-	stuberFuncs := stuber.TemplateFunctions()
+	templateFuncs := templatepkg.Functions()
 
-	// Combine encoding utils with stuber functions
+	// Combine encoding utils with template functions
 	funcs := template.FuncMap{
 		"bytes":         utils.Conversion.StringToBytes,
 		"string2base64": utils.Base64.StringToBase64,
@@ -30,8 +29,8 @@ func newEngine() *engine {
 		"uuid2int64":    utils.UUID.UUIDToInt64,
 	}
 
-	// Add stuber functions
-	for k, v := range stuberFuncs {
+	// Add template functions
+	for k, v := range templateFuncs {
 		funcs[k] = v
 	}
 
