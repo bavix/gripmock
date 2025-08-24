@@ -16,7 +16,7 @@
       request_timestamp: 1717046400
   output:
     data:
-      process_id: 9223242625195229884
+      process_id: "9223242625195229884"
       status_code: 200
       response_timestamp: 1717046401
 
