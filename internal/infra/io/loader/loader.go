@@ -237,7 +237,7 @@ func parseMatcher(m map[string]any) domain.Matcher {
 	}
 
 	if v, ok := m["matches"].(map[string]any); ok {
-		matcher.Matches = parseStringMap(v)
+		matcher.Matches = v
 	}
 
 	if v, ok := m["any"].([]any); ok {

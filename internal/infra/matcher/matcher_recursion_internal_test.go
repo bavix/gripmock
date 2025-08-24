@@ -59,7 +59,7 @@ func TestMatcherRecursionDepth(t *testing.T) {
 							},
 							Any: []Matcher{
 								{
-									Matches: map[string]string{
+									Matches: map[string]any{
 										"currency": "^USD$",
 									},
 									Any: []Matcher{

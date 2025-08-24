@@ -27,7 +27,7 @@ func TestMatch_ContainsString(t *testing.T) {
 func TestMatch_MatchesRegex(t *testing.T) {
 	t.Parallel()
 
-	m := Matcher{Matches: map[string]string{"name": "^jo.*"}}
+	m := Matcher{Matches: map[string]any{"name": "^jo.*"}}
 
 	c := map[string]any{"name": "john"}
 	if !Match(m, c) {

@@ -326,6 +326,8 @@ func (s *Extender) readStub(path string) ([]*stuber.Stub, error) {
 }
 
 // readStubWithContext performs stub reading with context-aware logging.
+//
+//nolint:cyclop
 func (s *Extender) readStubWithContext(ctx context.Context, path string) ([]*stuber.Stub, error) {
 	file, err := os.ReadFile(path) //nolint:gosec
 	if err != nil {
@@ -347,6 +349,8 @@ func (s *Extender) readStubWithContext(ctx context.Context, path string) ([]*stu
 
 	stubs := make([]*stuber.Stub, 0, len(rawList))
 
+	hasLegacyStubs := false
+
 	for _, rawStub := range rawList {
 		stub := &stuber.Stub{}
 
@@ -358,10 +362,7 @@ func (s *Extender) readStubWithContext(ctx context.Context, path string) ([]*stu
 			}
 		} else {
 			// Handle legacy format
-			zerolog.Ctx(ctx).
-				Warn().
-				Str("file", path).
-				Msg("[DEPRECATED] legacy stub format detected; please migrate to v4 outputs")
+			hasLegacyStubs = true
 
 			if err := s.unmarshalLegacyStub(rawStub, stub); err != nil {
 				return nil, errors.Wrapf(err, "failed to unmarshal legacy stub from %s", path)
@@ -369,6 +370,14 @@ func (s *Extender) readStubWithContext(ctx context.Context, path string) ([]*stu
 		}
 
 		stubs = append(stubs, stub)
+	}
+
+	// Log warning once per file if any legacy stubs were found
+	if hasLegacyStubs {
+		zerolog.Ctx(ctx).
+			Warn().
+			Str("file", path).
+			Msg("[DEPRECATED] legacy stub format detected; please migrate to v4 outputs")
 	}
 
 	return stubs, nil
