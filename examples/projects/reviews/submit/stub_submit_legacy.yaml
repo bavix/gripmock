@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+- service: reviews.v1.ReviewsService
+  method: SubmitReview
+  input:
+    equals:
+      product_id: "PROD_123"
+      user_id: "USER_999"
+      rating: 5
+      comment: "Fast delivery and great quality"
+  output:
+    data:
+      productId: "PROD_123"
+      userId: "USER_999"
+      rating: 5
+      comment: "Fast delivery and great quality"
+      status: "CREATED"

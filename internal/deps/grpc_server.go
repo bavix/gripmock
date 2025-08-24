@@ -12,26 +12,47 @@ import (
 )
 
 func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
-	listener, err := (&net.ListenConfig{}).Listen(ctx, b.config.GRPCNetwork, b.config.GRPCAddr)
+	network := b.config.GRPCNetwork
+	addr := b.config.GRPCAddr
+
+	listener, err := listen(ctx, network, addr)
 	if err != nil {
-		return errors.Wrap(err, "failed to listen")
+		return err
 	}
 
-	logger := zerolog.Ctx(ctx)
+	grpcServer := b.buildGRPC(ctx, network, addr, param)
 
+	return serveGRPC(ctx, grpcServer, listener, b)
+}
+
+func listen(ctx context.Context, network, addr string) (net.Listener, error) {
+	listener, err := (&net.ListenConfig{}).Listen(ctx, network, addr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to listen")
+	}
+
+	return listener, nil
+}
+
+func (b *Builder) buildGRPC(ctx context.Context, network, addr string, param *proto.Arguments) *app.GRPCServer {
+	logger := zerolog.Ctx(ctx)
 	logger.Info().
-		Str("addr", listener.Addr().String()).
-		Str("network", listener.Addr().Network()).
+		Str("addr", addr).
+		Str("network", network).
 		Msg("Serving gRPC")
 
-	grpcServer := app.NewGRPCServer(
-		b.config.GRPCNetwork,
-		b.config.GRPCAddr,
+	return app.NewGRPCServer(
+		network,
+		addr,
 		param,
 		b.Budgerigar(),
+		b.ServiceManager(),
 		b.Extender(),
+		b.ErrorFormatter(),
 	)
+}
 
+func serveGRPC(ctx context.Context, grpcServer *app.GRPCServer, listener net.Listener, b *Builder) error {
 	server, err := grpcServer.Build(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to build gRPC server")
@@ -44,6 +65,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 	})
 
 	ch := make(chan error)
+	logger := zerolog.Ctx(ctx)
 
 	go func() {
 		defer func() {

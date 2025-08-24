@@ -32,6 +32,7 @@ import (
 
 	protoloc "github.com/bavix/gripmock/v3/internal/domain/proto"
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
+	"github.com/bavix/gripmock/v3/internal/domain/types"
 	"github.com/bavix/gripmock/v3/internal/infra/grpccontext"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
@@ -87,12 +88,14 @@ func receiveStreamMessage(stream grpc.ServerStream, msg *dynamicpb.Message) erro
 const serviceReflection = "grpc.reflection.v1.ServerReflection"
 
 type GRPCServer struct {
-	network     string
-	address     string
-	params      *protoloc.Arguments
-	budgerigar  *stuber.Budgerigar
-	waiter      Extender
-	healthcheck *health.Server
+	network        string
+	address        string
+	params         *protoloc.Arguments
+	budgerigar     *stuber.Budgerigar
+	serviceManager *grpcservice.Manager
+	waiter         Extender
+	healthcheck    *health.Server
+	errorFormatter *ErrorFormatter
 }
 
 type grpcMocker struct {
@@ -108,6 +111,8 @@ type grpcMocker struct {
 
 	serverStream bool
 	clientStream bool
+
+	errorFormatter *ErrorFormatter
 }
 
 func (m *grpcMocker) streamHandler(srv any, stream grpc.ServerStream) error {
@@ -295,7 +300,7 @@ func convertScalar(fd protoreflect.FieldDescriptor, value protoreflect.Value) an
 	}
 }
 
-func (m *grpcMocker) delay(ctx context.Context, delayDur types.Duration) {
+func (m *grpcMocker) delay(ctx context.Context, delayDur localtypes.Duration) {
 	if delayDur == 0 {
 		return
 	}
@@ -345,7 +350,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 			headers = processHeaders(md)
 		}
 
-		if err := found.Output.ProcessDynamicOutput(requestData, headers, 0, nil); err != nil {
+		if err := found.Output.ProcessDynamicOutput(requestData, headers, 0, nil, 1, found.Times, found.ID.String()); err != nil {
 			return status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
 		}
 	}
@@ -402,7 +407,18 @@ func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stub
 		default:
 		}
 
-		// Validate type of each streamData just before sending
+		// Check if this stub is v4 format (has outputs field)
+		if m.isV4Stub(found) {
+			if streamStep, err := m.parseAsV4StreamStep(streamData); err == nil {
+				if err := m.processV4StreamStep(stream, streamStep); err != nil {
+					return err
+				}
+
+				continue
+			}
+		}
+
+		// Fallback to legacy handling for backward compatibility
 		outputData, ok := streamData.(map[string]any)
 		if !ok {
 			return status.Errorf(
@@ -412,17 +428,139 @@ func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stub
 			)
 		}
 
-		// Apply delay before sending each message
-		m.delay(stream.Context(), found.Output.Delay)
+		if err := m.processLegacyStreamStep(stream, outputData, found); err != nil {
+			return err
+		}
+	}
 
-		outputMsg, err := m.newOutputMessage(outputData)
+	return nil
+}
+
+// parseAsV4StreamStep attempts to parse stream data as v4 StreamStep.
+// Returns error if the data doesn't match v4 StreamStep structure.
+//
+//nolint:cyclop
+func (m *grpcMocker) parseAsV4StreamStep(streamData any) (*types.StreamStep, error) {
+	// Try direct type assertion first
+	if streamStep, ok := streamData.(*types.StreamStep); ok {
+		return streamStep, nil
+	}
+
+	// Try to convert from map[string]any if it has v4 StreamStep structure
+	//nolint:nestif
+	if dataMap, ok := streamData.(map[string]any); ok {
+		streamStep := &types.StreamStep{}
+
+		// Check for send field
+		if sendData, hasSend := dataMap["send"]; hasSend {
+			if sendMap, ok := sendData.(map[string]any); ok {
+				streamStep.Send = sendMap
+			}
+		}
+
+		// Check for delay field
+		if delayData, hasDelay := dataMap["delay"]; hasDelay {
+			if delayStr, ok := delayData.(string); ok {
+				streamStep.Delay = delayStr
+			}
+		}
+
+		// Check for end field
+		if endData, hasEnd := dataMap["end"]; hasEnd {
+			if endMap, ok := endData.(map[string]any); ok {
+				streamStep.End = &types.GrpcStatus{}
+				if code, ok := endMap["code"].(string); ok {
+					streamStep.End.Code = code
+				}
+
+				if message, ok := endMap["message"].(string); ok {
+					streamStep.End.Message = message
+				}
+			}
+		}
+
+		// Validate that at least one v4 field is present
+		if streamStep.Send == nil && streamStep.Delay == "" && streamStep.End == nil {
+			return nil, errors.New("no v4 StreamStep fields found")
+		}
+
+		return streamStep, nil
+	}
+
+	return nil, errors.New("data is not a v4 StreamStep")
+}
+
+// isV4Stub checks if the stub is v4 format by checking if it has OutputsRawV4.
+func (m *grpcMocker) isV4Stub(stub *stuber.Stub) bool {
+	return len(stub.OutputsRawV4) > 0
+}
+
+// processV4StreamStep handles v4 StreamStep structure using proper types.
+func (m *grpcMocker) processV4StreamStep(stream grpc.ServerStream, streamStep *types.StreamStep) error {
+	// Handle delay first if present
+	if streamStep.Delay != "" {
+		if d, err := time.ParseDuration(streamStep.Delay); err == nil {
+			m.delay(stream.Context(), localtypes.Duration(d))
+		}
+	}
+
+	// Handle send if present
+	if streamStep.Send != nil {
+		outputMsg, err := m.newOutputMessage(streamStep.Send)
 		if err != nil {
-			return errors.Wrap(err, "failed to convert response to dynamic message")
+			return errors.Wrap(err, "failed to convert v4 send response to dynamic message")
 		}
 
 		if err := sendStreamMessage(stream, outputMsg); err != nil {
 			return err
 		}
+	}
+
+	// Handle end status if present
+	if streamStep.End != nil {
+		// Process end status - this would typically end the stream
+		// For now, we'll just log it as the current implementation doesn't handle stream termination
+		_ = streamStep.End // Stream termination not yet implemented
+	}
+
+	return nil
+}
+
+// processLegacyStreamStep handles legacy stream structure for backward compatibility.
+//
+//nolint:cyclop
+func (m *grpcMocker) processLegacyStreamStep(stream grpc.ServerStream, outputData map[string]any, found *stuber.Stub) error {
+	// Per-step delay
+	if rawDelay, hasDelay := outputData["delay"]; hasDelay {
+		if s, ok := rawDelay.(string); ok && s != "" {
+			if d, err := time.ParseDuration(s); err == nil {
+				m.delay(stream.Context(), localtypes.Duration(d))
+			}
+		}
+		// If this element has only delay, skip sending a message
+		if _, hasSend := outputData["send"]; !hasSend && len(outputData) == 1 {
+			return nil
+		}
+	}
+
+	// Determine payload to send
+	payload := outputData
+	if rawSend, hasSend := outputData["send"]; hasSend {
+		if sendMap, ok := rawSend.(map[string]any); ok {
+			payload = sendMap
+		}
+	}
+
+	// Also honor top-level per-message delay for backward compatibility
+	m.delay(stream.Context(), found.Output.Delay)
+
+	outputMsg, err := m.newOutputMessage(payload)
+	if err != nil {
+		return errors.Wrap(err, "failed to convert response to dynamic message")
+	}
+
+	if err := sendStreamMessage(stream, outputMsg); err != nil { //nolint:wrapcheck
+		return err
 	}
 
 	return nil
@@ -451,8 +589,8 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 			return errors.Wrap(err, "failed to convert response to dynamic message")
 		}
 
-		if err := sendStreamMessage(stream, outputMsg); err != nil {
-			return err //nolint:wrapcheck
+		if err := sendStreamMessage(stream, outputMsg); err != nil { //nolint:wrapcheck
+			return err
 		}
 
 		// In server streaming, do not receive further messages from the client after the initial request.
@@ -469,6 +607,11 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 }
 
 func (m *grpcMocker) newOutputMessage(data map[string]any) (*dynamicpb.Message, error) {
+	// Prevent marshaling to JSON null which breaks protojson.Unmarshal
+	if data == nil {
+		data = map[string]any{}
+	}
+
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal map to JSON: %w", err)
@@ -476,7 +619,11 @@ func (m *grpcMocker) newOutputMessage(data map[string]any) (*dynamicpb.Message, 
 
 	msg := dynamicpb.NewMessage(m.outputDesc)
 
-	err = protojson.Unmarshal(jsonData, msg)
+	unmarshaler := protojson.UnmarshalOptions{
+		DiscardUnknown: true,
+	}
+
+	err = unmarshaler.Unmarshal(jsonData, msg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON into dynamic message: %w", err)
 	}
@@ -508,7 +655,7 @@ func (m *grpcMocker) unaryHandler() grpc.MethodHandler {
 	}
 }
 
-//nolint:cyclop
+//nolint:gocognit,cyclop,funlen
 func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*dynamicpb.Message, error) {
 	// Try V2 API first for better performance
 	queryV2 := m.newQueryV2(ctx, req)
@@ -526,24 +673,46 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 
 	found := result.Found()
 	if found == nil {
-		// Use appropriate error function based on which API was used
-		if queryV2.Service != "" {
-			errorFormatter := NewErrorFormatter()
-
-			return nil, status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundErrorV2(queryV2, result).Error())
-		}
-
-		// Fallback to V1 error format
+		// V2 API didn't find a stub, try V1 API as fallback
 		query := m.newQuery(ctx, req)
 
-		return nil, status.Error(codes.NotFound, stubNotFoundError(query, result).Error())
+		result, err = m.budgerigar.FindByQuery(query)
+		if err != nil {
+			return nil, err //nolint:wrapcheck
+		}
+
+		found = result.Found()
+		if found == nil {
+			// Use appropriate error function based on which API was used
+			if queryV2.Service != "" {
+				return nil, status.Error(codes.NotFound, m.errorFormatter.FormatStubNotFoundErrorV2(queryV2, result).Error())
+			}
+
+			// Fallback to V1 error format
+			return nil, status.Error(codes.NotFound, stubNotFoundError(query, result).Error())
+		}
 	}
 
 	m.delay(ctx, found.Output.Delay)
 
-	// Process dynamic templates on a deep copy to avoid mutating the stub
+	// Prepare output copy and merge v4 response headers before potential template processing
 	outputToUse := found.Output
-	if found.Output.HasTemplates() || found.Output.Error != "" {
+
+	outputToUse.Headers = deepCopyStringMap(found.Output.Headers)
+	if len(found.ResponseHeaders) > 0 {
+		if outputToUse.Headers == nil {
+			outputToUse.Headers = make(map[string]string, len(found.ResponseHeaders))
+		}
+
+		for k, v := range found.ResponseHeaders {
+			if _, exists := outputToUse.Headers[k]; !exists {
+				outputToUse.Headers[k] = v
+			}
+		}
+	}
+
+	// Process dynamic templates on a deep copy to avoid mutating the stub
+	if found.Output.HasTemplates() || found.Output.Error != "" || len(found.ResponseHeaders) > 0 {
 		requestData := convertToMap(req)
 
 		headers := make(map[string]any)
@@ -551,17 +720,29 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 			headers = processHeaders(md)
 		}
 
-		// deep copy Output fields
+		// deep copy Output fields (headers already prepared)
 		outputToUse.Data = deepCopyMapAny(found.Output.Data)
 		outputToUse.Stream = deepCopySliceAny(found.Output.Stream)
-		outputToUse.Headers = deepCopyStringMap(found.Output.Headers)
 
-		if err := outputToUse.ProcessDynamicOutput(requestData, headers, 0, nil); err != nil {
+		if err := outputToUse.ProcessDynamicOutput(requestData, headers, 0, nil, 1, found.Times, found.ID.String()); err != nil {
 			return nil, status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
 		}
 	}
 
 	// Always send headers first (both for success and error cases)
+	// Merge top-level ResponseHeaders (v4) with Output.Headers (legacy/execution path)
+	if len(found.ResponseHeaders) > 0 {
+		if outputToUse.Headers == nil {
+			outputToUse.Headers = make(map[string]string, len(found.ResponseHeaders))
+		}
+
+		for k, v := range found.ResponseHeaders {
+			if _, exists := outputToUse.Headers[k]; !exists {
+				outputToUse.Headers[k] = v
+			}
+		}
+	}
+
 	if err := m.setResponseHeadersAny(ctx, nil, outputToUse.Headers); err != nil {
 		return nil, err //nolint:wrapcheck
 	}
@@ -603,7 +784,8 @@ func (m *grpcMocker) setResponseHeadersAny(ctx context.Context, stream grpc.Serv
 		return stream.SetHeader(mdResp)
 	}
 
-	return grpc.SetHeader(ctx, mdResp)
+	// For unary calls ensure headers are flushed to the client
+	return grpc.SendHeader(ctx, mdResp)
 }
 
 func (m *grpcMocker) handleOutputError(_ context.Context, _ grpc.ServerStream, output stuber.Output) error {
@@ -655,6 +837,12 @@ func (m *grpcMocker) tryV1APIFallback(messages []map[string]any, md metadata.MD)
 
 		result, foundErr := m.budgerigar.FindByQuery(query)
 		if foundErr == nil && result != nil && result.Found() != nil {
+			f := result.Found()
+			// Skip stubs that have no concrete output
+			if f.Output.Data == nil && len(f.Output.Stream) == 0 && f.Output.Error == "" && f.Output.Code == nil {
+				continue
+			}
+
 			return result, nil
 		}
 	}
@@ -734,11 +922,13 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 
 // sendClientStreamResponse sends the response for client streaming.
 //
-//nolint:nestif,cyclop
+
+//nolint:gocognit,cyclop,funlen
 func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *stuber.Stub, messages []map[string]any) error {
 	m.delay(stream.Context(), found.Output.Delay)
 
 	// Process dynamic templates if the output contains them
+	//nolint:nestif
 	if found.Output.HasTemplates() {
 		// For client streaming, we can use different strategies:
 		// 1. Use the last message (most common case)
@@ -778,8 +968,17 @@ func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *s
 			allMessages = append(allMessages, m)
 		}
 
-		if err := found.Output.ProcessDynamicOutput(requestData, headers, 0, allMessages); err != nil {
+		if err := found.Output.ProcessDynamicOutput(requestData, headers, 0, allMessages, 1, found.Times, found.ID.String()); err != nil {
 			return status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
+		}
+	}
+
+	// If matched stub has no concrete output, try legacy fallback to find a usable response
+	if found.Output.Data == nil && len(found.Output.Stream) == 0 && found.Output.Error == "" && found.Output.Code == nil {
+		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+			if res, err := m.tryV1APIFallback(messages, md); err == nil && res != nil && res.Found() != nil {
+				found = res.Found()
+			}
 		}
 	}
 
@@ -849,7 +1048,9 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			outputToUse.Stream = deepCopySliceAny(stub.Output.Stream)
 			outputToUse.Headers = deepCopyStringMap(stub.Output.Headers)
 
-			if err := outputToUse.ProcessDynamicOutput(requestData, headers, bidiResult.GetMessageIndex(), nil); err != nil {
+			if err := outputToUse.ProcessDynamicOutput(
+				requestData, headers, bidiResult.GetMessageIndex(), nil, 1, stub.Times, stub.ID.String(),
+			); err != nil {
 				return status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
 			}
 		}
@@ -877,14 +1078,18 @@ func NewGRPCServer(
 	network, address string,
 	params *protoloc.Arguments,
 	budgerigar *stuber.Budgerigar,
+	serviceManager *grpcservice.Manager,
 	waiter Extender,
+	errorFormatter *ErrorFormatter,
 ) *GRPCServer {
 	return &GRPCServer{
-		network:    network,
-		address:    address,
-		params:     params,
-		budgerigar: budgerigar,
-		waiter:     waiter,
+		network:        network,
+		address:        address,
+		params:         params,
+		budgerigar:     budgerigar,
+		serviceManager: serviceManager,
+		waiter:         waiter,
+		errorFormatter: errorFormatter,
 	}
 }
 
@@ -921,7 +1126,9 @@ func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 
 func (s *GRPCServer) setupHealthCheck(server *grpc.Server) {
 	healthcheck := health.NewServer()
-	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_NOT_SERVING)
+	// Default status should be SERVING
+	healthcheck.SetServingStatus("", healthgrpc.HealthCheckResponse_SERVING)
+	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_SERVING)
 	healthgrpc.RegisterHealthServer(server, healthcheck)
 	reflection.Register(server)
 
@@ -932,6 +1139,10 @@ func (s *GRPCServer) setupHealthCheck(server *grpc.Server) {
 func (s *GRPCServer) registerServices(ctx context.Context, server *grpc.Server, descriptors []*descriptorpb.FileDescriptorSet) {
 	logger := zerolog.Ctx(ctx)
 
+	// First register all services in the service manager
+	s.serviceManager.RegisterFromDescriptor(descriptors)
+
+	// Then register with gRPC server
 	for _, descriptor := range descriptors {
 		for _, file := range descriptor.GetFile() {
 			for _, svc := range file.GetService() {
@@ -964,6 +1175,14 @@ func (s *GRPCServer) registerServiceMethods(ctx context.Context, serviceDesc *gr
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to get output message descriptor")
 		}
+
+		// Register method in the service manager
+		s.serviceManager.GetMethodRegistry().RegisterMethod(
+			serviceDesc.ServiceName,
+			method.GetName(),
+			method.GetClientStreaming(),
+			method.GetServerStreaming(),
+		)
 
 		m := s.createGrpcMocker(serviceDesc, svc, method, inputDesc, outputDesc)
 
@@ -1002,12 +1221,15 @@ func (s *GRPCServer) createGrpcMocker(
 
 		serverStream: method.GetServerStreaming(),
 		clientStream: method.GetClientStreaming(),
+
+		errorFormatter: s.errorFormatter,
 	}
 }
 
 func (s *GRPCServer) startHealthCheckRoutine(ctx context.Context) {
 	logger := zerolog.Ctx(ctx)
 
+	// Start background routine to handle waiter completion
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -1049,12 +1271,12 @@ func getMessageDescriptor(messageType string) (protoreflect.MessageDescriptor, e
 		return nil, status.Errorf(codes.Internal, "Message descriptor not found: %v", err)
 	}
 
-	msgDesc, ok := desc.(protoreflect.MessageDescriptor)
+	md, ok := desc.(protoreflect.MessageDescriptor)
 	if !ok {
-		return nil, status.Errorf(codes.Internal, "Not a message descriptor: %s", msgName)
+		return nil, status.Errorf(codes.Internal, "Descriptor is not a message: %v", messageType)
 	}
 
-	return msgDesc, nil
+	return md, nil
 }
 
 func LogUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {

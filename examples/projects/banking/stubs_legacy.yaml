@@ -1,0 +1,64 @@
+- service: banking.PaymentsService
+  method: FraudAlerts
+  priority: 100
+  input:
+    equals:
+      event_id: e1
+      user_id: u-1
+      kind: login
+  output:
+    data:
+      action: ALLOW
+
+- service: banking.PaymentsService
+  method: FraudAlerts
+  priority: 100
+  input:
+    equals:
+      event_id: e2
+      user_id: u-1
+      kind: overseas
+  output:
+    data:
+      action: REVIEW
+
+- service: banking.PaymentsService
+  method: UploadReceipts
+  inputs:
+    - equals:
+        receipt_id: r1
+        receipt_type: pdf
+        total: 9.99
+    - equals:
+        receipt_id: r2
+        receipt_type: image
+        total: 5.00
+  output:
+    data:
+      uploaded: true
+      status: RECEIVED
+
+- service: banking.PaymentsService
+  method: GetStatement
+  input:
+    equals:
+      user_id: user-abc
+      from_date: 2024-01-01
+      to_date: 2024-01-31
+  output:
+    stream:
+      - transactionId: TX-001
+      - transactionId: TX-002
+
+- service: banking.PaymentsService
+  method: ProcessPayment
+  input:
+    equals:
+      user_id: u-101
+      merchant_id: m-42
+      amount: 19.99
+      currency: USD
+  output:
+    data:
+      approved: true
+      currency: USD

@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package reviews.v1;
+
+// Service for managing product reviews
+service ReviewsService {
+  // Submit a new review
+  rpc SubmitReview (SubmitReviewRequest) returns (SubmitReviewResponse);
+
+  // Get reviews for a product (server-streaming)
+  rpc ListProductReviews (ListProductReviewsRequest) returns (stream Review);
+}
+
+message SubmitReviewRequest {
+  string product_id = 1;
+  string user_id = 2;
+  int32 rating = 3;   // 1..5
+  string comment = 4; // optional
+}
+
+message SubmitReviewResponse {
+  string review_id = 1;
+  string product_id = 2;
+  string user_id = 3;
+  int32 rating = 4;
+  string comment = 5;
+  string created_at = 6; // ISO8601
+  string status = 7;     // CREATED
+}
+
+message ListProductReviewsRequest {
+  string product_id = 1;
+}
+
+message Review {
+  string review_id = 1;
+  string product_id = 2;
+  string user_id = 3;
+  int32 rating = 4;
+  string comment = 5;
+  string created_at = 6; // ISO8601
+}
+
+

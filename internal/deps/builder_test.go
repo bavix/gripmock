@@ -22,7 +22,6 @@ func TestBuilder_Empty(t *testing.T) {
 	// Test empty builder case
 	builder := deps.NewBuilder()
 	require.NotNil(t, builder)
-	// Basic test to ensure builder can be created
 }
 
 func TestBuilder_Initialization(t *testing.T) {

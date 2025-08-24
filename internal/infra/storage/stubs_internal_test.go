@@ -54,10 +54,8 @@ func TestStubsStorage_Basic(t *testing.T) {
 func TestStubsStorage_Empty(t *testing.T) {
 	t.Parallel()
 
-	// Test that storage starts empty
 	storage := NewStub(nil, nil, nil)
 	require.NotNil(t, storage)
-	// Basic test to ensure storage can be created
 }
 
 func TestStubsStorage_Initialization(t *testing.T) {
@@ -122,7 +120,6 @@ func TestStubsStorage_MapOperations(t *testing.T) {
 	require.NotNil(t, storage.mapIDsByFile)
 	require.NotNil(t, storage.uniqueIDs)
 
-	// Test that maps are empty initially
 	require.Empty(t, storage.mapIDsByFile)
 	require.Empty(t, storage.uniqueIDs)
 }

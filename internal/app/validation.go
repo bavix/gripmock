@@ -66,8 +66,10 @@ func hasValidOutputData(output stuber.Output) bool {
 	return output.Error != "" || output.Data != nil || output.Code != nil
 }
 
-// validateStubType validates stub based on its type (unary, client stream, server stream, bidirectional).
-func validateStubType(stub *stuber.Stub) error {
+// validateStubStructure validates that the stub structure is consistent and makes sense.
+// Note: This doesn't determine the stub type (which comes from MethodRegistry),
+// but validates that the inputs/outputs configuration is logically correct.
+func validateStubStructure(stub *stuber.Stub) error {
 	// Determine stub type based on input/output configuration
 	hasInput := hasValidInputData(stub.Input)
 	hasInputs := len(stub.Inputs) > 0

@@ -278,7 +278,8 @@ func TestMessageConverter_ConvertToMap_Timestamp(t *testing.T) {
 
 	converter := app.NewMessageConverter()
 
-	now := time.Now()
+	// Use Go 1.25 time API for deterministic testing with non-zero nanoseconds
+	now := time.Date(2024, 1, 15, 10, 30, 0, 123456789, time.UTC)
 	msg := timestamppb.New(now)
 	result := converter.ConvertToMap(msg)
 

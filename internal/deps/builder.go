@@ -15,11 +15,26 @@ type Builder struct {
 	config config.Config
 	ender  *lifecycle.Manager
 
-	budgerigar     *stuber.Budgerigar
+	budgerigar     *localstuber.Budgerigar
 	budgerigarOnce sync.Once
 
 	extender     *storage.Extender
 	extenderOnce sync.Once
+
+	serviceManager     *grpcservice.Manager
+	serviceManagerOnce sync.Once
+
+	analytics     port.AnalyticsRepository
+	analyticsOnce sync.Once
+
+	errorFormatter     *app.ErrorFormatter
+	errorFormatterOnce sync.Once
+
+	messageConverter     *app.MessageConverter
+	messageConverterOnce sync.Once
+
+	stubNotFoundFormatter     *errors.StubNotFoundFormatter
+	stubNotFoundFormatterOnce sync.Once
 }
 
 func NewBuilder(opts ...Option) *Builder {
@@ -39,7 +54,7 @@ func WithDefaultConfig() Option {
 
 func WithConfig(config config.Config) Option {
 	return func(builder *Builder) {
-		builder.config = config
+		builder.config = cfg
 	}
 }
 
@@ -47,4 +62,28 @@ func WithEnder(ender *lifecycle.Manager) Option {
 	return func(builder *Builder) {
 		builder.ender = ender
 	}
+}
+
+func (b *Builder) ErrorFormatter() *app.ErrorFormatter {
+	b.errorFormatterOnce.Do(func() {
+		b.errorFormatter = app.NewErrorFormatter()
+	})
+
+	return b.errorFormatter
+}
+
+func (b *Builder) MessageConverter() *app.MessageConverter {
+	b.messageConverterOnce.Do(func() {
+		b.messageConverter = app.NewMessageConverter()
+	})
+
+	return b.messageConverter
+}
+
+func (b *Builder) StubNotFoundFormatter() *errors.StubNotFoundFormatter {
+	b.stubNotFoundFormatterOnce.Do(func() {
+		b.stubNotFoundFormatter = errors.NewStubNotFoundFormatter()
+	})
+
+	return b.stubNotFoundFormatter
 }

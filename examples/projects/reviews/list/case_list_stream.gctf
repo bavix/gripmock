@@ -1,0 +1,27 @@
+--- ENDPOINT ---
+reviews.v1.ReviewsService/ListProductReviews
+
+--- REQUEST ---
+{
+  "product_id": "PROD_123"
+}
+
+--- RESPONSE ---
+{
+  "reviewId": "R-001",
+  "productId": "PROD_123",
+  "userId": "USER_1",
+  "rating": 5,
+  "comment": "Excellent!",
+  "createdAt": "2024-01-01T10:00:00Z"
+}
+{
+  "reviewId": "R-002",
+  "productId": "PROD_123",
+  "userId": "USER_2",
+  "rating": 4,
+  "comment": "Good value",
+  "createdAt": "2024-01-02T11:30:00Z"
+}
+
+
