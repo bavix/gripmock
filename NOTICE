@@ -1,0 +1,19 @@
+GripMock
+Copyright 2023 bavix
+
+This product includes software originally developed by PT Tokopedia under the Apache License 2.0.
+
+Original work:
+Copyright 2019 PT Tokopedia
+Licensed under the Apache License, Version 2.0
+Source: https://github.com/tokopedia/gripmock
+
+This project is a fork/derivative work that was initially based on the tokopedia/gripmock project.
+While the codebase has been significantly rewritten and enhanced, we acknowledge and credit the 
+original work that inspired and formed the foundation for this project.
+
+Major enhancements and new features in this fork are licensed under the MIT License.
+Original components and derived works maintain attribution to the original Apache Licensed project.
+
+For the full text of the Apache License 2.0, see: http://www.apache.org/licenses/LICENSE-2.0
+For the full text of the MIT License, see the LICENSE file in this repository.

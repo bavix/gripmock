@@ -28,7 +28,7 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 
 ## 🆚 Why Choose Our Fork?
 
-This service is a fork of [tokopedia/gripmock](https://github.com/tokopedia/gripmock), but you should choose our fork. Here's why:
+This service is a fork of [tokopedia/gripmock](https://github.com/tokopedia/gripmock), originally licensed under Apache 2.0. We thank PT Tokopedia for creating the original project that served as the foundation for our enhanced version. Here's why you should choose our fork:
 
 ### 🆕 New Features
 - ✅ **YAML support** as JSON alternative for static stubs
@@ -334,6 +334,15 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ## 📄 License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+### Attribution
+
+This project is a fork/derivative work based on the original [tokopedia/gripmock](https://github.com/tokopedia/gripmock) project:
+- Original work: Copyright 2019 PT Tokopedia
+- Original license: Apache License 2.0
+- We thank PT Tokopedia for creating the foundation that made this enhanced version possible
+
+See the [NOTICE](NOTICE) file for complete attribution details.
 
 ---
 
