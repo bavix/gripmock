@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/bavix/apis v1.1.0
-	github.com/bavix/features v1.0.3
+	github.com/bavix/features v1.0.4
 	github.com/bavix/gripmock-ui v1.1.1
 	github.com/bufbuild/protocompile v0.14.1
 	github.com/cockroachdb/errors v1.12.0
@@ -23,7 +23,7 @@ require (
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.51.0
 	github.com/spf13/cobra v1.9.1
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.7
 )
