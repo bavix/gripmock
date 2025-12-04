@@ -15,7 +15,7 @@ RUN apk add --no-cache binutils \
 
 RUN chmod +x /gripmock-src/entrypoint.sh && chmod +x /usr/local/bin/gripmock
 
-FROM alpine:3.22
+FROM alpine:3.23
 
 LABEL org.opencontainers.image.title="GripMock" 
 LABEL org.opencontainers.image.description="Mock server for gRPC services with dynamic stubbing capabilities"
