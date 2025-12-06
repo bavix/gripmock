@@ -30,8 +30,6 @@ COPY --from=builder /gripmock-src/entrypoint.sh /entrypoint.sh
 
 EXPOSE 4770 4771
 
-VOLUME /proto /stubs
-
 HEALTHCHECK --start-interval=1s --start-period=30s \
     CMD gripmock check --silent
 

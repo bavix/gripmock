@@ -6,12 +6,12 @@
       host: "api.example.com"
       port: 443
       use_tls: true
-      env: 2  # PRODUCTION
+      env: "PRODUCTION"
   output:
     data:
       success: true
       message: "Configuration updated successfully"
-      updated_env: 2  # PRODUCTION
+      updated_env: "PRODUCTION"
 
 - service: nested.ConfigurationService
   method: GetProfile
