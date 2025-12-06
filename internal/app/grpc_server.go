@@ -13,8 +13,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/goccy/go-json"
-	"github.com/gripmock/stuber"
-	"github.com/gripmock/types"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -35,6 +33,8 @@ import (
 	protoloc "github.com/bavix/gripmock/v3/internal/domain/proto"
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/grpccontext"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
 // excludedHeaders contains headers that should be excluded from stub matching.

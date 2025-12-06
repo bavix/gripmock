@@ -3,11 +3,11 @@ package deps_test
 import (
 	"testing"
 
-	"github.com/gripmock/environment"
-	"github.com/gripmock/shutdown"
 	"github.com/stretchr/testify/require"
 
+	"github.com/bavix/gripmock/v3/internal/config"
 	"github.com/bavix/gripmock/v3/internal/deps"
+	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 )
 
 func TestBuilder_Basic(t *testing.T) {
@@ -43,15 +43,15 @@ func TestBuilder_WithDefaultConfig(t *testing.T) {
 func TestBuilder_WithConfig(t *testing.T) {
 	t.Parallel()
 	// Test builder with custom config
-	config, _ := environment.New()
-	builder := deps.NewBuilder(deps.WithConfig(config))
+	cfg, _ := config.New()
+	builder := deps.NewBuilder(deps.WithConfig(cfg))
 	require.NotNil(t, builder)
 }
 
 func TestBuilder_WithEnder(t *testing.T) {
 	t.Parallel()
 	// Test builder with custom ender
-	ender := shutdown.New(nil)
+	ender := lifecycle.New(nil)
 	builder := deps.NewBuilder(deps.WithEnder(ender))
 	require.NotNil(t, builder)
 }
@@ -59,8 +59,8 @@ func TestBuilder_WithEnder(t *testing.T) {
 func TestBuilder_MultipleOptions(t *testing.T) {
 	t.Parallel()
 	// Test builder with multiple options
-	config, _ := environment.New()
-	ender := shutdown.New(nil)
-	builder := deps.NewBuilder(deps.WithConfig(config), deps.WithEnder(ender))
+	cfg, _ := config.New()
+	ender := lifecycle.New(nil)
+	builder := deps.NewBuilder(deps.WithConfig(cfg), deps.WithEnder(ender))
 	require.NotNil(t, builder)
 }

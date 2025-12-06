@@ -10,8 +10,9 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/gripmock/environment"
 	"github.com/rs/zerolog"
+
+	"github.com/bavix/gripmock/v3/internal/config"
 )
 
 type StubWatcher struct {
@@ -21,18 +22,18 @@ type StubWatcher struct {
 }
 
 func NewStubWatcher(
-	cfg environment.Config,
+	cfg config.Config,
 ) *StubWatcher {
 	watcherType := string(cfg.StubWatcherType)
 
 	if !slices.Contains(
 		[]string{
-			string(environment.WatcherFSNotify),
-			string(environment.WatcherTimer),
+			string(config.WatcherFSNotify),
+			string(config.WatcherTimer),
 		},
 		watcherType,
 	) {
-		watcherType = string(environment.WatcherFSNotify)
+		watcherType = string(config.WatcherFSNotify)
 	}
 
 	return &StubWatcher{
@@ -54,7 +55,7 @@ func (s *StubWatcher) Watch(ctx context.Context, folderPath string) (<-chan stri
 		Str("type", s.watcherType).
 		Msg("Tracking changes in stubs")
 
-	if s.watcherType == string(environment.WatcherFSNotify) {
+	if s.watcherType == string(config.WatcherFSNotify) {
 		return s.notify(ctx, folderPath)
 	}
 

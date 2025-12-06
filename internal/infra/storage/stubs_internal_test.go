@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gripmock/stuber"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bavix/features"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
 	"github.com/bavix/gripmock/v3/internal/infra/yaml2json"
 )

@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/gripmock/stuber"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	errorFormatter "github.com/bavix/gripmock/v3/internal/infra/errors"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 // Validation errors.

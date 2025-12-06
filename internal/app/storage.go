@@ -1,9 +1,8 @@
 package app
 
 import (
-	"github.com/gripmock/stuber"
-
 	errorFormatter "github.com/bavix/gripmock/v3/internal/infra/errors"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 func stubNotFoundError(expect stuber.Query, result *stuber.Result) error {

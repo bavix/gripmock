@@ -3,18 +3,17 @@ package deps
 import (
 	"sync"
 
-	"github.com/gripmock/environment"
-	"github.com/gripmock/shutdown"
-	"github.com/gripmock/stuber"
-
+	"github.com/bavix/gripmock/v3/internal/config"
+	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 type Option func(*Builder)
 
 type Builder struct {
-	config environment.Config
-	ender  *shutdown.Shutdown
+	config config.Config
+	ender  *lifecycle.Manager
 
 	budgerigar     *stuber.Budgerigar
 	budgerigarOnce sync.Once
@@ -24,7 +23,7 @@ type Builder struct {
 }
 
 func NewBuilder(opts ...Option) *Builder {
-	builder := &Builder{ender: shutdown.New(nil)}
+	builder := &Builder{ender: lifecycle.New(nil)}
 	for _, opt := range opts {
 		opt(builder)
 	}
@@ -33,18 +32,18 @@ func NewBuilder(opts ...Option) *Builder {
 }
 
 func WithDefaultConfig() Option {
-	config, _ := environment.New()
+	cfg, _ := config.New()
 
-	return WithConfig(config)
+	return WithConfig(cfg)
 }
 
-func WithConfig(config environment.Config) Option {
+func WithConfig(config config.Config) Option {
 	return func(builder *Builder) {
 		builder.config = config
 	}
 }
 
-func WithEnder(ender *shutdown.Shutdown) Option {
+func WithEnder(ender *lifecycle.Manager) Option {
 	return func(builder *Builder) {
 		builder.ender = ender
 	}

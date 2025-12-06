@@ -4,7 +4,8 @@ import (
 	"fmt"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gripmock/stuber"
+
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 // ValidationError represents a validation error with field information.

@@ -4,12 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/gripmock/stuber"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 // mockServerStream mocks grpc.ServerStream for testing.

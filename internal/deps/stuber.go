@@ -1,9 +1,8 @@
 package deps
 
 import (
-	"github.com/gripmock/stuber"
-
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
 	"github.com/bavix/gripmock/v3/internal/infra/yaml2json"
 )

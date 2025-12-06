@@ -1,9 +1,8 @@
 package deps
 
 import (
-	"github.com/gripmock/stuber"
-
 	"github.com/bavix/features"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 func (b *Builder) toggles() features.Toggles {
