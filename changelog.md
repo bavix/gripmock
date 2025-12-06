@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### What's Changed
+
+* Add VOLUME declarations for /proto and /stubs in Dockerfile for better Docker volume support
+* Add comprehensive nested-messages example project demonstrating multi-level nested message support
+* Document that bavix/gripmock fully supports nested message types (via bufbuild/protocompile)
+* Verify directory-based proto discovery works correctly
+
+### Features from tokopedia/gripmock#175
+
+This release addresses features from [tokopedia/gripmock PR #175](https://github.com/tokopedia/gripmock/pull/175):
+- ✅ Nested entities declaration support (already implemented via bufbuild/protocompile)
+- ✅ Modern protobuf/grpc dependencies (already using latest versions)
+- ✅ Directory-based proto scanning (already supported)
+- ✅ Docker volume declarations for /proto and /stubs (added in this release)
+- ✅ Example demonstrating nested message support (added in this release)
+
 ## v3.4.4 - 2025-12-06
 
 ### What's Changed
