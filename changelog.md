@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.4.4 - 2025-12-06
+
+### What's Changed
+
+* Bump actions/setup-go from 5 to 6 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/670
+* V3.4 dev by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/695
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.4.3...v3.4.4
+
 ## v3.4.3 - 2025-12-06
 
 ### What's Changed
