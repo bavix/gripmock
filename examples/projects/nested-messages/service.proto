@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package nested;
+
+option go_package = "github.com/bavix/gripmock/v3/examples/nested";
+
+// Service demonstrating nested message support
+service ConfigurationService {
+  // Update configuration with nested message types
+  rpc UpdateConfig(Config.Settings.NetworkSettings) returns (Config.Response);
+  
+  // Get user profile with nested preferences
+  rpc GetProfile(ProfileRequest) returns (UserProfile.Profile);
+}
+
+// Configuration message with nested structures
+message Config {
+  // Enum defined within Config
+  enum Environment {
+    DEVELOPMENT = 0;
+    STAGING = 1;
+    PRODUCTION = 2;
+  }
+  
+  // Nested Settings message
+  message Settings {
+    // Deeply nested NetworkSettings
+    message NetworkSettings {
+      string host = 1;
+      int32 port = 2;
+      bool use_tls = 3;
+      Environment env = 4;
+    }
+    
+    // Nested DatabaseSettings
+    message DatabaseSettings {
+      string connection_string = 1;
+      int32 max_connections = 2;
+    }
+  }
+  
+  // Response message nested within Config
+  message Response {
+    bool success = 1;
+    string message = 2;
+    Environment updated_env = 3;
+  }
+}
+
+// Request for user profile
+message ProfileRequest {
+  string user_id = 1;
+}
+
+// User profile with nested structure
+message UserProfile {
+  // Nested Profile message
+  message Profile {
+    string id = 1;
+    string name = 2;
+    Preferences prefs = 3;
+    
+    // Nested Preferences within Profile
+    message Preferences {
+      string theme = 1;
+      string language = 2;
+      NotificationSettings notifications = 3;
+      
+      // Even deeper nesting
+      message NotificationSettings {
+        bool email_enabled = 1;
+        bool sms_enabled = 2;
+        string frequency = 3;
+      }
+    }
+  }
+}

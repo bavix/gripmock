@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: nested.ConfigurationService
+  method: UpdateConfig
+  input:
+    equals:
+      host: "api.example.com"
+      port: 443
+      use_tls: true
+      env: 2  # PRODUCTION
+  output:
+    data:
+      success: true
+      message: "Configuration updated successfully"
+      updated_env: 2  # PRODUCTION
+
+- service: nested.ConfigurationService
+  method: GetProfile
+  input:
+    equals:
+      user_id: "user123"
+  output:
+    data:
+      id: "user123"
+      name: "John Doe"
+      prefs:
+        theme: "dark"
+        language: "en"
+        notifications:
+          email_enabled: true
+          sms_enabled: false
+          frequency: "daily"
