@@ -1,5 +1,18 @@
 # Changelog
 
+## v3.4.5 - 2025-12-06
+
+### What's Changed
+
+* Add protobuf edition 2023 to greeter example by [@Copilot](https://github.com/Copilot) in https://github.com/bavix/gripmock/pull/696
+* Add nested message example demonstrating PR #175 features by [@Copilot](https://github.com/Copilot) in https://github.com/bavix/gripmock/pull/697
+
+### New Contributors
+
+* [@Copilot](https://github.com/Copilot) made their first contribution in https://github.com/bavix/gripmock/pull/696
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.4.4...v3.4.5
+
 ## v3.4.4 - 2025-12-06
 
 ### What's Changed
