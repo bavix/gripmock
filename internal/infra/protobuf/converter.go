@@ -22,7 +22,7 @@ func (c *ScalarConverter) ConvertScalar(fd protoreflect.FieldDescriptor, value p
 	const nullValue = "google.protobuf.NullValue"
 
 	// Handle special cases first
-	//nolint:exhaustive
+
 	switch fd.Kind() {
 	case protoreflect.EnumKind:
 		return c.handleEnum(fd, value, nullValue)

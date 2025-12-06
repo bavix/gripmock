@@ -6,7 +6,7 @@ on:
   pull_request:
 
 env:
-  GRPC_TESTIFY_VERSION: "0.0.9"
+  GRPC_TESTIFY_VERSION: "1.0.0"
   GRPCURL_VERSION: "1.9.3"
   GO_VERSION: "1.25"
 
@@ -37,7 +37,7 @@ jobs:
         shell: bash
 
       - name: Upload unit coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-unit
           path: /tmp/cover-unit
@@ -106,13 +106,13 @@ jobs:
           rm /tmp/gripmock.pid || true
 
       - name: Upload e2e coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-e2e
           path: /tmp/cover-e2e
 
       - name: Upload check coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-check
           path: /tmp/cover-check
@@ -130,19 +130,19 @@ jobs:
           cache: true
 
       - name: Download unit coverage
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: coverage-unit
           path: /tmp/cover-unit
 
       - name: Download e2e coverage
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: coverage-e2e
           path: /tmp/cover-e2e
 
       - name: Download check coverage
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: coverage-check
           path: /tmp/cover-check
@@ -166,7 +166,7 @@ jobs:
           path-to-lcov: coverage.txt
 
       - name: Upload coverage report as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-report
           path: coverage.txt

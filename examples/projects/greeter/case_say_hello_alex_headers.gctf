@@ -1,7 +1,7 @@
 --- ENDPOINT ---
 helloworld.Greeter/SayHello
 
---- HEADERS ---
+--- REQUEST_HEADERS ---
 x-user: Ivan
 x-token: 123
 
