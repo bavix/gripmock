@@ -1,0 +1,8 @@
+--- ENDPOINT ---
+nested.ConfigurationService/GetProfile
+
+--- REQUEST ---
+{"user_id": "user123"}
+
+--- RESPONSE ---
+{"id": "user123", "name": "John Doe", "prefs": {"theme": "dark", "language": "en", "notifications": {"email_enabled": true, "sms_enabled": false, "frequency": "daily"}}}
