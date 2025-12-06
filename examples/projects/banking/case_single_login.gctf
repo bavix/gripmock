@@ -1,8 +1,0 @@
---- ENDPOINT ---
-banking.PaymentsService/FraudAlerts
-
---- REQUEST ---
-{ "event_id": "e1", "user_id": "u-1", "kind": "login" }
-
---- RESPONSE ---
-{ "action": "ALLOW" }
