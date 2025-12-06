@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.4.3 - 2025-12-06
+
+### What's Changed
+
+* Update dependencies and Dockerfile versions by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/694
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.4.2...v3.4.3
+
 ## v3.4.2 - 2025-08-19
 
 ### What's Changed
