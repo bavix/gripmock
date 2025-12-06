@@ -13,12 +13,12 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
-	"github.com/gripmock/stuber"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
 	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 // ErrServiceIsMissing is returned when the service name is not provided in the request.

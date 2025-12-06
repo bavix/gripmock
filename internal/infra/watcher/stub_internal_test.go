@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gripmock/environment"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/bavix/gripmock/v3/internal/config"
 )
 
 // StubWatcherTestSuite provides test suite for stub watcher functionality.
@@ -19,9 +20,9 @@ type StubWatcherTestSuite struct {
 // TestNewStubWatcher tests creating a new stub watcher.
 func (s *StubWatcherTestSuite) TestNewStubWatcher() {
 	// Test with valid FSNotify config
-	cfg := environment.Config{
+	cfg := config.Config{
 		StubWatcherEnabled:  true,
-		StubWatcherType:     environment.WatcherFSNotify,
+		StubWatcherType:     config.WatcherFSNotify,
 		StubWatcherInterval: time.Second,
 	}
 
@@ -29,15 +30,15 @@ func (s *StubWatcherTestSuite) TestNewStubWatcher() {
 	s.Require().NotNil(watcher)
 	s.Require().True(watcher.enabled)
 	s.Require().Equal(time.Second, watcher.interval)
-	s.Require().Equal(string(environment.WatcherFSNotify), watcher.watcherType)
+	s.Require().Equal(string(config.WatcherFSNotify), watcher.watcherType)
 }
 
 // TestNewStubWatcherWithTimer tests creating a stub watcher with timer.
 func (s *StubWatcherTestSuite) TestNewStubWatcherWithTimer() {
 	// Test with timer config
-	cfg := environment.Config{
+	cfg := config.Config{
 		StubWatcherEnabled:  true,
-		StubWatcherType:     environment.WatcherTimer,
+		StubWatcherType:     config.WatcherTimer,
 		StubWatcherInterval: 2 * time.Second,
 	}
 
@@ -45,15 +46,15 @@ func (s *StubWatcherTestSuite) TestNewStubWatcherWithTimer() {
 	s.Require().NotNil(watcher)
 	s.Require().True(watcher.enabled)
 	s.Require().Equal(2*time.Second, watcher.interval)
-	s.Require().Equal(string(environment.WatcherTimer), watcher.watcherType)
+	s.Require().Equal(string(config.WatcherTimer), watcher.watcherType)
 }
 
 // TestNewStubWatcherDisabled tests creating a disabled stub watcher.
 func (s *StubWatcherTestSuite) TestNewStubWatcherDisabled() {
 	// Test with disabled config
-	cfg := environment.Config{
+	cfg := config.Config{
 		StubWatcherEnabled:  false,
-		StubWatcherType:     environment.WatcherFSNotify,
+		StubWatcherType:     config.WatcherFSNotify,
 		StubWatcherInterval: time.Second,
 	}
 
@@ -61,13 +62,13 @@ func (s *StubWatcherTestSuite) TestNewStubWatcherDisabled() {
 	s.Require().NotNil(watcher)
 	s.Require().False(watcher.enabled)
 	s.Require().Equal(time.Second, watcher.interval)
-	s.Require().Equal(string(environment.WatcherFSNotify), watcher.watcherType)
+	s.Require().Equal(string(config.WatcherFSNotify), watcher.watcherType)
 }
 
 // TestNewStubWatcherInvalidType tests creating a stub watcher with invalid type.
 func (s *StubWatcherTestSuite) TestNewStubWatcherInvalidType() {
 	// Test with invalid watcher type - should default to FSNotify
-	cfg := environment.Config{
+	cfg := config.Config{
 		StubWatcherEnabled:  true,
 		StubWatcherType:     "invalid",
 		StubWatcherInterval: time.Second,
@@ -77,14 +78,14 @@ func (s *StubWatcherTestSuite) TestNewStubWatcherInvalidType() {
 	s.Require().NotNil(watcher)
 	s.Require().True(watcher.enabled)
 	s.Require().Equal(time.Second, watcher.interval)
-	s.Require().Equal(string(environment.WatcherFSNotify), watcher.watcherType)
+	s.Require().Equal(string(config.WatcherFSNotify), watcher.watcherType)
 }
 
 // TestWatchDisabled tests watching when watcher is disabled.
 func (s *StubWatcherTestSuite) TestWatchDisabled() {
 	tempDir := s.T().TempDir()
 
-	cfg := environment.Config{
+	cfg := config.Config{
 		StubWatcherEnabled: false,
 	}
 
@@ -109,9 +110,9 @@ func (s *StubWatcherTestSuite) TestWatchDisabled() {
 func (s *StubWatcherTestSuite) TestWatchWithValidPath() {
 	tempDir := s.T().TempDir()
 
-	cfg := environment.Config{
+	cfg := config.Config{
 		StubWatcherEnabled:  true,
-		StubWatcherType:     environment.WatcherTimer,
+		StubWatcherType:     config.WatcherTimer,
 		StubWatcherInterval: 10 * time.Millisecond,
 	}
 
@@ -139,9 +140,9 @@ func (s *StubWatcherTestSuite) TestWatchWithValidPath() {
 
 // TestWatchWithInvalidPath tests watching with an invalid path.
 func (s *StubWatcherTestSuite) TestWatchWithInvalidPath() {
-	cfg := environment.Config{
+	cfg := config.Config{
 		StubWatcherEnabled:  true,
-		StubWatcherType:     environment.WatcherFSNotify,
+		StubWatcherType:     config.WatcherFSNotify,
 		StubWatcherInterval: 10 * time.Millisecond,
 	}
 
@@ -165,9 +166,9 @@ func (s *StubWatcherTestSuite) TestWatchWithInvalidPath() {
 func (s *StubWatcherTestSuite) TestWatchWithTimer() {
 	tempDir := s.T().TempDir()
 
-	cfg := environment.Config{
+	cfg := config.Config{
 		StubWatcherEnabled:  true,
-		StubWatcherType:     environment.WatcherTimer,
+		StubWatcherType:     config.WatcherTimer,
 		StubWatcherInterval: 50 * time.Millisecond,
 	}
 
@@ -205,9 +206,9 @@ func (s *StubWatcherTestSuite) TestWatchWithTimer() {
 func (s *StubWatcherTestSuite) TestWatchContextCancellation() {
 	tempDir := s.T().TempDir()
 
-	cfg := environment.Config{
+	cfg := config.Config{
 		StubWatcherEnabled:  true,
-		StubWatcherType:     environment.WatcherTimer,
+		StubWatcherType:     config.WatcherTimer,
 		StubWatcherInterval: 10 * time.Millisecond,
 	}
 
@@ -240,9 +241,9 @@ func (s *StubWatcherTestSuite) TestWatchContextCancellation() {
 func (s *StubWatcherTestSuite) TestWatchWithMultipleFiles() {
 	tempDir := s.T().TempDir()
 
-	cfg := environment.Config{
+	cfg := config.Config{
 		StubWatcherEnabled:  true,
-		StubWatcherType:     environment.WatcherTimer,
+		StubWatcherType:     config.WatcherTimer,
 		StubWatcherInterval: 30 * time.Millisecond,
 	}
 

@@ -1,0 +1,549 @@
+openapi: 3.0.2
+servers:
+  - url: /api
+security:
+  - {}
+info:
+  version: 3.0.0
+  title: GripMock API Schema
+  description: Documentation and API specification GripMock.
+  contact:
+    name: Maksim Babichev
+    url: https://github.com/bavix/gripmock-openapi
+  license:
+    name: MIT
+    url: https://github.com/bavix/gripmock-openapi/blob/master/LICENSE
+tags:
+  - name: stubs
+    description: Stubs storage management
+  - name: services
+    description: Services reflection
+  - name: dashboard
+    description: Dashboard
+  - name: healthcheck
+    description: Healthcheck
+paths:
+  # healthcheck
+  /health/liveness:
+    get:
+      tags:
+        - healthcheck
+      summary: Liveness check
+      description: This endpoint indicates that the service is alive and ready to handle requests
+      operationId: liveness
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOK'
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+  /health/readiness:
+    get:
+      tags:
+        - healthcheck
+      summary: Readiness check
+      description: The test indicates readiness to receive traffic
+      operationId: readiness
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOK'
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+
+  # internal
+  /services:
+    get:
+      tags:
+        - services
+      summary: Services
+      description: List of registered services
+      operationId: servicesList
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Service'
+        '404':
+          description: No services found
+        '500':
+          description: Internal Server Error
+  /services/{serviceID}/methods:
+    get:
+      tags:
+        - services
+      summary: Service methods
+      description: List of registered service methods
+      operationId: serviceMethodsList
+      parameters:
+        - name: serviceID
+          in: path
+          description: ID of service
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Method'
+        '400':
+          description: Invalid service ID
+        '404':
+          description: Service not found
+        '500':
+          description: Internal Server Error
+
+  # stubs
+  /stubs/used:
+    get:
+      tags:
+        - stubs
+      summary: Getting a list of used stubs
+      description: The list is needed to quickly find used stubs
+      operationId: listUsedStubs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubList'
+        '404':
+          description: No used stubs found
+        '500':
+          description: Internal Server Error
+  /stubs/unused:
+    get:
+      tags:
+        - stubs
+      summary: Getting a list of unused stubs
+      description: The list is needed to quickly find unused stubs
+      operationId: listUnusedStubs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubList'
+        '404':
+          description: No unused stubs found
+        '500':
+          description: Internal Server Error
+  /stubs:
+    get:
+      tags:
+        - stubs
+      summary: Getting a list of stubs
+      description: The list of stubs is required to view all added stubs
+      operationId: listStubs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StubList'
+        '404':
+          description: No stubs found
+        '500':
+          description: Internal Server Error
+    post:
+      tags:
+        - stubs
+      summary: Add a new stub to the store
+      description: Creates a new stub or multiple stubs and adds them to the storage
+      operationId: addStub
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ListID'
+        '400':
+          description: Invalid stub data
+        '422':
+          description: Validation error
+        '500':
+          description: Internal Server Error
+      requestBody:
+        description: Create a new stub in the store
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/StubList'
+                - $ref: '#/components/schemas/Stub'
+    delete:
+      tags:
+        - stubs
+      summary: Remove all stubs
+      description: Completely clears the stub storage
+      operationId: purgeStubs
+      responses:
+        '204':
+          description: Successful operation
+        '400':
+          description: Bad Request
+        '500':
+          description: Internal Server Error
+  /stubs/batchDelete:
+    post:
+      tags:
+        - stubs
+      summary: Deletes a batch of stubs by IDs
+      description: Takes IDs as input and deletes them
+      operationId: batchStubsDelete
+      responses:
+        '204':
+          description: Successful operation
+        '400':
+          description: Invalid IDs provided
+        '404':
+          description: Some stubs not found
+        '500':
+          description: Internal Server Error
+      requestBody:
+        description: Delete stubs by their IDs
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListID'
+  '/stubs/{uuid}':
+    get:
+      tags:
+        - stubs
+      summary: Get Stub by ID
+      description: Searches for Stub by ID
+      operationId: findByID
+      parameters:
+        - name: uuid
+          in: path
+          description: ID of stub
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stub'
+        '400':
+          description: Invalid UUID format
+        '404':
+          description: Stub not found
+        '500':
+          description: Internal Server Error
+    delete:
+      tags:
+        - stubs
+      summary: Deletes stub by ID
+      description: The method removes the stub by ID
+      operationId: deleteStubByID
+      parameters:
+        - name: uuid
+          in: path
+          description: ID of stub
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          description: successful operation
+        '400':
+          description: Invalid UUID format
+        '404':
+          description: Stub not found
+        '500':
+          description: Internal Server Error
+  '/stubs/search':
+    post:
+      tags:
+        - stubs
+      summary: Stub storage search
+      description: Performs a search for a stub by the given conditions
+      operationId: searchStubs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          description: Invalid search criteria
+        '422':
+          description: Validation error
+        '500':
+          description: Internal Server Error
+      requestBody:
+        description: Search criteria including service, method, headers and data to match against stubs
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequest'
+components:
+  schemas:
+    # health
+    MessageOK:
+      type: object
+      required:
+        - message
+        - time
+      properties:
+        message:
+          type: string
+          x-omitzero: false
+        time:
+          type: string
+          format: date-time
+          x-omitzero: false
+    # services
+    Service:
+      type: object
+      required:
+        - id
+        - package
+        - name
+        - methods
+      properties:
+        id:
+          type: string
+          x-omitzero: false
+        package:
+          type: string
+          x-omitzero: false
+        name:
+          type: string
+          x-omitzero: false
+        methods:
+          type: array
+          items:
+            $ref: '#/components/schemas/Method'
+          x-omitzero: false
+    Method:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+          x-omitzero: false
+        name:
+          type: string
+          x-omitzero: false
+    # stubs
+    ID:
+      type: string
+      format: uuid
+      example: 51c50050-ec27-4dae-a583-a32ca71a1dd5
+      x-omitzero: false
+    ListID:
+      type: array
+      items:
+        $ref: '#/components/schemas/ID'
+      x-omitzero: false
+    StubList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Stub'
+      x-omitzero: false
+    SearchRequest:
+      type: object
+      required:
+        - service
+        - method
+        - data
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        service:
+          type: string
+          example: Gripmock
+          x-omitzero: false
+        method:
+          type: string
+          example: SayHello
+          x-omitzero: false
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        data:
+          type: object
+          x-go-type: interface{}
+          additionalProperties: true
+          x-omitzero: false
+    SearchResponse:
+      type: object
+      required:
+        - data
+        - error
+      properties:
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        data:
+          type: object
+          x-go-type: interface{}
+          additionalProperties: true
+          x-omitzero: false
+        error:
+          type: string
+          example: Message not found
+          x-omitzero: false
+        code:
+          type: integer
+          format: uint32
+          x-go-type: codes.Code
+          x-go-type-import:
+            name: codes
+            path: google.golang.org/grpc/codes
+          example: 3
+          x-go-type-skip-optional-pointer: true
+    Stub:
+      type: object
+      required:
+        - service
+        - method
+        - input
+        - output
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        service:
+          type: string
+          example: Gripmock
+          x-omitzero: false
+        method:
+          type: string
+          example: SayHello
+          x-omitzero: false
+        priority:
+          type: integer
+          default: 0
+          description: Priority of the stub. Higher priority stubs are matched first.
+          x-go-type-skip-optional-pointer: true
+        headers:
+          $ref: '#/components/schemas/StubHeaders'
+        input:
+          $ref: '#/components/schemas/StubInput'
+          x-omitzero: false
+        inputs:
+          type: array
+          description: Inputs to match against. If multiple inputs are provided, the stub will be matched if any of the inputs match.
+          items:
+            $ref: '#/components/schemas/StubInput'
+          x-go-type-skip-optional-pointer: true
+        output:
+          $ref: '#/components/schemas/StubOutput'
+          x-omitzero: false
+    StubInput:
+      type: object
+      properties:
+        ignoreArrayOrder:
+          type: boolean
+          default: false
+          x-go-type-skip-optional-pointer: true
+        equals:
+          type: object
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+        contains:
+          type: object
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+        matches:
+          type: object
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+    StubHeaders:
+      type: object
+      x-go-type-skip-optional-pointer: true
+      properties:
+        equals:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        contains:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        matches:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+    StubOutput:
+      type: object
+      properties:
+        data:
+          type: object
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+        stream:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        error:
+          type: string
+          example: Message not found
+          x-go-type-skip-optional-pointer: true
+        code:
+          type: integer
+          format: uint32
+          x-go-type: codes.Code
+          x-go-type-import:
+            name: codes
+            path: google.golang.org/grpc/codes
+          example: 3
+          x-go-type-skip-optional-pointer: true
+        delay:
+          type: string
+          x-go-type: gptypes.Duration
+          x-go-type-import:
+            name: gptypes
+            path: github.com/bavix/gripmock/v3/internal/infra/types
+          description: Delay before sending the response
+          example: "1s"
+          x-omitzero: true
+          x-go-type-skip-optional-pointer: true

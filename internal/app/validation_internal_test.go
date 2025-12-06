@@ -3,9 +3,10 @@ package app
 import (
 	"testing"
 
-	"github.com/gripmock/stuber"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 func TestHasValidInput(t *testing.T) {

@@ -10,11 +10,11 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/gripmock/stuber"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
 
 	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
 	"github.com/bavix/gripmock/v3/internal/infra/yaml2json"
 )

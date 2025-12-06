@@ -5,10 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gripmock/stuber"
-	"github.com/gripmock/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
 func TestDelayWithTypesDuration(t *testing.T) {

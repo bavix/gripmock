@@ -23,6 +23,7 @@ linters:
             - $gostd
             - github.com
             - google.golang.org
+            - golang.org
 
 formatters:
   enable:

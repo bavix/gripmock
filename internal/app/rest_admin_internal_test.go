@@ -8,10 +8,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gripmock/stuber"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bavix/features"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 // AdminPanelTestSuite provides test suite for admin panel clever cases.
