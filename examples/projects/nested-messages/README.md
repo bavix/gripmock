@@ -44,7 +44,7 @@ grpcurl -plaintext \
     "host": "api.example.com",
     "port": 443,
     "use_tls": true,
-    "env": "PRODUCTION"
+    "env": 2
   }' \
   localhost:4770 nested.ConfigurationService/UpdateConfig
 ```
