@@ -3,6 +3,7 @@ package errors
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/gripmock/stuber"
 )
@@ -75,16 +76,20 @@ func (f *StubNotFoundFormatter) formatInputSection(input []map[string]any) strin
 func (f *StubNotFoundFormatter) formatStreamInput(input []map[string]any) string {
 	template := "Inputs:\n\n"
 
+	var templateSb78 strings.Builder
+
 	for i, inputMsg := range input {
 		inputString, err := json.MarshalIndent(inputMsg, "", "\t")
 		if err != nil {
-			template += fmt.Sprintf("[%d] Error marshaling input: %v\n", i, err)
+			templateSb78.WriteString(fmt.Sprintf("[%d] Error marshaling input: %v\n", i, err))
 
 			continue
 		}
 
-		template += fmt.Sprintf("[%d]\n%s\n\n", i, inputString)
+		templateSb78.WriteString(fmt.Sprintf("[%d]\n%s\n\n", i, inputString))
 	}
+
+	template += templateSb78.String()
 
 	return template
 }
@@ -136,6 +141,8 @@ func (f *StubNotFoundFormatter) formatClosestMatches(result Result) string {
 func (f *StubNotFoundFormatter) formatStreamClosestMatches(stub *stuber.Stub, addClosestMatch func(string, map[string]any) string) string {
 	var template string
 
+	var templateSb139 strings.Builder
+
 	for i, inputMsg := range stub.Inputs {
 		// Convert InputData to map representation
 		inputData := map[string]any{
@@ -143,8 +150,10 @@ func (f *StubNotFoundFormatter) formatStreamClosestMatches(stub *stuber.Stub, ad
 			"contains": inputMsg.Contains,
 			"matches":  inputMsg.Matches,
 		}
-		template += addClosestMatch(fmt.Sprintf("inputs[%d]", i), inputData)
+		templateSb139.WriteString(addClosestMatch(fmt.Sprintf("inputs[%d]", i), inputData))
 	}
+
+	template += templateSb139.String()
 
 	return template
 }

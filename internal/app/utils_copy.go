@@ -1,5 +1,7 @@
 package app
 
+import "maps"
+
 func deepCopyMapAny(src map[string]any) map[string]any {
 	if src == nil {
 		return nil
@@ -46,9 +48,7 @@ func deepCopyStringMap(src map[string]string) map[string]string {
 	}
 
 	dst := make(map[string]string, len(src))
-	for k, v := range src {
-		dst[k] = v
-	}
+	maps.Copy(dst, src)
 
 	return dst
 }

@@ -2,6 +2,7 @@ package yaml2json
 
 import (
 	"bytes"
+	"maps"
 	"strings"
 	"sync"
 	"text/template"
@@ -31,9 +32,7 @@ func newEngine() *engine {
 	}
 
 	// Add stuber functions
-	for k, v := range stuberFuncs {
-		funcs[k] = v
-	}
+	maps.Copy(funcs, stuberFuncs)
 
 	return &engine{
 		funcs: funcs,

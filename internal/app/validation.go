@@ -136,30 +136,35 @@ func getRequiredFieldMessage(fieldName string) string {
 // These will be removed in future versions
 
 // hasValidInput checks if the stub has valid input configuration for unary requests.
+//
 // Deprecated: Use validateStub instead.
 func hasValidInput(stub *stuber.Stub) bool {
 	return hasValidInputData(stub.Input)
 }
 
 // hasValidInputs checks if the stub has valid inputs configuration for client streaming.
+//
 // Deprecated: Use validateStub instead.
 func hasValidInputs(stub *stuber.Stub) bool {
 	return len(stub.Inputs) > 0
 }
 
 // hasValidOutput checks if the stub has valid output configuration for unary requests.
+//
 // Deprecated: Use validateStub instead.
 func hasValidOutput(stub *stuber.Stub) bool {
 	return hasValidOutputData(stub.Output)
 }
 
 // hasValidStreamOutput checks if the stub has valid stream output configuration for server streaming.
+//
 // Deprecated: Use validateStub instead.
 func hasValidStreamOutput(stub *stuber.Stub) bool {
 	return len(stub.Output.Stream) > 0
 }
 
 // validateUnaryStub validates unary stub configuration.
+//
 // Deprecated: Use validateStub instead.
 func validateUnaryStub(stub *stuber.Stub) error {
 	if !hasValidInput(stub) {
@@ -174,6 +179,7 @@ func validateUnaryStub(stub *stuber.Stub) error {
 }
 
 // validateClientStreamStub validates client streaming stub configuration.
+//
 // Deprecated: Use validateStub instead.
 func validateClientStreamStub(stub *stuber.Stub) error {
 	if !hasValidInputs(stub) {
@@ -184,6 +190,7 @@ func validateClientStreamStub(stub *stuber.Stub) error {
 }
 
 // validateServerStreamStub validates server streaming stub configuration.
+//
 // Deprecated: Use validateStub instead.
 func validateServerStreamStub(stub *stuber.Stub) error {
 	if !hasValidInput(stub) {
@@ -198,6 +205,7 @@ func validateServerStreamStub(stub *stuber.Stub) error {
 }
 
 // validateBidirectionalStub validates bidirectional streaming stub configuration.
+//
 // Deprecated: Use validateStub instead.
 func validateBidirectionalStub(stub *stuber.Stub) error {
 	if !hasValidInputs(stub) {

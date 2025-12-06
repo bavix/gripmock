@@ -344,7 +344,7 @@ curl -X POST http://localhost:4771/api/stubs/search \
 --- ENDPOINT ---
 Greeter/SayHello
 
---- HEADERS ---
+--- REQUEST_HEADERS ---
 Authorization: Bearer token123
 X-API-Version: v2
 User-Agent: Mozilla/5.0

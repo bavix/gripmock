@@ -37,11 +37,11 @@ func (m *mockServerStream) Context() context.Context {
 	return context.Background()
 }
 
-func (m *mockServerStream) SendMsg(interface{}) error {
+func (m *mockServerStream) SendMsg(any) error {
 	return nil
 }
 
-func (m *mockServerStream) RecvMsg(interface{}) error {
+func (m *mockServerStream) RecvMsg(any) error {
 	return nil
 }
 
