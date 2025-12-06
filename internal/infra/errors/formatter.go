@@ -77,6 +77,7 @@ func (f *StubNotFoundFormatter) formatStreamInput(input []map[string]any) string
 	template := "Inputs:\n\n"
 
 	var templateSb78 strings.Builder
+
 	for i, inputMsg := range input {
 		inputString, err := json.MarshalIndent(inputMsg, "", "\t")
 		if err != nil {
@@ -87,6 +88,7 @@ func (f *StubNotFoundFormatter) formatStreamInput(input []map[string]any) string
 
 		templateSb78.WriteString(fmt.Sprintf("[%d]\n%s\n\n", i, inputString))
 	}
+
 	template += templateSb78.String()
 
 	return template
@@ -140,6 +142,7 @@ func (f *StubNotFoundFormatter) formatStreamClosestMatches(stub *stuber.Stub, ad
 	var template string
 
 	var templateSb139 strings.Builder
+
 	for i, inputMsg := range stub.Inputs {
 		// Convert InputData to map representation
 		inputData := map[string]any{
@@ -149,6 +152,7 @@ func (f *StubNotFoundFormatter) formatStreamClosestMatches(stub *stuber.Stub, ad
 		}
 		templateSb139.WriteString(addClosestMatch(fmt.Sprintf("inputs[%d]", i), inputData))
 	}
+
 	template += templateSb139.String()
 
 	return template

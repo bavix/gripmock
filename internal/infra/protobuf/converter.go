@@ -23,22 +23,25 @@ func (c *ScalarConverter) ConvertScalar(fd protoreflect.FieldDescriptor, value p
 
 	// Handle special cases first
 
-	switch fd.Kind() {
-	case protoreflect.EnumKind:
+	kind := fd.Kind()
+
+	if kind == protoreflect.EnumKind {
 		return c.handleEnum(fd, value, nullValue)
-	case protoreflect.MessageKind:
-		return c.handleMessage(value)
-	case protoreflect.GroupKind:
-		return fmt.Sprintf("group type: %v", fd.Kind())
 	}
 
-	// Use map-based approach for scalar types
-	handlers := c.scalarHandlers()
-	if handler, ok := handlers[fd.Kind()]; ok {
+	if kind == protoreflect.MessageKind {
+		return c.handleMessage(value)
+	}
+
+	if kind == protoreflect.GroupKind {
+		return fmt.Sprintf("group type: %v", kind)
+	}
+
+	if handler, ok := c.scalarHandlers()[kind]; ok {
 		return handler(value)
 	}
 
-	return fmt.Sprintf("unknown type: %v", fd.Kind())
+	return fmt.Sprintf("unknown type: %v", kind)
 }
 
 // ConvertMessage converts a protobuf message to a map representation.
