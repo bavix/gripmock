@@ -80,10 +80,7 @@ func (s *Server) handleListStubs(w http.ResponseWriter, r *http.Request) {
 	rangeOpt := parseRange(r)
 	items, total := s.stubs.List(r.Context(), filter, sortOpt, rangeOpt)
 
-	end := rangeOpt.Start + len(items) - 1
-	if end < rangeOpt.Start {
-		end = rangeOpt.Start
-	}
+	end := max(rangeOpt.Start+len(items)-1, rangeOpt.Start)
 
 	setListHeaders(w, "stubs", rangeOpt.Start, end, total)
 	writeJSON(w, http.StatusOK, items)
@@ -96,10 +93,7 @@ func (s *Server) handleSearchStubs(w http.ResponseWriter, r *http.Request) {
 	rangeOpt := parseRange(r)
 	items, total := s.stubs.List(r.Context(), filter, sortOpt, rangeOpt)
 
-	end := rangeOpt.Start + len(items) - 1
-	if end < rangeOpt.Start {
-		end = rangeOpt.Start
-	}
+	end := max(rangeOpt.Start+len(items)-1, rangeOpt.Start)
 
 	setListHeaders(w, "stubs", rangeOpt.Start, end, total)
 	writeJSON(w, http.StatusOK, items)

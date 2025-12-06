@@ -21,9 +21,9 @@ func TestAnalytics_AtomicOperations(t *testing.T) {
 		numOperations = 10
 	)
 
-	for range numGoroutines {
-		wg.Add(1)
+	wg.Add(numGoroutines)
 
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
 
@@ -82,9 +82,9 @@ func TestAnalytics_MetricsOperations(t *testing.T) {
 		numOperations = 20
 	)
 
-	for i := range numGoroutines {
-		wg.Add(1)
+	wg.Add(numGoroutines)
 
+	for i := range numGoroutines {
 		go func(id int) {
 			defer wg.Done()
 
@@ -138,9 +138,9 @@ func TestAnalytics_HistoryOperations(t *testing.T) {
 		numEntries    = 5
 	)
 
-	for range numGoroutines {
-		wg.Add(1)
+	wg.Add(numGoroutines)
 
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
 
@@ -166,11 +166,8 @@ func TestAnalytics_HistoryOperations(t *testing.T) {
 	// Verify history size
 	history := analytics.GetHistory(0) // Get all history
 	expectedSize := numGoroutines * numEntries
-	t.Logf("Total history entries: %d, expected: %d", len(history), expectedSize)
 
 	if len(history) != expectedSize {
 		t.Errorf("Expected %d history entries, got %d", expectedSize, len(history))
 	}
-
-	t.Logf("Analytics basic functionality works correctly")
 }

@@ -14,11 +14,11 @@ import (
 // WatcherAdapter adapts the existing StubWatcher to our interface.
 type WatcherAdapter struct {
 	watcher *watcher.StubWatcher
-	config  config.AppConfig
+	config  config.Config
 }
 
 // NewWatcherAdapter creates a new watcher adapter.
-func NewWatcherAdapter(cfg config.AppConfig) *WatcherAdapter {
+func NewWatcherAdapter(cfg config.Config) *WatcherAdapter {
 	return &WatcherAdapter{
 		watcher: watcher.NewStubWatcher(cfg),
 		config:  cfg,
@@ -123,7 +123,7 @@ func (ypa *YamlParserAdapter) ParseFile(path string) (map[string]any, error) {
 }
 
 // NewDefaultTemplateFacade creates a template facade with default adapters.
-func NewDefaultTemplateFacade(cfg config.AppConfig) *TemplateFacade {
+func NewDefaultTemplateFacade(cfg config.Config) *TemplateFacade {
 	return NewTemplateFacade(
 		NewWatcherAdapter(cfg),
 		NewYamlParserAdapter(),

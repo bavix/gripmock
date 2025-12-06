@@ -112,6 +112,7 @@ func Functions() map[string]any {
 			if !okA {
 				return false
 			}
+
 			vb, okB := convertToFloat64(b)
 			if !okB {
 				return false

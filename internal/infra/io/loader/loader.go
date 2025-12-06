@@ -264,6 +264,7 @@ func parseOutputs(arr []any) []map[string]any {
 
 func parseStringMap(m map[string]any) map[string]string {
 	result := make(map[string]string)
+
 	for k, v := range m {
 		if s, ok := v.(string); ok {
 			result[k] = s

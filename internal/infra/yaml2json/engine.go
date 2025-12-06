@@ -8,7 +8,7 @@ import (
 	"text/template"
 
 	"github.com/bavix/gripmock/v3/internal/infra/encoding"
-	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	templatepkg "github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
 type engine struct {
@@ -31,7 +31,7 @@ func newEngine() *engine {
 	}
 
 	// Add stuber functions
-	maps.Copy(funcs, stuberFuncs)
+	maps.Copy(funcs, templateFuncs)
 
 	return &engine{
 		funcs: funcs,

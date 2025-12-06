@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	errorFormatter "github.com/bavix/gripmock/v3/internal/infra/errors"
-	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	localstuber "github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 // Validation errors.

@@ -3,10 +3,14 @@ package deps
 import (
 	"sync"
 
+	"github.com/bavix/gripmock/v3/internal/app"
+	"github.com/bavix/gripmock/v3/internal/app/port"
 	"github.com/bavix/gripmock/v3/internal/config"
+	"github.com/bavix/gripmock/v3/internal/infra/errors"
+	"github.com/bavix/gripmock/v3/internal/infra/grpcservice"
 	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
-	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	localstuber "github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 type Option func(*Builder)
@@ -47,12 +51,10 @@ func NewBuilder(opts ...Option) *Builder {
 }
 
 func WithDefaultConfig() Option {
-	cfg, _ := config.New()
-
-	return WithConfig(cfg)
+	return WithConfig(config.Load())
 }
 
-func WithConfig(config config.Config) Option {
+func WithConfig(cfg config.Config) Option {
 	return func(builder *Builder) {
 		builder.config = cfg
 	}

@@ -330,17 +330,17 @@ func (pa *PrometheusAnalytics) GetStubUsage(ctx context.Context, stubID string) 
 }
 
 // GetExecutionStats returns execution statistics for a service/method combination.
-func (pa *PrometheusAnalytics) GetExecutionStats(ctx context.Context, service, method string) (map[string]interface{}, bool) {
+func (pa *PrometheusAnalytics) GetExecutionStats(ctx context.Context, service, method string) (map[string]any, bool) {
 	// This would require implementing a custom collector or using Prometheus query API
 	// For now, return empty stats
-	return make(map[string]interface{}), false
+	return make(map[string]any), false
 }
 
 // GetMetrics returns all current metrics as a map.
-func (pa *PrometheusAnalytics) GetMetrics(ctx context.Context) map[string]interface{} {
+func (pa *PrometheusAnalytics) GetMetrics(ctx context.Context) map[string]any {
 	// This would require implementing a custom collector or using Prometheus query API
 	// For now, return empty metrics
-	return make(map[string]interface{})
+	return make(map[string]any)
 }
 
 // Reset resets all metrics.

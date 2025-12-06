@@ -26,7 +26,7 @@ func TestConfig_OldEnvVarNames(t *testing.T) {
 	t.Setenv("HISTORY_MESSAGE_MAX_BYTES", "524288")
 	t.Setenv("HISTORY_REDACT_KEYS", "password,token,secret")
 
-	expected := config.AppConfig{
+	expected := config.Config{
 		LogLevel:               "debug",
 		StrictMethodTitle:      true,
 		GRPCNetwork:            "tcp",
@@ -70,7 +70,7 @@ func TestConfig_OldEnvVarNames(t *testing.T) {
 func TestConfig_DefaultValues(t *testing.T) {
 	t.Parallel()
 
-	expected := config.AppConfig{
+	expected := config.Config{
 		LogLevel:               "info",
 		StrictMethodTitle:      false,
 		GRPCNetwork:            "tcp",

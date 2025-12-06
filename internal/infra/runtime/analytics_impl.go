@@ -1,6 +1,7 @@
 package runtime
 
 import (
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -288,10 +289,16 @@ func (a *Analytics) GetHistoryByService(service string, limit int) []ExecutionHi
 
 // buildKey builds a key from name and labels.
 func (a *Analytics) buildKey(name string, labels map[string]string) string {
-	key := name
+	var b strings.Builder
+	b.Grow(len(name) + len(labels)*4)
+	b.WriteString(name)
+
 	for k, v := range labels {
-		key += "_" + k + "_" + v
+		_, _ = b.WriteString("_")
+		_, _ = b.WriteString(k)
+		_, _ = b.WriteString("_")
+		_, _ = b.WriteString(v)
 	}
 
-	return key
+	return b.String()
 }

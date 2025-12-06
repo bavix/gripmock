@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strconv"
 	"sync"
 	"time"
@@ -113,9 +114,7 @@ func (e *UnifiedExecutor) Execute(
 	}()
 
 	// Copy headers and requests to avoid allocations
-	for k, v := range headers {
-		temp.headers[k] = v
-	}
+	maps.Copy(temp.headers, headers)
 
 	temp.requests = append(temp.requests, requests...)
 
@@ -493,7 +492,7 @@ func (e *UnifiedExecutor) ClearCache() {
 }
 
 // GetCacheStats returns cache statistics.
-func (e *UnifiedExecutor) GetCacheStats() map[string]interface{} {
+func (e *UnifiedExecutor) GetCacheStats() map[string]any {
 	count := 0
 
 	e.cache.Range(func(key, value any) bool {
@@ -502,7 +501,7 @@ func (e *UnifiedExecutor) GetCacheStats() map[string]interface{} {
 		return true
 	})
 
-	return map[string]interface{}{
+	return map[string]any{
 		"cacheSize": count,
 	}
 }

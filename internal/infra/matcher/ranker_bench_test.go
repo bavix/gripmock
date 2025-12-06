@@ -9,9 +9,7 @@ func BenchmarkDistance_SmallASCII(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for range b.N {
-		distance(s1, s2)
-	}
+	benchLoop(b, func() { distance(s1, s2) })
 }
 
 func BenchmarkDistance_SmallUnicode(b *testing.B) {
@@ -21,9 +19,7 @@ func BenchmarkDistance_SmallUnicode(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for range b.N {
-		distance(s1, s2)
-	}
+	benchLoop(b, func() { distance(s1, s2) })
 }
 
 func BenchmarkDistance_LargeASCII(b *testing.B) {
@@ -33,9 +29,7 @@ func BenchmarkDistance_LargeASCII(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for range b.N {
-		distance(s1, s2)
-	}
+	benchLoop(b, func() { distance(s1, s2) })
 }
 
 func BenchmarkDistance_LargeUnicode(b *testing.B) {
@@ -45,9 +39,7 @@ func BenchmarkDistance_LargeUnicode(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for range b.N {
-		distance(s1, s2)
-	}
+	benchLoop(b, func() { distance(s1, s2) })
 }
 
 func BenchmarkDistance_IdenticalStrings(b *testing.B) {
@@ -56,18 +48,14 @@ func BenchmarkDistance_IdenticalStrings(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for range b.N {
-		distance(s, s)
-	}
+	benchLoop(b, func() { distance(s, s) })
 }
 
 func BenchmarkDistance_EmptyStrings(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for range b.N {
-		distance("", "")
-	}
+	benchLoop(b, func() { distance("", "") })
 }
 
 func BenchmarkDistance_OneEmpty(b *testing.B) {
@@ -76,7 +64,13 @@ func BenchmarkDistance_OneEmpty(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
+	benchLoop(b, func() { distance(s, "") })
+}
+
+func benchLoop(b *testing.B, fn func()) {
+	b.Helper()
+
 	for range b.N {
-		distance(s, "")
+		fn()
 	}
 }

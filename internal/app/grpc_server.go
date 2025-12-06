@@ -34,8 +34,9 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/domain/types"
 	"github.com/bavix/gripmock/v3/internal/infra/grpccontext"
+	"github.com/bavix/gripmock/v3/internal/infra/grpcservice"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
-	"github.com/bavix/gripmock/v3/internal/infra/types"
+	localtypes "github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
 // excludedHeaders contains headers that should be excluded from stub matching.
@@ -1166,15 +1167,22 @@ func (s *GRPCServer) registerServiceMethods(ctx context.Context, serviceDesc *gr
 	logger := zerolog.Ctx(ctx)
 
 	for _, method := range svc.GetMethod() {
-		inputDesc, err := getMessageDescriptor(method.GetInputType())
+		inputType := protoreflect.FullName(strings.TrimPrefix(method.GetInputType(), "."))
+
+		inputMsg, err := protoregistry.GlobalTypes.FindMessageByName(inputType)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to get input message descriptor")
 		}
 
-		outputDesc, err := getMessageDescriptor(method.GetOutputType())
+		outputType := protoreflect.FullName(strings.TrimPrefix(method.GetOutputType(), "."))
+
+		outputMsg, err := protoregistry.GlobalTypes.FindMessageByName(outputType)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to get output message descriptor")
 		}
+
+		inputDesc := inputMsg.Descriptor()
+		outputDesc := outputMsg.Descriptor()
 
 		// Register method in the service manager
 		s.serviceManager.GetMethodRegistry().RegisterMethod(
@@ -1260,23 +1268,6 @@ func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.Se
 	}
 
 	return svc.GetName()
-}
-
-//nolint:ireturn
-func getMessageDescriptor(messageType string) (protoreflect.MessageDescriptor, error) {
-	msgName := protoreflect.FullName(strings.TrimPrefix(messageType, "."))
-
-	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(msgName)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Message descriptor not found: %v", err)
-	}
-
-	md, ok := desc.(protoreflect.MessageDescriptor)
-	if !ok {
-		return nil, status.Errorf(codes.Internal, "Descriptor is not a message: %v", messageType)
-	}
-
-	return md, nil
 }
 
 func LogUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {

@@ -24,7 +24,7 @@ type InMemoryHistory struct {
 func NewInMemoryHistory(limitBytes int64, redactKeysCSV string) *InMemoryHistory {
 	red := make(map[string]struct{})
 
-	for _, k := range strings.Split(strings.TrimSpace(redactKeysCSV), ",") {
+	for _, k := range strings.FieldsFunc(strings.TrimSpace(redactKeysCSV), func(r rune) bool { return r == ',' }) {
 		k = strings.TrimSpace(k)
 		if k != "" {
 			red[strings.ToLower(k)] = struct{}{}

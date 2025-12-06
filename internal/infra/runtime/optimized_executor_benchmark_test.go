@@ -38,7 +38,7 @@ func getBenchStreamStub() domain.Stub {
 		Method:  "bench-method",
 		OutputsRaw: []map[string]any{
 			{
-				"stream": []interface{}{
+				"stream": []any{
 					map[string]any{
 						"send": map[string]any{
 							"message": "Hello",

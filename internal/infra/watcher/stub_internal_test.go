@@ -84,6 +84,7 @@ func (s *StubWatcherTestSuite) TestNewStubWatcherInvalidType() {
 // TestWatchDisabled tests watching when watcher is disabled.
 func (s *StubWatcherTestSuite) TestWatchDisabled() {
 	tempDir := s.T().TempDir()
+	_ = tempDir
 
 	cfg := config.Config{
 		StubWatcherEnabled: false,

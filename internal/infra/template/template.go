@@ -3,6 +3,7 @@ package template
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
@@ -249,11 +250,7 @@ func hasTemplatesInValue(value any) bool {
 	case map[string]any:
 		return hasTemplatesInMap(v)
 	case []any:
-		for _, item := range v {
-			if hasTemplatesInValue(item) {
-				return true
-			}
-		}
+		return slices.ContainsFunc(v, hasTemplatesInValue)
 	}
 
 	return false

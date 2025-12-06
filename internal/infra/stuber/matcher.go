@@ -1,8 +1,10 @@
 package stuber
 
 import (
+	"encoding/json"
 	"reflect"
 	"regexp"
+	"strconv"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 
@@ -180,6 +182,11 @@ func equals(expected map[string]any, actual any, orderIgnore bool) bool {
 //
 //nolint:cyclop,funlen
 func ultraFastSpecializedEquals(expected, actual any) bool {
+	// Cross-type numeric comparison without float rounding loss.
+	if numericEqual(expected, actual) {
+		return true
+	}
+
 	// Ultra-fast path: same type comparison (most common case)
 	//nolint:nestif
 	if reflect.TypeOf(expected) == reflect.TypeOf(actual) {
@@ -248,6 +255,61 @@ func ultraFastSpecializedEquals(expected, actual any) bool {
 
 	// Fallback to reflect for complex types (rare case)
 	return reflect.DeepEqual(expected, actual)
+}
+
+func numericEqual(a, b any) bool {
+	// Fast-path: both json.Number
+	if an, ok := a.(json.Number); ok {
+		if bn, ok2 := b.(json.Number); ok2 {
+			return an.String() == bn.String()
+		}
+	}
+
+	// Compare json.Number with plain numeric by string form to avoid float rounding.
+	if an, ok := a.(json.Number); ok {
+		if bs, ok2 := numericString(b); ok2 {
+			return an.String() == bs
+		}
+	}
+
+	if bn, ok := b.(json.Number); ok {
+		if as, ok2 := numericString(a); ok2 {
+			return bn.String() == as
+		}
+	}
+
+	// Fallback: both plain numerics
+	astr, aok := numericString(a)
+	bstr, bok := numericString(b)
+
+	if !aok || !bok {
+		return false
+	}
+
+	return astr == bstr
+}
+
+func numericString(v any) (string, bool) {
+	switch t := v.(type) {
+	case json.Number:
+		return t.String(), true
+	case int:
+		return strconv.FormatInt(int64(t), 10), true
+	case int64:
+		return strconv.FormatInt(t, 10), true
+	case float64:
+		return strconv.FormatFloat(t, 'g', -1, 64), true
+	case float32:
+		return strconv.FormatFloat(float64(t), 'g', -1, 32), true
+	case uint:
+		return strconv.FormatUint(uint64(t), 10), true
+	case uint32:
+		return strconv.FormatUint(uint64(t), 10), true
+	case uint64:
+		return strconv.FormatUint(t, 10), true
+	default:
+		return "", false
+	}
 }
 
 // contains checks if the expected map is a subset of the actual value.

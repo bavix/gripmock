@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"os"
 	"path"
 	"strings"
@@ -452,9 +453,7 @@ func (s *Extender) unmarshalV4Stub(rawStub map[string]any, stub *stuber.Stub) er
 				IgnoreArrayOrder: v4Matcher.IgnoreArrayOrder,
 			}
 			// Convert Matches from map[string]string to map[string]any
-			for k, v := range v4Matcher.Matches {
-				stub.Input.Matches[k] = v
-			}
+			maps.Copy(stub.Input.Matches, v4Matcher.Matches)
 			// Handle Any matcher (OR logic)
 			if len(v4Matcher.Any) > 0 {
 				// Convert v4 Any matcher to legacy Any matcher
@@ -467,9 +466,7 @@ func (s *Extender) unmarshalV4Stub(rawStub map[string]any, stub *stuber.Stub) er
 						IgnoreArrayOrder: anyMatcher.IgnoreArrayOrder,
 					}
 					// Convert Matches from map[string]string to map[string]any
-					for k, v := range anyMatcher.Matches {
-						stub.Input.Any[i].Matches[k] = v
-					}
+					maps.Copy(stub.Input.Any[i].Matches, anyMatcher.Matches)
 				}
 			}
 		} else {
@@ -483,9 +480,7 @@ func (s *Extender) unmarshalV4Stub(rawStub map[string]any, stub *stuber.Stub) er
 					IgnoreArrayOrder: v4Matcher.IgnoreArrayOrder,
 				}
 				// Convert Matches from map[string]string to map[string]any
-				for k, v := range v4Matcher.Matches {
-					stub.Inputs[i].Matches[k] = v
-				}
+				maps.Copy(stub.Inputs[i].Matches, v4Matcher.Matches)
 				// Handle Any matcher (OR logic)
 				if len(v4Matcher.Any) > 0 {
 					// Convert v4 Any matcher to legacy Any matcher
@@ -498,9 +493,7 @@ func (s *Extender) unmarshalV4Stub(rawStub map[string]any, stub *stuber.Stub) er
 							IgnoreArrayOrder: anyMatcher.IgnoreArrayOrder,
 						}
 						// Convert Matches from map[string]string to map[string]any
-						for k, v := range anyMatcher.Matches {
-							stub.Inputs[i].Any[j].Matches[k] = v
-						}
+						maps.Copy(stub.Inputs[i].Any[j].Matches, anyMatcher.Matches)
 					}
 				}
 			}
@@ -568,9 +561,7 @@ func (s *Extender) unmarshalV4Stub(rawStub map[string]any, stub *stuber.Stub) er
 				IgnoreArrayOrder: v4Matcher.IgnoreArrayOrder,
 			}
 			// Convert Matches from map[string]string to map[string]any
-			for k, v := range v4Matcher.Matches {
-				stub.Input.Matches[k] = v
-			}
+			maps.Copy(stub.Input.Matches, v4Matcher.Matches)
 		} else {
 			// Multiple inputs - populate Inputs
 			stub.Inputs = make([]stuber.InputData, len(stub.InputsV4))
@@ -582,9 +573,7 @@ func (s *Extender) unmarshalV4Stub(rawStub map[string]any, stub *stuber.Stub) er
 					IgnoreArrayOrder: v4Matcher.IgnoreArrayOrder,
 				}
 				// Convert Matches from map[string]string to map[string]any
-				for k, v := range v4Matcher.Matches {
-					stub.Inputs[i].Matches[k] = v
-				}
+				maps.Copy(stub.Inputs[i].Matches, v4Matcher.Matches)
 			}
 		}
 	}
@@ -596,9 +585,7 @@ func (s *Extender) unmarshalV4Stub(rawStub map[string]any, stub *stuber.Stub) er
 			stub.Output.Headers = make(map[string]string, len(stub.ResponseHeaders))
 		}
 
-		for k, v := range stub.ResponseHeaders {
-			stub.Output.Headers[k] = v
-		}
+		maps.Copy(stub.Output.Headers, stub.ResponseHeaders)
 	}
 
 	// Note: Stub type determination is now done at the service layer

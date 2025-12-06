@@ -61,8 +61,8 @@ func (b *ByteSize) Int64() int64 { return b.Bytes }
 
 var _ encoding.TextUnmarshaler = (*ByteSize)(nil)
 
-// AppConfig holds environment-derived configuration values.
-type AppConfig struct {
+// Config holds environment-derived configuration values.
+type Config struct {
 	// Application logging level.
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 
@@ -83,7 +83,7 @@ type AppConfig struct {
 	// Files configuration.
 	StubWatcherEnabled  bool          `env:"STUB_WATCHER_ENABLED"  envDefault:"true"`
 	StubWatcherInterval time.Duration `env:"STUB_WATCHER_INTERVAL" envDefault:"1s"`
-	StubWatcherType     string        `env:"STUB_WATCHER_TYPE"     envDefault:"fsnotify"`
+	StubWatcherType     watcherType   `env:"STUB_WATCHER_TYPE"     envDefault:"fsnotify"`
 
 	// History configuration.
 	HistoryEnabled         bool     `env:"HISTORY_ENABLED"           envDefault:"true"`
@@ -93,8 +93,8 @@ type AppConfig struct {
 }
 
 // Load returns configuration from environment with sensible defaults.
-func Load() AppConfig {
-	var cfg AppConfig
+func Load() Config {
+	var cfg Config
 
 	_ = env.Parse(&cfg)
 

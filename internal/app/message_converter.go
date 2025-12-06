@@ -7,7 +7,6 @@ import (
 	"github.com/goccy/go-json"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 // MessageConverter provides methods for converting protobuf messages to map representations.
@@ -39,18 +38,6 @@ func (c *MessageConverter) ConvertToMap(msg proto.Message) map[string]any {
 	})
 
 	return result
-}
-
-// GetMessageDescriptor retrieves a message descriptor by its full name.
-//
-//nolint:ireturn
-func (c *MessageConverter) GetMessageDescriptor(messageType string) (protoreflect.MessageDescriptor, error) {
-	msgType, err := protoregistry.GlobalTypes.FindMessageByName(protoreflect.FullName(messageType))
-	if err != nil {
-		return nil, err
-	}
-
-	return msgType.Descriptor(), nil
 }
 
 // convertValue converts a protobuf field value to its Go representation.

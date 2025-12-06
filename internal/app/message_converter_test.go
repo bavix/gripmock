@@ -112,21 +112,6 @@ func TestMessageConverter_ConvertToMap_Struct(t *testing.T) {
 	require.Contains(t, fieldsMap, "bool_field")
 }
 
-func TestMessageConverter_GetMessageDescriptor(t *testing.T) {
-	t.Parallel()
-
-	converter := app.NewMessageConverter()
-
-	// Test with a known message type
-	desc, err := converter.GetMessageDescriptor("google.protobuf.StringValue")
-	require.NoError(t, err)
-	require.NotNil(t, desc)
-
-	// Test with unknown message type
-	_, err = converter.GetMessageDescriptor("unknown.MessageType")
-	require.Error(t, err)
-}
-
 func TestMessageConverter_convertValue_List(t *testing.T) {
 	t.Parallel()
 

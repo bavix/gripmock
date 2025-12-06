@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -324,13 +325,7 @@ func (r *StubRepository) matchesQueryFilter(stub *stuber.Stub, query string) boo
 
 // matchesIDFilter checks if a stub matches the ID filter.
 func (r *StubRepository) matchesIDFilter(stub *stuber.Stub, ids []string) bool {
-	for _, id := range ids {
-		if id == stub.ID.String() {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(ids, stub.ID.String())
 }
 
 // convertInputHeader converts stuber.InputHeader to domain.Matcher.
@@ -410,38 +405,45 @@ func (r *StubRepository) convertOutputs(stub *stuber.Stub) []map[string]any {
 		return stub.OutputsRawV4
 	}
 
-	// For legacy stubs, convert Output
-	if r.hasOutput(stub.Output) {
-		output := make(map[string]any)
-
-		if stub.Output.Data != nil {
-			output["data"] = stub.Output.Data
-		}
-
-		if len(stub.Output.Stream) > 0 {
-			output["stream"] = stub.Output.Stream
-		}
-
-		if stub.Output.Error != "" {
-			output["error"] = stub.Output.Error
-		}
-
-		if stub.Output.Code != nil {
-			output["code"] = *stub.Output.Code
-		}
-
-		if stub.Output.Delay != 0 {
-			output["delay"] = time.Duration(stub.Output.Delay).String()
-		}
-
-		if len(stub.Output.Headers) > 0 {
-			output["headers"] = stub.Output.Headers
-		}
-
-		return []map[string]any{output}
+	if out := r.buildLegacyOutput(stub.Output); out != nil {
+		return []map[string]any{out}
 	}
 
 	return nil
+}
+
+func (r *StubRepository) buildLegacyOutput(out stuber.Output) map[string]any {
+	if !r.hasOutput(out) {
+		return nil
+	}
+
+	result := make(map[string]any)
+
+	if out.Data != nil {
+		result["data"] = out.Data
+	}
+
+	if len(out.Stream) > 0 {
+		result["stream"] = out.Stream
+	}
+
+	if out.Error != "" {
+		result["error"] = out.Error
+	}
+
+	if out.Code != nil {
+		result["code"] = *out.Code
+	}
+
+	if out.Delay != 0 {
+		result["delay"] = time.Duration(out.Delay).String()
+	}
+
+	if len(out.Headers) > 0 {
+		result["headers"] = out.Headers
+	}
+
+	return result
 }
 
 // hasOutput checks if Output has any content.
@@ -463,10 +465,7 @@ func (r *StubRepository) applyPagination(stubs []*stuber.Stub, rng port.RangeOpt
 		return []*stuber.Stub{}
 	}
 
-	end := rng.End + 1
-	if end > len(stubs) {
-		end = len(stubs)
-	}
+	end := min(rng.End+1, len(stubs))
 
 	return stubs[rng.Start:end]
 }

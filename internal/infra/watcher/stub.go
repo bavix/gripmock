@@ -24,7 +24,7 @@ type StubWatcher struct {
 func NewStubWatcher(
 	cfg config.Config,
 ) *StubWatcher {
-	watcherType := cfg.StubWatcherType
+	watcherType := string(cfg.StubWatcherType)
 
 	if !slices.Contains(
 		[]string{

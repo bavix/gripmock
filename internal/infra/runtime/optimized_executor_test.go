@@ -68,7 +68,7 @@ func TestOptimizedExecutor_StreamResponse(t *testing.T) {
 		Method:  "test-method",
 		OutputsRaw: []map[string]any{
 			{
-				"stream": []interface{}{
+				"stream": []any{
 					map[string]any{
 						"send": map[string]any{
 							"message": "Hello",

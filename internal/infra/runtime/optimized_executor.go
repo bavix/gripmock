@@ -3,6 +3,7 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strconv"
 	"sync"
 	"time"
@@ -70,8 +71,6 @@ func (td *tempData) reset() {
 }
 
 // Execute optimizes stub execution with caching and fast paths.
-//
-//nolint:gocognit,cyclop,funlen
 func (e *OptimizedExecutor) Execute(
 	ctx context.Context,
 	stub domain.Stub,
@@ -103,69 +102,9 @@ func (e *OptimizedExecutor) Execute(
 		e.pool.Put(temp)
 	}()
 
-	// Copy headers and requests to avoid allocations
-	for k, v := range headers {
-		temp.headers[k] = v
-	}
-
-	temp.requests = append(temp.requests, requests...)
-
-	var (
-		used      bool
-		sendCount int64
-		dataCount int64
-		endCount  int64
-	)
-
-	// Optimized output processing with early exits
-	for _, output := range stub.OutputsRaw {
-		// Fast path: data response (most common case)
-		if data, ok := output["data"]; ok {
-			if dataMap, ok := globalParser.parseMap(data); ok {
-				// Apply templates with caching
-				processedData := e.applyTemplatesCached(dataMap)
-				if err := w.Send(processedData); err != nil {
-					return false, err
-				}
-
-				used = true
-				dataCount++
-
-				break
-			}
-		}
-
-		// Fast path: stream response
-		if stream, ok := output["stream"]; ok {
-			streamUsed, streamSendCount, err := e.processStreamOutput(ctx, stream, w)
-			if err != nil {
-				return false, err
-			}
-
-			if streamUsed {
-				used = true
-				sendCount += int64(streamSendCount)
-
-				break
-			}
-		}
-
-		// Backward compatibility: sequence logic (optimized)
-		if seq, ok := pickSequenceRule(output); ok {
-			u, sc, dc, ee, err := e.executeSequenceOptimized(ctx, seq, temp.headers, temp.requests, w)
-			if err != nil {
-				return false, err
-			}
-
-			if u {
-				used = true
-				sendCount += sc
-				dataCount += dc
-				endCount += ee
-
-				break
-			}
-		}
+	used, sendCount, dataCount, endCount, err := e.processOutputs(ctx, stub, temp, headers, requests, w)
+	if err != nil {
+		return false, err
 	}
 
 	// Finalize response
@@ -437,6 +376,73 @@ func (e *OptimizedExecutor) GetCacheStats() int {
 	})
 
 	return size
+}
+
+func (e *OptimizedExecutor) processOutputs(
+	ctx context.Context,
+	stub domain.Stub,
+	temp *tempData,
+	headers map[string]any,
+	requests []map[string]any,
+	w Writer,
+) (bool, int64, int64, int64, error) {
+	maps.Copy(temp.headers, headers)
+	temp.requests = append(temp.requests, requests...)
+
+	for _, output := range stub.OutputsRaw {
+		used, sc, dc, ec, err := e.handleOutput(ctx, output, temp, w)
+		if err != nil {
+			return false, 0, 0, 0, err
+		}
+
+		if used {
+			return true, sc, dc, ec, nil
+		}
+	}
+
+	return false, 0, 0, 0, nil
+}
+
+func (e *OptimizedExecutor) handleOutput(
+	ctx context.Context,
+	output map[string]any,
+	temp *tempData,
+	w Writer,
+) (bool, int64, int64, int64, error) {
+	if data, ok := output["data"]; ok {
+		if dataMap, ok := globalParser.parseMap(data); ok {
+			processedData := e.applyTemplatesCached(dataMap)
+			if err := w.Send(processedData); err != nil {
+				return false, 0, 0, 0, err
+			}
+
+			return true, 0, 1, 0, nil
+		}
+	}
+
+	if stream, ok := output["stream"]; ok {
+		streamUsed, streamSendCount, err := e.processStreamOutput(ctx, stream, w)
+		if err != nil {
+			return false, 0, 0, 0, err
+		}
+
+		if streamUsed {
+			return true, int64(streamSendCount), 0, 0, nil
+		}
+	}
+
+	if seq, ok := pickSequenceRule(output); ok {
+		used, sc, dc, ec, err := e.executeSequenceOptimized(ctx, seq, temp.headers, temp.requests, w)
+		if err != nil {
+			return false, 0, 0, 0, err
+		}
+
+		if used {
+			return true, sc, dc, ec, nil
+		}
+	}
+
+	return false, 0, 0, 0, nil
 }
 
 // processStreamOutput processes stream output with simplified logic.
