@@ -4,8 +4,9 @@ import (
 	"reflect"
 	"regexp"
 
-	"github.com/gripmock/deeply"
 	lru "github.com/hashicorp/golang-lru/v2"
+
+	"github.com/bavix/gripmock/v3/internal/infra/deeply"
 )
 
 const (

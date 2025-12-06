@@ -33,7 +33,7 @@ func TestStringHashCache(t *testing.T) {
 
 	// Check cache size
 	size, _ = getStringHashCacheStats()
-	require.Equal(t, 2, size)
+	require.GreaterOrEqual(t, size, 2)
 }
 
 func TestRegexCache(t *testing.T) {

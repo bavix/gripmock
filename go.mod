@@ -16,11 +16,11 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/gripmock/deeply v1.3.3
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/rs/zerolog v1.34.0
 	github.com/samber/lo v1.52.0
+	github.com/spf13/cast v1.10.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/zeebo/xxh3 v1.0.2
@@ -50,7 +50,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/net v0.47.0 // indirect

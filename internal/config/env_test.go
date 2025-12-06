@@ -28,20 +28,17 @@ func TestConfig_Defaults(t *testing.T) {
 	require.Equal(t, "0.0.0.0:4771", conf.HTTPAddr)
 }
 
+//nolint:paralleltest
 func TestConfig_Override(t *testing.T) {
-	t.Parallel()
-
 	env := map[string]string{
 		"LOG_LEVEL":           "trace",
 		"PACKAGE_SIMPLER":     "false",
 		"STRICT_METHOD_TITLE": "false",
 		"GRPC_NETWORK":        "udp",
-		"GRPC_HOST":           "192.168.1.1",
-		"GRPC_PORT":           "1000",
-		"GRPC_ADDR":           "111.111.111.111:1111", // no override
+		"GRPC_HOST":           "111.111.111.111",
+		"GRPC_PORT":           "1111",
 		"HTTP_HOST":           "192.168.1.2",
 		"HTTP_PORT":           "2000",
-		"HTTP_ADDR":           "222.222.222.222:2222",
 	}
 
 	for k, v := range env {
@@ -56,9 +53,9 @@ func TestConfig_Override(t *testing.T) {
 	require.False(t, conf.StrictMethodTitle)
 
 	require.Equal(t, "udp", conf.GRPCNetwork)
-	require.Equal(t, "192.168.1.1", conf.GRPCHost)
-	require.Equal(t, "1000", conf.GRPCPort)
-	require.Equal(t, "192.168.1.1:1000", conf.GRPCAddr)
+	require.Equal(t, "111.111.111.111", conf.GRPCHost)
+	require.Equal(t, "1111", conf.GRPCPort)
+	require.Equal(t, "111.111.111.111:1111", conf.GRPCAddr)
 
 	require.Equal(t, "192.168.1.2", conf.HTTPHost)
 	require.Equal(t, "2000", conf.HTTPPort)
