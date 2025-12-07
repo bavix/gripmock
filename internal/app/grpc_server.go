@@ -1159,13 +1159,11 @@ func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 
 func (s *GRPCServer) setupHealthCheck(server *grpc.Server) {
 	healthcheck := health.NewServer()
-	// Default status should be SERVING
 	healthcheck.SetServingStatus("", healthgrpc.HealthCheckResponse_SERVING)
-	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_SERVING)
+	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_NOT_SERVING)
 	healthgrpc.RegisterHealthServer(server, healthcheck)
 	reflection.Register(server)
 
-	// Store healthcheck server for later status updates
 	s.healthcheck = healthcheck
 }
 
@@ -1201,20 +1199,17 @@ func (s *GRPCServer) registerServiceMethods(ctx context.Context, serviceDesc *gr
 	for _, method := range svc.GetMethod() {
 		inputType := protoreflect.FullName(strings.TrimPrefix(method.GetInputType(), "."))
 
-		inputMsg, err := protoregistry.GlobalTypes.FindMessageByName(inputType)
+		inputDesc, err := findMessageDescriptor(inputType)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to get input message descriptor")
 		}
 
 		outputType := protoreflect.FullName(strings.TrimPrefix(method.GetOutputType(), "."))
 
-		outputMsg, err := protoregistry.GlobalTypes.FindMessageByName(outputType)
+		outputDesc, err := findMessageDescriptor(outputType)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to get output message descriptor")
 		}
-
-		inputDesc := inputMsg.Descriptor()
-		outputDesc := outputMsg.Descriptor()
 
 		// Register method in the service manager
 		s.serviceManager.GetMethodRegistry().RegisterMethod(
@@ -1240,6 +1235,26 @@ func (s *GRPCServer) registerServiceMethods(ctx context.Context, serviceDesc *gr
 			})
 		}
 	}
+}
+
+func findMessageDescriptor(name protoreflect.FullName) (protoreflect.MessageDescriptor, error) {
+	// Prefer GlobalTypes if populated.
+	if msg, err := protoregistry.GlobalTypes.FindMessageByName(name); err == nil {
+		return msg.Descriptor(), nil
+	}
+
+	// Fallback to files registry.
+	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(name)
+	if err != nil {
+		return nil, err
+	}
+
+	msgDesc, ok := desc.(protoreflect.MessageDescriptor)
+	if !ok {
+		return nil, errors.Newf("descriptor %s is not a message", name)
+	}
+
+	return msgDesc, nil
 }
 
 func (s *GRPCServer) createGrpcMocker(

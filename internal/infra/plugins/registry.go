@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"context"
 	"maps"
 	"sort"
 	"strings"
@@ -23,7 +24,7 @@ type Registry struct {
 	pluginDeps  map[string][]string
 
 	forceSource string
-	logger      *zerolog.Logger
+	logCtx      context.Context
 }
 
 type Option func(*Registry)
@@ -34,9 +35,9 @@ func WithForceSource(src string) Option {
 	}
 }
 
-func WithLogger(logger *zerolog.Logger) Option {
+func WithContext(ctx context.Context) Option {
 	return func(r *Registry) {
-		r.logger = logger
+		r.logCtx = ctx
 	}
 }
 
@@ -87,8 +88,10 @@ func (r *Registry) Plugins() []pkgplugins.PluginInfo {
 	defer r.mu.RUnlock()
 
 	order, skipped := r.sortedPluginOrder()
-	if len(skipped) > 0 && r.logger != nil {
-		r.logger.Warn().Strs("plugins", skipped).Msg("plugin dependency cycle detected; skipping")
+	if len(skipped) > 0 {
+		if logger := zerolog.Ctx(r.logCtx); logger != nil {
+			logger.Warn().Strs("plugins", skipped).Msg("plugin dependency cycle detected; skipping")
+		}
 	}
 
 	result := make([]pkgplugins.PluginInfo, 0, len(order))
@@ -109,8 +112,10 @@ func (r *Registry) Groups() []pkgplugins.PluginWithFuncs {
 	defer r.mu.RUnlock()
 
 	order, skipped := r.sortedPluginOrder()
-	if len(skipped) > 0 && r.logger != nil {
-		r.logger.Warn().Strs("plugins", skipped).Msg("plugin dependency cycle detected; skipping")
+	if len(skipped) > 0 {
+		if logger := zerolog.Ctx(r.logCtx); logger != nil {
+			logger.Warn().Strs("plugins", skipped).Msg("plugin dependency cycle detected; skipping")
+		}
 	}
 
 	result := make([]pkgplugins.PluginWithFuncs, 0, len(order))
@@ -127,6 +132,33 @@ func (r *Registry) Groups() []pkgplugins.PluginWithFuncs {
 	}
 
 	return result
+}
+
+// Hooks returns functions filtered by Group.
+func (r *Registry) Hooks(group string) []pkgplugins.Func {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	if group == "" {
+		return nil
+	}
+
+	funcs := make([]pkgplugins.Func, 0)
+	for _, infoList := range r.pluginFuncs {
+		for _, f := range infoList {
+			if f.Group != group {
+				continue
+			}
+
+			if fn, ok := r.funcs[f.Name]; ok {
+				if wrapped := wrapFunc(fn); wrapped != nil {
+					funcs = append(funcs, wrapped)
+				}
+			}
+		}
+	}
+
+	return funcs
 }
 
 func (r *Registry) normalizeInfo(info pkgplugins.PluginInfo) pkgplugins.PluginInfo {
@@ -345,11 +377,12 @@ func (r *Registry) collectCycles(registered map[string]struct{}, indegree map[st
 }
 
 func (r *Registry) warnDuplicate(name, plugin, existing string) {
-	if r.logger == nil {
+	logger := zerolog.Ctx(r.logCtx)
+	if logger == nil {
 		return
 	}
 
-	r.logger.Warn().
+	logger.Warn().
 		Str("plugin", plugin).
 		Str("function", name).
 		Str("owner", existing).

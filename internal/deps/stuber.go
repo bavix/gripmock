@@ -1,6 +1,8 @@
 package deps
 
 import (
+	"context"
+
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
 	localstuber "github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
@@ -17,6 +19,7 @@ func (b *Builder) Budgerigar() *localstuber.Budgerigar {
 
 func (b *Builder) Extender() *storage.Extender {
 	b.extenderOnce.Do(func() {
+		b.LoadPlugins(context.Background())
 		b.extender = storage.NewStub(b.Budgerigar(), yaml2json.New(b.pluginRegistry), watcher.NewStubWatcher(b.config))
 	})
 

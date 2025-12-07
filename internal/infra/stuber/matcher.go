@@ -62,6 +62,8 @@ func clearRegexCache() {
 // It checks if the query matches the stub's input data and headers using
 // the equals, contains, and matches methods.
 func match(query Query, stub *Stub) bool {
+	runMatcherHooks(query, stub)
+
 	// Check headers first
 	if !matchHeaders(query.Headers, stub.Headers) {
 		return false
@@ -343,11 +345,37 @@ func matchStreamElements(queryStream []map[string]any, stubStream []InputData) b
 	// For client streaming, grpctestify sends an extra empty message at the end
 	// We need to handle this case by checking if the last message is empty
 	effectiveQueryLength := len(queryStream)
-	if effectiveQueryLength > 0 {
-		lastMessage := queryStream[effectiveQueryLength-1]
-		if len(lastMessage) == 0 {
-			effectiveQueryLength--
+	for effectiveQueryLength > 0 && len(queryStream[effectiveQueryLength-1]) == 0 {
+		effectiveQueryLength--
+	}
+
+	// When stub provides a single matcher element, allow it to validate every
+	// incoming message (common pattern in examples where one matcher covers the
+	// whole stream).
+	if len(stubStream) == 1 && effectiveQueryLength >= 1 {
+		stubItem := stubStream[0]
+		hasMatchers := len(stubItem.Equals) > 0 || len(stubItem.Contains) > 0 || len(stubItem.Matches) > 0
+		if !hasMatchers {
+			return false
 		}
+
+		for i := 0; i < effectiveQueryLength; i++ {
+			queryItem := queryStream[i]
+
+			if len(stubItem.Equals) > 0 && !equals(stubItem.Equals, queryItem, stubItem.IgnoreArrayOrder) {
+				return false
+			}
+
+			if len(stubItem.Contains) > 0 && !contains(stubItem.Contains, queryItem, stubItem.IgnoreArrayOrder) {
+				return false
+			}
+
+			if len(stubItem.Matches) > 0 && !matches(stubItem.Matches, queryItem, stubItem.IgnoreArrayOrder) {
+				return false
+			}
+		}
+
+		return true
 	}
 
 	// Enforce exact length match for client streaming to avoid out-of-range panics
@@ -405,11 +433,47 @@ func rankStreamElements(queryStream []map[string]any, stubStream []InputData) fl
 	// For client streaming, grpctestify sends an extra empty message at the end
 	// We need to handle this case by checking if the last message is empty
 	effectiveQueryLength := len(queryStream)
-	if effectiveQueryLength > 0 {
-		lastMessage := queryStream[effectiveQueryLength-1]
-		if len(lastMessage) == 0 {
-			effectiveQueryLength--
+	for effectiveQueryLength > 0 && len(queryStream[effectiveQueryLength-1]) == 0 {
+		effectiveQueryLength--
+	}
+
+	// Allow a single stub matcher to cover all incoming messages.
+	if len(stubStream) == 1 && effectiveQueryLength >= 1 {
+		stubItem := stubStream[0]
+		hasMatchers := len(stubItem.Equals) > 0 || len(stubItem.Contains) > 0 || len(stubItem.Matches) > 0
+		if !hasMatchers {
+			return 0
 		}
+
+		totalRank := 0.0
+		for i := 0; i < effectiveQueryLength; i++ {
+			queryItem := queryStream[i]
+
+			// Reuse existing matchers for ranking consistency
+			switch {
+			case len(stubItem.Equals) > 0:
+				if !equals(stubItem.Equals, queryItem, stubItem.IgnoreArrayOrder) {
+					return 0
+				}
+				totalRank += 1
+			case len(stubItem.Contains) > 0:
+				if !contains(stubItem.Contains, queryItem, stubItem.IgnoreArrayOrder) {
+					return 0
+				}
+				totalRank += 1
+			case len(stubItem.Matches) > 0:
+				if !matches(stubItem.Matches, queryItem, stubItem.IgnoreArrayOrder) {
+					return 0
+				}
+				totalRank += 1
+			}
+		}
+
+		if effectiveQueryLength == 0 {
+			return 0
+		}
+
+		return totalRank / float64(effectiveQueryLength)
 	}
 
 	// Enforce exact length match for client streaming

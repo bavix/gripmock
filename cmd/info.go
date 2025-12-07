@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,8 +22,8 @@ func init() { //nolint:gochecknoinits
 	infoCmd := &cobra.Command{
 		Use:   "info",
 		Short: "Show gripmock info and loaded plugins",
-		RunE: func(*cobra.Command, []string) error {
-			return runInfoCmd()
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runInfoCmd(cmd.Context())
 		},
 	}
 
@@ -293,9 +294,15 @@ func formatFunctionLabel(f plugins.FunctionInfo) string {
 	return label
 }
 
-func runInfoCmd() error {
-	builder := deps.NewBuilder(deps.WithDefaultConfig())
-	builder.InitTemplatePlugins(pluginsFlag)
+func runInfoCmd(ctx context.Context) error {
+	builder := deps.NewBuilder(
+		deps.WithDefaultConfig(),
+		deps.WithPlugins(pluginsFlag),
+	)
+
+	ctx = builder.Logger(ctx)
+
+	builder.LoadPlugins(ctx)
 
 	raw := builder.PluginInfos()
 
@@ -384,19 +391,19 @@ func formatAuthorsLine(ctx uiContext, authors []plugins.Author, _ []string, _ st
 
 	for _, a := range authors {
 		name := strings.TrimSpace(a.Name)
-		email := strings.TrimSpace(a.Contact)
+		contact := strings.TrimSpace(a.Contact)
 
-		if name == "" && email == "" {
+		if name == "" && contact == "" {
 			continue
 		}
 
 		switch {
-		case name != "" && email != "":
-			items = append(items, fmt.Sprintf("%s <%s>", name, email))
+		case name != "" && contact != "":
+			items = append(items, fmt.Sprintf("%s <%s>", name, contact))
 		case name != "":
 			items = append(items, name)
 		default:
-			items = append(items, email)
+			items = append(items, contact)
 		}
 	}
 

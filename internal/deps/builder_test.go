@@ -42,7 +42,7 @@ func TestBuilder_WithDefaultConfig(t *testing.T) {
 func TestBuilder_WithConfig(t *testing.T) {
 	t.Parallel()
 	// Test builder with custom config
-	cfg, _ := config.New()
+	cfg := config.Load()
 	builder := deps.NewBuilder(deps.WithConfig(cfg))
 	require.NotNil(t, builder)
 }
@@ -58,7 +58,7 @@ func TestBuilder_WithEnder(t *testing.T) {
 func TestBuilder_MultipleOptions(t *testing.T) {
 	t.Parallel()
 	// Test builder with multiple options
-	cfg, _ := config.New()
+	cfg := config.Load()
 	ender := lifecycle.New(nil)
 	builder := deps.NewBuilder(deps.WithConfig(cfg), deps.WithEnder(ender))
 	require.NotNil(t, builder)

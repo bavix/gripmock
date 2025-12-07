@@ -587,37 +587,44 @@ func titleCase(s string) string {
 	return strings.ToTitle(s)
 }
 
-func add(values ...float64) float64 {
+func add(values ...any) float64 {
+	nums, ok := convertAllToFloat64(values...)
+	if !ok {
+		return 0
+	}
+
 	sum := 0.0
-	for _, v := range values {
+	for _, v := range nums {
 		sum += v
 	}
 
 	return sum
 }
 
-func subtract(values ...float64) float64 {
-	if len(values) == 0 {
+func subtract(values ...any) float64 {
+	nums, ok := convertAllToFloat64(values...)
+	if !ok || len(nums) == 0 {
 		return 0
 	}
 
-	result := values[0]
+	result := nums[0]
 
-	for _, v := range values[1:] {
+	for _, v := range nums[1:] {
 		result -= v
 	}
 
 	return result
 }
 
-func divide(values ...float64) float64 {
-	if len(values) == 0 {
+func divide(values ...any) float64 {
+	nums, ok := convertAllToFloat64(values...)
+	if !ok || len(nums) == 0 {
 		return 0
 	}
 
-	result := values[0]
+	result := nums[0]
 
-	for _, v := range values[1:] {
+	for _, v := range nums[1:] {
 		if v != 0 {
 			result /= v
 		}
@@ -626,66 +633,98 @@ func divide(values ...float64) float64 {
 	return result
 }
 
-func modulo(values ...float64) float64 {
-	if len(values) < 2 || values[1] == 0 {
+func modulo(values ...any) float64 {
+	nums, ok := convertAllToFloat64(values...)
+	if !ok || len(nums) < 2 || nums[1] == 0 {
 		return 0
 	}
 
-	return math.Mod(values[0], values[1])
+	return math.Mod(nums[0], nums[1])
 }
 
-func sum(values ...float64) float64 {
+func sum(values ...any) float64 {
+	nums, ok := convertAllToFloat64(values...)
+	if !ok {
+		return 0
+	}
+
 	total := 0.0
-	for _, v := range values {
+	for _, v := range nums {
 		total += v
 	}
 
 	return total
 }
 
-func product(values ...float64) float64 {
+func product(values ...any) float64 {
+	nums, ok := convertAllToFloat64(values...)
+	if !ok {
+		return 0
+	}
+
 	prod := 1.0
-	for _, v := range values {
+	for _, v := range nums {
 		prod *= v
 	}
 
 	return prod
 }
 
-func average(values ...float64) float64 {
-	if len(values) == 0 {
+func average(values ...any) float64 {
+	nums, ok := convertAllToFloat64(values...)
+	if !ok || len(nums) == 0 {
 		return 0
 	}
 
-	return sum(values...) / float64(len(values))
+	total := 0.0
+	for _, v := range nums {
+		total += v
+	}
+
+	return total / float64(len(nums))
 }
 
-func minValue(values ...float64) float64 {
-	if len(values) == 0 {
+func minValue(values ...any) float64 {
+	nums, ok := convertAllToFloat64(values...)
+	if !ok || len(nums) == 0 {
 		return 0
 	}
 
-	minVal := values[0]
+	minVal := nums[0]
 
-	for _, v := range values[1:] {
+	for _, v := range nums[1:] {
 		minVal = minFloat(minVal, v)
 	}
 
 	return minVal
 }
 
-func maxValue(values ...float64) float64 {
-	if len(values) == 0 {
+func maxValue(values ...any) float64 {
+	nums, ok := convertAllToFloat64(values...)
+	if !ok || len(nums) == 0 {
 		return 0
 	}
 
-	maxVal := values[0]
+	maxVal := nums[0]
 
-	for _, v := range values[1:] {
+	for _, v := range nums[1:] {
 		maxVal = maxFloat(maxVal, v)
 	}
 
 	return maxVal
+}
+
+func convertAllToFloat64(values ...any) ([]float64, bool) {
+	nums := make([]float64, 0, len(values))
+	for _, v := range values {
+		if f, ok := convertToFloat64(v); ok {
+			nums = append(nums, f)
+		} else {
+			return nil, false
+		}
+	}
+
+	return nums, true
 }
 
 func minFloat(a, b float64) float64 {

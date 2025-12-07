@@ -11,8 +11,7 @@ import (
 func TestConfig_Defaults(t *testing.T) {
 	t.Parallel()
 
-	conf, err := config.New()
-	require.NoError(t, err)
+	conf := config.Load()
 
 	require.Equal(t, "info", conf.LogLevel)
 
@@ -45,8 +44,7 @@ func TestConfig_Override(t *testing.T) {
 		t.Setenv(k, v)
 	}
 
-	conf, err := config.New()
-	require.NoError(t, err)
+	conf := config.Load()
 
 	require.Equal(t, "trace", conf.LogLevel)
 

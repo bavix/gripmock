@@ -28,7 +28,9 @@ func TestUnaryInterceptor(t *testing.T) {
 		return resp, nil
 	}
 
-	result, err := interceptor(context.Background(), req, nil, handler)
+	ctx := logger.WithContext(context.Background())
+
+	result, err := interceptor(ctx, req, nil, handler)
 	require.NoError(t, err)
 	require.Equal(t, resp, result)
 }

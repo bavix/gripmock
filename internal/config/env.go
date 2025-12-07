@@ -6,9 +6,3 @@ const (
 	WatcherFSNotify watcherType = "fsnotify"
 	WatcherTimer    watcherType = "timer"
 )
-
-func New() (Config, error) {
-	cfg := Load()
-
-	return cfg, nil
-}

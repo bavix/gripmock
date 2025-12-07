@@ -107,6 +107,8 @@ func (e *OptimizedExecutor) Execute(
 		return false, err
 	}
 
+	runRuntimeHooks(ctx, stub, rpcType, headers, requests)
+
 	// Finalize response
 	if err := e.finalize(w, stub); err != nil {
 		return used, err

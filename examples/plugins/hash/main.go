@@ -43,6 +43,7 @@ func Register(reg plugins.Registry) {
 			plugins.FuncSpec{
 				Name: "md5",
 				Fn: func(s string) string {
+					// nosemgrep: go.lang.security.audit.crypto.use_of_weak_crypto.use-of-md5
 					sum := md5.Sum([]byte(s)) //nolint:gosec // md5 is intentionally shown as deprecated example
 
 					return hex.EncodeToString(sum[:])

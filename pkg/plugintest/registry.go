@@ -252,6 +252,28 @@ func (r *TestRegistry) Groups() []plugins.PluginWithFuncs {
 	return res
 }
 
+// Hooks returns functions filtered by Group.
+func (r *TestRegistry) Hooks(group string) []plugins.Func {
+	if strings.TrimSpace(group) == "" {
+		return nil
+	}
+
+	res := make([]plugins.Func, 0)
+	for _, funcs := range r.pluginFuncs {
+		for _, f := range funcs {
+			if f.Group != group {
+				continue
+			}
+
+			if fn, ok := r.funcs[f.Name]; ok {
+				res = append(res, fn)
+			}
+		}
+	}
+
+	return res
+}
+
 func (r *TestRegistry) lookupPlugin(name string) plugins.PluginInfo {
 	for _, p := range r.plugins {
 		if p.Name == name {

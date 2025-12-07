@@ -26,17 +26,19 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 	Version: build.Version,
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		builder := deps.NewBuilder(deps.WithDefaultConfig())
+		builder := deps.NewBuilder(
+			deps.WithDefaultConfig(),
+			deps.WithPlugins(pluginsFlag),
+		)
 		ctx, cancel := builder.SignalNotify(cmd.Context())
 		defer cancel()
 
 		ctx = builder.Logger(ctx)
+		builder.LoadPlugins(ctx)
 
 		zerolog.Ctx(ctx).Info().
 			Str("release", build.Version).
 			Msg("Starting GripMock")
-
-		builder.InitTemplatePlugins(pluginsFlag)
 
 		go func() {
 			defer func() {

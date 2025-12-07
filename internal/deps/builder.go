@@ -1,6 +1,7 @@
 package deps
 
 import (
+	"context"
 	"sync"
 
 	"github.com/bavix/gripmock/v3/internal/app"
@@ -9,6 +10,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/grpcservice"
 	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 	internalplugins "github.com/bavix/gripmock/v3/internal/infra/plugins"
+	"github.com/bavix/gripmock/v3/internal/infra/runtime"
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
 	"github.com/bavix/gripmock/v3/internal/infra/store/memory"
 	localstuber "github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -33,6 +35,8 @@ type Builder struct {
 	analytics     *memory.InMemoryAnalytics
 	analyticsOnce sync.Once
 
+	pluginPaths []string
+
 	errorFormatter     *app.ErrorFormatter
 	errorFormatterOnce sync.Once
 
@@ -43,12 +47,14 @@ type Builder struct {
 	stubNotFoundFormatterOnce sync.Once
 
 	pluginRegistry *internalplugins.Registry
+
+	pluginOnce sync.Once
 }
 
 func NewBuilder(opts ...Option) *Builder {
 	builder := &Builder{
-		ender:          lifecycle.New(nil),
-		pluginRegistry: internalplugins.NewRegistry(),
+		ender:       lifecycle.New(nil),
+		pluginPaths: nil,
 	}
 	for _, opt := range opts {
 		opt(builder)
@@ -67,29 +73,52 @@ func WithConfig(cfg config.Config) Option {
 	}
 }
 
-// InitTemplatePlugins wires template plugin registry and loads plugins.
-// extraPaths are additional plugin paths from CLI.
-func (b *Builder) InitTemplatePlugins(extraPaths []string) {
-	all := make([]string, 0, len(b.config.TemplatePluginPaths)+len(extraPaths))
-	all = append(all, b.config.TemplatePluginPaths...)
-	all = append(all, extraPaths...)
+// WithPlugins sets additional plugin paths (e.g. from CLI flags).
+// Paths are copied to avoid external mutation.
+func WithPlugins(paths []string) Option {
+	return func(builder *Builder) {
+		if len(paths) == 0 {
+			return
+		}
 
-	b.pluginRegistry = internalplugins.NewRegistry()
+		builder.pluginPaths = append(make([]string, 0, len(paths)), paths...)
+	}
+}
+
+func (b *Builder) LoadPlugins(ctx context.Context) {
+	b.pluginOnce.Do(func() {
+		b.loadPlugins(ctx)
+	})
+}
+
+func (b *Builder) loadPlugins(ctx context.Context) {
+	all := make([]string, 0, len(b.config.TemplatePluginPaths)+len(b.pluginPaths))
+	all = append(all, b.config.TemplatePluginPaths...)
+	all = append(all, b.pluginPaths...)
+
+	b.pluginRegistry = internalplugins.NewRegistry(internalplugins.WithContext(ctx))
 	internalplugins.RegisterBuiltins(b.pluginRegistry)
 
 	loader := internalplugins.NewLoader(all)
-	loader.Load(b.pluginRegistry)
+	loader.Load(ctx, b.pluginRegistry)
+
+	// Wire hook consumers
+	localstuber.SetMatcherHooks(b.pluginRegistry)
+	runtime.SetHookRegistry(b.pluginRegistry)
 }
 
 func (b *Builder) TemplateRegistry() *internalplugins.Registry {
+	b.LoadPlugins(context.Background())
 	return b.pluginRegistry
 }
 
 func (b *Builder) PluginInfos() []plugins.PluginWithFuncs {
+	b.LoadPlugins(context.Background())
 	return b.pluginRegistry.Groups()
 }
 
 func (b *Builder) PluginMeta() []plugins.PluginInfo {
+	b.LoadPlugins(context.Background())
 	return b.pluginRegistry.Plugins()
 }
 

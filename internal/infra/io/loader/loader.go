@@ -2,6 +2,7 @@ package loader
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -78,14 +79,42 @@ func loadFile(ctx context.Context, file string) ([]domain.Stub, error) {
 		return nil, errors.Wrap(err, "read file")
 	}
 
-	// Accept both JSON and YAML by using yaml package (which can parse JSON too)
+	ext := strings.ToLower(filepath.Ext(file))
+	switch ext {
+	case ".yaml", ".yml":
+		return loadYAML(ctx, raw, file)
+	default:
+		return loadJSON(ctx, raw, file)
+	}
+}
+
+func loadJSON(ctx context.Context, raw []byte, file string) ([]domain.Stub, error) {
 	var items []map[string]any
-	if err := yaml.Unmarshal(raw, &items); err != nil {
-		return nil, errors.Wrap(err, "unmarshal stubs")
+	if err := json.Unmarshal(raw, &items); err != nil {
+		return nil, errors.Wrap(err, "unmarshal json stubs")
 	}
 
+	return parseItems(ctx, file, items), nil
+}
+
+func loadYAML(ctx context.Context, raw []byte, file string) ([]domain.Stub, error) {
+	var items []map[string]any
+	if err := yaml.Unmarshal(raw, &items); err != nil {
+		return nil, errors.Wrap(err, "unmarshal yaml stubs")
+	}
+
+	return parseItems(ctx, file, items), nil
+}
+
+func parseItems(ctx context.Context, file string, items []map[string]any) []domain.Stub {
 	out := make([]domain.Stub, 0, len(items))
 	for _, it := range items {
+		// Normalize legacy single-output format to v4 plural format
+		if rawOut, ok := it["output"]; ok && it["outputs"] == nil {
+			it["outputs"] = []any{rawOut}
+			delete(it, "output")
+		}
+
 		if _, ok := it["outputs"]; !ok {
 			zerolog.Ctx(ctx).Warn().Str("file", file).Msg("[DEPRECATED] legacy stub format detected; please migrate to outputs")
 
@@ -97,7 +126,7 @@ func loadFile(ctx context.Context, file string) ([]domain.Stub, error) {
 		out = append(out, normalizeStub(it))
 	}
 
-	return out, nil
+	return out
 }
 
 // normalizeStub maps a generic map into domain.Stub without deep validation.

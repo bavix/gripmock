@@ -13,6 +13,9 @@ var cacheMu sync.Mutex
 
 func TestStringHashCache(t *testing.T) {
 	t.Parallel()
+
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
 	// Clear cache before test
 	clearStringHashCache()
 

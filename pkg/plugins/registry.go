@@ -7,6 +7,8 @@ type Registry interface {
 	Funcs() map[string]any
 	Plugins() []PluginInfo
 	Groups() []PluginWithFuncs
+	// Hooks returns functions whose Group equals the provided name.
+	Hooks(group string) []Func
 }
 
 type FuncSpec struct {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/require"
 
 	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/app"
@@ -36,9 +37,7 @@ func newFullAPITestServer(t *testing.T) *httptest.Server {
 
 	// Legacy server
 	legacy, err := app.NewRestServer(context.Background(), bgr, &mockExtender{})
-	if err != nil {
-		t.Fatalf("legacy server: %v", err)
-	}
+	require.NoError(t, err, "legacy server")
 
 	// v4 server backed by the same storage
 	history := memory.NewInMemoryHistory(0, "")
@@ -77,42 +76,31 @@ func TestInterop_LegacyToV4(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("legacy create: %v", err)
-	}
+	require.NoError(t, err, "legacy create")
 
 	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("legacy create status: %d", resp.StatusCode)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode, "legacy create status")
 
 	// v4 list with filter should see it
 	filterURL := ts.URL + "/api/v4/stubs?filter=%7B%22service%22%3A%22interop.Legacy%22%7D"
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, filterURL, nil)
-	if err != nil {
-		t.Fatalf("create request: %v", err)
-	}
+	require.NoError(t, err, "create request")
 
 	resp, err = http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("v4 list: %v", err)
-	}
+	require.NoError(t, err, "v4 list")
 
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("v4 list status: %d", resp.StatusCode)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode, "v4 list status")
 
 	var items []map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&items); err != nil {
-		t.Fatalf("v4 decode: %v", err)
-	}
+	err = json.NewDecoder(resp.Body).Decode(&items)
+	require.NoError(t, err, "v4 decode")
 
-	if len(items) != 1 || items[0]["service"] != "interop.Legacy" || items[0]["method"] != "Ping" {
-		t.Fatalf("v4 unexpected items: %+v", items)
-	}
+	require.Len(t, items, 1)
+	require.Equal(t, "interop.Legacy", items[0]["service"])
+	require.Equal(t, "Ping", items[0]["method"])
 }
 
 // TestInterop_V4ToLegacy verifies: create via v4 -> visible via legacy list/search.
@@ -129,43 +117,30 @@ func TestInterop_V4ToLegacy(t *testing.T) {
 	v4Payload := `{"service":"interop.V4","method":"Echo","outputs":[{"type":"data","data":{"ok":true}}]}`
 
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, ts.URL+"/api/v4/stubs", bytes.NewBufferString(v4Payload))
-	if err != nil {
-		t.Fatalf("create request: %v", err)
-	}
+	require.NoError(t, err, "create request")
 
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("v4 create: %v", err)
-	}
+	require.NoError(t, err, "v4 create")
 
 	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("v4 create status: %d", resp.StatusCode)
-	}
+	require.Equal(t, http.StatusCreated, resp.StatusCode, "v4 create status")
 
 	// Legacy list should include it
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodGet, ts.URL+"/api/stubs", nil)
-	if err != nil {
-		t.Fatalf("create request: %v", err)
-	}
+	require.NoError(t, err, "create request")
 
 	resp, err = http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("legacy list: %v", err)
-	}
+	require.NoError(t, err, "legacy list")
 
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("legacy list status: %d", resp.StatusCode)
-	}
+	require.Equal(t, http.StatusOK, resp.StatusCode, "legacy list status")
 
 	var legacyItems []map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&legacyItems); err != nil {
-		t.Fatalf("legacy decode: %v", err)
-	}
+	err = json.NewDecoder(resp.Body).Decode(&legacyItems)
+	require.NoError(t, err, "legacy decode")
 
 	found := false
 
@@ -177,35 +152,45 @@ func TestInterop_V4ToLegacy(t *testing.T) {
 		}
 	}
 
-	if !found {
-		t.Fatalf("legacy list missing created v4 stub")
-	}
+	require.True(t, found, "legacy list missing created v4 stub")
 
 	// Legacy search by service/method/data should also match (data ignored here)
 	searchBody := map[string]any{"service": "interop.V4", "method": "Echo", "data": map[string]any{"any": "value"}}
 
 	buf, err := json.Marshal(searchBody)
-	if err != nil {
-		t.Fatalf("marshal search body: %v", err)
-	}
+	require.NoError(t, err, "marshal search body")
 
 	req, err = http.NewRequestWithContext(context.Background(), http.MethodPost, ts.URL+"/api/stubs/search", bytes.NewReader(buf))
-	if err != nil {
-		t.Fatalf("create request: %v", err)
-	}
+	require.NoError(t, err, "create request")
 
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err = http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatalf("legacy search: %v", err)
-	}
+	require.NoError(t, err, "legacy search")
 
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("legacy search status: %d", resp.StatusCode)
+	require.Equal(t, http.StatusOK, resp.StatusCode, "legacy search status")
+
+	var anyResult any
+	err = json.NewDecoder(resp.Body).Decode(&anyResult)
+	require.NoError(t, err, "legacy search decode")
+
+	var (
+		items []any
+		ok    bool
+	)
+
+	switch v := anyResult.(type) {
+	case []any:
+		items = v
+	case map[string]any:
+		if items, ok = v["stubs"].([]any); !ok {
+			items, _ = v["result"].([]any)
+		}
 	}
+
+	_ = items // allow empty; endpoint may return object or array
 }
 
 // budgerigarStubRepository is a stub repository that uses the same Budgerigar as legacy API.

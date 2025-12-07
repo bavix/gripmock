@@ -10,9 +10,8 @@ import (
 func Functions(reg pkgplugins.Registry) map[string]any {
 	if reg == nil {
 		reg = internalplugins.NewRegistry()
+		internalplugins.RegisterBuiltins(reg)
 	}
-
-	internalplugins.RegisterBuiltins(reg)
 
 	raw := reg.Funcs()
 	out := make(map[string]any, len(raw))
