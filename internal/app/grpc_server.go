@@ -1159,7 +1159,6 @@ func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 
 func (s *GRPCServer) setupHealthCheck(server *grpc.Server) {
 	healthcheck := health.NewServer()
-	healthcheck.SetServingStatus("", healthgrpc.HealthCheckResponse_SERVING)
 	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_NOT_SERVING)
 	healthgrpc.RegisterHealthServer(server, healthcheck)
 	reflection.Register(server)
