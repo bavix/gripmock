@@ -37,6 +37,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/grpcservice"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	localtypes "github.com/bavix/gripmock/v3/internal/infra/types"
+	"github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
 // excludedHeaders contains headers that should be excluded from stub matching.
@@ -97,6 +98,7 @@ type GRPCServer struct {
 	waiter         Extender
 	healthcheck    *health.Server
 	errorFormatter *ErrorFormatter
+	pluginRegistry plugins.Registry
 }
 
 type grpcMocker struct {
@@ -114,6 +116,7 @@ type grpcMocker struct {
 	clientStream bool
 
 	errorFormatter *ErrorFormatter
+	pluginRegistry plugins.Registry
 }
 
 func (m *grpcMocker) streamHandler(srv any, stream grpc.ServerStream) error {
@@ -351,7 +354,16 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 			headers = processHeaders(md)
 		}
 
-		if err := found.Output.ProcessDynamicOutput(requestData, headers, 0, nil, 1, found.Times, found.ID.String()); err != nil {
+		if err := found.Output.ProcessDynamicOutput(
+			requestData,
+			headers,
+			0,
+			nil,
+			1,
+			found.Times,
+			found.ID.String(),
+			m.pluginRegistry,
+		); err != nil {
 			return status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
 		}
 	}
@@ -725,7 +737,16 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		outputToUse.Data = deepCopyMapAny(found.Output.Data)
 		outputToUse.Stream = deepCopySliceAny(found.Output.Stream)
 
-		if err := outputToUse.ProcessDynamicOutput(requestData, headers, 0, nil, 1, found.Times, found.ID.String()); err != nil {
+		if err := outputToUse.ProcessDynamicOutput(
+			requestData,
+			headers,
+			0,
+			nil,
+			1,
+			found.Times,
+			found.ID.String(),
+			m.pluginRegistry,
+		); err != nil {
 			return nil, status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
 		}
 	}
@@ -969,7 +990,16 @@ func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *s
 			allMessages = append(allMessages, m)
 		}
 
-		if err := found.Output.ProcessDynamicOutput(requestData, headers, 0, allMessages, 1, found.Times, found.ID.String()); err != nil {
+		if err := found.Output.ProcessDynamicOutput(
+			requestData,
+			headers,
+			0,
+			allMessages,
+			1,
+			found.Times,
+			found.ID.String(),
+			m.pluginRegistry,
+		); err != nil {
 			return status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
 		}
 	}
@@ -1050,7 +1080,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			outputToUse.Headers = deepCopyStringMap(stub.Output.Headers)
 
 			if err := outputToUse.ProcessDynamicOutput(
-				requestData, headers, bidiResult.GetMessageIndex(), nil, 1, stub.Times, stub.ID.String(),
+				requestData, headers, bidiResult.GetMessageIndex(), nil, 1, stub.Times, stub.ID.String(), m.pluginRegistry,
 			); err != nil {
 				return status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
 			}
@@ -1082,6 +1112,7 @@ func NewGRPCServer(
 	serviceManager *grpcservice.Manager,
 	waiter Extender,
 	errorFormatter *ErrorFormatter,
+	pluginRegistry plugins.Registry,
 ) *GRPCServer {
 	return &GRPCServer{
 		network:        network,
@@ -1091,6 +1122,7 @@ func NewGRPCServer(
 		serviceManager: serviceManager,
 		waiter:         waiter,
 		errorFormatter: errorFormatter,
+		pluginRegistry: pluginRegistry,
 	}
 }
 
@@ -1231,6 +1263,7 @@ func (s *GRPCServer) createGrpcMocker(
 		clientStream: method.GetClientStreaming(),
 
 		errorFormatter: s.errorFormatter,
+		pluginRegistry: s.pluginRegistry,
 	}
 }
 

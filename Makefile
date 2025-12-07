@@ -16,6 +16,12 @@ lint:
 lint-fix:
 	make lint args=--fix
 
+plugins:
+	mkdir -p plugins; \
+	for dir in examples/plugins/*; do \
+		[ -d $$dir ] && go build -buildmode=plugin -o plugins/$$(basename $$dir).so $$dir/*.go; \
+	done
+
 semgrep:
 	docker run --rm -v $$(pwd):/src bavix/semgrep:master semgrep scan --error --config=p/golang -f /semgrep-go
 

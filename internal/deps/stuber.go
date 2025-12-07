@@ -17,7 +17,7 @@ func (b *Builder) Budgerigar() *localstuber.Budgerigar {
 
 func (b *Builder) Extender() *storage.Extender {
 	b.extenderOnce.Do(func() {
-		b.extender = storage.NewStub(b.Budgerigar(), yaml2json.New(), watcher.NewStubWatcher(b.config))
+		b.extender = storage.NewStub(b.Budgerigar(), yaml2json.New(b.pluginRegistry), watcher.NewStubWatcher(b.config))
 	})
 
 	return b.extender

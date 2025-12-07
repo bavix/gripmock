@@ -43,6 +43,7 @@ func TestConfig_OldEnvVarNames(t *testing.T) {
 		HistoryLimit:           config.ByteSize{Bytes: 128 * 1024 * 1024}, // 128M
 		HistoryMessageMaxBytes: 524288,
 		HistoryRedactKeys:      []string{"password", "token", "secret"},
+		TemplatePluginPaths:    nil,
 	}
 
 	// Load configuration
@@ -87,6 +88,7 @@ func TestConfig_DefaultValues(t *testing.T) {
 		HistoryLimit:           config.ByteSize{Bytes: 64 * 1024 * 1024}, // 64M
 		HistoryMessageMaxBytes: 262144,
 		HistoryRedactKeys:      nil, // env v11 returns nil for empty strings
+		TemplatePluginPaths:    nil,
 	}
 
 	// Load configuration

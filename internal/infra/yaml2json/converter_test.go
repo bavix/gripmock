@@ -11,7 +11,7 @@ import (
 func TestConverter(t *testing.T) {
 	t.Parallel()
 
-	convertor := yaml2json.New()
+	convertor := yaml2json.New(nil)
 
 	// see: https://bavix.github.io/uuid-ui/
 	// 77465064-a0ce-48a3-b7e4-d50f88e55093 => d0ZQZKDOSKO35NUPiOVQkw==
@@ -40,7 +40,7 @@ yaml2json:
 func TestPanic2Error(t *testing.T) {
 	t.Parallel()
 
-	_, err := yaml2json.New().Execute("hello", []byte(`
+	_, err := yaml2json.New(nil).Execute("hello", []byte(`
 yaml2json:
   base64: {{ uuid2base64 "no-uuid" }}
 `))

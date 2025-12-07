@@ -9,5 +9,6 @@ protogen/*
 temp
 node_modules/
 .trunk/
+plugins/*.so
 
 DEV-3.5.md

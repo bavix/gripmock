@@ -69,7 +69,7 @@ func (b *Builder) RestServe(
 
 	// Create a stub repository that uses the same Budgerigar as legacy API
 	stubRepo := repository.NewStubRepository(b.Budgerigar())
-	v4Server := modern.NewServer(stubRepo, analyticsRepo, historyRepo)
+	v4Server := modern.NewServer(stubRepo, analyticsRepo, historyRepo, b.PluginInfos())
 	v4Server.Mount(router, "/api/v4")
 
 	// Add metrics endpoint with Go runtime metrics

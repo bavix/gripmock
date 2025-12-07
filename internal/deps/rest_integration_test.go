@@ -45,7 +45,7 @@ func newFullAPITestServer(t *testing.T) *httptest.Server {
 
 	// Create a stub repository that uses the same Budgerigar
 	stubRepo := &budgerigarStubRepository{bgr: bgr}
-	v4srv := modern.NewServer(stubRepo, analytics, history)
+	v4srv := modern.NewServer(stubRepo, analytics, history, nil)
 
 	r := mux.NewRouter()
 

@@ -10,7 +10,7 @@ import (
 func TestEngine_Render(t *testing.T) {
 	t.Parallel()
 
-	engine := New()
+	engine := New(nil)
 
 	tests := []struct {
 		name     string
@@ -148,7 +148,7 @@ func TestIsTemplateString(t *testing.T) {
 func TestEngine_ProcessMap(t *testing.T) {
 	t.Parallel()
 
-	engine := New()
+	engine := New(nil)
 
 	data := map[string]any{
 		"name": "{{.Request.name}}",
@@ -190,7 +190,7 @@ func TestEngine_ProcessMap(t *testing.T) {
 func TestEngine_ProcessHeaders(t *testing.T) {
 	t.Parallel()
 
-	engine := New()
+	engine := New(nil)
 
 	headers := map[string]string{
 		"x-user-id": "{{.Request.user_id}}",
@@ -218,7 +218,7 @@ func TestEngine_ProcessHeaders(t *testing.T) {
 func TestEngine_ProcessError(t *testing.T) {
 	t.Parallel()
 
-	engine := New()
+	engine := New(nil)
 
 	tests := []struct {
 		name         string

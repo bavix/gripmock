@@ -364,15 +364,13 @@ func (s *storage) posByPN(left, right string) ([]uint64, error) {
 	return resolvedIDs, nil
 }
 
-// findByID retrieves the Stub value associated with the given UUID from the
-// storage.
-//
-// Parameters:
-// - key: The UUID of the Stub value to retrieve.
+// findByID retrieves the Stub value associated with the given UUID from the storage.
 //
 // Returns:
 // - Value: The Stub value associated with the given UUID, or nil if not found.
-func (s *storage) findByID(key uuid.UUID) Value { //nolint:ireturn
+//
+//nolint:ireturn
+func (s *storage) findByID(key uuid.UUID) Value {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

@@ -9,6 +9,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/types"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
 	gptypes "github.com/bavix/gripmock/v3/internal/infra/types"
+	"github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
 // Stub represents a gRPC service method and its associated data.
@@ -208,8 +209,9 @@ func (o *Output) ProcessDynamicOutput(
 	attemptNumber int,
 	maxAttempts int,
 	stubID string,
+	reg plugins.Registry,
 ) error {
-	engine := template.New()
+	engine := template.New(reg)
 
 	// Create template data
 	templateData := template.Data{

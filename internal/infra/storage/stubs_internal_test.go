@@ -31,7 +31,7 @@ func createTestStorage(t *testing.T) *Extender {
 	t.Helper()
 
 	// Create mock dependencies
-	converter := yaml2json.New()
+	converter := yaml2json.New(nil)
 	watcher := &watcher.StubWatcher{}
 
 	// Create a real Budgerigar with features

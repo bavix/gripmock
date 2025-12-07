@@ -9,6 +9,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/config"
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
 	"github.com/bavix/gripmock/v3/internal/infra/yaml2json"
+	"github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
 // WatcherAdapter adapts the existing StubWatcher to our interface.
@@ -92,9 +93,9 @@ type YamlParserAdapter struct {
 }
 
 // NewYamlParserAdapter creates a new YAML parser adapter.
-func NewYamlParserAdapter() *YamlParserAdapter {
+func NewYamlParserAdapter(reg plugins.Registry) *YamlParserAdapter {
 	return &YamlParserAdapter{
-		converter: yaml2json.New(),
+		converter: yaml2json.New(reg),
 	}
 }
 
@@ -123,9 +124,9 @@ func (ypa *YamlParserAdapter) ParseFile(path string) (map[string]any, error) {
 }
 
 // NewDefaultTemplateFacade creates a template facade with default adapters.
-func NewDefaultTemplateFacade(cfg config.Config) *TemplateFacade {
+func NewDefaultTemplateFacade(cfg config.Config, reg plugins.Registry) *TemplateFacade {
 	return NewTemplateFacade(
 		NewWatcherAdapter(cfg),
-		NewYamlParserAdapter(),
+		NewYamlParserAdapter(reg),
 	)
 }

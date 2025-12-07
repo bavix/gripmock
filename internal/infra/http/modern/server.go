@@ -13,6 +13,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
 	"github.com/bavix/gripmock/v3/internal/infra/matcher"
 	validator "github.com/bavix/gripmock/v3/internal/infra/schema"
+	"github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
 const (
@@ -28,10 +29,16 @@ type Server struct {
 	stubs     port.StubRepository
 	analytics port.AnalyticsRepository
 	history   port.HistoryRepository
+	plugins   []plugins.PluginWithFuncs
 }
 
-func NewServer(stubs port.StubRepository, analytics port.AnalyticsRepository, history port.HistoryRepository) *Server {
-	return &Server{stubs: stubs, analytics: analytics, history: history}
+func NewServer(
+	stubs port.StubRepository,
+	analytics port.AnalyticsRepository,
+	history port.HistoryRepository,
+	pluginInfos []plugins.PluginWithFuncs,
+) *Server {
+	return &Server{stubs: stubs, analytics: analytics, history: history, plugins: pluginInfos}
 }
 
 // Mount mounts the v4 routes under the provided router and base path.
@@ -48,6 +55,7 @@ func (s *Server) Mount(r *mux.Router, base string) {
 	// Utilities
 	r.HandleFunc(base+"/stubs/lint", s.handleLintStubs).Methods(http.MethodPost)
 	r.HandleFunc(base+"/stubs/match:dryRun", s.handleDryRunMatch).Methods(http.MethodPost)
+	r.HandleFunc(base+"/plugins", s.handlePlugins).Methods(http.MethodGet)
 	// export/import endpoints are removed; use POST /v4/stubs and GET /v4/stubs instead
 
 	// Services and methods
@@ -396,6 +404,10 @@ func (s *Server) handleDryRunMatch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, preview)
+}
+
+func (s *Server) handlePlugins(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, s.plugins)
 }
 
 func matchHeaders(m *domain.Matcher, headers map[string]any) bool {

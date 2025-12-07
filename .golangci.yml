@@ -12,6 +12,7 @@ linters:
     - varnamelen  # too strict for this project - requires longer variable names
     - noinlineerr  # too strict for this project - requires separate error assignment
     - wrapcheck  # too strict for this project - requires wrapping all errors
+    - gomoddirectives  # allow local replace for pkg/plugins
   settings:
     lll:
       tab-width: 1

@@ -90,6 +90,9 @@ type Config struct {
 	HistoryLimit           ByteSize `env:"HISTORY_LIMIT"             envDefault:"64M"`
 	HistoryMessageMaxBytes int64    `env:"HISTORY_MESSAGE_MAX_BYTES" envDefault:"262144"`
 	HistoryRedactKeys      []string `env:"HISTORY_REDACT_KEYS"`
+
+	// Plugins configuration.
+	TemplatePluginPaths []string `env:"TEMPLATE_PLUGIN_PATHS"`
 }
 
 // Load returns configuration from environment with sensible defaults.

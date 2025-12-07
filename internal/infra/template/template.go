@@ -7,6 +7,8 @@ import (
 	"strings"
 	"text/template"
 	"time"
+
+	"github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
 // Data represents the context data available for template rendering.
@@ -36,9 +38,9 @@ type Engine struct {
 }
 
 // New creates a new template engine with custom functions.
-func New() *Engine {
+func New(reg plugins.Registry) *Engine {
 	return &Engine{
-		funcs: Functions(),
+		funcs: Functions(reg),
 	}
 }
 
