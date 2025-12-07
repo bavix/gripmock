@@ -304,7 +304,7 @@ func runInfoCmd(ctx context.Context) error {
 
 	builder.LoadPlugins(ctx)
 
-	raw := builder.PluginInfos()
+	raw := builder.PluginInfos(ctx)
 
 	order, groups := groupPlugins(raw)
 

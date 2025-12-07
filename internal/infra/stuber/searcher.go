@@ -1,6 +1,7 @@
 package stuber
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"iter"
@@ -740,15 +741,15 @@ func (s *searcher) searchCommon(
 // Returns:
 // - *Result: The Result containing the found Stub value (if any), or nil.
 // - error: An error if the search fails.
-func (s *searcher) find(query Query) (*Result, error) {
+func (s *searcher) find(ctx context.Context, query Query) (*Result, error) {
 	// Check if the Query has an ID field.
 	if query.ID != nil {
 		// Search for the Stub value with the given ID.
-		return s.searchByID(query)
+		return s.searchByID(ctx, query)
 	}
 
 	// Search for the Stub value with the given service and method.
-	return s.search(query)
+	return s.search(ctx, query)
 }
 
 // searchByID retrieves the Stub value associated with the given ID from the searcher.
@@ -759,7 +760,7 @@ func (s *searcher) find(query Query) (*Result, error) {
 // Returns:
 // - *Result: The Result containing the found Stub value (if any), or nil.
 // - error: An error if the search fails.
-func (s *searcher) searchByID(query Query) (*Result, error) {
+func (s *searcher) searchByID(_ context.Context, query Query) (*Result, error) {
 	// Check if the given service and method are valid.
 	_, err := s.storage.posByPN(query.Service, query.Method)
 	if err != nil {
@@ -787,9 +788,9 @@ func (s *searcher) searchByID(query Query) (*Result, error) {
 // Returns:
 // - *Result: The Result containing the found Stub value (if any), or nil.
 // - error: An error if the search fails.
-func (s *searcher) search(query Query) (*Result, error) {
+func (s *searcher) search(ctx context.Context, query Query) (*Result, error) {
 	return s.searchCommon(query.Service, query.Method,
-		func(stub *Stub) bool { return match(query, stub) },
+		func(stub *Stub) bool { return match(ctx, query, stub) },
 		func(stub *Stub) float64 { return rankMatch(query, stub) },
 		func(id uuid.UUID) { s.mark(query, id) })
 }
@@ -816,19 +817,19 @@ func (s *searcher) mark(query Query, id uuid.UUID) {
 }
 
 // findV2 retrieves the Stub value associated with the given QueryV2 from the searcher.
-func (s *searcher) findV2(query QueryV2) (*Result, error) {
+func (s *searcher) findV2(ctx context.Context, query QueryV2) (*Result, error) {
 	// Check if the QueryV2 has an ID field
 	if query.ID != nil {
 		// Search for the Stub value with the given ID
-		return s.searchByIDV2(query)
+		return s.searchByIDV2(ctx, query)
 	}
 
 	// Search for the Stub value with the given service and method
-	return s.searchV2(query)
+	return s.searchV2(ctx, query)
 }
 
 // searchByIDV2 retrieves the Stub value associated with the given ID from the searcher.
-func (s *searcher) searchByIDV2(query QueryV2) (*Result, error) {
+func (s *searcher) searchByIDV2(_ context.Context, query QueryV2) (*Result, error) {
 	// Check if the given service and method are valid
 	_, err := s.storage.posByPN(query.Service, query.Method)
 	if err != nil {
@@ -850,7 +851,7 @@ func (s *searcher) searchByIDV2(query QueryV2) (*Result, error) {
 
 // findBidi retrieves a BidiResult for bidirectional streaming with the given QueryBidi.
 // For bidirectional streaming, each message is treated as a separate unary request.
-func (s *searcher) findBidi(query QueryBidi) (*BidiResult, error) {
+func (s *searcher) findBidi(_ context.Context, query QueryBidi) (*BidiResult, error) {
 	// Check if the QueryBidi has an ID field
 	if query.ID != nil {
 		// For ID-based queries, we can't use bidirectional streaming - fallback to regular search
@@ -907,7 +908,9 @@ func (s *searcher) searchByIDBidi(query QueryBidi) (*BidiResult, error) {
 }
 
 // searchV2 retrieves the Stub value associated with the given QueryV2 from the searcher.
-func (s *searcher) searchV2(query QueryV2) (*Result, error) {
+func (s *searcher) searchV2(ctx context.Context, query QueryV2) (*Result, error) {
+	_ = ctx
+
 	return s.searchV2Optimized(query)
 }
 

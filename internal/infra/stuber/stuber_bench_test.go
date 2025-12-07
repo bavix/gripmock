@@ -1,6 +1,7 @@
 package stuber_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -113,6 +114,7 @@ func BenchmarkFindByID(b *testing.B) {
 // BenchmarkFindByQuery measures the performance of finding a Stub value by Query.
 func BenchmarkFindByQuery(b *testing.B) {
 	budgerigar := stuber.NewBudgerigar(features.New())
+	ctx := context.Background()
 
 	// Insert initial values.
 	for range 500 {
@@ -133,7 +135,7 @@ func BenchmarkFindByQuery(b *testing.B) {
 	// Find values by the query.
 	for b.Loop() {
 		for range 1000 {
-			_, _ = budgerigar.FindByQuery(query)
+			_, _ = budgerigar.FindByQuery(ctx, query)
 		}
 	}
 }
@@ -236,6 +238,7 @@ func BenchmarkUnused(b *testing.B) {
 // BenchmarkFindByQueryStream measures the performance of finding stubs with stream data.
 func BenchmarkFindByQueryStream(b *testing.B) {
 	budgerigar := stuber.NewBudgerigar(features.New())
+	ctx := context.Background()
 
 	stubs := make([]*stuber.Stub, 100)
 	for i := range 100 {
@@ -261,13 +264,14 @@ func BenchmarkFindByQueryStream(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, _ = budgerigar.FindByQuery(query)
+		_, _ = budgerigar.FindByQuery(ctx, query)
 	}
 }
 
 // BenchmarkFindByQueryStreamBackwardCompatibility measures the performance of backward compatibility.
 func BenchmarkFindByQueryStreamBackwardCompatibility(b *testing.B) {
 	budgerigar := stuber.NewBudgerigar(features.New())
+	ctx := context.Background()
 
 	stubs := make([]*stuber.Stub, 100)
 	for i := range 100 {
@@ -292,13 +296,14 @@ func BenchmarkFindByQueryStreamBackwardCompatibility(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, _ = budgerigar.FindByQuery(query)
+		_, _ = budgerigar.FindByQuery(ctx, query)
 	}
 }
 
 // BenchmarkMatchStream measures the performance of stream matching through public API.
 func BenchmarkMatchStream(b *testing.B) {
 	budgerigar := stuber.NewBudgerigar(features.New())
+	ctx := context.Background()
 
 	stub := &stuber.Stub{
 		Service: "test",
@@ -320,13 +325,14 @@ func BenchmarkMatchStream(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, _ = budgerigar.FindByQuery(query)
+		_, _ = budgerigar.FindByQuery(ctx, query)
 	}
 }
 
 // BenchmarkRankMatchStream measures the performance of stream ranking through public API.
 func BenchmarkRankMatchStream(b *testing.B) {
 	budgerigar := stuber.NewBudgerigar(features.New())
+	ctx := context.Background()
 
 	stubs := make([]*stuber.Stub, 10)
 	for i := range 10 {
@@ -352,7 +358,7 @@ func BenchmarkRankMatchStream(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, _ = budgerigar.FindByQuery(query)
+		_, _ = budgerigar.FindByQuery(ctx, query)
 	}
 }
 
@@ -379,7 +385,7 @@ func BenchmarkQueryV2Unary(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, _ = budgerigar.FindByQueryV2(query)
+		_, _ = budgerigar.FindByQueryV2(context.Background(), query)
 	}
 }
 
@@ -407,7 +413,7 @@ func BenchmarkQueryV2Stream(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, _ = budgerigar.FindByQueryV2(query)
+		_, _ = budgerigar.FindByQueryV2(context.Background(), query)
 	}
 }
 
@@ -440,8 +446,8 @@ func BenchmarkQueryV2Comparison(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, _ = budgerigar.FindByQueryV2(queryUnary)
-		_, _ = budgerigar.FindByQueryV2(queryStream)
+		_, _ = budgerigar.FindByQueryV2(context.Background(), queryUnary)
+		_, _ = budgerigar.FindByQueryV2(context.Background(), queryStream)
 	}
 }
 
@@ -493,7 +499,7 @@ func BenchmarkBidiStreaming(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		result, err := s.FindByQueryBidi(query)
+		result, err := s.FindByQueryBidi(context.Background(), query)
 		if err != nil {
 			b.Fatal(err)
 		}

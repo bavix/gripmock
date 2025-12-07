@@ -1,6 +1,7 @@
 package stuber_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/bavix/features"
@@ -82,7 +83,7 @@ func TestMatchStreamV2(t *testing.T) {
 			budgerigar := stuber.NewBudgerigar(features.New())
 			budgerigar.PutMany(stub)
 
-			result, err := budgerigar.FindByQueryV2(query)
+			result, err := budgerigar.FindByQueryV2(context.Background(), query)
 			if err != nil {
 				if tt.expected {
 					t.Errorf("Expected match but got error: %v", err)
@@ -126,7 +127,7 @@ func TestMatchWithStreamV2(t *testing.T) {
 	budgerigar := stuber.NewBudgerigar(features.New())
 	budgerigar.PutMany(stub)
 
-	result, err := budgerigar.FindByQueryV2(query)
+	result, err := budgerigar.FindByQueryV2(context.Background(), query)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -143,7 +144,7 @@ func TestMatchWithStreamV2(t *testing.T) {
 		},
 	}
 
-	result, err = budgerigar.FindByQueryV2(nonMatchingQuery)
+	result, err = budgerigar.FindByQueryV2(context.Background(), nonMatchingQuery)
 	if err != nil {
 		return
 	}
@@ -176,7 +177,7 @@ func TestBackwardCompatibilityV2(t *testing.T) {
 	budgerigar := stuber.NewBudgerigar(features.New())
 	budgerigar.PutMany(stub)
 
-	result, err := budgerigar.FindByQueryV2(query)
+	result, err := budgerigar.FindByQueryV2(context.Background(), query)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -208,7 +209,7 @@ func TestV2UnaryRequest(t *testing.T) {
 	budgerigar := stuber.NewBudgerigar(features.New())
 	budgerigar.PutMany(stub)
 
-	result, err := budgerigar.FindByQueryV2(query)
+	result, err := budgerigar.FindByQueryV2(context.Background(), query)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -241,7 +242,7 @@ func TestV2StreamRequest(t *testing.T) {
 	budgerigar := stuber.NewBudgerigar(features.New())
 	budgerigar.PutMany(stub)
 
-	result, err := budgerigar.FindByQueryV2(query)
+	result, err := budgerigar.FindByQueryV2(context.Background(), query)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -271,7 +272,7 @@ func TestV2MultipleStreamsNoStubStream(t *testing.T) {
 	budgerigar := stuber.NewBudgerigar(features.New())
 	budgerigar.PutMany(stub)
 
-	result, err := budgerigar.FindByQueryV2(query)
+	result, err := budgerigar.FindByQueryV2(context.Background(), query)
 	if err != nil {
 		return
 	}
@@ -320,7 +321,7 @@ func TestV2Priority(t *testing.T) {
 		Input:   []map[string]any{{"key1": "value1"}},
 	}
 
-	result, err := budgerigar.FindByQueryV2(query)
+	result, err := budgerigar.FindByQueryV2(context.Background(), query)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}

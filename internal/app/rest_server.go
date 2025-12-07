@@ -282,7 +282,7 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 		_ = r.Body.Close()
 	}()
 
-	result, err := h.budgerigar.FindByQuery(query)
+	result, err := h.budgerigar.FindByQuery(r.Context(), query)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		h.writeResponseError(w, err)

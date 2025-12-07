@@ -21,12 +21,10 @@ func SetMatcherHooks(reg pkgplugins.Registry) {
 	matcherHooks = reg.Hooks("matcher-hook")
 }
 
-func runMatcherHooks(query Query, stub *Stub) {
+func runMatcherHooks(ctx context.Context, query Query, stub *Stub) {
 	if len(matcherHooks) == 0 {
 		return
 	}
-
-	ctx := context.Background()
 
 	for _, h := range matcherHooks {
 		if _, err := h(ctx, query, stub); err != nil {

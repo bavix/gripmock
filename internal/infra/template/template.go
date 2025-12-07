@@ -2,6 +2,7 @@ package template
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"slices"
 	"strings"
@@ -38,9 +39,9 @@ type Engine struct {
 }
 
 // New creates a new template engine with custom functions.
-func New(reg plugins.Registry) *Engine {
+func New(ctx context.Context, reg plugins.Registry) *Engine {
 	return &Engine{
-		funcs: Functions(reg),
+		funcs: Functions(ctx, reg),
 	}
 }
 

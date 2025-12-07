@@ -1,6 +1,7 @@
 package stuber
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -202,6 +203,7 @@ func (o *Output) HasTemplates() bool {
 
 // ProcessDynamicOutput processes the output data and applies dynamic templates.
 func (o *Output) ProcessDynamicOutput(
+	ctx context.Context,
 	requestData map[string]any,
 	headers map[string]any,
 	messageIndex int,
@@ -211,7 +213,7 @@ func (o *Output) ProcessDynamicOutput(
 	stubID string,
 	reg plugins.Registry,
 ) error {
-	engine := template.New(reg)
+	engine := template.New(ctx, reg)
 
 	// Create template data
 	templateData := template.Data{

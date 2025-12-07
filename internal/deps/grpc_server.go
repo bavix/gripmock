@@ -47,9 +47,9 @@ func (b *Builder) buildGRPC(ctx context.Context, network, addr string, param *pr
 		param,
 		b.Budgerigar(),
 		b.ServiceManager(),
-		b.Extender(),
+		b.Extender(ctx),
 		b.ErrorFormatter(),
-		b.TemplateRegistry(),
+		b.TemplateRegistry(ctx),
 	)
 }
 

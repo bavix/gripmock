@@ -1,6 +1,7 @@
 package stuber
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 	"regexp"
@@ -61,8 +62,8 @@ func clearRegexCache() {
 //
 // It checks if the query matches the stub's input data and headers using
 // the equals, contains, and matches methods.
-func match(query Query, stub *Stub) bool {
-	runMatcherHooks(query, stub)
+func match(ctx context.Context, query Query, stub *Stub) bool {
+	runMatcherHooks(ctx, query, stub)
 
 	// Check headers first
 	if !matchHeaders(query.Headers, stub.Headers) {

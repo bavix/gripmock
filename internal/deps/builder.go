@@ -107,18 +107,18 @@ func (b *Builder) loadPlugins(ctx context.Context) {
 	runtime.SetHookRegistry(b.pluginRegistry)
 }
 
-func (b *Builder) TemplateRegistry() *internalplugins.Registry {
-	b.LoadPlugins(context.Background())
+func (b *Builder) TemplateRegistry(ctx context.Context) *internalplugins.Registry {
+	b.LoadPlugins(ctx)
 	return b.pluginRegistry
 }
 
-func (b *Builder) PluginInfos() []plugins.PluginWithFuncs {
-	b.LoadPlugins(context.Background())
+func (b *Builder) PluginInfos(ctx context.Context) []plugins.PluginWithFuncs {
+	b.LoadPlugins(ctx)
 	return b.pluginRegistry.Groups()
 }
 
-func (b *Builder) PluginMeta() []plugins.PluginInfo {
-	b.LoadPlugins(context.Background())
+func (b *Builder) PluginMeta(ctx context.Context) []plugins.PluginInfo {
+	b.LoadPlugins(ctx)
 	return b.pluginRegistry.Plugins()
 }
 

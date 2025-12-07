@@ -1,6 +1,7 @@
 package stuber_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -36,7 +37,7 @@ func BenchmarkV1vsV2_Found(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_, _ = budgerigar.FindByQuery(query)
+			_, _ = budgerigar.FindByQuery(context.Background(), query)
 		}
 	})
 
@@ -65,7 +66,7 @@ func BenchmarkV1vsV2_Found(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_, _ = budgerigar.FindByQueryV2(query)
+			_, _ = budgerigar.FindByQueryV2(context.Background(), query)
 		}
 	})
 }
@@ -99,7 +100,7 @@ func BenchmarkV1vsV2_NotFound(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_, _ = budgerigar.FindByQuery(query)
+			_, _ = budgerigar.FindByQuery(context.Background(), query)
 		}
 	})
 
@@ -130,7 +131,7 @@ func BenchmarkV1vsV2_NotFound(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_, _ = budgerigar.FindByQueryV2(query)
+			_, _ = budgerigar.FindByQueryV2(context.Background(), query)
 		}
 	})
 }
@@ -165,7 +166,7 @@ func BenchmarkV1vsV2_MultipleStubs(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_, _ = budgerigar.FindByQuery(query)
+			_, _ = budgerigar.FindByQuery(context.Background(), query)
 		}
 	})
 
@@ -197,7 +198,7 @@ func BenchmarkV1vsV2_MultipleStubs(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_, _ = budgerigar.FindByQueryV2(query)
+			_, _ = budgerigar.FindByQueryV2(context.Background(), query)
 		}
 	})
 }
@@ -229,7 +230,7 @@ func BenchmarkV1vsV2_Stream(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_, _ = budgerigar.FindByQuery(query)
+			_, _ = budgerigar.FindByQuery(context.Background(), query)
 		}
 	})
 
@@ -258,7 +259,7 @@ func BenchmarkV1vsV2_Stream(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_, _ = budgerigar.FindByQueryV2(query)
+			_, _ = budgerigar.FindByQueryV2(context.Background(), query)
 		}
 	})
 }

@@ -24,7 +24,7 @@ func (b *Builder) RestServe(
 	ctx context.Context,
 	stubPath string,
 ) (*http.Server, error) {
-	extender := b.Extender()
+	extender := b.Extender(ctx)
 	go extender.ReadFromPath(ctx, stubPath)
 
 	apiServer, err := app.NewRestServer(ctx, b.Budgerigar(), extender)
@@ -69,8 +69,16 @@ func (b *Builder) RestServe(
 
 	// Create a stub repository that uses the same Budgerigar as legacy API
 	stubRepo := repository.NewStubRepository(b.Budgerigar())
-	v4Server := modern.NewServer(stubRepo, analyticsRepo, historyRepo, b.PluginInfos())
-	v4Server.Mount(router, "/api/v4")
+	v4Server := modern.NewServer(stubRepo, analyticsRepo, historyRepo, b.PluginInfos(ctx))
+
+	// Apply same middlewares as legacy for /api/v4
+	v4Router := router.PathPrefix("/api/v4").Subrouter()
+	v4Router.Use(
+		muxmiddleware.PanicRecoveryMiddleware,
+		muxmiddleware.ContentType,
+		muxmiddleware.RequestLogger,
+	)
+	v4Server.Mount(v4Router, "")
 
 	// Add metrics endpoint with Go runtime metrics
 	router.Handle("/metrics", promhttp.Handler()).Methods(http.MethodGet)

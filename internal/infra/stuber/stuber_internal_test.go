@@ -2,6 +2,7 @@ package stuber_test
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -157,7 +158,7 @@ func TestBudgerigar_Unused(t *testing.T) {
 	q, err := stuber.NewQuery(req)
 	require.NoError(t, err)
 
-	r, err := s.FindByQuery(q)
+	r, err := s.FindByQuery(context.Background(), q)
 	require.NoError(t, err)
 	require.NotNil(t, r)
 	require.Nil(t, r.Similar())
@@ -212,7 +213,7 @@ func TestBudgerigar_SearchWithHeaders(t *testing.T) {
 	q, err := stuber.NewQuery(req)
 	require.NoError(t, err)
 
-	r, err := s.FindByQuery(q)
+	r, err := s.FindByQuery(context.Background(), q)
 	require.NoError(t, err)
 	require.NotNil(t, r)
 	require.NotNil(t, r.Found())
@@ -300,7 +301,7 @@ func TestBudgerigar_SearchWithPackageAndWithoutPackage(t *testing.T) {
 		q, err := stuber.NewQuery(req)
 		require.NoError(t, err)
 
-		r, err := s.FindByQuery(q)
+		r, err := s.FindByQuery(context.Background(), q)
 		require.NoError(t, err)
 		require.NotNil(t, r)
 		require.NotNil(t, r.Found())
@@ -349,7 +350,7 @@ func TestBudgerigar_SearchEmpty(t *testing.T) {
 	q, err := stuber.NewQuery(req)
 	require.NoError(t, err)
 
-	r, err := s.FindByQuery(q)
+	r, err := s.FindByQuery(context.Background(), q)
 	require.NoError(t, err)
 	require.NotNil(t, r)
 	require.NotNil(t, r.Found())
@@ -408,7 +409,7 @@ func TestBudgerigar_SearchWithHeaders_Similar(t *testing.T) {
 	q, err := stuber.NewQuery(req)
 	require.NoError(t, err)
 
-	r, err := s.FindByQuery(q)
+	r, err := s.FindByQuery(context.Background(), q)
 	require.NoError(t, err)
 	require.NotNil(t, r)
 	require.NotNil(t, r.Similar())
@@ -450,7 +451,7 @@ func TestResult_MatchesRegexInt(t *testing.T) {
 	q, err := stuber.NewQuery(req)
 	require.NoError(t, err)
 
-	r, err := s.FindByQuery(q)
+	r, err := s.FindByQuery(context.Background(), q)
 	require.NoError(t, err)
 	require.NotNil(t, r)
 	require.NotNil(t, r.Found())
@@ -480,7 +481,7 @@ func TestResult_Similar(t *testing.T) {
 		},
 	)
 
-	r, err := s.FindByQuery(stuber.Query{
+	r, err := s.FindByQuery(context.Background(), stuber.Query{
 		ID:      nil,
 		Service: "Greeter1",
 		Method:  "SayHello1",
@@ -525,7 +526,7 @@ func TestStuber_MatchesEqualsFound(t *testing.T) {
 	// 	"name": "user_456",
 	// 	"tags": ["grpc", "mock"]
 	// }
-	r, err := s.FindByQuery(stuber.Query{
+	r, err := s.FindByQuery(context.Background(), stuber.Query{
 		ID:      nil,
 		Service: "Greeter1",
 		Method:  "SayHello1",
@@ -580,7 +581,7 @@ func TestStuber_EqualsIgnoreArrayOrder(t *testing.T) {
 		},
 	}
 
-	r, err := s.FindByQuery(query)
+	r, err := s.FindByQuery(context.Background(), query)
 	require.NoError(t, err)
 	require.NotNil(t, r.Found())
 	require.Nil(t, r.Similar())
@@ -707,7 +708,7 @@ func TestBudgerigar_FindByQuery_FoundWithPriority(t *testing.T) {
 		},
 	)
 
-	r, err := s.FindByQuery(stuber.Query{
+	r, err := s.FindByQuery(context.Background(), stuber.Query{
 		Service: "Service",
 		Method:  "Method",
 		Data:    map[string]any{"id": "1"},
@@ -737,7 +738,7 @@ func TestBudgerigar_Used(t *testing.T) {
 	require.Empty(t, s.Used())
 
 	// Use a stub by finding it
-	_, err := s.FindByQuery(stuber.Query{
+	_, err := s.FindByQuery(context.Background(), stuber.Query{
 		Service: "Service1",
 		Method:  "Method1",
 	})
@@ -764,7 +765,7 @@ func TestBudgerigar_FindByQuery_WithID(t *testing.T) {
 	s.PutMany(stub)
 
 	// Test finding by ID
-	result, err := s.FindByQuery(stuber.Query{
+	result, err := s.FindByQuery(context.Background(), stuber.Query{
 		ID:      &stubID,
 		Service: "Service",
 		Method:  "Method",
@@ -777,7 +778,7 @@ func TestBudgerigar_FindByQuery_WithID(t *testing.T) {
 
 	// Test finding by non-existent ID
 	nonExistentID := uuid.New()
-	_, err = s.FindByQuery(stuber.Query{
+	_, err = s.FindByQuery(context.Background(), stuber.Query{
 		ID:      &nonExistentID,
 		Service: "Service",
 		Method:  "Method",
@@ -800,7 +801,7 @@ func TestBudgerigar_FindByQuery_InternalRequest(t *testing.T) {
 
 	// We can't directly test internal requests through the public API
 	// but we can test that normal requests mark stubs as used
-	result, err := s.FindByQuery(stuber.Query{
+	result, err := s.FindByQuery(context.Background(), stuber.Query{
 		Service: "Service",
 		Method:  "Method",
 	})
@@ -837,7 +838,7 @@ func TestBudgerigarWithData(t *testing.T) {
 		Data:    map[string]any{"name": "John", "age": 30},
 	}
 
-	result, err := budgerigar.FindByQuery(query)
+	result, err := budgerigar.FindByQuery(context.Background(), query)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -852,7 +853,7 @@ func TestBudgerigarWithData(t *testing.T) {
 		Data:    map[string]any{"name": "John", "age": 25}, // Different age
 	}
 
-	result, err = budgerigar.FindByQuery(nonMatchingQuery)
+	result, err = budgerigar.FindByQuery(context.Background(), nonMatchingQuery)
 	if err != nil {
 		if err.Error() != "stub not found" {
 			t.Fatalf("Expected 'stub not found' error, got %v", err)
@@ -875,7 +876,7 @@ func TestBudgerigarWithData(t *testing.T) {
 		Data:    map[string]any{"name": "John"}, // Only name, missing age
 	}
 
-	result, err = budgerigar.FindByQuery(partialQuery)
+	result, err = budgerigar.FindByQuery(context.Background(), partialQuery)
 	if err != nil {
 		if err.Error() != "stub not found" {
 			t.Fatalf("Expected 'stub not found' error, got %v", err)
@@ -918,7 +919,7 @@ func TestBudgerigarBackwardCompatibility(t *testing.T) {
 		Data:    map[string]any{"key1": "value1"},
 	}
 
-	result, err := budgerigar.FindByQuery(query)
+	result, err := budgerigar.FindByQuery(context.Background(), query)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}

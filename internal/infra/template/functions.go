@@ -7,7 +7,7 @@ import (
 	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
-func Functions(reg pkgplugins.Registry) map[string]any {
+func Functions(ctx context.Context, reg pkgplugins.Registry) map[string]any {
 	if reg == nil {
 		reg = internalplugins.NewRegistry()
 		internalplugins.RegisterBuiltins(reg)
@@ -22,7 +22,7 @@ func Functions(reg pkgplugins.Registry) map[string]any {
 			out[name] = func(args ...any) (any, error) {
 				callArgs := normalizeArgs(args)
 
-				return fn(context.Background(), callArgs...)
+				return fn(ctx, callArgs...)
 			}
 
 			continue
