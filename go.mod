@@ -10,7 +10,7 @@ require (
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/cockroachdb/errors v1.12.0
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/go-playground/validator/v10 v10.28.0
+	github.com/go-playground/validator/v10 v10.29.0
 	github.com/goccy/go-json v0.10.5
 	github.com/goccy/go-yaml v1.19.0
 	github.com/google/uuid v1.6.0
