@@ -197,14 +197,14 @@ func TestIsNilAssignable(t *testing.T) {
 		typ  reflect.Type
 		want bool
 	}{
-		{"chan", reflect.TypeOf((chan int)(nil)), true},
-		{"func", reflect.TypeOf((func())(nil)), true},
-		{"interface", reflect.TypeOf((*interface{})(nil)).Elem(), true},
-		{"map", reflect.TypeOf((map[string]int)(nil)), true},
-		{"pointer", reflect.TypeOf((*int)(nil)), true},
-		{"slice", reflect.TypeOf(([]int)(nil)), true},
-		{"string", reflect.TypeOf(""), false},
-		{"int", reflect.TypeOf(0), false},
+		{"chan", reflect.TypeFor[chan int](), true},
+		{"func", reflect.TypeFor[func()](), true},
+		{"interface", reflect.TypeFor[any](), true},
+		{"map", reflect.TypeFor[map[string]int](), true},
+		{"pointer", reflect.TypeFor[*int](), true},
+		{"slice", reflect.TypeFor[[]int](), true},
+		{"string", reflect.TypeFor[string](), false},
+		{"int", reflect.TypeFor[int](), false},
 	}
 
 	for _, tt := range tests {
@@ -222,8 +222,8 @@ func TestCoerceArg(t *testing.T) {
 	// Arrange
 	args := []any{1, testString, 3.14}
 	idx := 0
-	paramType := reflect.TypeOf(0)
-	fnType := reflect.TypeOf(func(int) {})
+	paramType := reflect.TypeFor[int]()
+	fnType := reflect.TypeFor[func(int)]()
 
 	// Act
 	val, err := coerceArg(args, &idx, paramType, fnType, 0)
@@ -240,8 +240,8 @@ func TestCoerceArg_NilValue(t *testing.T) {
 	// Arrange
 	args := []any{nil}
 	idx := 0
-	paramType := reflect.TypeOf((*int)(nil))
-	fnType := reflect.TypeOf(func(*int) {})
+	paramType := reflect.TypeFor[*int]()
+	fnType := reflect.TypeFor[func(*int)]()
 
 	// Act
 	val, err := coerceArg(args, &idx, paramType, fnType, 0)
@@ -257,8 +257,8 @@ func TestCoerceArg_NotEnoughArgs(t *testing.T) {
 	// Arrange
 	args := []any{}
 	idx := 0
-	paramType := reflect.TypeOf(0)
-	fnType := reflect.TypeOf(func(int) {})
+	paramType := reflect.TypeFor[int]()
+	fnType := reflect.TypeFor[func(int)]()
 
 	// Act
 	_, err := coerceArg(args, &idx, paramType, fnType, 0)
@@ -274,8 +274,8 @@ func TestCoerceArg_TypeMismatch(t *testing.T) {
 	// Arrange
 	args := []any{"string"}
 	idx := 0
-	paramType := reflect.TypeOf(0)
-	fnType := reflect.TypeOf(func(int) {})
+	paramType := reflect.TypeFor[int]()
+	fnType := reflect.TypeFor[func(int)]()
 
 	// Act
 	_, err := coerceArg(args, &idx, paramType, fnType, 0)

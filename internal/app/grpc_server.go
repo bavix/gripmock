@@ -365,10 +365,15 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		}
 	}
 
-	return m.handleNonArrayStreamData(stream, found, requestTime)
+	return m.handleNonArrayStreamData(stream, found)
 }
 
-func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stuber.Stub, inputMsg *dynamicpb.Message, requestTime time.Time) error {
+func (m *grpcMocker) handleArrayStreamData(
+	stream grpc.ServerStream,
+	found *stuber.Stub,
+	inputMsg *dynamicpb.Message,
+	requestTime time.Time,
+) error {
 	done := stream.Context().Done()
 
 	for i, streamData := range found.Output.Stream {
@@ -402,7 +407,7 @@ func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stub
 			Headers:      headers,
 			MessageIndex: i,
 			RequestTime:  requestTime,
-			Timestamp:    time.Now(),
+			Timestamp:    requestTime,
 			State:        make(map[string]any),
 			Requests:     []any{requestData},
 			StubID:       found.ID.String(),
@@ -426,7 +431,7 @@ func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stub
 }
 
 //nolint:cyclop
-func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *stuber.Stub, initialRequestTime time.Time) error {
+func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *stuber.Stub) error {
 	if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil {
 		return err
 	}
@@ -459,7 +464,7 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 				Headers:      headers,
 				MessageIndex: 0,
 				RequestTime:  requestTime,
-				Timestamp:    time.Now(),
+				Timestamp:    requestTime,
 				State:        make(map[string]any),
 				Requests:     []any{requestData},
 				StubID:       found.ID.String(),
@@ -573,7 +578,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		Headers:      headers,
 		MessageIndex: 0,
 		RequestTime:  requestTime,
-		Timestamp:    time.Now(),
+		Timestamp:    requestTime,
 		State:        make(map[string]any),
 		Requests:     []any{requestData},
 		StubID:       found.ID.String(),
@@ -764,7 +769,12 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 	return found, nil
 }
 
-func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *stuber.Stub, messages []map[string]any, requestTime time.Time) error {
+func (m *grpcMocker) sendClientStreamResponse(
+	stream grpc.ServerStream,
+	found *stuber.Stub,
+	messages []map[string]any,
+	requestTime time.Time,
+) error {
 	m.delay(stream.Context(), found.Output.Delay)
 
 	if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
@@ -792,7 +802,7 @@ func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *s
 		Headers:      headers,
 		MessageIndex: 0,
 		RequestTime:  requestTime,
-		Timestamp:    time.Now(),
+		Timestamp:    requestTime,
 		State:        make(map[string]any),
 		Requests:     requestsAny,
 		StubID:       found.ID.String(),
@@ -854,7 +864,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			Headers:      headers,
 			MessageIndex: bidiResult.GetMessageIndex(),
 			RequestTime:  requestTime,
-			Timestamp:    time.Now(),
+			Timestamp:    requestTime,
 			State:        make(map[string]any),
 			Requests:     requestsAny,
 			StubID:       stub.ID.String(),
@@ -1275,7 +1285,13 @@ func (s *loggingStream) RecvMsg(m any) error {
 	return s.ServerStream.RecvMsg(m)
 }
 
-func (m *grpcMocker) sendBidiResponses(stream grpc.ServerStream, output stuber.Output, stub *stuber.Stub, messageIndex int, requestTime time.Time) error {
+func (m *grpcMocker) sendBidiResponses(
+	stream grpc.ServerStream,
+	output stuber.Output,
+	stub *stuber.Stub,
+	messageIndex int,
+	requestTime time.Time,
+) error {
 	if len(output.Stream) > 0 {
 		return m.sendStreamResponses(stream, output, stub, messageIndex, requestTime)
 	}
@@ -1292,7 +1308,7 @@ func (m *grpcMocker) sendBidiResponses(stream grpc.ServerStream, output stuber.O
 		Headers:      headers,
 		MessageIndex: messageIndex,
 		RequestTime:  requestTime,
-		Timestamp:    time.Now(),
+		Timestamp:    requestTime,
 		State:        make(map[string]any),
 		Requests:     []any{},
 		StubID:       stub.ID.String(),
@@ -1311,7 +1327,13 @@ func (m *grpcMocker) sendBidiResponses(stream grpc.ServerStream, output stuber.O
 }
 
 //nolint:cyclop,funlen,nestif
-func (m *grpcMocker) sendStreamResponses(stream grpc.ServerStream, output stuber.Output, stub *stuber.Stub, messageIndex int, requestTime time.Time) error {
+func (m *grpcMocker) sendStreamResponses(
+	stream grpc.ServerStream,
+	output stuber.Output,
+	stub *stuber.Stub,
+	messageIndex int,
+	requestTime time.Time,
+) error {
 	if stub.IsClientStream() {
 		var idx int
 
@@ -1346,7 +1368,7 @@ func (m *grpcMocker) sendStreamResponses(stream grpc.ServerStream, output stuber
 			Headers:      headers,
 			MessageIndex: messageIndex,
 			RequestTime:  requestTime,
-			Timestamp:    time.Now(),
+			Timestamp:    requestTime,
 			State:        make(map[string]any),
 			Requests:     []any{},
 			StubID:       stub.ID.String(),
