@@ -1,5 +1,19 @@
 # Changelog
 
+## v3.4.6 - 2025-12-30
+
+### What's Changed
+
+* Bump actions/checkout from 5 to 6 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/698
+* Fix server streaming error stubs to return proper gRPC errors by [@BerndDA](https://github.com/BerndDA) in https://github.com/bavix/gripmock/pull/710
+* Update macOS version in CI workflow by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/711
+
+### New Contributors
+
+* [@BerndDA](https://github.com/BerndDA) made their first contribution in https://github.com/bavix/gripmock/pull/710
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.4.5...v3.4.6
+
 ## v3.4.5 - 2025-12-06
 
 ### What's Changed
