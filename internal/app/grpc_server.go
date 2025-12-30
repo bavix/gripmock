@@ -429,6 +429,11 @@ func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stub
 }
 
 func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *stuber.Stub) error {
+	// Check for output error before attempting to send data
+	if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil {
+		return err
+	}
+
 	// Original behavior for non-array data, with context cancellation check
 	done := stream.Context().Done()
 
