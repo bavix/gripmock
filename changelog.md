@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.5.2 - 2025-12-30
+
+### What's Changed
+
+* Update Go Report Card badge to version 3 in README.md by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/714
+* Refactor Makefile to streamline cleanup process by removing redundant… by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/715
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.5.1...v3.5.2
+
 ## v3.5.1 - 2025-12-30
 
 ### What's Changed
