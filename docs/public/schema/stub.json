@@ -1,94 +1,11 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://bavix.github.io/gripmock/schema/stub.json",
   "title": "GripMock Stub Schema",
-  "description": "Unified schema for GripMock stub definitions supporting both legacy and v4 formats. Legacy fields are deprecated in favor of v4 format.",
+  "description": "Unified schema for GripMock stub definitions (supports both JSON and YAML formats)",
   "oneOf": [
     {
       "type": "object",
-      "allOf": [
-        { "$ref": "#/$defs/stubCore" },
-        {
-          "properties": {
-            "input": {
-              "$ref": "#/$defs/inputMatcher",
-              "description": "Input matching rules for unary requests (mutually exclusive with inputs) - DEPRECATED: use inputs array with single item",
-              "deprecated": true
-            },
-            "inputs": {
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/inputMatcher"
-              },
-              "description": "Inputs matching rules for client streaming requests (mutually exclusive with input) - DEPRECATED: use v4 matchers in inputs"
-            },
-            "headers": {
-              "$ref": "#/$defs/headerMatcher",
-              "description": "Header matching rules - DEPRECATED: use v4 matchers in headers"
-            },
-            "output": {
-              "$ref": "#/$defs/output",
-              "description": "Response configuration - DEPRECATED: use outputs array with v4 rules"
-            },
-            "outputs": {
-              "type": "array",
-              "items": { "$ref": "#/$defs/OutputRule" },
-              "minItems": 1,
-              "description": "Ordered list of output rules to execute (v4 format)"
-            }
-          }
-        }
-      ],
-      "required": ["service", "method"],
-      "additionalProperties": false
-    },
-    {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "allOf": [
-          { "$ref": "#/$defs/stubCore" },
-          {
-            "properties": {
-              "input": {
-                "$ref": "#/$defs/inputMatcher",
-                "description": "Input matching rules for unary requests (mutually exclusive with inputs) - DEPRECATED: use inputs array with single item",
-                "deprecated": true
-              },
-              "inputs": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/$defs/inputMatcher"
-                },
-                "description": "Inputs matching rules for client streaming requests (mutually exclusive with input) - DEPRECATED: use v4 matchers in inputs"
-              },
-              "headers": {
-                "$ref": "#/$defs/headerMatcher",
-                "description": "Header matching rules - DEPRECATED: use v4 matchers in headers"
-              },
-              "output": {
-                "$ref": "#/$defs/output",
-                "description": "Response configuration - DEPRECATED: use outputs array with v4 rules"
-              },
-              "outputs": {
-                "type": "array",
-                "items": { "$ref": "#/$defs/OutputRule" },
-                "minItems": 1,
-                "description": "Ordered list of output rules to execute (v4 format)"
-              }
-            }
-          }
-        ],
-        "required": ["service", "method"],
-        "additionalProperties": false
-      },
-      "minItems": 1
-    }
-  ],
-  "$defs": {
-    "stubCore": {
-      "type": "object",
-      "description": "Common stub structure shared between legacy and v4 formats",
       "properties": {
         "id": {
           "type": "string",
@@ -110,28 +27,83 @@
           "description": "Stub priority for matching (higher numbers = higher priority)",
           "default": 0
         },
-        "times": {
-          "type": "integer",
-          "minimum": 0,
-          "default": 0,
-          "description": "Maximum successful triggers for this stub (0 = unlimited) (v4 format)"
+        "input": {
+          "$ref": "#/definitions/inputMatcher",
+          "description": "Input matching rules for unary requests (mutually exclusive with inputs)"
         },
-        "response_headers": {
-          "type": "object",
-          "additionalProperties": { "type": "string" },
-          "description": "Initial response metadata to send once before the first response (v4 format)"
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/inputMatcher"
+          },
+          "description": "Inputs matching rules for client streaming requests (mutually exclusive with input)"
         },
-        "response_trailers": {
-          "type": "object",
-          "additionalProperties": { "type": "string" },
-          "description": "Trailing metadata to send once when RPC completes (v4 format)"
+        "headers": {
+          "$ref": "#/definitions/headerMatcher",
+          "description": "Header matching rules"
+        },
+        "output": {
+          "$ref": "#/definitions/output",
+          "description": "Response configuration"
         }
-      }
+      },
+      "required": ["service", "method", "output"],
+      "additionalProperties": false
     },
+    {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Unique identifier for the stub (auto-generated if omitted)"
+          },
+          "service": {
+            "type": "string",
+            "description": "gRPC service name (e.g., 'Gripmock', 'com.bavix.echo.v1.EchoService')",
+            "minLength": 1
+          },
+          "method": {
+            "type": "string",
+            "description": "gRPC method name (e.g., 'SayHello', 'SendMessage')",
+            "minLength": 1
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Stub priority for matching (higher numbers = higher priority)",
+            "default": 0
+          },
+          "input": {
+            "$ref": "#/definitions/inputMatcher",
+            "description": "Input matching rules for unary requests (mutually exclusive with inputs)"
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/inputMatcher"
+            },
+            "description": "Inputs matching rules for client streaming requests (mutually exclusive with input)"
+          },
+          "headers": {
+            "$ref": "#/definitions/headerMatcher",
+            "description": "Header matching rules"
+          },
+          "output": {
+            "$ref": "#/definitions/output",
+            "description": "Response configuration"
+          }
+        },
+        "required": ["service", "method", "output"],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    }
+  ],
+  "definitions": {
     "inputMatcher": {
       "type": "object",
-      "description": "Legacy input matcher - DEPRECATED: use v4 Matcher",
-      "deprecated": true,
       "properties": {
         "ignoreArrayOrder": {
           "type": "boolean",
@@ -163,11 +135,6 @@
             "type": "string",
             "description": "Regular expression pattern"
           }
-        },
-        "any": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/inputMatcher" },
-          "description": "Logical OR group of matchers"
         }
       },
       "minProperties": 1,
@@ -175,8 +142,6 @@
     },
     "headerMatcher": {
       "type": "object",
-      "description": "Legacy header matcher - DEPRECATED: use v4 Matcher",
-      "deprecated": true,
       "properties": {
         "equals": {
           "type": "object",
@@ -207,29 +172,25 @@
     },
     "outputData": {
       "type": "object",
-      "description": "Response data matching protobuf message structure - DEPRECATED: use v4 data rule",
-      "deprecated": true,
+      "description": "Response data matching protobuf message structure",
       "additionalProperties": true
     },
     "streamMessage": {
       "type": "object",
-      "description": "Single message in a stream response - DEPRECATED: use v4 stream rule",
-      "deprecated": true,
+      "description": "Single message in a stream response",
       "additionalProperties": true
     },
     "output": {
       "type": "object",
-      "description": "Legacy output configuration - DEPRECATED: use v4 output rules",
-      "deprecated": true,
       "properties": {
         "data": {
-          "$ref": "#/$defs/outputData",
+          "$ref": "#/definitions/outputData",
           "description": "Response data for unary calls"
         },
         "stream": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/streamMessage"
+            "$ref": "#/definitions/streamMessage"
           },
           "description": "Array of messages for streaming responses"
         },
@@ -258,191 +219,11 @@
       },
       "minProperties": 1,
       "additionalProperties": false
-    },
-    "Matcher": {
-      "type": "object",
-      "description": "Unified matcher for v4 format. AND across equals/contains/matches; OR via any (nested).",
-      "properties": {
-        "equals": { 
-          "type": "object", 
-          "description": "Exact deep equality match.",
-          "additionalProperties": true
-        },
-        "contains": { 
-          "type": "object", 
-          "description": "Partial inclusion match.",
-          "additionalProperties": true
-        },
-        "matches": { 
-          "type": "object", 
-          "additionalProperties": { "type": "string" }, 
-          "description": "Regular expression match for string fields." 
-        },
-        "any": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/Matcher" },
-          "description": "Logical OR group of matchers."
-        },
-        "ignoreArrayOrder": {
-          "type": "boolean",
-          "description": "If true, arrays are compared as sets (order-insensitive)."
-        }
-      },
-      "additionalProperties": false
-    },
-    "GrpcStatus": {
-      "type": "object",
-      "description": "Final gRPC status for unary/client or end step for streams.",
-      "properties": {
-        "code": { 
-          "type": "string", 
-          "description": "gRPC status code name (e.g., OK, INVALID_ARGUMENT).",
-          "enum": ["OK", "CANCELLED", "UNKNOWN", "INVALID_ARGUMENT", "DEADLINE_EXCEEDED", "NOT_FOUND", "ALREADY_EXISTS", "PERMISSION_DENIED", "RESOURCE_EXHAUSTED", "FAILED_PRECONDITION", "ABORTED", "OUT_OF_RANGE", "UNIMPLEMENTED", "INTERNAL", "UNAVAILABLE", "DATA_LOSS", "UNAUTHENTICATED"]
-        },
-        "message": { 
-          "type": "string", 
-          "description": "Human-readable error or info message." 
-        }
-      },
-      "additionalProperties": false
-    },
-    "StreamStep": {
-      "description": "A single stream action: send, delay, or end.",
-      "oneOf": [
-        { 
-          "type": "object", 
-          "properties": { 
-            "send": { 
-              "type": "object", 
-              "description": "Message payload to send.",
-              "additionalProperties": true
-            } 
-          }, 
-          "required": ["send"], 
-          "additionalProperties": false 
-        },
-        { 
-          "type": "object", 
-          "properties": { 
-            "delay": { 
-              "type": "string", 
-              "description": "Delay duration (e.g., 40ms).",
-              "pattern": "^(\\d+(\\.\\d+)?(ms|s|m|h))+$"
-            } 
-          }, 
-          "required": ["delay"], 
-          "additionalProperties": false 
-        },
-        { 
-          "type": "object", 
-          "properties": { 
-            "end": { "$ref": "#/$defs/GrpcStatus" } 
-          }, 
-          "required": ["end"], 
-          "additionalProperties": false 
-        }
-      ]
-    },
-    "SendEach": {
-      "type": "object",
-      "description": "Shortcut to send 1→N messages using a template-driven loop.",
-      "properties": {
-        "items": { 
-          "type": "string", 
-          "description": "Template that produces an iterable collection." 
-        },
-        "as": { 
-          "type": "string", 
-          "description": "Name of the loop variable exposed to templates." 
-        },
-        "message": { 
-          "type": "object", 
-          "description": "Message payload template to send each iteration.",
-          "additionalProperties": true
-        },
-        "delay": { 
-          "type": "string", 
-          "description": "Optional delay between messages.",
-          "pattern": "^(\\d+(\\.\\d+)?(ms|s|m|h))+$"
-        }
-      },
-      "required": ["items", "as", "message"],
-      "additionalProperties": false
-    },
-    "StreamRule": {
-      "type": "object",
-      "description": "Reactive stream rule for server/bidi methods.",
-      "properties": {
-        "match": { "$ref": "#/$defs/Matcher" },
-        "stream": { 
-          "type": "array", 
-          "items": { "$ref": "#/$defs/StreamStep" }, 
-          "description": "Ordered steps to execute." 
-        },
-        "delay": { 
-          "type": "string", 
-          "description": "Default delay between steps if step does not override.",
-          "pattern": "^(\\d+(\\.\\d+)?(ms|s|m|h))+$"
-        }
-      },
-      "additionalProperties": false
-    },
-    "DataRule": {
-      "type": "object",
-      "description": "Final single response for unary/client streaming.",
-      "properties": {
-        "data": { 
-          "type": "object", 
-          "description": "Final payload. Templates are allowed.",
-          "additionalProperties": true
-        },
-        "status": { "$ref": "#/$defs/GrpcStatus" }
-      },
-      "required": ["data"],
-      "additionalProperties": false
-    },
-    "SequenceItem": {
-      "description": "One step in a strict sequence for streaming or final data step.",
-      "oneOf": [
-        { 
-          "type": "object", 
-          "properties": { 
-            "match": { "$ref": "#/$defs/Matcher" }, 
-            "stream": { 
-              "type": "array", 
-              "items": { "$ref": "#/$defs/StreamStep" } 
-            }, 
-            "send_each": { "$ref": "#/$defs/SendEach" } 
-          }, 
-          "required": ["match"], 
-          "additionalProperties": false 
-        },
-        { "$ref": "#/$defs/DataRule" }
-      ]
-    },
-    "SequenceRule": {
-      "type": "object",
-      "description": "Strict ordered sequence of inputs and responses.",
-      "properties": {
-        "sequence": { 
-          "type": "array", 
-          "items": { "$ref": "#/$defs/SequenceItem" } 
-        }
-      },
-      "required": ["sequence"],
-      "additionalProperties": false
-    },
-    "OutputRule": {
-      "oneOf": [
-        { "$ref": "#/$defs/StreamRule" },
-        { "$ref": "#/$defs/DataRule" },
-        { "$ref": "#/$defs/SequenceRule" }
-      ]
     }
   },
   "examples": [
     {
-      "description": "Legacy unary stub (DEPRECATED)",
+      "description": "Single stub object",
       "value": {
         "service": "Gripmock",
         "method": "SayHello",
@@ -460,200 +241,107 @@
       }
     },
     {
-      "description": "V4 unary stub (RECOMMENDED)",
-      "value": {
-        "service": "Gripmock",
-        "method": "SayHello",
-        "inputs": [
-          {
+      "description": "Array of stubs",
+      "value": [
+        {
+          "service": "Gripmock",
+          "method": "SayHello",
+          "input": {
             "equals": {
-              "name": "gripmock"
+              "name": "alpha"
             }
-          }
-        ],
-        "outputs": [
-          {
+          },
+          "output": {
             "data": {
-              "message": "Hello GripMock",
-              "returnCode": 42
+              "message": "Hello Alpha",
+              "returnCode": 1
             }
           }
-        ]
-      }
+        },
+        {
+          "service": "Gripmock",
+          "method": "SayHello",
+          "input": {
+            "equals": {
+              "name": "beta"
+            }
+          },
+          "output": {
+            "data": {
+              "message": "Hello Beta",
+              "returnCode": 2
+            }
+          }
+        }
+      ]
     },
     {
-      "description": "V4 streaming stub with stream steps",
+      "description": "Streaming stub",
       "value": {
         "service": "TrackService",
         "method": "StreamTrack",
         "priority": 100,
-        "inputs": [
-          {
-            "equals": {
-              "stn": "MS#00001"
+        "input": {
+          "equals": {
+            "stn": "MS#00001"
+          }
+        },
+        "output": {
+          "delay": "100ms",
+          "stream": [
+            {
+              "stn": "MS#00001",
+              "identity": "00",
+              "latitude": 0.1,
+              "longitude": 0.005,
+              "speed": 45,
+              "updatedAt": "2024-01-01T12:00:00.000Z"
+            },
+            {
+              "stn": "MS#00001",
+              "identity": "01",
+              "latitude": 0.10001,
+              "longitude": 0.00501,
+              "speed": 46,
+              "updatedAt": "2024-01-01T12:00:01.000Z"
             }
-          }
-        ],
-        "outputs": [
-          {
-            "stream": [
-              {
-                "send": {
-                  "stn": "MS#00001",
-                  "identity": "00",
-                  "latitude": 0.1,
-                  "longitude": 0.005,
-                  "speed": 45,
-                  "updatedAt": "2024-01-01T12:00:00.000Z"
-                }
-              },
-              {
-                "delay": "100ms"
-              },
-              {
-                "send": {
-                  "stn": "MS#00001",
-                  "identity": "01",
-                  "latitude": 0.10001,
-                  "longitude": 0.00501,
-                  "speed": 46,
-                  "updatedAt": "2024-01-01T12:00:01.000Z"
-                }
-              },
-              {
-                "end": {
-                  "code": "OK",
-                  "message": "Stream completed"
-                }
-              }
-            ]
-          }
-        ]
+          ]
+        }
       }
     },
     {
-      "description": "V4 stub with times limit",
+      "description": "Header-based authentication",
       "value": {
         "service": "AuthService",
         "method": "ValidateToken",
-        "times": 5,
-        "inputs": [
-          {
-            "equals": {
-              "token": "valid-token"
-            }
+        "headers": {
+          "equals": {
+            "authorization": "Bearer token123"
           }
-        ],
-        "outputs": [
-          {
-            "data": {
-              "valid": true,
-              "userId": "user123"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "description": "V4 stub with send_each",
-      "value": {
-        "service": "NotificationService",
-        "method": "SendNotifications",
-        "inputs": [
-          {
-            "equals": {
-              "userId": "user123"
-            }
-          }
-        ],
-        "outputs": [
-          {
-            "send_each": {
-              "items": "{{.Request.notifications}}",
-              "as": "notification",
-              "message": {
-                "id": "{{.notification.id}}",
-                "title": "{{.notification.title}}",
-                "body": "{{.notification.body}}",
-                "timestamp": "{{now}}"
-              },
-              "delay": "50ms"
-            }
-          }
-        ]
-      }
-    },
-    {
-      "description": "V4 stub with sequence rule",
-      "value": {
-        "service": "ChatService",
-        "method": "ChatStream",
-        "inputs": [
-          {
-            "equals": {
-              "roomId": "room123"
-            }
-          }
-        ],
-        "outputs": [
-          {
-            "sequence": [
-              {
-                "match": {
-                  "equals": {
-                    "type": "join"
-                  }
-                },
-                "stream": [
-                  {
-                    "send": {
-                      "type": "welcome",
-                      "message": "Welcome to the chat room!",
-                      "timestamp": "{{now}}"
-                    }
-                  }
-                ]
-              },
-              {
-                "data": {
-                  "type": "message",
-                  "content": "{{.Request.message}}",
-                  "timestamp": "{{now}}"
-                }
-              }
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "description": "V4 stub with response headers and trailers",
-      "value": {
-        "service": "FileService",
-        "method": "DownloadFile",
-        "response_headers": {
-          "content-type": "application/octet-stream",
-          "content-disposition": "attachment; filename=\"example.txt\""
         },
-        "response_trailers": {
-          "file-size": "1024",
-          "checksum": "sha256:abc123"
+        "output": {
+          "data": {
+            "valid": true,
+            "userId": "user123"
+          }
+        }
+      }
+    },
+    {
+      "description": "Error response",
+      "value": {
+        "service": "ErrorService",
+        "method": "SimulateError",
+        "input": {
+          "contains": {
+            "trigger": "error"
+          }
         },
-        "inputs": [
-          {
-            "equals": {
-              "filename": "example.txt"
-            }
-          }
-        ],
-        "outputs": [
-          {
-            "data": {
-              "content": "Hello, World!",
-              "size": 13
-            }
-          }
-        ]
+        "output": {
+          "delay": "500ms",
+          "error": "Service temporarily unavailable",
+          "code": 14
+        }
       }
     }
   ]

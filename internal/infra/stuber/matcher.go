@@ -1,11 +1,8 @@
 package stuber
 
 import (
-	"context"
-	"encoding/json"
 	"reflect"
 	"regexp"
-	"strconv"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 
@@ -62,9 +59,7 @@ func clearRegexCache() {
 //
 // It checks if the query matches the stub's input data and headers using
 // the equals, contains, and matches methods.
-func match(ctx context.Context, query Query, stub *Stub) bool {
-	runMatcherHooks(ctx, query, stub)
-
+func match(query Query, stub *Stub) bool {
 	// Check headers first
 	if !matchHeaders(query.Headers, stub.Headers) {
 		return false
@@ -185,11 +180,6 @@ func equals(expected map[string]any, actual any, orderIgnore bool) bool {
 //
 //nolint:cyclop,funlen
 func ultraFastSpecializedEquals(expected, actual any) bool {
-	// Cross-type numeric comparison without float rounding loss.
-	if numericEqual(expected, actual) {
-		return true
-	}
-
 	// Ultra-fast path: same type comparison (most common case)
 	//nolint:nestif
 	if reflect.TypeOf(expected) == reflect.TypeOf(actual) {
@@ -260,61 +250,6 @@ func ultraFastSpecializedEquals(expected, actual any) bool {
 	return reflect.DeepEqual(expected, actual)
 }
 
-func numericEqual(a, b any) bool {
-	// Fast-path: both json.Number
-	if an, ok := a.(json.Number); ok {
-		if bn, ok2 := b.(json.Number); ok2 {
-			return an.String() == bn.String()
-		}
-	}
-
-	// Compare json.Number with plain numeric by string form to avoid float rounding.
-	if an, ok := a.(json.Number); ok {
-		if bs, ok2 := numericString(b); ok2 {
-			return an.String() == bs
-		}
-	}
-
-	if bn, ok := b.(json.Number); ok {
-		if as, ok2 := numericString(a); ok2 {
-			return bn.String() == as
-		}
-	}
-
-	// Fallback: both plain numerics
-	astr, aok := numericString(a)
-	bstr, bok := numericString(b)
-
-	if !aok || !bok {
-		return false
-	}
-
-	return astr == bstr
-}
-
-func numericString(v any) (string, bool) {
-	switch t := v.(type) {
-	case json.Number:
-		return t.String(), true
-	case int:
-		return strconv.FormatInt(int64(t), 10), true
-	case int64:
-		return strconv.FormatInt(t, 10), true
-	case float64:
-		return strconv.FormatFloat(t, 'g', -1, 64), true
-	case float32:
-		return strconv.FormatFloat(float64(t), 'g', -1, 32), true
-	case uint:
-		return strconv.FormatUint(uint64(t), 10), true
-	case uint32:
-		return strconv.FormatUint(uint64(t), 10), true
-	case uint64:
-		return strconv.FormatUint(t, 10), true
-	default:
-		return "", false
-	}
-}
-
 // contains checks if the expected map is a subset of the actual value.
 //
 // It returns true if the expected map is a subset of the actual value,
@@ -346,37 +281,11 @@ func matchStreamElements(queryStream []map[string]any, stubStream []InputData) b
 	// For client streaming, grpctestify sends an extra empty message at the end
 	// We need to handle this case by checking if the last message is empty
 	effectiveQueryLength := len(queryStream)
-	for effectiveQueryLength > 0 && len(queryStream[effectiveQueryLength-1]) == 0 {
-		effectiveQueryLength--
-	}
-
-	// When stub provides a single matcher element, allow it to validate every
-	// incoming message (common pattern in examples where one matcher covers the
-	// whole stream).
-	if len(stubStream) == 1 && effectiveQueryLength >= 1 {
-		stubItem := stubStream[0]
-		hasMatchers := len(stubItem.Equals) > 0 || len(stubItem.Contains) > 0 || len(stubItem.Matches) > 0
-		if !hasMatchers {
-			return false
+	if effectiveQueryLength > 0 {
+		lastMessage := queryStream[effectiveQueryLength-1]
+		if len(lastMessage) == 0 {
+			effectiveQueryLength--
 		}
-
-		for i := 0; i < effectiveQueryLength; i++ {
-			queryItem := queryStream[i]
-
-			if len(stubItem.Equals) > 0 && !equals(stubItem.Equals, queryItem, stubItem.IgnoreArrayOrder) {
-				return false
-			}
-
-			if len(stubItem.Contains) > 0 && !contains(stubItem.Contains, queryItem, stubItem.IgnoreArrayOrder) {
-				return false
-			}
-
-			if len(stubItem.Matches) > 0 && !matches(stubItem.Matches, queryItem, stubItem.IgnoreArrayOrder) {
-				return false
-			}
-		}
-
-		return true
 	}
 
 	// Enforce exact length match for client streaming to avoid out-of-range panics
@@ -434,47 +343,11 @@ func rankStreamElements(queryStream []map[string]any, stubStream []InputData) fl
 	// For client streaming, grpctestify sends an extra empty message at the end
 	// We need to handle this case by checking if the last message is empty
 	effectiveQueryLength := len(queryStream)
-	for effectiveQueryLength > 0 && len(queryStream[effectiveQueryLength-1]) == 0 {
-		effectiveQueryLength--
-	}
-
-	// Allow a single stub matcher to cover all incoming messages.
-	if len(stubStream) == 1 && effectiveQueryLength >= 1 {
-		stubItem := stubStream[0]
-		hasMatchers := len(stubItem.Equals) > 0 || len(stubItem.Contains) > 0 || len(stubItem.Matches) > 0
-		if !hasMatchers {
-			return 0
+	if effectiveQueryLength > 0 {
+		lastMessage := queryStream[effectiveQueryLength-1]
+		if len(lastMessage) == 0 {
+			effectiveQueryLength--
 		}
-
-		totalRank := 0.0
-		for i := 0; i < effectiveQueryLength; i++ {
-			queryItem := queryStream[i]
-
-			// Reuse existing matchers for ranking consistency
-			switch {
-			case len(stubItem.Equals) > 0:
-				if !equals(stubItem.Equals, queryItem, stubItem.IgnoreArrayOrder) {
-					return 0
-				}
-				totalRank += 1
-			case len(stubItem.Contains) > 0:
-				if !contains(stubItem.Contains, queryItem, stubItem.IgnoreArrayOrder) {
-					return 0
-				}
-				totalRank += 1
-			case len(stubItem.Matches) > 0:
-				if !matches(stubItem.Matches, queryItem, stubItem.IgnoreArrayOrder) {
-					return 0
-				}
-				totalRank += 1
-			}
-		}
-
-		if effectiveQueryLength == 0 {
-			return 0
-		}
-
-		return totalRank / float64(effectiveQueryLength)
 	}
 
 	// Enforce exact length match for client streaming

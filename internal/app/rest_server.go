@@ -38,8 +38,7 @@ type RestServer struct {
 	budgerigar *stuber.Budgerigar
 }
 
-// RestServer implements legacy REST API endpoints only
-// V4 API is handled by v4.Server
+var _ rest.ServerInterface = &RestServer{}
 
 // NewRestServer creates a new REST server instance with the specified dependencies.
 func NewRestServer(
@@ -60,18 +59,6 @@ func NewRestServer(
 	}()
 
 	return server, nil
-}
-
-// BatchDeleteStubsV4 is a placeholder method to satisfy the interface
-// This method is not used in legacy API.
-func (h *RestServer) BatchDeleteStubsV4(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Method not supported in legacy API", http.StatusMethodNotAllowed)
-}
-
-// ClearHistoryV4 is a placeholder method to satisfy the interface
-// This method is not used in legacy API.
-func (h *RestServer) ClearHistoryV4(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Method not supported in legacy API", http.StatusMethodNotAllowed)
 }
 
 // ServicesList returns a list of all available gRPC services.
@@ -242,14 +229,14 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListUsedStubs returns a list of stubs that have been used.
-func (h *RestServer) ListUsedStubs(w http.ResponseWriter, r *http.Request) {
+func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 	if err := json.NewEncoder(w).Encode(h.budgerigar.Used()); err != nil {
 		h.responseError(w, err)
 	}
 }
 
 // ListUnusedStubs returns a list of stubs that have not been used.
-func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, r *http.Request) {
+func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 	if err := json.NewEncoder(w).Encode(h.budgerigar.Unused()); err != nil {
 		h.responseError(w, err)
 	}
@@ -282,7 +269,7 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 		_ = r.Body.Close()
 	}()
 
-	result, err := h.budgerigar.FindByQuery(r.Context(), query)
+	result, err := h.budgerigar.FindByQuery(query)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 		h.writeResponseError(w, err)
@@ -392,8 +379,8 @@ func validateStub(stub *stuber.Stub) error {
 		return err
 	}
 
-	// Additional validation of stub structure
-	if err := validateStubStructure(stub); err != nil {
+	// Additional validation based on stub type
+	if err := validateStubType(stub); err != nil {
 		return err
 	}
 

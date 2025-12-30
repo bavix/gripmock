@@ -1,8 +1,6 @@
 package stuber
 
 import (
-	"context"
-
 	"github.com/google/uuid"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -103,14 +101,14 @@ func (b *Budgerigar) FindByID(id uuid.UUID) *Stub {
 // Returns:
 // - *Result: The Result containing the found Stub value (if any), or nil.
 // - error: An error if the search fails.
-func (b *Budgerigar) FindByQuery(ctx context.Context, query Query) (*Result, error) {
+func (b *Budgerigar) FindByQuery(query Query) (*Result, error) {
 	if b.toggles.Has(MethodTitle) {
 		query.Method = cases.
 			Title(language.English, cases.NoLower).
 			String(query.Method)
 	}
 
-	return b.searcher.find(ctx, query)
+	return b.searcher.find(query)
 }
 
 // FindByQueryV2 retrieves the Stub value associated with the given QueryV2 from the Budgerigar's searcher.
@@ -121,12 +119,12 @@ func (b *Budgerigar) FindByQuery(ctx context.Context, query Query) (*Result, err
 // Returns:
 // - *Result: The Result containing the found Stub value (if any), or nil.
 // - error: An error if the search fails.
-func (b *Budgerigar) FindByQueryV2(ctx context.Context, query QueryV2) (*Result, error) {
+func (b *Budgerigar) FindByQueryV2(query QueryV2) (*Result, error) {
 	if b.toggles.Has(MethodTitle) {
 		query.Method = cases.Title(language.English).String(query.Method)
 	}
 
-	return b.searcher.findV2(ctx, query)
+	return b.searcher.findV2(query)
 }
 
 // FindByQueryBidi retrieves a BidiResult for bidirectional streaming with the given QueryBidi.
@@ -139,12 +137,12 @@ func (b *Budgerigar) FindByQueryV2(ctx context.Context, query QueryV2) (*Result,
 // Returns:
 // - *BidiResult: The BidiResult for finding matching stubs for each message.
 // - error: An error if the search fails.
-func (b *Budgerigar) FindByQueryBidi(ctx context.Context, query QueryBidi) (*BidiResult, error) {
+func (b *Budgerigar) FindByQueryBidi(query QueryBidi) (*BidiResult, error) {
 	if b.toggles.Has(MethodTitle) {
 		query.Method = cases.Title(language.English).String(query.Method)
 	}
 
-	return b.searcher.findBidi(ctx, query)
+	return b.searcher.findBidi(query)
 }
 
 // FindBy retrieves all Stub values that match the given service and method

@@ -2,8 +2,6 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
-	"maps"
 	"os"
 	"path"
 	"strings"
@@ -14,9 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/samber/lo"
-	"google.golang.org/grpc/codes"
 
-	"github.com/bavix/gripmock/v3/internal/domain/types"
 	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
@@ -56,7 +52,6 @@ func (s *Extender) Wait(ctx context.Context) {
 		return
 	case <-s.ch:
 		s.loaded.Store(true)
-		zerolog.Ctx(ctx).Info().Msg("Stub loading completed")
 	}
 }
 
@@ -159,7 +154,7 @@ func (s *Extender) isStubFile(filename string) bool {
 }
 
 func (s *Extender) readByFile(ctx context.Context, filePath string) {
-	stubs, err := s.readStubWithContext(ctx, filePath)
+	stubs, err := s.readStub(filePath)
 	if err != nil {
 		s.handleFileReadError(ctx, filePath, err)
 
@@ -304,7 +299,7 @@ func genID(stub *stuber.Stub, freeIDs uuid.UUIDs) (uuid.UUID, uuid.UUIDs) {
 
 // readStub reads a stub file and returns a slice of stubs.
 // The stub file can be in yaml or json format.
-// This variant does not perform deprecation logging because no context is provided.
+// If the file is in yaml format, it will be converted to json format.
 func (s *Extender) readStub(path string) ([]*stuber.Stub, error) {
 	file, err := os.ReadFile(path) //nolint:gosec
 	if err != nil {
@@ -324,370 +319,6 @@ func (s *Extender) readStub(path string) ([]*stuber.Stub, error) {
 	}
 
 	return stubs, nil
-}
-
-// readStubWithContext performs stub reading with context-aware logging.
-//
-//nolint:cyclop
-func (s *Extender) readStubWithContext(ctx context.Context, path string) ([]*stuber.Stub, error) {
-	file, err := os.ReadFile(path) //nolint:gosec
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read file %s", path)
-	}
-
-	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
-		file, err = s.converter.Execute(path, file)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to unmarshal file %s", path)
-		}
-	}
-
-	// Parse as raw data first to detect format and handle v4 inputs properly
-	var rawList []map[string]any
-	if err := jsondecoder.UnmarshalSlice(file, &rawList); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal file %s: %v", path, string(file))
-	}
-
-	stubs := make([]*stuber.Stub, 0, len(rawList))
-
-	hasLegacyStubs := false
-
-	for _, rawStub := range rawList {
-		stub := &stuber.Stub{}
-
-		// Check if this is v4 format (has outputs field)
-		if _, hasOutputs := rawStub["outputs"]; hasOutputs {
-			// Handle v4 format
-			if err := s.unmarshalV4Stub(rawStub, stub); err != nil {
-				return nil, errors.Wrapf(err, "failed to unmarshal v4 stub from %s", path)
-			}
-		} else {
-			// Handle legacy format
-			hasLegacyStubs = true
-
-			if err := s.unmarshalLegacyStub(rawStub, stub); err != nil {
-				return nil, errors.Wrapf(err, "failed to unmarshal legacy stub from %s", path)
-			}
-		}
-
-		stubs = append(stubs, stub)
-	}
-
-	// Log warning once per file if any legacy stubs were found
-	if hasLegacyStubs {
-		zerolog.Ctx(ctx).
-			Warn().
-			Str("file", path).
-			Msg("[DEPRECATED] legacy stub format detected; please migrate to v4 outputs")
-	}
-
-	return stubs, nil
-}
-
-// unmarshalV4Stub unmarshals a v4 format stub from raw data.
-//
-
-//nolint:gocognit,gocyclo,cyclop,funlen,maintidx
-func (s *Extender) unmarshalV4Stub(rawStub map[string]any, stub *stuber.Stub) error {
-	// Convert raw data to JSON for unmarshaling
-	data, err := json.Marshal(rawStub)
-	if err != nil {
-		return err
-	}
-
-	// Unmarshal basic fields
-	if err := json.Unmarshal(data, stub); err != nil {
-		return err
-	}
-
-	// Handle v4 inputs separately
-
-	//nolint:nestif
-	if rawInputs, ok := rawStub["inputs"]; ok {
-		if inputsSlice, ok := rawInputs.([]any); ok {
-			for _, rawInput := range inputsSlice {
-				if inputMap, ok := rawInput.(map[string]any); ok {
-					matcher := types.Matcher{}
-
-					inputBytes, mErr := json.Marshal(inputMap)
-					if mErr == nil {
-						if err := json.Unmarshal(inputBytes, &matcher); err == nil {
-							stub.InputsV4 = append(stub.InputsV4, matcher)
-
-							continue
-						}
-					}
-					// Fallback: try to handle any matcher manually
-					if anyData, hasAny := inputMap["any"]; hasAny {
-						if anySlice, ok := anyData.([]any); ok {
-							for _, anyItem := range anySlice {
-								if anyMap, ok := anyItem.(map[string]any); ok {
-									anyMatcher := types.Matcher{}
-
-									anyBytes, aErr := json.Marshal(anyMap)
-									if aErr == nil {
-										if err := json.Unmarshal(anyBytes, &anyMatcher); err == nil {
-											matcher.Any = append(matcher.Any, anyMatcher)
-										}
-									}
-								}
-							}
-
-							stub.InputsV4 = append(stub.InputsV4, matcher)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	//nolint:nestif
-	if len(stub.InputsV4) > 0 {
-		if len(stub.InputsV4) == 1 {
-			// Single input - populate Input
-			v4Matcher := stub.InputsV4[0]
-			stub.Input = stuber.InputData{
-				Equals:           v4Matcher.Equals,
-				Contains:         v4Matcher.Contains,
-				Matches:          make(map[string]any),
-				IgnoreArrayOrder: v4Matcher.IgnoreArrayOrder,
-			}
-			// Convert Matches from map[string]string to map[string]any
-			maps.Copy(stub.Input.Matches, v4Matcher.Matches)
-			// Handle Any matcher (OR logic)
-			if len(v4Matcher.Any) > 0 {
-				// Convert v4 Any matcher to legacy Any matcher
-				stub.Input.Any = make([]stuber.InputData, len(v4Matcher.Any))
-				for i, anyMatcher := range v4Matcher.Any {
-					stub.Input.Any[i] = stuber.InputData{
-						Equals:           anyMatcher.Equals,
-						Contains:         anyMatcher.Contains,
-						Matches:          make(map[string]any),
-						IgnoreArrayOrder: anyMatcher.IgnoreArrayOrder,
-					}
-					// Convert Matches from map[string]string to map[string]any
-					maps.Copy(stub.Input.Any[i].Matches, anyMatcher.Matches)
-				}
-			}
-		} else {
-			// Multiple inputs - populate Inputs
-			stub.Inputs = make([]stuber.InputData, len(stub.InputsV4))
-			for i, v4Matcher := range stub.InputsV4 {
-				stub.Inputs[i] = stuber.InputData{
-					Equals:           v4Matcher.Equals,
-					Contains:         v4Matcher.Contains,
-					Matches:          make(map[string]any),
-					IgnoreArrayOrder: v4Matcher.IgnoreArrayOrder,
-				}
-				// Convert Matches from map[string]string to map[string]any
-				maps.Copy(stub.Inputs[i].Matches, v4Matcher.Matches)
-				// Handle Any matcher (OR logic)
-				if len(v4Matcher.Any) > 0 {
-					// Convert v4 Any matcher to legacy Any matcher
-					stub.Inputs[i].Any = make([]stuber.InputData, len(v4Matcher.Any))
-					for j, anyMatcher := range v4Matcher.Any {
-						stub.Inputs[i].Any[j] = stuber.InputData{
-							Equals:           anyMatcher.Equals,
-							Contains:         anyMatcher.Contains,
-							Matches:          make(map[string]any),
-							IgnoreArrayOrder: anyMatcher.IgnoreArrayOrder,
-						}
-						// Convert Matches from map[string]string to map[string]any
-						maps.Copy(stub.Inputs[i].Any[j].Matches, anyMatcher.Matches)
-					}
-				}
-			}
-		}
-	}
-
-	// Handle v4 outputs separately
-	//nolint:nestif
-	if rawOutputs, ok := rawStub["outputs"]; ok {
-		if outputsSlice, ok := rawOutputs.([]any); ok {
-			for _, rawOutput := range outputsSlice {
-				if outputMap, ok := rawOutput.(map[string]any); ok {
-					stub.OutputsRawV4 = append(stub.OutputsRawV4, outputMap)
-
-					// Also populate legacy Output for backward compatibility
-					if streamData, hasStream := outputMap["stream"]; hasStream {
-						if streamSlice, ok := streamData.([]any); ok {
-							stub.Output.Stream = streamSlice
-						}
-					}
-
-					if dataValue, hasData := outputMap["data"]; hasData {
-						if dataMap, ok := dataValue.(map[string]any); ok {
-							stub.Output.Data = dataMap
-						}
-					}
-
-					// Map v4 status to legacy error/code for gRPC execution path
-					if stRaw, hasStatus := outputMap["status"]; hasStatus {
-						if stMap, ok := stRaw.(map[string]any); ok {
-							var codeName string
-							if v, ok := stMap["code"].(string); ok {
-								codeName = v
-							}
-
-							var msg string
-							if v, ok := stMap["message"].(string); ok {
-								msg = v
-							}
-
-							if codeName != "" {
-								if c, ok := parseGrpcCode(codeName); ok {
-									if c != codes.OK {
-										stub.Output.Code = &c
-										stub.Output.Error = msg
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// Also populate legacy fields for backward compatibility with bidirectional streaming
-	if len(stub.InputsV4) > 0 {
-		if len(stub.InputsV4) == 1 {
-			// Single input - populate Input
-			v4Matcher := stub.InputsV4[0]
-			stub.Input = stuber.InputData{
-				Equals:           v4Matcher.Equals,
-				Contains:         v4Matcher.Contains,
-				Matches:          make(map[string]any),
-				IgnoreArrayOrder: v4Matcher.IgnoreArrayOrder,
-			}
-			// Convert Matches from map[string]string to map[string]any
-			maps.Copy(stub.Input.Matches, v4Matcher.Matches)
-		} else {
-			// Multiple inputs - populate Inputs
-			stub.Inputs = make([]stuber.InputData, len(stub.InputsV4))
-			for i, v4Matcher := range stub.InputsV4 {
-				stub.Inputs[i] = stuber.InputData{
-					Equals:           v4Matcher.Equals,
-					Contains:         v4Matcher.Contains,
-					Matches:          make(map[string]any),
-					IgnoreArrayOrder: v4Matcher.IgnoreArrayOrder,
-				}
-				// Convert Matches from map[string]string to map[string]any
-				maps.Copy(stub.Inputs[i].Matches, v4Matcher.Matches)
-			}
-		}
-	}
-
-	// Merge top-level v4 responseHeaders into legacy Output.Headers for execution path
-	// so that gRPC handlers can send them using existing header logic.
-	if len(stub.ResponseHeaders) > 0 {
-		if stub.Output.Headers == nil {
-			stub.Output.Headers = make(map[string]string, len(stub.ResponseHeaders))
-		}
-
-		maps.Copy(stub.Output.Headers, stub.ResponseHeaders)
-	}
-
-	// Note: Stub type determination is now done at the service layer
-	// where we have access to MethodRegistry to get actual gRPC method characteristics
-
-	return nil
-}
-
-// parseGrpcCode converts a string gRPC status code name into codes.Code.
-// Accepts both numeric strings and symbolic names.
-//
-
-//nolint:gocyclo,cyclop,funlen
-func parseGrpcCode(name string) (codes.Code, bool) {
-	switch strings.ToUpper(strings.TrimSpace(name)) {
-	case "OK":
-		return codes.OK, true
-	case "CANCELLED":
-		return codes.Canceled, true
-	case "UNKNOWN":
-		return codes.Unknown, true
-	case "INVALID_ARGUMENT":
-		return codes.InvalidArgument, true
-	case "DEADLINE_EXCEEDED":
-		return codes.DeadlineExceeded, true
-	case "NOT_FOUND":
-		return codes.NotFound, true
-	case "ALREADY_EXISTS":
-		return codes.AlreadyExists, true
-	case "PERMISSION_DENIED":
-		return codes.PermissionDenied, true
-	case "RESOURCE_EXHAUSTED":
-		return codes.ResourceExhausted, true
-	case "FAILED_PRECONDITION":
-		return codes.FailedPrecondition, true
-	case "ABORTED":
-		return codes.Aborted, true
-	case "OUT_OF_RANGE":
-		return codes.OutOfRange, true
-	case "UNIMPLEMENTED":
-		return codes.Unimplemented, true
-	case "INTERNAL":
-		return codes.Internal, true
-	case "UNAVAILABLE":
-		return codes.Unavailable, true
-	case "DATA_LOSS":
-		return codes.DataLoss, true
-	case "UNAUTHENTICATED":
-		return codes.Unauthenticated, true
-	default:
-		// Try to parse numeric code
-		switch name {
-		case "0":
-			return codes.OK, true
-		case "1":
-			return codes.Canceled, true
-		case "2":
-			return codes.Unknown, true
-		case "3":
-			return codes.InvalidArgument, true
-		case "4":
-			return codes.DeadlineExceeded, true
-		case "5":
-			return codes.NotFound, true
-		case "6":
-			return codes.AlreadyExists, true
-		case "7":
-			return codes.PermissionDenied, true
-		case "8":
-			return codes.ResourceExhausted, true
-		case "9":
-			return codes.FailedPrecondition, true
-		case "10":
-			return codes.Aborted, true
-		case "11":
-			return codes.OutOfRange, true
-		case "12":
-			return codes.Unimplemented, true
-		case "13":
-			return codes.Internal, true
-		case "14":
-			return codes.Unavailable, true
-		case "15":
-			return codes.DataLoss, true
-		case "16":
-			return codes.Unauthenticated, true
-		}
-	}
-
-	return codes.OK, false
-}
-
-// unmarshalLegacyStub unmarshals a legacy format stub from raw data.
-func (s *Extender) unmarshalLegacyStub(rawStub map[string]any, stub *stuber.Stub) error {
-	// Convert raw data to JSON for unmarshaling
-	data, err := json.Marshal(rawStub)
-	if err != nil {
-		return err
-	}
-
-	// Unmarshal using standard JSON unmarshaling for legacy format
-	return json.Unmarshal(data, stub)
 }
 
 // isDirectory checks if the given path is a directory.

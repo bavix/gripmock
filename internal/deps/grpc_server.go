@@ -12,48 +12,26 @@ import (
 )
 
 func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
-	network := b.config.GRPCNetwork
-	addr := b.config.GRPCAddr
-
-	listener, err := listen(ctx, network, addr)
+	listener, err := (&net.ListenConfig{}).Listen(ctx, b.config.GRPCNetwork, b.config.GRPCAddr)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to listen")
 	}
 
-	grpcServer := b.buildGRPC(ctx, network, addr, param)
-
-	return serveGRPC(ctx, grpcServer, listener, b)
-}
-
-func listen(ctx context.Context, network, addr string) (net.Listener, error) {
-	listener, err := (&net.ListenConfig{}).Listen(ctx, network, addr)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to listen")
-	}
-
-	return listener, nil
-}
-
-func (b *Builder) buildGRPC(ctx context.Context, network, addr string, param *proto.Arguments) *app.GRPCServer {
 	logger := zerolog.Ctx(ctx)
+
 	logger.Info().
-		Str("addr", addr).
-		Str("network", network).
+		Str("addr", listener.Addr().String()).
+		Str("network", listener.Addr().Network()).
 		Msg("Serving gRPC")
 
-	return app.NewGRPCServer(
-		network,
-		addr,
+	grpcServer := app.NewGRPCServer(
+		b.config.GRPCNetwork,
+		b.config.GRPCAddr,
 		param,
 		b.Budgerigar(),
-		b.ServiceManager(),
-		b.Extender(ctx),
-		b.ErrorFormatter(),
-		b.TemplateRegistry(ctx),
+		b.Extender(),
 	)
-}
 
-func serveGRPC(ctx context.Context, grpcServer *app.GRPCServer, listener net.Listener, b *Builder) error {
 	server, err := grpcServer.Build(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to build gRPC server")
@@ -66,7 +44,6 @@ func serveGRPC(ctx context.Context, grpcServer *app.GRPCServer, listener net.Lis
 	})
 
 	ch := make(chan error)
-	logger := zerolog.Ctx(ctx)
 
 	go func() {
 		defer func() {
