@@ -399,6 +399,7 @@ func formatAuthorsLine(ctx uiContext, authors []plugins.Author, _ []string, _ st
 
 		switch {
 		case name != "" && contact != "":
+			// nosemgrep: go.sprintf-mail-address
 			items = append(items, fmt.Sprintf("%s <%s>", name, contact))
 		case name != "":
 			items = append(items, name)
