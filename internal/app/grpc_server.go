@@ -368,9 +368,6 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
 			return err
 		}
-
-		// Fallback: no stream and no error – treat as single message
-		return m.handleNonArrayStreamData(stream, found)
 	}
 
 	// Fallback to Data for single message streaming
