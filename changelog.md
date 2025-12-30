@@ -1,5 +1,20 @@
 # Changelog
 
+## v3.5.0 - 2025-12-30
+
+### What's Changed
+
+* Bump github.com/go-playground/validator/v10 from 10.28.0 to 10.30.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/708
+* Bump github.com/goccy/go-yaml from 1.19.0 to 1.19.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/705
+* Bump actions/download-artifact from 6 to 7 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/704
+* Bump actions/upload-artifact from 5 to 6 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/701
+* Bump actions/cache from 4 to 5 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/700
+* Bump google.golang.org/protobuf from 1.36.10 to 1.36.11 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/703
+* Bump google.golang.org/grpc from 1.77.0 to 1.78.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/707
+* [v3.5.0] Plugins by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/659
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.4.6...v3.5.0
+
 ## v3.4.6 - 2025-12-30
 
 ### What's Changed
