@@ -28,6 +28,8 @@ semgrep:
 gen-rest:
 	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest -generate gorilla,types -package rest ${OPENAPI} > internal/domain/rest/api.gen.go
 	sed -i '' 's/interface{}/any/g' internal/domain/rest/api.gen.go
+	gofmt -w internal/domain/rest/api.gen.go
+	goimports -w internal/domain/rest/api.gen.go
 
 gen-imports:
 	rm -rf /tmp/gm-protobuf-repo /tmp/gm-googleapis-sdk /tmp/gm-protobuf-sdk
