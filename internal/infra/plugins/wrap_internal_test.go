@@ -1,0 +1,286 @@
+package plugins
+
+import (
+	"context"
+	"errors"
+	"reflect"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
+)
+
+const (
+	testString = "test"
+	baseString = "base"
+)
+
+func TestWrapFunc_AlreadyFunc(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	fn := func(ctx context.Context, args ...any) (any, error) {
+		return testString, nil
+	}
+
+	// Act
+	wrapped := wrapFunc(fn)
+	result, err := wrapped(context.Background())
+
+	// Assert
+	require.NotNil(t, wrapped)
+	require.NoError(t, err)
+	assert.Equal(t, testString, result)
+}
+
+func TestWrapFunc_SimpleFunc(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	fn := func() string {
+		return testString
+	}
+
+	// Act
+	wrapped := wrapFunc(fn)
+	result, err := wrapped(context.Background())
+
+	// Assert
+	require.NotNil(t, wrapped)
+	require.NoError(t, err)
+	assert.Equal(t, testString, result)
+}
+
+func TestWrapFunc_FuncWithArgs(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	fn := func(a, b int) int {
+		return a + b
+	}
+	arg1, arg2 := 2, 3
+
+	// Act
+	wrapped := wrapFunc(fn)
+	result, err := wrapped(context.Background(), arg1, arg2)
+
+	// Assert
+	require.NotNil(t, wrapped)
+	require.NoError(t, err)
+	assert.Equal(t, 5, result)
+}
+
+func TestWrapFunc_FuncWithError(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	fn := func() (string, error) {
+		return testString, nil
+	}
+
+	// Act
+	wrapped := wrapFunc(fn)
+	result, err := wrapped(context.Background())
+
+	// Assert
+	require.NotNil(t, wrapped)
+	require.NoError(t, err)
+	assert.Equal(t, testString, result)
+}
+
+func TestWrapFunc_FuncWithErrorReturn(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	expectedErr := errors.New("test error") //nolint:err113 // test error
+
+	fn := func() (string, error) {
+		return "", expectedErr
+	}
+
+	// Act
+	wrapped := wrapFunc(fn)
+	result, err := wrapped(context.Background())
+
+	// Assert
+	require.NotNil(t, wrapped)
+	require.Error(t, err)
+	assert.Equal(t, expectedErr, err)
+	assert.Empty(t, result)
+}
+
+func TestWrapFunc_WithContext(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	fn := func(ctx context.Context) string {
+		return testString
+	}
+
+	// Act
+	wrapped := wrapFunc(fn)
+	result, err := wrapped(context.Background())
+
+	// Assert
+	require.NotNil(t, wrapped)
+	require.NoError(t, err)
+	assert.Equal(t, testString, result)
+}
+
+func TestWrapFunc_InvalidType(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	invalidInput := "not a function"
+
+	// Act
+	wrapped := wrapFunc(invalidInput)
+
+	// Assert
+	assert.Nil(t, wrapped)
+}
+
+func TestWrapDecorator_ValidDecorator(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	decorator := func(base pkgplugins.Func) pkgplugins.Func {
+		return func(ctx context.Context, args ...any) (any, error) {
+			result, err := base(ctx, args...)
+			if err != nil {
+				return nil, err
+			}
+
+			str, ok := result.(string)
+			if !ok {
+				return nil, errors.New("result is not a string") //nolint:err113 // test error
+			}
+
+			return "decorated: " + str, nil
+		}
+	}
+	base := func(ctx context.Context, args ...any) (any, error) {
+		return baseString, nil
+	}
+
+	// Act
+	wrapped := wrapDecorator(decorator)
+	decorated := wrapped(base)
+	result, err := decorated(context.Background())
+
+	// Assert
+	require.NotNil(t, wrapped)
+	require.NoError(t, err)
+	assert.Equal(t, "decorated: "+baseString, result)
+}
+
+func TestWrapDecorator_InvalidType(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	invalidInput := "not a decorator"
+
+	// Act
+	wrapped := wrapDecorator(invalidInput)
+
+	// Assert
+	assert.Nil(t, wrapped)
+}
+
+func TestIsNilAssignable(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		typ  reflect.Type
+		want bool
+	}{
+		{"chan", reflect.TypeOf((chan int)(nil)), true},
+		{"func", reflect.TypeOf((func())(nil)), true},
+		{"interface", reflect.TypeOf((*interface{})(nil)).Elem(), true},
+		{"map", reflect.TypeOf((map[string]int)(nil)), true},
+		{"pointer", reflect.TypeOf((*int)(nil)), true},
+		{"slice", reflect.TypeOf(([]int)(nil)), true},
+		{"string", reflect.TypeOf(""), false},
+		{"int", reflect.TypeOf(0), false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, tt.want, isNilAssignable(tt.typ))
+		})
+	}
+}
+
+func TestCoerceArg(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	args := []any{1, testString, 3.14}
+	idx := 0
+	paramType := reflect.TypeOf(0)
+	fnType := reflect.TypeOf(func(int) {})
+
+	// Act
+	val, err := coerceArg(args, &idx, paramType, fnType, 0)
+
+	// Assert
+	require.NoError(t, err)
+	assert.Equal(t, 1, val.Interface())
+	assert.Equal(t, 1, idx)
+}
+
+func TestCoerceArg_NilValue(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	args := []any{nil}
+	idx := 0
+	paramType := reflect.TypeOf((*int)(nil))
+	fnType := reflect.TypeOf(func(*int) {})
+
+	// Act
+	val, err := coerceArg(args, &idx, paramType, fnType, 0)
+
+	// Assert
+	require.NoError(t, err)
+	assert.True(t, val.IsNil())
+}
+
+func TestCoerceArg_NotEnoughArgs(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	args := []any{}
+	idx := 0
+	paramType := reflect.TypeOf(0)
+	fnType := reflect.TypeOf(func(int) {})
+
+	// Act
+	_, err := coerceArg(args, &idx, paramType, fnType, 0)
+
+	// Assert
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not enough arguments")
+}
+
+func TestCoerceArg_TypeMismatch(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	args := []any{"string"}
+	idx := 0
+	paramType := reflect.TypeOf(0)
+	fnType := reflect.TypeOf(func(int) {})
+
+	// Act
+	_, err := coerceArg(args, &idx, paramType, fnType, 0)
+
+	// Assert
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "want")
+}
