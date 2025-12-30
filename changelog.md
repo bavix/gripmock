@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.5.1 - 2025-12-30
+
+### What's Changed
+
+* Remove unused template system and related components by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/713
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.5.0...v3.5.1
+
 ## v3.5.0 - 2025-12-30
 
 ### What's Changed
