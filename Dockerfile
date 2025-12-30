@@ -8,7 +8,7 @@ WORKDIR /gripmock-src
 
 #hadolint ignore=DL3018
 RUN apk add --no-cache binutils \
-    && go build -o /usr/local/bin/gripmock -ldflags "-X 'github.com/bavix/gripmock/v3/cmd.version=${version:-dev}' -s -w" . \
+    && go build -o /usr/local/bin/gripmock -ldflags "-X 'github.com/bavix/gripmock/v3/internal/infra/build.Version=${version:-dev}' -s -w" . \
     && strip /usr/local/bin/gripmock \
     && apk del binutils \
     && rm -rf /root/.cache /go/pkg /tmp/* /var/cache/*
@@ -21,7 +21,7 @@ LABEL org.opencontainers.image.title="GripMock"
 LABEL org.opencontainers.image.description="Mock server for gRPC services with dynamic stubbing capabilities"
 LABEL org.opencontainers.image.source="https://github.com/bavix/gripmock"
 LABEL org.opencontainers.image.documentation="https://bavix.github.io/gripmock/"
-LABEL org.opencontainers.image.authors="Babichev Maksim <info@babichev.net>"
+LABEL org.opencontainers.image.authors="Babichev Maxim <info@babichev.net>"
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.vendor="bavix"
 

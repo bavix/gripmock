@@ -2,6 +2,8 @@ package yaml2json
 
 import (
 	"github.com/goccy/go-yaml"
+
+	"github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
 // Convertor provides functionality for converting YAML data to JSON format.
@@ -10,8 +12,8 @@ type Convertor struct {
 }
 
 // New creates a new Convertor instance.
-func New() *Convertor {
-	return &Convertor{engine: newEngine()}
+func New(reg plugins.Registry) *Convertor {
+	return &Convertor{engine: newEngine(reg)}
 }
 
 // Execute executes the given YAML data and returns the JSON representation.

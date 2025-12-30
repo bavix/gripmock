@@ -39,7 +39,6 @@ func (s *AdminPanelTestSuite) SetupTest() {
 //
 //nolint:funlen // Test function requires multiple scenarios
 func (s *AdminPanelTestSuite) TestSearchStubsWithRequestInternalHeader() {
-	// Add a test stub
 	stubData := `[{
 		"service": "TestService",
 		"method": "TestMethod",
@@ -126,7 +125,6 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithRequestInternalHeader() {
 
 // TestSearchStubsWithoutRequestInternalHeader tests normal stub usage tracking.
 func (s *AdminPanelTestSuite) TestSearchStubsWithoutRequestInternalHeader() {
-	// Add a test stub
 	stubData := `[{
 		"service": "TestService",
 		"method": "TestMethod",
@@ -152,7 +150,7 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithoutRequestInternalHeader() {
 
 	searchReq := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
 	searchReq.Header.Set("Content-Type", "application/json")
-	// NOTE: No X-Gripmock-Requestinternal header
+
 	searchW := httptest.NewRecorder()
 
 	s.server.SearchStubs(searchW, searchReq)

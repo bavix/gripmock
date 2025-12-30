@@ -7,7 +7,9 @@ import (
 )
 
 func (b *Builder) PingService() (*waiter.Service, error) {
-	grpcConn, err := b.grpcClientConn(false, b.config.GRPCAddr)
+	addr := b.config.GRPCAddr
+
+	grpcConn, err := b.grpcClientConn(false, addr)
 	if err != nil {
 		return nil, err
 	}

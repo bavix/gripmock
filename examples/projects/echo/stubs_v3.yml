@@ -1,0 +1,10 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: com.bavix.echo.v3.EchoService
+  method: SendMessage
+  input:
+    equals:
+      message: "error"
+  output:
+    code: 7  # gRPC code for PermissionDenied
+    error: "Access denied"
+    stream: []  # Empty stream array

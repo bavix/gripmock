@@ -6,7 +6,8 @@ import (
 )
 
 func (b *Builder) toggles() features.Toggles {
-	if b.config.StrictMethodTitle {
+	// Enable method title normalization only when explicitly requested.
+	if b.config.StrictMethodTitle { //nolint:staticcheck // SA1019: deprecated field used for backward compatibility
 		return features.New(stuber.MethodTitle)
 	}
 

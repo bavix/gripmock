@@ -1,107 +1,148 @@
 package yaml2json
 
 import (
-	"bytes"
-	"maps"
 	"strings"
-	"sync"
-	"text/template"
 
-	"github.com/bavix/gripmock/v3/internal/infra/encoding"
-	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
 type engine struct {
-	funcs      template.FuncMap
-	bufferPool *sync.Pool
+	reg plugins.Registry
 }
 
-func newEngine() *engine {
-	utils := encoding.NewTemplateUtils()
-	stuberFuncs := stuber.TemplateFunctions()
-
-	// Combine encoding utils with stuber functions
-	funcs := template.FuncMap{
-		"bytes":         utils.Conversion.StringToBytes,
-		"string2base64": utils.Base64.StringToBase64,
-		"bytes2base64":  utils.Base64.BytesToBase64,
-		"uuid2base64":   utils.UUID.UUIDToBase64,
-		"uuid2bytes":    utils.UUID.UUIDToBytes,
-		"uuid2int64":    utils.UUID.UUIDToInt64,
-	}
-
-	// Add stuber functions
-	maps.Copy(funcs, stuberFuncs)
-
-	return &engine{
-		funcs: funcs,
-		bufferPool: &sync.Pool{
-			New: func() any {
-				return new(bytes.Buffer)
-			},
-		},
-	}
-}
-
-// isDynamicTemplate checks if a string contains dynamic template syntax.
-func isDynamicTemplate(s string) bool {
-	// Dynamic templates reference runtime data like Request/Headers/MessageIndex/Requests/State.
-	if !strings.Contains(s, "{{") || !strings.Contains(s, "}}") {
-		return false
-	}
-
-	markers := []string{
-		".Request",      // request payload
-		".Headers",      // request headers
-		".MessageIndex", // stream message index
-		".Requests",     // all client messages
-		".State",        // request state
-	}
-
-	for _, m := range markers {
-		if strings.Contains(s, m) {
-			return true
-		}
-	}
-
-	return false
+func newEngine(reg plugins.Registry) *engine {
+	return &engine{reg: reg}
 }
 
 func (e *engine) Execute(name string, data []byte) ([]byte, error) {
-	// Check if the data contains dynamic templates
-	if isDynamicTemplate(string(data)) {
-		// For dynamic templates, we need to escape them so they don't get processed statically
-		// We'll replace {{ with {{`{{`}} and }} with {{`}}`}} to escape them
-		escapedData := escapeDynamicTemplates(string(data))
+	_ = name
 
-		return []byte(escapedData), nil
+	// Check if data contains template markers that need escaping for YAML parser
+	if !containsTemplateMarkers(data) {
+		return data, nil
 	}
 
-	t := template.New(name).Funcs(e.funcs)
+	// Escape template syntax so YAML parser treats it as a string literal
+	// This allows templates to be parsed as strings and processed later at runtime
+	escaped := escapeTemplatesForYAML(data)
 
-	t, err := t.Parse(string(data))
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-
-	buf, _ := e.bufferPool.Get().(*bytes.Buffer)
-
-	defer func() {
-		buf.Reset()
-		e.bufferPool.Put(buf)
-	}()
-
-	err = t.Execute(buf, nil)
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-
-	return buf.Bytes(), nil
+	return escaped, nil
 }
 
-// escapeDynamicTemplates escapes dynamic template syntax so it doesn't get processed statically.
-func escapeDynamicTemplates(data string) string {
-	// This is a simple approach - we'll just return the data as-is
-	// The dynamic processing will happen at runtime in the gRPC server
-	return data
+func containsTemplateMarkers(data []byte) bool {
+	dataStr := string(data)
+
+	return strings.Contains(dataStr, "{{") && strings.Contains(dataStr, "}}")
+}
+
+// escapeTemplatesForYAML escapes template syntax so YAML parser treats it as string literals
+// This allows {{ }} syntax to be preserved as strings for later runtime processing.
+func escapeTemplatesForYAML(data []byte) []byte {
+	dataStr := string(data)
+	lines := strings.Split(dataStr, "\n")
+
+	var result []string
+
+	for _, line := range lines {
+		if strings.Contains(line, "{{") && strings.Contains(line, "}}") {
+			escaped := escapeTemplateInLine(line)
+			result = append(result, escaped)
+		} else {
+			result = append(result, line)
+		}
+	}
+
+	return []byte(strings.Join(result, "\n"))
+}
+
+func escapeTemplateInLine(line string) string {
+	var result strings.Builder
+
+	lastIdx := 0
+
+	for {
+		startIdx := strings.Index(line[lastIdx:], "{{")
+		if startIdx == -1 {
+			result.WriteString(line[lastIdx:])
+
+			break
+		}
+
+		startIdx += lastIdx
+
+		endIdx := strings.Index(line[startIdx:], "}}")
+		if endIdx == -1 {
+			result.WriteString(line[lastIdx:])
+
+			break
+		}
+
+		endIdx += startIdx + len("}}")
+
+		before := line[lastIdx:startIdx]
+		template := line[startIdx:endIdx]
+
+		isQuoted := isInsideQuotes(line, startIdx)
+
+		//nolint:nestif // Complex nested logic for handling template quoting is necessary
+		if isQuoted {
+			result.WriteString(before)
+			result.WriteString(template)
+		} else {
+			trimmedBefore := strings.TrimSpace(before)
+
+			if strings.HasSuffix(trimmedBefore, ":") || strings.HasSuffix(trimmedBefore, "-") {
+				if strings.Contains(template, `"`) {
+					result.WriteString(before)
+					result.WriteString(`'`)
+					result.WriteString(template)
+					result.WriteString(`'`)
+				} else {
+					result.WriteString(before)
+					result.WriteString(`"`)
+					result.WriteString(template)
+					result.WriteString(`"`)
+				}
+			} else {
+				result.WriteString(before)
+				result.WriteString(template)
+			}
+		}
+
+		lastIdx = endIdx
+	}
+
+	return result.String()
+}
+
+// isInsideQuotes checks if position is inside a quoted string (single or double quotes).
+func isInsideQuotes(line string, pos int) bool {
+	before := line[:pos]
+
+	doubleQuoteCount := 0
+	singleQuoteCount := 0
+	escaped := false
+
+	for i := range len(before) {
+		if escaped {
+			escaped = false
+
+			continue
+		}
+
+		if before[i] == '\\' {
+			escaped = true
+
+			continue
+		}
+
+		switch before[i] {
+		case '"':
+			doubleQuoteCount++
+		case '\'':
+			singleQuoteCount++
+		}
+	}
+
+	return doubleQuoteCount%2 == 1 || singleQuoteCount%2 == 1
 }

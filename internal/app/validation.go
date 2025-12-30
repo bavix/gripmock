@@ -66,39 +66,6 @@ func hasValidOutputData(output stuber.Output) bool {
 	return output.Error != "" || output.Data != nil || output.Code != nil
 }
 
-// validateStubType validates stub based on its type (unary, client stream, server stream, bidirectional).
-func validateStubType(stub *stuber.Stub) error {
-	// Determine stub type based on input/output configuration
-	hasInput := hasValidInputData(stub.Input)
-	hasInputs := len(stub.Inputs) > 0
-	hasDataOutput := hasValidOutputData(stub.Output)
-	hasStreamOutput := len(stub.Output.Stream) > 0
-
-	// Determine stub type
-	switch {
-	case hasInput && hasDataOutput:
-		// Unary stub
-		return nil
-	case hasInputs && hasDataOutput:
-		// Client streaming stub
-		return nil
-	case hasInput && hasStreamOutput:
-		// Server streaming stub
-		return nil
-	case hasInputs && hasStreamOutput:
-		// Bidirectional streaming stub
-		return nil
-	default:
-		// If we can't determine the type, return an error
-		return &ValidationError{
-			Field:   "Stub",
-			Tag:     "invalid_type",
-			Value:   stub,
-			Message: "Invalid stub configuration: unable to determine stub type",
-		}
-	}
-}
-
 // getValidationMessage returns a user-friendly validation error message.
 func getValidationMessage(fieldError validator.FieldError) string {
 	switch fieldError.Tag() {

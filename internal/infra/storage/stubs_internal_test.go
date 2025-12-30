@@ -31,7 +31,7 @@ func createTestStorage(t *testing.T) *Extender {
 	t.Helper()
 
 	// Create mock dependencies
-	converter := yaml2json.New()
+	converter := yaml2json.New(nil)
 	watcher := &watcher.StubWatcher{}
 
 	// Create a real Budgerigar with features
@@ -54,10 +54,8 @@ func TestStubsStorage_Basic(t *testing.T) {
 func TestStubsStorage_Empty(t *testing.T) {
 	t.Parallel()
 
-	// Test that storage starts empty
 	storage := NewStub(nil, nil, nil)
 	require.NotNil(t, storage)
-	// Basic test to ensure storage can be created
 }
 
 func TestStubsStorage_Initialization(t *testing.T) {
@@ -122,7 +120,6 @@ func TestStubsStorage_MapOperations(t *testing.T) {
 	require.NotNil(t, storage.mapIDsByFile)
 	require.NotNil(t, storage.uniqueIDs)
 
-	// Test that maps are empty initially
 	require.Empty(t, storage.mapIDsByFile)
 	require.Empty(t, storage.uniqueIDs)
 }
@@ -852,8 +849,6 @@ func TestReadFromPath_WithFile(t *testing.T) {
 		storage.readFromPath(context.Background(), stubFile)
 
 		// Verify that the file was processed (no errors)
-		// Note: We can't easily test the actual stub loading without real dependencies
-		// but we can verify the function doesn't panic or return errors
 	})
 
 	t.Run("non-stub file", func(t *testing.T) {

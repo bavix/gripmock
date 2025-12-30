@@ -180,7 +180,6 @@ func (s *RestServerTestSuite) TestAddStub() {
 
 // TestDeleteStubByID tests stub deletion by ID.
 func (s *RestServerTestSuite) TestDeleteStubByID() {
-	// Add a stub first
 	stub := &stuber.Stub{
 		Service: "test.Service",
 		Method:  "TestMethod",
@@ -199,7 +198,6 @@ func (s *RestServerTestSuite) TestDeleteStubByID() {
 	s.Require().NotEmpty(stubs)
 	stubID := stubs[0].ID
 
-	// Delete the stub
 	w := httptest.NewRecorder()
 	s.server.DeleteStubByID(w, nil, stubID)
 
@@ -262,7 +260,6 @@ func (s *RestServerTestSuite) TestBatchStubsDelete() {
 
 // TestListStubs tests listing all stubs.
 func (s *RestServerTestSuite) TestListStubs() {
-	// Add a stub
 	stub := &stuber.Stub{
 		Service: "test.Service",
 		Method:  "TestMethod",
@@ -360,7 +357,6 @@ func (s *RestServerTestSuite) TestReadiness() {
 
 // TestPurgeStubs tests purging all stubs.
 func (s *RestServerTestSuite) TestPurgeStubs() {
-	// Add a stub
 	stub := &stuber.Stub{
 		Service: "test.Service",
 		Method:  "TestMethod",
@@ -391,7 +387,6 @@ func (s *RestServerTestSuite) TestPurgeStubs() {
 
 // TestSearchStubs tests stub search functionality.
 func (s *RestServerTestSuite) TestSearchStubs() {
-	// Add a stub
 	stub := &stuber.Stub{
 		Service: "test.Service",
 		Method:  "TestMethod",

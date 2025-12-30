@@ -11,28 +11,33 @@ import (
 
 	"github.com/bavix/gripmock/v3/internal/deps"
 	"github.com/bavix/gripmock/v3/internal/domain/proto"
+	"github.com/bavix/gripmock/v3/internal/infra/build"
 )
 
 var (
 	stubFlag    string   //nolint:gochecknoglobals
 	importsFlag []string //nolint:gochecknoglobals
-	version     = "development"
+	pluginsFlag []string //nolint:gochecknoglobals
 )
 
 var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 	Use:     "gripmock",
 	Short:   "gRPC Mock Server",
-	Version: version,
+	Version: build.Version,
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		builder := deps.NewBuilder(deps.WithDefaultConfig())
+		builder := deps.NewBuilder(
+			deps.WithDefaultConfig(),
+			deps.WithPlugins(pluginsFlag),
+		)
 		ctx, cancel := builder.SignalNotify(cmd.Context())
 		defer cancel()
 
 		ctx = builder.Logger(ctx)
+		builder.LoadPlugins(ctx)
 
 		zerolog.Ctx(ctx).Info().
-			Str("release", version).
+			Str("release", build.Version).
 			Msg("Starting GripMock")
 
 		go func() {
@@ -96,19 +101,25 @@ func restServe(ctx context.Context, builder *deps.Builder) error {
 }
 
 func init() { //nolint:gochecknoinits
-	rootCmd.Flags().StringVarP(
+	rootCmd.PersistentFlags().StringVarP(
 		&stubFlag,
 		"stub",
 		"s",
 		"",
 		"Path where the stub files are (Optional)")
 
-	rootCmd.Flags().StringSliceVarP(
+	rootCmd.PersistentFlags().StringSliceVarP(
 		&importsFlag,
 		"imports",
 		"i",
 		[]string{},
 		"Path to import proto-libraries")
+
+	rootCmd.PersistentFlags().StringSliceVar(
+		&pluginsFlag,
+		"plugins",
+		[]string{},
+		"Template plugin paths (.so)")
 }
 
 // Execute runs the root command with the given context.

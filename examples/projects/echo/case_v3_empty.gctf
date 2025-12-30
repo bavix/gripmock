@@ -1,0 +1,8 @@
+--- ENDPOINT ---
+com.bavix.echo.v3.EchoService/SendMessage
+
+--- REQUEST ---
+{"message":"error"}
+
+--- ERROR ---
+{"code": 7,"message": "Access denied"}
