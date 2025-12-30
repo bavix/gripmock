@@ -342,7 +342,7 @@ func TestHandleNonArrayStreamData_SendsMessages(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub)
+	err := mocker.handleNonArrayStreamData(stream, stub, time.Now())
 	require.NoError(t, err)
 	assert.Len(t, stream.sentMessages, 1)
 }
@@ -366,7 +366,7 @@ func TestHandleNonArrayStreamData_WithDelay(t *testing.T) {
 	}
 
 	start := time.Now()
-	err := mocker.handleNonArrayStreamData(stream, stub)
+	err := mocker.handleNonArrayStreamData(stream, stub, time.Now())
 	duration := time.Since(start)
 
 	require.NoError(t, err)
@@ -392,7 +392,7 @@ func TestHandleNonArrayStreamData_WithTemplates(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub)
+	err := mocker.handleNonArrayStreamData(stream, stub, time.Now())
 	require.NoError(t, err)
 	assert.Len(t, stream.sentMessages, 1)
 }
@@ -417,7 +417,7 @@ func TestHandleNonArrayStreamData_ContextCancelled(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub)
+	err := mocker.handleNonArrayStreamData(stream, stub, time.Now())
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.Canceled)
 }
@@ -440,7 +440,7 @@ func TestHandleNonArrayStreamData_WithError(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub)
+	err := mocker.handleNonArrayStreamData(stream, stub, time.Now())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "test error")
 }

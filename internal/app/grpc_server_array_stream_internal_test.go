@@ -112,7 +112,7 @@ func TestHandleArrayStreamData_SendsAllMessages(t *testing.T) {
 	// Create empty input message
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 
-	err := mocker.handleArrayStreamData(stream, stub, inputMsg)
+	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.NoError(t, err)
 	assert.Len(t, stream.sentMessages, 3)
 }
@@ -136,7 +136,7 @@ func TestHandleArrayStreamData_EmptyStream(t *testing.T) {
 	}
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	err := mocker.handleArrayStreamData(stream, stub, inputMsg)
+	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.NoError(t, err)
 	assert.Empty(t, stream.sentMessages)
 }
@@ -166,7 +166,7 @@ func TestHandleArrayStreamData_WithDelay(t *testing.T) {
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	start := time.Now()
-	err := mocker.handleArrayStreamData(stream, stub, inputMsg)
+	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	duration := time.Since(start)
 
 	require.NoError(t, err)
@@ -199,7 +199,7 @@ func TestHandleArrayStreamData_WithTemplates(t *testing.T) {
 	// Create empty input message (template will use empty request)
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 
-	err := mocker.handleArrayStreamData(stream, stub, inputMsg)
+	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.NoError(t, err)
 	assert.Len(t, stream.sentMessages, 2)
 
@@ -236,7 +236,7 @@ func TestHandleArrayStreamData_InvalidDataType(t *testing.T) {
 	}
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	err := mocker.handleArrayStreamData(stream, stub, inputMsg)
+	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.Error(t, err)
 
 	st, ok := status.FromError(err)
@@ -268,7 +268,7 @@ func TestHandleArrayStreamData_SendMsgError(t *testing.T) {
 	}
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	err := mocker.handleArrayStreamData(stream, stub, inputMsg)
+	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "send error")
 }
@@ -295,7 +295,7 @@ func TestHandleArrayStreamData_ContextCancelled(t *testing.T) {
 	}
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	err := mocker.handleArrayStreamData(stream, stub, inputMsg)
+	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.Error(t, err)
 	assert.Equal(t, context.Canceled, err)
 }
@@ -323,7 +323,7 @@ func TestHandleArrayStreamData_MessageIndexInTemplates(t *testing.T) {
 	}
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	err := mocker.handleArrayStreamData(stream, stub, inputMsg)
+	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.NoError(t, err)
 	assert.Len(t, stream.sentMessages, 3)
 
@@ -357,7 +357,7 @@ func TestHandleArrayStreamData_WithHeaders(t *testing.T) {
 	}
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	err := mocker.handleArrayStreamData(stream, stub, inputMsg)
+	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.NoError(t, err)
 	assert.Len(t, stream.sentMessages, 1)
 
@@ -388,7 +388,7 @@ func TestHandleArrayStreamData_EOFError(t *testing.T) {
 	}
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	err := mocker.handleArrayStreamData(stream, stub, inputMsg)
+	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to send response")
 }

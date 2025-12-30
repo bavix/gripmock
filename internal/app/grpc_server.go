@@ -66,7 +66,6 @@ func processHeaders(md metadata.MD) map[string]any {
 	return headers
 }
 
-// sendStreamMessage sends a message on a gRPC stream with error handling.
 func sendStreamMessage(stream grpc.ServerStream, msg *dynamicpb.Message) error {
 	if err := stream.SendMsg(msg); err != nil {
 		return errors.Wrap(err, "failed to send response")
@@ -75,7 +74,6 @@ func sendStreamMessage(stream grpc.ServerStream, msg *dynamicpb.Message) error {
 	return nil
 }
 
-// receiveStreamMessage receives a message from a gRPC stream with error handling.
 func receiveStreamMessage(stream grpc.ServerStream, msg *dynamicpb.Message) error {
 	err := stream.RecvMsg(msg)
 	if err != nil {
@@ -152,7 +150,6 @@ func (m *grpcMocker) newQuery(ctx context.Context, msg *dynamicpb.Message) stube
 	return query
 }
 
-// newQueryV2 creates a new V2 query for improved performance.
 func (m *grpcMocker) newQueryV2(ctx context.Context, msg *dynamicpb.Message) stuber.QueryV2 {
 	query := stuber.QueryV2{
 		Service: m.fullServiceName,
@@ -168,7 +165,6 @@ func (m *grpcMocker) newQueryV2(ctx context.Context, msg *dynamicpb.Message) stu
 	return query
 }
 
-// newQueryBidi creates a new bidirectional streaming query.
 func (m *grpcMocker) newQueryBidi(ctx context.Context) stuber.QueryBidi {
 	query := stuber.QueryBidi{
 		Service: m.fullServiceName,
@@ -326,6 +322,8 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		return errors.Wrap(err, "failed to receive message")
 	}
 
+	requestTime := time.Now()
+
 	query := m.newQuery(stream.Context(), inputMsg)
 
 	result, err := m.budgerigar.FindByQuery(query)
@@ -349,14 +347,12 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		}
 	}
 
-	// For server streaming, if Stream is not empty, send it first, then throw error if specified
 	if found.IsServerStream() {
 		if len(found.Output.Stream) > 0 {
-			if err := m.handleArrayStreamData(stream, found, inputMsg); err != nil {
+			if err := m.handleArrayStreamData(stream, found, inputMsg, requestTime); err != nil {
 				return err
 			}
 
-			// After sending the stream, if output.error is set, return it now
 			if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
 				return err
 			}
@@ -364,21 +360,17 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 			return nil
 		}
 
-		// If stream is empty and error is specified, return it immediately
 		if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
 			return err
 		}
 	}
 
-	// Fallback to Data for single message streaming
-	return m.handleNonArrayStreamData(stream, found)
+	return m.handleNonArrayStreamData(stream, found, requestTime)
 }
 
-func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stuber.Stub, inputMsg *dynamicpb.Message) error {
-	// Store context done channel outside the loop for clarity; context.Done() is already cached
+func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stuber.Stub, inputMsg *dynamicpb.Message, requestTime time.Time) error {
 	done := stream.Context().Done()
 
-	// Send all messages, validating each element incrementally
 	for i, streamData := range found.Output.Stream {
 		select {
 		case <-done:
@@ -386,7 +378,6 @@ func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stub
 		default:
 		}
 
-		// Validate type of each streamData just before sending
 		outputData, ok := streamData.(map[string]any)
 		if !ok {
 			return status.Errorf(
@@ -396,10 +387,8 @@ func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stub
 			)
 		}
 
-		// Apply delay before sending each message
 		m.delay(stream.Context(), found.Output.Delay)
 
-		// Process templates in stream data at runtime
 		outputDataCopy := deepCopyMapAny(outputData)
 		requestData := convertToMap(inputMsg)
 
@@ -412,7 +401,7 @@ func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stub
 			Request:      requestData,
 			Headers:      headers,
 			MessageIndex: i,
-			RequestTime:  time.Now(),
+			RequestTime:  requestTime,
 			Timestamp:    time.Now(),
 			State:        make(map[string]any),
 			Requests:     []any{requestData},
@@ -437,7 +426,7 @@ func (m *grpcMocker) handleArrayStreamData(stream grpc.ServerStream, found *stub
 }
 
 //nolint:cyclop
-func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *stuber.Stub) error {
+func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *stuber.Stub, initialRequestTime time.Time) error {
 	if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil {
 		return err
 	}
@@ -453,11 +442,11 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 
 		m.delay(stream.Context(), found.Output.Delay)
 
-		// Process templates in output at runtime
 		outputDataCopy := deepCopyMapAny(found.Output.Data)
 
 		inputMsg := dynamicpb.NewMessage(m.inputDesc)
 		if err := stream.RecvMsg(inputMsg); err == nil {
+			requestTime := time.Now()
 			requestData := convertToMap(inputMsg)
 
 			headers := make(map[string]any)
@@ -469,7 +458,7 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 				Request:      requestData,
 				Headers:      headers,
 				MessageIndex: 0,
-				RequestTime:  time.Now(),
+				RequestTime:  requestTime,
 				Timestamp:    time.Now(),
 				State:        make(map[string]any),
 				Requests:     []any{requestData},
@@ -490,9 +479,6 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 			return err //nolint:wrapcheck
 		}
 
-		// In server streaming, do not receive further messages from the client after the initial request.
-		// The server should only send messages to the client.
-		// Check for EOF to determine if client has closed the stream
 		if err := stream.RecvMsg(nil); err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil
@@ -545,6 +531,8 @@ func (m *grpcMocker) unaryHandler() grpc.MethodHandler {
 
 //nolint:cyclop,funlen
 func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*dynamicpb.Message, error) {
+	requestTime := time.Now()
+
 	queryV2 := m.newQueryV2(ctx, req)
 
 	result, err := m.budgerigar.FindByQueryV2(queryV2)
@@ -584,7 +572,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		Request:      requestData,
 		Headers:      headers,
 		MessageIndex: 0,
-		RequestTime:  time.Now(),
+		RequestTime:  requestTime,
 		Timestamp:    time.Now(),
 		State:        make(map[string]any),
 		Requests:     []any{requestData},
@@ -611,7 +599,6 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		outputToUse.Headers = headersCopy
 	}
 
-	// Process error template
 	if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
 		errorStr, err := m.templateEngine.ProcessError(outputToUse.Error, templateData)
 		if err != nil {
@@ -621,7 +608,6 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		outputToUse.Error = errorStr
 	}
 
-	// Always send headers first (both for success and error cases)
 	if err := m.setResponseHeadersAny(ctx, nil, outputToUse.Headers); err != nil {
 		return nil, err //nolint:wrapcheck
 	}
@@ -638,7 +624,6 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 	return outputMsg, nil
 }
 
-// buildResponseMetadata builds gRPC metadata from headers map.
 func buildResponseMetadata(headers map[string]string) (metadata.MD, bool) {
 	if len(headers) == 0 {
 		return nil, false
@@ -652,7 +637,6 @@ func buildResponseMetadata(headers map[string]string) (metadata.MD, bool) {
 	return mdResp, true
 }
 
-// setResponseHeadersAny sets headers for success responses.
 func (m *grpcMocker) setResponseHeadersAny(ctx context.Context, stream grpc.ServerStream, headers map[string]string) error {
 	mdResp, ok := buildResponseMetadata(headers)
 	if !ok {
@@ -680,7 +664,6 @@ func (m *grpcMocker) handleOutputError(_ context.Context, _ grpc.ServerStream, o
 	return nil
 }
 
-// tryV2API attempts to find a stub using V2 API.
 func (m *grpcMocker) tryV2API(messages []map[string]any, md metadata.MD) (*stuber.Result, error) {
 	queryV2 := stuber.QueryV2{
 		Service: m.fullServiceName,
@@ -688,7 +671,6 @@ func (m *grpcMocker) tryV2API(messages []map[string]any, md metadata.MD) (*stube
 		Input:   messages,
 	}
 
-	// Add headers to V2 query
 	if len(md) > 0 {
 		queryV2.Headers = processHeaders(md)
 	}
@@ -696,9 +678,7 @@ func (m *grpcMocker) tryV2API(messages []map[string]any, md metadata.MD) (*stube
 	return m.budgerigar.FindByQueryV2(queryV2)
 }
 
-// tryV1APIFallback attempts to find a stub using V1 API as fallback.
 func (m *grpcMocker) tryV1APIFallback(messages []map[string]any, md metadata.MD) (*stuber.Result, error) {
-	// Try each message individually (from last to first for better matching) using V1 API
 	for i := len(messages) - 1; i >= 0; i-- {
 		message := messages[i]
 
@@ -708,7 +688,6 @@ func (m *grpcMocker) tryV1APIFallback(messages []map[string]any, md metadata.MD)
 			Data:    message,
 		}
 
-		// Add headers to V1 query
 		if len(md) > 0 {
 			query.Headers = processHeaders(md)
 		}
@@ -723,23 +702,21 @@ func (m *grpcMocker) tryV1APIFallback(messages []map[string]any, md metadata.MD)
 }
 
 func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
-	// Collect all messages from client
+	requestTime := time.Now()
+
 	messages, err := m.collectClientMessages(stream)
 	if err != nil {
 		return err
 	}
 
-	// Try to find stub
 	found, err := m.tryFindStub(stream, messages)
 	if err != nil {
 		return err
 	}
 
-	// Send response
-	return m.sendClientStreamResponse(stream, found, messages)
+	return m.sendClientStreamResponse(stream, found, messages, requestTime)
 }
 
-// collectClientMessages collects all messages from the client stream.
 func (m *grpcMocker) collectClientMessages(stream grpc.ServerStream) ([]map[string]any, error) {
 	var messages []map[string]any
 
@@ -761,21 +738,16 @@ func (m *grpcMocker) collectClientMessages(stream grpc.ServerStream) ([]map[stri
 	return messages, nil
 }
 
-// tryFindStub attempts to find a matching stub using V2 API first, then falls back to V1 API.
 func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string]any) (*stuber.Stub, error) {
-	// Add headers
 	md, _ := metadata.FromIncomingContext(stream.Context())
 
-	// Try V2 API first
 	result, foundErr := m.tryV2API(messages, md)
 
-	// If V2 API fails, try V1 API for backward compatibility
 	if foundErr != nil || result == nil || result.Found() == nil {
 		result, foundErr = m.tryV1APIFallback(messages, md)
 	}
 
 	if foundErr != nil || result == nil || result.Found() == nil {
-		// Return an error message with service and method context to aid debugging
 		errorMsg := fmt.Sprintf("Failed to find response for client stream (service: %s, method: %s)", m.serviceName, m.methodName)
 		if foundErr != nil {
 			errorMsg += fmt.Sprintf(" - Error: %v", foundErr)
@@ -792,14 +764,9 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 	return found, nil
 }
 
-// sendClientStreamResponse sends the response for client streaming.
-//
-
-func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *stuber.Stub, messages []map[string]any) error {
+func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *stuber.Stub, messages []map[string]any, requestTime time.Time) error {
 	m.delay(stream.Context(), found.Output.Delay)
 
-	// Handle headers
-	// If the output specifies an error, return it instead of sending a message
 	if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
 		return err
 	}
@@ -824,7 +791,7 @@ func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *s
 		Request:      nil,
 		Headers:      headers,
 		MessageIndex: 0,
-		RequestTime:  time.Now(),
+		RequestTime:  requestTime,
 		Timestamp:    time.Now(),
 		State:        make(map[string]any),
 		Requests:     requestsAny,
@@ -845,7 +812,6 @@ func (m *grpcMocker) sendClientStreamResponse(stream grpc.ServerStream, found *s
 
 //nolint:cyclop,funlen,gocognit
 func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
-	// Initialize bidirectional streaming session
 	queryBidi := m.newQueryBidi(stream.Context())
 
 	bidiResult, err := m.budgerigar.FindByQueryBidi(queryBidi)
@@ -865,7 +831,8 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			return err //nolint:wrapcheck
 		}
 
-		// Process message through bidirectional streaming
+		requestTime := time.Now()
+
 		stub, err := bidiResult.Next(convertToMap(inputMsg))
 		if err != nil {
 			return errors.Wrap(err, "failed to process bidirectional message")
@@ -873,24 +840,20 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 
 		m.delay(stream.Context(), stub.Output.Delay)
 
-		// Process templates in output at runtime
 		requestData := convertToMap(inputMsg)
 
 		headers := make(map[string]any)
 		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
 			headers = processHeaders(md)
 		}
-		// Get all requests from bidiResult
-		requestsAny := make([]any, 0)
-		// For bidi streaming, we track requests internally
-		// Use current request and previous requests if available
-		requestsAny = append(requestsAny, requestData)
+
+		requestsAny := []any{requestData}
 
 		templateData := template.Data{
 			Request:      requestData,
 			Headers:      headers,
 			MessageIndex: bidiResult.GetMessageIndex(),
-			RequestTime:  time.Now(),
+			RequestTime:  requestTime,
 			Timestamp:    time.Now(),
 			State:        make(map[string]any),
 			Requests:     requestsAny,
@@ -898,13 +861,11 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			RequestID:    stub.ID.String(),
 		}
 
-		// Deep copy output to avoid mutating the stub
 		outputDataCopy := deepCopyMapAny(stub.Output.Data)
 		if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
 			return errors.Wrap(err, "failed to process dynamic templates")
 		}
 
-		// Process headers templates
 		headersCopy := deepCopyStringMap(stub.Output.Headers)
 		if template.HasTemplatesInHeaders(headersCopy) {
 			if err := m.templateEngine.ProcessHeaders(headersCopy, templateData); err != nil {
@@ -912,7 +873,6 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			}
 		}
 
-		// Process stream templates
 		streamCopy := make([]any, len(stub.Output.Stream))
 		for i, item := range stub.Output.Stream {
 			if itemMap, ok := item.(map[string]any); ok {
@@ -935,7 +895,6 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			Delay:   stub.Output.Delay,
 		}
 
-		// Process error template
 		if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
 			errorStr, err := m.templateEngine.ProcessError(outputToUse.Error, templateData)
 			if err != nil {
@@ -945,20 +904,17 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			outputToUse.Error = errorStr
 		}
 
-		// Send headers only once at the beginning of the stream
 		if bidiResult.GetMessageIndex() == 0 {
 			if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
 				return errors.Wrap(err, "failed to set headers")
 			}
 		}
 
-		// If the output specifies an error, return it instead of sending a message
 		if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil { //nolint:wrapcheck
 			return err
 		}
 
-		// Send response(s) based on output configuration
-		if err := m.sendBidiResponses(stream, outputToUse, stub, bidiResult.GetMessageIndex()); err != nil {
+		if err := m.sendBidiResponses(stream, outputToUse, stub, bidiResult.GetMessageIndex(), requestTime); err != nil {
 			return err
 		}
 	}
@@ -1016,7 +972,6 @@ func (s *GRPCServer) setupHealthCheck(server *grpc.Server) {
 	healthgrpc.RegisterHealthServer(server, healthcheck)
 	reflection.Register(server)
 
-	// Store healthcheck server for later status updates
 	s.healthcheck = healthcheck
 }
 
@@ -1056,8 +1011,7 @@ func (s *GRPCServer) registerServiceMethods(ctx context.Context, serviceDesc *gr
 			logger.Fatal().Err(err).Msg("Failed to get output message descriptor")
 		}
 
-		//nolint:contextcheck
-		m := s.createGrpcMocker(serviceDesc, svc, method, inputDesc, outputDesc)
+		m := s.createGrpcMocker(ctx, serviceDesc, svc, method, inputDesc, outputDesc)
 
 		if method.GetServerStreaming() || method.GetClientStreaming() {
 			serviceDesc.Streams = append(serviceDesc.Streams, grpc.StreamDesc{
@@ -1076,12 +1030,13 @@ func (s *GRPCServer) registerServiceMethods(ctx context.Context, serviceDesc *gr
 }
 
 func (s *GRPCServer) createGrpcMocker(
+	ctx context.Context,
 	serviceDesc *grpc.ServiceDesc,
 	svc *descriptorpb.ServiceDescriptorProto,
 	method *descriptorpb.MethodDescriptorProto,
 	inputDesc, outputDesc protoreflect.MessageDescriptor,
 ) *grpcMocker {
-	templateEngine := template.New(context.Background(), nil)
+	templateEngine := template.New(ctx, nil)
 
 	return &grpcMocker{
 		budgerigar:     s.budgerigar,
@@ -1124,9 +1079,6 @@ func (s *GRPCServer) startHealthCheckRoutine(ctx context.Context) {
 	}()
 }
 
-// getServiceName constructs the fully qualified service name by combining the package name
-// and the service name. If the package name is empty, it returns only the service name,
-// avoiding a leading dot in the result.
 func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.ServiceDescriptorProto) string {
 	if file.GetPackage() != "" {
 		return fmt.Sprintf("%s.%s", file.GetPackage(), svc.GetName())
@@ -1252,7 +1204,6 @@ func protoToJSON(msg any) []byte {
 		return nil
 	}
 
-	// Use more robust marshalling options for better JSON output
 	marshaller := protojson.MarshalOptions{
 		EmitUnpopulated: false,
 		UseProtoNames:   true,
@@ -1294,7 +1245,6 @@ func toLogArray(items ...any) *zerolog.Array {
 		if value := protoToJSON(item); value != nil {
 			arr = arr.RawJSON(value)
 		} else {
-			// Fallback to string representation for non-proto messages
 			arr = arr.Str(fmt.Sprintf("%v", item))
 		}
 	}
@@ -1310,7 +1260,6 @@ type loggingStream struct {
 }
 
 func (s *loggingStream) SendMsg(m any) error {
-	// Only log non-nil messages
 	if m != nil && !isNilInterface(m) {
 		s.responses = append(s.responses, m)
 	}
@@ -1319,7 +1268,6 @@ func (s *loggingStream) SendMsg(m any) error {
 }
 
 func (s *loggingStream) RecvMsg(m any) error {
-	// Only log non-nil messages
 	if m != nil && !isNilInterface(m) {
 		s.requests = append(s.requests, m)
 	}
@@ -1327,17 +1275,11 @@ func (s *loggingStream) RecvMsg(m any) error {
 	return s.ServerStream.RecvMsg(m)
 }
 
-// sendBidiResponses sends response(s) for bidirectional streaming.
-//
-
-func (m *grpcMocker) sendBidiResponses(stream grpc.ServerStream, output stuber.Output, stub *stuber.Stub, messageIndex int) error {
-	// For bidirectional streaming, send all elements from Stream if available.
+func (m *grpcMocker) sendBidiResponses(stream grpc.ServerStream, output stuber.Output, stub *stuber.Stub, messageIndex int, requestTime time.Time) error {
 	if len(output.Stream) > 0 {
-		return m.sendStreamResponses(stream, output, stub, messageIndex)
+		return m.sendStreamResponses(stream, output, stub, messageIndex, requestTime)
 	}
 
-	// Fallback to Data if no Stream available.
-	// Process templates in output data at runtime
 	outputDataCopy := deepCopyMapAny(output.Data)
 
 	headers := make(map[string]any)
@@ -1349,7 +1291,7 @@ func (m *grpcMocker) sendBidiResponses(stream grpc.ServerStream, output stuber.O
 		Request:      nil,
 		Headers:      headers,
 		MessageIndex: messageIndex,
-		RequestTime:  time.Now(),
+		RequestTime:  requestTime,
 		Timestamp:    time.Now(),
 		State:        make(map[string]any),
 		Requests:     []any{},
@@ -1369,11 +1311,8 @@ func (m *grpcMocker) sendBidiResponses(stream grpc.ServerStream, output stuber.O
 }
 
 //nolint:cyclop,funlen,nestif
-func (m *grpcMocker) sendStreamResponses(stream grpc.ServerStream, output stuber.Output, stub *stuber.Stub, messageIndex int) error {
-	// For stubs with Inputs (multiple input messages), send one response per input message
+func (m *grpcMocker) sendStreamResponses(stream grpc.ServerStream, output stuber.Output, stub *stuber.Stub, messageIndex int, requestTime time.Time) error {
 	if stub.IsClientStream() {
-		// If only one element is provided in the stream, treat it as a template to be used for every message
-		// The MessageIndex is already applied in handleBidiStream during template processing
 		var idx int
 
 		if len(output.Stream) == 0 {
@@ -1406,7 +1345,7 @@ func (m *grpcMocker) sendStreamResponses(stream grpc.ServerStream, output stuber
 			Request:      nil,
 			Headers:      headers,
 			MessageIndex: messageIndex,
-			RequestTime:  time.Now(),
+			RequestTime:  requestTime,
 			Timestamp:    time.Now(),
 			State:        make(map[string]any),
 			Requests:     []any{},
@@ -1425,7 +1364,6 @@ func (m *grpcMocker) sendStreamResponses(stream grpc.ServerStream, output stuber
 		return sendStreamMessage(stream, outputMsg)
 	}
 
-	// For stubs with Input (single input message), send all elements from the stream array
 	for _, streamElement := range output.Stream {
 		if streamData, ok := streamElement.(map[string]any); ok {
 			outputMsg, err := m.newOutputMessage(streamData)
