@@ -36,7 +36,7 @@ type Method struct {
 
 // SearchRequest defines model for SearchRequest.
 type SearchRequest struct {
-	Data    any       `json:"data"`
+	Data    any               `json:"data"`
 	Headers map[string]string `json:"headers,omitempty"`
 	Id      *ID               `json:"id,omitempty"`
 	Method  string            `json:"method"`
@@ -46,7 +46,7 @@ type SearchRequest struct {
 // SearchResponse defines model for SearchResponse.
 type SearchResponse struct {
 	Code    codes.Code        `json:"code,omitempty"`
-	Data    any       `json:"data"`
+	Data    any               `json:"data"`
 	Error   string            `json:"error"`
 	Headers map[string]string `json:"headers,omitempty"`
 }
@@ -86,7 +86,7 @@ type StubHeaders struct {
 type StubInput struct {
 	Contains         map[string]any `json:"contains,omitempty"`
 	Equals           map[string]any `json:"equals,omitempty"`
-	IgnoreArrayOrder bool                   `json:"ignoreArrayOrder,omitempty"`
+	IgnoreArrayOrder bool           `json:"ignoreArrayOrder,omitempty"`
 	Matches          map[string]any `json:"matches,omitempty"`
 }
 
@@ -95,14 +95,14 @@ type StubList = []Stub
 
 // StubOutput defines model for StubOutput.
 type StubOutput struct {
-	Code codes.Code             `json:"code,omitempty"`
+	Code codes.Code     `json:"code,omitempty"`
 	Data map[string]any `json:"data,omitempty"`
 
 	// Delay Delay before sending the response
-	Delay   gptypes.Duration         `json:"delay,omitempty,omitzero"`
-	Error   string                   `json:"error,omitempty"`
-	Headers map[string]string        `json:"headers,omitempty"`
-	Stream  []map[string]any `json:"stream,omitempty"`
+	Delay   gptypes.Duration  `json:"delay,omitempty,omitzero"`
+	Error   string            `json:"error,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Stream  []map[string]any  `json:"stream,omitempty"`
 }
 
 // AddStubJSONBody defines parameters for AddStub.
