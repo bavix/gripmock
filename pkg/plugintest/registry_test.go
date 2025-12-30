@@ -49,11 +49,11 @@ func TestRegistry_AddPluginAndLookup(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "ok", outEcho)
 
-	pluginsMeta := reg.Plugins()
+	pluginsMeta := reg.Plugins(context.Background())
 	require.Len(t, pluginsMeta, 1)
 	require.Equal(t, "p1", pluginsMeta[0].Name)
 
-	groups := reg.Groups()
+	groups := reg.Groups(context.Background())
 	require.Len(t, groups, 1)
 	require.Len(t, groups[0].Funcs, 2)
 }

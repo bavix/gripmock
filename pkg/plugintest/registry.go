@@ -20,7 +20,6 @@ type TestRegistry struct {
 	plugins     []plugins.PluginInfo
 	pluginFuncs map[string][]plugins.FunctionInfo
 	pluginDeps  map[string][]string
-	logCtx      context.Context
 }
 
 // NewRegistry creates an empty TestRegistry with no preloaded plugins.
@@ -30,7 +29,6 @@ func NewRegistry() *TestRegistry {
 		funcOwner:   make(map[string]string),
 		pluginFuncs: make(map[string][]plugins.FunctionInfo),
 		pluginDeps:  make(map[string][]string),
-		logCtx:      context.Background(),
 	}
 }
 
@@ -182,16 +180,7 @@ func (r *TestRegistry) addDepend(pluginName, depend string) {
 }
 
 func (r *TestRegistry) warnDuplicate(name, plugin, existing string) {
-	logger := zerolog.Ctx(r.logCtx)
-	if logger == nil {
-		return
-	}
-
-	logger.Warn().
-		Str("plugin", plugin).
-		Str("function", name).
-		Str("owner", existing).
-		Msg("function ignored (implicit override); use Decorates=@owner/function to decorate explicitly")
+	// Test registry doesn't log warnings
 }
 
 // Funcs implements Registry.Funcs and returns a copy safe for mutation in tests.
@@ -205,10 +194,10 @@ func (r *TestRegistry) Funcs() map[string]any {
 }
 
 // Plugins returns shallow-copied plugin metadata for assertions.
-func (r *TestRegistry) Plugins() []plugins.PluginInfo {
+func (r *TestRegistry) Plugins(ctx context.Context) []plugins.PluginInfo {
 	order, skipped := r.sortedPluginOrder()
 	if len(skipped) > 0 {
-		logger := zerolog.Ctx(r.logCtx)
+		logger := zerolog.Ctx(ctx)
 		if logger != nil {
 			logger.Warn().Strs("plugins", skipped).Msg("plugin dependency cycle detected; skipping")
 		}
@@ -227,10 +216,10 @@ func (r *TestRegistry) Plugins() []plugins.PluginInfo {
 }
 
 // Groups returns plugin info alongside functions to support info-oriented tests.
-func (r *TestRegistry) Groups() []plugins.PluginWithFuncs {
+func (r *TestRegistry) Groups(ctx context.Context) []plugins.PluginWithFuncs {
 	order, skipped := r.sortedPluginOrder()
 	if len(skipped) > 0 {
-		logger := zerolog.Ctx(r.logCtx)
+		logger := zerolog.Ctx(ctx)
 		if logger != nil {
 			logger.Warn().Strs("plugins", skipped).Msg("plugin dependency cycle detected; skipping")
 		}

@@ -150,7 +150,7 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithoutRequestInternalHeader() {
 
 	searchReq := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
 	searchReq.Header.Set("Content-Type", "application/json")
-	// NOTE: No X-Gripmock-Requestinternal header
+
 	searchW := httptest.NewRecorder()
 
 	s.server.SearchStubs(searchW, searchReq)

@@ -1141,8 +1141,6 @@ func (s *searcher) fastMatchV2(query QueryV2, stub *Stub) bool {
 
 	// Handle Input (legacy) - since Inputs is empty, Input must be present
 	// Check if stub has any input matching conditions
-	// Note: Empty maps (Equals: {}, Contains: {}, Matches: {}) are valid conditions
-	// that can handle empty queries
 	if stub.Input.Equals == nil && stub.Input.Contains == nil && stub.Input.Matches == nil {
 		return false // Stub has no input matching conditions
 	}
@@ -1223,8 +1221,6 @@ func (s *searcher) fastMatchInput(queryData map[string]any, stubInput InputData)
 //nolint:cyclop
 func (s *searcher) fastMatchStream(queryStream []map[string]any, stubStream []InputData) bool {
 	// Check if stub has any input matching conditions
-	// Note: Empty maps (Equals: {}, Contains: {}, Matches: {}) are valid conditions
-	// that can handle empty queries
 	hasConditions := false
 
 	for _, stubElement := range stubStream {

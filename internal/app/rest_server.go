@@ -379,10 +379,5 @@ func validateStub(stub *stuber.Stub) error {
 		return err
 	}
 
-	// Additional validation based on stub type
-	if err := validateStubType(stub); err != nil {
-		return err
-	}
-
 	return nil
 }

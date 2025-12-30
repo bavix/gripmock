@@ -849,8 +849,6 @@ func TestReadFromPath_WithFile(t *testing.T) {
 		storage.readFromPath(context.Background(), stubFile)
 
 		// Verify that the file was processed (no errors)
-		// Note: We can't easily test the actual stub loading without real dependencies
-		// but we can verify the function doesn't panic or return errors
 	})
 
 	t.Run("non-stub file", func(t *testing.T) {

@@ -369,6 +369,7 @@ func (s *storage) posByPN(left, right string) ([]uint64, error) {
 // Returns:
 // - Value: The Stub value associated with the given UUID, or nil if not found.
 //
+
 //nolint:ireturn
 func (s *storage) findByID(key uuid.UUID) Value {
 	s.mu.RLock()

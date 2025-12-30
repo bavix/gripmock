@@ -1,7 +1,6 @@
 package stuber_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/bavix/features"
@@ -69,7 +68,7 @@ func TestMatchData(t *testing.T) {
 			budgerigar := stuber.NewBudgerigar(features.New())
 			budgerigar.PutMany(stub)
 
-			result, err := budgerigar.FindByQuery(context.Background(), query)
+			result, err := budgerigar.FindByQuery(query)
 			if err != nil {
 				if tt.expected {
 					t.Errorf("Expected match but got error: %v", err)
@@ -106,7 +105,7 @@ func TestMatchWithData(t *testing.T) {
 	budgerigar := stuber.NewBudgerigar(features.New())
 	budgerigar.PutMany(stub)
 
-	result, err := budgerigar.FindByQuery(context.Background(), query)
+	result, err := budgerigar.FindByQuery(query)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -121,7 +120,7 @@ func TestMatchWithData(t *testing.T) {
 		Data:    map[string]any{"name": "John", "age": 25}, // Different age
 	}
 
-	result, err = budgerigar.FindByQuery(context.Background(), nonMatchingQuery)
+	result, err = budgerigar.FindByQuery(nonMatchingQuery)
 	if err != nil {
 		return
 	}
@@ -151,7 +150,7 @@ func TestBackwardCompatibility(t *testing.T) {
 	budgerigar := stuber.NewBudgerigar(features.New())
 	budgerigar.PutMany(stub)
 
-	result, err := budgerigar.FindByQuery(context.Background(), query)
+	result, err := budgerigar.FindByQuery(query)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}

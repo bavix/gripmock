@@ -24,7 +24,6 @@ type Registry struct {
 	pluginDeps  map[string][]string
 
 	forceSource string
-	logCtx      context.Context
 }
 
 type Option func(*Registry)
@@ -32,12 +31,6 @@ type Option func(*Registry)
 func WithForceSource(src string) Option {
 	return func(r *Registry) {
 		r.forceSource = src
-	}
-}
-
-func WithContext(ctx context.Context) Option {
-	return func(r *Registry) {
-		r.logCtx = ctx
 	}
 }
 
@@ -83,13 +76,13 @@ func (r *Registry) Funcs() map[string]any {
 	return copyMap
 }
 
-func (r *Registry) Plugins() []pkgplugins.PluginInfo {
+func (r *Registry) Plugins(ctx context.Context) []pkgplugins.PluginInfo {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	order, skipped := r.sortedPluginOrder()
 	if len(skipped) > 0 {
-		if logger := zerolog.Ctx(r.logCtx); logger != nil {
+		if logger := zerolog.Ctx(ctx); logger != nil {
 			logger.Warn().Strs("plugins", skipped).Msg("plugin dependency cycle detected; skipping")
 		}
 	}
@@ -107,13 +100,13 @@ func (r *Registry) Plugins() []pkgplugins.PluginInfo {
 	return result
 }
 
-func (r *Registry) Groups() []pkgplugins.PluginWithFuncs {
+func (r *Registry) Groups(ctx context.Context) []pkgplugins.PluginWithFuncs {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	order, skipped := r.sortedPluginOrder()
 	if len(skipped) > 0 {
-		if logger := zerolog.Ctx(r.logCtx); logger != nil {
+		if logger := zerolog.Ctx(ctx); logger != nil {
 			logger.Warn().Strs("plugins", skipped).Msg("plugin dependency cycle detected; skipping")
 		}
 	}
@@ -144,6 +137,7 @@ func (r *Registry) Hooks(group string) []pkgplugins.Func {
 	}
 
 	funcs := make([]pkgplugins.Func, 0)
+
 	for _, infoList := range r.pluginFuncs {
 		for _, f := range infoList {
 			if f.Group != group {
@@ -208,7 +202,7 @@ func (r *Registry) addSpec(info pkgplugins.PluginInfo, spec pkgplugins.FuncSpec)
 	}
 
 	if prev, ok := r.funcOwner[name]; ok && spec.Decorates == "" {
-		r.warnDuplicate(name, info.Name, prev)
+		r.warnDuplicate(context.Background(), name, info.Name, prev)
 
 		infoEntry.Deactivated = true
 		infoEntry.Decorates = ""
@@ -238,10 +232,7 @@ func (r *Registry) addSpec(info pkgplugins.PluginInfo, spec pkgplugins.FuncSpec)
 	r.funcOwner[name] = info.Name
 }
 
-// Groups method defined above
-
 func (r *Registry) applyDecorator(target string, spec pkgplugins.FuncSpec) pkgplugins.Func {
-	// When Decorates is set, Fn is treated as a decorator.
 	if spec.Decorates != "" {
 		dec := wrapDecorator(spec.Fn)
 		if dec == nil {
@@ -376,8 +367,8 @@ func (r *Registry) collectCycles(registered map[string]struct{}, indegree map[st
 	return skipped
 }
 
-func (r *Registry) warnDuplicate(name, plugin, existing string) {
-	logger := zerolog.Ctx(r.logCtx)
+func (r *Registry) warnDuplicate(ctx context.Context, name, plugin, existing string) {
+	logger := zerolog.Ctx(ctx)
 	if logger == nil {
 		return
 	}

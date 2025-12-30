@@ -29,7 +29,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		b.config.GRPCAddr,
 		param,
 		b.Budgerigar(),
-		b.Extender(),
+		b.Extender(ctx),
 	)
 
 	server, err := grpcServer.Build(ctx)

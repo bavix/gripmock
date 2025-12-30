@@ -32,7 +32,6 @@ const minJSONLength = 2
 //	var result []map[string]string
 //	err := UnmarshalSlice(data, &result)
 //	// result is now [{"name": "Bob"}]
-//	// NOTE: if the input data is not a JSON array, it is wrapped in an array before decoding
 func UnmarshalSlice(data []byte, v any) error {
 	input := bytes.TrimSpace(data)
 

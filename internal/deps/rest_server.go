@@ -19,7 +19,7 @@ func (b *Builder) RestServe(
 	ctx context.Context,
 	stubPath string,
 ) (*http.Server, error) {
-	extender := b.Extender()
+	extender := b.Extender(ctx)
 	go extender.ReadFromPath(ctx, stubPath)
 
 	apiServer, err := app.NewRestServer(ctx, b.Budgerigar(), extender)

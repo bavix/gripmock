@@ -35,6 +35,7 @@ func (l *Loader) WithGlob(glob string) *Loader {
 	return l
 }
 
+//nolint:cyclop
 func (l *Loader) Load(ctx context.Context, reg pkgplugins.Registry) {
 	logger := zerolog.Ctx(ctx)
 
@@ -89,7 +90,7 @@ func (l *Loader) Load(ctx context.Context, reg pkgplugins.Registry) {
 			logger.Warn().Str("path", p).Msg("plugin register symbol has unsupported signature")
 		}
 
-		if !existsPlugin(reg, info.Name) {
+		if !existsPlugin(ctx, reg, info.Name) {
 			reg.AddPlugin(info, nil)
 		}
 	}
@@ -122,8 +123,8 @@ func (l *Loader) expandPaths() []string {
 	return paths
 }
 
-func existsPlugin(reg pkgplugins.Registry, name string) bool {
-	for _, info := range reg.Plugins() {
+func existsPlugin(ctx context.Context, reg pkgplugins.Registry, name string) bool {
+	for _, info := range reg.Plugins(ctx) {
 		if info.Name == name {
 			return true
 		}

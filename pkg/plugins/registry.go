@@ -5,8 +5,8 @@ import "context"
 type Registry interface {
 	AddPlugin(info PluginInfo, providers []SpecProvider)
 	Funcs() map[string]any
-	Plugins() []PluginInfo
-	Groups() []PluginWithFuncs
+	Plugins(ctx context.Context) []PluginInfo
+	Groups(ctx context.Context) []PluginWithFuncs
 	// Hooks returns functions whose Group equals the provided name.
 	Hooks(group string) []Func
 }

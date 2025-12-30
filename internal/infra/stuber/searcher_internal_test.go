@@ -1,7 +1,6 @@
 package stuber
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"testing"
@@ -78,7 +77,7 @@ func TestSearch_IgnoreArrayOrderAndFields(t *testing.T) {
 			"request_timestamp": 1745081266,
 		}},
 	}
-	res, err := s.findV2(context.Background(), query)
+	res, err := s.findV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, res.Found())
 	processID, ok := res.Found().Output.Data["process_id"].(int)
@@ -98,7 +97,7 @@ func TestSearch_IgnoreArrayOrderAndFields(t *testing.T) {
 			},
 		}},
 	}
-	res2, err2 := s.findV2(context.Background(), query2)
+	res2, err2 := s.findV2(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
 	processID2, ok2 := res2.Found().Output.Data["process_id"].(int)
@@ -171,7 +170,7 @@ func TestSearch_IgnoreArrayOrder_UserScenario(t *testing.T) {
 			"request_timestamp": 1745081266,
 		}},
 	}
-	res1, err1 := s.findV2(context.Background(), query1)
+	res1, err1 := s.findV2(query1)
 	require.NoError(t, err1)
 	require.NotNil(t, res1.Found())
 	require.Equal(t, "2", res1.Found().Output.Data["processId"])
@@ -189,7 +188,7 @@ func TestSearch_IgnoreArrayOrder_UserScenario(t *testing.T) {
 			},
 		}},
 	}
-	res2, err2 := s.findV2(context.Background(), query2)
+	res2, err2 := s.findV2(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
 	require.Equal(t, "1", res2.Found().Output.Data["processId"])
@@ -207,7 +206,7 @@ func TestSearch_IgnoreArrayOrder_UserScenario(t *testing.T) {
 			},
 		}},
 	}
-	res3, err3 := s.findV2(context.Background(), query3)
+	res3, err3 := s.findV2(query3)
 	require.NoError(t, err3)
 	require.NotNil(t, res3.Found())
 	require.Equal(t, "1", res3.Found().Output.Data["processId"])
@@ -276,7 +275,7 @@ func TestSearch_IgnoreArrayOrder_V1API(t *testing.T) {
 			"request_timestamp": 1745081266,
 		},
 	}
-	res, err := s.find(context.Background(), query)
+	res, err := s.find(query)
 	require.NoError(t, err)
 	require.NotNil(t, res.Found())
 	require.Equal(t, "2", res.Found().Output.Data["processId"])
@@ -294,7 +293,7 @@ func TestSearch_IgnoreArrayOrder_V1API(t *testing.T) {
 			},
 		},
 	}
-	res2, err2 := s.find(context.Background(), query2)
+	res2, err2 := s.find(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
 	require.Equal(t, "1", res2.Found().Output.Data["processId"])
@@ -349,7 +348,7 @@ func TestSearch_Specificity_AllCases(t *testing.T) {
 			"field2": "value2",
 		}},
 	}
-	res1, err1 := s.findV2(context.Background(), query1)
+	res1, err1 := s.findV2(query1)
 	require.NoError(t, err1)
 	require.NotNil(t, res1.Found())
 	require.Equal(t, "stub1", res1.Found().Output.Data["result"])
@@ -364,7 +363,7 @@ func TestSearch_Specificity_AllCases(t *testing.T) {
 			"field3": "value3",
 		}},
 	}
-	res2, err2 := s.findV2(context.Background(), query2)
+	res2, err2 := s.findV2(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
 	require.Equal(t, "stub2", res2.Found().Output.Data["result"])
@@ -432,7 +431,7 @@ func TestSearch_Specificity_StreamCase(t *testing.T) {
 			{"field2": "value2"},
 		},
 	}
-	res1, err1 := s.findV2(context.Background(), query1)
+	res1, err1 := s.findV2(query1)
 	require.NoError(t, err1)
 	require.NotNil(t, res1.Found())
 	require.Equal(t, "stub1", res1.Found().Output.Data["result"])
@@ -446,7 +445,7 @@ func TestSearch_Specificity_StreamCase(t *testing.T) {
 			{"field2": "value2", "field4": "value4"},
 		},
 	}
-	res2, err2 := s.findV2(context.Background(), query2)
+	res2, err2 := s.findV2(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
 	require.Equal(t, "stub2", res2.Found().Output.Data["result"])
@@ -507,7 +506,7 @@ func TestSearch_Specificity_WithContainsAndMatches(t *testing.T) {
 			"field2": "value2",
 		}},
 	}
-	res1, err1 := s.findV2(context.Background(), query1)
+	res1, err1 := s.findV2(query1)
 	require.NoError(t, err1)
 	require.NotNil(t, res1.Found())
 	require.Equal(t, "stub1", res1.Found().Output.Data["result"])
@@ -522,7 +521,7 @@ func TestSearch_Specificity_WithContainsAndMatches(t *testing.T) {
 			"field3": "value3",
 		}},
 	}
-	res2, err2 := s.findV2(context.Background(), query2)
+	res2, err2 := s.findV2(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
 	require.Equal(t, "stub2", res2.Found().Output.Data["result"])
@@ -575,7 +574,7 @@ func TestSearch_Specificity_WithIgnoreArrayOrder(t *testing.T) {
 			"array1": []any{"c", "a", "b"}, // Different order
 		}},
 	}
-	res1, err1 := s.findV2(context.Background(), query1)
+	res1, err1 := s.findV2(query1)
 	require.NoError(t, err1)
 	require.NotNil(t, res1.Found())
 	require.Equal(t, "stub1", res1.Found().Output.Data["result"])
@@ -589,7 +588,7 @@ func TestSearch_Specificity_WithIgnoreArrayOrder(t *testing.T) {
 			"field1": "value1",
 		}},
 	}
-	res2, err2 := s.findV2(context.Background(), query2)
+	res2, err2 := s.findV2(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
 	require.Equal(t, "stub2", res2.Found().Output.Data["result"])

@@ -1,7 +1,6 @@
 package stuber
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -9,26 +8,25 @@ import (
 
 func TestMatch(t *testing.T) {
 	t.Parallel()
-	ctx := context.Background()
 	// Test with different service - match function doesn't check service/method
 	query := Query{Service: "test", Method: "test"}
 	stub := &Stub{Service: "different", Method: "test"}
-	require.True(t, match(ctx, query, stub)) // match only checks headers and data, not service/method
+	require.True(t, match(query, stub)) // match only checks headers and data, not service/method
 
 	// Test match with headers mismatch
 	query = Query{Service: "test", Method: "test", Headers: map[string]any{"header": "value"}}
 	stub = &Stub{Service: "test", Method: "test", Headers: InputHeader{Equals: map[string]any{"header": "different"}}}
-	require.False(t, match(ctx, query, stub))
+	require.False(t, match(query, stub))
 
 	// Test match with data mismatch
 	query = Query{Service: "test", Method: "test", Data: map[string]any{"key": "value"}}
 	stub = &Stub{Service: "test", Method: "test", Input: InputData{Equals: map[string]any{"key": "different"}}}
-	require.False(t, match(ctx, query, stub))
+	require.False(t, match(query, stub))
 
 	// Test successful match
 	query = Query{Service: "test", Method: "test", Data: map[string]any{"key": "value"}}
 	stub = &Stub{Service: "test", Method: "test", Input: InputData{Equals: map[string]any{"key": "value"}}}
-	require.True(t, match(ctx, query, stub))
+	require.True(t, match(query, stub))
 }
 
 func TestEqualsFunction(t *testing.T) {

@@ -51,6 +51,8 @@ func (e *Engine) Render(tmpl string, data Data) (string, error) {
 		return "", nil
 	}
 
+	tmpl = unescapeTemplateQuotes(tmpl)
+
 	t := e.createTemplate()
 
 	parsed, err := t.Parse(tmpl)
@@ -64,6 +66,61 @@ func (e *Engine) Render(tmpl string, data Data) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+// unescapeTemplateQuotes removes escape sequences from quotes inside template expressions.
+func unescapeTemplateQuotes(tmpl string) string {
+	var result strings.Builder
+
+	lastIdx := 0
+
+	for {
+		startIdx := strings.Index(tmpl[lastIdx:], "{{")
+		if startIdx == -1 {
+			result.WriteString(tmpl[lastIdx:])
+
+			break
+		}
+
+		startIdx += lastIdx
+
+		endIdx := strings.Index(tmpl[startIdx:], "}}")
+		if endIdx == -1 {
+			result.WriteString(tmpl[lastIdx:])
+
+			break
+		}
+
+		endIdx += startIdx + len("}}")
+
+		result.WriteString(tmpl[lastIdx:startIdx])
+
+		templateExpr := tmpl[startIdx:endIdx]
+		unescapedExpr := unescapeQuotesInString(templateExpr)
+		result.WriteString(unescapedExpr)
+
+		lastIdx = endIdx
+	}
+
+	return result.String()
+}
+
+// unescapeQuotesInString removes escape sequences from quotes, handling multiple levels.
+func unescapeQuotesInString(s string) string {
+	result := s
+
+	maxIterations := 10
+	for range maxIterations {
+		oldResult := result
+		result = strings.ReplaceAll(result, `\"`, `"`)
+
+		result = strings.ReplaceAll(result, `\\"`, `"`)
+		if result == oldResult {
+			break
+		}
+	}
+
+	return result
 }
 
 // IsTemplateString checks if a string contains template syntax.

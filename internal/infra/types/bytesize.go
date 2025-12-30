@@ -57,4 +57,3 @@ func (b *ByteSize) UnmarshalText(text []byte) error {
 func (b *ByteSize) Int64() int64 { return b.Bytes }
 
 var _ encoding.TextUnmarshaler = (*ByteSize)(nil)
-

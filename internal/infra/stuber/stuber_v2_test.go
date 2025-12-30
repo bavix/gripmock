@@ -2,7 +2,6 @@ package stuber_test
 
 import (
 	"bytes"
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -164,7 +163,7 @@ func TestBudgerigar_UnusedV2(t *testing.T) {
 		Input:   []map[string]any{{"key": "value"}},
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -203,7 +202,7 @@ func TestBudgerigar_SearchWithHeadersV2(t *testing.T) {
 		Input:   []map[string]any{{"name": "John"}},
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -215,7 +214,7 @@ func TestBudgerigar_SearchWithHeadersV2(t *testing.T) {
 		Input:   []map[string]any{{"name": "John"}},
 	}
 
-	result, err = s.FindByQueryV2(context.Background(), queryNonMatching)
+	result, err = s.FindByQueryV2(queryNonMatching)
 	require.NoError(t, err) // Should find similar match
 	require.Nil(t, result.Found())
 	require.NotNil(t, result.Similar()) // Should find similar match
@@ -262,7 +261,7 @@ func TestBudgerigar_SearchWithHeaders_SimilarV2(t *testing.T) {
 		Input:   []map[string]any{{"name": "John"}},
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err) // Should find similar match
 	require.Nil(t, result.Found())
 	require.NotNil(t, result.Similar()) // Should find similar match
@@ -291,7 +290,7 @@ func TestResult_SimilarV2(t *testing.T) {
 		Input:   []map[string]any{{"name": "Jane"}}, // Different name
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.Nil(t, result.Found())
 	require.NotNil(t, result.Similar())
@@ -322,7 +321,7 @@ func TestStuber_MatchesEqualsFoundV2(t *testing.T) {
 		Input:   []map[string]any{{"name": "John", "age": 30}},
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -333,7 +332,7 @@ func TestStuber_MatchesEqualsFoundV2(t *testing.T) {
 		Input:   []map[string]any{{"name": "John"}}, // Missing age
 	}
 
-	result, err = s.FindByQueryV2(context.Background(), queryPartial)
+	result, err = s.FindByQueryV2(queryPartial)
 	require.NoError(t, err) // Should find similar match
 	require.Nil(t, result.Found())
 	require.NotNil(t, result.Similar()) // Should find similar match
@@ -424,7 +423,7 @@ func TestBudgerigar_FindByQuery_FoundWithPriorityV2(t *testing.T) {
 		Input:   []map[string]any{{"name": "John"}},
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -461,7 +460,7 @@ func TestBudgerigar_UsedV2(t *testing.T) {
 		Equals: map[string]any{"key": "value"},
 	}
 	s.UpdateMany(stub1)
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -494,7 +493,7 @@ func TestBudgerigar_FindByQuery_WithIDV2(t *testing.T) {
 		Method:  "SayHello1",
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 	require.Equal(t, stub.ID, result.Found().ID)
@@ -589,7 +588,7 @@ func TestV2SearcherFunctions(t *testing.T) {
 		Data:    map[string]any{"key": "value"},
 	}
 
-	result, err := s.FindByQuery(context.Background(), query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -600,7 +599,7 @@ func TestV2SearcherFunctions(t *testing.T) {
 		Method:  "test",
 	}
 
-	result, err = s.FindByQuery(context.Background(), queryWithID)
+	result, err = s.FindByQuery(queryWithID)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 }
@@ -664,7 +663,7 @@ func TestV2MatcherFunctions(t *testing.T) {
 	}
 
 	// Test matching through public API
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 	require.Equal(t, stub.ID, result.Found().ID)
@@ -741,7 +740,7 @@ func TestBidiStreaming(t *testing.T) {
 			Headers: map[string]any{"content-type": "application/json"},
 		}
 
-		result, err := s.FindByQueryBidi(context.Background(), query)
+		result, err := s.FindByQueryBidi(query)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
@@ -788,7 +787,7 @@ func TestBidiStreamingFallback(t *testing.T) {
 		Method:  "Chat",
 	}
 
-	result, err := s.FindByQueryBidi(context.Background(), query)
+	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -833,7 +832,7 @@ func TestBidiStreamingWithID(t *testing.T) {
 		Headers: map[string]any{"content-type": "application/json"},
 	}
 
-	result, err := s.FindByQueryBidi(context.Background(), query)
+	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -855,7 +854,7 @@ func TestBidiStreamingEmptyService(t *testing.T) {
 		Headers: map[string]any{"content-type": "application/json"},
 	}
 
-	_, err := s.FindByQueryBidi(context.Background(), query)
+	_, err := s.FindByQueryBidi(query)
 	require.Error(t, err)
 	require.ErrorIs(t, err, stuber.ErrServiceNotFound)
 }
@@ -894,7 +893,7 @@ func TestBidiStreamingWithServerStream(t *testing.T) {
 		Headers: map[string]any{"content-type": "application/json"},
 	}
 
-	result, err := s.FindByQueryBidi(context.Background(), query)
+	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -980,7 +979,7 @@ func TestBidiStreamingStatefulLogic(t *testing.T) {
 		Headers: map[string]any{"content-type": "application/json"},
 	}
 
-	result, err := s.FindByQueryBidi(context.Background(), query)
+	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -1052,7 +1051,7 @@ func TestBidiStreamingStatefulLogicDifferentPattern(t *testing.T) {
 		Headers: map[string]any{"content-type": "application/json"},
 	}
 
-	result, err := s.FindByQueryBidi(context.Background(), query)
+	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -1099,7 +1098,7 @@ func TestBidiStreamingStatefulLogicNoMatch(t *testing.T) {
 		Headers: map[string]any{"content-type": "application/json"},
 	}
 
-	result, err := s.FindByQueryBidi(context.Background(), query)
+	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -1145,7 +1144,7 @@ func TestBidiStreamingEdgeCases(t *testing.T) {
 		Headers: map[string]any{"content-type": "application/json"},
 	}
 
-	result, err := s.FindByQueryBidi(context.Background(), query)
+	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -1223,7 +1222,7 @@ func runFieldVariationCase(t *testing.T, equals map[string]any, queries []map[st
 		Method:  "Test",
 	}
 
-	result, err := s.FindByQueryBidi(context.Background(), query)
+	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -1265,7 +1264,7 @@ func TestComplexFieldVariations(t *testing.T) {
 		Method:  "Test",
 	}
 
-	result, err := s.FindByQueryBidi(context.Background(), query)
+	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -1307,7 +1306,7 @@ func TestEmptyFieldVariations(t *testing.T) {
 		Method:  "Test",
 	}
 
-	result, err := s.FindByQueryBidi(context.Background(), query)
+	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
@@ -1377,7 +1376,7 @@ func TestStableSortingOptimized(t *testing.T) {
 	var firstResult *stuber.Stub
 
 	for range 10 {
-		result, err := s.FindByQueryBidi(context.Background(), query)
+		result, err := s.FindByQueryBidi(query)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
@@ -1418,7 +1417,7 @@ func TestPriorityHeadersOverEquals(t *testing.T) {
 		},
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -1439,7 +1438,7 @@ func TestPriorityHeadersOverEquals(t *testing.T) {
 		},
 	}
 
-	result, err = s.FindByQueryV2(context.Background(), queryWithoutHeaders)
+	result, err = s.FindByQueryV2(queryWithoutHeaders)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -1550,7 +1549,7 @@ func TestEmptyQueryInput(t *testing.T) {
 		Input:   []map[string]any{},
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -1600,7 +1599,7 @@ func TestEmptyQueryInputWithStreaming(t *testing.T) {
 		Input:   []map[string]any{},
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -1650,7 +1649,7 @@ func TestEmptyQueryInputNoMatch(t *testing.T) {
 		Input:   []map[string]any{},
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.Nil(t, result.Found())
 	require.NotNil(t, result.Similar()) // Should find similar match
@@ -1711,7 +1710,7 @@ func TestEmptyQueryInputWithHeaders(t *testing.T) {
 		Input: []map[string]any{},
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -1775,7 +1774,7 @@ func TestEmptyQueryInputMixedConditions(t *testing.T) {
 		Input:   []map[string]any{},
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -1865,7 +1864,7 @@ func TestMethodTypes(t *testing.T) {
 			Input:   []map[string]any{{"name": "Bob"}},
 		}
 
-		result, err := s.FindByQueryV2(context.Background(), query)
+		result, err := s.FindByQueryV2(query)
 		require.NoError(t, err)
 		require.NotNil(t, result.Found())
 		require.Equal(t, "Hello Bob", result.Found().Output.Data["message"])
@@ -1884,7 +1883,7 @@ func TestMethodTypes(t *testing.T) {
 			},
 		}
 
-		result, err := s.FindByQueryV2(context.Background(), query)
+		result, err := s.FindByQueryV2(query)
 		require.NoError(t, err)
 		require.NotNil(t, result.Found())
 		require.Equal(t, "Hello Stream", result.Found().Output.Data["message"])
@@ -1900,7 +1899,7 @@ func TestMethodTypes(t *testing.T) {
 			Input:   []map[string]any{{"name": "Charlie"}},
 		}
 
-		result, err := s.FindByQueryV2(context.Background(), query)
+		result, err := s.FindByQueryV2(query)
 		require.NoError(t, err)
 		require.NotNil(t, result.Found())
 		require.Len(t, result.Found().Output.Stream, 2)
@@ -1916,7 +1915,7 @@ func TestMethodTypes(t *testing.T) {
 			Input:   []map[string]any{{"name": "David"}},
 		}
 
-		result, err := s.FindByQueryV2(context.Background(), query)
+		result, err := s.FindByQueryV2(query)
 		require.NoError(t, err)
 		require.NotNil(t, result.Found())
 		require.Len(t, result.Found().Output.Stream, 1)
@@ -1967,7 +1966,7 @@ func TestMethodTypesPriority(t *testing.T) {
 		Input:   []map[string]any{{"name": "Bob"}},
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -2030,7 +2029,7 @@ func TestMethodTypesEmptyInput(t *testing.T) {
 		Input:   []map[string]any{},
 	}
 
-	result, err := s.FindByQueryV2(context.Background(), query)
+	result, err := s.FindByQueryV2(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 	require.Equal(t, "Hello World (ClientStream)", result.Found().Output.Data["message"])
