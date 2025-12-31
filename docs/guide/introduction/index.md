@@ -33,6 +33,7 @@ GripMock is a **mock server** for **gRPC** services. Give it your `.proto` files
 - **Docker Ready**: Lightweight container perfect for CI/CD pipelines
 - **20-35% Faster**: Latest improvements make your tests run quicker
 - **Zero Breaking Changes**: All your existing tests continue to work
+- **Extensible Plugins** <VersionTag version="v3.5.0" />: Extend functionality with custom template functions
 
 ## Streaming Support
 

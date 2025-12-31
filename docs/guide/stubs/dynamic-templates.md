@@ -84,6 +84,31 @@ GripMock provides several built-in template functions:
 ### Utility Functions
 - `json(v)`: Convert value to JSON string
 
+### Plugin Functions <VersionTag version="v3.5.0" />
+Custom functions provided by plugins are also available in templates. Load plugins using the `--plugins` flag and use their functions just like built-in functions.
+
+**Example with hash plugin:**
+::: v-pre
+```yaml
+output:
+  data:
+    hash: "{{.Request.data | sha256}}"
+    checksum: "{{.Request.data | crc32}}"
+```
+:::
+
+**Example with math plugin:**
+::: v-pre
+```yaml
+output:
+  data:
+    result: "{{pow .Request.base .Request.exponent}}"
+    sqrt: "{{sqrt .Request.value}}"
+```
+:::
+
+See [Plugins](../plugins/) for more information on creating and using custom plugin functions.
+
 ### State Management
 You can access and modify request state directly using `.State`:
 - <code v-pre>`{{.State.key}}`</code>: Get value from request state

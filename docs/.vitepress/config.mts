@@ -106,6 +106,15 @@ export default defineConfig({
         collapsed: false,
       },
       {
+        text: 'Plugins',
+        items: [
+          { text: 'Overview', link: '/guide/plugins/' },
+          { text: 'Advanced', link: '/guide/plugins/advanced' },
+          { text: 'Testing', link: '/guide/plugins/testing' }
+        ],
+        collapsed: false,
+      },
+      {
         text: 'API',
         items: [
           {
@@ -129,7 +138,7 @@ export default defineConfig({
       {
         text: 'Utility',
         items: [
-          { text: 'gRPC Testify', link: '/guide/utility/grpc-testify' },
+          { text: 'gRPC Testify', link: 'https://gripmock.github.io/grpctestify/' },
         ],
         collapsed: false,
       },
