@@ -21,6 +21,7 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 - 🖥️ **Web Interface** - Manage stubs through a friendly dashboard
 - 📋 **JSON Schema** - Full IDE support with validation
 - ❤️ **Health Checks** - Production-ready monitoring endpoints
+- 🔌 **Plugin System** - Extend template functions with custom plugins
 
 ## 📚 Documentation
 
@@ -40,6 +41,7 @@ This service is a fork of [tokopedia/gripmock](https://github.com/tokopedia/grip
 - ✅ **Array streaming** for server streaming methods
 - ✅ **JSON Schema validation** with IDE support
 - ✅ **Enhanced performance** with 20-35% speed improvements
+- ✅ **Plugin system** for extending template functions
 
 ### 🔧 Improvements
 - ✅ **Updated dependencies** - All deprecated packages fixed

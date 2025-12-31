@@ -255,6 +255,24 @@ curl http://127.0.0.1:4771/api/health/liveness
 curl http://127.0.0.1:4771/api/health/readiness
 ```
 
+### Plugins <VersionTag version="v3.5.0" />
+Extend template functions with custom plugins:
+```bash
+# Build plugins
+make plugins
+
+# Load plugins
+gripmock --plugins=./plugins/hash.so --plugins=./plugins/math.so service.proto
+```
+Use plugin functions in dynamic templates:
+```yaml
+output:
+  data:
+    hash: "{{.Request.data | sha256}}"
+    result: "{{pow .Request.base .Request.exponent}}"
+```
+See [Plugins](../plugins/) for detailed documentation.
+
 ## Cleanup
 - **Delete all stubs**:  
   ```bash
