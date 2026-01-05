@@ -1,4 +1,5 @@
 OPENAPI=api/api.yaml
+BUILDER_IMAGE=bavix/gripmock-builder:${version}
 
 .PHONY: *
 
@@ -6,6 +7,16 @@ version=latest
 
 build:
 	docker buildx build --load -t bavix/gripmock:${version} .
+
+build-builder:
+	docker buildx build --load -f Dockerfile.builder -t ${BUILDER_IMAGE} .
+
+plugins-docker:
+	docker run --rm -v $$(pwd):/workspace -w /workspace ${BUILDER_IMAGE} sh -c '\
+		mkdir -p plugins; \
+		for dir in examples/plugins/*; do \
+			[ -d $$dir ] && go build -buildmode=plugin -o plugins/$$(basename $$dir).so $$dir/*.go; \
+		done'
 
 test:
 	go test -tags mock -race -cover ./...

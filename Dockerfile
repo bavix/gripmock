@@ -1,3 +1,5 @@
+# Builder stage: uses the same base as Dockerfile.builder for consistency
+# This ensures reproducible builds and plugin compatibility
 FROM golang:1.25-alpine3.23 AS builder
 
 ARG version
@@ -6,9 +8,12 @@ COPY . /gripmock-src
 
 WORKDIR /gripmock-src
 
+# Install build dependencies matching Dockerfile.builder
+# - binutils: for stripping binaries
+# - gcc, musl-dev: for CGO support (required for plugin compatibility)
 #hadolint ignore=DL3018
-RUN apk add --no-cache binutils \
-    && go build -o /usr/local/bin/gripmock -ldflags "-X 'github.com/bavix/gripmock/v3/internal/infra/build.Version=${version:-dev}' -s -w" . \
+RUN apk add --no-cache binutils gcc musl-dev \
+    && CGO_ENABLED=1 go build -o /usr/local/bin/gripmock -ldflags "-X 'github.com/bavix/gripmock/v3/internal/infra/build.Version=${version:-dev}' -s -w" . \
     && strip /usr/local/bin/gripmock \
     && apk del binutils \
     && rm -rf /root/.cache /go/pkg /tmp/* /var/cache/*
