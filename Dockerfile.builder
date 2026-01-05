@@ -18,12 +18,13 @@ LABEL org.opencontainers.image.vendor="bavix"
 # - gcc: C compiler for CGO support
 # - musl-dev: C standard library development files for Alpine (musl libc)
 # - git: version control for go modules
-#hadolint ignore=DL3018
-RUN apk add --no-cache \
+#hadolint ignore=DL3018,DL3003
+RUN apk update && apk add --no-cache \
     binutils \
     gcc \
     musl-dev \
-    git
+    git || \
+    (sleep 10 && apk update && apk add --no-cache binutils gcc musl-dev git)
 
 # Set CGO environment variables for consistent builds
 ENV CGO_ENABLED=1
