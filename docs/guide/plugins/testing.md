@@ -53,6 +53,6 @@ require.InEpsilon(t, 4.0, result, 1e-9)
 
 ```go
 fn := plugintest.MustLookupFunc(t, reg, "divide")
-_, err := plugintest.Call(context.Background(), fn, 10.0, 0.0)
+_, err := plugintest.Call(t.Context(), fn, 10.0, 0.0)
 require.Error(t, err)
 ```
