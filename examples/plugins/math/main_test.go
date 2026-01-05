@@ -24,19 +24,17 @@ func TestMathPlugin(t *testing.T) {
 
 	Register(reg)
 
-	ctx := context.Background()
-
 	fnSqrt, ok := plugintest.LookupFunc(reg, "sqrt")
 	require.True(t, ok, "sqrt not registered")
 
-	outSqrt, err := plugintest.Call(ctx, fnSqrt, 9.0)
+	outSqrt, err := plugintest.Call(t.Context(), fnSqrt, 9.0)
 	require.NoError(t, err)
 	require.InEpsilon(t, math.Sqrt(9.0), outSqrt, 1e-9)
 
 	fnAdd, ok := plugintest.LookupFunc(reg, "add")
 	require.True(t, ok)
 
-	outAdd, err := plugintest.Call(ctx, fnAdd, 1.0, 2.0)
+	outAdd, err := plugintest.Call(t.Context(), fnAdd, 1.0, 2.0)
 	require.NoError(t, err)
 	require.InEpsilon(t, 4.0, outAdd, 1e-9) // 1+2 then decorator adds +1
 }

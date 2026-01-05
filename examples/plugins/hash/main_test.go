@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"hash/crc32"
@@ -18,12 +17,10 @@ func TestHashPlugin(t *testing.T) {
 	reg := plugintest.NewRegistry()
 	Register(reg)
 
-	ctx := context.Background()
-
 	fnCRC, ok := plugintest.LookupFunc(reg, "crc32")
 	require.True(t, ok, "crc32 not registered")
 
-	outCRC, err := plugintest.Call(ctx, fnCRC, "hello")
+	outCRC, err := plugintest.Call(t.Context(), fnCRC, "hello")
 	require.NoError(t, err)
 
 	wantCRC := crc32.ChecksumIEEE([]byte("hello"))
@@ -32,7 +29,7 @@ func TestHashPlugin(t *testing.T) {
 	fnSHA, ok := plugintest.LookupFunc(reg, "sha256")
 	require.True(t, ok, "sha256 not registered")
 
-	outSHA, err := plugintest.Call(ctx, fnSHA, "hello")
+	outSHA, err := plugintest.Call(t.Context(), fnSHA, "hello")
 	require.NoError(t, err)
 
 	wantSHA := sha256.Sum256([]byte("hello"))
