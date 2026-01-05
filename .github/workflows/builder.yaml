@@ -11,6 +11,9 @@ on:
 jobs:
   builder-image:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -67,6 +70,9 @@ jobs:
   docker:
     runs-on: ubuntu-latest
     needs: builder-image
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
