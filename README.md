@@ -106,6 +106,88 @@ docker run -p 4770:4770 -p 4771:4771 \
 - **Port 4770**: gRPC server
 - **Port 4771**: Web UI and REST API
 
+## 🏗️ Builder Image
+
+GripMock provides an official **builder image** (`bavix/gripmock-builder`) for reproducible builds and plugin development. This image ensures consistent toolchain versions and prevents common runtime incompatibilities.
+
+### Why Use the Builder Image?
+
+The builder image solves common build issues:
+
+- **Plugin version mismatches** - `plugin was built with a different version of package runtime`
+- **Go toolchain incompatibilities** - `plugin.Open: plugin was built with a different version of package sync`
+- **libc version conflicts** - `version 'GLIBC_2.34' not found` (glibc vs musl)
+- **Invalid binary formats** - `invalid ELF header`
+- **Missing shared libraries** - `error while loading shared libraries`
+- **CGO symbol errors** - `undefined symbol: sqlite3_open_v2`
+
+### Building Plugins
+
+**Using Docker (recommended):**
+```bash
+# Build the builder image (if needed)
+make build-builder
+
+# Build plugins using the builder image
+make plugins-docker version=latest
+```
+
+**Using the builder image directly:**
+```bash
+docker run --rm \
+  -v $(pwd):/workspace \
+  -w /workspace \
+  bavix/gripmock-builder:latest \
+  sh -c 'go build -buildmode=plugin -o myplugin.so ./path/to/plugin/*.go'
+```
+
+**Local development with the builder image:**
+```bash
+# Enter the builder environment
+docker run -it --rm \
+  -v $(pwd):/workspace \
+  -w /workspace \
+  bavix/gripmock-builder:latest \
+  /bin/sh
+
+# Inside the container, build your plugin
+go build -buildmode=plugin -o plugins/custom.so ./custom-plugin/*.go
+```
+
+### Multi-Stage Builds
+
+Use the builder image in your own Dockerfiles for consistent builds:
+
+```dockerfile
+FROM bavix/gripmock-builder:latest AS builder
+
+WORKDIR /app
+COPY . .
+
+# Build your custom plugins
+RUN go build -buildmode=plugin -o plugins/custom.so ./plugins/custom/*.go
+
+# Use the runtime image
+FROM bavix/gripmock:latest
+
+# Copy custom plugins
+COPY --from=builder /app/plugins/*.so /plugins/
+
+# Run gripmock with custom plugins
+CMD ["gripmock", "--plugins", "/plugins", "/proto/service.proto"]
+```
+
+### Builder Image Versions
+
+- `latest` - Tracks the master branch
+- `v3.x.x` - Semantic version tags
+- `3.x` - Major.minor version tags
+- `3` - Major version tag
+
+The builder image is automatically built and published to:
+- Docker Hub: `bavix/gripmock-builder`
+- GitHub Container Registry: `ghcr.io/bavix/gripmock-builder`
+
 ## 📖 Examples
 
 Check out our comprehensive examples in the [`examples`](https://github.com/bavix/gripmock/tree/master/examples) folder:
