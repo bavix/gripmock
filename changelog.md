@@ -1,5 +1,17 @@
 # Changelog
 
+## v3.5.3 - 2026-01-08
+
+### What's Changed
+
+* Add Plugins section to documentation and update gRPC Testify link by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/717
+* Update testing documentation to use context from the test instance by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/718
+* docs: add CONTRIBUTING.md by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/719
+* Bump github.com/goccy/go-yaml from 1.19.1 to 1.19.2 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/722
+* Bump preact from 10.28.0 to 10.28.2 in the npm_and_yarn group across 1 directory by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/721
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.5.2...v3.5.3
+
 ## v3.5.2 - 2025-12-30
 
 ### What's Changed
