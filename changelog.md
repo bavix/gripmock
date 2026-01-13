@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.5.4 - 2026-01-13
+
+### What's Changed
+
+* Bump golang.org/x/text from 0.32.0 to 0.33.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/723
+* Update dependencies in go.mod and go.sum by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/724
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.5.3...v3.5.4
+
 ## v3.5.3 - 2026-01-08
 
 ### What's Changed
