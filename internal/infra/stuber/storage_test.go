@@ -174,7 +174,7 @@ func TestFindByIDs(t *testing.T) {
 	t.Run("existing IDs", func(t *testing.T) {
 		t.Parallel()
 
-		var results []Value
+		results := make([]Value, 0, 2)
 		for v := range s.findByIDs(maps.Keys(map[uuid.UUID]struct{}{id1: {}, id2: {}})) {
 			results = append(results, v)
 		}
@@ -185,7 +185,7 @@ func TestFindByIDs(t *testing.T) {
 	t.Run("mixed IDs", func(t *testing.T) {
 		t.Parallel()
 
-		var results []Value
+		results := make([]Value, 0, 1)
 		for v := range s.findByIDs(maps.Keys(map[uuid.UUID]struct{}{id1: {}, uuid.Nil: {}})) {
 			results = append(results, v)
 		}

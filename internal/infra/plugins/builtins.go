@@ -29,7 +29,12 @@ type groupDef struct {
 }
 
 func buildSpecs(groups []groupDef) []pkgplugins.FuncSpec {
-	specs := make([]pkgplugins.FuncSpec, 0)
+	totalSize := 0
+	for _, g := range groups {
+		totalSize += len(g.funcs)
+	}
+
+	specs := make([]pkgplugins.FuncSpec, 0, totalSize)
 
 	for _, g := range groups {
 		for name, fn := range g.funcs {
