@@ -3,10 +3,6 @@ run:
   timeout: 5m
   go: "1.25"
 
-issues:
-  exclude-dirs: # remove it later
-    - pkg
-
 linters:
   default: all
   disable:
