@@ -1,5 +1,17 @@
 # Changelog
 
+## v3.5.5 - 2026-01-15
+
+### What's Changed
+
+* Remove unused pkg module and update dependencies in go.mod and go.sum by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/726
+
+Special thanks to:
+
+- [@joshmeyer-dev](https://github.com/joshmeyer-dev) for issue #725
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.5.4...v3.5.5
+
 ## v3.5.4 - 2026-01-13
 
 ### What's Changed
