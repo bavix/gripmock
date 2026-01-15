@@ -1,3 +1,6 @@
+# Builder stage: uses the same base as Dockerfile.builder for consistency
+# This ensures reproducible builds and plugin compatibility
+# Note: For plugin development, use the separate bavix/gripmock-builder image
 FROM golang:1.25-alpine3.23 AS builder
 
 ARG version
