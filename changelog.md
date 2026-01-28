@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.5.6 - 2026-01-28
+
+### What's Changed
+
+* Bump github.com/zeebo/xxh3 from 1.0.2 to 1.1.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/727
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.5.5...v3.5.6
+
 ## v3.5.5 - 2026-01-15
 
 ### What's Changed
