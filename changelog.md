@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.5.7 - 2026-02-10
+
+### What's Changed
+
+* Bump golang.org/x/text from 0.33.0 to 0.34.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/728
+* Bump all Go dependencies by [@Copilot](https://github.com/Copilot) in https://github.com/bavix/gripmock/pull/729
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.5.6...v3.5.7
+
 ## v3.5.6 - 2026-01-28
 
 ### What's Changed
