@@ -24,3 +24,4 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.9.0
+          skip-cache: true
