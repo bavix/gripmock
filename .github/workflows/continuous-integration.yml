@@ -35,7 +35,7 @@ jobs:
       - name: Run unit tests with coverage
         run: |
           mkdir -p $GOCOVERDIR
-          go test -cover -covermode=atomic ./...
+          go test -cover -covermode=atomic ./... -args -test.gocoverdir="$GOCOVERDIR"
         shell: bash
 
       - name: Upload unit coverage
