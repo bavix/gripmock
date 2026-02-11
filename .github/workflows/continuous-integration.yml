@@ -95,9 +95,15 @@ jobs:
 
       - name: Stop GripMock Server gracefully
         run: |
-          kill -INT $(cat /tmp/gripmock.pid) || true
-          sleep 5
-          rm /tmp/gripmock.pid || true
+          pid=$(cat /tmp/gripmock.pid 2>/dev/null) || true
+          if [ -n "$pid" ]; then
+            kill -INT "$pid" 2>/dev/null || true
+            for _ in $(seq 1 60); do
+              kill -0 "$pid" 2>/dev/null || break
+              sleep 1
+            done
+          fi
+          rm -f /tmp/gripmock.pid
 
       - name: Upload e2e coverage
         uses: actions/upload-artifact@v6
