@@ -30,6 +30,7 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 			deps.WithDefaultConfig(),
 			deps.WithPlugins(pluginsFlag),
 		)
+
 		ctx, cancel := builder.SignalNotify(cmd.Context())
 		defer cancel()
 
@@ -49,6 +50,7 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 						Msg("Fatal panic in REST server goroutine - terminating server")
 				}
 			}()
+
 			if err := restServe(ctx, builder); err != nil {
 				zerolog.Ctx(ctx).Fatal().Err(err).Msg("Fatal error in REST server - terminating server")
 			}

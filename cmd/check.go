@@ -25,6 +25,7 @@ var checkCmd = &cobra.Command{ //nolint:gochecknoglobals
 	Short:        "The command checks whether the gripmock server is alive or dead by accessing it via the API",
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		builder := deps.NewBuilder(deps.WithDefaultConfig())
+
 		ctx, cancel := builder.SignalNotify(cmd.Context())
 		defer cancel()
 
