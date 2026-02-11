@@ -149,6 +149,8 @@ func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
 	if !h.ok.Load() {
 		w.WriteHeader(http.StatusServiceUnavailable)
 
+		_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "not ready", Time: time.Now()})
+
 		return
 	}
 
