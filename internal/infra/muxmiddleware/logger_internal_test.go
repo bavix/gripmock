@@ -30,13 +30,11 @@ func TestLogger_Initialization(t *testing.T) {
 func TestLogger_RequestLogger(t *testing.T) {
 	t.Parallel()
 	// Test RequestLogger middleware
+	var writeErr error
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-
-		_, err := w.Write([]byte("test response"))
-		if err != nil {
-			t.Errorf("failed to write response: %v", err)
-		}
+		_, writeErr = w.Write([]byte("test response"))
 	})
 
 	middleware := RequestLogger(handler)
@@ -48,6 +46,7 @@ func TestLogger_RequestLogger(t *testing.T) {
 
 	middleware.ServeHTTP(w, req)
 
+	require.NoError(t, writeErr)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, "test response", w.Body.String())
 }
@@ -66,13 +65,11 @@ func TestLogger_ResponseWriter(t *testing.T) {
 func TestLogger_RequestLoggerWithBody(t *testing.T) {
 	t.Parallel()
 	// Test RequestLogger with request body
+	var writeErr error
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-
-		_, err := w.Write([]byte("test response"))
-		if err != nil {
-			t.Errorf("failed to write response: %v", err)
-		}
+		_, writeErr = w.Write([]byte("test response"))
 	})
 
 	middleware := RequestLogger(handler)
@@ -86,6 +83,7 @@ func TestLogger_RequestLoggerWithBody(t *testing.T) {
 
 	middleware.ServeHTTP(w, req)
 
+	require.NoError(t, writeErr)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, "test response", w.Body.String())
 }
@@ -93,13 +91,11 @@ func TestLogger_RequestLoggerWithBody(t *testing.T) {
 func TestLogger_RequestLoggerWithInvalidJSON(t *testing.T) {
 	t.Parallel()
 	// Test RequestLogger with invalid JSON body
+	var writeErr error
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-
-		_, err := w.Write([]byte("test response"))
-		if err != nil {
-			t.Errorf("failed to write response: %v", err)
-		}
+		_, writeErr = w.Write([]byte("test response"))
 	})
 
 	middleware := RequestLogger(handler)
@@ -113,6 +109,7 @@ func TestLogger_RequestLoggerWithInvalidJSON(t *testing.T) {
 
 	middleware.ServeHTTP(w, req)
 
+	require.NoError(t, writeErr)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, "test response", w.Body.String())
 }
@@ -120,13 +117,11 @@ func TestLogger_RequestLoggerWithInvalidJSON(t *testing.T) {
 func TestLogger_RequestLoggerWithEmptyBody(t *testing.T) {
 	t.Parallel()
 	// Test RequestLogger with empty body
+	var writeErr error
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-
-		_, err := w.Write([]byte("test response"))
-		if err != nil {
-			t.Errorf("failed to write response: %v", err)
-		}
+		_, writeErr = w.Write([]byte("test response"))
 	})
 
 	middleware := RequestLogger(handler)
@@ -138,6 +133,7 @@ func TestLogger_RequestLoggerWithEmptyBody(t *testing.T) {
 
 	middleware.ServeHTTP(w, req)
 
+	require.NoError(t, writeErr)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, "test response", w.Body.String())
 }

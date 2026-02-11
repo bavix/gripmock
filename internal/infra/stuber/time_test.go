@@ -62,9 +62,7 @@ func TestDelayProcessingWithContext(t *testing.T) {
 	delayDuration := time.Duration(output.Delay)
 
 	// Check if delay would exceed context timeout
-	if delayDuration > 100*time.Millisecond {
-		t.Fatal("Delay exceeds context timeout")
-	}
+	require.LessOrEqual(t, delayDuration, 100*time.Millisecond, "Delay exceeds context timeout")
 
 	// Simulate successful delay processing
 	expectedEnd := start.Add(delayDuration)

@@ -803,7 +803,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 
 	bidiResult, err := m.budgerigar.FindByQueryBidi(queryBidi)
 	if err != nil {
-		return errors.Wrapf(err, "failed to initialize bidirectional streaming session: %v", err)
+		return errors.Wrap(err, "failed to initialize bidirectional streaming session")
 	}
 
 	for {

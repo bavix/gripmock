@@ -1,6 +1,7 @@
 package stuber
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -320,6 +321,60 @@ func TestEqualsEdgeCases(t *testing.T) {
 		"map":    map[string]any{"nested": "value"},
 	}
 	require.False(t, equals(mixed1, mixed3, false))
+}
+
+func TestToFloat64(t *testing.T) {
+	t.Parallel()
+
+	f, ok := toFloat64(42)
+	require.True(t, ok)
+	require.InDelta(t, 42.0, f, 1e-9)
+
+	f, ok = toFloat64(int64(100))
+	require.True(t, ok)
+	require.InDelta(t, 100.0, f, 1e-9)
+
+	f, ok = toFloat64(3.14)
+	require.True(t, ok)
+	require.InDelta(t, 3.14, f, 1e-9)
+
+	f, ok = toFloat64(json.Number("0.0"))
+	require.True(t, ok)
+	require.InDelta(t, 0.0, f, 1e-9)
+
+	_, ok = toFloat64("not a number")
+	require.False(t, ok)
+}
+
+func TestFieldValueEquals_JsonNumber(t *testing.T) {
+	t.Parallel()
+	// json.Number vs float64
+	require.True(t, equals(
+		map[string]any{"v": json.Number("0.0")},
+		map[string]any{"v": 0.0},
+		false,
+	))
+	require.True(t, equals(
+		map[string]any{"v": 0.0},
+		map[string]any{"v": json.Number("0")},
+		false,
+	))
+}
+
+func TestStreamItemMatches(t *testing.T) {
+	t.Parallel()
+	require.True(t, streamItemMatches(
+		InputData{Equals: map[string]any{"k": "v"}},
+		map[string]any{"k": "v"},
+	))
+	require.False(t, streamItemMatches(
+		InputData{}, // no matchers
+		map[string]any{"k": "v"},
+	))
+	require.False(t, streamItemMatches(
+		InputData{Equals: map[string]any{"k": "x"}},
+		map[string]any{"k": "v"},
+	))
 }
 
 func TestEqualsWithOrderIgnore(t *testing.T) {

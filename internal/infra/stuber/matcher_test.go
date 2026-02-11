@@ -3,6 +3,8 @@ package stuber_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
@@ -71,16 +73,14 @@ func TestMatchData(t *testing.T) {
 			result, err := budgerigar.FindByQuery(query)
 			if err != nil {
 				if tt.expected {
-					t.Errorf("Expected match but got error: %v", err)
+					require.NoError(t, err, "Expected match but got error")
 				}
 
 				return
 			}
 
 			matched := result.Found() != nil
-			if matched != tt.expected {
-				t.Errorf("matchData() = %v, want %v", matched, tt.expected)
-			}
+			require.Equal(t, tt.expected, matched, "matchData()")
 		})
 	}
 }
@@ -106,13 +106,8 @@ func TestMatchWithData(t *testing.T) {
 	budgerigar.PutMany(stub)
 
 	result, err := budgerigar.FindByQuery(query)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Found() == nil {
-		t.Error("Expected match to return true for matching query and stub with data")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Expected match to return true for matching query and stub with data")
 
 	nonMatchingQuery := stuber.Query{
 		Service: "test",
@@ -121,13 +116,8 @@ func TestMatchWithData(t *testing.T) {
 	}
 
 	result, err = budgerigar.FindByQuery(nonMatchingQuery)
-	if err != nil {
-		return
-	}
-
-	if result.Found() != nil {
-		t.Error("Expected match to return false for non-matching data")
-	}
+	require.NoError(t, err)
+	require.Nil(t, result.Found(), "Expected match to return false for non-matching data")
 }
 
 func TestBackwardCompatibility(t *testing.T) {
@@ -151,11 +141,6 @@ func TestBackwardCompatibility(t *testing.T) {
 	budgerigar.PutMany(stub)
 
 	result, err := budgerigar.FindByQuery(query)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Found() == nil {
-		t.Error("Expected backward compatibility: input should match against stub")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Expected backward compatibility: input should match against stub")
 }

@@ -47,11 +47,7 @@ type searcher struct {
 	storage  *storage
 }
 
-// newSearcher creates a new instance of the searcher struct.
-//
-// It initializes the stubUsed map and the storage pointer.
-//
-// Returns a pointer to the newly created searcher struct.
+// newSearcher creates a new searcher instance.
 func newSearcher() *searcher {
 	return &searcher{
 		storage:  newStorage(),
@@ -59,32 +55,23 @@ func newSearcher() *searcher {
 	}
 }
 
-// Result represents the result of a search operation.
-//
-// It contains two fields: found and similar. Found represents the exact
-// match found in the search, while similar represents the most similar match
-// found.
+// Result holds the search result: exact match (Found) or best similar (Similar).
 type Result struct {
 	found   *Stub // The exact match found in the search
 	similar *Stub // The most similar match found
 }
 
 // Found returns the exact match found in the search.
-//
-// Returns a pointer to the Stub struct representing the found match.
 func (r *Result) Found() *Stub {
 	return r.found
 }
 
 // Similar returns the most similar match found in the search.
-//
-// Returns a pointer to the Stub struct representing the similar match.
 func (r *Result) Similar() *Stub {
 	return r.similar
 }
 
-// BidiResult represents the result of a bidirectional streaming search operation.
-// For bidirectional streaming, we maintain a list of matching stubs and filter them as messages arrive.
+// BidiResult holds matching stubs for bidirectional streaming.
 type BidiResult struct {
 	searcher      *searcher
 	query         QueryBidi

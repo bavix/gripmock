@@ -3,6 +3,8 @@ package deeply_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bavix/gripmock/v3/internal/infra/deeply"
 )
 
@@ -12,45 +14,24 @@ func runSliceOrderIgnoreChecks(t *testing.T, fn func(expect, actual any) bool) {
 	t.Run("type_mismatch", func(t *testing.T) {
 		t.Parallel()
 
-		if fn([]string{"a", "b", "c"}, []int{1, 2, 3}) {
-			t.Fatalf("expected mismatch on different types")
-		}
+		require.False(t, fn([]string{"a", "b", "c"}, []int{1, 2, 3}), "expected mismatch on different types")
 	})
 
 	t.Run("same_order_and_permutation", func(t *testing.T) {
 		t.Parallel()
 
-		if !fn([]string{"a", "b", "c"}, []string{"b", "a", "c"}) {
-			t.Fatalf("expected match for permutation")
-		}
-
-		if !fn([]int{1, 2, 3}, []int{1, 2, 3}) {
-			t.Fatalf("expected match for identical slices")
-		}
-
-		if !fn([]int{1, 2, 3}, []int{1, 3, 2}) {
-			t.Fatalf("expected match for permutation of ints")
-		}
-
-		if !fn([]any{1, 2, 3}, []any{1, 2, 3}) {
-			t.Fatalf("expected match for identical any slice")
-		}
-
-		if !fn([]any{1, 2, 3}, []any{1, 3, 2}) {
-			t.Fatalf("expected match for permutation of any")
-		}
+		require.True(t, fn([]string{"a", "b", "c"}, []string{"b", "a", "c"}), "expected match for permutation")
+		require.True(t, fn([]int{1, 2, 3}, []int{1, 2, 3}), "expected match for identical slices")
+		require.True(t, fn([]int{1, 2, 3}, []int{1, 3, 2}), "expected match for permutation of ints")
+		require.True(t, fn([]any{1, 2, 3}, []any{1, 2, 3}), "expected match for identical any slice")
+		require.True(t, fn([]any{1, 2, 3}, []any{1, 3, 2}), "expected match for permutation of any")
 	})
 
 	t.Run("missing_elements", func(t *testing.T) {
 		t.Parallel()
 
-		if fn([]int{1, 2, 3}, []int{1, 2}) {
-			t.Fatalf("expected mismatch when actual shorter")
-		}
-
-		if fn([]any{1, 2, 3}, []any{1, 2}) {
-			t.Fatalf("expected mismatch when actual shorter (any)")
-		}
+		require.False(t, fn([]int{1, 2, 3}, []int{1, 2}), "expected mismatch when actual shorter")
+		require.False(t, fn([]any{1, 2, 3}, []any{1, 2}), "expected mismatch when actual shorter (any)")
 	})
 }
 

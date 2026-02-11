@@ -805,7 +805,6 @@ func TestBudgerigar_FindByQuery_InternalRequest(t *testing.T) {
 	require.Len(t, s.Used(), 1)
 }
 
-//nolint:cyclop,funlen
 func TestBudgerigarWithData(t *testing.T) {
 	t.Parallel()
 
@@ -832,13 +831,8 @@ func TestBudgerigarWithData(t *testing.T) {
 	}
 
 	result, err := budgerigar.FindByQuery(query)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Found() == nil {
-		t.Error("Expected to find exact match")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Expected to find exact match")
 
 	nonMatchingQuery := stuber.Query{
 		Service: "test-service",
@@ -848,20 +842,13 @@ func TestBudgerigarWithData(t *testing.T) {
 
 	result, err = budgerigar.FindByQuery(nonMatchingQuery)
 	if err != nil {
-		if err.Error() != "stub not found" {
-			t.Fatalf("Expected 'stub not found' error, got %v", err)
-		}
+		require.ErrorIs(t, err, stuber.ErrStubNotFound)
 
 		return
 	}
 
-	if result.Found() != nil {
-		t.Error("Expected no exact found result for non-matching data")
-	}
-
-	if result.Similar() == nil {
-		t.Error("Expected similar result for non-matching data")
-	}
+	require.Nil(t, result.Found(), "Expected no exact found result for non-matching data")
+	require.NotNil(t, result.Similar(), "Expected similar result for non-matching data")
 
 	partialQuery := stuber.Query{
 		Service: "test-service",
@@ -871,20 +858,13 @@ func TestBudgerigarWithData(t *testing.T) {
 
 	result, err = budgerigar.FindByQuery(partialQuery)
 	if err != nil {
-		if err.Error() != "stub not found" {
-			t.Fatalf("Expected 'stub not found' error, got %v", err)
-		}
+		require.ErrorIs(t, err, stuber.ErrStubNotFound)
 
 		return
 	}
 
-	if result.Found() != nil {
-		t.Error("Expected no exact found result for partial data")
-	}
-
-	if result.Similar() == nil {
-		t.Error("Expected similar result for partial data")
-	}
+	require.Nil(t, result.Found(), "Expected no exact found result for partial data")
+	require.NotNil(t, result.Similar(), "Expected similar result for partial data")
 }
 
 func TestBudgerigarBackwardCompatibility(t *testing.T) {
@@ -913,11 +893,6 @@ func TestBudgerigarBackwardCompatibility(t *testing.T) {
 	}
 
 	result, err := budgerigar.FindByQuery(query)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Found() == nil {
-		t.Error("Expected to find exact match for backward compatibility")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Expected to find exact match for backward compatibility")
 }

@@ -2,34 +2,26 @@ package config
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseHistoryDefaults(t *testing.T) {
-	// clear env via Setenv to ensure defaults
+	// clear env via Setenv to ensure defaults (cannot use t.Parallel with t.Setenv)
 	t.Setenv("HISTORY_LIMIT", "")
 	t.Setenv("HISTORY_REDACT_KEYS", "")
 	t.Setenv("HISTORY_MESSAGE_MAX_BYTES", "")
 	t.Setenv("HISTORY_ENABLED", "")
 
 	cfg := Load()
-	if !cfg.HistoryEnabled {
-		t.Fatalf("history should be enabled by default")
-	}
-
-	if cfg.HistoryLimit.Int64() != 64*1024*1024 {
-		t.Fatalf("unexpected default limit: %d", cfg.HistoryLimit.Int64())
-	}
-
-	if cfg.HistoryMessageMaxBytes != 262144 {
-		t.Fatalf("unexpected default max bytes: %d", cfg.HistoryMessageMaxBytes)
-	}
-
-	if len(cfg.HistoryRedactKeys) != 0 {
-		t.Fatalf("expected no redact keys by default")
-	}
+	require.True(t, cfg.HistoryEnabled, "history should be enabled by default")
+	require.Equal(t, int64(64*1024*1024), cfg.HistoryLimit.Int64(), "unexpected default limit")
+	require.EqualValues(t, 262144, cfg.HistoryMessageMaxBytes, "unexpected default max bytes")
+	require.Empty(t, cfg.HistoryRedactKeys, "expected no redact keys by default")
 }
 
 func TestParseHistoryEnv(t *testing.T) {
+	// uses t.Setenv, cannot use t.Parallel
 	toGiB := int64(1024 * 1024 * 1024)
 
 	t.Setenv("HISTORY_LIMIT", "1G")
@@ -38,20 +30,8 @@ func TestParseHistoryEnv(t *testing.T) {
 	t.Setenv("HISTORY_ENABLED", "false")
 
 	cfg := Load()
-	if cfg.HistoryEnabled {
-		t.Fatalf("history should be disabled by env")
-	}
-
-	if cfg.HistoryLimit.Int64() != toGiB {
-		t.Fatalf("unexpected limit: %d", cfg.HistoryLimit.Int64())
-	}
-
-	if cfg.HistoryMessageMaxBytes != 1024 {
-		t.Fatalf("unexpected max bytes: %d", cfg.HistoryMessageMaxBytes)
-	}
-
-	keys := cfg.HistoryRedactKeys
-	if len(keys) != 3 || keys[0] != "password" || keys[1] != "token" || keys[2] != "secret" {
-		t.Fatalf("unexpected redact keys: %#v", keys)
-	}
+	require.False(t, cfg.HistoryEnabled, "history should be disabled by env")
+	require.Equal(t, toGiB, cfg.HistoryLimit.Int64(), "unexpected limit")
+	require.EqualValues(t, 1024, cfg.HistoryMessageMaxBytes, "unexpected max bytes")
+	require.Equal(t, []string{"password", "token", "secret"}, cfg.HistoryRedactKeys, "unexpected redact keys")
 }

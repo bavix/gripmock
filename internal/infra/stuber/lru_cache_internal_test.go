@@ -16,8 +16,10 @@ func TestStringHashCache(t *testing.T) {
 
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
-	// Clear cache before test
+	defer initStringCache(stringCacheSize)
+
 	clearStringHashCache()
+	initStringCache(stringCacheSize) // ensure cache is initialized (another test may have set it to nil)
 
 	// Test initial state
 	size, capacity := getStringHashCacheStats()
@@ -142,4 +144,31 @@ func TestCacheConcurrency(t *testing.T) {
 	size, capacity := getStringHashCacheStats()
 	require.LessOrEqual(t, size, capacity)
 	require.Positive(t, size)
+}
+
+func TestGetStatsWhenCacheNil(t *testing.T) {
+	t.Parallel()
+
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+
+	oldStr := globalStringCache
+
+	defer func() { globalStringCache = oldStr }()
+
+	globalStringCache = nil
+
+	size, cacheCap := getStringHashCacheStats()
+	require.Equal(t, 0, size)
+	require.Equal(t, stringCacheSize, cacheCap)
+
+	oldRe := regexCache
+
+	defer func() { regexCache = oldRe }()
+
+	regexCache = nil
+
+	size, cacheCap = getRegexCacheStats()
+	require.Equal(t, 0, size)
+	require.Equal(t, regexCacheSize, cacheCap)
 }

@@ -80,7 +80,7 @@ func createDescriptorSet(ctx context.Context, configure *Configure) (*descriptor
 
 		err := protoregistry.GlobalFiles.RegisterFile(file)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error registering file %s", file.Path())
+			return nil, errors.Wrapf(err, "failed to register file %s", file.Path())
 		}
 	}
 
@@ -126,7 +126,7 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 
 			err = protoregistry.GlobalFiles.RegisterFile(fileDesc)
 			if err != nil {
-				return nil, errors.Wrapf(err, "error registering file %s", descriptor)
+				return nil, errors.Wrapf(err, "failed to register file %s", descriptor)
 			}
 		}
 
@@ -206,7 +206,7 @@ func Build(ctx context.Context, imports []string, paths []string) ([]*descriptor
 
 	configure, err := newConfigure(ctx, lo.Uniq(findMinimalPaths(imports)), lo.Uniq(paths))
 	if err != nil {
-		return nil, errors.Wrap(err, "create configuration")
+		return nil, errors.Wrap(err, "failed to create configuration")
 	}
 
 	return compile(ctx, configure)
@@ -294,7 +294,7 @@ func (p *processor) processDirectory(ctx context.Context, absPath string) error 
 		}
 
 		if err != nil {
-			return errors.Wrapf(err, "file system error at path: %s", pth)
+			return errors.Wrapf(err, "failed to access path %s", pth)
 		}
 
 		if info.IsDir() {
@@ -319,7 +319,7 @@ func (p *processor) processDirectory(ctx context.Context, absPath string) error 
 		}
 
 		return nil
-	}), "directory walk failed: %s", absPath)
+	}), "failed to walk directory %s", absPath)
 }
 
 func (p *processor) processFile(ctx context.Context, absPath string) error {

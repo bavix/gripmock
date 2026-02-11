@@ -113,7 +113,7 @@ func (r *TestRegistry) addSpec(info plugins.PluginInfo, spec plugins.FuncSpec) {
 
 	r.funcs[spec.Name] = fn
 
-	if decorPlugin != "" {
+	if decorPluginPresent(decorPlugin) {
 		entry.Decorates = targetName
 		entry.DecoratesPlugin = decorPlugin
 		r.addDepend(info.Name, decorPlugin)

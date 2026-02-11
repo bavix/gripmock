@@ -162,3 +162,13 @@ func TestQuery_Data(t *testing.T) {
 	q = Query{Input: nil}
 	require.Nil(t, q.Data())
 }
+
+func TestNewQueryFromInput(t *testing.T) {
+	t.Parallel()
+
+	q := NewQueryFromInput("svc", "mth", []map[string]any{{"k": "v"}}, map[string]any{"h": "v"})
+	require.Equal(t, "svc", q.Service)
+	require.Equal(t, "mth", q.Method)
+	require.Equal(t, []map[string]any{{"k": "v"}}, q.Input)
+	require.Equal(t, map[string]any{"h": "v"}, q.Headers)
+}

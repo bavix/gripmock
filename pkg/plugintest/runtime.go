@@ -68,7 +68,7 @@ func LookupFunc(reg Registry, name string) (Func, bool) {
 	return casted, ok
 }
 
-//nolint:cyclop,err113,forcetypeassert,intrange,mnd,nlreturn,wsl_v5,funlen
+//nolint:cyclop,err113,intrange,mnd,nlreturn,wsl_v5,funlen
 func wrapReflect(fn any) Func {
 	val := reflect.ValueOf(fn)
 	if !val.IsValid() || val.Kind() != reflect.Func {

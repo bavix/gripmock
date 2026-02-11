@@ -599,7 +599,7 @@ func TestProcessStubsParallel(t *testing.T) {
 
 	searcher := newSearcher()
 
-	// Create many test stubs to trigger parallel processing
+	// Create many test stubs to trigger parallel processing (>= 100)
 	stubs := make([]*Stub, 150)
 	for i := range 150 {
 		stubs[i] = &Stub{
@@ -629,6 +629,40 @@ func TestProcessStubsParallel(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 	require.Equal(t, "stub50", result.Found().Output.Data["result"])
+}
+
+// TestPickMostSimilar triggers pickMostSimilar when no exact match but 100+ stubs exist.
+func TestPickMostSimilar(t *testing.T) {
+	t.Parallel()
+
+	searcher := newSearcher()
+
+	stubs := make([]*Stub, 120)
+	for i := range 120 {
+		stubs[i] = &Stub{
+			ID:       uuid.New(),
+			Service:  "Svc",
+			Method:   "Mth",
+			Priority: 1, // ensures pickMostSimilar gets totalScore > 0
+			Input: InputData{
+				Equals: map[string]any{"x": strconv.Itoa(i)},
+			},
+			Output: Output{Data: map[string]any{"r": i}},
+		}
+	}
+
+	searcher.upsert(stubs...)
+
+	// Query matches nothing - will hit pickMostSimilar
+	query := Query{
+		Service: "Svc",
+		Method:  "Mth",
+		Input:   []map[string]any{{"x": "nonexistent"}},
+	}
+	result, err := searcher.processStubs(query, stubs)
+	require.NoError(t, err)
+	require.Nil(t, result.Found())
+	require.NotNil(t, result.Similar()) // pickMostSimilar returns best rank
 }
 
 func TestProcessStubsModes(t *testing.T) {
@@ -831,6 +865,45 @@ func BenchmarkProcessStubs_ChunkSizes(b *testing.B) {
 					b.Fatal(err)
 				}
 			}
+		})
+	}
+}
+
+func TestDeepEqual(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		a, b any
+		want bool
+	}{
+		{"both nil", nil, nil, true},
+		{"a nil", nil, "x", false},
+		{"b nil", "x", nil, false},
+		{"string eq", "hi", "hi", true},
+		{"string ne", "hi", "bye", false},
+		{"int eq", 42, 42, true},
+		{"float eq", 1.5, 1.5, true},
+		{"bool eq", true, true, true},
+		{"map eq", map[string]any{"a": 1}, map[string]any{"a": 1}, true},
+		{"map ne key", map[string]any{"a": 1}, map[string]any{"b": 1}, false},
+		{"map ne val", map[string]any{"a": 1}, map[string]any{"a": 2}, false},
+		{"map len diff", map[string]any{"a": 1}, map[string]any{"a": 1, "b": 2}, false},
+		{"slice eq", []any{1.0, 2.0}, []any{1.0, 2.0}, true},
+		{"slice ne", []any{1.0, 2.0}, []any{1.0, 3.0}, false},
+		{"slice len diff", []any{1.0}, []any{1.0, 2.0}, false},
+		{"map missing key", map[string]any{"a": 1}, map[string]any{}, false},
+		{"nested map eq", map[string]any{"x": map[string]any{"a": 1}}, map[string]any{"x": map[string]any{"a": 1}}, true},
+		{"nested map ne", map[string]any{"x": map[string]any{"a": 1}}, map[string]any{"x": map[string]any{"a": 2}}, false},
+		{"slice with map", []any{map[string]any{"k": "v"}}, []any{map[string]any{"k": "v"}}, true},
+		{"fallback fmt", []int{1, 2}, []int{1, 2}, true}, // []any vs []int; falls back to fmt
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := deepEqual(tt.a, tt.b)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }

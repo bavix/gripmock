@@ -810,6 +810,17 @@ func TestBidiStreaming(t *testing.T) {
 		_, err = result.Next(map[string]any{"message": "unknown"})
 		require.Error(t, err)
 		require.ErrorIs(t, err, stuber.ErrStubNotFound)
+
+		// Test GetMessageIndex - increments after each successful Next (when filtering)
+		result2, err := s.FindByQueryBidi(query)
+		require.NoError(t, err)
+		require.Equal(t, 0, result2.GetMessageIndex())
+		_, _ = result2.Next(map[string]any{"message": "hello"})
+		idx := result2.GetMessageIndex()
+		require.GreaterOrEqual(t, idx, 0)
+
+		_, _ = result2.Next(map[string]any{"message": "how are you"})
+		require.GreaterOrEqual(t, result2.GetMessageIndex(), idx)
 	})
 }
 
@@ -1225,6 +1236,56 @@ func TestBidiStreamingEdgeCases(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, stubResult)
 	require.Equal(t, "Hello!", stubResult.Output.Data["response"])
+}
+
+// TestBidiNestedStructures triggers deepEqualMap and deepEqualSlice via nested Equals.
+func TestBidiNestedStructures(t *testing.T) {
+	t.Parallel()
+
+	s := newBudgerigar()
+
+	// Stub with nested map in Equals
+	stubMap := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: "Svc",
+		Method:  "Mth",
+		Input: stuber.InputData{
+			Equals: map[string]any{
+				"payload": map[string]any{"nested": 1.0, "key": "v"},
+			},
+		},
+		Output: stuber.Output{Data: map[string]any{"ok": "map"}},
+	}
+	// Stub with slice in Equals
+	stubSlice := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: "Svc",
+		Method:  "Mth",
+		Input: stuber.InputData{
+			Equals: map[string]any{"ids": []any{1.0, 2.0, 3.0}},
+		},
+		Output: stuber.Output{Data: map[string]any{"ok": "slice"}},
+	}
+	s.PutMany(stubMap, stubSlice)
+
+	query := stuber.QueryBidi{Service: "Svc", Method: "Mth"}
+	result, err := s.FindByQueryBidi(query)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Match nested map
+	st, err := result.Next(map[string]any{"payload": map[string]any{"nested": 1.0, "key": "v"}})
+	require.NoError(t, err)
+	require.Equal(t, "map", st.Output.Data["ok"])
+
+	// Match slice
+	st2, err := result.Next(map[string]any{"ids": []any{1.0, 2.0, 3.0}})
+	require.NoError(t, err)
+	require.Equal(t, "slice", st2.Output.Data["ok"])
+
+	// Mismatch nested map
+	_, err = result.Next(map[string]any{"payload": map[string]any{"nested": 2.0}})
+	require.ErrorIs(t, err, stuber.ErrStubNotFound)
 }
 
 func TestFieldAndCamelCaseVariations(t *testing.T) {

@@ -127,3 +127,60 @@ func (m *mockServerStream) SetHeader(md metadata.MD) error {
 func (m *mockServerStream) SetTrailer(md metadata.MD) {
 	// Mock implementation
 }
+
+func TestPanicRecoveryUnaryInterceptor(t *testing.T) {
+	t.Parallel()
+
+	logger := zerolog.New(zerolog.NewTestWriter(t))
+	ctx := logger.WithContext(context.Background())
+	info := &grpc.UnaryServerInfo{FullMethod: "/test.Service/Method"}
+
+	t.Run("no panic", func(t *testing.T) {
+		t.Parallel()
+
+		handler := func(ctx context.Context, req any) (any, error) {
+			return "ok", nil
+		}
+		resp, err := PanicRecoveryUnaryInterceptor(ctx, "req", info, handler)
+		require.NoError(t, err)
+		require.Equal(t, "ok", resp)
+	})
+
+	t.Run("panic recovered", func(t *testing.T) {
+		t.Parallel()
+
+		handler := func(ctx context.Context, req any) (any, error) {
+			panic("test panic")
+		}
+		resp, err := PanicRecoveryUnaryInterceptor(ctx, "req", info, handler)
+		require.Nil(t, resp)
+		require.NoError(t, err) // recover stops panic; return values are zero
+	})
+}
+
+func TestPanicRecoveryStreamInterceptor(t *testing.T) {
+	t.Parallel()
+
+	mockStream := &mockServerStream{ctx: context.Background()}
+	info := &grpc.StreamServerInfo{FullMethod: "/test.Service/Stream"}
+
+	t.Run("no panic", func(t *testing.T) {
+		t.Parallel()
+
+		handler := func(srv any, stream grpc.ServerStream) error {
+			return nil
+		}
+		err := PanicRecoveryStreamInterceptor(nil, mockStream, info, handler)
+		require.NoError(t, err)
+	})
+
+	t.Run("panic recovered", func(t *testing.T) {
+		t.Parallel()
+
+		handler := func(srv any, stream grpc.ServerStream) error {
+			panic("stream panic")
+		}
+		err := PanicRecoveryStreamInterceptor(nil, mockStream, info, handler)
+		require.NoError(t, err) // recover stops panic; return value is zero
+	})
+}

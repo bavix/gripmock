@@ -6,6 +6,7 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/bavix/gripmock/v3/internal/infra/protobuf"
@@ -203,5 +204,32 @@ func TestScalarConverter_ConvertMessage(t *testing.T) {
 		require.NotNil(t, result)
 		require.Contains(t, result, "type_url")
 		require.Contains(t, result, "value")
+	})
+
+	t.Run("list field", func(t *testing.T) {
+		t.Parallel()
+
+		// structpb.ListValue has repeated "values" - triggers convertList
+		msg, err := structpb.NewList([]any{1.0, "two", true})
+		require.NoError(t, err)
+
+		result := converter.ConvertMessage(msg)
+		require.NotNil(t, result)
+		require.Contains(t, result, "values")
+		vals, ok := result["values"].([]any)
+		require.True(t, ok)
+		require.Len(t, vals, 3)
+	})
+
+	t.Run("map field", func(t *testing.T) {
+		t.Parallel()
+
+		// structpb.Struct has "fields" map - triggers convertMap
+		msg, err := structpb.NewStruct(map[string]any{"a": 1.0, "b": "x"})
+		require.NoError(t, err)
+
+		result := converter.ConvertMessage(msg)
+		require.NotNil(t, result)
+		require.Contains(t, result, "fields")
 	})
 }

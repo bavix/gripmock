@@ -279,7 +279,7 @@ func (s *Extender) readStub(path string) ([]*stuber.Stub, error) {
 
 	var stubs []*stuber.Stub
 	if err := jsondecoder.UnmarshalSlice(file, &stubs); err != nil {
-		return nil, errors.Wrapf(err, "failed to unmarshal file %s: %v", path, string(file))
+		return nil, errors.Wrapf(err, "failed to unmarshal file %s", path)
 	}
 
 	return stubs, nil
