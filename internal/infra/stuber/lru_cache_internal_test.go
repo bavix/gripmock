@@ -11,9 +11,8 @@ import (
 //nolint:gochecknoglobals
 var cacheMu sync.Mutex
 
+//nolint:paralleltest
 func TestStringHashCache(t *testing.T) {
-	t.Parallel()
-
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 	defer initStringCache(stringCacheSize)
@@ -46,9 +45,8 @@ func TestStringHashCache(t *testing.T) {
 	require.GreaterOrEqual(t, size, 2)
 }
 
+//nolint:paralleltest
 func TestRegexCache(t *testing.T) {
-	t.Parallel()
-
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 
@@ -85,9 +83,8 @@ func TestSearchResultCache(t *testing.T) {
 	t.Skip("Search result cache removed due to complexity")
 }
 
+//nolint:paralleltest
 func TestLRUCacheEviction(t *testing.T) {
-	t.Parallel()
-
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 	// Test that LRU cache evicts old entries when full
@@ -109,9 +106,8 @@ func TestLRUCacheEviction(t *testing.T) {
 	require.Equal(t, 10000, capacity)
 }
 
+//nolint:paralleltest
 func TestCacheConcurrency(t *testing.T) {
-	t.Parallel()
-
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 	// Test that caches work correctly under concurrent access
@@ -146,9 +142,8 @@ func TestCacheConcurrency(t *testing.T) {
 	require.Positive(t, size)
 }
 
+//nolint:paralleltest
 func TestGetStatsWhenCacheNil(t *testing.T) {
-	t.Parallel()
-
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 

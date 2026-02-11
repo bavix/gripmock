@@ -602,9 +602,8 @@ func TestStorageFindAll_SlicePathEarlyExit(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
+//nolint:paralleltest
 func TestInitStringCache_HandlesInvalidSize(t *testing.T) {
-	t.Parallel()
-
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 
