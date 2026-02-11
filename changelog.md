@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.6.0 - 2026-02-11
+
+### What's Changed
+
+* Bump golang from 1.25-alpine3.23 to 1.26-alpine3.23 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/730
+* Update golangci-lint to version 2.9.0  by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/731
+* Refactor error handling and data structures in stub matching by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/732
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.5.7...v3.6.0
+
 ## v3.5.7 - 2026-02-10
 
 ### What's Changed
