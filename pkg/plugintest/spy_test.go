@@ -26,11 +26,11 @@ func TestSpyRecordsCalls(t *testing.T) {
 	spy := plugintest.NewSpy(base)
 	fn := spy.Func()
 
-	out1, err := fn(context.Background(), 1, 2)
+	out1, err := fn(t.Context(), 1, 2)
 	require.NoError(t, err)
 	require.Equal(t, 2, out1)
 
-	out2, err := fn(context.Background())
+	out2, err := fn(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, 0, out2)
 
@@ -50,7 +50,7 @@ func TestSpyDecorator(t *testing.T) {
 	decorate := spy.Decorator()
 	wrapped := decorate(base)
 
-	res, err := wrapped(context.Background(), "arg1")
+	res, err := wrapped(t.Context(), "arg1")
 	require.NoError(t, err)
 	require.Equal(t, "from-base", res)
 	require.Len(t, spy.Calls, 1)
@@ -64,7 +64,7 @@ func TestSpyReset(t *testing.T) {
 	spy := plugintest.NewSpy(base)
 	fn := spy.Func()
 
-	_, _ = fn(context.Background())
+	_, _ = fn(t.Context())
 	require.Len(t, spy.Calls, 1)
 
 	spy.Reset()

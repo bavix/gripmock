@@ -1,7 +1,6 @@
 package plugintest_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -30,7 +29,7 @@ func TestNewPlugin(t *testing.T) {
 
 	fn, ok := plugintest.LookupFunc(reg, "id")
 	require.True(t, ok)
-	out, err := plugintest.Call(context.Background(), fn, 42)
+	out, err := plugintest.Call(t.Context(), fn, 42)
 	require.NoError(t, err)
 	require.Equal(t, 42, out)
 }
@@ -65,21 +64,21 @@ func TestRegistry_AddPluginAndLookup(t *testing.T) {
 
 	fn, ok := plugintest.LookupFunc(reg, "sum")
 	require.True(t, ok)
-	out, err := plugintest.Call(context.Background(), fn, 1, 2, 3)
+	out, err := plugintest.Call(t.Context(), fn, 1, 2, 3)
 	require.NoError(t, err)
 	require.Equal(t, 6, out)
 
 	fnEcho, ok := plugintest.LookupFunc(reg, "echo")
 	require.True(t, ok)
-	outEcho, err := plugintest.Call(context.Background(), fnEcho)
+	outEcho, err := plugintest.Call(t.Context(), fnEcho)
 	require.NoError(t, err)
 	require.Equal(t, "ok", outEcho)
 
-	pluginsMeta := reg.Plugins(context.Background())
+	pluginsMeta := reg.Plugins(t.Context())
 	require.Len(t, pluginsMeta, 1)
 	require.Equal(t, "p1", pluginsMeta[0].Name)
 
-	groups := reg.Groups(context.Background())
+	groups := reg.Groups(t.Context())
 	require.Len(t, groups, 1)
 	require.Len(t, groups[0].Funcs, 2)
 }

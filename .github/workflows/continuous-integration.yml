@@ -9,11 +9,16 @@ env:
   GRPC_TESTIFY_VERSION: "1.0.0"
   GRPCURL_VERSION: "1.9.3"
   GO_VERSION: "1.26"
+  COVER_UNIT: /tmp/cover-unit
+  COVER_E2E: /tmp/cover-e2e
+  COVER_CHECK: /tmp/cover-check
 
 jobs:
   unit-tests:
     name: "Unit Tests"
     runs-on: ubuntu-latest
+    env:
+      GOCOVERDIR: ${{ env.COVER_UNIT }}
     steps:
       - uses: actions/checkout@v6
       - name: Setup Go
@@ -32,15 +37,15 @@ jobs:
 
       - name: Run unit tests with coverage
         run: |
-          mkdir -p /tmp/cover-unit
-          go test -coverprofile=/tmp/cover-unit/coverage.txt -covermode=atomic ./...
+          mkdir -p $GOCOVERDIR
+          go test -cover -covermode=atomic ./...
         shell: bash
 
       - name: Upload unit coverage
         uses: actions/upload-artifact@v6
         with:
           name: coverage-unit
-          path: /tmp/cover-unit
+          path: ${{ env.COVER_UNIT }}
 
   e2e-tests:
     name: "E2E Tests"
@@ -86,14 +91,14 @@ jobs:
       - name: Start GripMock Server
         run: |
           find . -name "*.proto.src" -type f -delete
-          mkdir -p /tmp/cover-e2e
-          GOCOVERDIR=/tmp/cover-e2e /tmp/gripmock --stub=examples examples &
+          mkdir -p ${{ env.COVER_E2E }}
+          GOCOVERDIR=${{ env.COVER_E2E }} /tmp/gripmock --stub=examples examples &
           echo $! > /tmp/gripmock.pid
 
       - name: Run gripmock check with coverage
         run: |
-          mkdir -p /tmp/cover-check
-          GOCOVERDIR=/tmp/cover-check /tmp/gripmock check --timeout=60s --silent
+          mkdir -p ${{ env.COVER_CHECK }}
+          GOCOVERDIR=${{ env.COVER_CHECK }} /tmp/gripmock check --timeout=60s --silent
 
       - name: Run examples
         run: |
@@ -109,13 +114,13 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: coverage-e2e
-          path: /tmp/cover-e2e
+          path: ${{ env.COVER_E2E }}
 
       - name: Upload check coverage
         uses: actions/upload-artifact@v6
         with:
           name: coverage-check
-          path: /tmp/cover-check
+          path: ${{ env.COVER_CHECK }}
 
   coverage-report:
     name: "Coverage Report"
@@ -133,25 +138,25 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: coverage-unit
-          path: /tmp/cover-unit
+          path: ${{ env.COVER_UNIT }}
 
       - name: Download e2e coverage
         uses: actions/download-artifact@v7
         with:
           name: coverage-e2e
-          path: /tmp/cover-e2e
+          path: ${{ env.COVER_E2E }}
 
       - name: Download check coverage
         uses: actions/download-artifact@v7
         with:
           name: coverage-check
-          path: /tmp/cover-check
+          path: ${{ env.COVER_CHECK }}
 
       - name: Merge all coverage data
         run: |
           mkdir -p /tmp/cover-all
           go tool covdata merge \
-            -i=/tmp/cover-unit,/tmp/cover-e2e,/tmp/cover-check \
+            -i=${{ env.COVER_UNIT }},${{ env.COVER_E2E }},${{ env.COVER_CHECK }} \
             -o=/tmp/cover-all
 
       - name: Generate coverage report
