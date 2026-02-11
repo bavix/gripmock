@@ -73,7 +73,7 @@ func (s *StubsTestSuite) TestStubInputValidation() {
 
 // TestStubOutputValidation tests StubOutput validation.
 //
-//nolint:funlen // Test function requires multiple scenarios
+//nolint:funlen
 func (s *StubsTestSuite) TestStubOutputValidation() {
 	tests := []struct {
 		name   string
@@ -148,7 +148,7 @@ func (s *StubsTestSuite) TestStubOutputValidation() {
 
 // TestStubValidation tests Stub validation.
 //
-//nolint:cyclop,funlen // Test function requires multiple validation scenarios
+//nolint:cyclop,funlen
 func (s *StubsTestSuite) TestStubValidation() {
 	tests := []struct {
 		name  string

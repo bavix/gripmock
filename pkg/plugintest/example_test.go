@@ -2,6 +2,7 @@ package plugintest_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,12 @@ func TestHelloPlugin(t *testing.T) {
 					if len(args) == 0 {
 						return "hello", nil
 					}
-					return "hello " + args[0].(string), nil
+					s, ok := args[0].(string)
+					if !ok {
+						return nil, fmt.Errorf("expected string argument, got %T", args[0])
+					}
+
+					return "hello " + s, nil
 				},
 			},
 		),

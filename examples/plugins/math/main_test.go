@@ -10,6 +10,20 @@ import (
 	"github.com/bavix/gripmock/v3/pkg/plugintest"
 )
 
+func TestRoundDeactivated(t *testing.T) {
+	t.Parallel()
+
+	reg := plugintest.NewRegistry()
+	Register(reg)
+
+	fnRound, ok := plugintest.LookupFunc(reg, "round")
+	require.True(t, ok)
+
+	_, err := plugintest.Call(t.Context(), fnRound, 3.14)
+	require.Error(t, err)
+	require.ErrorIs(t, err, errDeactivated)
+}
+
 func TestMathPlugin(t *testing.T) {
 	t.Parallel()
 

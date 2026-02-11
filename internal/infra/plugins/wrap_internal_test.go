@@ -27,7 +27,7 @@ func TestWrapFunc_AlreadyFunc(t *testing.T) {
 
 	// Act
 	wrapped := wrapFunc(fn)
-	result, err := wrapped(context.Background())
+	result, err := wrapped(t.Context())
 
 	// Assert
 	require.NotNil(t, wrapped)
@@ -45,7 +45,7 @@ func TestWrapFunc_SimpleFunc(t *testing.T) {
 
 	// Act
 	wrapped := wrapFunc(fn)
-	result, err := wrapped(context.Background())
+	result, err := wrapped(t.Context())
 
 	// Assert
 	require.NotNil(t, wrapped)
@@ -64,7 +64,7 @@ func TestWrapFunc_FuncWithArgs(t *testing.T) {
 
 	// Act
 	wrapped := wrapFunc(fn)
-	result, err := wrapped(context.Background(), arg1, arg2)
+	result, err := wrapped(t.Context(), arg1, arg2)
 
 	// Assert
 	require.NotNil(t, wrapped)
@@ -82,7 +82,7 @@ func TestWrapFunc_FuncWithError(t *testing.T) {
 
 	// Act
 	wrapped := wrapFunc(fn)
-	result, err := wrapped(context.Background())
+	result, err := wrapped(t.Context())
 
 	// Assert
 	require.NotNil(t, wrapped)
@@ -94,7 +94,7 @@ func TestWrapFunc_FuncWithErrorReturn(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	expectedErr := errors.New("test error") //nolint:err113 // test error
+	expectedErr := errors.New("test error") //nolint:err113
 
 	fn := func() (string, error) {
 		return "", expectedErr
@@ -102,13 +102,29 @@ func TestWrapFunc_FuncWithErrorReturn(t *testing.T) {
 
 	// Act
 	wrapped := wrapFunc(fn)
-	result, err := wrapped(context.Background())
+	result, err := wrapped(t.Context())
 
 	// Assert
 	require.NotNil(t, wrapped)
 	require.Error(t, err)
 	assert.Equal(t, expectedErr, err)
 	assert.Empty(t, result)
+}
+
+func TestWrapFunc_UnsupportedResultCount(t *testing.T) {
+	t.Parallel()
+
+	fn := func() (int, int, int) {
+		return 1, 2, 3
+	}
+
+	wrapped := wrapFunc(fn)
+	result, err := wrapped(t.Context())
+
+	require.NotNil(t, wrapped)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported result count")
+	assert.Nil(t, result)
 }
 
 func TestWrapFunc_WithContext(t *testing.T) {
@@ -121,7 +137,7 @@ func TestWrapFunc_WithContext(t *testing.T) {
 
 	// Act
 	wrapped := wrapFunc(fn)
-	result, err := wrapped(context.Background())
+	result, err := wrapped(t.Context())
 
 	// Assert
 	require.NotNil(t, wrapped)
@@ -155,7 +171,7 @@ func TestWrapDecorator_ValidDecorator(t *testing.T) {
 
 			str, ok := result.(string)
 			if !ok {
-				return nil, errors.New("result is not a string") //nolint:err113 // test error
+				return nil, errors.New("result is not a string") //nolint:err113
 			}
 
 			return "decorated: " + str, nil
@@ -168,7 +184,7 @@ func TestWrapDecorator_ValidDecorator(t *testing.T) {
 	// Act
 	wrapped := wrapDecorator(decorator)
 	decorated := wrapped(base)
-	result, err := decorated(context.Background())
+	result, err := decorated(t.Context())
 
 	// Assert
 	require.NotNil(t, wrapped)

@@ -602,11 +602,17 @@ func TestStorageFindAll_SlicePathEarlyExit(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
-func TestMustCreateStringCache_PanicsOnInvalidSize(t *testing.T) {
-	t.Parallel()
+//nolint:paralleltest
+func TestInitStringCache_HandlesInvalidSize(t *testing.T) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
 
-	require.Panics(t, func() {
-		mustCreateStringCache(0)
+	// Save and restore cache so we don't break other tests
+	defer initStringCache(stringCacheSize)
+
+	// initStringCache does not panic; it logs and sets cache to nil on error
+	require.NotPanics(t, func() {
+		initStringCache(0)
 	})
 }
 

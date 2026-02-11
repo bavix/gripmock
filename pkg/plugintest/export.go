@@ -18,7 +18,7 @@ type (
 
 // Specs forwards to plugins.Specs so tests can stay within plugintest imports.
 //
-//nolint:ireturn // convenience passthrough for spec builders
+//nolint:ireturn
 func Specs(specs ...FuncSpec) SpecProvider {
 	return plugins.Specs(specs...)
 }
@@ -26,7 +26,7 @@ func Specs(specs ...FuncSpec) SpecProvider {
 // NewPlugin forwards to plugins.NewPlugin for fixtures that prefer the full
 // Plugin object instead of raw registry calls.
 //
-//nolint:ireturn // convenience passthrough for plugin constructors
+//nolint:ireturn
 func NewPlugin(info PluginInfo, providers ...SpecProvider) Plugin {
 	return plugins.NewPlugin(info, providers...)
 }

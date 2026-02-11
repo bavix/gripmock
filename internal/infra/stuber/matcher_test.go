@@ -3,6 +3,8 @@ package stuber_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
@@ -56,7 +58,7 @@ func TestMatchData(t *testing.T) {
 			query := stuber.Query{
 				Service: "test",
 				Method:  "test",
-				Data:    tt.queryData,
+				Input:   []map[string]any{tt.queryData},
 			}
 
 			stub := &stuber.Stub{
@@ -71,16 +73,14 @@ func TestMatchData(t *testing.T) {
 			result, err := budgerigar.FindByQuery(query)
 			if err != nil {
 				if tt.expected {
-					t.Errorf("Expected match but got error: %v", err)
+					require.NoError(t, err, "Expected match but got error")
 				}
 
 				return
 			}
 
 			matched := result.Found() != nil
-			if matched != tt.expected {
-				t.Errorf("matchData() = %v, want %v", matched, tt.expected)
-			}
+			require.Equal(t, tt.expected, matched, "matchData()")
 		})
 	}
 }
@@ -91,7 +91,7 @@ func TestMatchWithData(t *testing.T) {
 	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
-		Data:    map[string]any{"name": "John", "age": 30},
+		Input:   []map[string]any{{"name": "John", "age": 30}},
 	}
 
 	stub := &stuber.Stub{
@@ -106,28 +106,18 @@ func TestMatchWithData(t *testing.T) {
 	budgerigar.PutMany(stub)
 
 	result, err := budgerigar.FindByQuery(query)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Found() == nil {
-		t.Error("Expected match to return true for matching query and stub with data")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Expected match to return true for matching query and stub with data")
 
 	nonMatchingQuery := stuber.Query{
 		Service: "test",
 		Method:  "test",
-		Data:    map[string]any{"name": "John", "age": 25}, // Different age
+		Input:   []map[string]any{{"name": "John", "age": 25}}, // Different age
 	}
 
 	result, err = budgerigar.FindByQuery(nonMatchingQuery)
-	if err != nil {
-		return
-	}
-
-	if result.Found() != nil {
-		t.Error("Expected match to return false for non-matching data")
-	}
+	require.NoError(t, err)
+	require.Nil(t, result.Found(), "Expected match to return false for non-matching data")
 }
 
 func TestBackwardCompatibility(t *testing.T) {
@@ -136,7 +126,7 @@ func TestBackwardCompatibility(t *testing.T) {
 	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
-		Data:    map[string]any{"key1": "value1"},
+		Input:   []map[string]any{{"key1": "value1"}},
 	}
 
 	stub := &stuber.Stub{
@@ -151,11 +141,6 @@ func TestBackwardCompatibility(t *testing.T) {
 	budgerigar.PutMany(stub)
 
 	result, err := budgerigar.FindByQuery(query)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Found() == nil {
-		t.Error("Expected backward compatibility: data should match against input")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Expected backward compatibility: input should match against stub")
 }

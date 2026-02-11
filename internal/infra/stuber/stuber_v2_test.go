@@ -150,20 +150,20 @@ func TestBudgerigar_UnusedV2(t *testing.T) {
 	unused := s.Unused()
 	require.Len(t, unused, 2)
 
-	// Use one stub by finding it with QueryV2
+	// Use one stub by finding it with Query
 	// First, update stub1 to have matching input
 	stub1.Input = stuber.InputData{
 		Equals: map[string]any{"key": "value"},
 	}
 	s.UpdateMany(stub1)
 
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "Greeter1",
 		Method:  "SayHello1",
 		Input:   []map[string]any{{"key": "value"}},
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -195,26 +195,26 @@ func TestBudgerigar_SearchWithHeadersV2(t *testing.T) {
 	s.PutMany(stub)
 
 	// Test matching query
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "Greeter1",
 		Method:  "SayHello1",
 		Headers: map[string]any{"authorization": "Bearer token123"},
 		Input:   []map[string]any{{"name": "John"}},
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
 	// Test non-matching headers
-	queryNonMatching := stuber.QueryV2{
+	queryNonMatching := stuber.Query{
 		Service: "Greeter1",
 		Method:  "SayHello1",
 		Headers: map[string]any{"authorization": "Bearer different"},
 		Input:   []map[string]any{{"name": "John"}},
 	}
 
-	result, err = s.FindByQueryV2(queryNonMatching)
+	result, err = s.FindByQuery(queryNonMatching)
 	require.NoError(t, err) // Should find similar match
 	require.Nil(t, result.Found())
 	require.NotNil(t, result.Similar()) // Should find similar match
@@ -254,14 +254,14 @@ func TestBudgerigar_SearchWithHeaders_SimilarV2(t *testing.T) {
 	s.PutMany(stub)
 
 	// Test similar match (different headers but same service/method)
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "Greeter1",
 		Method:  "SayHello1",
 		Headers: map[string]any{"authorization": "Bearer different"},
 		Input:   []map[string]any{{"name": "John"}},
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err) // Should find similar match
 	require.Nil(t, result.Found())
 	require.NotNil(t, result.Similar()) // Should find similar match
@@ -284,13 +284,13 @@ func TestResult_SimilarV2(t *testing.T) {
 	s.PutMany(stub)
 
 	// Test query that doesn't match exactly but is similar
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "Greeter1",
 		Method:  "SayHello1",
 		Input:   []map[string]any{{"name": "Jane"}}, // Different name
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.Nil(t, result.Found())
 	require.NotNil(t, result.Similar())
@@ -315,24 +315,24 @@ func TestStuber_MatchesEqualsFoundV2(t *testing.T) {
 	s.PutMany(stub)
 
 	// Test exact match
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "Greeter1",
 		Method:  "SayHello1",
 		Input:   []map[string]any{{"name": "John", "age": 30}},
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
 	// Test partial match (should not match)
-	queryPartial := stuber.QueryV2{
+	queryPartial := stuber.Query{
 		Service: "Greeter1",
 		Method:  "SayHello1",
 		Input:   []map[string]any{{"name": "John"}}, // Missing age
 	}
 
-	result, err = s.FindByQueryV2(queryPartial)
+	result, err = s.FindByQuery(queryPartial)
 	require.NoError(t, err) // Should find similar match
 	require.Nil(t, result.Found())
 	require.NotNil(t, result.Similar()) // Should find similar match
@@ -417,18 +417,80 @@ func TestBudgerigar_FindByQuery_FoundWithPriorityV2(t *testing.T) {
 	s.PutMany(stub1, stub2)
 
 	// Test query
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "Greeter1",
 		Method:  "SayHello1",
 		Input:   []map[string]any{{"name": "John"}},
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
 	// Should match the higher priority stub
 	require.Equal(t, "Hello from stub2", result.Found().Output.Data["message"])
+}
+
+// TestDivideByZero_ClientStreaming mimics case_divide_by_zero.gctf:
+// two stubs (universal + divide-by-zero), query [100, 0.0] must match divide-by-zero by priority.
+func TestDivideByZero_ClientStreaming(t *testing.T) {
+	t.Parallel()
+
+	s := stuber.NewBudgerigar(features.New())
+
+	code2 := codes.Unknown // code 2 in gRPC
+
+	// Universal stub: matches any two numbers (no priority)
+	universalStub := &stuber.Stub{
+		ID:       uuid.New(),
+		Service:  "calculator.CalculatorService",
+		Method:   "DivideNumbers",
+		Priority: 0,
+		Inputs: []stuber.InputData{
+			{Matches: map[string]any{"value": `\d+(\.\d+)?`}},
+			{Matches: map[string]any{"value": `\d+(\.\d+)?`}},
+		},
+		Output: stuber.Output{
+			Data: map[string]any{"result": float64(42), "count": 2},
+		},
+	}
+
+	// Divide-by-zero stub: second input must equal 0.0 (higher priority)
+	divideByZeroStub := &stuber.Stub{
+		ID:       uuid.New(),
+		Service:  "calculator.CalculatorService",
+		Method:   "DivideNumbers",
+		Priority: 1,
+		Inputs: []stuber.InputData{
+			{Matches: map[string]any{"value": `\d+(\.\d+)?`}},
+			{Equals: map[string]any{"value": 0.0}},
+		},
+		Output: stuber.Output{
+			Error: "Division by zero",
+			Code:  &code2,
+		},
+	}
+
+	s.PutMany(universalStub, divideByZeroStub)
+
+	query := stuber.Query{
+		Service: "calculator.CalculatorService",
+		Method:  "DivideNumbers",
+		Input: []map[string]any{
+			{"value": float64(100)},
+			{"value": float64(0.0)},
+		},
+	}
+
+	result, err := s.FindByQuery(query)
+	require.NoError(t, err)
+	require.NotNil(t, result.Found())
+
+	// Must match divide-by-zero stub (priority 1), not universal (priority 0)
+	found := result.Found()
+	require.Equal(t, "Division by zero", found.Output.Error)
+	require.NotNil(t, found.Output.Code)
+	require.Equal(t, codes.Unknown, *found.Output.Code)
 }
 
 func TestBudgerigar_UsedV2(t *testing.T) {
@@ -449,7 +511,7 @@ func TestBudgerigar_UsedV2(t *testing.T) {
 	require.Empty(t, used)
 
 	// Use one stub
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "Greeter1",
 		Method:  "SayHello1",
 		Input:   []map[string]any{{"key": "value"}},
@@ -460,7 +522,7 @@ func TestBudgerigar_UsedV2(t *testing.T) {
 		Equals: map[string]any{"key": "value"},
 	}
 	s.UpdateMany(stub1)
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -487,13 +549,13 @@ func TestBudgerigar_FindByQuery_WithIDV2(t *testing.T) {
 	s.PutMany(stub)
 
 	// Test query with ID
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		ID:      &stub.ID,
 		Service: "Greeter1",
 		Method:  "SayHello1",
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 	require.Equal(t, stub.ID, result.Found().ID)
@@ -501,14 +563,14 @@ func TestBudgerigar_FindByQuery_WithIDV2(t *testing.T) {
 
 // Additional V2-specific tests
 
-func TestNewQueryV2(t *testing.T) {
+func TestNewQuery(t *testing.T) {
 	t.Parallel()
-	// Test creating QueryV2 from HTTP request
+	// Test creating Query from HTTP request (supports both "data" and "input" JSON fields)
 	jsonBody := `{"service":"test","method":"test","input":[{"key":"value"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 
-	query, err := stuber.NewQueryV2(req)
+	query, err := stuber.NewQuery(req)
 	require.NoError(t, err)
 	require.Equal(t, "test", query.Service)
 	require.Equal(t, "test", query.Method)
@@ -562,7 +624,7 @@ func TestV2QueryFunctions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "test", query.Service)
 	require.Equal(t, "test", query.Method)
-	require.Equal(t, "value", query.Data["key"])
+	require.Equal(t, "value", query.Data()["key"])
 	require.False(t, query.RequestInternal())
 }
 
@@ -585,7 +647,7 @@ func TestV2SearcherFunctions(t *testing.T) {
 	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
-		Data:    map[string]any{"key": "value"},
+		Input:   []map[string]any{{"key": "value"}},
 	}
 
 	result, err := s.FindByQuery(query)
@@ -655,7 +717,7 @@ func TestV2MatcherFunctions(t *testing.T) {
 
 	s.PutMany(stub)
 
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "TestService",
 		Method:  "TestMethod",
 		Headers: map[string]any{"content-type": "application/json"},
@@ -663,7 +725,7 @@ func TestV2MatcherFunctions(t *testing.T) {
 	}
 
 	// Test matching through public API
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 	require.Equal(t, stub.ID, result.Found().ID)
@@ -748,6 +810,17 @@ func TestBidiStreaming(t *testing.T) {
 		_, err = result.Next(map[string]any{"message": "unknown"})
 		require.Error(t, err)
 		require.ErrorIs(t, err, stuber.ErrStubNotFound)
+
+		// Test GetMessageIndex - increments after each successful Next (when filtering)
+		result2, err := s.FindByQueryBidi(query)
+		require.NoError(t, err)
+		require.Equal(t, 0, result2.GetMessageIndex())
+		_, _ = result2.Next(map[string]any{"message": "hello"})
+		idx := result2.GetMessageIndex()
+		require.GreaterOrEqual(t, idx, 0)
+
+		_, _ = result2.Next(map[string]any{"message": "how are you"})
+		require.GreaterOrEqual(t, result2.GetMessageIndex(), idx)
 	})
 }
 
@@ -1165,6 +1238,56 @@ func TestBidiStreamingEdgeCases(t *testing.T) {
 	require.Equal(t, "Hello!", stubResult.Output.Data["response"])
 }
 
+// TestBidiNestedStructures triggers deepEqualMap and deepEqualSlice via nested Equals.
+func TestBidiNestedStructures(t *testing.T) {
+	t.Parallel()
+
+	s := newBudgerigar()
+
+	// Stub with nested map in Equals
+	stubMap := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: "Svc",
+		Method:  "Mth",
+		Input: stuber.InputData{
+			Equals: map[string]any{
+				"payload": map[string]any{"nested": 1.0, "key": "v"},
+			},
+		},
+		Output: stuber.Output{Data: map[string]any{"ok": "map"}},
+	}
+	// Stub with slice in Equals
+	stubSlice := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: "Svc",
+		Method:  "Mth",
+		Input: stuber.InputData{
+			Equals: map[string]any{"ids": []any{1.0, 2.0, 3.0}},
+		},
+		Output: stuber.Output{Data: map[string]any{"ok": "slice"}},
+	}
+	s.PutMany(stubMap, stubSlice)
+
+	query := stuber.QueryBidi{Service: "Svc", Method: "Mth"}
+	result, err := s.FindByQueryBidi(query)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Match nested map
+	st, err := result.Next(map[string]any{"payload": map[string]any{"nested": 1.0, "key": "v"}})
+	require.NoError(t, err)
+	require.Equal(t, "map", st.Output.Data["ok"])
+
+	// Match slice
+	st2, err := result.Next(map[string]any{"ids": []any{1.0, 2.0, 3.0}})
+	require.NoError(t, err)
+	require.Equal(t, "slice", st2.Output.Data["ok"])
+
+	// Mismatch nested map
+	_, err = result.Next(map[string]any{"payload": map[string]any{"nested": 2.0}})
+	require.ErrorIs(t, err, stuber.ErrStubNotFound)
+}
+
 func TestFieldAndCamelCaseVariations(t *testing.T) {
 	t.Parallel()
 
@@ -1405,7 +1528,7 @@ func TestPriorityHeadersOverEquals(t *testing.T) {
 	s.PutMany(stub1, stub2)
 
 	// Test query with headers that should match stub2
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
 		Headers: map[string]any{
@@ -1417,7 +1540,7 @@ func TestPriorityHeadersOverEquals(t *testing.T) {
 		},
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -1430,7 +1553,7 @@ func TestPriorityHeadersOverEquals(t *testing.T) {
 	require.Nil(t, foundStub.Output.Code)
 
 	// Test query without headers that should match stub1
-	queryWithoutHeaders := stuber.QueryV2{
+	queryWithoutHeaders := stuber.Query{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
 		Input: []map[string]any{
@@ -1438,7 +1561,7 @@ func TestPriorityHeadersOverEquals(t *testing.T) {
 		},
 	}
 
-	result, err = s.FindByQueryV2(queryWithoutHeaders)
+	result, err = s.FindByQuery(queryWithoutHeaders)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -1543,13 +1666,13 @@ func TestEmptyQueryInput(t *testing.T) {
 	s.PutMany(stub1, stub2, stub3)
 
 	// Test empty query - should match stub2 (can handle empty input)
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
 		Input:   []map[string]any{},
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -1593,13 +1716,13 @@ func TestEmptyQueryInputWithStreaming(t *testing.T) {
 	s.PutMany(stub1, stub2)
 
 	// Test empty query - should prioritize Inputs over Input
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
 		Input:   []map[string]any{},
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -1643,13 +1766,13 @@ func TestEmptyQueryInputNoMatch(t *testing.T) {
 	s.PutMany(stub1, stub2)
 
 	// Test empty query - should not match any stub
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
 		Input:   []map[string]any{},
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.Nil(t, result.Found())
 	require.NotNil(t, result.Similar()) // Should find similar match
@@ -1701,7 +1824,7 @@ func TestEmptyQueryInputWithHeaders(t *testing.T) {
 	s.PutMany(stub1, stub2)
 
 	// Test empty query with headers - should prioritize Inputs over Input
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
 		Headers: map[string]any{
@@ -1710,7 +1833,7 @@ func TestEmptyQueryInputWithHeaders(t *testing.T) {
 		Input: []map[string]any{},
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -1768,13 +1891,13 @@ func TestEmptyQueryInputMixedConditions(t *testing.T) {
 	s.PutMany(stub1, stub2, stub3)
 
 	// Test empty query - should match stub1 (Inputs with empty equals)
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
 		Input:   []map[string]any{},
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -1858,13 +1981,13 @@ func TestMethodTypes(t *testing.T) {
 	t.Run("Unary", func(t *testing.T) {
 		t.Parallel()
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "helloworld.Greeter",
 			Method:  "SayHello",
 			Input:   []map[string]any{{"name": "Bob"}},
 		}
 
-		result, err := s.FindByQueryV2(query)
+		result, err := s.FindByQuery(query)
 		require.NoError(t, err)
 		require.NotNil(t, result.Found())
 		require.Equal(t, "Hello Bob", result.Found().Output.Data["message"])
@@ -1874,7 +1997,7 @@ func TestMethodTypes(t *testing.T) {
 	t.Run("ClientStream", func(t *testing.T) {
 		t.Parallel()
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "helloworld.Greeter",
 			Method:  "SayHelloStream",
 			Input: []map[string]any{
@@ -1883,7 +2006,7 @@ func TestMethodTypes(t *testing.T) {
 			},
 		}
 
-		result, err := s.FindByQueryV2(query)
+		result, err := s.FindByQuery(query)
 		require.NoError(t, err)
 		require.NotNil(t, result.Found())
 		require.Equal(t, "Hello Stream", result.Found().Output.Data["message"])
@@ -1893,13 +2016,13 @@ func TestMethodTypes(t *testing.T) {
 	t.Run("ServerStream", func(t *testing.T) {
 		t.Parallel()
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "helloworld.Greeter",
 			Method:  "SayHelloServerStream",
 			Input:   []map[string]any{{"name": "Charlie"}},
 		}
 
-		result, err := s.FindByQueryV2(query)
+		result, err := s.FindByQuery(query)
 		require.NoError(t, err)
 		require.NotNil(t, result.Found())
 		require.Len(t, result.Found().Output.Stream, 2)
@@ -1909,13 +2032,13 @@ func TestMethodTypes(t *testing.T) {
 	t.Run("Bidirectional", func(t *testing.T) {
 		t.Parallel()
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "helloworld.Greeter",
 			Method:  "SayHelloBidi",
 			Input:   []map[string]any{{"name": "David"}},
 		}
 
-		result, err := s.FindByQueryV2(query)
+		result, err := s.FindByQuery(query)
 		require.NoError(t, err)
 		require.NotNil(t, result.Found())
 		require.Len(t, result.Found().Output.Stream, 1)
@@ -1960,13 +2083,13 @@ func TestMethodTypesPriority(t *testing.T) {
 	s.PutMany(unaryStub, clientStreamStub)
 
 	// Test: Should prioritize Inputs (newer) over Input (legacy)
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
 		Input:   []map[string]any{{"name": "Bob"}},
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 
@@ -2023,13 +2146,13 @@ func TestMethodTypesEmptyInput(t *testing.T) {
 	s.PutMany(unaryEmptyStub, clientStreamEmptyStub, unaryNonEmptyStub)
 
 	// Test empty query - should prioritize Inputs (newer) over Input (legacy)
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
 		Input:   []map[string]any{},
 	}
 
-	result, err := s.FindByQueryV2(query)
+	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 	require.Equal(t, "Hello World (ClientStream)", result.Found().Output.Data["message"])

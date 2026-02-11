@@ -47,11 +47,7 @@ type searcher struct {
 	storage  *storage
 }
 
-// newSearcher creates a new instance of the searcher struct.
-//
-// It initializes the stubUsed map and the storage pointer.
-//
-// Returns a pointer to the newly created searcher struct.
+// newSearcher creates a new searcher instance.
 func newSearcher() *searcher {
 	return &searcher{
 		storage:  newStorage(),
@@ -59,32 +55,23 @@ func newSearcher() *searcher {
 	}
 }
 
-// Result represents the result of a search operation.
-//
-// It contains two fields: found and similar. Found represents the exact
-// match found in the search, while similar represents the most similar match
-// found.
+// Result holds the search result: exact match (Found) or best similar (Similar).
 type Result struct {
 	found   *Stub // The exact match found in the search
 	similar *Stub // The most similar match found
 }
 
 // Found returns the exact match found in the search.
-//
-// Returns a pointer to the Stub struct representing the found match.
 func (r *Result) Found() *Stub {
 	return r.found
 }
 
 // Similar returns the most similar match found in the search.
-//
-// Returns a pointer to the Stub struct representing the similar match.
 func (r *Result) Similar() *Stub {
 	return r.similar
 }
 
-// BidiResult represents the result of a bidirectional streaming search operation.
-// For bidirectional streaming, we maintain a list of matching stubs and filter them as messages arrive.
+// BidiResult holds matching stubs for bidirectional streaming.
 type BidiResult struct {
 	searcher      *searcher
 	query         QueryBidi
@@ -94,88 +81,76 @@ type BidiResult struct {
 }
 
 // Next processes the next message in the bidirectional stream and returns the matching stub.
-//
-//nolint:gocognit,cyclop,funlen
 func (br *BidiResult) Next(messageData map[string]any) (*Stub, error) {
 	br.mu.Lock()
 	defer br.mu.Unlock()
 
-	// Validate input
 	if messageData == nil {
 		return nil, ErrStubNotFound
 	}
 
-	// If this is the first call, initialize matching stubs
+	if !br.ensureMatchingStubs(messageData) {
+		return nil, ErrStubNotFound
+	}
+
+	bestStub := br.selectBestStub(messageData)
+	if bestStub == nil {
+		return nil, ErrStubNotFound
+	}
+
+	br.finalizeStubSelection(bestStub, messageData)
+
+	return bestStub, nil
+}
+
+// GetMessageIndex returns the current message index in the bidirectional stream.
+func (br *BidiResult) GetMessageIndex() int {
+	return int(br.messageCount.Load())
+}
+
+func (br *BidiResult) ensureMatchingStubs(messageData map[string]any) bool {
 	if len(br.matchingStubs) == 0 {
-		// Get all stubs for this service/method
 		allStubs, err := br.searcher.findBy(br.query.Service, br.query.Method)
 		if err != nil {
-			return nil, ErrStubNotFound
+			return false
 		}
 
-		// Find stubs that match the first message
 		for _, stub := range allStubs {
 			if br.stubMatchesMessage(stub, messageData) {
 				br.matchingStubs = append(br.matchingStubs, stub)
 			}
 		}
 	} else {
-		// Advance message index first for current message processing
 		br.messageCount.Add(1)
+		br.matchingStubs = br.filterMatchingStubs(messageData)
+	}
 
-		// Filter existing matching stubs - remove those that don't match the new message
-		var filteredStubs []*Stub
+	return len(br.matchingStubs) > 0
+}
 
-		for _, stub := range br.matchingStubs {
-			if br.stubMatchesMessage(stub, messageData) {
-				filteredStubs = append(filteredStubs, stub)
-			}
+func (br *BidiResult) filterMatchingStubs(messageData map[string]any) []*Stub {
+	var filtered []*Stub
+
+	for _, stub := range br.matchingStubs {
+		if br.stubMatchesMessage(stub, messageData) {
+			filtered = append(filtered, stub)
 		}
-
-		br.matchingStubs = filteredStubs
 	}
 
-	// If no matching stubs remain, return error
-	if len(br.matchingStubs) == 0 {
-		return nil, ErrStubNotFound
-	}
+	return filtered
+}
 
-	// Find the best matching stub among candidates
+func (br *BidiResult) selectBestStub(messageData map[string]any) *Stub {
+	messageIndex := int(br.messageCount.Load())
+
 	var (
 		bestStub               *Stub
 		bestRank               float64
 		candidatesWithSameRank []*Stub
 	)
 
-	messageIndex := int(br.messageCount.Load())
-
 	for _, stub := range br.matchingStubs {
-		// For bidirectional streaming, rank based on the specific message index
-		var rank float64
-
-		if stub.IsBidirectional() && len(stub.Inputs) > 0 {
-			// Check if we have a stream element for this message index
-			if messageIndex < len(stub.Inputs) {
-				streamElement := stub.Inputs[messageIndex]
-				rank = br.rankInputData(streamElement, messageData)
-			} else {
-				// Message index out of bounds - very low rank
-				rank = 0.1
-			}
-		} else {
-			// For other types, use the old ranking method
-			query := QueryV2{
-				Service: br.query.Service,
-				Method:  br.query.Method,
-				Headers: br.query.Headers,
-				Input:   []map[string]any{messageData},
-
-				toggles: br.query.toggles,
-			}
-			rank = br.rankStub(stub, query)
-		}
-
-		// Add priority to ranking with higher multiplier
+		rank := br.rankStubForMessage(stub, messageData, messageIndex)
 		priorityBonus := float64(stub.Priority) * PriorityMultiplier
 		totalRank := rank + priorityBonus
 
@@ -184,46 +159,53 @@ func (br *BidiResult) Next(messageData map[string]any) (*Stub, error) {
 			bestRank = totalRank
 			candidatesWithSameRank = []*Stub{stub}
 		} else if totalRank == bestRank {
-			// Collect candidates with same rank for stable sorting
 			candidatesWithSameRank = append(candidatesWithSameRank, stub)
 		}
 	}
 
-	// If we have multiple candidates with same rank, sort by ID for stability
 	if len(candidatesWithSameRank) > 1 {
 		sortStubsByID(candidatesWithSameRank)
 		bestStub = candidatesWithSameRank[0]
 	}
 
-	if bestStub != nil {
-		// Mark the stub as used
-		query := QueryV2{
-			Service: br.query.Service,
-			Method:  br.query.Method,
-			Headers: br.query.Headers,
-			Input:   []map[string]any{messageData},
-
-			toggles: br.query.toggles,
-		}
-
-		// For non-client streaming calls (unary or pure server-stream), reset state after the first message.
-		// Do NOT reset for client-streaming or bidirectional streaming, where message index must advance.
-		if !bestStub.IsClientStream() && br.messageCount.Load() == 0 {
-			br.matchingStubs = br.matchingStubs[:0]
-			br.messageCount.Store(0)
-		}
-
-		br.searcher.markV2(query, bestStub.ID)
-
-		return bestStub, nil
-	}
-
-	return nil, ErrStubNotFound
+	return bestStub
 }
 
-// GetMessageIndex returns the current message index in the bidirectional stream.
-func (br *BidiResult) GetMessageIndex() int {
-	return int(br.messageCount.Load())
+func (br *BidiResult) rankStubForMessage(stub *Stub, messageData map[string]any, messageIndex int) float64 {
+	if stub.IsBidirectional() && len(stub.Inputs) > 0 {
+		if messageIndex < len(stub.Inputs) {
+			return br.rankInputData(stub.Inputs[messageIndex], messageData)
+		}
+
+		return 0.1 //nolint:mnd
+	}
+
+	query := Query{
+		Service: br.query.Service,
+		Method:  br.query.Method,
+		Headers: br.query.Headers,
+		Input:   []map[string]any{messageData},
+		toggles: br.query.toggles,
+	}
+
+	return br.rankStub(stub, query)
+}
+
+func (br *BidiResult) finalizeStubSelection(bestStub *Stub, messageData map[string]any) {
+	query := Query{
+		Service: br.query.Service,
+		Method:  br.query.Method,
+		Headers: br.query.Headers,
+		Input:   []map[string]any{messageData},
+		toggles: br.query.toggles,
+	}
+
+	if !bestStub.IsClientStream() && br.messageCount.Load() == 0 {
+		br.matchingStubs = br.matchingStubs[:0]
+		br.messageCount.Store(0)
+	}
+
+	br.searcher.mark(query, bestStub.ID)
 }
 
 // stubMatchesMessage checks if a stub matches the given message.
@@ -447,8 +429,6 @@ func toSnakeCase(s string) string {
 }
 
 // deepEqual performs deep equality check with better implementation.
-//
-//nolint:cyclop,gocognit,nestif
 func deepEqual(a, b any) bool {
 	if a == nil && b == nil {
 		return true
@@ -458,48 +438,74 @@ func deepEqual(a, b any) bool {
 		return false
 	}
 
-	// Try direct comparison first (only for comparable types)
 	switch a.(type) {
 	case string, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, bool:
 		return a == b
 	}
 
-	// For maps, compare keys and values
-	if aMap, aOk := a.(map[string]any); aOk {
-		if bMap, bOk := b.(map[string]any); bOk {
-			if len(aMap) != len(bMap) {
-				return false
-			}
-
-			for k, v := range aMap {
-				if bv, exists := bMap[k]; !exists || !deepEqual(v, bv) {
-					return false
-				}
-			}
-
-			return true
-		}
+	if eq := deepEqualMap(a, b); eq != nil {
+		return *eq
 	}
 
-	// For slices, compare elements
-	if aSlice, aOk := a.([]any); aOk {
-		if bSlice, bOk := b.([]any); bOk {
-			if len(aSlice) != len(bSlice) {
-				return false
-			}
-
-			for i, v := range aSlice {
-				if !deepEqual(v, bSlice[i]) {
-					return false
-				}
-			}
-
-			return true
-		}
+	if eq := deepEqualSlice(a, b); eq != nil {
+		return *eq
 	}
 
-	// Fallback to string comparison
 	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
+}
+
+func deepEqualMap(a, b any) *bool {
+	aMap, aOk := a.(map[string]any)
+
+	bMap, bOk := b.(map[string]any)
+	if !aOk || !bOk {
+		return nil
+	}
+
+	if len(aMap) != len(bMap) {
+		f := false
+
+		return &f
+	}
+
+	for k, v := range aMap {
+		if bv, exists := bMap[k]; !exists || !deepEqual(v, bv) {
+			f := false
+
+			return &f
+		}
+	}
+
+	t := true
+
+	return &t
+}
+
+func deepEqualSlice(a, b any) *bool {
+	aSlice, aOk := a.([]any)
+
+	bSlice, bOk := b.([]any)
+	if !aOk || !bOk {
+		return nil
+	}
+
+	if len(aSlice) != len(bSlice) {
+		f := false
+
+		return &f
+	}
+
+	for i, v := range aSlice {
+		if !deepEqual(v, bSlice[i]) {
+			f := false
+
+			return &f
+		}
+	}
+
+	t := true
+
+	return &t
 }
 
 // sortStubsByID sorts stubs by ID for stable ordering when ranks are equal.
@@ -511,7 +517,7 @@ func sortStubsByID(stubs []*Stub) {
 }
 
 // rankStub calculates the ranking score for a stub.
-func (br *BidiResult) rankStub(stub *Stub, query QueryV2) float64 {
+func (br *BidiResult) rankStub(stub *Stub, query Query) float64 {
 	// Use the existing V2 ranking logic
 	// Rank headers first
 	headersRank := rankHeaders(query.Headers, stub.Headers)
@@ -624,68 +630,6 @@ func (s *searcher) unused() []*Stub {
 	return unused
 }
 
-// searchCommon is a common search function that can be used by both search and searchV2.
-func (s *searcher) searchCommon(
-	service, method string,
-	matchFunc func(*Stub) bool,
-	rankFunc func(*Stub) float64,
-	markFunc func(uuid.UUID),
-) (*Result, error) {
-	var (
-		found       *Stub
-		foundRank   float64
-		similar     *Stub
-		similarRank float64
-	)
-
-	seq, err := s.storage.findAll(service, method)
-	if err != nil {
-		return nil, s.wrap(err)
-	}
-
-	// Collect all stubs first for stable sorting
-	stubs := make([]*Stub, 0)
-
-	for stub := range seq {
-		stubs = append(stubs, stub)
-	}
-
-	// Sort stubs by ID for stable ordering when ranks are equal
-	sortStubsByID(stubs)
-
-	// Process stubs in sorted order
-	for _, stub := range stubs {
-		current := rankFunc(stub)
-		// Add priority to ranking with higher multiplier
-		priorityBonus := float64(stub.Priority) * PriorityMultiplier
-		totalRank := current + priorityBonus
-
-		// For exact matches, prefer the one with higher rank
-		if matchFunc(stub) {
-			if totalRank > foundRank {
-				found, foundRank = stub, totalRank
-			}
-		} else {
-			if totalRank > similarRank {
-				// For similar matches, also track the best one
-				similar, similarRank = stub, totalRank
-			}
-		}
-	}
-
-	if found != nil {
-		markFunc(found.ID)
-
-		return &Result{found: found}, nil
-	}
-
-	if similar != nil {
-		return &Result{similar: similar}, nil
-	}
-
-	return nil, ErrStubNotFound
-}
-
 // find retrieves the Stub value associated with the given Query from the searcher.
 //
 // Parameters:
@@ -695,57 +639,32 @@ func (s *searcher) searchCommon(
 // - *Result: The Result containing the found Stub value (if any), or nil.
 // - error: An error if the search fails.
 func (s *searcher) find(query Query) (*Result, error) {
-	// Check if the Query has an ID field.
 	if query.ID != nil {
-		// Search for the Stub value with the given ID.
 		return s.searchByID(query)
 	}
 
-	// Search for the Stub value with the given service and method.
 	return s.search(query)
 }
 
 // searchByID retrieves the Stub value associated with the given ID from the searcher.
-//
-// Parameters:
-// - query: The Query used to search for a Stub value.
-//
-// Returns:
-// - *Result: The Result containing the found Stub value (if any), or nil.
-// - error: An error if the search fails.
 func (s *searcher) searchByID(query Query) (*Result, error) {
-	// Check if the given service and method are valid.
 	_, err := s.storage.posByPN(query.Service, query.Method)
 	if err != nil {
 		return nil, s.wrap(err)
 	}
 
-	// Search for the Stub value with the given ID.
 	if found := s.findByID(*query.ID); found != nil {
-		// Mark the Stub value as used.
 		s.mark(query, *query.ID)
 
-		// Return the found Stub value.
 		return &Result{found: found}, nil
 	}
 
-	// Return an error if the Stub value is not found.
 	return nil, ErrServiceNotFound
 }
 
-// search retrieves the Stub value associated with the given Query from the searcher.
-//
-// Parameters:
-// - query: The Query used to search for a Stub value.
-//
-// Returns:
-// - *Result: The Result containing the found Stub value (if any), or nil.
-// - error: An error if the search fails.
+// search retrieves the Stub value using the optimized matching and ranking.
 func (s *searcher) search(query Query) (*Result, error) {
-	return s.searchCommon(query.Service, query.Method,
-		func(stub *Stub) bool { return match(query, stub) },
-		func(stub *Stub) float64 { return rankMatch(query, stub) },
-		func(id uuid.UUID) { s.mark(query, id) })
+	return s.searchOptimized(query)
 }
 
 // mark marks the given Stub value as used in the searcher.
@@ -767,39 +686,6 @@ func (s *searcher) mark(query Query, id uuid.UUID) {
 
 	// Mark the Stub value as used by adding it to the stubUsed map.
 	s.stubUsed[id] = struct{}{}
-}
-
-// findV2 retrieves the Stub value associated with the given QueryV2 from the searcher.
-func (s *searcher) findV2(query QueryV2) (*Result, error) {
-	// Check if the QueryV2 has an ID field
-	if query.ID != nil {
-		// Search for the Stub value with the given ID
-		return s.searchByIDV2(query)
-	}
-
-	// Search for the Stub value with the given service and method
-	return s.searchV2(query)
-}
-
-// searchByIDV2 retrieves the Stub value associated with the given ID from the searcher.
-func (s *searcher) searchByIDV2(query QueryV2) (*Result, error) {
-	// Check if the given service and method are valid
-	_, err := s.storage.posByPN(query.Service, query.Method)
-	if err != nil {
-		return nil, s.wrap(err)
-	}
-
-	// Search for the Stub value with the given ID
-	if found := s.findByID(*query.ID); found != nil {
-		// Mark the Stub value as used
-		s.markV2(query, *query.ID)
-
-		// Return the found Stub value
-		return &Result{found: found}, nil
-	}
-
-	// Return an error if the Stub value is not found
-	return nil, ErrServiceNotFound
 }
 
 // findBidi retrieves a BidiResult for bidirectional streaming with the given QueryBidi.
@@ -858,13 +744,8 @@ func (s *searcher) searchByIDBidi(query QueryBidi) (*BidiResult, error) {
 	return nil, ErrServiceNotFound
 }
 
-// searchV2 retrieves the Stub value associated with the given QueryV2 from the searcher.
-func (s *searcher) searchV2(query QueryV2) (*Result, error) {
-	return s.searchV2Optimized(query)
-}
-
-// searchV2Optimized performs ultra-fast search with minimal allocations.
-func (s *searcher) searchV2Optimized(query QueryV2) (*Result, error) {
+// searchOptimized performs ultra-fast search with minimal allocations.
+func (s *searcher) searchOptimized(query Query) (*Result, error) {
 	// Get stubs from storage (single call - optimized)
 	seq, err := s.storage.findAll(query.Service, query.Method)
 	if err != nil {
@@ -883,7 +764,7 @@ func (s *searcher) searchV2Optimized(query QueryV2) (*Result, error) {
 }
 
 // processStubs processes the collected stubs with ultra-fast paths.
-func (s *searcher) processStubs(query QueryV2, stubs []*Stub) (*Result, error) {
+func (s *searcher) processStubs(query Query, stubs []*Stub) (*Result, error) {
 	if len(stubs) == 0 {
 		return nil, ErrStubNotFound
 	}
@@ -891,7 +772,7 @@ func (s *searcher) processStubs(query QueryV2, stubs []*Stub) (*Result, error) {
 	if len(stubs) == 1 {
 		stub := stubs[0]
 		if s.fastMatchV2(query, stub) {
-			s.markV2(query, stub.ID)
+			s.mark(query, stub.ID)
 
 			return &Result{found: stub}, nil
 		}
@@ -909,7 +790,7 @@ func (s *searcher) processStubs(query QueryV2, stubs []*Stub) (*Result, error) {
 }
 
 // processStubsSequential processes stubs sequentially (original logic).
-func (s *searcher) processStubsSequential(query QueryV2, stubs []*Stub) (*Result, error) {
+func (s *searcher) processStubsSequential(query Query, stubs []*Stub) (*Result, error) {
 	var (
 		bestMatch       *Stub
 		bestScore       float64
@@ -936,7 +817,7 @@ func (s *searcher) processStubsSequential(query QueryV2, stubs []*Stub) (*Result
 	}
 
 	if bestMatch != nil {
-		s.markV2(query, bestMatch.ID)
+		s.mark(query, bestMatch.ID)
 
 		return &Result{found: bestMatch}, nil
 	}
@@ -949,120 +830,42 @@ func (s *searcher) processStubsSequential(query QueryV2, stubs []*Stub) (*Result
 }
 
 // processStubsParallel processes stubs in parallel using goroutines.
-//
-//nolint:gocognit,cyclop,funlen
-func (s *searcher) processStubsParallel(query QueryV2, stubs []*Stub) (*Result, error) {
-	const chunkSize = 50 // Process stubs in chunks of 50
+func (s *searcher) processStubsParallel(query Query, stubs []*Stub) (*Result, error) {
+	const chunkSize = 50
 
 	numChunks := (len(stubs) + chunkSize - 1) / chunkSize
 
-	// Channels for collecting results from goroutines
 	bestMatchChan := make(chan *Stub, numChunks)
 	mostSimilarChan := make(chan *Stub, numChunks)
 	errorChan := make(chan error, numChunks)
 
-	// Launch goroutines for each chunk
 	for i := range numChunks {
 		start := i * chunkSize
 
 		end := min(start+chunkSize, len(stubs))
-
 		go func(chunkStubs []*Stub) {
-			var (
-				bestMatch       *Stub
-				bestScore       float64
-				bestSpecificity int
-				mostSimilar     *Stub
-				highestRank     float64
-			)
+			best, similar := s.processChunk(query, chunkStubs)
+			bestMatchChan <- best
 
-			for _, stub := range chunkStubs {
-				rank := s.fastRankV2(query, stub)
-				priorityBonus := float64(stub.Priority) * PriorityMultiplier
-				specificity := s.calcSpecificity(stub, query)
-				totalScore := rank + priorityBonus
-
-				if s.fastMatchV2(query, stub) {
-					if specificity > bestSpecificity || (specificity == bestSpecificity && totalScore > bestScore) {
-						bestMatch, bestScore, bestSpecificity = stub, totalScore, specificity
-					}
-				}
-
-				if totalScore > highestRank {
-					mostSimilar, highestRank = stub, totalScore
-				}
-			}
-
-			bestMatchChan <- bestMatch
-
-			mostSimilarChan <- mostSimilar
+			mostSimilarChan <- similar
 
 			errorChan <- nil
 		}(stubs[start:end])
 	}
 
-	// Collect results from all goroutines
-	var (
-		bestMatches  []*Stub
-		mostSimilars []*Stub
-	)
-
-	for range numChunks {
-		err := <-errorChan
-		if err != nil {
-			return nil, err
-		}
-
-		if bestMatch := <-bestMatchChan; bestMatch != nil {
-			bestMatches = append(bestMatches, bestMatch)
-		}
-
-		if mostSimilar := <-mostSimilarChan; mostSimilar != nil {
-			mostSimilars = append(mostSimilars, mostSimilar)
-		}
+	bestMatches, mostSimilars, err := s.collectChunkResults(numChunks, bestMatchChan, mostSimilarChan, errorChan)
+	if err != nil {
+		return nil, err
 	}
 
-	// Find the best match among all chunks
-	var (
-		bestMatch       *Stub
-		bestScore       float64
-		bestSpecificity int
-	)
-
-	for _, stub := range bestMatches {
-		rank := s.fastRankV2(query, stub)
-		priorityBonus := float64(stub.Priority) * PriorityMultiplier
-		specificity := s.calcSpecificity(stub, query)
-		totalScore := rank + priorityBonus
-
-		if specificity > bestSpecificity || (specificity == bestSpecificity && totalScore > bestScore) {
-			bestMatch, bestScore, bestSpecificity = stub, totalScore, specificity
-		}
-	}
-
-	// Find the most similar among all chunks
-	var (
-		mostSimilar *Stub
-		highestRank float64
-	)
-
-	for _, stub := range mostSimilars {
-		rank := s.fastRankV2(query, stub)
-		priorityBonus := float64(stub.Priority) * PriorityMultiplier
-		totalScore := rank + priorityBonus
-
-		if totalScore > highestRank {
-			mostSimilar, highestRank = stub, totalScore
-		}
-	}
-
-	// Return results
+	bestMatch := s.pickBestMatch(query, bestMatches)
 	if bestMatch != nil {
-		s.markV2(query, bestMatch.ID)
+		s.mark(query, bestMatch.ID)
 
 		return &Result{found: bestMatch}, nil
 	}
 
+	mostSimilar := s.pickMostSimilar(query, mostSimilars)
 	if mostSimilar != nil {
 		return &Result{similar: mostSimilar}, nil
 	}
@@ -1070,10 +873,103 @@ func (s *searcher) processStubsParallel(query QueryV2, stubs []*Stub) (*Result, 
 	return nil, ErrStubNotFound
 }
 
+func (s *searcher) processChunk(query Query, chunkStubs []*Stub) (*Stub, *Stub) {
+	var (
+		bestMatch       *Stub
+		mostSimilar     *Stub
+		bestScore       float64
+		bestSpecificity int
+		highestRank     float64
+	)
+
+	for _, stub := range chunkStubs {
+		rank := s.fastRankV2(query, stub)
+		priorityBonus := float64(stub.Priority) * PriorityMultiplier
+		specificity := s.calcSpecificity(stub, query)
+		totalScore := rank + priorityBonus
+
+		if s.fastMatchV2(query, stub) {
+			if specificity > bestSpecificity || (specificity == bestSpecificity && totalScore > bestScore) {
+				bestMatch, bestScore, bestSpecificity = stub, totalScore, specificity
+			}
+		}
+
+		if totalScore > highestRank {
+			mostSimilar, highestRank = stub, totalScore
+		}
+	}
+
+	return bestMatch, mostSimilar
+}
+
+func (s *searcher) collectChunkResults(
+	numChunks int,
+	bestMatchChan, mostSimilarChan chan *Stub,
+	errorChan chan error,
+) ([]*Stub, []*Stub, error) {
+	var bestMatches, mostSimilars []*Stub
+
+	for range numChunks {
+		if err := <-errorChan; err != nil {
+			return nil, nil, err
+		}
+
+		if best := <-bestMatchChan; best != nil {
+			bestMatches = append(bestMatches, best)
+		}
+
+		if similar := <-mostSimilarChan; similar != nil {
+			mostSimilars = append(mostSimilars, similar)
+		}
+	}
+
+	return bestMatches, mostSimilars, nil
+}
+
+func (s *searcher) pickBestMatch(query Query, candidates []*Stub) *Stub {
+	var (
+		best            *Stub
+		bestScore       float64
+		bestSpecificity int
+	)
+
+	for _, stub := range candidates {
+		rank := s.fastRankV2(query, stub)
+		priorityBonus := float64(stub.Priority) * PriorityMultiplier
+		specificity := s.calcSpecificity(stub, query)
+		totalScore := rank + priorityBonus
+
+		if specificity > bestSpecificity || (specificity == bestSpecificity && totalScore > bestScore) {
+			best, bestScore, bestSpecificity = stub, totalScore, specificity
+		}
+	}
+
+	return best
+}
+
+func (s *searcher) pickMostSimilar(query Query, candidates []*Stub) *Stub {
+	var (
+		best        *Stub
+		highestRank float64
+	)
+
+	for _, stub := range candidates {
+		rank := s.fastRankV2(query, stub)
+		priorityBonus := float64(stub.Priority) * PriorityMultiplier
+		totalScore := rank + priorityBonus
+
+		if totalScore > highestRank {
+			best, highestRank = stub, totalScore
+		}
+	}
+
+	return best
+}
+
 // fastMatchV2 is an ultra-optimized version of matchV2.
 //
 //nolint:cyclop
-func (s *searcher) fastMatchV2(query QueryV2, stub *Stub) bool {
+func (s *searcher) fastMatchV2(query Query, stub *Stub) bool {
 	// If stub has headers, query must also have headers
 	if stub.Headers.Len() > 0 && len(query.Headers) == 0 {
 		return false
@@ -1083,18 +979,18 @@ func (s *searcher) fastMatchV2(query QueryV2, stub *Stub) bool {
 		return false
 	}
 
-	// Priority to Inputs (newer functionality) over Input (legacy)
-	// Since Inputs and Input are mutually exclusive, we check Inputs first
-	if len(stub.Inputs) > 0 {
+	// Priority to Inputs (stream) over Input (unary)
+	// stub.Inputs != nil means stream stub (even if empty slice)
+	if stub.Inputs != nil {
+		if len(stub.Inputs) == 0 {
+			return false // stream stub with no patterns matches nothing
+		}
+
 		return s.fastMatchStream(query.Input, stub.Inputs)
 	}
 
-	// Handle Input (legacy) - since Inputs is empty, Input must be present
-	// Check if stub has any input matching conditions
-	if stub.Input.Equals == nil && stub.Input.Contains == nil && stub.Input.Matches == nil {
-		return false // Stub has no input matching conditions
-	}
-
+	// Handle Input (unary) - stub uses Input
+	// Stub with no input conditions matches any query (including empty)
 	if len(query.Input) == 0 {
 		// Empty query - check if stub can handle empty input
 		return len(stub.Input.Equals) == 0 && len(stub.Input.Contains) == 0 && len(stub.Input.Matches) == 0
@@ -1108,7 +1004,7 @@ func (s *searcher) fastMatchV2(query QueryV2, stub *Stub) bool {
 }
 
 // fastRankV2 is an ultra-optimized version of rankMatchV2.
-func (s *searcher) fastRankV2(query QueryV2, stub *Stub) float64 {
+func (s *searcher) fastRankV2(query Query, stub *Stub) float64 {
 	if len(query.Headers) > 0 && !matchHeaders(query.Headers, stub.Headers) {
 		return 0
 	}
@@ -1116,16 +1012,18 @@ func (s *searcher) fastRankV2(query QueryV2, stub *Stub) float64 {
 	// Include header rank so that stubs with matching headers get higher score within same priority
 	headersRank := rankHeaders(query.Headers, stub.Headers)
 
-	// Priority to Inputs (newer functionality) over Input (legacy)
-	// Since Inputs and Input are mutually exclusive, we check Inputs first
-	if len(stub.Inputs) > 0 {
-		// Add bonus for using Inputs (newer functionality)
+	// Priority to Inputs (stream) over Input (unary)
+	if stub.Inputs != nil {
+		if len(stub.Inputs) == 0 {
+			return headersRank
+		}
+
 		inputsBonus := 1000.0
 
 		return headersRank + s.fastRankStream(query.Input, stub.Inputs) + inputsBonus
 	}
 
-	// Handle Input (legacy) - since Inputs is empty, Input must be present
+	// Handle Input (unary)
 	if len(query.Input) == 0 {
 		// Empty query - return header rank only
 		return headersRank
@@ -1254,19 +1152,6 @@ func (s *searcher) fastRankStream(queryStream []map[string]any, stubStream []Inp
 	return rankStreamElements(queryStream, stubStream)
 }
 
-// markV2 marks the given Stub value as used in the searcher.
-func (s *searcher) markV2(query QueryV2, id uuid.UUID) {
-	if query.RequestInternal() {
-		return
-	}
-
-	// Mark stub as used
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.stubUsed[id] = struct{}{}
-}
-
 func collectStubs(seq iter.Seq[*Stub]) []*Stub {
 	result := make([]*Stub, 0)
 
@@ -1303,7 +1188,7 @@ func (s *searcher) wrap(err error) error {
 // calcSpecificity calculates the specificity score for a stub against a query.
 // Higher specificity means more fields match between stub and query.
 // Headers are given higher weight to ensure stubs with headers are preferred.
-func (s *searcher) calcSpecificity(stub *Stub, query QueryV2) int {
+func (s *searcher) calcSpecificity(stub *Stub, query Query) int {
 	// Specificity now reflects only input structure, header impact is accounted in rank via rankHeaders
 	specificity := 0
 

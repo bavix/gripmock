@@ -1,13 +1,38 @@
 package plugintest_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/bavix/gripmock/v3/pkg/plugintest"
 )
+
+func TestNewPlugin(t *testing.T) {
+	t.Parallel()
+
+	plugin := plugintest.NewPlugin(
+		plugintest.PluginInfo{Name: "test"},
+		plugintest.Specs(plugintest.FuncSpec{Name: "id", Fn: func(args ...any) any {
+			if len(args) > 0 {
+				return args[0]
+			}
+			return nil
+		}}),
+	)
+	require.NotNil(t, plugin)
+	require.Equal(t, "test", plugin.Info().Name)
+	require.Len(t, plugin.Providers(), 1)
+
+	reg := plugintest.NewRegistry()
+	reg.AddPlugin(plugin.Info(), plugin.Providers())
+
+	fn, ok := plugintest.LookupFunc(reg, "id")
+	require.True(t, ok)
+	out, err := plugintest.Call(t.Context(), fn, 42)
+	require.NoError(t, err)
+	require.Equal(t, 42, out)
+}
 
 func TestRegistry_AddPluginAndLookup(t *testing.T) {
 	t.Parallel()
@@ -39,21 +64,21 @@ func TestRegistry_AddPluginAndLookup(t *testing.T) {
 
 	fn, ok := plugintest.LookupFunc(reg, "sum")
 	require.True(t, ok)
-	out, err := plugintest.Call(context.Background(), fn, 1, 2, 3)
+	out, err := plugintest.Call(t.Context(), fn, 1, 2, 3)
 	require.NoError(t, err)
 	require.Equal(t, 6, out)
 
 	fnEcho, ok := plugintest.LookupFunc(reg, "echo")
 	require.True(t, ok)
-	outEcho, err := plugintest.Call(context.Background(), fnEcho)
+	outEcho, err := plugintest.Call(t.Context(), fnEcho)
 	require.NoError(t, err)
 	require.Equal(t, "ok", outEcho)
 
-	pluginsMeta := reg.Plugins(context.Background())
+	pluginsMeta := reg.Plugins(t.Context())
 	require.Len(t, pluginsMeta, 1)
 	require.Equal(t, "p1", pluginsMeta[0].Name)
 
-	groups := reg.Groups(context.Background())
+	groups := reg.Groups(t.Context())
 	require.Len(t, groups, 1)
 	require.Len(t, groups[0].Funcs, 2)
 }

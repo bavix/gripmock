@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -32,7 +33,7 @@ const (
 type mockFullServerStream struct {
 	grpc.ServerStream
 
-	ctx              context.Context //nolint:containedctx // Mock for testing
+	ctx              context.Context //nolint:containedctx
 	sentMessages     []*dynamicpb.Message
 	receivedMessages []*dynamicpb.Message
 	sendMsgError     error
@@ -526,4 +527,33 @@ func TestProcessHeaders_MultipleValues(t *testing.T) {
 	result := processHeaders(md)
 	assert.NotNil(t, result)
 	assert.Equal(t, "value1;value2;value3", result["x-header"])
+}
+
+// TestConvertToMap_Proto3DefaultValues verifies that scalar fields with default values (e.g. 0.0)
+// are included in the result. Proto3 omits default values on the wire, so Range skips them;
+// we iterate over the descriptor to include all fields for stub matching.
+func TestConvertToMap_Proto3DefaultValues(t *testing.T) {
+	t.Parallel()
+
+	t.Run("wrapperspb_DoubleValue", func(t *testing.T) {
+		t.Parallel()
+		// Empty DoubleValue: value field not set, defaults to 0.0. Range() would skip it.
+		msg := &wrapperspb.DoubleValue{}
+		result := convertToMap(msg)
+		require.NotNil(t, result)
+		require.Contains(t, result, "value")
+		require.InDelta(t, 0.0, result["value"], 1e-9)
+	})
+
+	t.Run("dynamicpb_empty_message", func(t *testing.T) {
+		t.Parallel()
+		// Simulates a message received from wire with no fields (e.g. value=0.0 omitted).
+		// dynamicpb.NewMessage creates empty message; Get(fd) returns default.
+		desc := (&wrapperspb.DoubleValue{}).ProtoReflect().Descriptor()
+		msg := dynamicpb.NewMessage(desc)
+		result := convertToMap(msg)
+		require.NotNil(t, result)
+		require.Contains(t, result, "value")
+		require.InDelta(t, 0.0, result["value"], 1e-9)
+	})
 }

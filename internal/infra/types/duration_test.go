@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
@@ -35,6 +37,12 @@ func TestDuration_UnmarshalJSON(t *testing.T) {
 			want:    0,
 			wantErr: true,
 		},
+		{
+			name:    "numeric nanoseconds",
+			input:   "1000000000",
+			want:    time.Second,
+			wantErr: false,
+		},
 	}
 
 	for _, testCase := range tests {
@@ -46,14 +54,11 @@ func TestDuration_UnmarshalJSON(t *testing.T) {
 
 			err := json.Unmarshal([]byte(testCase.input), &duration)
 
-			if (err != nil) != testCase.wantErr {
-				t.Errorf("Duration.UnmarshalJSON() error = %v, wantErr %v", err, testCase.wantErr)
-
-				return
-			}
-
-			if !testCase.wantErr && time.Duration(duration) != testCase.want {
-				t.Errorf("Duration.UnmarshalJSON() = %v, want %v", time.Duration(duration), testCase.want)
+			if testCase.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, testCase.want, time.Duration(duration))
 			}
 		})
 	}
@@ -66,13 +71,6 @@ func TestDuration_MarshalJSON(t *testing.T) {
 	expected := `"100ms"`
 
 	got, err := json.Marshal(duration)
-	if err != nil {
-		t.Errorf("Duration.MarshalJSON() error = %v", err)
-
-		return
-	}
-
-	if string(got) != expected {
-		t.Errorf("Duration.MarshalJSON() = %v, want %v", string(got), expected)
-	}
+	require.NoError(t, err)
+	require.Equal(t, expected, string(got))
 }

@@ -188,6 +188,48 @@ func TestEngine_ProcessMap(t *testing.T) {
 	require.Equal(t, "second", array[1])
 }
 
+func TestEngine_ProcessStream(t *testing.T) {
+	t.Parallel()
+
+	engine := New(context.Background(), nil)
+
+	t.Run("stream with templates", func(t *testing.T) {
+		t.Parallel()
+
+		stream := []any{
+			map[string]any{"msg": "{{.Request.name}}"},
+			map[string]any{"msg": "{{.Request.age}}"},
+		}
+		templateData := Data{
+			Request: map[string]any{"name": "Alice", "age": "25"},
+		}
+		err := engine.ProcessStream(stream, templateData)
+		require.NoError(t, err)
+
+		item0, ok := stream[0].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, "Alice", item0["msg"])
+
+		item1, ok := stream[1].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, "25", item1["msg"])
+	})
+
+	t.Run("nil stream", func(t *testing.T) {
+		t.Parallel()
+
+		err := engine.ProcessStream(nil, Data{})
+		require.NoError(t, err)
+	})
+
+	t.Run("empty stream", func(t *testing.T) {
+		t.Parallel()
+
+		err := engine.ProcessStream([]any{}, Data{})
+		require.NoError(t, err)
+	})
+}
+
 func TestEngine_ProcessHeaders(t *testing.T) {
 	t.Parallel()
 

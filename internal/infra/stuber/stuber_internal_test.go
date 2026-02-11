@@ -485,9 +485,7 @@ func TestResult_Similar(t *testing.T) {
 		Service: "Greeter1",
 		Method:  "SayHello1",
 		Headers: nil,
-		Data: map[string]any{
-			"field1": "hello field1",
-		},
+		Input:   []map[string]any{{"field1": "hello field1"}},
 	})
 	require.NoError(t, err)
 	require.Nil(t, r.Found())
@@ -530,11 +528,7 @@ func TestStuber_MatchesEqualsFound(t *testing.T) {
 		Service: "Greeter1",
 		Method:  "SayHello1",
 		Headers: nil,
-		Data: map[string]any{
-			"id":   "123",
-			"name": "user_456",
-			"tags": []any{"mock", "grpc"},
-		},
+		Input:   []map[string]any{{"id": "123", "name": "user_456", "tags": []any{"mock", "grpc"}}},
 	})
 	require.NoError(t, err)
 	require.NotNil(t, r.Found())
@@ -570,14 +564,14 @@ func TestStuber_EqualsIgnoreArrayOrder(t *testing.T) {
 	query := stuber.Query{
 		Service: "IdentifierService",
 		Method:  "ProcessUUIDs",
-		Data: map[string]any{
+		Input: []map[string]any{{
 			"string_uuids": []any{
 				"cc991218-a920-40c8-9f42-3b329c8723f2",
 				"f1e9ed24-93ba-4e4f-ab9f-3942196d5c03",
 				"c30f45d2-f8a4-4a94-a994-4cc349bca457",
 				"e3484119-24e1-42d9-b4c2-7d6004ee86d9",
 			},
-		},
+		}},
 	}
 
 	r, err := s.FindByQuery(query)
@@ -710,7 +704,7 @@ func TestBudgerigar_FindByQuery_FoundWithPriority(t *testing.T) {
 	r, err := s.FindByQuery(stuber.Query{
 		Service: "Service",
 		Method:  "Method",
-		Data:    map[string]any{"id": "1"},
+		Input:   []map[string]any{{"id": "1"}},
 	})
 
 	require.NoError(t, err)
@@ -811,7 +805,6 @@ func TestBudgerigar_FindByQuery_InternalRequest(t *testing.T) {
 	require.Len(t, s.Used(), 1)
 }
 
-//nolint:cyclop,funlen
 func TestBudgerigarWithData(t *testing.T) {
 	t.Parallel()
 
@@ -834,63 +827,44 @@ func TestBudgerigarWithData(t *testing.T) {
 	query := stuber.Query{
 		Service: "test-service",
 		Method:  "test-method",
-		Data:    map[string]any{"name": "John", "age": 30},
+		Input:   []map[string]any{{"name": "John", "age": 30}},
 	}
 
 	result, err := budgerigar.FindByQuery(query)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Found() == nil {
-		t.Error("Expected to find exact match")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Expected to find exact match")
 
 	nonMatchingQuery := stuber.Query{
 		Service: "test-service",
 		Method:  "test-method",
-		Data:    map[string]any{"name": "John", "age": 25}, // Different age
+		Input:   []map[string]any{{"name": "John", "age": 25}}, // Different age
 	}
 
 	result, err = budgerigar.FindByQuery(nonMatchingQuery)
 	if err != nil {
-		if err.Error() != "stub not found" {
-			t.Fatalf("Expected 'stub not found' error, got %v", err)
-		}
+		require.ErrorIs(t, err, stuber.ErrStubNotFound)
 
 		return
 	}
 
-	if result.Found() != nil {
-		t.Error("Expected no exact found result for non-matching data")
-	}
-
-	if result.Similar() == nil {
-		t.Error("Expected similar result for non-matching data")
-	}
+	require.Nil(t, result.Found(), "Expected no exact found result for non-matching data")
+	require.NotNil(t, result.Similar(), "Expected similar result for non-matching data")
 
 	partialQuery := stuber.Query{
 		Service: "test-service",
 		Method:  "test-method",
-		Data:    map[string]any{"name": "John"}, // Only name, missing age
+		Input:   []map[string]any{{"name": "John"}}, // Only name, missing age
 	}
 
 	result, err = budgerigar.FindByQuery(partialQuery)
 	if err != nil {
-		if err.Error() != "stub not found" {
-			t.Fatalf("Expected 'stub not found' error, got %v", err)
-		}
+		require.ErrorIs(t, err, stuber.ErrStubNotFound)
 
 		return
 	}
 
-	if result.Found() != nil {
-		t.Error("Expected no exact found result for partial data")
-	}
-
-	if result.Similar() == nil {
-		t.Error("Expected similar result for partial data")
-	}
+	require.Nil(t, result.Found(), "Expected no exact found result for partial data")
+	require.NotNil(t, result.Similar(), "Expected similar result for partial data")
 }
 
 func TestBudgerigarBackwardCompatibility(t *testing.T) {
@@ -915,15 +889,10 @@ func TestBudgerigarBackwardCompatibility(t *testing.T) {
 	query := stuber.Query{
 		Service: "test-service",
 		Method:  "test-method",
-		Data:    map[string]any{"key1": "value1"},
+		Input:   []map[string]any{{"key1": "value1"}},
 	}
 
 	result, err := budgerigar.FindByQuery(query)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Found() == nil {
-		t.Error("Expected to find exact match for backward compatibility")
-	}
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Expected to find exact match for backward compatibility")
 }

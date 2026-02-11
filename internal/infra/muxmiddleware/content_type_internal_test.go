@@ -50,13 +50,11 @@ func TestContentType_Middleware(t *testing.T) {
 func TestContentType_MiddlewareWithResponse(t *testing.T) {
 	t.Parallel()
 	// Test ContentType middleware with response body
+	var writeErr error
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-
-		_, err := w.Write([]byte("test response"))
-		if err != nil {
-			t.Errorf("failed to write response: %v", err)
-		}
+		_, writeErr = w.Write([]byte("test response"))
 	})
 
 	middleware := ContentType(handler)
@@ -68,6 +66,7 @@ func TestContentType_MiddlewareWithResponse(t *testing.T) {
 
 	middleware.ServeHTTP(w, req)
 
+	require.NoError(t, writeErr)
 	require.Equal(t, "application/json", w.Header().Get("Content-Type"))
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, "test response", w.Body.String())

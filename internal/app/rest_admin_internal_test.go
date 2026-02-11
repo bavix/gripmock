@@ -37,7 +37,7 @@ func (s *AdminPanelTestSuite) SetupTest() {
 
 // TestSearchStubsWithRequestInternalHeader tests that internal requests don't mark stubs as used.
 //
-//nolint:funlen // Test function requires multiple scenarios
+//nolint:funlen
 func (s *AdminPanelTestSuite) TestSearchStubsWithRequestInternalHeader() {
 	stubData := `[{
 		"service": "TestService",
@@ -185,7 +185,7 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithoutRequestInternalHeader() {
 
 // TestMultipleInternalSearches tests that multiple internal searches don't affect usage stats.
 //
-//nolint:funlen // Test function requires multiple scenarios
+//nolint:funlen
 func (s *AdminPanelTestSuite) TestMultipleInternalSearches() {
 	// Add multiple test stubs
 	stubData := `[
@@ -259,7 +259,7 @@ func (s *AdminPanelTestSuite) TestMultipleInternalSearches() {
 
 // TestMixedInternalAndNormalSearches tests mixing internal and normal searches.
 //
-//nolint:funlen // Test function requires multiple scenarios
+//nolint:funlen
 func (s *AdminPanelTestSuite) TestMixedInternalAndNormalSearches() {
 	// Add test stubs
 	stubData := `[

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/md5" //nolint:gosec // md5 kept for deprecated example
+	"crypto/md5" //nolint:gosec
 	"crypto/sha256"
 	"encoding/hex"
 	"hash/crc32"
@@ -44,7 +44,7 @@ func Register(reg plugins.Registry) {
 				Name: "md5",
 				Fn: func(s string) string {
 					// nosemgrep: go.lang.security.audit.crypto.use_of_weak_crypto.use-of-md5
-					sum := md5.Sum([]byte(s)) //nolint:gosec // md5 is intentionally shown as deprecated example
+					sum := md5.Sum([]byte(s)) //nolint:gosec
 
 					return hex.EncodeToString(sum[:])
 				},

@@ -182,7 +182,7 @@ func TestServingStatus_UsageInContext(t *testing.T) {
 		case ServiceUnknown:
 			require.Equal(t, ServiceUnknown, status)
 		default:
-			t.Errorf("Unexpected status: %v", status)
+			require.Failf(t, "unexpected status", "got %v", status)
 		}
 	}
 }

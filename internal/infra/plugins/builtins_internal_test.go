@@ -250,6 +250,37 @@ func TestEncodingFuncs(t *testing.T) {
 	bytesFunc, ok := funcs["bytes"].(func(string) []byte)
 	require.True(t, ok)
 	assert.Equal(t, []byte("hello"), bytesFunc("hello"))
+
+	str2b64, ok := funcs["string2base64"].(func(string) string)
+	require.True(t, ok)
+	assert.Equal(t, "aGVsbG8=", str2b64("hello"))
+
+	b2b64, ok := funcs["bytes2base64"].(func([]byte) string)
+	require.True(t, ok)
+	assert.Equal(t, "aGVsbG8=", b2b64([]byte("hello")))
+
+	id := uuid.New().String()
+	u2b64, ok := funcs["uuid2base64"].(func(string) (string, error))
+	require.True(t, ok)
+
+	res, err := u2b64(id)
+	require.NoError(t, err)
+	assert.NotEmpty(t, res)
+
+	u2bytes, ok := funcs["uuid2bytes"].(func(string) ([]byte, error))
+	require.True(t, ok)
+
+	b, err := u2bytes(id)
+	require.NoError(t, err)
+	assert.Len(t, b, 16)
+
+	u2int64, ok := funcs["uuid2int64"].(func(string) (string, error))
+	require.True(t, ok)
+
+	s, err := u2int64(id)
+	require.NoError(t, err)
+	assert.Contains(t, s, "high")
+	assert.Contains(t, s, "low")
 }
 
 func TestConvertToFloat64(t *testing.T) {

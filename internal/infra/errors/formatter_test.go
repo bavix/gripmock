@@ -17,7 +17,7 @@ func TestNewStubNotFoundFormatter(t *testing.T) {
 }
 
 //nolint:funlen
-func TestStubNotFoundFormatter_FormatV1(t *testing.T) {
+func TestStubNotFoundFormatter_Format(t *testing.T) {
 	t.Parallel()
 
 	formatter := errors.NewStubNotFoundFormatter()
@@ -28,12 +28,12 @@ func TestStubNotFoundFormatter_FormatV1(t *testing.T) {
 		query := stuber.Query{
 			Service: "test.Service",
 			Method:  "TestMethod",
-			Data:    map[string]any{"key": "value"},
+			Input:   []map[string]any{{"key": "value"}},
 		}
 
 		result := &stuber.Result{}
 
-		err := formatter.FormatV1(query, result)
+		err := formatter.Format(query, result)
 		require.Error(t, err)
 
 		errorMsg := err.Error()
@@ -50,7 +50,7 @@ func TestStubNotFoundFormatter_FormatV1(t *testing.T) {
 		query := stuber.Query{
 			Service: "test.Service",
 			Method:  "TestMethod",
-			Data:    map[string]any{"key": "value"},
+			Input:   []map[string]any{{"key": "value"}},
 		}
 
 		// Create a mock result that has similar stub
@@ -64,7 +64,7 @@ func TestStubNotFoundFormatter_FormatV1(t *testing.T) {
 			},
 		}
 
-		err := formatter.FormatV1(query, result)
+		err := formatter.Format(query, result)
 		require.Error(t, err)
 
 		errorMsg := err.Error()
@@ -82,12 +82,12 @@ func TestStubNotFoundFormatter_FormatV1(t *testing.T) {
 		query := stuber.Query{
 			Service: "test.Service",
 			Method:  "TestMethod",
-			Data:    map[string]any{"func": func() {}}, // Invalid JSON
+			Input:   []map[string]any{{"func": func() {}}}, // Invalid JSON
 		}
 
 		result := &stuber.Result{}
 
-		err := formatter.FormatV1(query, result)
+		err := formatter.Format(query, result)
 		require.Error(t, err)
 
 		errorMsg := err.Error()
@@ -96,7 +96,7 @@ func TestStubNotFoundFormatter_FormatV1(t *testing.T) {
 }
 
 //nolint:funlen
-func TestStubNotFoundFormatter_FormatV2(t *testing.T) {
+func TestStubNotFoundFormatter_FormatStreaming(t *testing.T) {
 	t.Parallel()
 
 	formatter := errors.NewStubNotFoundFormatter()
@@ -104,7 +104,7 @@ func TestStubNotFoundFormatter_FormatV2(t *testing.T) {
 	t.Run("single input", func(t *testing.T) {
 		t.Parallel()
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "test.Service",
 			Method:  "TestMethod",
 			Input: []map[string]any{
@@ -114,7 +114,7 @@ func TestStubNotFoundFormatter_FormatV2(t *testing.T) {
 
 		result := &stuber.Result{}
 
-		err := formatter.FormatV2(query, result)
+		err := formatter.Format(query, result)
 		require.Error(t, err)
 
 		errorMsg := err.Error()
@@ -128,7 +128,7 @@ func TestStubNotFoundFormatter_FormatV2(t *testing.T) {
 	t.Run("multiple inputs (streaming)", func(t *testing.T) {
 		t.Parallel()
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "test.Service",
 			Method:  "TestMethod",
 			Input: []map[string]any{
@@ -139,7 +139,7 @@ func TestStubNotFoundFormatter_FormatV2(t *testing.T) {
 
 		result := &stuber.Result{}
 
-		err := formatter.FormatV2(query, result)
+		err := formatter.Format(query, result)
 		require.Error(t, err)
 
 		errorMsg := err.Error()
@@ -153,7 +153,7 @@ func TestStubNotFoundFormatter_FormatV2(t *testing.T) {
 	t.Run("empty input", func(t *testing.T) {
 		t.Parallel()
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "test.Service",
 			Method:  "TestMethod",
 			Input:   []map[string]any{},
@@ -161,7 +161,7 @@ func TestStubNotFoundFormatter_FormatV2(t *testing.T) {
 
 		result := &stuber.Result{}
 
-		err := formatter.FormatV2(query, result)
+		err := formatter.Format(query, result)
 		require.Error(t, err)
 
 		errorMsg := err.Error()
@@ -171,7 +171,7 @@ func TestStubNotFoundFormatter_FormatV2(t *testing.T) {
 	t.Run("with client streaming similar results", func(t *testing.T) {
 		t.Parallel()
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "test.Service",
 			Method:  "TestMethod",
 			Input: []map[string]any{
@@ -196,7 +196,7 @@ func TestStubNotFoundFormatter_FormatV2(t *testing.T) {
 			similar: stub,
 		}
 
-		err := formatter.FormatV2(query, result)
+		err := formatter.Format(query, result)
 		require.Error(t, err)
 
 		errorMsg := err.Error()
@@ -210,7 +210,7 @@ func TestStubNotFoundFormatter_FormatV2(t *testing.T) {
 	t.Run("with invalid JSON in streaming input", func(t *testing.T) {
 		t.Parallel()
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "test.Service",
 			Method:  "TestMethod",
 			Input: []map[string]any{
@@ -221,7 +221,7 @@ func TestStubNotFoundFormatter_FormatV2(t *testing.T) {
 
 		result := &stuber.Result{}
 
-		err := formatter.FormatV2(query, result)
+		err := formatter.Format(query, result)
 		require.Error(t, err)
 
 		errorMsg := err.Error()
@@ -247,13 +247,13 @@ func TestStubNotFoundFormatter_FormatClosestMatches(t *testing.T) {
 			similar: stub,
 		}
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "test.Service",
 			Method:  "TestMethod",
 			Input:   []map[string]any{{"key": "value"}},
 		}
 
-		err := formatter.FormatV2(query, result)
+		err := formatter.Format(query, result)
 		require.Error(t, err)
 
 		errorMsg := err.Error()
@@ -276,13 +276,13 @@ func TestStubNotFoundFormatter_FormatClosestMatches(t *testing.T) {
 			similar: stub,
 		}
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "test.Service",
 			Method:  "TestMethod",
 			Input:   []map[string]any{{"key": "value"}},
 		}
 
-		err := formatter.FormatV2(query, result)
+		err := formatter.Format(query, result)
 		require.Error(t, err)
 
 		errorMsg := err.Error()

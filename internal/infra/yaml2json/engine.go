@@ -84,7 +84,7 @@ func escapeTemplateInLine(line string) string {
 
 		isQuoted := isInsideQuotes(line, startIdx)
 
-		//nolint:nestif // Complex nested logic for handling template quoting is necessary
+		//nolint:nestif
 		if isQuoted {
 			result.WriteString(before)
 			result.WriteString(template)

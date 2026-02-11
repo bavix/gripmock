@@ -57,7 +57,7 @@ func (s *RestServerTestSuite) TestNewRestServer() {
 
 // TestAddStub tests stub addition functionality.
 //
-//nolint:funlen // Test function requires multiple scenarios
+//nolint:funlen
 func (s *RestServerTestSuite) TestAddStub() {
 	tests := []struct {
 		name           string
@@ -449,7 +449,7 @@ func (s *RestServerTestSuite) TestServicesList() {
 
 // TestValidateStubIntegration tests stub validation integration.
 //
-//nolint:funlen // Test function requires multiple scenarios
+//nolint:funlen
 func (s *RestServerTestSuite) TestValidateStubIntegration() {
 	tests := []struct {
 		name           string
@@ -532,7 +532,7 @@ func (s *RestServerTestSuite) TestValidateStubIntegration() {
 
 // TestAddStubWithDelay tests stub addition with delay functionality via REST API.
 //
-//nolint:funlen // Test function requires multiple scenarios
+//nolint:funlen
 func (s *RestServerTestSuite) TestAddStubWithDelay() {
 	tests := []struct {
 		name           string

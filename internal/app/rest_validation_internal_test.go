@@ -37,7 +37,7 @@ func (s *RestValidationTestSuite) SetupTest() {
 
 // TestAddStubValidationErrors tests validation error cases for AddStub.
 //
-//nolint:funlen // Test function requires multiple scenarios
+//nolint:funlen
 func (s *RestValidationTestSuite) TestAddStubValidationErrors() {
 	tests := []struct {
 		name           string
@@ -191,7 +191,7 @@ func (s *RestValidationTestSuite) TestAddStubValidationErrors() {
 
 // TestAddStubValidConfigurations tests valid stub configurations.
 //
-//nolint:funlen // Test function requires multiple scenarios
+//nolint:funlen
 func (s *RestValidationTestSuite) TestAddStubValidConfigurations() {
 	tests := []struct {
 		name     string
@@ -362,7 +362,7 @@ func (s *RestValidationTestSuite) TestAddStubInvalidJSON() {
 
 // TestAddStubContentTypeValidation tests content type validation.
 //
-//nolint:funlen // Test function requires multiple scenarios
+//nolint:funlen
 func (s *RestValidationTestSuite) TestAddStubContentTypeValidation() {
 	validStubData := `[{
 		"service": "test.Service",

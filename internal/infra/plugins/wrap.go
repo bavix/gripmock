@@ -8,10 +8,7 @@ import (
 	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
-var (
-	contextType = reflect.TypeOf((*context.Context)(nil)).Elem() //nolint:gochecknoglobals,modernize
-	errorType   = reflect.TypeOf((*error)(nil)).Elem()           //nolint:gochecknoglobals,modernize
-)
+var contextType = reflect.TypeOf((*context.Context)(nil)).Elem() //nolint:gochecknoglobals,modernize
 
 // wrapFunc normalizes arbitrary function shapes into the canonical Func used by
 // the runtime registry. It mirrors plugintest.Wrap but keeps it internal to
@@ -48,7 +45,6 @@ func wrapDecorator(fn any) func(pkgplugins.Func) pkgplugins.Func {
 	}
 }
 
-//nolint:cyclop,err113,forcetypeassert,intrange,mnd,nlreturn,wsl_v5,funlen,gocognit,modernize
 func wrapReflect(fn any) pkgplugins.Func {
 	val := reflect.ValueOf(fn)
 	if !val.IsValid() || val.Kind() != reflect.Func {
@@ -56,62 +52,77 @@ func wrapReflect(fn any) pkgplugins.Func {
 	}
 
 	typ := val.Type()
-	isVariadic := typ.IsVariadic()
-	fixed := typ.NumIn()
 
 	return func(ctx context.Context, args ...any) (any, error) {
-		in := make([]reflect.Value, 0, len(args)+1)
-		argIdx := 0
+		in, err := buildReflectInArgs(ctx, typ, args)
+		if err != nil {
+			return nil, err
+		}
 
-		for i := 0; i < fixed; i++ {
-			paramType := typ.In(i)
+		return handleReflectCallResult(val.Call(in), typ)
+	}
+}
 
-			if paramType == contextType {
-				in = append(in, reflect.ValueOf(ctx))
-				continue
+func buildReflectInArgs(ctx context.Context, typ reflect.Type, args []any) ([]reflect.Value, error) {
+	isVariadic := typ.IsVariadic()
+	fixed := typ.NumIn()
+	in := make([]reflect.Value, 0, len(args)+1)
+	argIdx := 0
+
+	for i := range fixed {
+		paramType := typ.In(i)
+		if paramType == contextType {
+			in = append(in, reflect.ValueOf(ctx))
+
+			continue
+		}
+
+		if !isVariadic || i < fixed-1 {
+			valArg, err := coerceArg(args, &argIdx, paramType, typ, i)
+			if err != nil {
+				return nil, err
 			}
 
-			if !isVariadic || i < fixed-1 {
-				valArg, err := coerceArg(args, &argIdx, paramType, typ, i)
-				if err != nil {
-					return nil, err
-				}
+			in = append(in, valArg)
 
-				in = append(in, valArg)
-				continue
+			continue
+		}
+
+		elemType := paramType.Elem()
+		for argIdx < len(args) {
+			valArg, err := coerceArg(args, &argIdx, elemType, typ, argIdx)
+			if err != nil {
+				return nil, err
 			}
 
-			elemType := paramType.Elem()
-			for argIdx < len(args) {
-				valArg, err := coerceArg(args, &argIdx, elemType, typ, argIdx)
-				if err != nil {
-					return nil, err
-				}
+			in = append(in, valArg)
+		}
+	}
 
-				in = append(in, valArg)
+	return in, nil
+}
+
+//nolint:err113,nilnil
+func handleReflectCallResult(out []reflect.Value, typ reflect.Type) (any, error) {
+	switch len(out) {
+	case 0:
+		return nil, nil
+	case 1:
+		return out[0].Interface(), nil
+	case 2: //nolint:mnd
+		var err error
+
+		if !out[1].IsNil() {
+			if errVal, ok := out[1].Interface().(error); ok {
+				err = errVal
+			} else {
+				err = fmt.Errorf("second return value of %s does not implement error", typ)
 			}
 		}
 
-		out := val.Call(in)
-
-		switch len(out) {
-		case 0:
-			return nil, nil
-		case 1:
-			return out[0].Interface(), nil
-		case 2:
-			var err error
-			if !out[1].IsNil() {
-				if out[1].Type().Implements(errorType) {
-					err = out[1].Interface().(error)
-				} else {
-					err = fmt.Errorf("second return value of %s does not implement error", typ)
-				}
-			}
-			return out[0].Interface(), err
-		default:
-			return nil, fmt.Errorf("unsupported result count %d for %s", len(out), typ)
-		}
+		return out[0].Interface(), err
+	default:
+		return nil, fmt.Errorf("unsupported result count %d for %s", len(out), typ)
 	}
 }
 

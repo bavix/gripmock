@@ -8,16 +8,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:gochecknoglobals // test-only sync to serialize global cache mutations
+//nolint:gochecknoglobals
 var cacheMu sync.Mutex
 
+//nolint:paralleltest
 func TestStringHashCache(t *testing.T) {
-	t.Parallel()
-
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
-	// Clear cache before test
+	defer initStringCache(stringCacheSize)
+
 	clearStringHashCache()
+	initStringCache(stringCacheSize) // ensure cache is initialized (another test may have set it to nil)
 
 	// Test initial state
 	size, capacity := getStringHashCacheStats()
@@ -44,9 +45,8 @@ func TestStringHashCache(t *testing.T) {
 	require.GreaterOrEqual(t, size, 2)
 }
 
+//nolint:paralleltest
 func TestRegexCache(t *testing.T) {
-	t.Parallel()
-
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 
@@ -83,9 +83,8 @@ func TestSearchResultCache(t *testing.T) {
 	t.Skip("Search result cache removed due to complexity")
 }
 
+//nolint:paralleltest
 func TestLRUCacheEviction(t *testing.T) {
-	t.Parallel()
-
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 	// Test that LRU cache evicts old entries when full
@@ -107,9 +106,8 @@ func TestLRUCacheEviction(t *testing.T) {
 	require.Equal(t, 10000, capacity)
 }
 
+//nolint:paralleltest
 func TestCacheConcurrency(t *testing.T) {
-	t.Parallel()
-
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 	// Test that caches work correctly under concurrent access
@@ -142,4 +140,30 @@ func TestCacheConcurrency(t *testing.T) {
 	size, capacity := getStringHashCacheStats()
 	require.LessOrEqual(t, size, capacity)
 	require.Positive(t, size)
+}
+
+//nolint:paralleltest
+func TestGetStatsWhenCacheNil(t *testing.T) {
+	cacheMu.Lock()
+	defer cacheMu.Unlock()
+
+	oldStr := globalStringCache
+
+	defer func() { globalStringCache = oldStr }()
+
+	globalStringCache = nil
+
+	size, cacheCap := getStringHashCacheStats()
+	require.Equal(t, 0, size)
+	require.Equal(t, stringCacheSize, cacheCap)
+
+	oldRe := regexCache
+
+	defer func() { regexCache = oldRe }()
+
+	regexCache = nil
+
+	size, cacheCap = getRegexCacheStats()
+	require.Equal(t, 0, size)
+	require.Equal(t, regexCacheSize, cacheCap)
 }

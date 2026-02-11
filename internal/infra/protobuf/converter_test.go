@@ -6,6 +6,7 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/bavix/gripmock/v3/internal/infra/protobuf"
@@ -124,6 +125,18 @@ func TestScalarConverter_ConvertScalar(t *testing.T) {
 		require.Contains(t, string(jsonNum), "3.141592653589793")
 	})
 
+	t.Run("enum kind with known enum", func(t *testing.T) {
+		t.Parallel()
+
+		// structpb.Value with NullValue uses enum
+		msg := structpb.NewNullValue()
+		descriptor := msg.ProtoReflect().Descriptor().Fields().ByName("null_value")
+		value := msg.ProtoReflect().Get(descriptor)
+
+		result := converter.ConvertScalar(descriptor, value)
+		require.Nil(t, result)
+	})
+
 	t.Run("bytes kind", func(t *testing.T) {
 		t.Parallel()
 
@@ -165,6 +178,18 @@ func TestScalarConverter_ConvertScalar(t *testing.T) {
 		require.NotNil(t, result)
 		require.IsType(t, "", result)
 	})
+
+	t.Run("message kind with invalid message", func(t *testing.T) {
+		t.Parallel()
+
+		// structpb.Value with empty struct_value has MessageKind field
+		msg := structpb.NewStructValue(nil)
+		descriptor := msg.ProtoReflect().Descriptor().Fields().ByName("struct_value")
+		value := msg.ProtoReflect().Get(descriptor)
+
+		result := converter.ConvertScalar(descriptor, value)
+		require.Nil(t, result)
+	})
 }
 
 func TestScalarConverter_ConvertMessage(t *testing.T) {
@@ -203,5 +228,32 @@ func TestScalarConverter_ConvertMessage(t *testing.T) {
 		require.NotNil(t, result)
 		require.Contains(t, result, "type_url")
 		require.Contains(t, result, "value")
+	})
+
+	t.Run("list field", func(t *testing.T) {
+		t.Parallel()
+
+		// structpb.ListValue has repeated "values" - triggers convertList
+		msg, err := structpb.NewList([]any{1.0, "two", true})
+		require.NoError(t, err)
+
+		result := converter.ConvertMessage(msg)
+		require.NotNil(t, result)
+		require.Contains(t, result, "values")
+		vals, ok := result["values"].([]any)
+		require.True(t, ok)
+		require.Len(t, vals, 3)
+	})
+
+	t.Run("map field", func(t *testing.T) {
+		t.Parallel()
+
+		// structpb.Struct has "fields" map - triggers convertMap
+		msg, err := structpb.NewStruct(map[string]any{"a": 1.0, "b": "x"})
+		require.NoError(t, err)
+
+		result := converter.ConvertMessage(msg)
+		require.NotNil(t, result)
+		require.Contains(t, result, "fields")
 	})
 }

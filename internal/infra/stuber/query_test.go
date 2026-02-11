@@ -2,7 +2,6 @@ package stuber //nolint:testpackage
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -31,11 +30,11 @@ func TestQuery_RequestInternal(t *testing.T) {
 func TestToggles(t *testing.T) {
 	t.Parallel()
 
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "/", nil)
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil)
 	togglesResult := toggles(req)
 	require.False(t, togglesResult.Has(RequestInternalFlag))
 
-	req, _ = http.NewRequestWithContext(context.Background(), http.MethodPost, "/", nil)
+	req, _ = http.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil)
 	req.Header.Set("X-Gripmock-Requestinternal", "true")
 	togglesResult = toggles(req)
 	require.True(t, togglesResult.Has(RequestInternalFlag))
@@ -54,13 +53,13 @@ func TestNewQuery_WithBody(t *testing.T) {
 	body, err := json.Marshal(data)
 	require.NoError(t, err)
 
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "/", bytes.NewBuffer(body))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewBuffer(body))
 
 	q, err := NewQuery(req)
 	require.NoError(t, err)
 	require.Equal(t, "TestService", q.Service)
 	require.Equal(t, "TestMethod", q.Method)
-	require.Equal(t, map[string]any{"key": "value"}, q.Data)
+	require.Equal(t, []map[string]any{{"key": "value"}}, q.Input)
 	require.Equal(t, map[string]any{"header": "value"}, q.Headers)
 }
 
@@ -77,7 +76,7 @@ func TestNewQuery_WithID(t *testing.T) {
 	body, err := json.Marshal(data)
 	require.NoError(t, err)
 
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "/", bytes.NewBuffer(body))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewBuffer(body))
 
 	q, err := NewQuery(req)
 	require.NoError(t, err)
@@ -89,7 +88,7 @@ func TestNewQuery_WithID(t *testing.T) {
 func TestNewQuery_InvalidJSON(t *testing.T) {
 	t.Parallel()
 
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "/", bytes.NewBufferString("invalid json"))
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewBufferString("invalid json"))
 
 	_, err := NewQuery(req)
 	require.Error(t, err)
@@ -118,14 +117,87 @@ func TestRequestInternalBidi(t *testing.T) {
 	require.False(t, q.RequestInternal())
 }
 
-func TestRequestInternalV2(t *testing.T) {
+func TestRequestInternalQuery(t *testing.T) {
 	t.Parallel()
 
-	q := QueryV2{
+	q := Query{
 		Service: "svc",
 		Method:  "mthd",
 		Headers: map[string]any{"h": "v"},
 		Input:   []map[string]any{{"key": "value"}},
 	}
 	require.False(t, q.RequestInternal())
+}
+
+func TestNewQuery_WithInput(t *testing.T) {
+	t.Parallel()
+
+	data := map[string]any{
+		"service": "TestService",
+		"method":  "TestMethod",
+		"input":   []map[string]any{{"key": "value"}},
+		"headers": map[string]any{"header": "value"},
+	}
+
+	body, err := json.Marshal(data)
+	require.NoError(t, err)
+
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewBuffer(body))
+
+	q, err := NewQuery(req)
+	require.NoError(t, err)
+	require.Equal(t, "TestService", q.Service)
+	require.Equal(t, "TestMethod", q.Method)
+	require.Equal(t, []map[string]any{{"key": "value"}}, q.Input)
+	require.Equal(t, map[string]any{"header": "value"}, q.Headers)
+}
+
+func TestNewQuery_ServiceMethodOnly(t *testing.T) {
+	t.Parallel()
+
+	data := map[string]any{
+		"service": "TestService",
+		"method":  "TestMethod",
+	}
+	body, err := json.Marshal(data)
+	require.NoError(t, err)
+
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewBuffer(body))
+	q, err := NewQuery(req)
+	require.NoError(t, err)
+	require.Equal(t, "TestService", q.Service)
+	require.Equal(t, "TestMethod", q.Method)
+	require.Nil(t, q.Input)
+	require.Nil(t, q.Data())
+}
+
+func TestNewQuery_EmptyBody(t *testing.T) {
+	t.Parallel()
+
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewBufferString("{}"))
+	q, err := NewQuery(req)
+	require.NoError(t, err)
+	require.Empty(t, q.Service)
+	require.Empty(t, q.Method)
+	require.Nil(t, q.Input)
+}
+
+func TestQuery_Data(t *testing.T) {
+	t.Parallel()
+
+	q := Query{Input: []map[string]any{{"a": 1}}}
+	require.Equal(t, map[string]any{"a": 1}, q.Data())
+
+	q = Query{Input: nil}
+	require.Nil(t, q.Data())
+}
+
+func TestNewQueryFromInput(t *testing.T) {
+	t.Parallel()
+
+	q := NewQueryFromInput("svc", "mth", []map[string]any{{"k": "v"}}, map[string]any{"h": "v"})
+	require.Equal(t, "svc", q.Service)
+	require.Equal(t, "mth", q.Method)
+	require.Equal(t, []map[string]any{{"k": "v"}}, q.Input)
+	require.Equal(t, map[string]any{"h": "v"}, q.Headers)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/md5" //nolint:gosec
 	"crypto/sha256"
 	"encoding/hex"
 	"hash/crc32"
@@ -34,4 +35,13 @@ func TestHashPlugin(t *testing.T) {
 
 	wantSHA := sha256.Sum256([]byte("hello"))
 	require.Equal(t, hex.EncodeToString(wantSHA[:]), outSHA)
+
+	fnMD5, ok := plugintest.LookupFunc(reg, "md5")
+	require.True(t, ok, "md5 not registered")
+
+	outMD5, err := plugintest.Call(t.Context(), fnMD5, "hello")
+	require.NoError(t, err)
+
+	wantMD5 := md5.Sum([]byte("hello")) //nolint:gosec
+	require.Equal(t, hex.EncodeToString(wantMD5[:]), outMD5)
 }

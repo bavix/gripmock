@@ -149,6 +149,8 @@ func (h *RestServer) Readiness(w http.ResponseWriter, _ *http.Request) {
 	if !h.ok.Load() {
 		w.WriteHeader(http.StatusServiceUnavailable)
 
+		_ = json.NewEncoder(w).Encode(rest.MessageOK{Message: "not ready", Time: time.Now()})
+
 		return
 	}
 
@@ -160,7 +162,7 @@ func (h *RestServer) Liveness(w http.ResponseWriter, _ *http.Request) {
 	h.liveness(w)
 }
 
-// AddStub adds a new stub to the server.
+// AddStub inserts new stubs.
 func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	byt, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -196,14 +198,14 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// DeleteStubByID deletes a stub by its ID.
+// DeleteStubByID removes a stub by ID.
 func (h *RestServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
 	h.budgerigar.DeleteByID(uuid)
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// BatchStubsDelete deletes multiple stubs in a batch operation.
+// BatchStubsDelete removes multiple stubs by ID.
 func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	byt, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -229,35 +231,35 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ListUsedStubs returns a list of stubs that have been used.
+// ListUsedStubs returns stubs that have been matched.
 func (h *RestServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 	if err := json.NewEncoder(w).Encode(h.budgerigar.Used()); err != nil {
 		h.responseError(w, err)
 	}
 }
 
-// ListUnusedStubs returns a list of stubs that have not been used.
+// ListUnusedStubs returns stubs that have never been matched.
 func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, _ *http.Request) {
 	if err := json.NewEncoder(w).Encode(h.budgerigar.Unused()); err != nil {
 		h.responseError(w, err)
 	}
 }
 
-// ListStubs returns a list of all stubs.
+// ListStubs returns all stubs.
 func (h *RestServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
 	if err := json.NewEncoder(w).Encode(h.budgerigar.All()); err != nil {
 		h.responseError(w, err)
 	}
 }
 
-// PurgeStubs clears all stubs from the server.
+// PurgeStubs removes all stubs.
 func (h *RestServer) PurgeStubs(w http.ResponseWriter, _ *http.Request) {
 	h.budgerigar.Clear()
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// SearchStubs searches for stubs based on a query.
+// SearchStubs finds a stub matching the query.
 func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 	query, err := stuber.NewQuery(r)
 	if err != nil {
@@ -290,7 +292,7 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// FindByID retrieves a stub by its ID.
+// FindByID returns a stub by ID.
 func (h *RestServer) FindByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
 	stub := h.budgerigar.FindByID(uuid)
 	if stub == nil {

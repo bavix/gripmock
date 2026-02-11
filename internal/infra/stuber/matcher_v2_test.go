@@ -3,6 +3,8 @@ package stuber_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
@@ -67,7 +69,7 @@ func TestMatchStreamV2(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			query := stuber.QueryV2{
+			query := stuber.Query{
 				Service: "test",
 				Method:  "test",
 				Input:   tt.queryInput,
@@ -82,19 +84,17 @@ func TestMatchStreamV2(t *testing.T) {
 			budgerigar := stuber.NewBudgerigar(features.New())
 			budgerigar.PutMany(stub)
 
-			result, err := budgerigar.FindByQueryV2(query)
+			result, err := budgerigar.FindByQuery(query)
 			if err != nil {
 				if tt.expected {
-					t.Errorf("Expected match but got error: %v", err)
+					require.NoError(t, err, "Expected match but got error")
 				}
 
 				return
 			}
 
 			matched := result.Found() != nil
-			if matched != tt.expected {
-				t.Errorf("matchStreamV2() = %v, want %v", matched, tt.expected)
-			}
+			require.Equal(t, tt.expected, matched, "matchStreamV2()")
 		})
 	}
 }
@@ -105,7 +105,7 @@ func TestMatchWithStreamV2(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
 		Input: []map[string]any{
@@ -126,16 +126,11 @@ func TestMatchWithStreamV2(t *testing.T) {
 	budgerigar := stuber.NewBudgerigar(features.New())
 	budgerigar.PutMany(stub)
 
-	result, err := budgerigar.FindByQueryV2(query)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
+	result, err := budgerigar.FindByQuery(query)
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Expected match to return true for matching query and stub with stream")
 
-	if result.Found() == nil {
-		t.Error("Expected match to return true for matching query and stub with stream")
-	}
-
-	nonMatchingQuery := stuber.QueryV2{
+	nonMatchingQuery := stuber.Query{
 		Service: "test",
 		Method:  "test",
 		Input: []map[string]any{
@@ -143,14 +138,9 @@ func TestMatchWithStreamV2(t *testing.T) {
 		},
 	}
 
-	result, err = budgerigar.FindByQueryV2(nonMatchingQuery)
-	if err != nil {
-		return
-	}
-
-	if result.Found() != nil {
-		t.Error("Expected match to return false for non-matching stream")
-	}
+	result, err = budgerigar.FindByQuery(nonMatchingQuery)
+	require.NoError(t, err)
+	require.Nil(t, result.Found(), "Expected match to return false for non-matching stream")
 }
 
 // TestBackwardCompatibilityV2 - tests backward compatibility in V2.
@@ -159,7 +149,7 @@ func TestBackwardCompatibilityV2(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
 		Input:   []map[string]any{{"key1": "value1"}},
@@ -176,14 +166,9 @@ func TestBackwardCompatibilityV2(t *testing.T) {
 	budgerigar := stuber.NewBudgerigar(features.New())
 	budgerigar.PutMany(stub)
 
-	result, err := budgerigar.FindByQueryV2(query)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Found() == nil {
-		t.Error("Expected backward compatibility: single stream item should match against input")
-	}
+	result, err := budgerigar.FindByQuery(query)
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Expected backward compatibility: single stream item should match against input")
 }
 
 func TestV2UnaryRequest(t *testing.T) {
@@ -191,7 +176,7 @@ func TestV2UnaryRequest(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
 		Input:   []map[string]any{{"key1": "value1"}},
@@ -208,14 +193,9 @@ func TestV2UnaryRequest(t *testing.T) {
 	budgerigar := stuber.NewBudgerigar(features.New())
 	budgerigar.PutMany(stub)
 
-	result, err := budgerigar.FindByQueryV2(query)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Found() == nil {
-		t.Error("Expected unary request to match stub input")
-	}
+	result, err := budgerigar.FindByQuery(query)
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Expected unary request to match stub input")
 }
 
 func TestV2StreamRequest(t *testing.T) {
@@ -223,7 +203,7 @@ func TestV2StreamRequest(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
 		Input:   []map[string]any{{"stream1": "value1"}, {"stream2": "value2"}},
@@ -241,20 +221,15 @@ func TestV2StreamRequest(t *testing.T) {
 	budgerigar := stuber.NewBudgerigar(features.New())
 	budgerigar.PutMany(stub)
 
-	result, err := budgerigar.FindByQueryV2(query)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Found() == nil {
-		t.Error("Expected stream request to match stub stream")
-	}
+	result, err := budgerigar.FindByQuery(query)
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Expected stream request to match stub stream")
 }
 
 func TestV2MultipleStreamsNoStubStream(t *testing.T) {
 	t.Parallel()
 
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
 		Input:   []map[string]any{{"key1": "value1"}, {"key2": "value2"}},
@@ -271,14 +246,9 @@ func TestV2MultipleStreamsNoStubStream(t *testing.T) {
 	budgerigar := stuber.NewBudgerigar(features.New())
 	budgerigar.PutMany(stub)
 
-	result, err := budgerigar.FindByQueryV2(query)
-	if err != nil {
-		return
-	}
-
-	if result.Found() != nil {
-		t.Error("Expected no match for multiple streams without stream in stub")
-	}
+	result, err := budgerigar.FindByQuery(query)
+	require.NoError(t, err)
+	require.Nil(t, result.Found(), "Expected no match for multiple streams without stream in stub")
 }
 
 // TestV2Priority - tests priorities in V2.
@@ -314,22 +284,14 @@ func TestV2Priority(t *testing.T) {
 	budgerigar := stuber.NewBudgerigar(features.New())
 	budgerigar.PutMany(stub1, stub2)
 
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
 		Input:   []map[string]any{{"key1": "value1"}},
 	}
 
-	result, err := budgerigar.FindByQueryV2(query)
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	if result.Found() == nil {
-		t.Error("Expected to find exact match")
-	}
-
-	if result.Found().Output.Data["result"] != "stub2" {
-		t.Errorf("Expected to match higher priority stub, got %v", result.Found().Output.Data["result"])
-	}
+	result, err := budgerigar.FindByQuery(query)
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Expected to find exact match")
+	require.Equal(t, "stub2", result.Found().Output.Data["result"], "Expected to match higher priority stub")
 }

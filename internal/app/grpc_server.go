@@ -139,21 +139,6 @@ func (m *grpcMocker) newQuery(ctx context.Context, msg *dynamicpb.Message) stube
 	query := stuber.Query{
 		Service: m.fullServiceName,
 		Method:  m.methodName,
-		Data:    convertToMap(msg),
-	}
-
-	md, ok := metadata.FromIncomingContext(ctx)
-	if ok {
-		query.Headers = processHeaders(md)
-	}
-
-	return query
-}
-
-func (m *grpcMocker) newQueryV2(ctx context.Context, msg *dynamicpb.Message) stuber.QueryV2 {
-	query := stuber.QueryV2{
-		Service: m.fullServiceName,
-		Method:  m.methodName,
 		Input:   []map[string]any{convertToMap(msg)},
 	}
 
@@ -186,17 +171,21 @@ func convertToMap(msg proto.Message) map[string]any {
 
 	result := make(map[string]any)
 	message := msg.ProtoReflect()
+	desc := message.Descriptor()
 
-	message.Range(func(fd protoreflect.FieldDescriptor, value protoreflect.Value) bool {
-		if !message.Has(fd) {
-			return true
+	// Iterate over descriptor fields, not message.Range: Range only visits populated fields.
+	// In proto3, scalars with default values (e.g. 0.0) are not "populated", so Range skips them.
+	// We need all fields including defaults for stub matching.
+	for i := range desc.Fields().Len() {
+		fd := desc.Fields().Get(i)
+
+		if fd.Cardinality() == protoreflect.Repeated && !message.Has(fd) {
+			continue
 		}
 
 		fieldName := string(fd.Name())
-		result[fieldName] = convertValue(fd, value)
-
-		return true
-	})
+		result[fieldName] = convertValue(fd, message.Get(fd))
+	}
 
 	return result
 }
@@ -268,9 +257,9 @@ func convertScalar(fd protoreflect.FieldDescriptor, value protoreflect.Value) an
 	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
 		return json.Number(value.String())
 	case protoreflect.FloatKind:
-		return json.Number(value.String())
+		return float64(value.Float())
 	case protoreflect.DoubleKind:
-		return json.Number(value.String())
+		return value.Float()
 	case protoreflect.StringKind:
 		return value.String()
 	case protoreflect.BytesKind:
@@ -538,29 +527,18 @@ func (m *grpcMocker) unaryHandler() grpc.MethodHandler {
 func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*dynamicpb.Message, error) {
 	requestTime := time.Now()
 
-	queryV2 := m.newQueryV2(ctx, req)
+	query := m.newQuery(ctx, req)
 
-	result, err := m.budgerigar.FindByQueryV2(queryV2)
+	result, err := m.budgerigar.FindByQuery(query)
 	if err != nil {
-		query := m.newQuery(ctx, req)
-
-		result, err = m.budgerigar.FindByQuery(query)
-		if err != nil {
-			return nil, err //nolint:wrapcheck
-		}
+		return nil, err //nolint:wrapcheck
 	}
 
 	found := result.Found()
 	if found == nil {
-		if queryV2.Service != "" {
-			errorFormatter := NewErrorFormatter()
+		errorFormatter := NewErrorFormatter()
 
-			return nil, status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundErrorV2(queryV2, result).Error())
-		}
-
-		query := m.newQuery(ctx, req)
-
-		return nil, status.Error(codes.NotFound, stubNotFoundError(query, result).Error())
+		return nil, status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundError(query, result).Error())
 	}
 
 	m.delay(ctx, found.Output.Delay)
@@ -670,17 +648,17 @@ func (m *grpcMocker) handleOutputError(_ context.Context, _ grpc.ServerStream, o
 }
 
 func (m *grpcMocker) tryV2API(messages []map[string]any, md metadata.MD) (*stuber.Result, error) {
-	queryV2 := stuber.QueryV2{
+	query := stuber.Query{
 		Service: m.fullServiceName,
 		Method:  m.methodName,
 		Input:   messages,
 	}
 
 	if len(md) > 0 {
-		queryV2.Headers = processHeaders(md)
+		query.Headers = processHeaders(md)
 	}
 
-	return m.budgerigar.FindByQueryV2(queryV2)
+	return m.budgerigar.FindByQuery(query)
 }
 
 func (m *grpcMocker) tryV1APIFallback(messages []map[string]any, md metadata.MD) (*stuber.Result, error) {
@@ -690,7 +668,7 @@ func (m *grpcMocker) tryV1APIFallback(messages []map[string]any, md metadata.MD)
 		query := stuber.Query{
 			Service: m.fullServiceName,
 			Method:  m.methodName,
-			Data:    message,
+			Input:   []map[string]any{message},
 		}
 
 		if len(md) > 0 {
@@ -820,13 +798,12 @@ func (m *grpcMocker) sendClientStreamResponse(
 	return stream.SendMsg(outputMsg)
 }
 
-//nolint:cyclop,funlen,gocognit
 func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 	queryBidi := m.newQueryBidi(stream.Context())
 
 	bidiResult, err := m.budgerigar.FindByQueryBidi(queryBidi)
 	if err != nil {
-		return errors.Wrapf(err, "failed to initialize bidirectional streaming session: %v", err)
+		return errors.Wrap(err, "failed to initialize bidirectional streaming session")
 	}
 
 	for {
@@ -841,93 +818,108 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			return err //nolint:wrapcheck
 		}
 
-		requestTime := time.Now()
-
-		stub, err := bidiResult.Next(convertToMap(inputMsg))
-		if err != nil {
-			return errors.Wrap(err, "failed to process bidirectional message")
-		}
-
-		m.delay(stream.Context(), stub.Output.Delay)
-
-		requestData := convertToMap(inputMsg)
-
-		headers := make(map[string]any)
-		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
-			headers = processHeaders(md)
-		}
-
-		requestsAny := []any{requestData}
-
-		templateData := template.Data{
-			Request:      requestData,
-			Headers:      headers,
-			MessageIndex: bidiResult.GetMessageIndex(),
-			RequestTime:  requestTime,
-			Timestamp:    requestTime,
-			State:        make(map[string]any),
-			Requests:     requestsAny,
-			StubID:       stub.ID.String(),
-			RequestID:    stub.ID.String(),
-		}
-
-		outputDataCopy := deepCopyMapAny(stub.Output.Data)
-		if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
-			return errors.Wrap(err, "failed to process dynamic templates")
-		}
-
-		headersCopy := deepCopyStringMap(stub.Output.Headers)
-		if template.HasTemplatesInHeaders(headersCopy) {
-			if err := m.templateEngine.ProcessHeaders(headersCopy, templateData); err != nil {
-				return errors.Wrap(err, "failed to process header templates")
-			}
-		}
-
-		streamCopy := make([]any, len(stub.Output.Stream))
-		for i, item := range stub.Output.Stream {
-			if itemMap, ok := item.(map[string]any); ok {
-				itemCopy := deepCopyMapAny(itemMap)
-				if err := m.templateEngine.ProcessMap(itemCopy, templateData); err != nil {
-					return errors.Wrap(err, "failed to process stream template")
-				}
-
-				streamCopy[i] = itemCopy
-			} else {
-				streamCopy[i] = item
-			}
-		}
-
-		outputToUse := stuber.Output{
-			Data:    outputDataCopy,
-			Stream:  streamCopy,
-			Headers: headersCopy,
-			Error:   stub.Output.Error,
-			Delay:   stub.Output.Delay,
-		}
-
-		if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
-			errorStr, err := m.templateEngine.ProcessError(outputToUse.Error, templateData)
-			if err != nil {
-				return errors.Wrap(err, "failed to process error template")
-			}
-
-			outputToUse.Error = errorStr
-		}
-
-		if bidiResult.GetMessageIndex() == 0 {
-			if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
-				return errors.Wrap(err, "failed to set headers")
-			}
-		}
-
-		if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil { //nolint:wrapcheck
-			return err
-		}
-
-		if err := m.sendBidiResponses(stream, outputToUse, stub, bidiResult.GetMessageIndex(), requestTime); err != nil {
+		if err := m.processBidiStreamMessage(stream, bidiResult, inputMsg); err != nil {
 			return err
 		}
 	}
+}
+
+func (m *grpcMocker) processBidiStreamMessage(
+	stream grpc.ServerStream,
+	bidiResult *stuber.BidiResult,
+	inputMsg *dynamicpb.Message,
+) error {
+	requestTime := time.Now()
+
+	stub, err := bidiResult.Next(convertToMap(inputMsg))
+	if err != nil {
+		return errors.Wrap(err, "failed to process bidirectional message")
+	}
+
+	m.delay(stream.Context(), stub.Output.Delay)
+
+	requestData := convertToMap(inputMsg)
+
+	headers := make(map[string]any)
+	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+		headers = processHeaders(md)
+	}
+
+	templateData := template.Data{
+		Request:      requestData,
+		Headers:      headers,
+		MessageIndex: bidiResult.GetMessageIndex(),
+		RequestTime:  requestTime,
+		Timestamp:    requestTime,
+		State:        make(map[string]any),
+		Requests:     []any{requestData},
+		StubID:       stub.ID.String(),
+		RequestID:    stub.ID.String(),
+	}
+
+	outputToUse, err := m.prepareBidiOutput(stub, templateData)
+	if err != nil {
+		return err
+	}
+
+	if bidiResult.GetMessageIndex() == 0 {
+		if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
+			return errors.Wrap(err, "failed to set headers")
+		}
+	}
+
+	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil { //nolint:wrapcheck
+		return err
+	}
+
+	return m.sendBidiResponses(stream, outputToUse, stub, bidiResult.GetMessageIndex(), requestTime)
+}
+
+func (m *grpcMocker) prepareBidiOutput(stub *stuber.Stub, templateData template.Data) (stuber.Output, error) {
+	outputDataCopy := deepCopyMapAny(stub.Output.Data)
+	if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
+		return stuber.Output{}, errors.Wrap(err, "failed to process dynamic templates")
+	}
+
+	headersCopy := deepCopyStringMap(stub.Output.Headers)
+	if template.HasTemplatesInHeaders(headersCopy) {
+		if err := m.templateEngine.ProcessHeaders(headersCopy, templateData); err != nil {
+			return stuber.Output{}, errors.Wrap(err, "failed to process header templates")
+		}
+	}
+
+	streamCopy := make([]any, len(stub.Output.Stream))
+	for i, item := range stub.Output.Stream {
+		if itemMap, ok := item.(map[string]any); ok {
+			itemCopy := deepCopyMapAny(itemMap)
+			if err := m.templateEngine.ProcessMap(itemCopy, templateData); err != nil {
+				return stuber.Output{}, errors.Wrap(err, "failed to process stream template")
+			}
+
+			streamCopy[i] = itemCopy
+		} else {
+			streamCopy[i] = item
+		}
+	}
+
+	outputToUse := stuber.Output{
+		Data:    outputDataCopy,
+		Stream:  streamCopy,
+		Headers: headersCopy,
+		Error:   stub.Output.Error,
+		Delay:   stub.Output.Delay,
+	}
+
+	if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
+		errorStr, err := m.templateEngine.ProcessError(outputToUse.Error, templateData)
+		if err != nil {
+			return stuber.Output{}, errors.Wrap(err, "failed to process error template")
+		}
+
+		outputToUse.Error = errorStr
+	}
+
+	return outputToUse, nil
 }
 
 func NewGRPCServer(

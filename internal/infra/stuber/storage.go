@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"errors"
 	"iter"
+	"log"
 	"slices"
 	"strings"
 	"sync"
@@ -99,72 +100,81 @@ func (s *storage) yieldSortedValues(indexes []uint64, yield func(*Stub) bool) {
 }
 
 // yieldSortedValuesOptimized is an ultra-optimized version with minimal allocations.
-//
-//nolint:cyclop,gocognit,nestif
 func (s *storage) yieldSortedValuesOptimized(indexes []uint64, yield func(*Stub) bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	// Ultra-fast path: single index with single value (most common case)
-	if len(indexes) == 1 {
-		if m, exists := s.items[indexes[0]]; exists && len(m) == 1 {
-			for _, v := range m {
-				if !yield(v) {
-					return
-				}
-			}
-
-			return
-		}
+	if s.tryYieldSingleItem(indexes, yield) {
+		return
 	}
 
-	// Pre-count total items for optimal allocation
 	totalItems := s.countItemsFast(indexes)
-
-	// Fast path: small dataset (≤smallItemsThreshold items) - use ultra-simple iteration
 	if totalItems <= smallItemsThreshold {
-		items := make([]*Stub, 0, totalItems)
-
-		// Collect items
-		for _, index := range indexes {
-			if m, exists := s.items[index]; exists {
-				for _, v := range m {
-					items = append(items, v)
-				}
-			}
-		}
-
-		// Ultra-simple sort for 2-3 items (direct field access for performance)
-		if len(items) == twoItemsThreshold {
-			if items[0].Priority < items[1].Priority {
-				items[0], items[1] = items[1], items[0]
-			}
-		} else if len(items) == smallItemsThreshold {
-			// Manual sort for smallItemsThreshold items (faster than bubble sort)
-			if items[0].Priority < items[1].Priority {
-				items[0], items[1] = items[1], items[0]
-			}
-
-			if items[1].Priority < items[2].Priority {
-				items[1], items[2] = items[2], items[1]
-			}
-
-			if items[0].Priority < items[1].Priority {
-				items[0], items[1] = items[1], items[0]
-			}
-		}
-
-		for _, v := range items {
-			if !yield(v) {
-				return
-			}
-		}
+		s.yieldSmallItemsSorted(indexes, totalItems, yield)
 
 		return
 	}
 
-	// Large dataset - use heap-based sorting for O(N log N) performance
 	s.yieldSortedValuesHeap(indexes, yield)
+}
+
+func (s *storage) tryYieldSingleItem(indexes []uint64, yield func(*Stub) bool) bool {
+	if len(indexes) != 1 {
+		return false
+	}
+
+	m, exists := s.items[indexes[0]]
+	if !exists || len(m) != 1 {
+		return false
+	}
+
+	for _, v := range m {
+		if !yield(v) {
+			return true
+		}
+	}
+
+	return true
+}
+
+func (s *storage) yieldSmallItemsSorted(indexes []uint64, totalItems int, yield func(*Stub) bool) {
+	items := make([]*Stub, 0, totalItems)
+	for _, index := range indexes {
+		if m, exists := s.items[index]; exists {
+			for _, v := range m {
+				items = append(items, v)
+			}
+		}
+	}
+
+	sortSmallItemsByPriority(items)
+
+	for _, v := range items {
+		if !yield(v) {
+			return
+		}
+	}
+}
+
+func sortSmallItemsByPriority(items []*Stub) {
+	switch len(items) {
+	case twoItemsThreshold:
+		if items[0].Priority < items[1].Priority {
+			items[0], items[1] = items[1], items[0]
+		}
+	case smallItemsThreshold:
+		if items[0].Priority < items[1].Priority {
+			items[0], items[1] = items[1], items[0]
+		}
+
+		if items[1].Priority < items[2].Priority {
+			items[1], items[2] = items[2], items[1]
+		}
+
+		if items[0].Priority < items[1].Priority {
+			items[0], items[1] = items[1], items[0]
+		}
+	}
 }
 
 // sortItem represents a stub with its score for sorting.
@@ -193,8 +203,14 @@ func (h *scoreHeap) Len() int           { return len(*h) }
 func (h *scoreHeap) Less(i, j int) bool { return (*h)[i].score > (*h)[j].score }
 func (h *scoreHeap) Swap(i, j int)      { (*h)[i], (*h)[j] = (*h)[j], (*h)[i] }
 func (h *scoreHeap) Push(x any) {
-	// Only sortItem is ever pushed via heap.Push in this package.
-	*h = append(*h, x.(sortItem)) //nolint:forcetypeassert
+	item, ok := x.(sortItem)
+	if !ok {
+		log.Printf("[gripmock] scoreHeap.Push: expected sortItem, got %T", x)
+
+		return
+	}
+
+	*h = append(*h, item)
 }
 
 func (h *scoreHeap) Pop() any {
@@ -208,7 +224,7 @@ func (h *scoreHeap) Pop() any {
 
 // yieldSortedValuesHeap uses heap-based sorting for O(N log N) performance.
 //
-//nolint:cyclop
+//nolint:cyclop,gocognit
 func (s *storage) yieldSortedValuesHeap(indexes []uint64, yield func(*Stub) bool) {
 	// Fast path: single index with multiple values
 	//nolint:nestif
@@ -255,8 +271,14 @@ func (s *storage) yieldSortedValuesHeap(indexes []uint64, yield func(*Stub) bool
 
 	// Extract elements in descending score order
 	for h.Len() > 0 {
-		// Only sortItem is ever in the heap.
-		item := heap.Pop(h).(sortItem) //nolint:forcetypeassert
+		x := heap.Pop(h)
+
+		item, ok := x.(sortItem)
+		if !ok {
+			log.Printf("[gripmock] scoreHeap.Pop: expected sortItem, got %T", x)
+
+			continue
+		}
 
 		if !yield(item.stub) {
 			return
@@ -402,40 +424,56 @@ func (s *storage) del(keys ...uuid.UUID) int {
 //nolint:gochecknoglobals
 var globalStringCache *lru.Cache[string, uint32]
 
-func mustCreateStringCache(size int) *lru.Cache[string, uint32] {
+// initStringCache initializes the global string hash cache. Used by init and tests.
+// Does not panic on error; logs and sets globalStringCache to nil.
+func initStringCache(size int) {
 	cache, err := lru.New[string, uint32](size)
 	if err != nil {
-		panic("failed to create string hash cache: " + err.Error())
+		log.Printf("[gripmock] failed to create string hash cache: %v", err)
+
+		globalStringCache = nil
+
+		return
 	}
 
-	return cache
+	globalStringCache = cache
 }
 
 //nolint:gochecknoinits
 func init() {
-	globalStringCache = mustCreateStringCache(stringCacheSize)
+	initStringCache(stringCacheSize)
 }
 
 func (s *storage) id(value string) uint32 {
-	// Try to get from cache first
-	if hash, exists := globalStringCache.Get(value); exists {
-		return hash
+	if globalStringCache != nil {
+		if hash, exists := globalStringCache.Get(value); exists {
+			return hash
+		}
 	}
 
-	// Calculate hash and store in cache
 	hash := uint32(xxh3.HashString(value)) //nolint:gosec
-	globalStringCache.Add(value, hash)
+	if globalStringCache != nil {
+		globalStringCache.Add(value, hash)
+	}
 
 	return hash
 }
 
 // clearStringHashCache clears the string hash cache.
 func clearStringHashCache() {
-	globalStringCache.Purge()
+	if globalStringCache != nil {
+		globalStringCache.Purge()
+	}
 }
 
-// getStringHashCacheStats returns cache statistics.
+// getStringHashCacheStats returns cache statistics (length, capacity).
+//
+//nolint:unparam
 func getStringHashCacheStats() (int, int) {
+	if globalStringCache == nil {
+		return 0, stringCacheSize
+	}
+
 	return globalStringCache.Len(), stringCacheSize // Fixed capacity
 }
 
