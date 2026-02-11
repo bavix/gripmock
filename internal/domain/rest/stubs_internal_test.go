@@ -8,13 +8,13 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-// APITestSuite provides test suite for REST API domain types.
-type APITestSuite struct {
+// StubsTestSuite provides test suite for stubs REST API domain types.
+type StubsTestSuite struct {
 	suite.Suite
 }
 
 // TestStubInputValidation tests StubInput validation.
-func (s *APITestSuite) TestStubInputValidation() {
+func (s *StubsTestSuite) TestStubInputValidation() {
 	tests := []struct {
 		name  string
 		input StubInput
@@ -74,7 +74,7 @@ func (s *APITestSuite) TestStubInputValidation() {
 // TestStubOutputValidation tests StubOutput validation.
 //
 //nolint:funlen // Test function requires multiple scenarios
-func (s *APITestSuite) TestStubOutputValidation() {
+func (s *StubsTestSuite) TestStubOutputValidation() {
 	tests := []struct {
 		name   string
 		output StubOutput
@@ -149,7 +149,7 @@ func (s *APITestSuite) TestStubOutputValidation() {
 // TestStubValidation tests Stub validation.
 //
 //nolint:cyclop,funlen // Test function requires multiple validation scenarios
-func (s *APITestSuite) TestStubValidation() {
+func (s *StubsTestSuite) TestStubValidation() {
 	tests := []struct {
 		name  string
 		stub  Stub
@@ -259,7 +259,7 @@ func (s *APITestSuite) TestStubValidation() {
 }
 
 // TestIDType tests ID type functionality.
-func (s *APITestSuite) TestIDType() {
+func (s *StubsTestSuite) TestIDType() {
 	// Test that ID is a UUID type
 	id, err := uuid.Parse("550e8400-e29b-41d4-a716-446655440000")
 	s.Require().NoError(err)
@@ -267,7 +267,7 @@ func (s *APITestSuite) TestIDType() {
 }
 
 // TestHeadersValidation tests headers validation.
-func (s *APITestSuite) TestHeadersValidation() {
+func (s *StubsTestSuite) TestHeadersValidation() {
 	tests := []struct {
 		name    string
 		headers map[string]any
@@ -306,9 +306,9 @@ func (s *APITestSuite) TestHeadersValidation() {
 	}
 }
 
-// TestAPITestSuite runs the API test suite.
-func TestAPITestSuite(t *testing.T) {
+// TestStubsTestSuite runs the stubs API test suite.
+func TestStubsTestSuite(t *testing.T) {
 	t.Parallel()
 
-	suite.Run(t, new(APITestSuite))
+	suite.Run(t, new(StubsTestSuite))
 }
