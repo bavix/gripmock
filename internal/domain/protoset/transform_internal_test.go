@@ -144,7 +144,7 @@ func TestProcessor_ProcessFile_DescriptorFile(t *testing.T) {
 	fds := &descriptorpb.FileDescriptorSet{
 		File: []*descriptorpb.FileDescriptorProto{
 			{
-				Name: proto.String("test.proto"),
+				Name: new("test.proto"),
 			},
 		},
 	}
@@ -198,7 +198,7 @@ func TestProcessor_ProcessDirectory(t *testing.T) {
 	fds := &descriptorpb.FileDescriptorSet{
 		File: []*descriptorpb.FileDescriptorProto{
 			{
-				Name: proto.String("test.proto"),
+				Name: new("test.proto"),
 			},
 		},
 	}
@@ -282,4 +282,212 @@ func TestBuild_WithDuplicatePaths(t *testing.T) {
 	results, err = Build(ctx, []string{tempDir}, []string{protoFile, protoFile})
 	require.NoError(t, err)
 	require.NotNil(t, results)
+}
+
+func TestConfigure_Getters(t *testing.T) {
+	t.Parallel()
+
+	processor := newProcessor([]string{"/import1"})
+	processor.protos = []string{"a.proto", "b.proto"}
+	processor.descriptors = []string{"/path/to/file.pb"}
+
+	cfg := processor.result()
+	require.NotNil(t, cfg)
+	require.Equal(t, []string{"/import1"}, cfg.Imports())
+	require.Equal(t, []string{"a.proto", "b.proto"}, cfg.Protos())
+	require.Equal(t, []string{"/path/to/file.pb"}, cfg.Descriptors())
+}
+
+func TestFindMinimalPaths(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		paths    []string
+		expected []string
+	}{
+		{
+			name:     "empty",
+			paths:    []string{},
+			expected: nil,
+		},
+		{
+			name:     "single path",
+			paths:    []string{"/a"},
+			expected: []string{"/a"},
+		},
+		{
+			name:     "parent and child - keeps parent only",
+			paths:    []string{"/a/b/c", "/a"},
+			expected: []string{"/a"},
+		},
+		{
+			name:     "sibling paths - keeps both",
+			paths:    []string{"/a", "/b"},
+			expected: []string{"/a", "/b"},
+		},
+		{
+			name:     "nested - keeps root",
+			paths:    []string{"/a/b", "/a/b/c", "/a"},
+			expected: []string{"/a"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := findMinimalPaths(tc.paths)
+			require.Equal(t, tc.expected, got)
+		})
+	}
+}
+
+func TestBuild_WithNonExistentPath(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	_, err := Build(ctx, []string{}, []string{"/non/existent/path.proto"})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to stat path")
+}
+
+func TestBuild_WithNonExistentImportPath(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	protoFile := filepath.Join(tempDir, "test.proto")
+	require.NoError(t, os.WriteFile(protoFile, []byte("syntax = \"proto3\";"), 0o600))
+
+	_, err := Build(ctx, []string{"/non/existent/import"}, []string{protoFile})
+	require.NoError(t, err) // imports can be non-existent if we only use descriptors
+}
+
+func TestBuild_WithDirectoryPath(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	protoFile := filepath.Join(tempDir, "test.proto")
+	require.NoError(t, os.WriteFile(protoFile, []byte("syntax = \"proto3\";"), 0o600))
+
+	results, err := Build(ctx, []string{tempDir}, []string{tempDir})
+	require.NoError(t, err)
+	require.NotNil(t, results)
+	require.Len(t, results, 1)
+}
+
+func TestBuild_WithDescriptorOnly(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	descFile := filepath.Join(tempDir, "test.pb")
+	fds := &descriptorpb.FileDescriptorSet{
+		File: []*descriptorpb.FileDescriptorProto{
+			{Name: new("test.proto")},
+		},
+	}
+	descData, err := proto.Marshal(fds)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(descFile, descData, 0o600))
+
+	results, err := Build(ctx, []string{}, []string{descFile})
+	require.NoError(t, err)
+	require.NotNil(t, results)
+	require.Len(t, results, 1)
+}
+
+func TestBuild_WithProtosetFile(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	protosetFile := filepath.Join(tempDir, "test.protoset")
+	fds := &descriptorpb.FileDescriptorSet{
+		File: []*descriptorpb.FileDescriptorProto{
+			{Name: new("test.proto")},
+		},
+	}
+	descData, err := proto.Marshal(fds)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(protosetFile, descData, 0o600))
+
+	results, err := Build(ctx, []string{}, []string{protosetFile})
+	require.NoError(t, err)
+	require.NotNil(t, results)
+	require.Len(t, results, 1)
+}
+
+func TestProcessor_Process_NonExistentPath(t *testing.T) {
+	t.Parallel()
+
+	processor := newProcessor([]string{})
+	ctx := context.Background()
+
+	err := processor.process(ctx, []string{"/non/existent/path"})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to stat path")
+}
+
+func TestProcessor_ProcessDirectory_ContextCancellation(t *testing.T) {
+	t.Parallel()
+
+	processor := newProcessor([]string{})
+	ctx, cancel := context.WithCancel(context.Background())
+	tempDir := t.TempDir()
+
+	// Create a proto file so the directory has content
+	require.NoError(t, os.WriteFile(filepath.Join(tempDir, "test.proto"), []byte("syntax = \"proto3\";"), 0o600))
+
+	cancel()
+
+	err := processor.process(ctx, []string{tempDir})
+	require.Error(t, err)
+	require.Equal(t, context.Canceled, err)
+}
+
+func TestProcessor_AddProtoFile(t *testing.T) {
+	t.Parallel()
+
+	processor := newProcessor([]string{})
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	protoFile := filepath.Join(tempDir, "test.proto")
+	require.NoError(t, os.WriteFile(protoFile, []byte("syntax = \"proto3\";"), 0o600))
+
+	processor.addImport(ctx, tempDir)
+	processor.addProtoFile(ctx, protoFile)
+
+	require.Contains(t, processor.protos, "test.proto")
+}
+
+func TestProcessor_AddDescriptorFile(t *testing.T) {
+	t.Parallel()
+
+	processor := newProcessor([]string{})
+	ctx := context.Background()
+	tempDir := t.TempDir()
+	descFile := filepath.Join(tempDir, "test.pb")
+	fds := &descriptorpb.FileDescriptorSet{
+		File: []*descriptorpb.FileDescriptorProto{{Name: new("x.proto")}},
+	}
+	data, _ := proto.Marshal(fds)
+	require.NoError(t, os.WriteFile(descFile, data, 0o600))
+
+	processor.addImport(ctx, tempDir)
+	processor.addDescriptorFile(ctx, descFile)
+
+	absPath, err := filepath.Abs(descFile)
+	require.NoError(t, err)
+	require.Contains(t, processor.descriptors, absPath)
+}
+
+func TestConstants(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, ".proto", ProtoExt)
+	require.Equal(t, ".pb", ProtobufSetExt)
+	require.Equal(t, ".protoset", ProtoSetExt)
 }

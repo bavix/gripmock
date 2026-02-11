@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -364,8 +365,7 @@ func validateStub(stub *stuber.Stub) error {
 	}
 
 	if err := validate.Struct(vStub); err != nil {
-		var validationErrors validator.ValidationErrors
-		if errors.As(err, &validationErrors) {
+		if validationErrors, ok := stderrors.AsType[validator.ValidationErrors](err); ok {
 			for _, fieldError := range validationErrors {
 				return &ValidationError{
 					Field:   fieldError.Field(),

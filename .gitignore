@@ -1,5 +1,6 @@
 pkged.go
 gripmock
+*.out
 .idea
 .DS_Store
 protogen/*

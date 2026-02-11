@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"errors"
 	"iter"
+	"slices"
 	"strings"
 	"sync"
 
@@ -29,14 +30,6 @@ var ErrLeftNotFound = errors.New("left not found")
 // ErrRightNotFound is returned when the right value is not found.
 var ErrRightNotFound = errors.New("right not found")
 
-// Value is a type used to store the result of a search.
-type Value interface {
-	Key() uuid.UUID
-	Left() string
-	Right() string
-	Score() int // Score determines the order of values when sorting
-}
-
 // storage is responsible for managing search results with enhanced
 // performance and memory efficiency. It supports concurrent access
 // through the use of a read-write mutex.
@@ -49,16 +42,16 @@ type Value interface {
 type storage struct {
 	mu        sync.RWMutex
 	lefts     map[uint32]struct{}
-	items     map[uint64]map[uuid.UUID]Value
-	itemsByID map[uuid.UUID]Value
+	items     map[uint64]map[uuid.UUID]*Stub
+	itemsByID map[uuid.UUID]*Stub
 }
 
 // newStorage creates a new instance of the storage struct.
 func newStorage() *storage {
 	return &storage{
 		lefts:     make(map[uint32]struct{}),
-		items:     make(map[uint64]map[uuid.UUID]Value),
-		itemsByID: make(map[uuid.UUID]Value),
+		items:     make(map[uint64]map[uuid.UUID]*Stub),
+		itemsByID: make(map[uuid.UUID]*Stub),
 	}
 }
 
@@ -68,14 +61,13 @@ func (s *storage) clear() {
 	defer s.mu.Unlock()
 
 	s.lefts = make(map[uint32]struct{})
-	s.items = make(map[uint64]map[uuid.UUID]Value)
-	s.itemsByID = make(map[uuid.UUID]Value)
+	s.items = make(map[uint64]map[uuid.UUID]*Stub)
+	s.itemsByID = make(map[uuid.UUID]*Stub)
 }
 
-// values returns an iterator sequence of all Value items stored in the
-// storage.
-func (s *storage) values() iter.Seq[Value] {
-	return func(yield func(Value) bool) {
+// values returns an iterator sequence of all Stub items stored in the storage.
+func (s *storage) values() iter.Seq[*Stub] {
+	return func(yield func(*Stub) bool) {
 		s.mu.RLock()
 		defer s.mu.RUnlock()
 
@@ -87,29 +79,29 @@ func (s *storage) values() iter.Seq[Value] {
 	}
 }
 
-// findAll retrieves all Value items that match the given left and right names,
+// findAll retrieves all Stub items that match the given left and right names,
 // sorted by score in descending order.
-func (s *storage) findAll(left, right string) (iter.Seq[Value], error) {
+func (s *storage) findAll(left, right string) (iter.Seq[*Stub], error) {
 	indexes, err := s.posByPN(left, right)
 	if err != nil {
 		return nil, err
 	}
 
-	return func(yield func(Value) bool) {
+	return func(yield func(*Stub) bool) {
 		s.yieldSortedValues(indexes, yield)
 	}, nil
 }
 
 // yieldSortedValues yields values sorted by score in descending order,
 // minimizing memory allocations and maximizing iterator usage.
-func (s *storage) yieldSortedValues(indexes []uint64, yield func(Value) bool) {
+func (s *storage) yieldSortedValues(indexes []uint64, yield func(*Stub) bool) {
 	s.yieldSortedValuesOptimized(indexes, yield)
 }
 
 // yieldSortedValuesOptimized is an ultra-optimized version with minimal allocations.
 //
-//nolint:gocognit,cyclop,funlen,nestif
-func (s *storage) yieldSortedValuesOptimized(indexes []uint64, yield func(Value) bool) {
+//nolint:cyclop,gocognit,nestif
+func (s *storage) yieldSortedValuesOptimized(indexes []uint64, yield func(*Stub) bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -126,34 +118,12 @@ func (s *storage) yieldSortedValuesOptimized(indexes []uint64, yield func(Value)
 		}
 	}
 
-	// Ultra-fast path: empty result
-	if len(indexes) == 0 {
-		return
-	}
-
 	// Pre-count total items for optimal allocation
 	totalItems := s.countItemsFast(indexes)
 
-	// Ultra-fast path: single item
-	if totalItems == 1 {
-		for _, index := range indexes {
-			if m, exists := s.items[index]; exists {
-				for _, v := range m {
-					if !yield(v) {
-						return
-					}
-				}
-
-				return
-			}
-		}
-
-		return
-	}
-
 	// Fast path: small dataset (≤smallItemsThreshold items) - use ultra-simple iteration
 	if totalItems <= smallItemsThreshold {
-		items := make([]Value, 0, totalItems)
+		items := make([]*Stub, 0, totalItems)
 
 		// Collect items
 		for _, index := range indexes {
@@ -164,22 +134,22 @@ func (s *storage) yieldSortedValuesOptimized(indexes []uint64, yield func(Value)
 			}
 		}
 
-		// Ultra-simple sort for 2-3 items
+		// Ultra-simple sort for 2-3 items (direct field access for performance)
 		if len(items) == twoItemsThreshold {
-			if items[0].Score() < items[1].Score() {
+			if items[0].Priority < items[1].Priority {
 				items[0], items[1] = items[1], items[0]
 			}
 		} else if len(items) == smallItemsThreshold {
 			// Manual sort for smallItemsThreshold items (faster than bubble sort)
-			if items[0].Score() < items[1].Score() {
+			if items[0].Priority < items[1].Priority {
 				items[0], items[1] = items[1], items[0]
 			}
 
-			if items[1].Score() < items[2].Score() {
+			if items[1].Priority < items[2].Priority {
 				items[1], items[2] = items[2], items[1]
 			}
 
-			if items[0].Score() < items[1].Score() {
+			if items[0].Priority < items[1].Priority {
 				items[0], items[1] = items[1], items[0]
 			}
 		}
@@ -197,9 +167,9 @@ func (s *storage) yieldSortedValuesOptimized(indexes []uint64, yield func(Value)
 	s.yieldSortedValuesHeap(indexes, yield)
 }
 
-// sortItem represents a value with its score for sorting.
+// sortItem represents a stub with its score for sorting.
 type sortItem struct {
-	value Value
+	stub  *Stub
 	score int
 }
 
@@ -223,9 +193,8 @@ func (h *scoreHeap) Len() int           { return len(*h) }
 func (h *scoreHeap) Less(i, j int) bool { return (*h)[i].score > (*h)[j].score }
 func (h *scoreHeap) Swap(i, j int)      { (*h)[i], (*h)[j] = (*h)[j], (*h)[i] }
 func (h *scoreHeap) Push(x any) {
-	if item, ok := x.(sortItem); ok {
-		*h = append(*h, item)
-	}
+	// Only sortItem is ever pushed via heap.Push in this package.
+	*h = append(*h, x.(sortItem)) //nolint:forcetypeassert
 }
 
 func (h *scoreHeap) Pop() any {
@@ -239,21 +208,8 @@ func (h *scoreHeap) Pop() any {
 
 // yieldSortedValuesHeap uses heap-based sorting for O(N log N) performance.
 //
-//nolint:gocognit,cyclop,funlen
-func (s *storage) yieldSortedValuesHeap(indexes []uint64, yield func(Value) bool) {
-	// Ultra-fast path: single index with single value (most common case)
-	if len(indexes) == 1 {
-		if m, exists := s.items[indexes[0]]; exists && len(m) == 1 {
-			for _, v := range m {
-				if !yield(v) {
-					return
-				}
-			}
-
-			return
-		}
-	}
-
+//nolint:cyclop
+func (s *storage) yieldSortedValuesHeap(indexes []uint64, yield func(*Stub) bool) {
 	// Fast path: single index with multiple values
 	//nolint:nestif
 	if len(indexes) == 1 {
@@ -262,19 +218,13 @@ func (s *storage) yieldSortedValuesHeap(indexes []uint64, yield func(Value) bool
 			if len(m) <= smallCollectionThreshold {
 				items := make([]sortItem, 0, len(m))
 				for _, v := range m {
-					items = append(items, sortItem{value: v, score: v.Score()})
-				}
-				// Sort in descending order
-				for i := range len(items) - 1 {
-					for j := i + 1; j < len(items); j++ {
-						if items[i].score < items[j].score {
-							items[i], items[j] = items[j], items[i]
-						}
-					}
+					items = append(items, sortItem{stub: v, score: v.Priority})
 				}
 
+				slices.SortFunc(items, func(a, b sortItem) int { return b.score - a.score }) // descending
+
 				for _, item := range items {
-					if !yield(item.value) {
+					if !yield(item.stub) {
 						return
 					}
 				}
@@ -298,19 +248,17 @@ func (s *storage) yieldSortedValuesHeap(indexes []uint64, yield func(Value) bool
 	for _, index := range indexes {
 		if m, exists := s.items[index]; exists {
 			for _, v := range m {
-				heap.Push(h, sortItem{value: v, score: v.Score()})
+				heap.Push(h, sortItem{stub: v, score: v.Priority})
 			}
 		}
 	}
 
 	// Extract elements in descending score order
 	for h.Len() > 0 {
-		item, ok := heap.Pop(h).(sortItem)
-		if !ok {
-			continue
-		}
+		// Only sortItem is ever in the heap.
+		item := heap.Pop(h).(sortItem) //nolint:forcetypeassert
 
-		if !yield(item.value) {
+		if !yield(item.stub) {
 			return
 		}
 	}
@@ -364,28 +312,17 @@ func (s *storage) posByPN(left, right string) ([]uint64, error) {
 	return resolvedIDs, nil
 }
 
-// findByID retrieves the Stub value associated with the given UUID from the storage.
-//
-// Returns:
-// - Value: The Stub value associated with the given UUID, or nil if not found.
-//
-
-//nolint:ireturn
-func (s *storage) findByID(key uuid.UUID) Value {
+// findByID retrieves the Stub associated with the given UUID from the storage.
+func (s *storage) findByID(key uuid.UUID) *Stub {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	return s.itemsByID[key]
 }
 
-// findByIDs retrieves the Stub values associated with the given UUIDs from the
-// storage.
-//
-// Returns:
-//   - iter.Seq[Value]: The Stub values associated with the given UUIDs, or nil if
-//     not found.
-func (s *storage) findByIDs(ids iter.Seq[uuid.UUID]) iter.Seq[Value] {
-	return func(yield func(Value) bool) {
+// findByIDs retrieves the Stubs associated with the given UUIDs from the storage.
+func (s *storage) findByIDs(ids iter.Seq[uuid.UUID]) iter.Seq[*Stub] {
+	return func(yield func(*Stub) bool) {
 		s.mu.RLock()
 		defer s.mu.RUnlock()
 
@@ -399,9 +336,9 @@ func (s *storage) findByIDs(ids iter.Seq[uuid.UUID]) iter.Seq[Value] {
 	}
 }
 
-// upsert inserts or updates the given Value items in storage.
+// upsert inserts or updates the given Stubs in storage.
 // Optimized for minimal allocations and maximum performance.
-func (s *storage) upsert(values ...Value) []uuid.UUID {
+func (s *storage) upsert(values ...*Stub) []uuid.UUID {
 	if len(values) == 0 {
 		return nil
 	}
@@ -412,23 +349,20 @@ func (s *storage) upsert(values ...Value) []uuid.UUID {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Process all values in a single pass
+	// Process all values in a single pass (direct field access for performance)
 	for i, v := range values {
-		results[i] = v.Key()
+		results[i] = v.ID
 
-		// Calculate IDs directly without string interning
-		leftID := s.id(v.Left())
-		rightID := s.id(v.Right())
+		leftID := s.id(v.Service)
+		rightID := s.id(v.Method)
 		index := s.pos(leftID, rightID)
 
-		// Initialize the map at the index if it doesn't exist.
 		if s.items[index] == nil {
-			s.items[index] = make(map[uuid.UUID]Value, 1)
+			s.items[index] = make(map[uuid.UUID]*Stub, 1)
 		}
 
-		// Insert or update the value in the storage.
-		s.items[index][v.Key()] = v
-		s.itemsByID[v.Key()] = v
+		s.items[index][v.ID] = v
+		s.itemsByID[v.ID] = v
 		s.lefts[leftID] = struct{}{}
 	}
 
@@ -445,7 +379,7 @@ func (s *storage) del(keys ...uuid.UUID) int {
 
 	for _, key := range keys {
 		if v, ok := s.itemsByID[key]; ok {
-			pos := s.pos(s.id(v.Left()), s.id(v.Right()))
+			pos := s.pos(s.id(v.Service), s.id(v.Method))
 
 			if m, exists := s.items[pos]; exists {
 				delete(m, key)
@@ -468,14 +402,18 @@ func (s *storage) del(keys ...uuid.UUID) int {
 //nolint:gochecknoglobals
 var globalStringCache *lru.Cache[string, uint32]
 
-//nolint:gochecknoinits
-func init() {
-	var err error
-	// Create LRU cache with size limit of stringCacheSize entries
-	globalStringCache, err = lru.New[string, uint32](stringCacheSize)
+func mustCreateStringCache(size int) *lru.Cache[string, uint32] {
+	cache, err := lru.New[string, uint32](size)
 	if err != nil {
 		panic("failed to create string hash cache: " + err.Error())
 	}
+
+	return cache
+}
+
+//nolint:gochecknoinits
+func init() {
+	globalStringCache = mustCreateStringCache(stringCacheSize)
 }
 
 func (s *storage) id(value string) uint32 {
