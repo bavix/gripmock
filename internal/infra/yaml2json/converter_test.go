@@ -47,3 +47,24 @@ yaml2json:
 
 	require.NoError(t, err)
 }
+
+func TestExecute_NoTemplateMarkers(t *testing.T) {
+	t.Parallel()
+
+	conv := yaml2json.New(nil)
+	data := []byte("key: value\nnested:\n  a: 1")
+
+	bytes, err := conv.Execute("test", data)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"key":"value","nested":{"a":1}}`, string(bytes))
+}
+
+func TestExecute_EmptyData(t *testing.T) {
+	t.Parallel()
+
+	conv := yaml2json.New(nil)
+
+	bytes, err := conv.Execute("test", []byte{})
+	require.NoError(t, err)
+	require.Contains(t, string(bytes), "null")
+}

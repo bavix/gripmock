@@ -50,7 +50,7 @@ func TestRegistry_AddPlugin(t *testing.T) {
 		pkgplugins.Specs(
 			pkgplugins.FuncSpec{
 				Name:        "testFunc",
-				Fn:          func() string { return "test" }, //nolint:goconst // test value
+				Fn:          func() string { return "test" }, //nolint:goconst
 				Description: "test function",
 			},
 		),

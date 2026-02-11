@@ -9,6 +9,32 @@ import (
 	"github.com/bavix/gripmock/v3/pkg/plugintest"
 )
 
+func TestNewPlugin(t *testing.T) {
+	t.Parallel()
+
+	plugin := plugintest.NewPlugin(
+		plugintest.PluginInfo{Name: "test"},
+		plugintest.Specs(plugintest.FuncSpec{Name: "id", Fn: func(args ...any) any {
+			if len(args) > 0 {
+				return args[0]
+			}
+			return nil
+		}}),
+	)
+	require.NotNil(t, plugin)
+	require.Equal(t, "test", plugin.Info().Name)
+	require.Len(t, plugin.Providers(), 1)
+
+	reg := plugintest.NewRegistry()
+	reg.AddPlugin(plugin.Info(), plugin.Providers())
+
+	fn, ok := plugintest.LookupFunc(reg, "id")
+	require.True(t, ok)
+	out, err := plugintest.Call(context.Background(), fn, 42)
+	require.NoError(t, err)
+	require.Equal(t, 42, out)
+}
+
 func TestRegistry_AddPluginAndLookup(t *testing.T) {
 	t.Parallel()
 

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:gochecknoglobals // test-only sync to serialize global cache mutations
+//nolint:gochecknoglobals
 var cacheMu sync.Mutex
 
 func TestStringHashCache(t *testing.T) {

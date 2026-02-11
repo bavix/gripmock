@@ -37,6 +37,12 @@ func TestDuration_UnmarshalJSON(t *testing.T) {
 			want:    0,
 			wantErr: true,
 		},
+		{
+			name:    "numeric nanoseconds",
+			input:   "1000000000",
+			want:    time.Second,
+			wantErr: false,
+		},
 	}
 
 	for _, testCase := range tests {

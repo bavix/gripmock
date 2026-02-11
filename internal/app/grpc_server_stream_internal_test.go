@@ -33,7 +33,7 @@ const (
 type mockFullServerStream struct {
 	grpc.ServerStream
 
-	ctx              context.Context //nolint:containedctx // Mock for testing
+	ctx              context.Context //nolint:containedctx
 	sentMessages     []*dynamicpb.Message
 	receivedMessages []*dynamicpb.Message
 	sendMsgError     error

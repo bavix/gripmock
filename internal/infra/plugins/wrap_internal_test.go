@@ -94,7 +94,7 @@ func TestWrapFunc_FuncWithErrorReturn(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	expectedErr := errors.New("test error") //nolint:err113 // test error
+	expectedErr := errors.New("test error") //nolint:err113
 
 	fn := func() (string, error) {
 		return "", expectedErr
@@ -155,7 +155,7 @@ func TestWrapDecorator_ValidDecorator(t *testing.T) {
 
 			str, ok := result.(string)
 			if !ok {
-				return nil, errors.New("result is not a string") //nolint:err113 // test error
+				return nil, errors.New("result is not a string") //nolint:err113
 			}
 
 			return "decorated: " + str, nil

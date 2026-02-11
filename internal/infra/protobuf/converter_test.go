@@ -125,6 +125,18 @@ func TestScalarConverter_ConvertScalar(t *testing.T) {
 		require.Contains(t, string(jsonNum), "3.141592653589793")
 	})
 
+	t.Run("enum kind with known enum", func(t *testing.T) {
+		t.Parallel()
+
+		// structpb.Value with NullValue uses enum
+		msg := structpb.NewNullValue()
+		descriptor := msg.ProtoReflect().Descriptor().Fields().ByName("null_value")
+		value := msg.ProtoReflect().Get(descriptor)
+
+		result := converter.ConvertScalar(descriptor, value)
+		require.Nil(t, result)
+	})
+
 	t.Run("bytes kind", func(t *testing.T) {
 		t.Parallel()
 
@@ -165,6 +177,18 @@ func TestScalarConverter_ConvertScalar(t *testing.T) {
 		// Should handle valid string field
 		require.NotNil(t, result)
 		require.IsType(t, "", result)
+	})
+
+	t.Run("message kind with invalid message", func(t *testing.T) {
+		t.Parallel()
+
+		// structpb.Value with empty struct_value has MessageKind field
+		msg := structpb.NewStructValue(nil)
+		descriptor := msg.ProtoReflect().Descriptor().Fields().ByName("struct_value")
+		value := msg.ProtoReflect().Get(descriptor)
+
+		result := converter.ConvertScalar(descriptor, value)
+		require.Nil(t, result)
 	})
 }
 

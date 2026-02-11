@@ -230,7 +230,7 @@ func (s *RestServerExtendedTestSuite) TestAddStubWithErrors() {
 
 // TestFindStubByIDExtended tests finding stubs by ID with various scenarios.
 //
-//nolint:funlen // Test function requires multiple scenarios
+//nolint:funlen
 func (s *RestServerExtendedTestSuite) TestFindStubByIDExtended() {
 	// First add a stub to find
 	stubData := `[{
@@ -364,7 +364,7 @@ func (s *RestServerExtendedTestSuite) TestStubStatistics() {
 
 // TestSearchStubsExtended tests advanced stub searching.
 //
-//nolint:funlen // Test function requires multiple scenarios
+//nolint:funlen
 func (s *RestServerExtendedTestSuite) TestSearchStubsExtended() {
 	// Add searchable stubs
 	stubData := `[
@@ -432,7 +432,7 @@ func (s *RestServerExtendedTestSuite) TestSearchStubsExtended() {
 
 // TestServiceDiscovery tests service and method discovery endpoints.
 //
-//nolint:funlen // Test function requires multiple scenarios
+//nolint:funlen
 func (s *RestServerExtendedTestSuite) TestServiceDiscovery() {
 	// Add stubs for different services
 	stubData := `[

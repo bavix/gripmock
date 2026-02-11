@@ -52,7 +52,7 @@ func getRegex(pattern string) (*regexp.Regexp, error) {
 
 // getRegexCacheStats returns regex cache statistics (length, capacity).
 //
-//nolint:unparam // capacity is a constant for API compatibility
+//nolint:unparam
 func getRegexCacheStats() (int, int) {
 	if regexCache == nil {
 		return 0, regexCacheSize

@@ -468,7 +468,7 @@ func clearStringHashCache() {
 
 // getStringHashCacheStats returns cache statistics (length, capacity).
 //
-//nolint:unparam // capacity is a constant for API compatibility
+//nolint:unparam
 func getStringHashCacheStats() (int, int) {
 	if globalStringCache == nil {
 		return 0, stringCacheSize

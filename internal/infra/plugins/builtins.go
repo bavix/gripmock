@@ -506,9 +506,9 @@ func (uuidHelper) UUIDToInt64(id string) (string, error) {
 
 	bytes := parsed[:]
 
-	//nolint:gosec // we intentionally reinterpret UUID halves as signed
+	//nolint:gosec
 	high := int64(binary.LittleEndian.Uint64(bytes[:8]))
-	//nolint:gosec // we intentionally reinterpret UUID halves as signed
+	//nolint:gosec
 	low := int64(binary.LittleEndian.Uint64(bytes[8:]))
 
 	return fmt.Sprintf(`{"high":%d,"low":%d}`, high, low), nil
