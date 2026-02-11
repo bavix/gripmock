@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
@@ -135,7 +134,7 @@ func TestThirdPartyResolver_WithSingleItem(t *testing.T) {
 			{
 				File: []*descriptorpb.FileDescriptorProto{
 					{
-						Name: proto.String("test.proto"),
+						Name: new("test.proto"),
 					},
 				},
 			},
@@ -158,14 +157,14 @@ func TestThirdPartyResolver_WithMultipleItems(t *testing.T) {
 			{
 				File: []*descriptorpb.FileDescriptorProto{
 					{
-						Name: proto.String("first.proto"),
+						Name: new("first.proto"),
 					},
 				},
 			},
 			{
 				File: []*descriptorpb.FileDescriptorProto{
 					{
-						Name: proto.String("second.proto"),
+						Name: new("second.proto"),
 					},
 				},
 			},
@@ -257,7 +256,7 @@ func TestThirdPartyResolver_WithEmptyFileName(t *testing.T) {
 			{
 				File: []*descriptorpb.FileDescriptorProto{
 					{
-						Name: proto.String(""), // Empty name
+						Name: new(""), // Empty name
 					},
 				},
 			},
@@ -279,7 +278,7 @@ func TestThirdPartyResolver_WithMatchingEmptyName(t *testing.T) {
 			{
 				File: []*descriptorpb.FileDescriptorProto{
 					{
-						Name: proto.String(""), // Empty name
+						Name: new(""), // Empty name
 					},
 				},
 			},
@@ -302,13 +301,13 @@ func TestThirdPartyResolver_WithSpecialCharacters(t *testing.T) {
 			{
 				File: []*descriptorpb.FileDescriptorProto{
 					{
-						Name: proto.String("test-file.proto"),
+						Name: new("test-file.proto"),
 					},
 					{
-						Name: proto.String("test_file.proto"),
+						Name: new("test_file.proto"),
 					},
 					{
-						Name: proto.String("test.file.proto"),
+						Name: new("test.file.proto"),
 					},
 				},
 			},
@@ -343,7 +342,7 @@ func TestThirdPartyResolver_WithLongPath(t *testing.T) {
 			{
 				File: []*descriptorpb.FileDescriptorProto{
 					{
-						Name: proto.String("very/long/path/to/file.proto"),
+						Name: new("very/long/path/to/file.proto"),
 					},
 				},
 			},
@@ -365,7 +364,7 @@ func TestThirdPartyResolver_WithUnicodePath(t *testing.T) {
 			{
 				File: []*descriptorpb.FileDescriptorProto{
 					{
-						Name: proto.String("тест/файл.proto"),
+						Name: new("тест/файл.proto"),
 					},
 				},
 			},
@@ -387,14 +386,14 @@ func TestThirdPartyResolver_WithDuplicateNames(t *testing.T) {
 			{
 				File: []*descriptorpb.FileDescriptorProto{
 					{
-						Name: proto.String("duplicate.proto"),
+						Name: new("duplicate.proto"),
 					},
 				},
 			},
 			{
 				File: []*descriptorpb.FileDescriptorProto{
 					{
-						Name: proto.String("duplicate.proto"),
+						Name: new("duplicate.proto"),
 					},
 				},
 			},

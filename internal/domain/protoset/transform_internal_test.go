@@ -144,7 +144,7 @@ func TestProcessor_ProcessFile_DescriptorFile(t *testing.T) {
 	fds := &descriptorpb.FileDescriptorSet{
 		File: []*descriptorpb.FileDescriptorProto{
 			{
-				Name: proto.String("test.proto"),
+				Name: new("test.proto"),
 			},
 		},
 	}
@@ -198,7 +198,7 @@ func TestProcessor_ProcessDirectory(t *testing.T) {
 	fds := &descriptorpb.FileDescriptorSet{
 		File: []*descriptorpb.FileDescriptorProto{
 			{
-				Name: proto.String("test.proto"),
+				Name: new("test.proto"),
 			},
 		},
 	}
