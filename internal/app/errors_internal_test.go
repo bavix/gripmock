@@ -91,31 +91,6 @@ func TestErrorFormatter_CreateClientStreamError(t *testing.T) {
 	}
 }
 
-func TestErrorFormatter_FormatStubNotFoundErrorV2(t *testing.T) {
-	t.Parallel()
-
-	formatter := NewErrorFormatter()
-
-	query := stuber.QueryV2{
-		Service: "test.Service",
-		Method:  "TestMethod",
-		Input: []map[string]any{
-			{"key": "value"},
-		},
-	}
-
-	result := &stuber.Result{}
-
-	err := formatter.FormatStubNotFoundErrorV2(query, result)
-	require.Error(t, err)
-
-	errorMsg := err.Error()
-	require.Contains(t, errorMsg, "Can't find stub")
-	require.Contains(t, errorMsg, "Service: test.Service")
-	require.Contains(t, errorMsg, "Method: TestMethod")
-	require.Contains(t, errorMsg, "Input")
-}
-
 func TestErrorFormatter_FormatStubNotFoundError(t *testing.T) {
 	t.Parallel()
 
@@ -124,7 +99,7 @@ func TestErrorFormatter_FormatStubNotFoundError(t *testing.T) {
 	query := stuber.Query{
 		Service: "test.Service",
 		Method:  "TestMethod",
-		Data:    map[string]any{"key": "value"},
+		Input:   []map[string]any{{"key": "value"}},
 	}
 
 	result := &stuber.Result{}

@@ -29,7 +29,7 @@ func BenchmarkV1vsV2_Found(b *testing.B) {
 		query := stuber.Query{
 			Service: "test-service",
 			Method:  "test-method",
-			Data:    map[string]any{"key1": "value1"},
+			Input:   []map[string]any{{"key1": "value1"}},
 		}
 
 		b.ReportAllocs()
@@ -55,7 +55,7 @@ func BenchmarkV1vsV2_Found(b *testing.B) {
 		}
 		budgerigar.PutMany(stub)
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "test-service",
 			Method:  "test-method",
 			Input:   []map[string]any{{"key1": "value1"}},
@@ -65,7 +65,7 @@ func BenchmarkV1vsV2_Found(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_, _ = budgerigar.FindByQueryV2(query)
+			_, _ = budgerigar.FindByQuery(query)
 		}
 	})
 }
@@ -92,7 +92,7 @@ func BenchmarkV1vsV2_NotFound(b *testing.B) {
 		query := stuber.Query{
 			Service: "non-existent-service",
 			Method:  "non-existent-method",
-			Data:    map[string]any{"key": "value"},
+			Input:   []map[string]any{{"key": "value"}},
 		}
 
 		b.ReportAllocs()
@@ -120,7 +120,7 @@ func BenchmarkV1vsV2_NotFound(b *testing.B) {
 			budgerigar.PutMany(stub)
 		}
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "non-existent-service",
 			Method:  "non-existent-method",
 			Input:   []map[string]any{{"key": "value"}},
@@ -130,7 +130,7 @@ func BenchmarkV1vsV2_NotFound(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_, _ = budgerigar.FindByQueryV2(query)
+			_, _ = budgerigar.FindByQuery(query)
 		}
 	})
 }
@@ -158,7 +158,7 @@ func BenchmarkV1vsV2_MultipleStubs(b *testing.B) {
 		query := stuber.Query{
 			Service: "test-service",
 			Method:  "test-method",
-			Data:    map[string]any{"key1": "value1"},
+			Input:   []map[string]any{{"key1": "value1"}},
 		}
 
 		b.ReportAllocs()
@@ -187,7 +187,7 @@ func BenchmarkV1vsV2_MultipleStubs(b *testing.B) {
 			budgerigar.PutMany(stub)
 		}
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "test-service",
 			Method:  "test-method",
 			Input:   []map[string]any{{"key1": "value1"}},
@@ -197,7 +197,7 @@ func BenchmarkV1vsV2_MultipleStubs(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_, _ = budgerigar.FindByQueryV2(query)
+			_, _ = budgerigar.FindByQuery(query)
 		}
 	})
 }
@@ -222,7 +222,7 @@ func BenchmarkV1vsV2_Stream(b *testing.B) {
 		query := stuber.Query{
 			Service: "test-service",
 			Method:  "test-method",
-			Data:    map[string]any{"stream1": "value1"},
+			Input:   []map[string]any{{"stream1": "value1"}, {"stream2": "value2"}},
 		}
 
 		b.ReportAllocs()
@@ -248,7 +248,7 @@ func BenchmarkV1vsV2_Stream(b *testing.B) {
 		}
 		budgerigar.PutMany(stub)
 
-		query := stuber.QueryV2{
+		query := stuber.Query{
 			Service: "test-service",
 			Method:  "test-method",
 			Input:   []map[string]any{{"stream1": "value1"}, {"stream2": "value2"}},
@@ -258,7 +258,7 @@ func BenchmarkV1vsV2_Stream(b *testing.B) {
 		b.ResetTimer()
 
 		for range b.N {
-			_, _ = budgerigar.FindByQueryV2(query)
+			_, _ = budgerigar.FindByQuery(query)
 		}
 	})
 }

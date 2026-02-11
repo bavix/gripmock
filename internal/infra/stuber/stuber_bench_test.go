@@ -255,7 +255,7 @@ func BenchmarkFindByQueryStream(b *testing.B) {
 	query := stuber.Query{
 		Service: "service-" + uuid.NewString(),
 		Method:  "method-" + uuid.NewString(),
-		Data:    map[string]any{"stream1": "value1"},
+		Input:   []map[string]any{{"stream1": "value1"}},
 	}
 
 	b.ReportAllocs()
@@ -286,7 +286,7 @@ func BenchmarkFindByQueryStreamBackwardCompatibility(b *testing.B) {
 	query := stuber.Query{
 		Service: "service-" + uuid.NewString(),
 		Method:  "method-" + uuid.NewString(),
-		Data:    map[string]any{"key1": "value1"},
+		Input:   []map[string]any{{"key1": "value1"}},
 	}
 
 	b.ReportAllocs()
@@ -314,7 +314,7 @@ func BenchmarkMatchStream(b *testing.B) {
 	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
-		Data:    map[string]any{"key1": "value1"},
+		Input:   []map[string]any{{"key1": "value1"}},
 	}
 
 	b.ReportAllocs()
@@ -346,7 +346,7 @@ func BenchmarkRankMatchStream(b *testing.B) {
 	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
-		Data:    map[string]any{"key1": "value1"},
+		Input:   []map[string]any{{"key1": "value1"}},
 	}
 
 	b.ReportAllocs()
@@ -370,7 +370,7 @@ func BenchmarkQueryV2Unary(b *testing.B) {
 
 	budgerigar.PutMany(stub)
 
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
 		Input:   []map[string]any{{"key1": "value1"}},
@@ -379,7 +379,7 @@ func BenchmarkQueryV2Unary(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, _ = budgerigar.FindByQueryV2(query)
+		_, _ = budgerigar.FindByQuery(query)
 	}
 }
 
@@ -398,7 +398,7 @@ func BenchmarkQueryV2Stream(b *testing.B) {
 
 	budgerigar.PutMany(stub)
 
-	query := stuber.QueryV2{
+	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
 		Input:   []map[string]any{{"stream1": "value1"}, {"stream2": "value2"}},
@@ -407,7 +407,7 @@ func BenchmarkQueryV2Stream(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, _ = budgerigar.FindByQueryV2(query)
+		_, _ = budgerigar.FindByQuery(query)
 	}
 }
 
@@ -425,13 +425,13 @@ func BenchmarkQueryV2Comparison(b *testing.B) {
 
 	budgerigar.PutMany(stub)
 
-	queryUnary := stuber.QueryV2{
+	queryUnary := stuber.Query{
 		Service: "test",
 		Method:  "test",
 		Input:   []map[string]any{{"key1": "value1"}},
 	}
 
-	queryStream := stuber.QueryV2{
+	queryStream := stuber.Query{
 		Service: "test",
 		Method:  "test",
 		Input:   []map[string]any{{"stream1": "value1"}, {"stream2": "value2"}},
@@ -440,8 +440,8 @@ func BenchmarkQueryV2Comparison(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		_, _ = budgerigar.FindByQueryV2(queryUnary)
-		_, _ = budgerigar.FindByQueryV2(queryStream)
+		_, _ = budgerigar.FindByQuery(queryUnary)
+		_, _ = budgerigar.FindByQuery(queryStream)
 	}
 }
 

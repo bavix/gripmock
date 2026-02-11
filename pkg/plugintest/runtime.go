@@ -6,10 +6,7 @@ import (
 	"reflect"
 )
 
-var (
-	contextType = reflect.TypeOf((*context.Context)(nil)).Elem() //nolint:gochecknoglobals
-	errorType   = reflect.TypeOf((*error)(nil)).Elem()           //nolint:gochecknoglobals
-)
+var contextType = reflect.TypeOf((*context.Context)(nil)).Elem() //nolint:gochecknoglobals
 
 // Wrap converts a testing helper or plugin-style function into the canonical Func
 // so tests can exercise callbacks without rewriting them. It accepts common shapes
@@ -125,8 +122,8 @@ func wrapReflect(fn any) Func {
 		case 2:
 			var err error
 			if !out[1].IsNil() {
-				if out[1].Type().Implements(errorType) {
-					err = out[1].Interface().(error)
+				if errVal, ok := out[1].Interface().(error); ok {
+					err = errVal
 				} else {
 					err = fmt.Errorf("second return value of %s does not implement error", typ)
 				}

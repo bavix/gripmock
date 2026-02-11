@@ -19,12 +19,12 @@ func TestMatch(t *testing.T) {
 	require.False(t, match(query, stub))
 
 	// Test match with data mismatch
-	query = Query{Service: "test", Method: "test", Data: map[string]any{"key": "value"}}
+	query = Query{Service: "test", Method: "test", Input: []map[string]any{{"key": "value"}}}
 	stub = &Stub{Service: "test", Method: "test", Input: InputData{Equals: map[string]any{"key": "different"}}}
 	require.False(t, match(query, stub))
 
 	// Test successful match
-	query = Query{Service: "test", Method: "test", Data: map[string]any{"key": "value"}}
+	query = Query{Service: "test", Method: "test", Input: []map[string]any{{"key": "value"}}}
 	stub = &Stub{Service: "test", Method: "test", Input: InputData{Equals: map[string]any{"key": "value"}}}
 	require.True(t, match(query, stub))
 }

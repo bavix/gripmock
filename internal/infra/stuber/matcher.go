@@ -1,6 +1,8 @@
 package stuber
 
 import (
+	"encoding/json"
+	"log"
 	"reflect"
 	"regexp"
 
@@ -25,34 +27,45 @@ func init() {
 	// Create LRU cache with size limit of regexCacheSize regex patterns
 	regexCache, err = lru.New[string, *regexp.Regexp](regexCacheSize)
 	if err != nil {
-		panic("failed to create regex cache: " + err.Error())
+		log.Printf("[gripmock] failed to create regex cache: %v", err)
+
+		regexCache = nil
 	}
 }
 
 // Get retrieves a compiled regex from cache or compiles it if not found.
 func getRegex(pattern string) (*regexp.Regexp, error) {
-	// Try to get from cache first
-	if re, exists := regexCache.Get(pattern); exists {
-		return re, nil
+	if regexCache != nil {
+		if re, exists := regexCache.Get(pattern); exists {
+			return re, nil
+		}
 	}
 
-	// Compile and cache
+	// Compile and cache (or just compile if cache init failed)
 	re, err := regexp.Compile(pattern)
-	if err == nil {
+	if err == nil && regexCache != nil {
 		regexCache.Add(pattern, re)
 	}
 
 	return re, err
 }
 
-// getRegexCacheStats returns regex cache statistics.
+// getRegexCacheStats returns regex cache statistics (length, capacity).
+//
+//nolint:unparam // capacity is a constant for API compatibility
 func getRegexCacheStats() (int, int) {
+	if regexCache == nil {
+		return 0, regexCacheSize
+	}
+
 	return regexCache.Len(), regexCacheSize // Fixed capacity
 }
 
 // clearRegexCache clears the regex cache.
 func clearRegexCache() {
-	regexCache.Purge()
+	if regexCache != nil {
+		regexCache.Purge()
+	}
 }
 
 // match checks if a given query matches a given stub.
@@ -66,7 +79,7 @@ func match(query Query, stub *Stub) bool {
 	}
 
 	// Check if the query's input data matches the stub's input data
-	return matchInput(query.Data, stub.Input)
+	return matchInput(query.Data(), stub.Input)
 }
 
 // matchHeaders checks if query headers match stub headers.
@@ -81,18 +94,6 @@ func matchInput(queryData map[string]any, stubInput InputData) bool {
 	return equals(stubInput.Equals, queryData, stubInput.IgnoreArrayOrder) &&
 		contains(stubInput.Contains, queryData, stubInput.IgnoreArrayOrder) &&
 		matches(stubInput.Matches, queryData, stubInput.IgnoreArrayOrder)
-}
-
-// rankMatch ranks how well a given query matches a given stub.
-//
-// It ranks the query's input data and headers against the stub's input data
-// and headers using the RankMatch method from the deeply package.
-func rankMatch(query Query, stub *Stub) float64 {
-	// Rank headers first
-	headersRank := rankHeaders(query.Headers, stub.Headers)
-
-	// Rank the query's input data against the stub's input data
-	return headersRank + rankInput(query.Data, stub.Input)
 }
 
 // rankHeaders ranks query headers against stub headers.
@@ -114,8 +115,6 @@ func rankInput(queryData map[string]any, stubInput InputData) float64 {
 }
 
 // equals compares two values for deep equality.
-//
-//nolint:gocognit,cyclop
 func equals(expected map[string]any, actual any, orderIgnore bool) bool {
 	if len(expected) == 0 {
 		return true
@@ -126,49 +125,13 @@ func equals(expected map[string]any, actual any, orderIgnore bool) bool {
 		return false
 	}
 
-	// Fast path: single field
-	//nolint:nestif
-	if len(expected) == 1 {
-		for key, expectedValue := range expected {
-			actualValue, exists := actualMap[key]
-			if !exists {
-				return false
-			}
-
-			//nolint:nestif
-			if orderIgnore {
-				if eSlice, eOk := expectedValue.([]any); eOk {
-					if aSlice, aOk := actualValue.([]any); aOk {
-						return deeply.EqualsIgnoreArrayOrder(eSlice, aSlice)
-					}
-				}
-			}
-
-			return ultraFastSpecializedEquals(expectedValue, actualValue)
-		}
-	}
-
-	// General case: check all fields
 	for key, expectedValue := range expected {
 		actualValue, exists := actualMap[key]
 		if !exists {
 			return false
 		}
 
-		//nolint:nestif
-		if orderIgnore {
-			if eSlice, eOk := expectedValue.([]any); eOk {
-				if aSlice, aOk := actualValue.([]any); aOk {
-					if !deeply.EqualsIgnoreArrayOrder(eSlice, aSlice) {
-						return false
-					}
-
-					continue
-				}
-			}
-		}
-
-		if !ultraFastSpecializedEquals(expectedValue, actualValue) {
+		if !compareFieldValue(expectedValue, actualValue, orderIgnore) {
 			return false
 		}
 	}
@@ -176,9 +139,21 @@ func equals(expected map[string]any, actual any, orderIgnore bool) bool {
 	return true
 }
 
+func compareFieldValue(expected, actual any, orderIgnore bool) bool {
+	if orderIgnore {
+		if eSlice, eOk := expected.([]any); eOk {
+			if aSlice, aOk := actual.([]any); aOk {
+				return deeply.EqualsIgnoreArrayOrder(eSlice, aSlice)
+			}
+		}
+	}
+
+	return ultraFastSpecializedEquals(expected, actual)
+}
+
 // ultraFastSpecializedEquals provides ultra-fast comparison for common types without reflect.
 //
-//nolint:cyclop,funlen
+//nolint:cyclop,funlen,gocognit,gocyclo
 func ultraFastSpecializedEquals(expected, actual any) bool {
 	// Ultra-fast path: same type comparison (most common case)
 	//nolint:nestif
@@ -226,6 +201,10 @@ func ultraFastSpecializedEquals(expected, actual any) bool {
 			return e == float64(a)
 		case int64:
 			return e == float64(a)
+		case json.Number:
+			if aFloat, err := a.Float64(); err == nil {
+				return e == aFloat
+			}
 		}
 	case int64:
 		switch a := actual.(type) {
@@ -243,6 +222,21 @@ func ultraFastSpecializedEquals(expected, actual any) bool {
 	case bool:
 		if a, ok := actual.(bool); ok {
 			return e == a
+		}
+	case json.Number:
+		if a, ok := actual.(json.Number); ok {
+			return e.String() == a.String()
+		}
+
+		if aFloat, err := e.Float64(); err == nil {
+			switch a := actual.(type) {
+			case float64:
+				return aFloat == a
+			case int:
+				return aFloat == float64(a)
+			case int64:
+				return aFloat == float64(a)
+			}
 		}
 	}
 
@@ -337,46 +331,55 @@ func matchStreamElements(queryStream []map[string]any, stubStream []InputData) b
 }
 
 // rankStreamElements ranks the match between query stream and stub stream.
-//
-//nolint:gocognit,cyclop,funlen
 func rankStreamElements(queryStream []map[string]any, stubStream []InputData) float64 {
-	// For client streaming, grpctestify sends an extra empty message at the end
-	// We need to handle this case by checking if the last message is empty
-	effectiveQueryLength := len(queryStream)
-	if effectiveQueryLength > 0 {
-		lastMessage := queryStream[effectiveQueryLength-1]
-		if len(lastMessage) == 0 {
-			effectiveQueryLength--
-		}
-	}
-
-	// Enforce exact length match for client streaming
+	effectiveQueryLength := getEffectiveQueryLength(queryStream)
 	if effectiveQueryLength != len(stubStream) {
 		return 0
 	}
 
-	// STRICT: If query stream is empty but stub expects data, no rank
 	if effectiveQueryLength == 0 && len(stubStream) > 0 {
 		return 0
 	}
 
-	var (
-		totalRank      float64
-		perfectMatches int
-	)
+	totalRank, perfectMatches := computeStreamElementRanks(queryStream, stubStream, effectiveQueryLength)
+	lengthBonus := float64(effectiveQueryLength) * 10.0   //nolint:mnd
+	perfectMatchBonus := float64(perfectMatches) * 1000.0 //nolint:mnd
+
+	completeMatchBonus := 0.0
+	if perfectMatches == effectiveQueryLength && effectiveQueryLength > 0 {
+		completeMatchBonus = 10000.0
+	}
+
+	specificityBonus := countStreamMatchers(stubStream) * 50.0 //nolint:mnd
+
+	return totalRank + lengthBonus + perfectMatchBonus + completeMatchBonus + specificityBonus
+}
+
+func getEffectiveQueryLength(queryStream []map[string]any) int {
+	n := len(queryStream)
+	if n > 0 && len(queryStream[n-1]) == 0 {
+		return n - 1
+	}
+
+	return n
+}
+
+func computeStreamElementRanks(
+	queryStream []map[string]any,
+	stubStream []InputData,
+	effectiveQueryLength int,
+) (float64, int) {
+	var totalRank float64
+
+	var perfectMatches int
 
 	for i := range effectiveQueryLength {
 		queryItem := queryStream[i]
 		stubItem := stubStream[i]
-		// Use the same logic as before for element rank
-		equalsRank := 0.0
 
-		if len(stubItem.Equals) > 0 {
-			if equals(stubItem.Equals, queryItem, stubItem.IgnoreArrayOrder) {
-				equalsRank = 1.0
-			} else {
-				equalsRank = 0.0
-			}
+		equalsRank := 0.0
+		if len(stubItem.Equals) > 0 && equals(stubItem.Equals, queryItem, stubItem.IgnoreArrayOrder) {
+			equalsRank = 1.0
 		}
 
 		containsRank := deeply.RankMatch(stubItem.Contains, queryItem)
@@ -388,54 +391,28 @@ func rankStreamElements(queryStream []map[string]any, stubStream []InputData) fl
 			perfectMatches++
 		}
 	}
-	// For client streaming, accumulate rank based on received messages
-	// Each message contributes to the total rank
-	//nolint:mnd
-	lengthBonus := float64(effectiveQueryLength) * 10.0 // Moderate bonus for length
-	//nolint:mnd
-	perfectMatchBonus := float64(perfectMatches) * 1000.0 // High bonus for perfect matches
 
-	// Give bonus for complete match (all received messages match perfectly)
-	completeMatchBonus := 0.0
-	if perfectMatches == effectiveQueryLength && effectiveQueryLength > 0 {
-		completeMatchBonus = 10000.0 // Very high bonus for complete match
-	}
+	return totalRank, perfectMatches
+}
 
-	// Add specificity bonus - more specific matchers = higher specificity
-	specificityBonus := 0.0
+func countStreamMatchers(stubStream []InputData) float64 {
+	var total int
 
 	for _, stubItem := range stubStream {
-		// Count actual matchers, not just field count
-		equalsCount := 0
-
-		for _, v := range stubItem.Equals {
-			if v != nil {
-				equalsCount++
-			}
-		}
-
-		containsCount := 0
-
-		for _, v := range stubItem.Contains {
-			if v != nil {
-				containsCount++
-			}
-		}
-
-		matchesCount := 0
-
-		for _, v := range stubItem.Matches {
-			if v != nil {
-				matchesCount++
-			}
-		}
-
-		specificityBonus += float64(equalsCount + containsCount + matchesCount)
+		total += countNonNil(stubItem.Equals) + countNonNil(stubItem.Contains) + countNonNil(stubItem.Matches)
 	}
 
-	specificityBonus *= 50.0 // Medium weight for specificity
+	return float64(total)
+}
 
-	finalRank := totalRank + lengthBonus + perfectMatchBonus + completeMatchBonus + specificityBonus
+func countNonNil(m map[string]any) int {
+	var n int
 
-	return finalRank
+	for _, v := range m {
+		if v != nil {
+			n++
+		}
+	}
+
+	return n
 }

@@ -32,18 +32,11 @@ func NewErrorFormatter() *ErrorFormatter {
 	return &ErrorFormatter{}
 }
 
-// FormatStubNotFoundErrorV2 formats error messages for V2 API stub not found scenarios.
-func (f *ErrorFormatter) FormatStubNotFoundErrorV2(expect localstuber.QueryV2, result *localstuber.Result) error {
-	formatter := errorFormatter.NewStubNotFoundFormatter()
-
-	return formatter.FormatV2(expect, result)
-}
-
-// FormatStubNotFoundError formats error messages for V1 API stub not found scenarios.
+// FormatStubNotFoundError formats error messages for stub not found scenarios.
 func (f *ErrorFormatter) FormatStubNotFoundError(expect localstuber.Query, result *localstuber.Result) error {
 	formatter := errorFormatter.NewStubNotFoundFormatter()
 
-	return formatter.FormatV1(expect, result)
+	return formatter.Format(expect, result)
 }
 
 // CreateStubNotFoundError creates a gRPC status error for stub not found scenarios.

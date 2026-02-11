@@ -485,9 +485,7 @@ func TestResult_Similar(t *testing.T) {
 		Service: "Greeter1",
 		Method:  "SayHello1",
 		Headers: nil,
-		Data: map[string]any{
-			"field1": "hello field1",
-		},
+		Input:   []map[string]any{{"field1": "hello field1"}},
 	})
 	require.NoError(t, err)
 	require.Nil(t, r.Found())
@@ -530,11 +528,7 @@ func TestStuber_MatchesEqualsFound(t *testing.T) {
 		Service: "Greeter1",
 		Method:  "SayHello1",
 		Headers: nil,
-		Data: map[string]any{
-			"id":   "123",
-			"name": "user_456",
-			"tags": []any{"mock", "grpc"},
-		},
+		Input:   []map[string]any{{"id": "123", "name": "user_456", "tags": []any{"mock", "grpc"}}},
 	})
 	require.NoError(t, err)
 	require.NotNil(t, r.Found())
@@ -570,14 +564,14 @@ func TestStuber_EqualsIgnoreArrayOrder(t *testing.T) {
 	query := stuber.Query{
 		Service: "IdentifierService",
 		Method:  "ProcessUUIDs",
-		Data: map[string]any{
+		Input: []map[string]any{{
 			"string_uuids": []any{
 				"cc991218-a920-40c8-9f42-3b329c8723f2",
 				"f1e9ed24-93ba-4e4f-ab9f-3942196d5c03",
 				"c30f45d2-f8a4-4a94-a994-4cc349bca457",
 				"e3484119-24e1-42d9-b4c2-7d6004ee86d9",
 			},
-		},
+		}},
 	}
 
 	r, err := s.FindByQuery(query)
@@ -710,7 +704,7 @@ func TestBudgerigar_FindByQuery_FoundWithPriority(t *testing.T) {
 	r, err := s.FindByQuery(stuber.Query{
 		Service: "Service",
 		Method:  "Method",
-		Data:    map[string]any{"id": "1"},
+		Input:   []map[string]any{{"id": "1"}},
 	})
 
 	require.NoError(t, err)
@@ -834,7 +828,7 @@ func TestBudgerigarWithData(t *testing.T) {
 	query := stuber.Query{
 		Service: "test-service",
 		Method:  "test-method",
-		Data:    map[string]any{"name": "John", "age": 30},
+		Input:   []map[string]any{{"name": "John", "age": 30}},
 	}
 
 	result, err := budgerigar.FindByQuery(query)
@@ -849,7 +843,7 @@ func TestBudgerigarWithData(t *testing.T) {
 	nonMatchingQuery := stuber.Query{
 		Service: "test-service",
 		Method:  "test-method",
-		Data:    map[string]any{"name": "John", "age": 25}, // Different age
+		Input:   []map[string]any{{"name": "John", "age": 25}}, // Different age
 	}
 
 	result, err = budgerigar.FindByQuery(nonMatchingQuery)
@@ -872,7 +866,7 @@ func TestBudgerigarWithData(t *testing.T) {
 	partialQuery := stuber.Query{
 		Service: "test-service",
 		Method:  "test-method",
-		Data:    map[string]any{"name": "John"}, // Only name, missing age
+		Input:   []map[string]any{{"name": "John"}}, // Only name, missing age
 	}
 
 	result, err = budgerigar.FindByQuery(partialQuery)
@@ -915,7 +909,7 @@ func TestBudgerigarBackwardCompatibility(t *testing.T) {
 	query := stuber.Query{
 		Service: "test-service",
 		Method:  "test-method",
-		Data:    map[string]any{"key1": "value1"},
+		Input:   []map[string]any{{"key1": "value1"}},
 	}
 
 	result, err := budgerigar.FindByQuery(query)

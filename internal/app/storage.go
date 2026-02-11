@@ -8,5 +8,5 @@ import (
 func stubNotFoundError(expect stuber.Query, result *stuber.Result) error {
 	formatter := errorFormatter.NewStubNotFoundFormatter()
 
-	return formatter.FormatV1(expect, result)
+	return formatter.Format(expect, result)
 }

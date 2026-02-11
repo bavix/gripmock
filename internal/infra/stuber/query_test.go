@@ -60,7 +60,7 @@ func TestNewQuery_WithBody(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "TestService", q.Service)
 	require.Equal(t, "TestMethod", q.Method)
-	require.Equal(t, map[string]any{"key": "value"}, q.Data)
+	require.Equal(t, []map[string]any{{"key": "value"}}, q.Input)
 	require.Equal(t, map[string]any{"header": "value"}, q.Headers)
 }
 
@@ -118,14 +118,47 @@ func TestRequestInternalBidi(t *testing.T) {
 	require.False(t, q.RequestInternal())
 }
 
-func TestRequestInternalV2(t *testing.T) {
+func TestRequestInternalQuery(t *testing.T) {
 	t.Parallel()
 
-	q := QueryV2{
+	q := Query{
 		Service: "svc",
 		Method:  "mthd",
 		Headers: map[string]any{"h": "v"},
 		Input:   []map[string]any{{"key": "value"}},
 	}
 	require.False(t, q.RequestInternal())
+}
+
+func TestNewQuery_WithInput(t *testing.T) {
+	t.Parallel()
+
+	data := map[string]any{
+		"service": "TestService",
+		"method":  "TestMethod",
+		"input":   []map[string]any{{"key": "value"}},
+		"headers": map[string]any{"header": "value"},
+	}
+
+	body, err := json.Marshal(data)
+	require.NoError(t, err)
+
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, "/", bytes.NewBuffer(body))
+
+	q, err := NewQuery(req)
+	require.NoError(t, err)
+	require.Equal(t, "TestService", q.Service)
+	require.Equal(t, "TestMethod", q.Method)
+	require.Equal(t, []map[string]any{{"key": "value"}}, q.Input)
+	require.Equal(t, map[string]any{"header": "value"}, q.Headers)
+}
+
+func TestQuery_Data(t *testing.T) {
+	t.Parallel()
+
+	q := Query{Input: []map[string]any{{"a": 1}}}
+	require.Equal(t, map[string]any{"a": 1}, q.Data())
+
+	q = Query{Input: nil}
+	require.Nil(t, q.Data())
 }

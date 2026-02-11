@@ -22,39 +22,17 @@ func NewStubNotFoundFormatter() *StubNotFoundFormatter {
 	return &StubNotFoundFormatter{}
 }
 
-// FormatV1 formats error messages for V1 API stub not found scenarios.
-func (f *StubNotFoundFormatter) FormatV1(expect stuber.Query, result Result) error {
-	template := fmt.Sprintf("Can't find stub \n\nService: %s \n\nMethod: %s \n\nInput\n\n", expect.Service, expect.Method)
-
-	expectString, err := json.MarshalIndent(expect.Data, "", "\t")
-	if err != nil {
-		template += fmt.Sprintf("Error marshaling input: %v", err)
-	} else {
-		template += string(expectString)
-	}
-
-	if result.Similar() == nil {
-		return fmt.Errorf("%s", template) //nolint:err113
-	}
-
-	// Add closest matches
-	template += f.formatClosestMatches(result)
-
-	return fmt.Errorf("%s", template) //nolint:err113
-}
-
-// FormatV2 formats error messages for V2 API stub not found scenarios.
-func (f *StubNotFoundFormatter) FormatV2(expect stuber.QueryV2, result Result) error {
+// Format formats error messages for stub not found scenarios.
+// Supports both unary (single Input element) and streaming (multiple Input elements).
+func (f *StubNotFoundFormatter) Format(expect stuber.Query, result Result) error {
 	template := fmt.Sprintf("Can't find stub \n\nService: %s \n\nMethod: %s \n\n", expect.Service, expect.Method)
 
-	// Handle streaming input
 	template += f.formatInputSection(expect.Input)
 
 	if result.Similar() == nil {
 		return fmt.Errorf("%s", template) //nolint:err113
 	}
 
-	// Add closest matches
 	template += f.formatClosestMatches(result)
 
 	return fmt.Errorf("%s", template) //nolint:err113

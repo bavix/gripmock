@@ -14,14 +14,25 @@ const (
 	RequestInternalFlag features.Flag = iota
 )
 
+// queryJSON is used for JSON unmarshaling to support both "data" (legacy) and "input" formats.
+type queryJSON struct {
+	ID      *uuid.UUID       `json:"id,omitempty"`
+	Service string           `json:"service"`
+	Method  string           `json:"method"`
+	Headers map[string]any   `json:"headers"`
+	Data    map[string]any   `json:"data"`  // Legacy: unary request body
+	Input   []map[string]any `json:"input"` // Canonical: supports unary and streaming
+}
+
 // Query represents a query for finding stubs.
-// Prefer QueryV2 for better performance and streaming support.
+// Supports both unary (Input with one element) and streaming (Input with multiple elements).
+// JSON accepts "data" (legacy, maps to Input[0]) or "input" (array). Prefer "input".
 type Query struct {
-	ID      *uuid.UUID     `json:"id,omitempty"` // The unique identifier of the stub (optional).
-	Service string         `json:"service"`      // The service name to search for.
-	Method  string         `json:"method"`       // The method name to search for.
-	Headers map[string]any `json:"headers"`      // The headers to match.
-	Data    map[string]any `json:"data"`         // The data to match.
+	ID      *uuid.UUID       `json:"id,omitempty"` // The unique identifier of the stub (optional).
+	Service string           `json:"service"`      // The service name to search for.
+	Method  string           `json:"method"`       // The method name to search for.
+	Headers map[string]any   `json:"headers"`      // The headers to match.
+	Input   []map[string]any `json:"input"`        // The input data to match (unary or streaming).
 
 	toggles features.Toggles
 }
@@ -37,13 +48,7 @@ func toggles(r *http.Request) features.Toggles {
 }
 
 // NewQuery creates a new Query from an HTTP request.
-//
-// Parameters:
-// - r: The HTTP request to parse.
-//
-// Returns:
-// - Query: The parsed query.
-// - error: An error if the request body cannot be parsed.
+// Supports both legacy "data" (single object) and "input" (array) in JSON body.
 func NewQuery(r *http.Request) (Query, error) {
 	q := Query{
 		toggles: toggles(r),
@@ -57,40 +62,53 @@ func NewQuery(r *http.Request) (Query, error) {
 	return q, err
 }
 
-// RequestInternal returns true if the query is marked as internal.
-func (q Query) RequestInternal() bool {
-	return q.toggles.Has(RequestInternalFlag)
+// NewQueryFromInput creates a Query with the given input data (convenience for programmatic use).
+func NewQueryFromInput(service, method string, input []map[string]any, headers map[string]any) Query {
+	return Query{
+		Service: service,
+		Method:  method,
+		Input:   input,
+		Headers: headers,
+	}
 }
 
-// QueryV2 represents a query for finding stubs with improved performance.
-// Input is now a slice to support both unary and streaming requests efficiently.
-type QueryV2 struct {
-	ID      *uuid.UUID       `json:"id,omitempty"` // The unique identifier of the stub (optional).
-	Service string           `json:"service"`      // The service name to search for.
-	Method  string           `json:"method"`       // The method name to search for.
-	Headers map[string]any   `json:"headers"`      // The headers to match.
-	Input   []map[string]any `json:"input"`        // The input data to match (supports both unary and streaming).
-
-	toggles features.Toggles
-}
-
-// NewQueryV2 creates a new QueryV2 from an HTTP request.
-func NewQueryV2(r *http.Request) (QueryV2, error) {
-	q := QueryV2{
-		toggles: toggles(r),
+// UnmarshalJSON implements json.Unmarshaler to support both "data" and "input" in request body.
+func (q *Query) UnmarshalJSON(data []byte) error {
+	var raw queryJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
 	}
 
-	decoder := json.NewDecoder(r.Body)
-	decoder.UseNumber()
+	q.ID = raw.ID
+	q.Service = raw.Service
+	q.Method = raw.Method
+	q.Headers = raw.Headers
 
-	err := decoder.Decode(&q)
+	switch {
+	case len(raw.Input) > 0:
+		q.Input = raw.Input
+	case raw.Data != nil:
+		q.Input = []map[string]any{raw.Data}
+	default:
+		q.Input = nil
+	}
 
-	return q, err
+	return nil
 }
 
 // RequestInternal returns true if the query is marked as internal.
-func (q QueryV2) RequestInternal() bool {
+func (q *Query) RequestInternal() bool {
 	return q.toggles.Has(RequestInternalFlag)
+}
+
+// Data returns the first input element for backward compatibility with legacy unary API.
+// Returns nil if Input is empty.
+func (q *Query) Data() map[string]any {
+	if len(q.Input) == 0 {
+		return nil
+	}
+
+	return q.Input[0]
 }
 
 // QueryBidi represents a query for bidirectional streaming.

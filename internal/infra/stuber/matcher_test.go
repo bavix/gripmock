@@ -56,7 +56,7 @@ func TestMatchData(t *testing.T) {
 			query := stuber.Query{
 				Service: "test",
 				Method:  "test",
-				Data:    tt.queryData,
+				Input:   []map[string]any{tt.queryData},
 			}
 
 			stub := &stuber.Stub{
@@ -91,7 +91,7 @@ func TestMatchWithData(t *testing.T) {
 	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
-		Data:    map[string]any{"name": "John", "age": 30},
+		Input:   []map[string]any{{"name": "John", "age": 30}},
 	}
 
 	stub := &stuber.Stub{
@@ -117,7 +117,7 @@ func TestMatchWithData(t *testing.T) {
 	nonMatchingQuery := stuber.Query{
 		Service: "test",
 		Method:  "test",
-		Data:    map[string]any{"name": "John", "age": 25}, // Different age
+		Input:   []map[string]any{{"name": "John", "age": 25}}, // Different age
 	}
 
 	result, err = budgerigar.FindByQuery(nonMatchingQuery)
@@ -136,7 +136,7 @@ func TestBackwardCompatibility(t *testing.T) {
 	query := stuber.Query{
 		Service: "test",
 		Method:  "test",
-		Data:    map[string]any{"key1": "value1"},
+		Input:   []map[string]any{{"key1": "value1"}},
 	}
 
 	stub := &stuber.Stub{
@@ -156,6 +156,6 @@ func TestBackwardCompatibility(t *testing.T) {
 	}
 
 	if result.Found() == nil {
-		t.Error("Expected backward compatibility: data should match against input")
+		t.Error("Expected backward compatibility: input should match against stub")
 	}
 }

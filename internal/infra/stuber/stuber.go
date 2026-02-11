@@ -111,22 +111,6 @@ func (b *Budgerigar) FindByQuery(query Query) (*Result, error) {
 	return b.searcher.find(query)
 }
 
-// FindByQueryV2 retrieves the Stub value associated with the given QueryV2 from the Budgerigar's searcher.
-//
-// Parameters:
-// - query: The QueryV2 used to search for a Stub value.
-//
-// Returns:
-// - *Result: The Result containing the found Stub value (if any), or nil.
-// - error: An error if the search fails.
-func (b *Budgerigar) FindByQueryV2(query QueryV2) (*Result, error) {
-	if b.toggles.Has(MethodTitle) {
-		query.Method = cases.Title(language.English).String(query.Method)
-	}
-
-	return b.searcher.findV2(query)
-}
-
 // FindByQueryBidi retrieves a BidiResult for bidirectional streaming with the given QueryBidi.
 // For bidirectional streaming, each message is treated as a separate unary request.
 // The server can respond with multiple messages for each request.
