@@ -43,7 +43,7 @@ func NewBudgerigar(toggles features.Toggles) *Budgerigar {
 // - []uuid.UUID: The keys of the inserted Stub values.
 func (b *Budgerigar) PutMany(values ...*Stub) []uuid.UUID {
 	for _, value := range values {
-		if value.Key() == uuid.Nil {
+		if value.ID == uuid.Nil {
 			value.ID = uuid.New()
 		}
 	}
@@ -63,7 +63,7 @@ func (b *Budgerigar) UpdateMany(values ...*Stub) []uuid.UUID {
 	updates := make([]*Stub, 0, len(values))
 
 	for _, value := range values {
-		if value.Key() != uuid.Nil {
+		if value.ID != uuid.Nil {
 			updates = append(updates, value)
 		}
 	}

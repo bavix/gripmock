@@ -13,9 +13,9 @@ func init() {
 }
 
 func BenchmarkStorageValues(b *testing.B) {
-	items := make([]Value, 0, b.N)
+	items := make([]*Stub, 0, b.N)
 	for range b.N {
-		items = append(items, &testItem{id: uuid.New(), left: "A", right: "B"})
+		items = append(items, newTestStub("A", "B", 0))
 	}
 
 	s := newStorage()
@@ -31,15 +31,15 @@ func BenchmarkStorageValues(b *testing.B) {
 }
 
 func BenchmarkStorageFindAll(b *testing.B) {
-	items := make([]Value, 0, b.N)
+	items := make([]*Stub, 0, b.N)
 	for range b.N {
-		items = append(items, &testItem{id: uuid.New(), left: "A", right: "B"})
+		items = append(items, newTestStub("A", "B", 0))
 	}
 
 	s := newStorage()
 	s.upsert(items...)
 
-	var all iter.Seq[Value]
+	var all iter.Seq[*Stub]
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -52,9 +52,9 @@ func BenchmarkStorageFindAll(b *testing.B) {
 }
 
 func BenchmarkStorageFindByID(b *testing.B) {
-	items := make([]Value, 0, b.N)
+	items := make([]*Stub, 0, b.N)
 	for range b.N {
-		items = append(items, &testItem{id: uuid.New(), left: "A", right: "B"})
+		items = append(items, newTestStub("A", "B", 0))
 	}
 
 	s := newStorage()
@@ -69,9 +69,9 @@ func BenchmarkStorageFindByID(b *testing.B) {
 }
 
 func BenchmarkStorageDel(b *testing.B) {
-	items := make([]Value, 0, b.N)
+	items := make([]*Stub, 0, b.N)
 	for range b.N {
-		items = append(items, &testItem{id: uuid.New(), left: "A", right: "B"})
+		items = append(items, newTestStub("A", "B", 0))
 	}
 
 	s := newStorage()
@@ -87,7 +87,7 @@ func BenchmarkStorageDel(b *testing.B) {
 
 func BenchmarkStoragePosByN(b *testing.B) {
 	s := newStorage()
-	s.upsert(&testItem{id: uuid.New(), left: "A", right: "B"})
+	s.upsert(newTestStub("A", "B", 0))
 
 	b.ReportAllocs()
 
@@ -111,7 +111,7 @@ func BenchmarkStoragePos(b *testing.B) {
 
 func BenchmarkStorageLeftID(b *testing.B) {
 	s := newStorage()
-	s.upsert(&testItem{id: uuid.New(), left: "A", right: "B"})
+	s.upsert(newTestStub("A", "B", 0))
 
 	b.ReportAllocs()
 
@@ -132,7 +132,7 @@ func BenchmarkStorageLeftIDOrNew(b *testing.B) {
 
 func BenchmarkStorageRightID(b *testing.B) {
 	s := newStorage()
-	s.upsert(&testItem{id: uuid.New(), left: "A", right: "B"})
+	s.upsert(newTestStub("A", "B", 0))
 
 	b.ReportAllocs()
 
@@ -152,20 +152,15 @@ func BenchmarkStorageRightIDOrNew(b *testing.B) {
 }
 
 func BenchmarkStorageFindAllSorted(b *testing.B) {
-	items := make([]Value, 0, b.N)
+	items := make([]*Stub, 0, b.N)
 	for i := range b.N {
-		items = append(items, &testItem{
-			id:    uuid.New(),
-			left:  "A",
-			right: "B",
-			value: i % 100, // Different scores for sorting
-		})
+		items = append(items, newTestStub("A", "B", i%100))
 	}
 
 	s := newStorage()
 	s.upsert(items...)
 
-	var all iter.Seq[Value]
+	var all iter.Seq[*Stub]
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -178,14 +173,9 @@ func BenchmarkStorageFindAllSorted(b *testing.B) {
 }
 
 func BenchmarkStorageUpsert(b *testing.B) {
-	items := make([]Value, 0, b.N)
+	items := make([]*Stub, 0, b.N)
 	for i := range b.N {
-		items = append(items, &testItem{
-			id:    uuid.New(),
-			left:  "A",
-			right: "B",
-			value: i % 100,
-		})
+		items = append(items, newTestStub("A", "B", i%100))
 	}
 
 	s := newStorage()

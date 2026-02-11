@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"iter"
 	"maps"
-	"sort"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -24,8 +24,6 @@ const (
 	EmptySpecificity = 0
 	// MinStreamLength is the minimum length for stream calculations.
 	MinStreamLength = 0
-	// defaultStubCapacity is the default capacity for stub slices.
-	defaultStubCapacity = 16
 	// parallelProcessingThreshold is the threshold for using parallel processing.
 	parallelProcessingThreshold = 100
 )
@@ -44,18 +42,9 @@ var ErrStubNotFound = errors.New("stub not found")
 // It contains a mutex for concurrent access, a map to store and retrieve
 // used stubs by their UUID, and a pointer to the storage struct.
 type searcher struct {
-	mu       sync.RWMutex // mutex for concurrent access
+	mu       sync.RWMutex
 	stubUsed map[uuid.UUID]struct{}
-	// map to store and retrieve used stubs by their UUID
-
-	storage *storage // pointer to the storage struct
-
-	// V2 optimization: pool for temporary slices to reduce allocations
-	v2Pool sync.Pool // Pool for temporary slices to reduce allocations
-
-	// Additional pools for memory optimization
-	stubPool      sync.Pool // Pool for Stub objects
-	inputDataPool sync.Pool // Pool for InputData objects
+	storage  *storage
 }
 
 // newSearcher creates a new instance of the searcher struct.
@@ -64,35 +53,10 @@ type searcher struct {
 //
 // Returns a pointer to the newly created searcher struct.
 func newSearcher() *searcher {
-	s := &searcher{
+	return &searcher{
 		storage:  newStorage(),
 		stubUsed: make(map[uuid.UUID]struct{}),
 	}
-
-	// Initialize sync.Pool for temporary slices
-	s.v2Pool.New = func() any {
-		return make([]*Stub, 0, defaultStubCapacity) // Pre-allocate with reasonable capacity
-	}
-
-	// Initialize sync.Pool for Stub objects
-	s.stubPool.New = func() any {
-		return &Stub{
-			Headers: InputHeader{},
-			Input:   InputData{},
-			Output:  Output{},
-		}
-	}
-
-	// Initialize sync.Pool for InputData objects
-	s.inputDataPool.New = func() any {
-		return InputData{
-			Equals:   make(map[string]any),
-			Contains: make(map[string]any),
-			Matches:  make(map[string]any),
-		}
-	}
-
-	return s
 }
 
 // Result represents the result of a search operation.
@@ -538,12 +502,11 @@ func deepEqual(a, b any) bool {
 	return fmt.Sprintf("%v", a) == fmt.Sprintf("%v", b)
 }
 
-// sortStubsByID sorts stubs by ID for stable ordering when ranks are equal
+// sortStubsByID sorts stubs by ID for stable ordering when ranks are equal.
 // This ensures consistent results across multiple runs.
 func sortStubsByID(stubs []*Stub) {
-	sort.Slice(stubs, func(i, j int) bool {
-		// Compare UUIDs directly for better performance
-		return stubs[i].ID.String() < stubs[j].ID.String()
+	slices.SortFunc(stubs, func(a, b *Stub) int {
+		return strings.Compare(a.ID.String(), b.ID.String())
 	})
 }
 
@@ -579,7 +542,7 @@ func (br *BidiResult) rankStub(stub *Stub, query QueryV2) float64 {
 // The function returns a slice of UUIDs representing the keys of the
 // inserted or updated values.
 func (s *searcher) upsert(values ...*Stub) []uuid.UUID {
-	return s.storage.upsert(s.castToValue(values)...)
+	return s.storage.upsert(values...)
 }
 
 // del deletes the stub values with the given UUIDs from the searcher.
@@ -595,11 +558,7 @@ func (s *searcher) del(ids ...uuid.UUID) int {
 // Returns a pointer to the Stub struct associated with the given ID, or nil
 // if not found.
 func (s *searcher) findByID(id uuid.UUID) *Stub {
-	if v, ok := s.storage.findByID(id).(*Stub); ok {
-		return v
-	}
-
-	return nil
+	return s.storage.findByID(id)
 }
 
 // findBy retrieves all Stub values that match the given service and method
@@ -687,12 +646,7 @@ func (s *searcher) searchCommon(
 	// Collect all stubs first for stable sorting
 	stubs := make([]*Stub, 0)
 
-	for v := range seq {
-		stub, ok := v.(*Stub)
-		if !ok {
-			continue
-		}
-
+	for stub := range seq {
 		stubs = append(stubs, stub)
 	}
 
@@ -871,10 +825,8 @@ func (s *searcher) findBidi(query QueryBidi) (*BidiResult, error) {
 
 	var allStubs []*Stub
 
-	for v := range seq {
-		if stub, ok := v.(*Stub); ok {
-			allStubs = append(allStubs, stub)
-		}
+	for stub := range seq {
+		allStubs = append(allStubs, stub)
 	}
 
 	return &BidiResult{
@@ -922,10 +874,8 @@ func (s *searcher) searchV2Optimized(query QueryV2) (*Result, error) {
 	// Collect all stubs in a single pass
 	var stubs []*Stub
 
-	for v := range seq {
-		if stub, ok := v.(*Stub); ok {
-			stubs = append(stubs, stub)
-		}
+	for stub := range seq {
+		stubs = append(stubs, stub)
 	}
 
 	// Process collected stubs
@@ -1317,44 +1267,18 @@ func (s *searcher) markV2(query QueryV2, id uuid.UUID) {
 	s.stubUsed[id] = struct{}{}
 }
 
-func collectStubs(seq iter.Seq[Value]) []*Stub {
+func collectStubs(seq iter.Seq[*Stub]) []*Stub {
 	result := make([]*Stub, 0)
 
-	for v := range seq {
-		if stub, ok := v.(*Stub); ok {
-			result = append(result, stub)
-		}
+	for stub := range seq {
+		result = append(result, stub)
 	}
 
 	return result
 }
 
 func (s *searcher) iterAll() iter.Seq[*Stub] {
-	return func(yield func(*Stub) bool) {
-		for v := range s.storage.values() {
-			if stub, ok := v.(*Stub); ok {
-				if !yield(stub) {
-					return
-				}
-			}
-		}
-	}
-}
-
-// castToValue converts a slice of *Stub values to a slice of Value any.
-//
-// Parameters:
-// - values: A slice of *Stub values to convert.
-//
-// Returns:
-// - A slice of Value any containing the converted values.
-func (s *searcher) castToValue(values []*Stub) []Value {
-	result := make([]Value, len(values))
-	for i, v := range values {
-		result[i] = v
-	}
-
-	return result
+	return s.storage.values()
 }
 
 // wrap wraps an error with specific error types.

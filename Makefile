@@ -3,6 +3,7 @@ OPENAPI=api/api.yaml
 .PHONY: *
 
 version=latest
+GOLANGCI_LINT=go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.9.0
 
 build:
 	docker buildx build --load -t bavix/gripmock:${version} .
@@ -11,10 +12,13 @@ test:
 	go test -tags mock -race -cover ./...
 
 lint:
-	go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.9.0 run --color always ${args}
+	$(GOLANGCI_LINT) run --color always
 
 lint-fix:
-	make lint args=--fix
+	$(GOLANGCI_LINT) run --color always --fix
+
+lint-clear:
+	$(GOLANGCI_LINT) cache clean
 
 plugins:
 	mkdir -p plugins; \
