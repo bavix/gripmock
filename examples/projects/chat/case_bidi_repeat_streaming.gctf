@@ -1,0 +1,38 @@
+--- ENDPOINT ---
+chat.ChatService/Chat
+
+--- REQUEST ---
+{
+    "user": "John", 
+    "text": "Are you OK?"
+}
+
+--- RESPONSE ---
+{
+    "user": "Julie",
+    "text": "Yes, John"
+}
+
+--- REQUEST ---
+{
+    "user": "John", 
+    "text": "Are you OK?"
+}
+
+--- RESPONSE ---
+{
+    "user": "Julie",
+    "text": "Yes, John"
+}
+
+--- REQUEST ---
+{
+    "user": "John", 
+    "text": "Are you OK?"
+}
+
+--- RESPONSE ---
+{
+    "user": "Julie",
+    "text": "Yes, John"
+}

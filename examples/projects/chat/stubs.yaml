@@ -57,3 +57,14 @@
     data:
       user: Bot
       text: "We're here!"
+
+- service: ChatService
+  method: Chat
+  input:
+    equals:
+      user: John
+      text: "Are you OK?"
+  output:
+    data:
+      user: Julie
+      text: "Yes, John"
