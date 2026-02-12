@@ -1,0 +1,13 @@
+--- ENDPOINT ---
+wkt.pb.UserService/GetUser
+
+--- REQUEST ---
+{
+    "userId": "user_444"
+}
+
+--- RESPONSE ---
+{
+    "nickname": "Oman",
+    "age": 42
+}

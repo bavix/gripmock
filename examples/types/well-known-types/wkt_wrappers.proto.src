@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+import "google/protobuf/wrappers.proto";
+
+package wkt.pb;
+
+service UserService {
+  rpc GetUser(UserRequest) returns (UserResponse) {}
+}
+
+message UserRequest {
+  string userId = 1;
+}
+
+message UserResponse {
+  google.protobuf.StringValue nickname = 1;
+  google.protobuf.Int32Value age = 2;
+}

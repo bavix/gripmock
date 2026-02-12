@@ -8,3 +8,13 @@
     data:
       nickname: "alice"
       age: null # age is not set
+
+- service: wkt.pb.UserService
+  method: GetUser
+  input:
+    equals:
+      userId: "user_444"
+  output:
+    data:
+      nickname: Oman
+      age: 42
