@@ -9,8 +9,17 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/bavix/gripmock/v3/pkg/plugins"
 )
+
+// ErrMaxRecursionDepthExceeded is returned when structure nesting exceeds MaxRecursionDepth.
+var ErrMaxRecursionDepthExceeded = errors.New("maximum recursion depth exceeded")
+
+// MaxRecursionDepth is the maximum allowed nesting depth for ProcessMap/ProcessStream
+// to prevent stack overflow from maliciously or accidentally deeply nested structures.
+const MaxRecursionDepth = 250
 
 // Data represents the context data available for template rendering.
 type Data struct {
@@ -130,12 +139,12 @@ func IsTemplateString(s string) bool {
 
 // HasTemplates checks if the data contains any template strings.
 func HasTemplates(data map[string]any) bool {
-	return hasTemplatesInMap(data)
+	return hasTemplatesInMap(data, 0)
 }
 
 // HasTemplatesInStream checks if the stream contains any template strings.
 func HasTemplatesInStream(stream []any) bool {
-	return hasTemplatesInStream(stream)
+	return hasTemplatesInStream(stream, 0)
 }
 
 // HasTemplatesInHeaders checks if the headers contain any template strings.
@@ -145,12 +154,12 @@ func HasTemplatesInHeaders(headers map[string]string) bool {
 
 // ProcessMap processes templates in a map recursively.
 func (e *Engine) ProcessMap(data map[string]any, templateData Data) error {
-	return processMapTemplates(data, templateData, e)
+	return processMapTemplates(data, templateData, e, 0)
 }
 
 // ProcessStream processes templates in a stream.
 func (e *Engine) ProcessStream(stream []any, templateData Data) error {
-	return processStreamField(stream, templateData, e)
+	return processStreamField(stream, templateData, e, 0)
 }
 
 // ProcessHeaders processes templates in headers.
@@ -168,7 +177,11 @@ func (e *Engine) createTemplate() *template.Template {
 	return template.New("dynamic").Funcs(e.funcs)
 }
 
-func processMapTemplates(data map[string]any, templateData Data, engine *Engine) error {
+func processMapTemplates(data map[string]any, templateData Data, engine *Engine, depth int) error {
+	if depth > MaxRecursionDepth {
+		return ErrMaxRecursionDepthExceeded
+	}
+
 	for key, value := range data {
 		switch v := value.(type) {
 		case string:
@@ -181,13 +194,11 @@ func processMapTemplates(data map[string]any, templateData Data, engine *Engine)
 				data[key] = rendered
 			}
 		case map[string]any:
-			err := processMapTemplates(v, templateData, engine)
-			if err != nil {
+			if err := processMapTemplates(v, templateData, engine, depth+1); err != nil {
 				return err
 			}
 		case []any:
-			err := processArrayTemplates(v, templateData, engine)
-			if err != nil {
+			if err := processArrayTemplates(v, templateData, engine, depth+1); err != nil {
 				return err
 			}
 		}
@@ -196,15 +207,18 @@ func processMapTemplates(data map[string]any, templateData Data, engine *Engine)
 	return nil
 }
 
-func processStreamField(stream []any, templateData Data, engine *Engine) error {
+func processStreamField(stream []any, templateData Data, engine *Engine, depth int) error {
 	if stream == nil {
 		return nil
 	}
 
+	if depth > MaxRecursionDepth {
+		return ErrMaxRecursionDepthExceeded
+	}
+
 	for i, item := range stream {
 		if itemMap, ok := item.(map[string]any); ok {
-			err := processMapTemplates(itemMap, templateData, engine)
-			if err != nil {
+			if err := processMapTemplates(itemMap, templateData, engine, depth+1); err != nil {
 				return fmt.Errorf("failed to process stream template at index %d: %w", i, err)
 			}
 
@@ -248,12 +262,15 @@ func processHeadersField(headers map[string]string, templateData Data, engine *E
 }
 
 // processArrayTemplates recursively processes templates in an array.
-func processArrayTemplates(arr []any, templateData Data, engine *Engine) error {
+func processArrayTemplates(arr []any, templateData Data, engine *Engine, depth int) error {
+	if depth > MaxRecursionDepth {
+		return ErrMaxRecursionDepthExceeded
+	}
+
 	for i, item := range arr {
 		switch v := item.(type) {
 		case map[string]any:
-			err := processMapTemplates(v, templateData, engine)
-			if err != nil {
+			if err := processMapTemplates(v, templateData, engine, depth+1); err != nil {
 				return err
 			}
 
@@ -273,9 +290,13 @@ func processArrayTemplates(arr []any, templateData Data, engine *Engine) error {
 	return nil
 }
 
-func hasTemplatesInMap(data map[string]any) bool {
+func hasTemplatesInMap(data map[string]any, depth int) bool {
+	if depth > MaxRecursionDepth {
+		return false
+	}
+
 	for _, value := range data {
-		if hasTemplatesInValue(value) {
+		if hasTemplatesInValue(value, depth) {
 			return true
 		}
 	}
@@ -283,9 +304,13 @@ func hasTemplatesInMap(data map[string]any) bool {
 	return false
 }
 
-func hasTemplatesInStream(stream []any) bool {
+func hasTemplatesInStream(stream []any, depth int) bool {
+	if depth > MaxRecursionDepth {
+		return false
+	}
+
 	for _, item := range stream {
-		if itemMap, ok := item.(map[string]any); ok && hasTemplatesInMap(itemMap) {
+		if itemMap, ok := item.(map[string]any); ok && hasTemplatesInMap(itemMap, depth+1) {
 			return true
 		}
 	}
@@ -303,14 +328,18 @@ func hasTemplatesInHeaders(headers map[string]string) bool {
 	return false
 }
 
-func hasTemplatesInValue(value any) bool {
+func hasTemplatesInValue(value any, depth int) bool {
+	if depth > MaxRecursionDepth {
+		return false
+	}
+
 	switch v := value.(type) {
 	case string:
 		return IsTemplateString(v)
 	case map[string]any:
-		return hasTemplatesInMap(v)
+		return hasTemplatesInMap(v, depth+1)
 	case []any:
-		return slices.ContainsFunc(v, hasTemplatesInValue)
+		return slices.ContainsFunc(v, func(item any) bool { return hasTemplatesInValue(item, depth+1) })
 	}
 
 	return false

@@ -199,7 +199,7 @@ func (s *RestServerTestSuite) TestDeleteStubByID() {
 	stubID := stubs[0].ID
 
 	w := httptest.NewRecorder()
-	s.server.DeleteStubByID(w, nil, stubID)
+	s.server.DeleteStubByID(w, httptest.NewRequest(http.MethodDelete, "/", nil), stubID)
 
 	s.Equal(http.StatusNoContent, w.Code)
 
@@ -275,7 +275,7 @@ func (s *RestServerTestSuite) TestListStubs() {
 
 	// List stubs
 	w := httptest.NewRecorder()
-	s.server.ListStubs(w, nil)
+	s.server.ListStubs(w, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	s.Equal(http.StatusOK, w.Code)
 
@@ -290,7 +290,7 @@ func (s *RestServerTestSuite) TestListStubs() {
 // TestListUnusedStubs tests listing unused stubs.
 func (s *RestServerTestSuite) TestListUnusedStubs() {
 	w := httptest.NewRecorder()
-	s.server.ListUnusedStubs(w, nil)
+	s.server.ListUnusedStubs(w, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	s.Equal(http.StatusOK, w.Code)
 
@@ -305,7 +305,7 @@ func (s *RestServerTestSuite) TestListUnusedStubs() {
 // TestListUsedStubs tests listing used stubs.
 func (s *RestServerTestSuite) TestListUsedStubs() {
 	w := httptest.NewRecorder()
-	s.server.ListUsedStubs(w, nil)
+	s.server.ListUsedStubs(w, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	s.Equal(http.StatusOK, w.Code)
 
@@ -320,7 +320,7 @@ func (s *RestServerTestSuite) TestListUsedStubs() {
 // TestLiveness tests liveness endpoint.
 func (s *RestServerTestSuite) TestLiveness() {
 	w := httptest.NewRecorder()
-	s.server.Liveness(w, nil)
+	s.server.Liveness(w, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	s.Equal(http.StatusOK, w.Code)
 }
@@ -341,12 +341,12 @@ func (s *RestServerTestSuite) TestReadiness() {
 			return
 		case <-ticker.C:
 			w := httptest.NewRecorder()
-			s.server.Readiness(w, nil)
+			s.server.Readiness(w, httptest.NewRequest(http.MethodGet, "/", nil))
 
 			if w.Code == http.StatusOK {
 				// Server is ready, final check
 				w := httptest.NewRecorder()
-				s.server.Readiness(w, nil)
+				s.server.Readiness(w, httptest.NewRequest(http.MethodGet, "/", nil))
 				s.Equal(http.StatusOK, w.Code)
 
 				return
@@ -376,7 +376,7 @@ func (s *RestServerTestSuite) TestPurgeStubs() {
 
 	// Purge stubs
 	w := httptest.NewRecorder()
-	s.server.PurgeStubs(w, nil)
+	s.server.PurgeStubs(w, httptest.NewRequest(http.MethodDelete, "/", nil))
 
 	s.Equal(http.StatusNoContent, w.Code)
 
@@ -439,7 +439,7 @@ func (s *RestServerTestSuite) TestServiceMethodsList() {
 // TestServicesList tests listing all services.
 func (s *RestServerTestSuite) TestServicesList() {
 	w := httptest.NewRecorder()
-	s.server.ServicesList(w, nil)
+	s.server.ServicesList(w, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	s.Equal(http.StatusOK, w.Code)
 
