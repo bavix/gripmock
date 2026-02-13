@@ -400,6 +400,47 @@ func TestHasTemplatesInStream(t *testing.T) {
 	}
 }
 
+func TestProcessMap_MaxRecursionDepthExceeded(t *testing.T) {
+	t.Parallel()
+
+	engine := New(context.Background(), nil)
+
+	// Build nested structure exceeding MaxRecursionDepth (250)
+	data := make(map[string]any)
+	current := data
+
+	for range MaxRecursionDepth + 1 {
+		nested := make(map[string]any)
+		current["nested"] = nested
+		current = nested
+	}
+
+	err := engine.ProcessMap(data, Data{})
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrMaxRecursionDepthExceeded)
+}
+
+func TestProcessMap_AtMaxRecursionDepth(t *testing.T) {
+	t.Parallel()
+
+	engine := New(context.Background(), nil)
+
+	// Build nested structure at exactly MaxRecursionDepth - should succeed
+	data := make(map[string]any)
+	current := data
+
+	for range MaxRecursionDepth {
+		nested := make(map[string]any)
+		current["k"] = nested
+		current = nested
+	}
+
+	current["leaf"] = "value"
+
+	err := engine.ProcessMap(data, Data{})
+	require.NoError(t, err)
+}
+
 func TestHasTemplatesInHeaders(t *testing.T) {
 	t.Parallel()
 
