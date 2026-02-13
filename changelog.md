@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.6.1 - 2026-02-13
+
+### What's Changed
+
+* Add new chat stub for user interaction with ChatService by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/733
+* Bump google.golang.org/grpc from 1.78.0 to 1.79.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/736
+* Refactor HTTP handler methods to accept request context by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/737
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.6.0...v3.6.1
+
 ## v3.6.0 - 2026-02-11
 
 ### What's Changed
