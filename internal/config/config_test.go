@@ -3,7 +3,6 @@ package config_test
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bavix/gripmock/v3/internal/config"
@@ -50,22 +49,22 @@ func TestConfig_OldEnvVarNames(t *testing.T) {
 	cfg := config.Load()
 
 	// Assert values
-	assert.Equal(t, expected.LogLevel, cfg.LogLevel)
-	assert.Equal(t, expected.StrictMethodTitle, cfg.StrictMethodTitle)
-	assert.Equal(t, expected.GRPCNetwork, cfg.GRPCNetwork)
-	assert.Equal(t, expected.GRPCHost, cfg.GRPCHost)
-	assert.Equal(t, expected.GRPCPort, cfg.GRPCPort)
-	assert.Equal(t, expected.GRPCAddr, cfg.GRPCAddr)
-	assert.Equal(t, expected.HTTPHost, cfg.HTTPHost)
-	assert.Equal(t, expected.HTTPPort, cfg.HTTPPort)
-	assert.Equal(t, expected.HTTPAddr, cfg.HTTPAddr)
-	assert.Equal(t, expected.StubWatcherEnabled, cfg.StubWatcherEnabled)
-	assert.Equal(t, expected.StubWatcherInterval, cfg.StubWatcherInterval)
-	assert.Equal(t, expected.StubWatcherType, cfg.StubWatcherType)
-	assert.Equal(t, expected.HistoryEnabled, cfg.HistoryEnabled)
-	assert.Equal(t, expected.HistoryLimit.Bytes, cfg.HistoryLimit.Bytes)
-	assert.Equal(t, expected.HistoryMessageMaxBytes, cfg.HistoryMessageMaxBytes)
-	assert.Equal(t, expected.HistoryRedactKeys, cfg.HistoryRedactKeys)
+	require.Equal(t, expected.LogLevel, cfg.LogLevel)
+	require.Equal(t, expected.StrictMethodTitle, cfg.StrictMethodTitle)
+	require.Equal(t, expected.GRPCNetwork, cfg.GRPCNetwork)
+	require.Equal(t, expected.GRPCHost, cfg.GRPCHost)
+	require.Equal(t, expected.GRPCPort, cfg.GRPCPort)
+	require.Equal(t, expected.GRPCAddr, cfg.GRPCAddr)
+	require.Equal(t, expected.HTTPHost, cfg.HTTPHost)
+	require.Equal(t, expected.HTTPPort, cfg.HTTPPort)
+	require.Equal(t, expected.HTTPAddr, cfg.HTTPAddr)
+	require.Equal(t, expected.StubWatcherEnabled, cfg.StubWatcherEnabled)
+	require.Equal(t, expected.StubWatcherInterval, cfg.StubWatcherInterval)
+	require.Equal(t, expected.StubWatcherType, cfg.StubWatcherType)
+	require.Equal(t, expected.HistoryEnabled, cfg.HistoryEnabled)
+	require.Equal(t, expected.HistoryLimit.Bytes, cfg.HistoryLimit.Bytes)
+	require.Equal(t, expected.HistoryMessageMaxBytes, cfg.HistoryMessageMaxBytes)
+	require.Equal(t, expected.HistoryRedactKeys, cfg.HistoryRedactKeys)
 }
 
 func TestConfig_DefaultValues(t *testing.T) {
@@ -95,22 +94,22 @@ func TestConfig_DefaultValues(t *testing.T) {
 	cfg := config.Load()
 
 	// Assert values
-	assert.Equal(t, expected.LogLevel, cfg.LogLevel)
-	assert.Equal(t, expected.StrictMethodTitle, cfg.StrictMethodTitle)
-	assert.Equal(t, expected.GRPCNetwork, cfg.GRPCNetwork)
-	assert.Equal(t, expected.GRPCHost, cfg.GRPCHost)
-	assert.Equal(t, expected.GRPCPort, cfg.GRPCPort)
-	assert.Equal(t, expected.GRPCAddr, cfg.GRPCAddr)
-	assert.Equal(t, expected.HTTPHost, cfg.HTTPHost)
-	assert.Equal(t, expected.HTTPPort, cfg.HTTPPort)
-	assert.Equal(t, expected.HTTPAddr, cfg.HTTPAddr)
-	assert.Equal(t, expected.StubWatcherEnabled, cfg.StubWatcherEnabled)
-	assert.Equal(t, expected.StubWatcherInterval, cfg.StubWatcherInterval)
-	assert.Equal(t, expected.StubWatcherType, cfg.StubWatcherType)
-	assert.Equal(t, expected.HistoryEnabled, cfg.HistoryEnabled)
-	assert.Equal(t, expected.HistoryLimit.Bytes, cfg.HistoryLimit.Bytes)
-	assert.Equal(t, expected.HistoryMessageMaxBytes, cfg.HistoryMessageMaxBytes)
-	assert.Equal(t, expected.HistoryRedactKeys, cfg.HistoryRedactKeys)
+	require.Equal(t, expected.LogLevel, cfg.LogLevel)
+	require.Equal(t, expected.StrictMethodTitle, cfg.StrictMethodTitle)
+	require.Equal(t, expected.GRPCNetwork, cfg.GRPCNetwork)
+	require.Equal(t, expected.GRPCHost, cfg.GRPCHost)
+	require.Equal(t, expected.GRPCPort, cfg.GRPCPort)
+	require.Equal(t, expected.GRPCAddr, cfg.GRPCAddr)
+	require.Equal(t, expected.HTTPHost, cfg.HTTPHost)
+	require.Equal(t, expected.HTTPPort, cfg.HTTPPort)
+	require.Equal(t, expected.HTTPAddr, cfg.HTTPAddr)
+	require.Equal(t, expected.StubWatcherEnabled, cfg.StubWatcherEnabled)
+	require.Equal(t, expected.StubWatcherInterval, cfg.StubWatcherInterval)
+	require.Equal(t, expected.StubWatcherType, cfg.StubWatcherType)
+	require.Equal(t, expected.HistoryEnabled, cfg.HistoryEnabled)
+	require.Equal(t, expected.HistoryLimit.Bytes, cfg.HistoryLimit.Bytes)
+	require.Equal(t, expected.HistoryMessageMaxBytes, cfg.HistoryMessageMaxBytes)
+	require.Equal(t, expected.HistoryRedactKeys, cfg.HistoryRedactKeys)
 }
 
 func TestConfig_ByteSize(t *testing.T) {
@@ -137,7 +136,7 @@ func TestConfig_ByteSize(t *testing.T) {
 
 			err := bs.UnmarshalText([]byte(tc.input))
 			require.NoError(t, err)
-			assert.Equal(t, tc.expected, bs.Bytes)
+			require.Equal(t, tc.expected, bs.Bytes)
 		})
 	}
 }
@@ -146,5 +145,5 @@ func TestConfig_New(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.Load()
-	assert.NotZero(t, cfg)
+	require.NotZero(t, cfg)
 }

@@ -20,6 +20,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 
+	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
 	"github.com/bavix/gripmock/v3/internal/infra/httputil"
@@ -40,10 +41,11 @@ type Extender interface {
 
 // RestServer handles HTTP REST API requests for stub management.
 type RestServer struct {
-	ok         atomic.Bool
-	budgerigar *stuber.Budgerigar
-	history    history.Reader
-	validator  *validator.Validate
+	ok              atomic.Bool
+	budgerigar      *stuber.Budgerigar
+	history         history.Reader
+	validator       *validator.Validate
+	restDescriptors *descriptors.Registry
 }
 
 var _ rest.ServerInterface = &RestServer{}
@@ -64,9 +66,10 @@ func NewRestServer(
 	}
 
 	server := &RestServer{
-		budgerigar: budgerigar,
-		history:    historyReader,
-		validator:  v,
+		budgerigar:      budgerigar,
+		history:         historyReader,
+		validator:       v,
+		restDescriptors: descriptors.NewRegistry(),
 	}
 
 	go func() {
@@ -85,35 +88,15 @@ const (
 	serviceMethodsCap = 32
 )
 
-// ServicesList returns a list of all available gRPC services.
+// ServicesList returns a list of all available gRPC services (startup + REST-added).
 func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
 	results := make([]rest.Service, 0, servicesListCap)
 
 	protoregistry.GlobalFiles.RangeFiles(func(file protoreflect.FileDescriptor) bool {
-		services := file.Services()
-		for i := range services.Len() {
-			service := services.Get(i)
-			methods := service.Methods()
-
-			serviceResult := rest.Service{
-				Id:      string(service.FullName()),
-				Name:    string(service.Name()),
-				Package: string(file.Package()),
-				Methods: make([]rest.Method, 0, methods.Len()),
-			}
-
-			for j := range methods.Len() {
-				method := methods.Get(j)
-				serviceResult.Methods = append(serviceResult.Methods, rest.Method{
-					Id:   fmt.Sprintf("%s/%s", string(service.FullName()), string(method.Name())),
-					Name: string(method.Name()),
-				})
-			}
-
-			results = append(results, serviceResult)
-		}
-
-		return true
+		return h.collectServices(file, &results)
+	})
+	h.restDescriptors.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+		return h.collectServices(file, &results)
 	})
 
 	h.writeResponse(r.Context(), w, results)
@@ -131,31 +114,16 @@ func splitLast(s string, sep string) []string {
 // ServiceMethodsList returns a list of methods for the specified service.
 func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, serviceID string) {
 	results := make([]rest.Method, 0, serviceMethodsCap)
-
 	packageName := splitLast(serviceID, ".")[0]
+	collect := h.collectMethods(serviceID, &results)
 
-	protoregistry.GlobalFiles.RangeFilesByPackage(protoreflect.FullName(packageName), func(file protoreflect.FileDescriptor) bool {
-		services := file.Services()
-		for i := range services.Len() {
-			service := services.Get(i)
-
-			if string(service.FullName()) != serviceID {
-				continue
-			}
-
-			methods := service.Methods()
-
-			for j := range methods.Len() {
-				method := methods.Get(j)
-
-				results = append(results, rest.Method{
-					Id:   fmt.Sprintf("%s/%s", string(service.FullName()), string(method.Name())),
-					Name: string(method.Name()),
-				})
-			}
+	protoregistry.GlobalFiles.RangeFilesByPackage(protoreflect.FullName(packageName), collect)
+	h.restDescriptors.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+		if string(file.Package()) != packageName {
+			return true
 		}
 
-		return true
+		return collect(file)
 	})
 
 	h.writeResponse(r.Context(), w, results)
@@ -188,7 +156,7 @@ func (h *RestServer) ListHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	calls := history.FilterBySession(h.history.All(), r.Header.Get(sessionHeader))
+	calls := h.history.Filter(history.FilterOpts{Session: r.Header.Get(sessionHeader)})
 
 	out := make(rest.HistoryList, len(calls))
 	for i, c := range calls {
@@ -240,8 +208,11 @@ func (h *RestServer) VerifyCalls(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	calls := h.history.FilterByMethod(req.Service, req.Method)
-	calls = history.FilterBySession(calls, r.Header.Get(sessionHeader))
+	calls := h.history.Filter(history.FilterOpts{
+		Service: req.Service,
+		Method:  req.Method,
+		Session: r.Header.Get(sessionHeader),
+	})
 
 	actual := len(calls)
 	if actual != req.ExpectedCount {
@@ -291,7 +262,13 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	h.writeResponse(r.Context(), w, h.budgerigar.PutMany(inputs...))
 }
 
-// AddDescriptors accepts binary FileDescriptorSet and registers it to GlobalFiles.
+// ListDescriptors returns service IDs of descriptors added via POST /descriptors.
+func (h *RestServer) ListDescriptors(w http.ResponseWriter, r *http.Request) {
+	h.writeResponse(r.Context(), w, rest.DescriptorServiceIDs{ServiceIDs: h.restDescriptors.ServiceIDs()})
+}
+
+// AddDescriptors accepts binary FileDescriptorSet and registers it for discovery.
+// Returns service IDs; use DELETE /services/{serviceID} to remove.
 func (h *RestServer) AddDescriptors(w http.ResponseWriter, r *http.Request) {
 	byt, err := httputil.RequestBody(r)
 	if err != nil {
@@ -315,13 +292,11 @@ func (h *RestServer) AddDescriptors(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var serviceIDs []string
+
 	for _, fd := range fds.GetFile() {
 		if fd == nil {
 			continue
-		}
-
-		if _, err := protoregistry.GlobalFiles.FindFileByPath(fd.GetName()); err == nil {
-			continue // already registered
 		}
 
 		fileDesc, err := protodesc.NewFile(fd, protoregistry.GlobalFiles)
@@ -332,14 +307,33 @@ func (h *RestServer) AddDescriptors(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := protoregistry.GlobalFiles.RegisterFile(fileDesc); err != nil {
-			h.responseError(r.Context(), w, errors.Wrapf(err, "failed to register file %s", fd.GetName()))
+		h.restDescriptors.Register(fileDesc)
 
-			return
+		services := fileDesc.Services()
+
+		for i := range services.Len() {
+			serviceIDs = append(serviceIDs, string(services.Get(i).FullName()))
 		}
 	}
 
-	h.writeResponse(r.Context(), w, rest.MessageOK{Message: "ok", Time: time.Now()})
+	h.writeResponse(r.Context(), w, rest.AddDescriptorsResponse{
+		Message:    "ok",
+		Time:       time.Now(),
+		ServiceIDs: serviceIDs,
+	})
+}
+
+// DeleteService removes a service added via POST /descriptors.
+// Services from startup (proto path) cannot be removed and return 404.
+func (h *RestServer) DeleteService(w http.ResponseWriter, _ *http.Request, serviceID string) {
+	if h.restDescriptors.UnregisterByService(serviceID) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		h.writeResponseError(context.Background(), w, errors.Errorf("service %s not found or not removable", serviceID))
+
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // DeleteStubByID removes a stub by ID.
@@ -474,6 +468,60 @@ func (h *RestServer) PatchStubByID(w http.ResponseWriter, r *http.Request, id re
 
 	h.budgerigar.UpdateMany(updated)
 	h.writeResponse(r.Context(), w, updated)
+}
+
+func (h *RestServer) collectServices(file protoreflect.FileDescriptor, results *[]rest.Service) bool {
+	services := file.Services()
+
+	for i := range services.Len() {
+		service := services.Get(i)
+		methods := service.Methods()
+
+		serviceResult := rest.Service{
+			Id:      string(service.FullName()),
+			Name:    string(service.Name()),
+			Package: string(file.Package()),
+			Methods: make([]rest.Method, 0, methods.Len()),
+		}
+
+		for j := range methods.Len() {
+			method := methods.Get(j)
+			serviceResult.Methods = append(serviceResult.Methods, rest.Method{
+				Id:   fmt.Sprintf("%s/%s", string(service.FullName()), string(method.Name())),
+				Name: string(method.Name()),
+			})
+		}
+
+		*results = append(*results, serviceResult)
+	}
+
+	return true
+}
+
+func (h *RestServer) collectMethods(serviceID string, results *[]rest.Method) func(protoreflect.FileDescriptor) bool {
+	return func(file protoreflect.FileDescriptor) bool {
+		services := file.Services()
+
+		for i := range services.Len() {
+			service := services.Get(i)
+
+			if string(service.FullName()) != serviceID {
+				continue
+			}
+
+			methods := service.Methods()
+
+			for j := range methods.Len() {
+				method := methods.Get(j)
+				*results = append(*results, rest.Method{
+					Id:   fmt.Sprintf("%s/%s", string(service.FullName()), string(method.Name())),
+					Name: string(method.Name()),
+				})
+			}
+		}
+
+		return true
+	}
 }
 
 func applyPatch(stub *stuber.Stub, patch *rest.StubPatch) *stuber.Stub {

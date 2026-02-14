@@ -68,10 +68,22 @@ func (m *mockServer) AddStub(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (m *mockServer) ListDescriptors(w http.ResponseWriter, _ *http.Request) {
+	m.called["ListDescriptors"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func (m *mockServer) AddDescriptors(w http.ResponseWriter, _ *http.Request) {
 	m.called["AddDescriptors"] = true
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (m *mockServer) DeleteService(w http.ResponseWriter, _ *http.Request, _ string) {
+	m.called["DeleteService"] = true
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (m *mockServer) BatchStubsDelete(w http.ResponseWriter, _ *http.Request) {
@@ -149,7 +161,9 @@ func TestHandler_Routes(t *testing.T) {
 		{http.MethodDelete, "/stubs", "PurgeStubs"},
 		{http.MethodGet, "/stubs", "ListStubs"},
 		{http.MethodPost, "/stubs", "AddStub"},
+		{http.MethodGet, "/descriptors", "ListDescriptors"},
 		{http.MethodPost, "/descriptors", "AddDescriptors"},
+		{http.MethodDelete, "/services/myservice", "DeleteService"},
 		{http.MethodPost, "/stubs/batchDelete", "BatchStubsDelete"},
 		{http.MethodPost, "/stubs/search", "SearchStubs"},
 		{http.MethodGet, "/stubs/unused", "ListUnusedStubs"},
@@ -167,7 +181,7 @@ func TestHandler_Routes(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.path, nil)
 			rec := httptest.NewRecorder()
 
-			if tt.path == "/services/myservice/methods" {
+			if tt.path == "/services/myservice/methods" || tt.path == "/services/myservice" {
 				req = mux.SetURLVars(req, map[string]string{"serviceID": "myservice"})
 			}
 

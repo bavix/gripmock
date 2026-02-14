@@ -65,11 +65,26 @@ paths:
 
   # descriptors
   /descriptors:
+    get:
+      tags:
+        - descriptors
+      summary: List service IDs from REST-added descriptors
+      description: Returns service IDs (e.g. helloworld.Greeter) added via POST /descriptors. Use DELETE /services/{serviceID} to remove.
+      operationId: listDescriptors
+      responses:
+        '200':
+          description: List of removable service IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DescriptorServiceIDs'
+        '500':
+          description: Internal Server Error
     post:
       tags:
         - descriptors
       summary: Upload FileDescriptorSet
-      description: Accepts binary Protocol Buffers FileDescriptorSet. Registers descriptors for dynamic service discovery.
+      description: Accepts binary Protocol Buffers FileDescriptorSet. Registers descriptors for dynamic service discovery. Returns service IDs for later removal via DELETE /services/{serviceID}.
       operationId: addDescriptors
       requestBody:
         required: true
@@ -84,7 +99,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageOK'
+                $ref: '#/components/schemas/AddDescriptorsResponse'
         '400':
           description: Invalid or empty FileDescriptorSet
         '500':
@@ -138,6 +153,27 @@ paths:
           description: Invalid service ID
         '404':
           description: Service not found
+        '500':
+          description: Internal Server Error
+  /services/{serviceID}:
+    delete:
+      tags:
+        - services
+      summary: Remove service
+      description: Removes a service added via POST /descriptors. Services from startup (proto path) cannot be removed.
+      operationId: deleteService
+      parameters:
+        - name: serviceID
+          in: path
+          description: Full service name (e.g. helloworld.Greeter)
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Service removed successfully
+        '404':
+          description: Service not found (not added via REST or already removed)
         '500':
           description: Internal Server Error
 
@@ -432,6 +468,35 @@ components:
           type: string
           format: date-time
           x-omitzero: false
+    AddDescriptorsResponse:
+      type: object
+      required:
+        - message
+        - time
+        - serviceIDs
+      properties:
+        message:
+          type: string
+          x-omitzero: false
+        time:
+          type: string
+          format: date-time
+          x-omitzero: false
+        serviceIDs:
+          type: array
+          items:
+            type: string
+          description: Service IDs (e.g. helloworld.Greeter) registered. Use DELETE /services/{serviceID} to remove.
+    DescriptorServiceIDs:
+      type: object
+      required:
+        - serviceIDs
+      properties:
+        serviceIDs:
+          type: array
+          items:
+            type: string
+          description: Service IDs added via POST /descriptors
     # services
     Service:
       type: object

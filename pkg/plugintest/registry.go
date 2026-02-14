@@ -2,6 +2,7 @@ package plugintest
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"strings"
 
@@ -207,7 +208,7 @@ func (r *TestRegistry) Plugins(ctx context.Context) []plugins.PluginInfo {
 	for _, name := range order {
 		p := r.lookupPlugin(name)
 		if deps, ok := r.pluginDeps[p.Name]; ok {
-			p.Depends = append([]string(nil), deps...)
+			p.Depends = slices.Clone(deps)
 		}
 		out = append(out, p)
 	}
@@ -229,7 +230,7 @@ func (r *TestRegistry) Groups(ctx context.Context) []plugins.PluginWithFuncs {
 	for _, name := range order {
 		info := r.lookupPlugin(name)
 		if deps, ok := r.pluginDeps[info.Name]; ok {
-			info.Depends = append([]string(nil), deps...)
+			info.Depends = slices.Clone(deps)
 		}
 
 		res = append(res, plugins.PluginWithFuncs{

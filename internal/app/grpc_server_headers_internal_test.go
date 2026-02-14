@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -68,16 +67,16 @@ func TestHandleOutputErrorWithHeaders(t *testing.T) {
 
 	// Verify headers were set
 	require.NotNil(t, stream.headers)
-	assert.Equal(t, "TEST_ERROR", stream.headers.Get("error-code")[0])
-	assert.Equal(t, "Test error message", stream.headers.Get("message")[0])
+	require.Equal(t, "TEST_ERROR", stream.headers.Get("error-code")[0])
+	require.Equal(t, "Test error message", stream.headers.Get("message")[0])
 
 	// Test error handling
 	err = mocker.handleOutputError(stream.Context(), stream, output)
 	require.Error(t, err)
 	st, ok := status.FromError(err)
 	require.True(t, ok)
-	assert.Equal(t, codes.Aborted, st.Code())
-	assert.Equal(t, "Test error", st.Message())
+	require.Equal(t, codes.Aborted, st.Code())
+	require.Equal(t, "Test error", st.Message())
 }
 
 func TestHandleOutputErrorWithoutHeaders(t *testing.T) {
@@ -97,11 +96,11 @@ func TestHandleOutputErrorWithoutHeaders(t *testing.T) {
 	require.Error(t, err)
 	st, ok := status.FromError(err)
 	require.True(t, ok)
-	assert.Equal(t, codes.InvalidArgument, st.Code())
-	assert.Equal(t, "Simple error", st.Message())
+	require.Equal(t, codes.InvalidArgument, st.Code())
+	require.Equal(t, "Simple error", st.Message())
 
 	// Verify no headers were set
-	assert.Nil(t, stream.headers)
+	require.Nil(t, stream.headers)
 }
 
 func TestHandleOutputErrorSuccess(t *testing.T) {
@@ -124,7 +123,7 @@ func TestHandleOutputErrorSuccess(t *testing.T) {
 
 	// Verify headers were set
 	require.NotNil(t, stream.headers)
-	assert.Equal(t, "req-123", stream.headers.Get("x-request-id")[0])
+	require.Equal(t, "req-123", stream.headers.Get("x-request-id")[0])
 
 	// Test error handling (should not return error)
 	err = mocker.handleOutputError(stream.Context(), stream, output)
@@ -151,13 +150,13 @@ func TestHandleOutputErrorNilCode(t *testing.T) {
 
 	// Verify headers were set
 	require.NotNil(t, stream.headers)
-	assert.Equal(t, "validation", stream.headers.Get("error-type")[0])
+	require.Equal(t, "validation", stream.headers.Get("error-type")[0])
 
 	// Test error handling
 	err = mocker.handleOutputError(stream.Context(), stream, output)
 	require.Error(t, err)
 	st, ok := status.FromError(err)
 	require.True(t, ok)
-	assert.Equal(t, codes.Aborted, st.Code()) // Default code for nil
-	assert.Equal(t, "Error without code", st.Message())
+	require.Equal(t, codes.Aborted, st.Code()) // Default code for nil
+	require.Equal(t, "Error without code", st.Message())
 }

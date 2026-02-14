@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
 
@@ -311,13 +312,97 @@ func (s *RestServerTestSuite) TestAddDescriptors() {
 
 	s.Equal(http.StatusOK, w.Code)
 
-	var resp struct {
-		Message string `json:"message"`
+	var addResp struct {
+		Message    string   `json:"message"`
+		ServiceIDs []string `json:"serviceIDs"`
 	}
 
-	err = json.Unmarshal(w.Body.Bytes(), &resp)
+	err = json.Unmarshal(w.Body.Bytes(), &addResp)
 	s.Require().NoError(err)
-	s.Equal("ok", resp.Message)
+	s.Equal("ok", addResp.Message)
+	s.Contains(addResp.ServiceIDs, "helloworld.Greeter")
+
+	// Verify service appears in ServicesList
+	w2 := httptest.NewRecorder()
+	s.server.ServicesList(w2, httptest.NewRequest(http.MethodGet, "/api/services", nil))
+	s.Equal(http.StatusOK, w2.Code)
+
+	var services []map[string]any
+	s.Require().NoError(json.Unmarshal(w2.Body.Bytes(), &services))
+	s.Require().NotEmpty(services)
+
+	ids := make([]string, 0, len(services))
+	for _, svc := range services {
+		if id, ok := svc["id"].(string); ok {
+			ids = append(ids, id)
+		}
+	}
+
+	s.Contains(ids, "helloworld.Greeter")
+}
+
+// TestListDescriptors tests GET /api/descriptors.
+func (s *RestServerTestSuite) TestListDescriptors() {
+	// Add a descriptor first
+	ctx := s.T().Context()
+	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
+	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
+	s.Require().NoError(err)
+
+	body, err := proto.Marshal(fdsSlice[0])
+	s.Require().NoError(err)
+
+	addReq := httptest.NewRequest(http.MethodPost, "/api/descriptors", bytes.NewReader(body))
+	addReq.Header.Set("Content-Type", "application/octet-stream")
+
+	w := httptest.NewRecorder()
+	s.server.AddDescriptors(w, addReq)
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	// List descriptors - verify serviceID appears
+	w2 := httptest.NewRecorder()
+	s.server.ListDescriptors(w2, httptest.NewRequest(http.MethodGet, "/api/descriptors", nil))
+	s.Equal(http.StatusOK, w2.Code)
+
+	var resp struct {
+		ServiceIDs []string `json:"serviceIDs"`
+	}
+
+	s.Require().NoError(json.Unmarshal(w2.Body.Bytes(), &resp))
+	s.Require().NotEmpty(resp.ServiceIDs)
+	s.Contains(resp.ServiceIDs, "helloworld.Greeter")
+}
+
+// TestDeleteService tests DELETE /api/services/{serviceID}.
+func (s *RestServerTestSuite) TestDeleteService() {
+	ctx := s.T().Context()
+	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
+	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
+	s.Require().NoError(err)
+
+	body, err := proto.Marshal(fdsSlice[0])
+	s.Require().NoError(err)
+
+	// Add descriptors
+	req := httptest.NewRequest(http.MethodPost, "/api/descriptors", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	w := httptest.NewRecorder()
+	s.server.AddDescriptors(w, req)
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	// Delete service
+	delReq := httptest.NewRequest(http.MethodDelete, "/api/services/helloworld.Greeter", nil)
+	delReq = mux.SetURLVars(delReq, map[string]string{"serviceID": "helloworld.Greeter"})
+
+	w2 := httptest.NewRecorder()
+	s.server.DeleteService(w2, delReq, "helloworld.Greeter")
+	s.Equal(http.StatusNoContent, w2.Code)
+
+	// Delete non-existent returns 404
+	w3 := httptest.NewRecorder()
+	s.server.DeleteService(w3, delReq, "helloworld.Greeter")
+	s.Equal(http.StatusNotFound, w3.Code)
 }
 
 // TestListUnusedStubs tests listing unused stubs.
@@ -361,9 +446,38 @@ func (s *RestServerTestSuite) TestListHistory() {
 	s.Empty(list)
 }
 
+// TestListHistory_RedactsSensitiveKeys tests that ListHistory returns redacted values when store has redact keys.
+func (s *RestServerTestSuite) TestListHistory_RedactsSensitiveKeys() {
+	store := history.NewMemoryStore(0, history.WithRedactKeys([]string{"password", "token"}))
+	store.Record(history.CallRecord{
+		Service:  "svc",
+		Method:   "M",
+		Request:  map[string]any{"user": "alice", "password": "secret123"},
+		Response: map[string]any{"token": "jwt-xxx"},
+	})
+
+	server, err := NewRestServer(s.T().Context(), stuber.NewBudgerigar(features.New()), &mockExtender{}, store, nil)
+	s.Require().NoError(err)
+
+	w := httptest.NewRecorder()
+	server.ListHistory(w, httptest.NewRequest(http.MethodGet, "/api/history", nil))
+	s.Equal(http.StatusOK, w.Code)
+
+	var list []map[string]any
+	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &list))
+	s.Len(list, 1)
+	req, ok := list[0]["request"].(map[string]any)
+	s.Require().True(ok)
+	resp, ok := list[0]["response"].(map[string]any)
+	s.Require().True(ok)
+	s.Equal("alice", req["user"])
+	s.Equal("[REDACTED]", req["password"])
+	s.Equal("[REDACTED]", resp["token"])
+}
+
 // TestVerifyCallsWithHistory tests verify endpoint with history store.
 func (s *RestServerTestSuite) TestVerifyCallsWithHistory() {
-	store := &history.MemoryStore{}
+	store := history.NewMemoryStore(0)
 	store.Record(history.CallRecord{Service: "svc", Method: "M", Request: map[string]any{"x": "1"}})
 	store.Record(history.CallRecord{Service: "svc", Method: "M", Request: map[string]any{"x": "2"}})
 	server, err := NewRestServer(s.T().Context(), stuber.NewBudgerigar(features.New()), &mockExtender{}, store, nil)

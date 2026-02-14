@@ -2,6 +2,7 @@ package deps
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"github.com/go-playground/validator/v10"
@@ -69,17 +70,14 @@ func WithEnder(ender *lifecycle.Manager) Option {
 // WithPlugins sets additional plugin paths (e.g. from CLI flags).
 func WithPlugins(paths []string) Option {
 	return func(builder *Builder) {
-		builder.pluginPaths = append(make([]string, 0, len(paths)), paths...)
+		builder.pluginPaths = slices.Clone(paths)
 	}
 }
 
 func (b *Builder) LoadPlugins(ctx context.Context) {
 	b.pluginOnce.Do(func() {
 		reg := internalplugins.NewRegistry()
-
-		allPaths := make([]string, 0, len(b.config.TemplatePluginPaths)+len(b.pluginPaths))
-		allPaths = append(allPaths, b.config.TemplatePluginPaths...)
-		allPaths = append(allPaths, b.pluginPaths...)
+		allPaths := slices.Concat(b.config.TemplatePluginPaths, b.pluginPaths)
 		loader := internalplugins.NewLoader(allPaths)
 		loader.Load(ctx, reg)
 		b.pluginRegistry = reg
@@ -104,7 +102,14 @@ func (b *Builder) HistoryStore() *history.MemoryStore {
 	}
 
 	b.historyStoreOnce.Do(func() {
-		b.historyStore = &history.MemoryStore{}
+		opts := []history.MemoryStoreOption{
+			history.WithMessageMaxBytes(b.config.HistoryMessageMaxBytes),
+		}
+		if len(b.config.HistoryRedactKeys) > 0 {
+			opts = append(opts, history.WithRedactKeys(b.config.HistoryRedactKeys))
+		}
+
+		b.historyStore = history.NewMemoryStore(b.config.HistoryLimit.Int64(), opts...)
 	})
 
 	return b.historyStore

@@ -122,8 +122,8 @@ func (c *stubBuilderCore) ReplyHeaderPairs(kv ...string) StubBuilder {
 	if c.data.output.Headers == nil {
 		c.data.output.Headers = make(map[string]string)
 	}
-	for i := 0; i < len(kv); i += 2 {
-		c.data.output.Headers[kv[i]] = kv[i+1]
+	for i := range len(kv) / 2 {
+		c.data.output.Headers[kv[i*2]] = kv[i*2+1]
 	}
 	return c
 }
@@ -186,12 +186,12 @@ func parseKVPairs(kv []any, errPrefix string) map[string]any {
 		panic(fmt.Sprintf("%s: need pairs (key, value), got %d args", errPrefix, len(kv)))
 	}
 	m := make(map[string]any, len(kv)/2)
-	for i := 0; i < len(kv); i += 2 {
-		k, ok := kv[i].(string)
+	for i := range len(kv) / 2 {
+		k, ok := kv[i*2].(string)
 		if !ok {
-			panic(fmt.Sprintf("%s: key at %d must be string, got %T", errPrefix, i, kv[i]))
+			panic(fmt.Sprintf("%s: key at %d must be string, got %T", errPrefix, i*2, kv[i*2]))
 		}
-		m[k] = kv[i+1]
+		m[k] = kv[i*2+1]
 	}
 	return m
 }

@@ -83,7 +83,7 @@ func wrapReflect(fn any) Func {
 		in := make([]reflect.Value, 0, len(args)+1)
 		argIdx := 0
 
-		for i := 0; i < fixed; i++ {
+		for i := range fixed {
 			paramType := typ.In(i)
 
 			if paramType == contextType {
