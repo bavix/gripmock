@@ -32,7 +32,11 @@ type embeddedMock struct {
 func (m *embeddedMock) Conn() *grpc.ClientConn { return m.conn }
 func (m *embeddedMock) Addr() string           { return m.addr }
 func (m *embeddedMock) Stub(service, method string) StubBuilder {
-	return &stubBuilder{mock: m, service: service, method: method}
+	return &stubBuilderCore{
+		service:  service,
+		method:  method,
+		onCommit: func(stub *stuber.Stub) { m.budgerigar.PutMany(stub) },
+	}
 }
 func (m *embeddedMock) History() HistoryReader { return m.recorder }
 func (m *embeddedMock) Verify() Verifier       { return &verifier{recorder: m.recorder} }

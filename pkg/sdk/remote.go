@@ -10,12 +10,10 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
-	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
 type remoteMock struct {
@@ -31,12 +29,7 @@ func (m *remoteMock) Addr() string           { return m.addr }
 func (m *remoteMock) History() HistoryReader { return &remoteHistory{mock: m} }
 func (m *remoteMock) Verify() Verifier       { return &remoteVerifier{mock: m} }
 func (m *remoteMock) Stub(service, method string) StubBuilder {
-	return &remoteStubBuilder{
-		mock:        m,
-		service:     service,
-		method:      method,
-		stubBuilder: stubBuilderData{},
-	}
+	return m.stubBuilderCore(service, method)
 }
 func (m *remoteMock) Close() error {
 	if m.conn != nil {
@@ -264,118 +257,10 @@ func runRemote(ctx context.Context, o *options) (Mock, error) {
 	}, nil
 }
 
-type stubBuilderData struct {
-	input    stuber.InputData
-	inputs   []stuber.InputData
-	headers  stuber.InputHeader
-	output   stuber.Output
-	priority int
-	options  stuber.StubOptions
-}
-
-type remoteStubBuilder struct {
-	mock        *remoteMock
-	service     string
-	method      string
-	stubBuilder stubBuilderData
-}
-
-func (sb *remoteStubBuilder) When(input stuber.InputData) StubBuilder {
-	sb.stubBuilder.input = input
-	sb.stubBuilder.inputs = nil
-	return sb
-}
-
-func (sb *remoteStubBuilder) WhenStream(inputs ...stuber.InputData) StubBuilder {
-	sb.stubBuilder.inputs = inputs
-	sb.stubBuilder.input = stuber.InputData{}
-	return sb
-}
-
-func (sb *remoteStubBuilder) WhenHeaders(headers stuber.InputHeader) StubBuilder {
-	sb.stubBuilder.headers = headers
-	return sb
-}
-
-func (sb *remoteStubBuilder) Reply(output stuber.Output) StubBuilder {
-	sb.stubBuilder.output = output
-	sb.stubBuilder.output.Stream = nil
-	return sb
-}
-
-func (sb *remoteStubBuilder) ReplyStream(msgs ...stuber.Output) StubBuilder {
-	stream := make([]any, 0, len(msgs))
-	for _, o := range msgs {
-		if o.Data != nil {
-			stream = append(stream, o.Data)
-		}
+func (m *remoteMock) stubBuilderCore(service, method string) *stubBuilderCore {
+	return &stubBuilderCore{
+		service:  service,
+		method:  method,
+		onCommit: func(stub *stuber.Stub) { m.addStub(stub) },
 	}
-	sb.stubBuilder.output = stuber.Output{Stream: stream}
-	return sb
-}
-
-func (sb *remoteStubBuilder) ReplyError(code codes.Code, msg string) StubBuilder {
-	codeCopy := code
-	sb.stubBuilder.output = stuber.Output{Code: &codeCopy, Error: msg}
-	return sb
-}
-
-func (sb *remoteStubBuilder) ReplyHeaders(headers map[string]string) StubBuilder {
-	if sb.stubBuilder.output.Headers == nil {
-		sb.stubBuilder.output.Headers = make(map[string]string)
-	}
-	for k, v := range headers {
-		sb.stubBuilder.output.Headers[k] = v
-	}
-	return sb
-}
-
-func (sb *remoteStubBuilder) ReplyHeaderPairs(kv ...string) StubBuilder {
-	if len(kv)%2 != 0 {
-		panic(fmt.Sprintf("sdk.ReplyHeaderPairs: need pairs (key, value), got %d args", len(kv)))
-	}
-	if sb.stubBuilder.output.Headers == nil {
-		sb.stubBuilder.output.Headers = make(map[string]string)
-	}
-	for i := 0; i < len(kv); i += 2 {
-		sb.stubBuilder.output.Headers[kv[i]] = kv[i+1]
-	}
-	return sb
-}
-
-func (sb *remoteStubBuilder) Delay(d time.Duration) StubBuilder {
-	sb.stubBuilder.output.Delay = types.Duration(d)
-	return sb
-}
-
-func (sb *remoteStubBuilder) IgnoreArrayOrder() StubBuilder {
-	sb.stubBuilder.input.IgnoreArrayOrder = true
-	for i := range sb.stubBuilder.inputs {
-		sb.stubBuilder.inputs[i].IgnoreArrayOrder = true
-	}
-	return sb
-}
-
-func (sb *remoteStubBuilder) Priority(p int) StubBuilder {
-	sb.stubBuilder.priority = p
-	return sb
-}
-
-func (sb *remoteStubBuilder) Times(n int) StubBuilder {
-	sb.stubBuilder.options.Times = n
-	return sb
-}
-
-func (sb *remoteStubBuilder) Commit() {
-	stub := &stuber.Stub{
-		Service:  sb.service,
-		Method:   sb.method,
-		Input:    sb.stubBuilder.input,
-		Inputs:   sb.stubBuilder.inputs,
-		Headers:  sb.stubBuilder.headers,
-		Output:   sb.stubBuilder.output,
-		Priority: sb.stubBuilder.priority,
-		Options:  sb.stubBuilder.options,
-	}
-	sb.mock.addStub(stub)
 }

@@ -504,6 +504,185 @@ func TestHelpers_IgnoreArrayOrder(t *testing.T) {
 	require.Equal(t, []any{1, 2}, id.Equals["arr"])
 }
 
+func TestHelpers_Merge(t *testing.T) {
+	t.Parallel()
+	id := Merge(
+		Equals("name", "Alex"),
+		Contains("tags", "go"),
+		Matches("email", `.*@test\.com`),
+		IgnoreOrder(),
+	)
+	require.Equal(t, "Alex", id.Equals["name"])
+	require.Equal(t, "go", id.Contains["tags"])
+	require.Equal(t, `.*@test\.com`, id.Matches["email"])
+	require.True(t, id.IgnoreArrayOrder)
+}
+
+func TestHelpers_MergeOutput(t *testing.T) {
+	t.Parallel()
+	out := MergeOutput(
+		Data("message", "Hi", "code", 200),
+		ReplyHeader("x-custom", "value"),
+		ReplyDelay(10*time.Millisecond),
+	)
+	require.Equal(t, "Hi", out.Data["message"])
+	require.Equal(t, 200, out.Data["code"])
+	require.Equal(t, "value", out.Headers["x-custom"])
+	require.NotZero(t, out.Delay)
+}
+
+func TestHelpers_MergeHeaders(t *testing.T) {
+	t.Parallel()
+	h := MergeHeaders(
+		HeaderEquals("x-id", "123"),
+		HeaderContains("user-agent", "test"),
+	)
+	require.Equal(t, "123", h.Equals["x-id"])
+	require.Equal(t, "test", h.Contains["user-agent"])
+}
+
+func TestHelpers_ReplyOutputModifiers(t *testing.T) {
+	t.Parallel()
+	require.Equal(t, map[string]string{"x": "y"}, ReplyHeader("x", "y").Headers)
+	require.NotZero(t, ReplyDelay(10*time.Millisecond).Delay)
+	require.Equal(t, "err", ReplyErr(codes.InvalidArgument, "err").Error)
+	out := StreamItem("msg", "hi")
+	require.Len(t, out.Stream, 1)
+	require.Equal(t, "hi", out.Stream[0].(map[string]any)["msg"])
+}
+
+func TestRun_Merge_Integration(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
+	defer mock.Close()
+
+	mock.Stub("helloworld.Greeter", "SayHello").
+		When(Merge(Equals("name", "Alex"))).
+		Reply(MergeOutput(Data("message", "Hi from Merge"))).
+		Commit()
+
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alex")
+	require.Equal(t, "Hi from Merge", getMessageField(t, msg, "message"))
+}
+
+func TestRun_Sugar_MatchReturn(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
+	defer mock.Close()
+
+	mock.Stub("helloworld.Greeter", "SayHello").
+		Match("name", "Alex").
+		Return("message", "Hi sugar").
+		Commit()
+
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alex")
+	require.Equal(t, "Hi sugar", getMessageField(t, msg, "message"))
+}
+
+func TestRun_Sugar_Unary(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
+	defer mock.Close()
+
+	mock.Stub("helloworld.Greeter", "SayHello").
+		Unary("name", "Bob", "message", "Hello Bob").
+		Commit()
+
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Bob")
+	require.Equal(t, "Hello Bob", getMessageField(t, msg, "message"))
+}
+
+func TestRun_DynamicTemplate_MatchReturn(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
+	defer mock.Close()
+
+	mock.Stub("helloworld.Greeter", "SayHello").
+		Match("name", "Alex").
+		Return("message", "Hi {{.Request.name}}").
+		Commit()
+
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alex")
+	require.Equal(t, "Hi Alex", getMessageField(t, msg, "message"))
+}
+
+func TestRun_DynamicTemplate_WhenReply(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
+	defer mock.Close()
+
+	mock.Stub("helloworld.Greeter", "SayHello").
+		When(Map("name", "Charlie")).
+		Reply(Data("message", "Greetings {{.Request.name}}!")).
+		Commit()
+
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Charlie")
+	require.Equal(t, "Greetings Charlie!", getMessageField(t, msg, "message"))
+}
+
+func TestRun_DynamicTemplate_Unary(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
+	defer mock.Close()
+
+	mock.Stub("helloworld.Greeter", "SayHello").
+		Unary("name", "Diana", "message", "Dear {{.Request.name}}").
+		Commit()
+
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Diana")
+	require.Equal(t, "Dear Diana", getMessageField(t, msg, "message"))
+}
+
+func TestRun_DynamicTemplate_MergeOutput(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
+	defer mock.Close()
+
+	mock.Stub("helloworld.Greeter", "SayHello").
+		When(Equals("name", "Eve")).
+		Reply(MergeOutput(Data("message", "Hi {{.Request.name}} from Merge"))).
+		Commit()
+
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Eve")
+	require.Equal(t, "Hi Eve from Merge", getMessageField(t, msg, "message"))
+}
+
+func TestRun_Sugar_Match_PanicOddArgs(t *testing.T) {
+	t.Parallel()
+
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
+	defer mock.Close()
+
+	require.PanicsWithValue(t, "sdk.Match: need pairs (key, value), got 1 args", func() {
+		mock.Stub("helloworld.Greeter", "SayHello").Match("name").Commit()
+	})
+}
+
+func TestRun_Sugar_Return_PanicOddArgs(t *testing.T) {
+	t.Parallel()
+
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
+	defer mock.Close()
+
+	require.PanicsWithValue(t, "sdk.Return: need pairs (key, value), got 1 args", func() {
+		mock.Stub("helloworld.Greeter", "SayHello").When(Equals("name", "x")).Return("message").Commit()
+	})
+}
+
 func TestRun_ReplyHeaders(t *testing.T) {
 	t.Parallel()
 
