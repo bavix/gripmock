@@ -52,6 +52,16 @@ mock.Stub("helloworld.Greeter", "SayHello").
 // Request: name="Alex" → Response: message="Hi Alex"
 ```
 
+**Delay** — simulate slow responses before sending the reply.
+
+```go
+mock.Stub("helloworld.Greeter", "SayHello").
+    Unary("name", "Bob", "message", "Hello Bob").
+    Delay(100 * time.Millisecond).
+    Commit()
+// Response is sent after 100ms delay
+```
+
 ## Run options
 
 | Option | Description |
