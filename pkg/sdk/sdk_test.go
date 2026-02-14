@@ -33,18 +33,54 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-func TestRun_EmbeddedBufconn(t *testing.T) {
-	t.Parallel()
+func sdkProtoPath(project string) string {
+	return filepath.Join("..", "..", "examples", "projects", project, "service.proto")
+}
+
+func mustBuildFDS(t *testing.T, protoPath string) *descriptorpb.FileDescriptorSet {
+	t.Helper()
 
 	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
 	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
 	require.NoError(t, err)
 	require.NotEmpty(t, fdsSlice)
 
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
+	return fdsSlice[0]
+}
+
+// mustRunWithProto builds descriptors from protoPath and runs mock. Caller must defer mock.Close().
+func mustRunWithProto(t *testing.T, protoPath string, opts ...Option) Mock {
+	t.Helper()
+
+	fds := mustBuildFDS(t, protoPath)
+	allOpts := append([]Option{WithDescriptors(fds)}, opts...)
+	mock, err := Run(t.Context(), allOpts...)
 	require.NoError(t, err)
 	require.NotNil(t, mock)
+
+	return mock
+}
+
+// mustRunWithProtoAndReg returns mock and protodesc registry. Caller must defer mock.Close().
+func mustRunWithProtoAndReg(t *testing.T, protoPath string, opts ...Option) (Mock, *protoregistry.Files) {
+	t.Helper()
+
+	fds := mustBuildFDS(t, protoPath)
+	allOpts := append([]Option{WithDescriptors(fds)}, opts...)
+	mock, err := Run(t.Context(), allOpts...)
+	require.NoError(t, err)
+	require.NotNil(t, mock)
+
+	reg, err := protodesc.NewFiles(fds)
+	require.NoError(t, err)
+
+	return mock, reg
+}
+
+func TestRun_EmbeddedBufconn(t *testing.T) {
+	t.Parallel()
+
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 	defer mock.Close()
 
 	require.NotNil(t, mock.Conn())
@@ -59,15 +95,7 @@ func TestRun_EmbeddedBufconn(t *testing.T) {
 func TestRun_WhenStreamReplyStream(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "calculator", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock := mustRunWithProto(t, sdkProtoPath("calculator"))
 	defer mock.Close()
 
 	// B7: WhenStream + Reply (client stream)
@@ -80,19 +108,10 @@ func TestRun_WhenStreamReplyStream(t *testing.T) {
 func TestRun_RealPort(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	mock, err := Run(ctx,
-		WithDescriptors(fdsSlice[0]),
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"),
 		WithListenAddr("tcp", ":0"),
 		WithHealthyTimeout(5*time.Second),
 	)
-	require.NoError(t, err)
-	require.NotNil(t, mock)
 	defer mock.Close()
 
 	require.NotNil(t, mock.Conn())
@@ -102,20 +121,10 @@ func TestRun_RealPort(t *testing.T) {
 func TestRun_RealPort_DefaultNetwork(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	// Empty network defaults to "tcp"
-	mock, err := Run(ctx,
-		WithDescriptors(fdsSlice[0]),
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"),
 		WithListenAddr("", ":0"),
 		WithHealthyTimeout(5*time.Second),
 	)
-	require.NoError(t, err)
-	require.NotNil(t, mock)
 	defer mock.Close()
 
 	require.Regexp(t, `^127\.0\.0\.1:\d+$`, mock.Addr())
@@ -124,16 +133,7 @@ func TestRun_RealPort_DefaultNetwork(t *testing.T) {
 func TestRun_DefaultHealthyTimeout(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	// WithHealthyTimeout(0) triggers default timeout branch in runEmbedded
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]), WithHealthyTimeout(0))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"), WithHealthyTimeout(0))
 	defer mock.Close()
 }
 
@@ -178,14 +178,8 @@ func TestRun_ListenError(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	// Invalid port (out of range) causes net.Listen to fail
-	_, err = Run(ctx,
-		WithDescriptors(fdsSlice[0]),
+	_, err := Run(ctx,
+		WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))),
 		WithListenAddr("tcp", ":99999"),
 		WithHealthyTimeout(5*time.Second),
 	)
@@ -204,41 +198,25 @@ func TestRun_ListenAddrString_UnixFallback(t *testing.T) {
 		t.Skip("Unix sockets not supported on Windows")
 	}
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	// Use short path (macOS unix socket path limit ~104 chars)
 	sockPath := "/tmp/gripmock_" + uuid.New().String()[:8] + ".sock"
-	mock, err := Run(ctx,
-		WithDescriptors(fdsSlice[0]),
+	mock, err := Run(t.Context(),
+		WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))),
 		WithListenAddr("unix", sockPath),
 		WithHealthyTimeout(2*time.Second),
 	)
-	// Exercises listenAddrString fallback for non-TCP (*net.UnixAddr)
 	if err != nil {
 		t.Logf("Run failed for unix (may hit listenAddrString before client dial): %v", err)
+
 		return
 	}
 	defer mock.Close()
-	// If unix works, addr is the socket path (fallback branch)
 	require.Contains(t, mock.Addr(), ".sock")
 }
 
 func TestRun_ReplyStream_SkipsNilData(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "track-streaming", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock := mustRunWithProto(t, sdkProtoPath("track-streaming"))
 	defer mock.Close()
 
 	// ReplyStream with nil Data entries - they are skipped (stuber.Output{Data: nil})
@@ -255,24 +233,13 @@ func TestRun_ReplyStream_SkipsNilData(t *testing.T) {
 func TestRun_MockFrom(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	// Start first mock with descriptors (real port)
-	mock1, err := Run(ctx,
-		WithDescriptors(fdsSlice[0]),
+	mock1 := mustRunWithProto(t, sdkProtoPath("greeter"),
 		WithListenAddr("tcp", ":0"),
 		WithHealthyTimeout(5*time.Second),
 	)
-	require.NoError(t, err)
-	require.NotNil(t, mock1)
 	defer mock1.Close()
 
-	// Second mock gets descriptors via reflection from first mock
-	mock2, err := Run(ctx,
+	mock2, err := Run(t.Context(),
 		MockFrom(mock1.Addr()),
 		WithHealthyTimeout(5*time.Second),
 	)
@@ -286,15 +253,7 @@ func TestRun_MockFrom(t *testing.T) {
 func TestRun_ReplyStream(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "track-streaming", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock := mustRunWithProto(t, sdkProtoPath("track-streaming"))
 	defer mock.Close()
 
 	// Server stream: When + ReplyStream
@@ -310,15 +269,7 @@ func TestRun_ReplyStream(t *testing.T) {
 func TestRun_ReplyError(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
@@ -335,15 +286,7 @@ func TestRun_ReplyError(t *testing.T) {
 func TestRun_Priority(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
@@ -362,15 +305,7 @@ func TestRun_Priority(t *testing.T) {
 func TestRun_Contains(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
@@ -382,15 +317,7 @@ func TestRun_Contains(t *testing.T) {
 func TestRun_Map(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
@@ -442,13 +369,7 @@ func TestRun_HealthyTimeout(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	// 1ns timeout - server won't be ready in time, expect deadline exceeded
-	_, err = Run(ctx, WithDescriptors(fdsSlice[0]), WithHealthyTimeout(1))
+	_, err := Run(ctx, WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))), WithHealthyTimeout(1))
 	require.Error(t, err)
 	errStr := err.Error()
 	require.True(t,
@@ -547,15 +468,7 @@ func TestHelpers_IgnoreArrayOrder(t *testing.T) {
 func TestRun_ReplyHeaders(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
@@ -569,31 +482,19 @@ func TestRun_WhenHeaders_Integration(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 	defer mock.Close()
 
-	// Stub matches only when x-custom header equals "expected-value"
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "Alex")).
 		WhenHeaders(HeaderEquals("x-custom", "expected-value")).
 		Reply(Data("message", "matched-by-header")).
 		Commit()
 
-	// Fallback stub without header match
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "Alex")).
 		Reply(Data("message", "no-header-match")).
 		Commit()
-
-	reg, err := protodesc.NewFiles(fdsSlice[0])
-	require.NoError(t, err)
 
 	// Call with matching header — should get "matched-by-header"
 	callCtx := metadata.NewOutgoingContext(ctx, metadata.Pairs("x-custom", "expected-value"))
@@ -632,15 +533,7 @@ func getMessageField(t *testing.T, msg *dynamicpb.Message, field string) string 
 func TestRun_Delay(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
@@ -654,25 +547,14 @@ func TestRun_Times_ExhaustedAfterLimit(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 	defer mock.Close()
 
-	// Stub matches at most 2 times
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "limited")).
 		Reply(Data("message", "ok")).
 		Times(2).
 		Commit()
-
-	reg, err := protodesc.NewFiles(fdsSlice[0])
-	require.NoError(t, err)
 
 	// 1st and 2nd call — success
 	msg1 := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "limited")
@@ -750,17 +632,33 @@ func TestRun_Remote_Integration(t *testing.T) {
 	projRoot := filepath.Join("..", "..")
 	protoPath := filepath.Join(projRoot, "examples", "projects", "greeter", "service.proto")
 
-	cmd := exec.CommandContext(ctx, "go", "run", ".", protoPath)
+	goPath, err := exec.LookPath("go")
+	if err != nil {
+		t.Skipf("skipping: go not found in PATH: %v", err)
+
+		return
+	}
+
+	goDir := filepath.Dir(goPath)
+	if goroot := runtime.GOROOT(); goroot != "" {
+		goDir = goDir + string(filepath.ListSeparator) + filepath.Join(goroot, "bin")
+	}
+
+	cmd := exec.CommandContext(ctx, goPath, "run", ".", protoPath)
 	cmd.Dir = projRoot
-	env := make([]string, 0, len(os.Environ())+2)
+	env := make([]string, 0, len(os.Environ())+4)
 	grpcVar := "GRPC_PORT=" + fmt.Sprintf("%d", grpcPort)
 	httpVar := "HTTP_PORT=" + fmt.Sprintf("%d", httpPort)
+	safePath := "PATH=" + goDir
 	for _, e := range os.Environ() {
-		if !strings.HasPrefix(e, "GRPC_PORT=") && !strings.HasPrefix(e, "HTTP_PORT=") {
-			env = append(env, e)
+		if strings.HasPrefix(e, "GRPC_PORT=") || strings.HasPrefix(e, "HTTP_PORT=") || strings.HasPrefix(e, "PATH=") {
+			continue
 		}
+
+		env = append(env, e)
 	}
-	cmd.Env = append(env, grpcVar, httpVar)
+
+	cmd.Env = append(env, safePath, grpcVar, httpVar)
 	if err := cmd.Start(); err != nil {
 		t.Skipf("skipping: cannot start gripmock: %v", err)
 		return
@@ -809,23 +707,13 @@ func TestRun_HistoryAndVerify(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "Alex")).
 		Reply(Data("message", "Hi")).
 		Commit()
-
-	reg, err := protodesc.NewFiles(fdsSlice[0])
-	require.NoError(t, err)
 
 	// No calls yet
 	require.Equal(t, 0, mock.History().Count())
@@ -851,24 +739,13 @@ func TestRun_WithSession_EmbeddedNoop(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-
-	// WithSession is a no-op for embedded; each Run has its own mock
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]), WithSession("test-session"))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"), WithSession("test-session"))
 	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "x")).
 		Reply(Data("message", "ok")).
 		Commit()
-
-	reg, err := protodesc.NewFiles(fdsSlice[0])
-	require.NoError(t, err)
 	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "x")
 	require.Equal(t, "ok", getMessageField(t, msg, "message"))
 }
@@ -876,17 +753,9 @@ func TestRun_WithSession_EmbeddedNoop(t *testing.T) {
 func TestMock_Close_Idempotent(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 
-	mock, err := Run(ctx, WithDescriptors(fdsSlice[0]))
-	require.NoError(t, err)
-	require.NotNil(t, mock)
-
-	err = mock.Close()
+	err := mock.Close()
 	require.NoError(t, err)
 	err = mock.Close()
 	require.NoError(t, err) // second Close is no-op

@@ -17,11 +17,8 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
-	"github.com/bavix/gripmock/v3/internal/infra/template"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
-	"github.com/bavix/gripmock/v3/pkg/plugintest"
 )
 
 const (
@@ -103,25 +100,10 @@ func (m *mockFullServerStream) SendHeader(md metadata.MD) error {
 func (m *mockFullServerStream) SetTrailer(md metadata.MD) {
 }
 
-func createTestMockerForStream(t *testing.T) *grpcMocker {
-	t.Helper()
-
-	structDesc := (&structpb.Struct{}).ProtoReflect().Descriptor()
-	testRegistry := plugintest.NewRegistry()
-	templateEngine := template.New(t.Context(), testRegistry)
-
-	return &grpcMocker{
-		budgerigar:     stuber.NewBudgerigar(features.New()),
-		templateEngine: templateEngine,
-		inputDesc:      structDesc,
-		outputDesc:     structDesc,
-	}
-}
-
 func TestHandleServerStream_WithArrayStream(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream(t)
+	mocker := createTestMocker(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
@@ -160,7 +142,7 @@ func TestHandleServerStream_WithArrayStream(t *testing.T) {
 func TestHandleServerStream_WithNonArrayStream(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream(t)
+	mocker := createTestMocker(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
@@ -196,7 +178,7 @@ func TestHandleServerStream_WithNonArrayStream(t *testing.T) {
 func TestHandleServerStream_WithHeaders(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream(t)
+	mocker := createTestMocker(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
@@ -241,7 +223,7 @@ func TestHandleServerStream_WithHeaders(t *testing.T) {
 func TestHandleServerStream_WithError(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream(t)
+	mocker := createTestMocker(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
@@ -280,7 +262,7 @@ func TestHandleServerStream_WithError(t *testing.T) {
 func TestHandleServerStream_EOF(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream(t)
+	mocker := createTestMocker(t)
 	stream := &mockFullServerStream{
 		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
@@ -294,7 +276,7 @@ func TestHandleServerStream_EOF(t *testing.T) {
 func TestHandleServerStream_RecvError(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream(t)
+	mocker := createTestMocker(t)
 	stream := &mockFullServerStream{
 		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
@@ -309,7 +291,7 @@ func TestHandleServerStream_RecvError(t *testing.T) {
 func TestHandleServerStream_NotFound(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream(t)
+	mocker := createTestMocker(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
@@ -331,7 +313,7 @@ func TestHandleServerStream_NotFound(t *testing.T) {
 func TestHandleNonArrayStreamData_SendsMessages(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream(t)
+	mocker := createTestMocker(t)
 	stream := &mockFullServerStream{
 		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
@@ -353,7 +335,7 @@ func TestHandleNonArrayStreamData_SendsMessages(t *testing.T) {
 func TestHandleNonArrayStreamData_WithDelay(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream(t)
+	mocker := createTestMocker(t)
 	stream := &mockFullServerStream{
 		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
@@ -379,7 +361,7 @@ func TestHandleNonArrayStreamData_WithDelay(t *testing.T) {
 func TestHandleNonArrayStreamData_WithTemplates(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream(t)
+	mocker := createTestMocker(t)
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	stream := &mockFullServerStream{
 		ctx:              t.Context(),
@@ -403,7 +385,7 @@ func TestHandleNonArrayStreamData_WithTemplates(t *testing.T) {
 func TestHandleNonArrayStreamData_ContextCancelled(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream(t)
+	mocker := createTestMocker(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
@@ -428,7 +410,7 @@ func TestHandleNonArrayStreamData_ContextCancelled(t *testing.T) {
 func TestHandleNonArrayStreamData_WithError(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream(t)
+	mocker := createTestMocker(t)
 	stream := &mockFullServerStream{
 		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),

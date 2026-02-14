@@ -14,13 +14,9 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/dynamicpb"
-	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
-	"github.com/bavix/gripmock/v3/internal/infra/template"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
-	"github.com/bavix/gripmock/v3/pkg/plugintest"
 )
 
 // mockArrayStreamServerStream mocks grpc.ServerStream for array stream testing.
@@ -70,22 +66,6 @@ func (m *mockArrayStreamServerStream) SendHeader(md metadata.MD) error {
 }
 
 func (m *mockArrayStreamServerStream) SetTrailer(md metadata.MD) {
-}
-
-func createTestMocker(t *testing.T) *grpcMocker {
-	t.Helper()
-	// Use structpb.Struct descriptor for testing (simpler than creating custom descriptor)
-	structDesc := (&structpb.Struct{}).ProtoReflect().Descriptor()
-
-	testRegistry := plugintest.NewRegistry()
-	templateEngine := template.New(t.Context(), testRegistry)
-
-	return &grpcMocker{
-		budgerigar:     stuber.NewBudgerigar(features.New()),
-		templateEngine: templateEngine,
-		inputDesc:      structDesc,
-		outputDesc:     structDesc,
-	}
 }
 
 func TestHandleArrayStreamData_SendsAllMessages(t *testing.T) {
