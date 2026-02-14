@@ -14,7 +14,7 @@ func Run(ctx context.Context, opts ...Option) (Mock, error) {
 	if o.remoteAddr != "" {
 		return runRemote(ctx, o)
 	}
-	if o.descriptors == nil && o.mockFromAddr == "" {
+	if len(o.descriptorFiles) == 0 && o.mockFromAddr == "" {
 		return nil, errors.New("gripmock: descriptors required (use WithDescriptors or MockFrom)")
 	}
 	if o.mockFromAddr != "" {
@@ -22,7 +22,7 @@ func Run(ctx context.Context, opts ...Option) (Mock, error) {
 		if err != nil {
 			return nil, err
 		}
-		o.descriptors = fds
+		o.descriptorFiles = fds.GetFile()
 	}
 	return runEmbedded(ctx, o)
 }

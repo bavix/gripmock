@@ -8,6 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/test/bufconn"
 
@@ -61,7 +62,8 @@ func runEmbedded(ctx context.Context, o *options) (Mock, error) {
 	waiter := app.NewInstantExtender()
 	recorder := &InMemoryRecorder{}
 
-	server, err := app.BuildFromDescriptorSet(ctx, o.descriptors, budgerigar, waiter, recorder)
+	fds := &descriptorpb.FileDescriptorSet{File: o.descriptorFiles}
+	server, err := app.BuildFromDescriptorSet(ctx, fds, budgerigar, waiter, recorder)
 	if err != nil {
 		return nil, err
 	}

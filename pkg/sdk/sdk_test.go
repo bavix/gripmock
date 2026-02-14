@@ -92,6 +92,45 @@ func TestRun_EmbeddedBufconn(t *testing.T) {
 		Commit()
 }
 
+func TestRun_DescriptorsAppend(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	fdsGreeter := mustBuildFDS(t, sdkProtoPath("greeter"))
+	fdsEcho := mustBuildFDS(t, filepath.Join("..", "..", "examples", "projects", "echo", "service_v1.proto"))
+
+	mock, err := Run(ctx,
+		WithDescriptors(fdsGreeter),
+		WithDescriptors(fdsEcho),
+	)
+	require.NoError(t, err)
+	require.NotNil(t, mock)
+	defer mock.Close()
+
+	mock.Stub("helloworld.Greeter", "SayHello").
+		When(Equals("name", "x")).
+		Reply(Data("message", "hi")).
+		Commit()
+	require.NotNil(t, mock.Conn())
+}
+
+func TestRun_DescriptorsAppend_Dedup(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	fds := mustBuildFDS(t, sdkProtoPath("greeter"))
+
+	mock, err := Run(ctx, WithDescriptors(fds), WithDescriptors(fds))
+	require.NoError(t, err)
+	require.NotNil(t, mock)
+	defer mock.Close()
+
+	mock.Stub("helloworld.Greeter", "SayHello").
+		When(Equals("name", "x")).
+		Reply(Data("message", "hi")).
+		Commit()
+}
+
 func TestRun_WhenStreamReplyStream(t *testing.T) {
 	t.Parallel()
 

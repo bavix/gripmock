@@ -4,18 +4,33 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 
+func (o *options) appendDescriptorFiles(files []*descriptorpb.FileDescriptorProto) {
+	seen := make(map[string]bool, len(o.descriptorFiles))
+	for _, f := range o.descriptorFiles {
+		seen[f.GetName()] = true
+	}
+	for _, f := range files {
+		if !seen[f.GetName()] {
+			seen[f.GetName()] = true
+			o.descriptorFiles = append(o.descriptorFiles, f)
+		}
+	}
+}
+
 type options struct {
-	descriptors    *descriptorpb.FileDescriptorSet
-	mockFromAddr   string
-	remoteAddr     string // gRPC address for remote mode
-	remoteRestURL  string // REST base URL (e.g. "http://localhost:4771") for remote mode
-	session        string // X-Gripmock-Session for isolation (remote mode)
-	listenNetwork  string // "tcp" for real port
-	listenAddr     string // ":0" for real port
-	healthyTimeout time.Duration
+	descriptorFiles []*descriptorpb.FileDescriptorProto // accumulated via append
+	mockFromAddr    string
+	remoteAddr      string // gRPC address for remote mode
+	remoteRestURL   string // REST base URL (e.g. "http://localhost:4771") for remote mode
+	session         string // X-Gripmock-Session for isolation (remote mode)
+	listenNetwork   string // "tcp" for real port
+	listenAddr      string // ":0" for real port
+	healthyTimeout  time.Duration
 }
 
 const defaultHealthyTimeout = 10 * time.Second
@@ -23,10 +38,18 @@ const defaultHealthyTimeout = 10 * time.Second
 // Option configures Run behavior.
 type Option func(*options)
 
-// WithDescriptors sets the FileDescriptorSet for the mock server.
+// WithDescriptors appends files from the FileDescriptorSet to the mock server (skips duplicates by name).
 func WithDescriptors(fds *descriptorpb.FileDescriptorSet) Option {
 	return func(o *options) {
-		o.descriptors = fds
+		o.appendDescriptorFiles(fds.GetFile())
+	}
+}
+
+// WithFileDescriptor appends a generated protoreflect.FileDescriptor (e.g. helloworld.File_service_proto).
+func WithFileDescriptor(fd protoreflect.FileDescriptor) Option {
+	return func(o *options) {
+		fdp := protodesc.ToFileDescriptorProto(fd)
+		o.appendDescriptorFiles([]*descriptorpb.FileDescriptorProto{fdp})
 	}
 }
 
