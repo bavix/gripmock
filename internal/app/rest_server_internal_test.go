@@ -6,13 +6,17 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/bavix/features"
+	"github.com/bavix/gripmock/v3/internal/domain/history"
+	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -34,7 +38,7 @@ type RestServerTestSuite struct {
 func (s *RestServerTestSuite) SetupSuite() {
 	s.budgerigar = stuber.NewBudgerigar(features.New())
 	extender := &mockExtender{}
-	server, err := NewRestServer(context.Background(), s.budgerigar, extender)
+	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil)
 	s.Require().NoError(err)
 	s.server = server
 }
@@ -46,11 +50,11 @@ func (s *RestServerTestSuite) SetupTest() {
 
 // TestNewRestServer tests REST server creation.
 func (s *RestServerTestSuite) TestNewRestServer() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 	budgerigar := stuber.NewBudgerigar(features.New())
 	extender := &mockExtender{}
 
-	server, err := NewRestServer(ctx, budgerigar, extender)
+	server, err := NewRestServer(ctx, budgerigar, extender, nil, nil)
 	s.Require().NoError(err)
 	s.Require().NotNil(server)
 }
@@ -287,6 +291,35 @@ func (s *RestServerTestSuite) TestListStubs() {
 	s.Len(response, 1)
 }
 
+// TestAddDescriptors tests POST /api/descriptors with binary FileDescriptorSet.
+func (s *RestServerTestSuite) TestAddDescriptors() {
+	ctx := s.T().Context()
+	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
+	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
+	s.Require().NoError(err)
+	s.Require().NotEmpty(fdsSlice)
+
+	body, err := proto.Marshal(fdsSlice[0])
+	s.Require().NoError(err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/descriptors", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	w := httptest.NewRecorder()
+
+	s.server.AddDescriptors(w, req)
+
+	s.Equal(http.StatusOK, w.Code)
+
+	var resp struct {
+		Message string `json:"message"`
+	}
+
+	err = json.Unmarshal(w.Body.Bytes(), &resp)
+	s.Require().NoError(err)
+	s.Equal("ok", resp.Message)
+}
+
 // TestListUnusedStubs tests listing unused stubs.
 func (s *RestServerTestSuite) TestListUnusedStubs() {
 	w := httptest.NewRecorder()
@@ -315,6 +348,57 @@ func (s *RestServerTestSuite) TestListUsedStubs() {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	s.Require().NoError(err)
 	s.Empty(response) // No stubs used yet
+}
+
+// TestListHistory tests history endpoint (empty when history is disabled).
+func (s *RestServerTestSuite) TestListHistory() {
+	w := httptest.NewRecorder()
+	s.server.ListHistory(w, httptest.NewRequest(http.MethodGet, "/api/history", nil))
+	s.Equal(http.StatusOK, w.Code)
+
+	var list []any
+	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &list))
+	s.Empty(list)
+}
+
+// TestVerifyCallsWithHistory tests verify endpoint with history store.
+func (s *RestServerTestSuite) TestVerifyCallsWithHistory() {
+	store := &history.MemoryStore{}
+	store.Record(history.CallRecord{Service: "svc", Method: "M", Request: map[string]any{"x": "1"}})
+	store.Record(history.CallRecord{Service: "svc", Method: "M", Request: map[string]any{"x": "2"}})
+	server, err := NewRestServer(s.T().Context(), stuber.NewBudgerigar(features.New()), &mockExtender{}, store, nil)
+	s.Require().NoError(err)
+
+	// GET /api/history returns records
+	w := httptest.NewRecorder()
+	server.ListHistory(w, httptest.NewRequest(http.MethodGet, "/api/history", nil))
+	s.Equal(http.StatusOK, w.Code)
+
+	var list []map[string]any
+	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &list))
+	s.Len(list, 2)
+
+	// POST /api/verify with correct count passes
+	body, err := json.Marshal(map[string]any{"service": "svc", "method": "M", "expectedCount": 2})
+	s.Require().NoError(err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/verify", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w2 := httptest.NewRecorder()
+	server.VerifyCalls(w2, req)
+	s.Equal(http.StatusOK, w2.Code)
+
+	// Wrong count fails
+	body3, err := json.Marshal(map[string]any{"service": "svc", "method": "M", "expectedCount": 1})
+	s.Require().NoError(err)
+
+	req3 := httptest.NewRequest(http.MethodPost, "/api/verify", bytes.NewReader(body3))
+	req3.Header.Set("Content-Type", "application/json")
+
+	w3 := httptest.NewRecorder()
+	server.VerifyCalls(w3, req3)
+	s.Equal(http.StatusBadRequest, w3.Code)
 }
 
 // TestLiveness tests liveness endpoint.

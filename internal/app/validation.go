@@ -2,11 +2,39 @@ package app
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/go-playground/validator/v10"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
+
+var (
+	stubValidator     *validator.Validate //nolint:gochecknoglobals
+	stubValidatorOnce sync.Once           //nolint:gochecknoglobals
+)
+
+// NewStubValidator creates a validator with stub-specific custom validations registered.
+func NewStubValidator() *validator.Validate {
+	v := validator.New()
+	if err := v.RegisterValidation("valid_input_config", validateInputConfiguration); err != nil {
+		panic("register valid_input_config: " + err.Error())
+	}
+
+	if err := v.RegisterValidation("valid_output_config", validateOutputConfiguration); err != nil {
+		panic("register valid_output_config: " + err.Error())
+	}
+
+	return v
+}
+
+func defaultStubValidator() *validator.Validate {
+	stubValidatorOnce.Do(func() {
+		stubValidator = NewStubValidator()
+	})
+
+	return stubValidator
+}
 
 // ValidationError represents a validation error with field information.
 type ValidationError struct {
@@ -20,19 +48,10 @@ func (e ValidationError) Error() string {
 	return e.Message
 }
 
-// validationStub is a struct used for validation with tags.
-type validationStub struct {
-	Service string             `json:"service" validate:"required"`
-	Method  string             `json:"method"  validate:"required"`
-	Input   stuber.InputData   `json:"input"   validate:"valid_input_config"`
-	Inputs  []stuber.InputData `json:"inputs"  validate:"valid_input_config"`
-	Output  stuber.Output      `json:"output"  validate:"valid_output_config"`
-}
-
 // validateInputConfiguration validates that either input or inputs is provided, but not both.
 func validateInputConfiguration(fl validator.FieldLevel) bool {
-	v, ok := fl.Parent().Interface().(validationStub)
-	if !ok {
+	v := stubFromFieldLevel(fl)
+	if v == nil {
 		return false
 	}
 
@@ -45,8 +64,8 @@ func validateInputConfiguration(fl validator.FieldLevel) bool {
 
 // validateOutputConfiguration validates that either data or stream is provided, but not both.
 func validateOutputConfiguration(fl validator.FieldLevel) bool {
-	v, ok := fl.Parent().Interface().(validationStub)
-	if !ok {
+	v := stubFromFieldLevel(fl)
+	if v == nil {
 		return false
 	}
 
@@ -55,6 +74,15 @@ func validateOutputConfiguration(fl validator.FieldLevel) bool {
 
 	// Must have exactly one type of output configuration
 	return hasDataOutput != hasStreamOutput
+}
+
+func stubFromFieldLevel(fl validator.FieldLevel) *stuber.Stub {
+	// Top() returns the root struct being validated (*Stub when calling Struct(stub))
+	if v, ok := fl.Top().Interface().(*stuber.Stub); ok {
+		return v
+	}
+
+	return nil
 }
 
 // Helper functions.

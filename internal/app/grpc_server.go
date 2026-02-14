@@ -2,13 +2,15 @@ package app
 
 //nolint:revive
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
 	"io"
 	"reflect"
-	"slices"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -19,17 +21,22 @@ import (
 	_ "google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/health"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/reflection"
+	reflectiongrpc "google.golang.org/grpc/reflection/grpc_reflection_v1"
+	reflectiongrpcv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
 
+	"github.com/bavix/gripmock/v3/internal/domain/history"
 	protoloc "github.com/bavix/gripmock/v3/internal/domain/proto"
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/grpccontext"
@@ -39,14 +46,51 @@ import (
 )
 
 // excludedHeaders contains headers that should be excluded from stub matching.
+// Map for O(1) lookup in hot path.
 //
 //nolint:gochecknoglobals
-var excludedHeaders = []string{
-	":authority",
-	"content-type",
-	"grpc-accept-encoding",
-	"user-agent",
-	"accept-encoding",
+var excludedHeaders = map[string]struct{}{
+	":authority":           {},
+	"content-type":         {},
+	"grpc-accept-encoding": {},
+	"user-agent":           {},
+	"accept-encoding":      {},
+}
+
+const (
+	sessionHeaderKey = "x-gripmock-session" // gRPC metadata keys are lowercase
+
+	// High-load gRPC server tuning.
+	keepaliveMaxIdle     = 5 * time.Minute
+	keepaliveMaxAge      = 30 * time.Minute
+	keepaliveMaxAgeGrace = 5 * time.Second
+	keepaliveTime        = 30 * time.Second
+	keepaliveTimeout     = 10 * time.Second
+	keepaliveMinTime     = 10 * time.Second
+	maxConcurrentStreams = 100
+	maxLoggingStreamMsgs = 32
+	minStreamWorkers     = 4
+)
+
+const jsonBufferInitialCap = 4096
+
+var (
+	//nolint:gochecknoglobals
+	runtimeNumStreamWorkers = max(runtime.NumCPU(), minStreamWorkers)
+	//nolint:gochecknoglobals
+	jsonBufferPool = sync.Pool{
+		New: func() any {
+			return bytes.NewBuffer(make([]byte, 0, jsonBufferInitialCap))
+		},
+	}
+)
+
+func sessionFromMetadata(md metadata.MD) string {
+	if v := md.Get(sessionHeaderKey); len(v) > 0 && v[0] != "" {
+		return v[0]
+	}
+
+	return ""
 }
 
 // processHeaders converts metadata to headers map, excluding specified headers.
@@ -55,10 +99,10 @@ func processHeaders(md metadata.MD) map[string]any {
 		return nil
 	}
 
-	headers := make(map[string]any)
+	headers := make(map[string]any, len(md))
 
 	for k, v := range md {
-		if !slices.Contains(excludedHeaders, k) {
+		if _, excluded := excludedHeaders[k]; !excluded {
 			headers[k] = strings.Join(v, ";")
 		}
 	}
@@ -91,12 +135,14 @@ type GRPCServer struct {
 	params      *protoloc.Arguments
 	budgerigar  *stuber.Budgerigar
 	waiter      Extender
+	recorder    history.Recorder
 	healthcheck *health.Server
 }
 
 type grpcMocker struct {
 	budgerigar     *stuber.Budgerigar
 	templateEngine *template.Engine
+	recorder       history.Recorder
 
 	inputDesc  protoreflect.MessageDescriptor
 	outputDesc protoreflect.MessageDescriptor
@@ -145,6 +191,7 @@ func (m *grpcMocker) newQuery(ctx context.Context, msg *dynamicpb.Message) stube
 	md, ok := metadata.FromIncomingContext(ctx)
 	if ok {
 		query.Headers = processHeaders(md)
+		query.Session = sessionFromMetadata(md)
 	}
 
 	return query
@@ -159,6 +206,7 @@ func (m *grpcMocker) newQueryBidi(ctx context.Context) stuber.QueryBidi {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if ok {
 		query.Headers = processHeaders(md)
+		query.Session = sessionFromMetadata(md)
 	}
 
 	return query
@@ -169,9 +217,9 @@ func convertToMap(msg proto.Message) map[string]any {
 		return nil
 	}
 
-	result := make(map[string]any)
 	message := msg.ProtoReflect()
 	desc := message.Descriptor()
+	result := make(map[string]any, desc.Fields().Len())
 
 	// Iterate over descriptor fields, not message.Range: Range only visits populated fields.
 	// In proto3, scalars with default values (e.g. 0.0) are not "populated", so Range skips them.
@@ -484,14 +532,26 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 }
 
 func (m *grpcMocker) newOutputMessage(data map[string]any) (*dynamicpb.Message, error) {
-	jsonData, err := json.Marshal(data)
-	if err != nil {
+	pooled, _ := jsonBufferPool.Get().(*bytes.Buffer)
+	if pooled == nil {
+		pooled = bytes.NewBuffer(make([]byte, 0, jsonBufferInitialCap))
+	}
+
+	pooled.Reset()
+
+	defer func() {
+		pooled.Reset()
+		jsonBufferPool.Put(pooled)
+	}()
+
+	enc := json.NewEncoder(pooled)
+	if err := enc.Encode(data); err != nil {
 		return nil, fmt.Errorf("failed to marshal map to JSON: %w", err)
 	}
 
 	msg := dynamicpb.NewMessage(m.outputDesc)
 
-	err = protojson.Unmarshal(jsonData, msg)
+	err := protojson.Unmarshal(pooled.Bytes(), msg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON into dynamic message: %w", err)
 	}
@@ -595,13 +655,42 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		return nil, err //nolint:wrapcheck
 	}
 
+	var sess string
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		sess = sessionFromMetadata(md)
+	}
+
 	if err := m.handleOutputError(ctx, nil, outputToUse); err != nil {
+		if m.recorder != nil {
+			m.recorder.Record(history.CallRecord{
+				Service:   m.fullServiceName,
+				Method:    m.methodName,
+				Session:   sess,
+				Request:   requestData,
+				Error:     outputToUse.Error,
+				StubID:    found.ID.String(),
+				Timestamp: requestTime,
+			})
+		}
+
 		return nil, err //nolint:wrapcheck
 	}
 
 	outputMsg, err := m.newOutputMessage(outputToUse.Data)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
+	}
+
+	if m.recorder != nil {
+		m.recorder.Record(history.CallRecord{
+			Service:   m.fullServiceName,
+			Method:    m.methodName,
+			Session:   sess,
+			Request:   requestData,
+			Response:  outputToUse.Data,
+			StubID:    found.ID.String(),
+			Timestamp: requestTime,
+		})
 	}
 
 	return outputMsg, nil
@@ -656,6 +745,7 @@ func (m *grpcMocker) tryV2API(messages []map[string]any, md metadata.MD) (*stube
 
 	if len(md) > 0 {
 		query.Headers = processHeaders(md)
+		query.Session = sessionFromMetadata(md)
 	}
 
 	return m.budgerigar.FindByQuery(query)
@@ -673,6 +763,7 @@ func (m *grpcMocker) tryV1APIFallback(messages []map[string]any, md metadata.MD)
 
 		if len(md) > 0 {
 			query.Headers = processHeaders(md)
+			query.Session = sessionFromMetadata(md)
 		}
 
 		result, foundErr := m.budgerigar.FindByQuery(query)
@@ -700,8 +791,10 @@ func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 	return m.sendClientStreamResponse(stream, found, messages, requestTime)
 }
 
+const clientMessagesInitCap = 16
+
 func (m *grpcMocker) collectClientMessages(stream grpc.ServerStream) ([]map[string]any, error) {
-	var messages []map[string]any
+	messages := make([]map[string]any, 0, clientMessagesInitCap)
 
 	for {
 		inputMsg := dynamicpb.NewMessage(m.inputDesc)
@@ -927,6 +1020,7 @@ func NewGRPCServer(
 	params *protoloc.Arguments,
 	budgerigar *stuber.Budgerigar,
 	waiter Extender,
+	recorder history.Recorder,
 ) *GRPCServer {
 	return &GRPCServer{
 		network:    network,
@@ -934,6 +1028,7 @@ func NewGRPCServer(
 		params:     params,
 		budgerigar: budgerigar,
 		waiter:     waiter,
+		recorder:   recorder,
 	}
 }
 
@@ -944,8 +1039,36 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	}
 
 	server := s.createServer(ctx)
-	s.setupHealthCheck(server)
-	s.registerServices(ctx, server, descriptors)
+	s.setupHealthCheck(server, nil)
+	s.registerServices(ctx, server, descriptors, nil)
+	s.startHealthCheckRoutine(ctx)
+
+	return server, nil
+}
+
+// BuildFromDescriptorSet creates a gRPC server from a pre-built FileDescriptorSet.
+// Used by the SDK for embedded mode. Does not use GlobalFiles.
+// If recorder is non-nil, all gRPC calls are recorded for History/Verify.
+func BuildFromDescriptorSet(
+	ctx context.Context,
+	fds *descriptorpb.FileDescriptorSet,
+	budgerigar *stuber.Budgerigar,
+	waiter Extender,
+	recorder history.Recorder,
+) (*grpc.Server, error) {
+	reg, err := protodesc.NewFiles(fds)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create files registry")
+	}
+
+	s := &GRPCServer{
+		budgerigar: budgerigar,
+		waiter:     waiter,
+		recorder:   recorder,
+	}
+	server := s.createServer(ctx)
+	s.setupHealthCheck(server, reg)
+	s.registerServices(ctx, server, []*descriptorpb.FileDescriptorSet{fds}, reg)
 	s.startHealthCheckRoutine(ctx)
 
 	return server, nil
@@ -955,6 +1078,19 @@ func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 	logger := zerolog.Ctx(ctx)
 
 	return grpc.NewServer(
+		grpc.NumStreamWorkers(uint32(runtimeNumStreamWorkers)), //nolint:gosec
+		grpc.MaxConcurrentStreams(maxConcurrentStreams),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle:     keepaliveMaxIdle,
+			MaxConnectionAge:      keepaliveMaxAge,
+			MaxConnectionAgeGrace: keepaliveMaxAgeGrace,
+			Time:                  keepaliveTime,
+			Timeout:               keepaliveTimeout,
+		}),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             keepaliveMinTime,
+			PermitWithoutStream: true,
+		}),
 		grpc.ChainUnaryInterceptor(
 			grpccontext.PanicRecoveryUnaryInterceptor,
 			grpccontext.UnaryInterceptor(logger),
@@ -968,23 +1104,37 @@ func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 	)
 }
 
-func (s *GRPCServer) setupHealthCheck(server *grpc.Server) {
+func (s *GRPCServer) setupHealthCheck(server *grpc.Server, descResolver *protoregistry.Files) {
 	healthcheck := health.NewServer()
 	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_NOT_SERVING)
 	healthgrpc.RegisterHealthServer(server, healthcheck)
-	reflection.Register(server)
+
+	if descResolver != nil {
+		reflectionSvr := reflection.NewServerV1(reflection.ServerOptions{
+			Services:           server,
+			DescriptorResolver: descResolver,
+		})
+		reflectiongrpc.RegisterServerReflectionServer(server, reflectionSvr)
+		reflectiongrpcv1alpha.RegisterServerReflectionServer(server, reflection.NewServer(reflection.ServerOptions{
+			Services:           server,
+			DescriptorResolver: descResolver,
+		}))
+	} else {
+		reflection.Register(server)
+	}
 
 	s.healthcheck = healthcheck
 }
 
-func (s *GRPCServer) registerServices(ctx context.Context, server *grpc.Server, descriptors []*descriptorpb.FileDescriptorSet) {
+//nolint:lll
+func (s *GRPCServer) registerServices(ctx context.Context, server *grpc.Server, descriptors []*descriptorpb.FileDescriptorSet, reg *protoregistry.Files) {
 	logger := zerolog.Ctx(ctx)
 
 	for _, descriptor := range descriptors {
 		for _, file := range descriptor.GetFile() {
 			for _, svc := range file.GetService() {
 				serviceDesc := s.createServiceDesc(file, svc)
-				s.registerServiceMethods(ctx, &serviceDesc, svc)
+				s.registerServiceMethods(ctx, &serviceDesc, svc, reg)
 				server.RegisterService(&serviceDesc, nil)
 				logger.Info().Str("service", serviceDesc.ServiceName).Msg("Registered gRPC service")
 			}
@@ -999,16 +1149,17 @@ func (s *GRPCServer) createServiceDesc(file *descriptorpb.FileDescriptorProto, s
 	}
 }
 
-func (s *GRPCServer) registerServiceMethods(ctx context.Context, serviceDesc *grpc.ServiceDesc, svc *descriptorpb.ServiceDescriptorProto) {
+//nolint:lll
+func (s *GRPCServer) registerServiceMethods(ctx context.Context, serviceDesc *grpc.ServiceDesc, svc *descriptorpb.ServiceDescriptorProto, reg *protoregistry.Files) {
 	logger := zerolog.Ctx(ctx)
 
 	for _, method := range svc.GetMethod() {
-		inputDesc, err := getMessageDescriptor(method.GetInputType())
+		inputDesc, err := getMessageDescriptor(reg, method.GetInputType())
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to get input message descriptor")
 		}
 
-		outputDesc, err := getMessageDescriptor(method.GetOutputType())
+		outputDesc, err := getMessageDescriptor(reg, method.GetOutputType())
 		if err != nil {
 			logger.Fatal().Err(err).Msg("Failed to get output message descriptor")
 		}
@@ -1043,6 +1194,7 @@ func (s *GRPCServer) createGrpcMocker(
 	return &grpcMocker{
 		budgerigar:     s.budgerigar,
 		templateEngine: templateEngine,
+		recorder:       s.recorder,
 
 		inputDesc:  inputDesc,
 		outputDesc: outputDesc,
@@ -1090,10 +1242,14 @@ func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.Se
 }
 
 //nolint:ireturn
-func getMessageDescriptor(messageType string) (protoreflect.MessageDescriptor, error) {
+func getMessageDescriptor(reg *protoregistry.Files, messageType string) (protoreflect.MessageDescriptor, error) {
+	if reg == nil {
+		reg = protoregistry.GlobalFiles
+	}
+
 	msgName := protoreflect.FullName(strings.TrimPrefix(messageType, "."))
 
-	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(msgName)
+	desc, err := reg.FindDescriptorByName(msgName)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Message descriptor not found: %v", err)
 	}
@@ -1262,19 +1418,35 @@ type loggingStream struct {
 }
 
 func (s *loggingStream) SendMsg(m any) error {
-	if m != nil && !isNilInterface(m) {
-		s.responses = append(s.responses, m)
-	}
+	s.appendResponse(m)
 
 	return s.ServerStream.SendMsg(m)
 }
 
 func (s *loggingStream) RecvMsg(m any) error {
-	if m != nil && !isNilInterface(m) {
-		s.requests = append(s.requests, m)
-	}
+	s.appendRequest(m)
 
 	return s.ServerStream.RecvMsg(m)
+}
+
+func (s *loggingStream) appendRequest(m any) {
+	if m == nil || isNilInterface(m) {
+		return
+	}
+
+	if len(s.requests) < maxLoggingStreamMsgs {
+		s.requests = append(s.requests, m)
+	}
+}
+
+func (s *loggingStream) appendResponse(m any) {
+	if m == nil || isNilInterface(m) {
+		return
+	}
+
+	if len(s.responses) < maxLoggingStreamMsgs {
+		s.responses = append(s.responses, m)
+	}
 }
 
 func (m *grpcMocker) sendBidiResponses(

@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -25,7 +24,7 @@ type AdminPanelTestSuite struct {
 // SetupSuite initializes the test suite.
 func (s *AdminPanelTestSuite) SetupSuite() {
 	s.budgerigar = stuber.NewBudgerigar(features.New())
-	server, err := NewRestServer(context.Background(), s.budgerigar, nil)
+	server, err := NewRestServer(s.T().Context(), s.budgerigar, nil, nil, nil)
 	s.Require().NoError(err)
 	s.server = server
 }

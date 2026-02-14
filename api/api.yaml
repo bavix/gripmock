@@ -22,6 +22,8 @@ tags:
     description: Dashboard
   - name: healthcheck
     description: Healthcheck
+  - name: descriptors
+    description: Protocol Buffer descriptors (FileDescriptorSet)
 paths:
   # healthcheck
   /health/liveness:
@@ -58,6 +60,33 @@ paths:
                 $ref: '#/components/schemas/MessageOK'
         '400':
           description: Bad Request
+        '500':
+          description: Internal Server Error
+
+  # descriptors
+  /descriptors:
+    post:
+      tags:
+        - descriptors
+      summary: Upload FileDescriptorSet
+      description: Accepts binary Protocol Buffers FileDescriptorSet. Registers descriptors for dynamic service discovery.
+      operationId: addDescriptors
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Descriptors registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOK'
+        '400':
+          description: Invalid or empty FileDescriptorSet
         '500':
           description: Internal Server Error
 
@@ -281,6 +310,38 @@ paths:
           description: Stub not found
         '500':
           description: Internal Server Error
+    patch:
+      tags:
+        - stubs
+      summary: Partially update stub by ID
+      description: Updates only the provided fields of the stub; omitted fields are preserved
+      operationId: patchStubByID
+      parameters:
+        - name: uuid
+          in: path
+          description: ID of stub
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StubPatch'
+      responses:
+        '200':
+          description: Stub updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stub'
+        '400':
+          description: Invalid UUID or patch data
+        '404':
+          description: Stub not found
+        '500':
+          description: Internal Server Error
   '/stubs/search':
     post:
       tags:
@@ -308,6 +369,53 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SearchRequest'
+
+  # history & verify
+  /history:
+    get:
+      tags:
+        - history
+      summary: Get call history
+      description: Returns recorded gRPC calls (when history is enabled)
+      operationId: listHistory
+      responses:
+        '200':
+          description: List of recorded calls
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryList'
+        '500':
+          description: Internal Server Error
+  /verify:
+    post:
+      tags:
+        - verify
+      summary: Verify call counts
+      description: Asserts that a method was called a specified number of times
+      operationId: verifyCalls
+      responses:
+        '200':
+          description: Verification passed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOK'
+        '400':
+          description: Verification failed (wrong call count)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyError'
+        '500':
+          description: Internal Server Error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+
 components:
   schemas:
     # health
@@ -431,6 +539,53 @@ components:
             path: google.golang.org/grpc/codes
           example: 3
           x-go-type-skip-optional-pointer: true
+    CallRecord:
+      type: object
+      properties:
+        service:
+          type: string
+        method:
+          type: string
+        request:
+          type: object
+          additionalProperties: true
+        response:
+          type: object
+          additionalProperties: true
+        error:
+          type: string
+        stubId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    HistoryList:
+      type: array
+      items:
+        $ref: '#/components/schemas/CallRecord'
+    VerifyRequest:
+      type: object
+      required:
+        - service
+        - method
+        - expectedCount
+      properties:
+        service:
+          type: string
+        method:
+          type: string
+        expectedCount:
+          type: integer
+          minimum: 0
+    VerifyError:
+      type: object
+      properties:
+        message:
+          type: string
+        expected:
+          type: integer
+        actual:
+          type: integer
     Stub:
       type: object
       required:
@@ -468,6 +623,40 @@ components:
         output:
           $ref: '#/components/schemas/StubOutput'
           x-omitzero: false
+        options:
+          $ref: '#/components/schemas/StubOptions'
+          x-omitzero: true
+    StubOptions:
+      type: object
+      description: Optional behavior settings for a stub
+      properties:
+        times:
+          type: integer
+          description: Max number of matches; 0 = unlimited
+          default: 0
+          x-go-type-skip-optional-pointer: true
+    StubPatch:
+      type: object
+      description: Partial stub update - only provided fields are updated
+      properties:
+        service:
+          type: string
+        method:
+          type: string
+        priority:
+          type: integer
+        options:
+          $ref: '#/components/schemas/StubOptions'
+        headers:
+          $ref: '#/components/schemas/StubHeaders'
+        input:
+          $ref: '#/components/schemas/StubInput'
+        inputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/StubInput'
+        output:
+          $ref: '#/components/schemas/StubOutput'
     StubInput:
       type: object
       properties:

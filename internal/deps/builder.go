@@ -4,7 +4,11 @@ import (
 	"context"
 	"sync"
 
+	"github.com/go-playground/validator/v10"
+
+	"github.com/bavix/gripmock/v3/internal/app"
 	"github.com/bavix/gripmock/v3/internal/config"
+	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 	internalplugins "github.com/bavix/gripmock/v3/internal/infra/plugins"
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
@@ -20,6 +24,12 @@ type Builder struct {
 
 	budgerigar     *stuber.Budgerigar
 	budgerigarOnce sync.Once
+
+	historyStore     *history.MemoryStore
+	historyStoreOnce sync.Once
+
+	stubValidator     *validator.Validate
+	stubValidatorOnce sync.Once
 
 	extender     *storage.Extender
 	extenderOnce sync.Once
@@ -84,4 +94,27 @@ func (b *Builder) PluginInfos(ctx context.Context) []pkgplugins.PluginWithFuncs 
 	}
 
 	return b.pluginRegistry.Groups(ctx)
+}
+
+// HistoryStore returns the shared in-memory history store when HistoryEnabled.
+// Returns nil when history is disabled.
+func (b *Builder) HistoryStore() *history.MemoryStore {
+	if !b.config.HistoryEnabled {
+		return nil
+	}
+
+	b.historyStoreOnce.Do(func() {
+		b.historyStore = &history.MemoryStore{}
+	})
+
+	return b.historyStore
+}
+
+// StubValidator returns the shared stub validator (created once per Builder).
+func (b *Builder) StubValidator() *validator.Validate {
+	b.stubValidatorOnce.Do(func() {
+		b.stubValidator = app.NewStubValidator()
+	})
+
+	return b.stubValidator
 }

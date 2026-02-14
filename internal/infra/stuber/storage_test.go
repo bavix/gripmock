@@ -607,7 +607,6 @@ func TestInitStringCache_HandlesInvalidSize(t *testing.T) {
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 
-	// Save and restore cache so we don't break other tests
 	defer initStringCache(stringCacheSize)
 
 	// initStringCache does not panic; it logs and sets cache to nil on error

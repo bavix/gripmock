@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"iter"
-	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -42,16 +41,16 @@ var ErrStubNotFound = errors.New("stub not found")
 // It contains a mutex for concurrent access, a map to store and retrieve
 // used stubs by their UUID, and a pointer to the storage struct.
 type searcher struct {
-	mu       sync.RWMutex
-	stubUsed map[uuid.UUID]struct{}
-	storage  *storage
+	mu            sync.RWMutex
+	stubCallCount map[uuid.UUID]int // count of matches per stub (for Times limit)
+	storage       *storage
 }
 
 // newSearcher creates a new searcher instance.
 func newSearcher() *searcher {
 	return &searcher{
-		storage:  newStorage(),
-		stubUsed: make(map[uuid.UUID]struct{}),
+		storage:       newStorage(),
+		stubCallCount: make(map[uuid.UUID]int),
 	}
 }
 
@@ -93,14 +92,18 @@ func (br *BidiResult) Next(messageData map[string]any) (*Stub, error) {
 		return nil, ErrStubNotFound
 	}
 
-	bestStub := br.selectBestStub(messageData)
-	if bestStub == nil {
-		return nil, ErrStubNotFound
+	for {
+		bestStub := br.selectBestStub(messageData)
+		if bestStub == nil {
+			return nil, ErrStubNotFound
+		}
+
+		if br.tryReserveAndFinalize(bestStub, messageData) {
+			return bestStub, nil
+		}
+		// Stub exhausted (Times), remove and try next
+		br.removeStubFromMatching(bestStub)
 	}
-
-	br.finalizeStubSelection(bestStub, messageData)
-
-	return bestStub, nil
 }
 
 // GetMessageIndex returns the current message index in the bidirectional stream.
@@ -114,6 +117,9 @@ func (br *BidiResult) ensureMatchingStubs(messageData map[string]any) bool {
 		if err != nil {
 			return false
 		}
+
+		allStubs = filterBySession(allStubs, br.query.Session)
+		allStubs = br.searcher.filterExhaustedStubs(allStubs)
 
 		for _, stub := range allStubs {
 			if br.stubMatchesMessage(stub, messageData) {
@@ -191,7 +197,7 @@ func (br *BidiResult) rankStubForMessage(stub *Stub, messageData map[string]any,
 	return br.rankStub(stub, query)
 }
 
-func (br *BidiResult) finalizeStubSelection(bestStub *Stub, messageData map[string]any) {
+func (br *BidiResult) tryReserveAndFinalize(bestStub *Stub, messageData map[string]any) bool {
 	query := Query{
 		Service: br.query.Service,
 		Method:  br.query.Method,
@@ -200,12 +206,27 @@ func (br *BidiResult) finalizeStubSelection(bestStub *Stub, messageData map[stri
 		toggles: br.query.toggles,
 	}
 
+	if !br.searcher.tryReserve(query, bestStub) {
+		return false
+	}
+
 	if !bestStub.IsClientStream() && br.messageCount.Load() == 0 {
 		br.matchingStubs = br.matchingStubs[:0]
 		br.messageCount.Store(0)
 	}
 
-	br.searcher.mark(query, bestStub.ID)
+	return true
+}
+
+func (br *BidiResult) removeStubFromMatching(stub *Stub) {
+	filtered := br.matchingStubs[:0]
+	for _, s := range br.matchingStubs {
+		if s.ID != stub.ID {
+			filtered = append(filtered, s)
+		}
+	}
+
+	br.matchingStubs = filtered
 }
 
 // stubMatchesMessage checks if a stub matches the given message.
@@ -332,7 +353,6 @@ func (br *BidiResult) matchInputData(inputData InputData, messageData map[string
 		}
 	}
 
-	// Check Contains - avoid creating temporary maps
 	if len(inputData.Contains) > 0 {
 		for key, expectedValue := range inputData.Contains {
 			actualValue, exists := messageData[key]
@@ -347,7 +367,6 @@ func (br *BidiResult) matchInputData(inputData InputData, messageData map[string
 		}
 	}
 
-	// Check Matches - avoid creating temporary maps
 	if len(inputData.Matches) > 0 {
 		for key, expectedValue := range inputData.Matches {
 			actualValue, exists := messageData[key]
@@ -585,8 +604,8 @@ func (s *searcher) clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Clear the stubUsed map.
-	s.stubUsed = make(map[uuid.UUID]struct{})
+	// Clear the stubCallCount map.
+	s.stubCallCount = make(map[uuid.UUID]int)
 
 	// Clear the storage.
 	s.storage.clear()
@@ -608,7 +627,14 @@ func (s *searcher) used() []*Stub {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	return collectStubs(s.storage.findByIDs(maps.Keys(s.stubUsed)))
+	usedIDs := make([]uuid.UUID, 0, len(s.stubCallCount))
+	for id, n := range s.stubCallCount {
+		if n > 0 {
+			usedIDs = append(usedIDs, id)
+		}
+	}
+
+	return collectStubs(s.storage.findByIDs(seqFromSlice(usedIDs)))
 }
 
 // unused returns all Stub values that have not been used by the searcher.
@@ -622,7 +648,7 @@ func (s *searcher) unused() []*Stub {
 	unused := make([]*Stub, 0)
 
 	for stub := range s.iterAll() {
-		if _, exists := s.stubUsed[stub.ID]; !exists {
+		if s.stubCallCount[stub.ID] == 0 {
 			unused = append(unused, stub)
 		}
 	}
@@ -653,10 +679,14 @@ func (s *searcher) searchByID(query Query) (*Result, error) {
 		return nil, s.wrap(err)
 	}
 
-	if found := s.findByID(*query.ID); found != nil {
-		s.mark(query, *query.ID)
+	found := s.findByID(*query.ID)
+	if found != nil {
+		matched := filterBySession([]*Stub{found}, query.Session)
 
-		return &Result{found: found}, nil
+		matched = s.filterExhaustedStubs(matched)
+		if len(matched) > 0 && s.tryReserve(query, found) {
+			return &Result{found: found}, nil
+		}
 	}
 
 	return nil, ErrServiceNotFound
@@ -667,25 +697,24 @@ func (s *searcher) search(query Query) (*Result, error) {
 	return s.searchOptimized(query)
 }
 
-// mark marks the given Stub value as used in the searcher.
-//
-// If the query's RequestInternal flag is set, the mark is skipped.
-//
-// Parameters:
-// - query: The query used to mark the Stub value.
-// - id: The UUID of the Stub value to mark.
-func (s *searcher) mark(query Query, id uuid.UUID) {
-	// If the query's RequestInternal flag is set, skip the mark.
+// tryReserve atomically checks if the stub can be used (under Times limit) and increments the count.
+// Returns true if the reservation succeeded, false if the stub is exhausted.
+func (s *searcher) tryReserve(query Query, stub *Stub) bool {
 	if query.RequestInternal() {
-		return
+		return true
 	}
 
-	// Lock the mutex to ensure concurrent access.
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Mark the Stub value as used by adding it to the stubUsed map.
-	s.stubUsed[id] = struct{}{}
+	times := stub.EffectiveTimes()
+	if times > 0 && s.stubCallCount[stub.ID] >= times {
+		return false
+	}
+
+	s.stubCallCount[stub.ID]++
+
+	return true
 }
 
 // findBidi retrieves a BidiResult for bidirectional streaming with the given QueryBidi.
@@ -732,16 +761,70 @@ func (s *searcher) searchByIDBidi(query QueryBidi) (*BidiResult, error) {
 	}
 
 	// Search for the Stub value with the given ID
-	if found := s.findByID(*query.ID); found != nil {
-		return &BidiResult{
-			searcher:      s,
-			query:         query,
-			matchingStubs: []*Stub{found},
-		}, nil
+	found := s.findByID(*query.ID)
+	if found != nil {
+		matched := filterBySession([]*Stub{found}, query.Session)
+
+		matched = s.filterExhaustedStubs(matched)
+		if len(matched) > 0 {
+			// tryReserve not called here - BidiResult will call it when GetNextStub
+			return &BidiResult{
+				searcher:      s,
+				query:         query,
+				matchingStubs: matched,
+			}, nil
+		}
 	}
 
 	// Return an error if the Stub value is not found
 	return nil, ErrServiceNotFound
+}
+
+// filterExhaustedStubs removes stubs that have reached their Times limit.
+func (s *searcher) filterExhaustedStubs(stubs []*Stub) []*Stub {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	filtered := stubs[:0]
+	for _, stub := range stubs {
+		times := stub.EffectiveTimes()
+		if times <= 0 {
+			filtered = append(filtered, stub)
+
+			continue
+		}
+
+		if s.stubCallCount[stub.ID] < times {
+			filtered = append(filtered, stub)
+		}
+	}
+
+	return filtered
+}
+
+// filterBySession returns stubs visible for the given session.
+// Session empty: only global stubs (stub.Session == "").
+// Session non-empty: global stubs + stubs for that session.
+func filterBySession(stubs []*Stub, session string) []*Stub {
+	if session == "" {
+		filtered := stubs[:0]
+		for _, stub := range stubs {
+			if stub.Session == "" {
+				filtered = append(filtered, stub)
+			}
+		}
+
+		return filtered
+	}
+
+	filtered := stubs[:0]
+	for _, stub := range stubs {
+		if stub.Session == "" || stub.Session == session {
+			filtered = append(filtered, stub)
+		}
+	}
+
+	return filtered
 }
 
 // searchOptimized performs ultra-fast search with minimal allocations.
@@ -759,6 +842,9 @@ func (s *searcher) searchOptimized(query Query) (*Result, error) {
 		stubs = append(stubs, stub)
 	}
 
+	stubs = filterBySession(stubs, query.Session)
+	stubs = s.filterExhaustedStubs(stubs)
+
 	// Process collected stubs
 	return s.processStubs(query, stubs)
 }
@@ -771,9 +857,7 @@ func (s *searcher) processStubs(query Query, stubs []*Stub) (*Result, error) {
 
 	if len(stubs) == 1 {
 		stub := stubs[0]
-		if s.fastMatchV2(query, stub) {
-			s.mark(query, stub.ID)
-
+		if s.fastMatchV2(query, stub) && s.tryReserve(query, stub) {
 			return &Result{found: stub}, nil
 		}
 
@@ -791,12 +875,18 @@ func (s *searcher) processStubs(query Query, stubs []*Stub) (*Result, error) {
 
 // processStubsSequential processes stubs sequentially (original logic).
 func (s *searcher) processStubsSequential(query Query, stubs []*Stub) (*Result, error) {
+	type scoredStub struct {
+		stub        *Stub
+		score       float64
+		specificity int
+		totalScore  float64
+		matches     bool
+	}
+
 	var (
-		bestMatch       *Stub
-		bestScore       float64
-		bestSpecificity int
-		mostSimilar     *Stub
-		highestRank     float64
+		matches     []scoredStub
+		mostSimilar *Stub
+		highestRank float64
 	)
 
 	for _, stub := range stubs {
@@ -806,20 +896,35 @@ func (s *searcher) processStubsSequential(query Query, stubs []*Stub) (*Result, 
 		totalScore := rank + priorityBonus
 
 		if s.fastMatchV2(query, stub) {
-			if specificity > bestSpecificity || (specificity == bestSpecificity && totalScore > bestScore) {
-				bestMatch, bestScore, bestSpecificity = stub, totalScore, specificity
-			}
+			matches = append(matches, scoredStub{stub: stub, score: totalScore, specificity: specificity, totalScore: totalScore, matches: true})
 		}
 
-		if totalScore > highestRank { // Track most similar even if not exact match
+		if totalScore > highestRank {
 			mostSimilar, highestRank = stub, totalScore
 		}
 	}
 
-	if bestMatch != nil {
-		s.mark(query, bestMatch.ID)
+	// Sort matches by specificity desc, then totalScore desc
+	slices.SortFunc(matches, func(a, b scoredStub) int {
+		if a.specificity != b.specificity {
+			return b.specificity - a.specificity
+		}
 
-		return &Result{found: bestMatch}, nil
+		if a.totalScore < b.totalScore {
+			return 1
+		}
+
+		if a.totalScore > b.totalScore {
+			return -1
+		}
+
+		return 0
+	})
+
+	for _, m := range matches {
+		if s.tryReserve(query, m.stub) {
+			return &Result{found: m.stub}, nil
+		}
 	}
 
 	if mostSimilar != nil {
@@ -858,11 +963,11 @@ func (s *searcher) processStubsParallel(query Query, stubs []*Stub) (*Result, er
 		return nil, err
 	}
 
-	bestMatch := s.pickBestMatch(query, bestMatches)
-	if bestMatch != nil {
-		s.mark(query, bestMatch.ID)
-
-		return &Result{found: bestMatch}, nil
+	orderedMatches := s.pickBestMatchesOrdered(query, bestMatches)
+	for _, stub := range orderedMatches {
+		if s.tryReserve(query, stub) {
+			return &Result{found: stub}, nil
+		}
 	}
 
 	mostSimilar := s.pickMostSimilar(query, mostSimilars)
@@ -926,25 +1031,47 @@ func (s *searcher) collectChunkResults(
 	return bestMatches, mostSimilars, nil
 }
 
-func (s *searcher) pickBestMatch(query Query, candidates []*Stub) *Stub {
-	var (
-		best            *Stub
-		bestScore       float64
-		bestSpecificity int
-	)
+// pickBestMatchesOrdered returns candidates sorted by specificity (desc), then totalScore (desc).
+// Used to try tryReserve in order when the best stub may be exhausted (Times).
+func (s *searcher) pickBestMatchesOrdered(query Query, candidates []*Stub) []*Stub {
+	type scored struct {
+		stub        *Stub
+		specificity int
+		totalScore  float64
+	}
+
+	scoredList := make([]scored, 0, len(candidates))
 
 	for _, stub := range candidates {
 		rank := s.fastRankV2(query, stub)
 		priorityBonus := float64(stub.Priority) * PriorityMultiplier
 		specificity := s.calcSpecificity(stub, query)
 		totalScore := rank + priorityBonus
-
-		if specificity > bestSpecificity || (specificity == bestSpecificity && totalScore > bestScore) {
-			best, bestScore, bestSpecificity = stub, totalScore, specificity
-		}
+		scoredList = append(scoredList, scored{stub, specificity, totalScore})
 	}
 
-	return best
+	slices.SortFunc(scoredList, func(a, b scored) int {
+		if a.specificity != b.specificity {
+			return b.specificity - a.specificity
+		}
+
+		if a.totalScore < b.totalScore {
+			return 1
+		}
+
+		if a.totalScore > b.totalScore {
+			return -1
+		}
+
+		return 0
+	})
+
+	out := make([]*Stub, len(scoredList))
+	for i := range scoredList {
+		out[i] = scoredList[i].stub
+	}
+
+	return out
 }
 
 func (s *searcher) pickMostSimilar(query Query, candidates []*Stub) *Stub {
@@ -1150,6 +1277,17 @@ func (s *searcher) fastRankStream(queryStream []map[string]any, stubStream []Inp
 
 	// Use original implementation for complex cases
 	return rankStreamElements(queryStream, stubStream)
+}
+
+// seqFromSlice converts a slice of UUIDs to iter.Seq[uuid.UUID].
+func seqFromSlice(ids []uuid.UUID) iter.Seq[uuid.UUID] {
+	return func(yield func(uuid.UUID) bool) {
+		for _, id := range ids {
+			if !yield(id) {
+				return
+			}
+		}
+	}
 }
 
 func collectStubs(seq iter.Seq[*Stub]) []*Stub {

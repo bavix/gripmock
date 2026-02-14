@@ -103,10 +103,12 @@ func (m *mockFullServerStream) SendHeader(md metadata.MD) error {
 func (m *mockFullServerStream) SetTrailer(md metadata.MD) {
 }
 
-func createTestMockerForStream() *grpcMocker {
+func createTestMockerForStream(t *testing.T) *grpcMocker {
+	t.Helper()
+
 	structDesc := (&structpb.Struct{}).ProtoReflect().Descriptor()
 	testRegistry := plugintest.NewRegistry()
-	templateEngine := template.New(context.Background(), testRegistry)
+	templateEngine := template.New(t.Context(), testRegistry)
 
 	return &grpcMocker{
 		budgerigar:     stuber.NewBudgerigar(features.New()),
@@ -119,7 +121,7 @@ func createTestMockerForStream() *grpcMocker {
 func TestHandleServerStream_WithArrayStream(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMockerForStream(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
@@ -127,7 +129,7 @@ func TestHandleServerStream_WithArrayStream(t *testing.T) {
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	stream := &mockFullServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		sentMessages:     make([]*dynamicpb.Message, 0),
 		receivedMessages: []*dynamicpb.Message{inputMsg},
 		recvMsgLimit:     1,
@@ -158,7 +160,7 @@ func TestHandleServerStream_WithArrayStream(t *testing.T) {
 func TestHandleServerStream_WithNonArrayStream(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMockerForStream(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
@@ -166,7 +168,7 @@ func TestHandleServerStream_WithNonArrayStream(t *testing.T) {
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	stream := &mockFullServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		sentMessages:     make([]*dynamicpb.Message, 0),
 		receivedMessages: []*dynamicpb.Message{inputMsg},
 		recvMsgLimit:     1,
@@ -194,14 +196,14 @@ func TestHandleServerStream_WithNonArrayStream(t *testing.T) {
 func TestHandleServerStream_WithHeaders(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMockerForStream(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
 	mocker.methodName = testMethodName
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+	ctx := metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{
 		"x-user": "testuser",
 	}))
 	stream := &mockFullServerStream{
@@ -239,7 +241,7 @@ func TestHandleServerStream_WithHeaders(t *testing.T) {
 func TestHandleServerStream_WithError(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMockerForStream(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
@@ -247,7 +249,7 @@ func TestHandleServerStream_WithError(t *testing.T) {
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	stream := &mockFullServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		sentMessages:     make([]*dynamicpb.Message, 0),
 		receivedMessages: []*dynamicpb.Message{inputMsg},
 		recvMsgLimit:     1,
@@ -278,9 +280,9 @@ func TestHandleServerStream_WithError(t *testing.T) {
 func TestHandleServerStream_EOF(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMockerForStream(t)
 	stream := &mockFullServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		recvMsgError: io.EOF,
 	}
@@ -292,9 +294,9 @@ func TestHandleServerStream_EOF(t *testing.T) {
 func TestHandleServerStream_RecvError(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMockerForStream(t)
 	stream := &mockFullServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		recvMsgError: status.Error(codes.Internal, "receive error"),
 	}
@@ -307,7 +309,7 @@ func TestHandleServerStream_RecvError(t *testing.T) {
 func TestHandleServerStream_NotFound(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMockerForStream(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
@@ -315,7 +317,7 @@ func TestHandleServerStream_NotFound(t *testing.T) {
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	stream := &mockFullServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		sentMessages:     make([]*dynamicpb.Message, 0),
 		receivedMessages: []*dynamicpb.Message{inputMsg},
 		recvMsgLimit:     1,
@@ -329,9 +331,9 @@ func TestHandleServerStream_NotFound(t *testing.T) {
 func TestHandleNonArrayStreamData_SendsMessages(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMockerForStream(t)
 	stream := &mockFullServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		recvMsgLimit: 1,
 	}
@@ -351,9 +353,9 @@ func TestHandleNonArrayStreamData_SendsMessages(t *testing.T) {
 func TestHandleNonArrayStreamData_WithDelay(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMockerForStream(t)
 	stream := &mockFullServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		recvMsgLimit: 1,
 	}
@@ -377,10 +379,10 @@ func TestHandleNonArrayStreamData_WithDelay(t *testing.T) {
 func TestHandleNonArrayStreamData_WithTemplates(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMockerForStream(t)
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	stream := &mockFullServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		sentMessages:     make([]*dynamicpb.Message, 0),
 		receivedMessages: []*dynamicpb.Message{inputMsg},
 		recvMsgLimit:     1,
@@ -401,8 +403,8 @@ func TestHandleNonArrayStreamData_WithTemplates(t *testing.T) {
 func TestHandleNonArrayStreamData_ContextCancelled(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
-	ctx, cancel := context.WithCancel(context.Background())
+	mocker := createTestMockerForStream(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	stream := &mockFullServerStream{
@@ -426,9 +428,9 @@ func TestHandleNonArrayStreamData_ContextCancelled(t *testing.T) {
 func TestHandleNonArrayStreamData_WithError(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMockerForStream(t)
 	stream := &mockFullServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		recvMsgLimit: 0,
 	}
@@ -451,7 +453,7 @@ func TestReceiveStreamMessage_Success(t *testing.T) {
 
 	msg := dynamicpb.NewMessage((&structpb.Struct{}).ProtoReflect().Descriptor())
 	stream := &mockFullServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		receivedMessages: []*dynamicpb.Message{msg},
 		recvMsgLimit:     1,
 	}
@@ -465,7 +467,7 @@ func TestReceiveStreamMessage_Error(t *testing.T) {
 
 	msg := dynamicpb.NewMessage((&structpb.Struct{}).ProtoReflect().Descriptor())
 	stream := &mockFullServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		recvMsgError: status.Error(codes.Internal, "receive error"),
 	}
 

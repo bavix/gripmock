@@ -284,7 +284,6 @@ func matchStreamElements(queryStream []map[string]any, stubStream []InputData) b
 		}
 	}
 
-	// Enforce exact length match for client streaming to avoid out-of-range panics
 	if effectiveQueryLength != len(stubStream) {
 		return false
 	}

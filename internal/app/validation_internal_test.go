@@ -1,11 +1,13 @@
 package app
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 
+	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -651,11 +653,14 @@ func TestValidateStub_WithValidator(t *testing.T) {
 		},
 	}
 
+	server, err := NewRestServer(context.Background(), stuber.NewBudgerigar(features.New()), nil, nil, nil)
+	require.NoError(t, err)
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := validateStub(tt.stub)
+			err := server.validateStub(tt.stub)
 
 			if tt.wantErr {
 				require.Error(t, err)

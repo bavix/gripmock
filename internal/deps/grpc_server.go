@@ -8,9 +8,11 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/bavix/gripmock/v3/internal/app"
+	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/domain/proto"
 )
 
+//nolint:funlen
 func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 	listener, err := (&net.ListenConfig{}).Listen(ctx, b.config.GRPCNetwork, b.config.GRPCAddr)
 	if err != nil {
@@ -24,12 +26,18 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		Str("network", listener.Addr().Network()).
 		Msg("Serving gRPC")
 
+	var recorder history.Recorder
+	if store := b.HistoryStore(); store != nil {
+		recorder = store
+	}
+
 	grpcServer := app.NewGRPCServer(
 		b.config.GRPCNetwork,
 		b.config.GRPCAddr,
 		param,
 		b.Budgerigar(),
 		b.Extender(ctx),
+		recorder,
 	)
 
 	server, err := grpcServer.Build(ctx)

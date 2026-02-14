@@ -16,6 +16,20 @@ import (
 	codes "google.golang.org/grpc/codes"
 )
 
+// CallRecord defines model for CallRecord.
+type CallRecord struct {
+	Error     *string         `json:"error,omitempty"`
+	Method    *string         `json:"method,omitempty"`
+	Request   *map[string]any `json:"request,omitempty"`
+	Response  *map[string]any `json:"response,omitempty"`
+	Service   *string         `json:"service,omitempty"`
+	StubId    *string         `json:"stubId,omitempty"`
+	Timestamp *time.Time      `json:"timestamp,omitempty"`
+}
+
+// HistoryList defines model for HistoryList.
+type HistoryList = []CallRecord
+
 // ID defines model for ID.
 type ID = openapi_types.UUID
 
@@ -68,7 +82,10 @@ type Stub struct {
 	// Inputs Inputs to match against. If multiple inputs are provided, the stub will be matched if any of the inputs match.
 	Inputs []StubInput `json:"inputs,omitempty"`
 	Method string      `json:"method"`
-	Output StubOutput  `json:"output"`
+
+	// Options Optional behavior settings for a stub
+	Options *StubOptions `json:"options,omitempty"`
+	Output  StubOutput   `json:"output"`
 
 	// Priority Priority of the stub. Higher priority stubs are matched first.
 	Priority int    `json:"priority,omitempty"`
@@ -93,6 +110,12 @@ type StubInput struct {
 // StubList defines model for StubList.
 type StubList = []Stub
 
+// StubOptions Optional behavior settings for a stub
+type StubOptions struct {
+	// Times Max number of matches; 0 = unlimited
+	Times int `json:"times,omitempty"`
+}
+
 // StubOutput defines model for StubOutput.
 type StubOutput struct {
 	Code codes.Code     `json:"code,omitempty"`
@@ -103,6 +126,34 @@ type StubOutput struct {
 	Error   string            `json:"error,omitempty"`
 	Headers map[string]string `json:"headers,omitempty"`
 	Stream  []map[string]any  `json:"stream,omitempty"`
+}
+
+// StubPatch Partial stub update - only provided fields are updated
+type StubPatch struct {
+	Headers StubHeaders  `json:"headers,omitempty"`
+	Input   *StubInput   `json:"input,omitempty"`
+	Inputs  *[]StubInput `json:"inputs,omitempty"`
+	Method  *string      `json:"method,omitempty"`
+
+	// Options Optional behavior settings for a stub
+	Options  *StubOptions `json:"options,omitempty"`
+	Output   *StubOutput  `json:"output,omitempty"`
+	Priority *int         `json:"priority,omitempty"`
+	Service  *string      `json:"service,omitempty"`
+}
+
+// VerifyError defines model for VerifyError.
+type VerifyError struct {
+	Actual   *int    `json:"actual,omitempty"`
+	Expected *int    `json:"expected,omitempty"`
+	Message  *string `json:"message,omitempty"`
+}
+
+// VerifyRequest defines model for VerifyRequest.
+type VerifyRequest struct {
+	ExpectedCount int    `json:"expectedCount"`
+	Method        string `json:"method"`
+	Service       string `json:"service"`
 }
 
 // AddStubJSONBody defines parameters for AddStub.
@@ -119,14 +170,26 @@ type BatchStubsDeleteJSONRequestBody = ListID
 // SearchStubsJSONRequestBody defines body for SearchStubs for application/json ContentType.
 type SearchStubsJSONRequestBody = SearchRequest
 
+// PatchStubByIDJSONRequestBody defines body for PatchStubByID for application/json ContentType.
+type PatchStubByIDJSONRequestBody = StubPatch
+
+// VerifyCallsJSONRequestBody defines body for VerifyCalls for application/json ContentType.
+type VerifyCallsJSONRequestBody = VerifyRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Upload FileDescriptorSet
+	// (POST /descriptors)
+	AddDescriptors(w http.ResponseWriter, r *http.Request)
 	// Liveness check
 	// (GET /health/liveness)
 	Liveness(w http.ResponseWriter, r *http.Request)
 	// Readiness check
 	// (GET /health/readiness)
 	Readiness(w http.ResponseWriter, r *http.Request)
+	// Get call history
+	// (GET /history)
+	ListHistory(w http.ResponseWriter, r *http.Request)
 	// Services
 	// (GET /services)
 	ServicesList(w http.ResponseWriter, r *http.Request)
@@ -160,6 +223,12 @@ type ServerInterface interface {
 	// Get Stub by ID
 	// (GET /stubs/{uuid})
 	FindByID(w http.ResponseWriter, r *http.Request, uuid ID)
+	// Partially update stub by ID
+	// (PATCH /stubs/{uuid})
+	PatchStubByID(w http.ResponseWriter, r *http.Request, uuid ID)
+	// Verify call counts
+	// (POST /verify)
+	VerifyCalls(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -170,6 +239,20 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// AddDescriptors operation middleware
+func (siw *ServerInterfaceWrapper) AddDescriptors(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AddDescriptors(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // Liveness operation middleware
 func (siw *ServerInterfaceWrapper) Liveness(w http.ResponseWriter, r *http.Request) {
@@ -190,6 +273,20 @@ func (siw *ServerInterfaceWrapper) Readiness(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Readiness(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListHistory operation middleware
+func (siw *ServerInterfaceWrapper) ListHistory(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListHistory(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -386,6 +483,45 @@ func (siw *ServerInterfaceWrapper) FindByID(w http.ResponseWriter, r *http.Reque
 	handler.ServeHTTP(w, r)
 }
 
+// PatchStubByID operation middleware
+func (siw *ServerInterfaceWrapper) PatchStubByID(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "uuid" -------------
+	var uuid ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "uuid", mux.Vars(r)["uuid"], &uuid, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "uuid", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PatchStubByID(w, r, uuid)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// VerifyCalls operation middleware
+func (siw *ServerInterfaceWrapper) VerifyCalls(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.VerifyCalls(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 type UnescapedCookieParamError struct {
 	ParamName string
 	Err       error
@@ -499,9 +635,13 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	r.HandleFunc(options.BaseURL+"/descriptors", wrapper.AddDescriptors).Methods("POST")
+
 	r.HandleFunc(options.BaseURL+"/health/liveness", wrapper.Liveness).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/health/readiness", wrapper.Readiness).Methods("GET")
+
+	r.HandleFunc(options.BaseURL+"/history", wrapper.ListHistory).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/services", wrapper.ServicesList).Methods("GET")
 
@@ -524,6 +664,10 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/stubs/{uuid}", wrapper.DeleteStubByID).Methods("DELETE")
 
 	r.HandleFunc(options.BaseURL+"/stubs/{uuid}", wrapper.FindByID).Methods("GET")
+
+	r.HandleFunc(options.BaseURL+"/stubs/{uuid}", wrapper.PatchStubByID).Methods("PATCH")
+
+	r.HandleFunc(options.BaseURL+"/verify", wrapper.VerifyCalls).Methods("POST")
 
 	return r
 }

@@ -72,12 +72,13 @@ func (m *mockArrayStreamServerStream) SendHeader(md metadata.MD) error {
 func (m *mockArrayStreamServerStream) SetTrailer(md metadata.MD) {
 }
 
-func createTestMocker() *grpcMocker {
+func createTestMocker(t *testing.T) *grpcMocker {
+	t.Helper()
 	// Use structpb.Struct descriptor for testing (simpler than creating custom descriptor)
 	structDesc := (&structpb.Struct{}).ProtoReflect().Descriptor()
 
 	testRegistry := plugintest.NewRegistry()
-	templateEngine := template.New(context.Background(), testRegistry)
+	templateEngine := template.New(t.Context(), testRegistry)
 
 	return &grpcMocker{
 		budgerigar:     stuber.NewBudgerigar(features.New()),
@@ -90,9 +91,9 @@ func createTestMocker() *grpcMocker {
 func TestHandleArrayStreamData_SendsAllMessages(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 	}
 
@@ -120,9 +121,9 @@ func TestHandleArrayStreamData_SendsAllMessages(t *testing.T) {
 func TestHandleArrayStreamData_EmptyStream(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 	}
 
@@ -144,9 +145,9 @@ func TestHandleArrayStreamData_EmptyStream(t *testing.T) {
 func TestHandleArrayStreamData_WithDelay(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 	}
 
@@ -178,9 +179,9 @@ func TestHandleArrayStreamData_WithDelay(t *testing.T) {
 func TestHandleArrayStreamData_WithTemplates(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 	}
 
@@ -217,9 +218,9 @@ func TestHandleArrayStreamData_WithTemplates(t *testing.T) {
 func TestHandleArrayStreamData_InvalidDataType(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 	}
 
@@ -248,10 +249,10 @@ func TestHandleArrayStreamData_InvalidDataType(t *testing.T) {
 func TestHandleArrayStreamData_SendMsgError(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	expectedError := status.Error(codes.Internal, "send error")
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		sendMsgError: expectedError,
 	}
@@ -276,9 +277,9 @@ func TestHandleArrayStreamData_SendMsgError(t *testing.T) {
 func TestHandleArrayStreamData_ContextCancelled(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		sentMessages:     make([]*dynamicpb.Message, 0),
 		contextCancelled: true,
 	}
@@ -303,9 +304,9 @@ func TestHandleArrayStreamData_ContextCancelled(t *testing.T) {
 func TestHandleArrayStreamData_MessageIndexInTemplates(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 	}
 
@@ -337,9 +338,9 @@ func TestHandleArrayStreamData_MessageIndexInTemplates(t *testing.T) {
 func TestHandleArrayStreamData_WithHeaders(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	md := metadata.New(map[string]string{"x-user-id": "123"})
-	ctx := metadata.NewIncomingContext(context.Background(), md)
+	ctx := metadata.NewIncomingContext(t.Context(), md)
 	stream := &mockArrayStreamServerStream{
 		ctx:          ctx,
 		sentMessages: make([]*dynamicpb.Message, 0),
@@ -369,9 +370,9 @@ func TestHandleArrayStreamData_WithHeaders(t *testing.T) {
 func TestHandleArrayStreamData_EOFError(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		sendMsgError: io.EOF,
 	}

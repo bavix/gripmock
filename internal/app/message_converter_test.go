@@ -631,7 +631,6 @@ func TestMessageConverter_ConvertToMap_Unicode(t *testing.T) {
 
 	converter := app.NewMessageConverter()
 
-	// Test with unicode characters (ASCII only to avoid gosmopolitan issues)
 	msg := wrapperspb.String("test 🚀 rocket")
 	result := converter.ConvertToMap(msg)
 

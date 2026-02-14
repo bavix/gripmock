@@ -68,6 +68,12 @@ func (m *mockServer) AddStub(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (m *mockServer) AddDescriptors(w http.ResponseWriter, _ *http.Request) {
+	m.called["AddDescriptors"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func (m *mockServer) BatchStubsDelete(w http.ResponseWriter, _ *http.Request) {
 	m.called["BatchStubsDelete"] = true
 
@@ -92,6 +98,18 @@ func (m *mockServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (m *mockServer) ListHistory(w http.ResponseWriter, _ *http.Request) {
+	m.called["ListHistory"] = true
+
+	_ = json.NewEncoder(w).Encode(HistoryList{}) //nolint:errchkjson
+}
+
+func (m *mockServer) VerifyCalls(w http.ResponseWriter, _ *http.Request) {
+	m.called["VerifyCalls"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func (m *mockServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, _ ID) {
 	m.called["DeleteStubByID"] = true
 
@@ -100,6 +118,12 @@ func (m *mockServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, _ ID
 
 func (m *mockServer) FindByID(w http.ResponseWriter, _ *http.Request, _ ID) {
 	m.called["FindByID"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (m *mockServer) PatchStubByID(w http.ResponseWriter, _ *http.Request, _ ID) {
+	m.called["PatchStubByID"] = true
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -125,6 +149,7 @@ func TestHandler_Routes(t *testing.T) {
 		{http.MethodDelete, "/stubs", "PurgeStubs"},
 		{http.MethodGet, "/stubs", "ListStubs"},
 		{http.MethodPost, "/stubs", "AddStub"},
+		{http.MethodPost, "/descriptors", "AddDescriptors"},
 		{http.MethodPost, "/stubs/batchDelete", "BatchStubsDelete"},
 		{http.MethodPost, "/stubs/search", "SearchStubs"},
 		{http.MethodGet, "/stubs/unused", "ListUnusedStubs"},
