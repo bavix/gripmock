@@ -14,7 +14,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 )
 
-//nolint:ireturn // FileDescriptor is interface from protobuf
+//nolint:ireturn
 func mustFileDesc(t *testing.T, protoPath string) protoreflect.FileDescriptor {
 	t.Helper()
 

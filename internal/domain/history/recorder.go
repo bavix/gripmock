@@ -117,7 +117,7 @@ func (s *MemoryStore) Record(call CallRecord) {
 
 const fallbackRecordSize = 1024
 
-//nolint:gochecknoglobals // immutable, reused for truncation marker
+//nolint:gochecknoglobals
 var truncatedMarker = map[string]any{"_truncated": true}
 
 const redactedValue = "[REDACTED]"

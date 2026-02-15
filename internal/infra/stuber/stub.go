@@ -19,7 +19,7 @@ type Stub struct {
 	Method   string      `json:"method"            validate:"required"`            // The name of the method.
 	Session  string      `json:"session,omitempty"`                                // Session ID for isolation (empty = global).
 	Priority int         `json:"priority"`                                         // The priority score of the stub.
-	Options  StubOptions `json:"options,omitempty"`                                //nolint:modernize            // Optional behavior settings.
+	Options  StubOptions `json:"options,omitempty"`                                //nolint:modernize
 	Headers  InputHeader `json:"headers"`                                          // The headers of the request.
 	Input    InputData   `json:"input"             validate:"valid_input_config"`  // Unary input (mutually exclusive with Inputs).
 	Inputs   []InputData `json:"inputs,omitempty"  validate:"valid_input_config"`  // Client streaming inputs (mutually exclusive with Input).
