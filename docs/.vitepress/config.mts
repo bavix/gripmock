@@ -137,6 +137,21 @@ export default defineConfig({
         collapsed: false,
       },
       {
+        text: 'Embedded SDK',
+        items: [
+          { text: 'Overview', link: '/guide/embedded-sdk/' },
+          { text: 'Installation', link: '/guide/embedded-sdk/installation' },
+          { text: 'Quick Start', link: '/guide/embedded-sdk/quick-start' },
+          { text: 'Defining Stubs', link: '/guide/embedded-sdk/defining-stubs' },
+          { text: 'Advanced Features', link: '/guide/embedded-sdk/advanced-features' },
+          { text: 'Verification', link: '/guide/embedded-sdk/verification' },
+          { text: 'Remote Mode', link: '/guide/embedded-sdk/remote-mode' },
+          { text: 'Session Management', link: '/guide/embedded-sdk/sessions' },
+          { text: 'Best Practices', link: '/guide/embedded-sdk/best-practices' },
+        ],
+        collapsed: false,
+      },
+      {
         text: 'Utility',
         items: [
           { text: 'gRPC Testify', link: 'https://gripmock.github.io/grpctestify/' },

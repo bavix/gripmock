@@ -2,7 +2,7 @@
 title: Match Limit (times)
 ---
 
-# Match Limit (options.times)
+# Match Limit (options.times) <VersionTag version="v3.7.0" />
 
 The `options.times` setting limits how many times a stub can be matched. After the limit is reached, the stub is exhausted and no longer used. This is useful for testing error scenarios, retries, and exact call counts.
 
