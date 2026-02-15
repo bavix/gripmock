@@ -36,13 +36,19 @@ var ErrMethodNotFound = errors.New("method not found")
 // ErrStubNotFound is returned when the stub is not found.
 var ErrStubNotFound = errors.New("stub not found")
 
+// callCountKey identifies a stub's match count per session. Session empty = global count.
+type callCountKey struct {
+	id      uuid.UUID
+	session string
+}
+
 // searcher is a struct that manages the storage of search results.
 //
 // It contains a mutex for concurrent access, a map to store and retrieve
-// used stubs by their UUID, and a pointer to the storage struct.
+// used stubs by their UUID (and session for isolation), and a pointer to the storage struct.
 type searcher struct {
 	mu            sync.RWMutex
-	stubCallCount map[uuid.UUID]int // count of matches per stub (for Times limit)
+	stubCallCount map[callCountKey]int // count of matches per stub+session (for Times limit)
 	storage       *storage
 }
 
@@ -50,7 +56,7 @@ type searcher struct {
 func newSearcher() *searcher {
 	return &searcher{
 		storage:       newStorage(),
-		stubCallCount: make(map[uuid.UUID]int),
+		stubCallCount: make(map[callCountKey]int),
 	}
 }
 
@@ -119,7 +125,7 @@ func (br *BidiResult) ensureMatchingStubs(messageData map[string]any) bool {
 		}
 
 		allStubs = filterBySession(allStubs, br.query.Session)
-		allStubs = br.searcher.filterExhaustedStubs(allStubs)
+		allStubs = br.searcher.filterExhaustedStubs(allStubs, br.query.Session)
 
 		for _, stub := range allStubs {
 			if br.stubMatchesMessage(stub, messageData) {
@@ -201,6 +207,7 @@ func (br *BidiResult) tryReserveAndFinalize(bestStub *Stub, messageData map[stri
 	query := Query{
 		Service: br.query.Service,
 		Method:  br.query.Method,
+		Session: br.query.Session,
 		Headers: br.query.Headers,
 		Input:   []map[string]any{messageData},
 		toggles: br.query.toggles,
@@ -605,7 +612,7 @@ func (s *searcher) clear() {
 	defer s.mu.Unlock()
 
 	// Clear the stubCallCount map.
-	s.stubCallCount = make(map[uuid.UUID]int)
+	s.stubCallCount = make(map[callCountKey]int)
 
 	// Clear the storage.
 	s.storage.clear()
@@ -627,28 +634,37 @@ func (s *searcher) used() []*Stub {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	usedIDs := make([]uuid.UUID, 0, len(s.stubCallCount))
-	for id, n := range s.stubCallCount {
+	usedIDs := make(map[uuid.UUID]struct{})
+	for key, n := range s.stubCallCount {
 		if n > 0 {
-			usedIDs = append(usedIDs, id)
+			usedIDs[key.id] = struct{}{}
 		}
 	}
+	ids := make([]uuid.UUID, 0, len(usedIDs))
+	for id := range usedIDs {
+		ids = append(ids, id)
+	}
 
-	return collectStubs(s.storage.findByIDs(seqFromSlice(usedIDs)))
+	return collectStubs(s.storage.findByIDs(seqFromSlice(ids)))
 }
 
-// unused returns all Stub values that have not been used by the searcher.
-//
-// Returns:
-// - []*Stub: The Stub values that have not been used by the searcher.
+// unused returns all Stub values that have not been used by the searcher (in any session).
 func (s *searcher) unused() []*Stub {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	unused := make([]*Stub, 0)
+	// Pre-compute used IDs to avoid repeated map lookups
+	usedIDs := make(map[uuid.UUID]struct{})
+	for key, n := range s.stubCallCount {
+		if n > 0 {
+			usedIDs[key.id] = struct{}{}
+		}
+	}
 
+	// Collect unused stubs in a single pass
+	unused := make([]*Stub, 0)
 	for stub := range s.iterAll() {
-		if s.stubCallCount[stub.ID] == 0 {
+		if _, exists := usedIDs[stub.ID]; !exists {
 			unused = append(unused, stub)
 		}
 	}
@@ -683,7 +699,7 @@ func (s *searcher) searchByID(query Query) (*Result, error) {
 	if found != nil {
 		matched := filterBySession([]*Stub{found}, query.Session)
 
-		matched = s.filterExhaustedStubs(matched)
+		matched = s.filterExhaustedStubs(matched, query.Session)
 		if len(matched) > 0 && s.tryReserve(query, found) {
 			return &Result{found: found}, nil
 		}
@@ -698,6 +714,7 @@ func (s *searcher) search(query Query) (*Result, error) {
 }
 
 // tryReserve atomically checks if the stub can be used (under Times limit) and increments the count.
+// When query.Session is set, the count is per-session (parallel test isolation).
 // Returns true if the reservation succeeded, false if the stub is exhausted.
 func (s *searcher) tryReserve(query Query, stub *Stub) bool {
 	if query.RequestInternal() {
@@ -707,12 +724,13 @@ func (s *searcher) tryReserve(query Query, stub *Stub) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	key := callCountKey{id: stub.ID, session: query.Session}
 	times := stub.EffectiveTimes()
-	if times > 0 && s.stubCallCount[stub.ID] >= times {
+	if times > 0 && s.stubCallCount[key] >= times {
 		return false
 	}
 
-	s.stubCallCount[stub.ID]++
+	s.stubCallCount[key]++
 
 	return true
 }
@@ -765,7 +783,7 @@ func (s *searcher) searchByIDBidi(query QueryBidi) (*BidiResult, error) {
 	if found != nil {
 		matched := filterBySession([]*Stub{found}, query.Session)
 
-		matched = s.filterExhaustedStubs(matched)
+		matched = s.filterExhaustedStubs(matched, query.Session)
 		if len(matched) > 0 {
 			// tryReserve not called here - BidiResult will call it when GetNextStub
 			return &BidiResult{
@@ -780,8 +798,8 @@ func (s *searcher) searchByIDBidi(query QueryBidi) (*BidiResult, error) {
 	return nil, ErrServiceNotFound
 }
 
-// filterExhaustedStubs removes stubs that have reached their Times limit.
-func (s *searcher) filterExhaustedStubs(stubs []*Stub) []*Stub {
+// filterExhaustedStubs removes stubs that have reached their Times limit for the given session.
+func (s *searcher) filterExhaustedStubs(stubs []*Stub, session string) []*Stub {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -794,7 +812,8 @@ func (s *searcher) filterExhaustedStubs(stubs []*Stub) []*Stub {
 			continue
 		}
 
-		if s.stubCallCount[stub.ID] < times {
+		key := callCountKey{id: stub.ID, session: session}
+		if s.stubCallCount[key] < times {
 			filtered = append(filtered, stub)
 		}
 	}
@@ -843,7 +862,7 @@ func (s *searcher) searchOptimized(query Query) (*Result, error) {
 	}
 
 	stubs = filterBySession(stubs, query.Session)
-	stubs = s.filterExhaustedStubs(stubs)
+	stubs = s.filterExhaustedStubs(stubs, query.Session)
 
 	// Process collected stubs
 	return s.processStubs(query, stubs)

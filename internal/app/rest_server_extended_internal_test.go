@@ -37,59 +37,6 @@ func (s *RestServerExtendedTestSuite) SetupTest() {
 	s.budgerigar.Clear()
 }
 
-// TestPatchStubByID tests partial stub update.
-func (s *RestServerExtendedTestSuite) TestPatchStubByID() {
-	stubData := `[{
-		"service": "PatchService",
-		"method": "PatchMethod",
-		"input": {"equals": {"key": "original"}},
-		"output": {"data": {"result": "original"}},
-		"priority": 1
-	}]`
-
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
-	addReq.Header.Set("Content-Type", "application/json")
-
-	addW := httptest.NewRecorder()
-	s.server.AddStub(addW, addReq)
-	s.Require().Equal(http.StatusOK, addW.Code)
-
-	var ids []rest.ID
-	s.Require().NoError(json.Unmarshal(addW.Body.Bytes(), &ids))
-	s.Require().Len(ids, 1)
-
-	// PATCH: update priority and options.times
-	patchData := `{"priority": 42, "options": {"times": 3}}`
-	patchReq := httptest.NewRequest(http.MethodPatch, "/api/stubs/"+ids[0].String(), bytes.NewBufferString(patchData))
-	patchReq.Header.Set("Content-Type", "application/json")
-
-	patchW := httptest.NewRecorder()
-	s.server.PatchStubByID(patchW, patchReq, ids[0])
-	s.Require().Equal(http.StatusOK, patchW.Code)
-
-	// Verify updated stub
-	getReq := httptest.NewRequest(http.MethodGet, "/api/stubs/"+ids[0].String(), nil)
-	getW := httptest.NewRecorder()
-	s.server.FindByID(getW, getReq, ids[0])
-	s.Require().Equal(http.StatusOK, getW.Code)
-
-	var updated stuber.Stub
-	s.Require().NoError(json.Unmarshal(getW.Body.Bytes(), &updated))
-	s.Require().Equal(42, updated.Priority)
-	s.Require().Equal(3, updated.Options.Times)
-}
-
-// TestPatchStubByID_NotFound tests PATCH on non-existent stub.
-func (s *RestServerExtendedTestSuite) TestPatchStubByID_NotFound() {
-	patchData := `{"priority": 10}`
-	patchReq := httptest.NewRequest(http.MethodPatch, "/api/stubs/"+uuid.New().String(), bytes.NewBufferString(patchData))
-	patchReq.Header.Set("Content-Type", "application/json")
-
-	patchW := httptest.NewRecorder()
-	s.server.PatchStubByID(patchW, patchReq, rest.ID(uuid.New())) //nolint:unconvert
-	s.Require().Equal(http.StatusNotFound, patchW.Code)
-}
-
 // TestAddStubWithPriority tests adding stubs with different priorities.
 func (s *RestServerExtendedTestSuite) TestAddStubWithPriority() {
 	tests := []struct {

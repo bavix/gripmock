@@ -67,6 +67,7 @@ export default defineConfig({
           { text: 'Benefits YAML', link: '/guide/stubs/benefits-yaml' },
           { text: 'Why IDs Are Critical', link: '/guide/stubs/why-ids-are-crucial' },
           { text: 'Priority', link: '/guide/stubs/priority' },
+          { text: 'Match Limit (times)', link: '/guide/stubs/times-limit' },
           { text: 'Delay Configuration', link: '/guide/stubs/delay' },
           { text: 'Output Stream Configuration', link: '/guide/stubs/output-stream' },
           { text: 'Server-Side Streaming', link: '/guide/stubs/server-streaming' },

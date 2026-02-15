@@ -1,28 +1,48 @@
 package sdk
 
-import (
-	"context"
-	"errors"
-)
-
 // Run starts an embedded gRPC mock server or connects to a remote gripmock. Blocks until healthy.
-func Run(ctx context.Context, opts ...Option) (Mock, error) {
+// Registers cleanup to verify stub Times and Close.
+// t must not be nil.
+func Run(t TestingT, opts ...Option) (Mock, error) {
+	if t == nil {
+		panic("gripmock: t must not be nil")
+	}
+	
 	o := &options{healthyTimeout: defaultHealthyTimeout}
 	for _, opt := range opts {
 		opt(o)
 	}
+
+	ctx := t.Context()
+
+	var mock Mock
+	var err error
 	if o.remoteAddr != "" {
-		return runRemote(ctx, o)
-	}
-	if len(o.descriptorFiles) == 0 && o.mockFromAddr == "" {
-		return nil, errors.New("gripmock: descriptors required (use WithDescriptors or MockFrom)")
-	}
-	if o.mockFromAddr != "" {
-		fds, err := resolveDescriptorsFromReflection(ctx, o.mockFromAddr)
-		if err != nil {
-			return nil, err
+		mock, err = runRemote(ctx, o)
+	} else {
+		if len(o.descriptorFiles) == 0 && o.mockFromAddr == "" {
+			return nil, ErrDescriptorsRequired
 		}
-		o.descriptorFiles = fds.GetFile()
+		if o.mockFromAddr != "" {
+			fds, errResolve := resolveDescriptorsFromReflection(ctx, o.mockFromAddr)
+			if errResolve != nil {
+				return nil, errResolve
+			}
+			o.descriptorFiles = fds.GetFile()
+		}
+		mock, err = runEmbedded(ctx, o)
 	}
-	return runEmbedded(ctx, o)
+	if err != nil {
+		return nil, err
+	}
+
+	t.Cleanup(func() {
+		if err := mock.Verify().VerifyStubTimesErr(); err != nil {
+			t.Error(err)
+			t.Fail()
+		}
+		_ = mock.Close()
+	})
+
+	return mock, nil
 }

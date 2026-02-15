@@ -40,7 +40,7 @@ func resolveDescriptorsFromReflection(ctx context.Context, addr string) (*descri
 
 	listResp := resp.GetListServicesResponse()
 	if listResp == nil {
-		return nil, errors.New("unexpected response: not ListServicesResponse")
+		return nil, ErrUnexpectedResponse
 	}
 
 	seen := make(map[string]*descriptorpb.FileDescriptorProto)
@@ -92,7 +92,7 @@ func resolveDescriptorsFromReflection(ctx context.Context, addr string) (*descri
 	}
 
 	if len(seen) == 0 {
-		return nil, errors.New("no services found via reflection (or only grpc.reflection/grpc.health)")
+		return nil, ErrNoUsableServicesFoundViaReflection
 	}
 
 	fds := &descriptorpb.FileDescriptorSet{}

@@ -42,6 +42,10 @@
           "$ref": "#/definitions/headerMatcher",
           "description": "Header matching rules"
         },
+        "options": {
+          "$ref": "#/definitions/stubOptions",
+          "description": "Optional behavior settings (e.g. times limit)"
+        },
         "output": {
           "$ref": "#/definitions/output",
           "description": "Response configuration"
@@ -89,6 +93,10 @@
           "headers": {
             "$ref": "#/definitions/headerMatcher",
             "description": "Header matching rules"
+          },
+          "options": {
+            "$ref": "#/definitions/stubOptions",
+            "description": "Optional behavior settings (e.g. times limit)"
           },
           "output": {
             "$ref": "#/definitions/output",
@@ -138,6 +146,19 @@
         }
       },
       "minProperties": 1,
+      "additionalProperties": false
+    },
+    "stubOptions": {
+      "type": "object",
+      "description": "Optional behavior settings for a stub",
+      "properties": {
+        "times": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "Max number of matches; 0 = unlimited. After limit, stub exhausts and no longer matches."
+        }
+      },
       "additionalProperties": false
     },
     "headerMatcher": {

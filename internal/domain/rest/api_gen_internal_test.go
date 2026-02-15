@@ -134,12 +134,6 @@ func (m *mockServer) FindByID(w http.ResponseWriter, _ *http.Request, _ ID) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (m *mockServer) PatchStubByID(w http.ResponseWriter, _ *http.Request, _ ID) {
-	m.called["PatchStubByID"] = true
-
-	w.WriteHeader(http.StatusOK)
-}
-
 func TestHandler_Routes(t *testing.T) {
 	t.Parallel()
 

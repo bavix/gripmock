@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -17,16 +18,17 @@ import (
 )
 
 type remoteMock struct {
-	conn        *grpc.ClientConn
-	addr        string
-	restBaseURL string
-	httpClient  *http.Client
-	session     string
+	conn          *grpc.ClientConn
+	addr          string
+	restBaseURL   string
+	httpClient    *http.Client
+	session       string
+	expectedTotal atomic.Int32
 }
 
 func (m *remoteMock) Conn() *grpc.ClientConn { return m.conn }
 func (m *remoteMock) Addr() string           { return m.addr }
-func (m *remoteMock) History() HistoryReader { return &remoteHistory{mock: m} }
+func (m *remoteMock) History() HistoryReader  { return &remoteHistory{mock: m} }
 func (m *remoteMock) Verify() Verifier       { return &remoteVerifier{mock: m} }
 func (m *remoteMock) Stub(service, method string) StubBuilder {
 	return m.stubBuilderCore(service, method)
@@ -136,6 +138,26 @@ func (v *remoteVerifier) Total(t TestingT, want int) {
 	}
 }
 
+func (v *remoteVerifier) VerifyStubTimes(t TestingT) {
+	if err := v.VerifyStubTimesErr(); err != nil {
+		t.Error(err)
+		t.Fail()
+	}
+}
+
+func (v *remoteVerifier) VerifyStubTimesErr() error {
+	want := int(v.mock.expectedTotal.Load())
+	if want == 0 {
+		return nil
+	}
+	calls := (&remoteHistory{mock: v.mock}).All()
+	got := len(calls)
+	if got != want {
+		return fmt.Errorf("gripmock: expected %d total calls (from stub Times), got %d", want, got)
+	}
+	return nil
+}
+
 type remoteMethodVerifier struct {
 	mock    *remoteMock
 	service string
@@ -187,6 +209,9 @@ func (mv *remoteMethodVerifier) Never(t TestingT) {
 func (m *remoteMock) addStub(stub *stuber.Stub) {
 	if m.session != "" {
 		stub.Session = m.session
+	}
+	if stub.Options.Times > 0 {
+		m.expectedTotal.Add(int32(stub.Options.Times))
 	}
 	body, err := json.Marshal([]*stuber.Stub{stub})
 	if err != nil {

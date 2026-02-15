@@ -102,6 +102,10 @@ func deriveRestURLFromGrpcAddr(grpcAddr string) string {
 	if host == "" {
 		host = "127.0.0.1"
 	}
+	// IPv6 addresses must be wrapped in brackets in URLs
+	if strings.Contains(host, ":") {
+		return "http://[" + host + "]:4771"
+	}
 	return "http://" + host + ":4771"
 }
 

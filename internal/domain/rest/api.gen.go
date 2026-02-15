@@ -143,20 +143,6 @@ type StubOutput struct {
 	Stream  []map[string]any  `json:"stream,omitempty"`
 }
 
-// StubPatch Partial stub update - only provided fields are updated
-type StubPatch struct {
-	Headers StubHeaders  `json:"headers,omitempty"`
-	Input   *StubInput   `json:"input,omitempty"`
-	Inputs  *[]StubInput `json:"inputs,omitempty"`
-	Method  *string      `json:"method,omitempty"`
-
-	// Options Optional behavior settings for a stub
-	Options  *StubOptions `json:"options,omitempty"`
-	Output   *StubOutput  `json:"output,omitempty"`
-	Priority *int         `json:"priority,omitempty"`
-	Service  *string      `json:"service,omitempty"`
-}
-
 // VerifyError defines model for VerifyError.
 type VerifyError struct {
 	Actual   *int    `json:"actual,omitempty"`
@@ -184,9 +170,6 @@ type BatchStubsDeleteJSONRequestBody = ListID
 
 // SearchStubsJSONRequestBody defines body for SearchStubs for application/json ContentType.
 type SearchStubsJSONRequestBody = SearchRequest
-
-// PatchStubByIDJSONRequestBody defines body for PatchStubByID for application/json ContentType.
-type PatchStubByIDJSONRequestBody = StubPatch
 
 // VerifyCallsJSONRequestBody defines body for VerifyCalls for application/json ContentType.
 type VerifyCallsJSONRequestBody = VerifyRequest
@@ -244,9 +227,6 @@ type ServerInterface interface {
 	// Get Stub by ID
 	// (GET /stubs/{uuid})
 	FindByID(w http.ResponseWriter, r *http.Request, uuid ID)
-	// Partially update stub by ID
-	// (PATCH /stubs/{uuid})
-	PatchStubByID(w http.ResponseWriter, r *http.Request, uuid ID)
 	// Verify call counts
 	// (POST /verify)
 	VerifyCalls(w http.ResponseWriter, r *http.Request)
@@ -543,31 +523,6 @@ func (siw *ServerInterfaceWrapper) FindByID(w http.ResponseWriter, r *http.Reque
 	handler.ServeHTTP(w, r)
 }
 
-// PatchStubByID operation middleware
-func (siw *ServerInterfaceWrapper) PatchStubByID(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-
-	// ------------- Path parameter "uuid" -------------
-	var uuid ID
-
-	err = runtime.BindStyledParameterWithOptions("simple", "uuid", mux.Vars(r)["uuid"], &uuid, runtime.BindStyledParameterOptions{Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "uuid", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PatchStubByID(w, r, uuid)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
 // VerifyCalls operation middleware
 func (siw *ServerInterfaceWrapper) VerifyCalls(w http.ResponseWriter, r *http.Request) {
 
@@ -728,8 +683,6 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/stubs/{uuid}", wrapper.DeleteStubByID).Methods("DELETE")
 
 	r.HandleFunc(options.BaseURL+"/stubs/{uuid}", wrapper.FindByID).Methods("GET")
-
-	r.HandleFunc(options.BaseURL+"/stubs/{uuid}", wrapper.PatchStubByID).Methods("PATCH")
 
 	r.HandleFunc(options.BaseURL+"/verify", wrapper.VerifyCalls).Methods("POST")
 

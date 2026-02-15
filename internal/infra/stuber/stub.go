@@ -9,7 +9,7 @@ import (
 
 // StubOptions holds optional behavior settings for a stub.
 type StubOptions struct {
-	Times int `json:"times,omitempty"` // Max number of matches; 0 = unlimited.
+	Times int `json:"times,omitempty" validate:"gte=0"` // Max number of matches; 0 = unlimited.
 }
 
 // Stub represents a gRPC service method and its associated data.

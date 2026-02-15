@@ -11,3 +11,4 @@ type Mock interface {
 	Verify() Verifier
 	Close() error
 }
+

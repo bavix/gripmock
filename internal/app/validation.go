@@ -103,6 +103,8 @@ func getValidationMessage(fieldError validator.FieldError) string {
 		return "Invalid input configuration: must have either 'input' or 'inputs', but not both"
 	case "valid_output_config":
 		return "Invalid output configuration: must have either 'data' or 'stream', but not both"
+	case "gte":
+		return "Options.Times must be >= 0 (0 = unlimited matches)"
 	case "valid_unary_stub":
 		return "Unary stub must have valid input and output"
 	case "valid_client_stream_stub":

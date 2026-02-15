@@ -48,26 +48,26 @@ func mustBuildFDS(t *testing.T, protoPath string) *descriptorpb.FileDescriptorSe
 	return fdsSlice[0]
 }
 
-// mustRunWithProto builds descriptors from protoPath and runs mock. Caller must defer mock.Close().
+// mustRunWithProto builds descriptors from protoPath and runs mock via Run(t, ...) (auto cleanup).
 func mustRunWithProto(t *testing.T, protoPath string, opts ...Option) Mock {
 	t.Helper()
 
 	fds := mustBuildFDS(t, protoPath)
 	allOpts := append([]Option{WithDescriptors(fds)}, opts...)
-	mock, err := Run(t.Context(), allOpts...)
+	mock, err := Run(t, allOpts...)
 	require.NoError(t, err)
 	require.NotNil(t, mock)
 
 	return mock
 }
 
-// mustRunWithProtoAndReg returns mock and protodesc registry. Caller must defer mock.Close().
+// mustRunWithProtoAndReg returns mock and protodesc registry. Uses Run(t, ...) (auto cleanup).
 func mustRunWithProtoAndReg(t *testing.T, protoPath string, opts ...Option) (Mock, *protoregistry.Files) {
 	t.Helper()
 
 	fds := mustBuildFDS(t, protoPath)
 	allOpts := append([]Option{WithDescriptors(fds)}, opts...)
-	mock, err := Run(t.Context(), allOpts...)
+	mock, err := Run(t, allOpts...)
 	require.NoError(t, err)
 	require.NotNil(t, mock)
 
@@ -81,7 +81,6 @@ func TestRun_EmbeddedBufconn(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	require.NotNil(t, mock.Conn())
 	require.Equal(t, "bufnet", mock.Addr())
@@ -95,17 +94,12 @@ func TestRun_EmbeddedBufconn(t *testing.T) {
 func TestRun_DescriptorsAppend(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	fdsGreeter := mustBuildFDS(t, sdkProtoPath("greeter"))
 	fdsEcho := mustBuildFDS(t, filepath.Join("..", "..", "examples", "projects", "echo", "service_v1.proto"))
 
-	mock, err := Run(ctx,
-		WithDescriptors(fdsGreeter),
-		WithDescriptors(fdsEcho),
-	)
+	mock, err := Run(t, WithDescriptors(fdsGreeter), WithDescriptors(fdsEcho))
 	require.NoError(t, err)
 	require.NotNil(t, mock)
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "x")).
@@ -117,13 +111,11 @@ func TestRun_DescriptorsAppend(t *testing.T) {
 func TestRun_DescriptorsAppend_Dedup(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	fds := mustBuildFDS(t, sdkProtoPath("greeter"))
 
-	mock, err := Run(ctx, WithDescriptors(fds), WithDescriptors(fds))
+	mock, err := Run(t, WithDescriptors(fds), WithDescriptors(fds))
 	require.NoError(t, err)
 	require.NotNil(t, mock)
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "x")).
@@ -135,7 +127,6 @@ func TestRun_WhenStreamReplyStream(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("calculator"))
-	defer mock.Close()
 
 	// B7: WhenStream + Reply (client stream)
 	mock.Stub("calculator.CalculatorService", "SumNumbers").
@@ -151,7 +142,6 @@ func TestRun_RealPort(t *testing.T) {
 		WithListenAddr("tcp", ":0"),
 		WithHealthyTimeout(5*time.Second),
 	)
-	defer mock.Close()
 
 	require.NotNil(t, mock.Conn())
 	require.Regexp(t, `^127\.0\.0\.1:\d+$`, mock.Addr())
@@ -164,7 +154,6 @@ func TestRun_RealPort_DefaultNetwork(t *testing.T) {
 		WithListenAddr("", ":0"),
 		WithHealthyTimeout(5*time.Second),
 	)
-	defer mock.Close()
 
 	require.Regexp(t, `^127\.0\.0\.1:\d+$`, mock.Addr())
 }
@@ -173,15 +162,26 @@ func TestRun_DefaultHealthyTimeout(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"), WithHealthyTimeout(0))
-	defer mock.Close()
+	require.NotNil(t, mock.Conn())
+}
+
+func TestRun_ContextFromT(t *testing.T) {
+	t.Parallel()
+
+	// Run(t, opts) resolves context from t.Context() when t is *testing.T
+	mock, err := Run(t, WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))))
+	require.NoError(t, err)
+	require.NotNil(t, mock)
+	mock.Stub("helloworld.Greeter", "SayHello").
+		When(Equals("name", "x")).
+		Reply(Data("message", "ok")).
+		Commit()
 }
 
 func TestRun_Validation(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-
-	_, err := Run(ctx)
+	_, err := Run(t)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "descriptors required")
 }
@@ -189,7 +189,6 @@ func TestRun_Validation(t *testing.T) {
 func TestRun_InvalidDescriptors(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	// FileDescriptorSet with invalid file (field number 0 is invalid)
 	fds := &descriptorpb.FileDescriptorSet{
 		File: []*descriptorpb.FileDescriptorProto{
@@ -208,7 +207,7 @@ func TestRun_InvalidDescriptors(t *testing.T) {
 		},
 	}
 
-	_, err := Run(ctx, WithDescriptors(fds))
+	_, err := Run(t, WithDescriptors(fds))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to create files registry")
 }
@@ -216,8 +215,7 @@ func TestRun_InvalidDescriptors(t *testing.T) {
 func TestRun_ListenError(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	_, err := Run(ctx,
+	_, err := Run(t,
 		WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))),
 		WithListenAddr("tcp", ":99999"),
 		WithHealthyTimeout(5*time.Second),
@@ -238,7 +236,7 @@ func TestRun_ListenAddrString_UnixFallback(t *testing.T) {
 	}
 
 	sockPath := "/tmp/gripmock_" + uuid.New().String()[:8] + ".sock"
-	mock, err := Run(t.Context(),
+	mock, err := Run(t,
 		WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))),
 		WithListenAddr("unix", sockPath),
 		WithHealthyTimeout(2*time.Second),
@@ -248,7 +246,6 @@ func TestRun_ListenAddrString_UnixFallback(t *testing.T) {
 
 		return
 	}
-	defer mock.Close()
 	require.Contains(t, mock.Addr(), ".sock")
 }
 
@@ -256,7 +253,6 @@ func TestRun_ReplyStream_SkipsNilData(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("track-streaming"))
-	defer mock.Close()
 
 	// ReplyStream with nil Data entries - they are skipped (stuber.Output{Data: nil})
 	mock.Stub("TrackService", "StreamTrack").
@@ -276,15 +272,13 @@ func TestRun_MockFrom(t *testing.T) {
 		WithListenAddr("tcp", ":0"),
 		WithHealthyTimeout(5*time.Second),
 	)
-	defer mock1.Close()
 
-	mock2, err := Run(t.Context(),
+	mock2, err := Run(t,
 		MockFrom(mock1.Addr()),
 		WithHealthyTimeout(5*time.Second),
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mock2)
-	defer mock2.Close()
 
 	require.Equal(t, "bufnet", mock2.Addr()) // mock2 uses bufconn by default
 }
@@ -293,7 +287,6 @@ func TestRun_ReplyStream(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("track-streaming"))
-	defer mock.Close()
 
 	// Server stream: When + ReplyStream
 	mock.Stub("TrackService", "StreamTrack").
@@ -309,7 +302,6 @@ func TestRun_ReplyError(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "error")).
@@ -326,7 +318,6 @@ func TestRun_Priority(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "priority")).
@@ -345,7 +336,6 @@ func TestRun_Contains(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Contains("name", "Alice")).
@@ -357,7 +347,6 @@ func TestRun_Map(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Map("name", "Bob", "extra", "value")).
@@ -384,8 +373,7 @@ func TestRun_MockFrom_NoServices(t *testing.T) {
 	go func() { _ = server.Serve(lis) }()
 	defer server.GracefulStop()
 
-	ctx := t.Context()
-	_, err = Run(ctx, MockFrom(addr), WithHealthyTimeout(2*time.Second))
+	_, err = Run(t, MockFrom(addr), WithHealthyTimeout(2*time.Second))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no services found via reflection")
 }
@@ -393,9 +381,7 @@ func TestRun_MockFrom_NoServices(t *testing.T) {
 func TestRun_MockFrom_InvalidAddr(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-
-	_, err := Run(ctx, MockFrom("localhost:59999"), WithHealthyTimeout(100*time.Millisecond))
+	_, err := Run(t, MockFrom("localhost:59999"), WithHealthyTimeout(100*time.Millisecond))
 	require.Error(t, err)
 	errStr := err.Error()
 	require.True(t,
@@ -407,8 +393,7 @@ func TestRun_MockFrom_InvalidAddr(t *testing.T) {
 func TestRun_HealthyTimeout(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	_, err := Run(ctx, WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))), WithHealthyTimeout(1))
+	_, err := Run(t, WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))), WithHealthyTimeout(1))
 	require.Error(t, err)
 	errStr := err.Error()
 	require.True(t,
@@ -556,7 +541,6 @@ func TestRun_Merge_Integration(t *testing.T) {
 
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Merge(Equals("name", "Alex"))).
@@ -572,7 +556,6 @@ func TestRun_Sugar_MatchReturn(t *testing.T) {
 
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		Match("name", "Alex").
@@ -588,7 +571,6 @@ func TestRun_Sugar_Unary(t *testing.T) {
 
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		Unary("name", "Bob", "message", "Hello Bob").
@@ -603,7 +585,6 @@ func TestRun_DynamicTemplate_MatchReturn(t *testing.T) {
 
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		Match("name", "Alex").
@@ -619,7 +600,6 @@ func TestRun_DynamicTemplate_WhenReply(t *testing.T) {
 
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Map("name", "Charlie")).
@@ -635,7 +615,6 @@ func TestRun_DynamicTemplate_Unary(t *testing.T) {
 
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		Unary("name", "Diana", "message", "Dear {{.Request.name}}").
@@ -650,7 +629,6 @@ func TestRun_DynamicTemplate_MergeOutput(t *testing.T) {
 
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "Eve")).
@@ -665,7 +643,6 @@ func TestRun_Sugar_Match_PanicOddArgs(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	require.PanicsWithValue(t, "sdk.Match: need pairs (key, value), got 1 args", func() {
 		mock.Stub("helloworld.Greeter", "SayHello").Match("name").Commit()
@@ -676,7 +653,6 @@ func TestRun_Sugar_Return_PanicOddArgs(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	require.PanicsWithValue(t, "sdk.Return: need pairs (key, value), got 1 args", func() {
 		mock.Stub("helloworld.Greeter", "SayHello").When(Equals("name", "x")).Return("message").Commit()
@@ -687,7 +663,6 @@ func TestRun_ReplyHeaders(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "Alex")).
@@ -701,7 +676,6 @@ func TestRun_WhenHeaders_Integration(t *testing.T) {
 
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "Alex")).
@@ -752,7 +726,6 @@ func TestRun_Delay(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "slow")).
@@ -766,7 +739,6 @@ func TestRun_Times_ExhaustedAfterLimit(t *testing.T) {
 
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "limited")).
@@ -805,9 +777,8 @@ func createGreeterRequest(t *testing.T, reg *protoregistry.Files, name string) *
 func TestRun_Remote_ConnectionRefused(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	// Use a port that's unlikely to have a listener (gripmock uses 4770)
-	mock, err := Run(ctx, Remote("127.0.0.1:15999"), WithHealthyTimeout(500*time.Millisecond))
+	mock, err := Run(t, Remote("127.0.0.1:15999"), WithHealthyTimeout(500*time.Millisecond))
 	if err == nil {
 		mock.Close()
 		t.Fatal("expected error when connecting to non-existent gripmock")
@@ -818,9 +789,8 @@ func TestRun_Remote_ConnectionRefused(t *testing.T) {
 func TestRun_Remote_WithCustomRestURL(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	// Verify Remote option accepts custom rest URL (still fails to connect, but option is applied)
-	_, err := Run(ctx,
+	_, err := Run(t,
 		Remote("127.0.0.1:15998", "http://127.0.0.1:15999"),
 		WithHealthyTimeout(200*time.Millisecond),
 	)
@@ -889,7 +859,7 @@ func TestRun_Remote_Integration(t *testing.T) {
 	// Wait for gripmock to be ready (go run compiles first, then server starts)
 	time.Sleep(8 * time.Second)
 
-	mock, err := Run(ctx,
+	mock, err := Run(t,
 		Remote(grpcAddr, restURL),
 		WithHealthyTimeout(10*time.Second),
 	)
@@ -897,7 +867,6 @@ func TestRun_Remote_Integration(t *testing.T) {
 		t.Skipf("skipping: cannot connect to gripmock: %v", err)
 		return
 	}
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "Alex")).
@@ -926,7 +895,6 @@ func TestRun_HistoryAndVerify(t *testing.T) {
 
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "Alex")).
@@ -953,12 +921,62 @@ func TestRun_HistoryAndVerify(t *testing.T) {
 	mock.Verify().Total(t, 2)
 }
 
+func TestRun_VerifyStubTimes_FromStubTimes(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
+
+	// Ben: 1 call, Alice: 2 calls — SDK tracks sum = 3
+	mock.Stub("helloworld.Greeter", "SayHello").When(Equals("name", "Ben")).Reply(Data("message", "Hi Ben")).Times(1).Commit()
+	mock.Stub("helloworld.Greeter", "SayHello").When(Equals("name", "Alice")).Reply(Data("message", "Hi Alice")).Times(2).Commit()
+
+	_ = invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Ben")
+	_ = invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alice")
+	_ = invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alice")
+	// Close() runs VerifyStubTimes — passes (3 calls, expected 3)
+}
+
+func TestRun_Close_VerifiesStubTimes(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
+
+	mock.Stub("helloworld.Greeter", "SayHello").When(Equals("name", "x")).Reply(Data("message", "ok")).Times(1).Commit()
+	_ = invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "x")
+	// Close() runs VerifyStubTimes — passes (1 call, expected 1)
+}
+
+func TestRun_VerifyStubTimesErr_NoError_WhenMatch(t *testing.T) {
+	t.Parallel()
+
+	// Test VerifyStubTimesErr returns no error when expected and actual calls match
+	// Since we now require non-nil TestingT and cleanup always runs, we ensure
+	// the cleanup verification passes by making expected and actual calls match.
+	
+	fds := mustBuildFDS(t, sdkProtoPath("greeter"))
+	mock, err := Run(t, WithDescriptors(fds))
+	require.NoError(t, err)
+	
+	// Setup a stub with Times(1) and make exactly 1 call so cleanup verification passes
+	mock.Stub("helloworld.Greeter", "SayHello").When(Equals("name", "x")).Reply(Data("message", "ok")).Times(1).Commit()
+
+	// Make the expected call
+	ctx := t.Context()
+	_, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
+	invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "x")
+
+	// Verify that VerifyStubTimesErr returns nil when counts match
+	err = mock.Verify().VerifyStubTimesErr()
+	require.NoError(t, err) // Should be no error since calls match expected times
+}
+
 func TestRun_WithSession_EmbeddedNoop(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"), WithSession("test-session"))
-	defer mock.Close()
 
 	mock.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "x")).

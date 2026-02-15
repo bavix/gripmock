@@ -346,38 +346,6 @@ paths:
           description: Stub not found
         '500':
           description: Internal Server Error
-    patch:
-      tags:
-        - stubs
-      summary: Partially update stub by ID
-      description: Updates only the provided fields of the stub; omitted fields are preserved
-      operationId: patchStubByID
-      parameters:
-        - name: uuid
-          in: path
-          description: ID of stub
-          required: true
-          schema:
-            $ref: '#/components/schemas/ID'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/StubPatch'
-      responses:
-        '200':
-          description: Stub updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Stub'
-        '400':
-          description: Invalid UUID or patch data
-        '404':
-          description: Stub not found
-        '500':
-          description: Internal Server Error
   '/stubs/search':
     post:
       tags:
@@ -698,30 +666,9 @@ components:
         times:
           type: integer
           description: Max number of matches; 0 = unlimited
+          minimum: 0
           default: 0
           x-go-type-skip-optional-pointer: true
-    StubPatch:
-      type: object
-      description: Partial stub update - only provided fields are updated
-      properties:
-        service:
-          type: string
-        method:
-          type: string
-        priority:
-          type: integer
-        options:
-          $ref: '#/components/schemas/StubOptions'
-        headers:
-          $ref: '#/components/schemas/StubHeaders'
-        input:
-          $ref: '#/components/schemas/StubInput'
-        inputs:
-          type: array
-          items:
-            $ref: '#/components/schemas/StubInput'
-        output:
-          $ref: '#/components/schemas/StubOutput'
     StubInput:
       type: object
       properties:

@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/types/descriptorpb"
 
 	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/app"
@@ -20,26 +21,34 @@ import (
 const bufconnSize = 1024 * 1024
 
 type embeddedMock struct {
-	conn       *grpc.ClientConn
-	server     *grpc.Server
-	lis        net.Listener
-	bufLis     *bufconn.Listener
-	addr       string
-	budgerigar *stuber.Budgerigar
-	recorder   *InMemoryRecorder
+	conn          *grpc.ClientConn
+	server        *grpc.Server
+	lis           net.Listener
+	bufLis        *bufconn.Listener
+	addr          string
+	budgerigar    *stuber.Budgerigar
+	recorder      *InMemoryRecorder
+	expectedTotal atomic.Int32
 }
 
 func (m *embeddedMock) Conn() *grpc.ClientConn { return m.conn }
 func (m *embeddedMock) Addr() string           { return m.addr }
 func (m *embeddedMock) Stub(service, method string) StubBuilder {
 	return &stubBuilderCore{
-		service:  service,
+		service: service,
 		method:  method,
-		onCommit: func(stub *stuber.Stub) { m.budgerigar.PutMany(stub) },
+		onCommit: func(stub *stuber.Stub) {
+			m.budgerigar.PutMany(stub)
+			if stub.Options.Times > 0 {
+				m.expectedTotal.Add(int32(stub.Options.Times))
+			}
+		},
 	}
 }
 func (m *embeddedMock) History() HistoryReader { return m.recorder }
-func (m *embeddedMock) Verify() Verifier       { return &verifier{recorder: m.recorder} }
+func (m *embeddedMock) Verify() Verifier {
+	return &verifier{recorder: m.recorder, expectedTotal: &m.expectedTotal}
+}
 func (m *embeddedMock) Close() error {
 	if m.conn != nil {
 		_ = m.conn.Close()

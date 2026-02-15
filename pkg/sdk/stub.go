@@ -10,15 +10,12 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
-// StubBuilder builds stubs for gRPC methods.
 type StubBuilder interface {
 	When(input stuber.InputData) StubBuilder
-	// Match is sugar for When: Match("name", "Alex") or Match("a", 1, "b", 2).
 	Match(kv ...any) StubBuilder
 	WhenStream(inputs ...stuber.InputData) StubBuilder
 	WhenHeaders(headers stuber.InputHeader) StubBuilder
 	Reply(output stuber.Output) StubBuilder
-	// Return is sugar for Reply: Return("message", "Hi") or Return("msg", "hi", "code", 200).
 	Return(kv ...any) StubBuilder
 	ReplyStream(msgs ...stuber.Output) StubBuilder
 	ReplyError(code codes.Code, msg string) StubBuilder
@@ -27,8 +24,7 @@ type StubBuilder interface {
 	Delay(d time.Duration) StubBuilder
 	IgnoreArrayOrder() StubBuilder
 	Priority(p int) StubBuilder
-	Times(n int) StubBuilder // Max matches; 0 = unlimited.
-	// Unary is a one-liner for the common case: match one field, return one field.
+	Times(n int) StubBuilder
 	Unary(inKey string, inVal any, outKey string, outVal any) StubBuilder
 	Commit()
 }
