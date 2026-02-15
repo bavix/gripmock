@@ -32,9 +32,13 @@ func TestByteSize_UnmarshalText(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			// Arrange
 			var b types.ByteSize
 
+			// Act
 			err := b.UnmarshalText(tt.text)
+
+			// Assert
 			if tt.wantErr {
 				require.Error(t, err)
 

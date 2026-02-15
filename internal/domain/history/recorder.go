@@ -275,22 +275,3 @@ func (s *MemoryStore) FilterByMethod(service, method string) []CallRecord {
 	return s.Filter(FilterOpts{Service: service, Method: method})
 }
 
-// FilterBySession returns records visible for the given session.
-// Session empty: all records (backward compat).
-// Session non-empty: records with Session=="" or Session==session.
-//
-// Deprecated: use MemoryStore.Filter(FilterOpts{Session: session}) for single-pass filtering.
-func FilterBySession(records []CallRecord, session string) []CallRecord {
-	if session == "" {
-		return records
-	}
-
-	out := make([]CallRecord, 0, len(records))
-	for _, c := range records {
-		if c.Session == "" || c.Session == session {
-			out = append(out, c)
-		}
-	}
-
-	return out
-}
