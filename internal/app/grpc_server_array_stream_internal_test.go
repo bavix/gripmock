@@ -7,20 +7,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/dynamicpb"
-	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
-	"github.com/bavix/gripmock/v3/internal/infra/template"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
-	"github.com/bavix/gripmock/v3/pkg/plugintest"
 )
 
 // mockArrayStreamServerStream mocks grpc.ServerStream for array stream testing.
@@ -72,27 +67,12 @@ func (m *mockArrayStreamServerStream) SendHeader(md metadata.MD) error {
 func (m *mockArrayStreamServerStream) SetTrailer(md metadata.MD) {
 }
 
-func createTestMocker() *grpcMocker {
-	// Use structpb.Struct descriptor for testing (simpler than creating custom descriptor)
-	structDesc := (&structpb.Struct{}).ProtoReflect().Descriptor()
-
-	testRegistry := plugintest.NewRegistry()
-	templateEngine := template.New(context.Background(), testRegistry)
-
-	return &grpcMocker{
-		budgerigar:     stuber.NewBudgerigar(features.New()),
-		templateEngine: templateEngine,
-		inputDesc:      structDesc,
-		outputDesc:     structDesc,
-	}
-}
-
 func TestHandleArrayStreamData_SendsAllMessages(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 	}
 
@@ -114,15 +94,15 @@ func TestHandleArrayStreamData_SendsAllMessages(t *testing.T) {
 
 	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.NoError(t, err)
-	assert.Len(t, stream.sentMessages, 3)
+	require.Len(t, stream.sentMessages, 3)
 }
 
 func TestHandleArrayStreamData_EmptyStream(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 	}
 
@@ -138,15 +118,15 @@ func TestHandleArrayStreamData_EmptyStream(t *testing.T) {
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.NoError(t, err)
-	assert.Empty(t, stream.sentMessages)
+	require.Empty(t, stream.sentMessages)
 }
 
 func TestHandleArrayStreamData_WithDelay(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 	}
 
@@ -170,17 +150,17 @@ func TestHandleArrayStreamData_WithDelay(t *testing.T) {
 	duration := time.Since(start)
 
 	require.NoError(t, err)
-	assert.Len(t, stream.sentMessages, 2)
+	require.Len(t, stream.sentMessages, 2)
 	// Should have at least one delay (between messages)
-	assert.GreaterOrEqual(t, duration, time.Duration(delay))
+	require.GreaterOrEqual(t, duration, time.Duration(delay))
 }
 
 func TestHandleArrayStreamData_WithTemplates(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 	}
 
@@ -201,25 +181,25 @@ func TestHandleArrayStreamData_WithTemplates(t *testing.T) {
 
 	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.NoError(t, err)
-	assert.Len(t, stream.sentMessages, 2)
+	require.Len(t, stream.sentMessages, 2)
 
 	// Verify template processing by converting messages back to maps
 	msg1Map := convertToMap(stream.sentMessages[0])
 	require.NotNil(t, msg1Map)
 	// Check if value was processed (may be in different structure depending on descriptor)
-	assert.NotNil(t, msg1Map)
+	require.NotNil(t, msg1Map)
 
 	msg2Map := convertToMap(stream.sentMessages[1])
 	require.NotNil(t, msg2Map)
-	assert.NotNil(t, msg2Map)
+	require.NotNil(t, msg2Map)
 }
 
 func TestHandleArrayStreamData_InvalidDataType(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 	}
 
@@ -241,17 +221,17 @@ func TestHandleArrayStreamData_InvalidDataType(t *testing.T) {
 
 	st, ok := status.FromError(err)
 	require.True(t, ok)
-	assert.Equal(t, codes.Internal, st.Code())
-	assert.Contains(t, st.Message(), "invalid data format")
+	require.Equal(t, codes.Internal, st.Code())
+	require.Contains(t, st.Message(), "invalid data format")
 }
 
 func TestHandleArrayStreamData_SendMsgError(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	expectedError := status.Error(codes.Internal, "send error")
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		sendMsgError: expectedError,
 	}
@@ -270,15 +250,15 @@ func TestHandleArrayStreamData_SendMsgError(t *testing.T) {
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "send error")
+	require.Contains(t, err.Error(), "send error")
 }
 
 func TestHandleArrayStreamData_ContextCancelled(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		sentMessages:     make([]*dynamicpb.Message, 0),
 		contextCancelled: true,
 	}
@@ -297,15 +277,15 @@ func TestHandleArrayStreamData_ContextCancelled(t *testing.T) {
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.Error(t, err)
-	assert.Equal(t, context.Canceled, err)
+	require.Equal(t, context.Canceled, err)
 }
 
 func TestHandleArrayStreamData_MessageIndexInTemplates(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 	}
 
@@ -325,7 +305,7 @@ func TestHandleArrayStreamData_MessageIndexInTemplates(t *testing.T) {
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.NoError(t, err)
-	assert.Len(t, stream.sentMessages, 3)
+	require.Len(t, stream.sentMessages, 3)
 
 	// Verify all messages were sent (template processing is tested in template package)
 	for _, msg := range stream.sentMessages {
@@ -337,9 +317,9 @@ func TestHandleArrayStreamData_MessageIndexInTemplates(t *testing.T) {
 func TestHandleArrayStreamData_WithHeaders(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	md := metadata.New(map[string]string{"x-user-id": "123"})
-	ctx := metadata.NewIncomingContext(context.Background(), md)
+	ctx := metadata.NewIncomingContext(t.Context(), md)
 	stream := &mockArrayStreamServerStream{
 		ctx:          ctx,
 		sentMessages: make([]*dynamicpb.Message, 0),
@@ -359,7 +339,7 @@ func TestHandleArrayStreamData_WithHeaders(t *testing.T) {
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.NoError(t, err)
-	assert.Len(t, stream.sentMessages, 1)
+	require.Len(t, stream.sentMessages, 1)
 
 	// Verify message was sent (template processing with headers is tested in template package)
 	msgMap := convertToMap(stream.sentMessages[0])
@@ -369,9 +349,9 @@ func TestHandleArrayStreamData_WithHeaders(t *testing.T) {
 func TestHandleArrayStreamData_EOFError(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMocker()
+	mocker := createTestMocker(t)
 	stream := &mockArrayStreamServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		sendMsgError: io.EOF,
 	}
@@ -390,5 +370,5 @@ func TestHandleArrayStreamData_EOFError(t *testing.T) {
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to send response")
+	require.Contains(t, err.Error(), "failed to send response")
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
@@ -18,8 +17,8 @@ func TestNewRegistry(t *testing.T) {
 
 	// Assert
 	require.NotNil(t, reg)
-	assert.NotNil(t, reg.funcs)
-	assert.NotNil(t, reg.plugins)
+	require.NotNil(t, reg.funcs)
+	require.NotNil(t, reg.plugins)
 }
 
 func TestNewRegistry_WithForceSource(t *testing.T) {
@@ -33,7 +32,7 @@ func TestNewRegistry_WithForceSource(t *testing.T) {
 
 	// Assert
 	require.NotNil(t, reg)
-	assert.Equal(t, forceSource, reg.forceSource)
+	require.Equal(t, forceSource, reg.forceSource)
 }
 
 func TestRegistry_AddPlugin(t *testing.T) {
@@ -60,8 +59,8 @@ func TestRegistry_AddPlugin(t *testing.T) {
 	reg.AddPlugin(info, specs)
 
 	// Assert
-	assert.Contains(t, reg.plugins, "test-plugin")
-	assert.Contains(t, reg.funcs, "testFunc")
+	require.Contains(t, reg.plugins, "test-plugin")
+	require.Contains(t, reg.funcs, "testFunc")
 }
 
 func TestRegistry_Funcs(t *testing.T) {
@@ -88,8 +87,8 @@ func TestRegistry_Funcs(t *testing.T) {
 	funcs := reg.Funcs()
 
 	// Assert
-	assert.Contains(t, funcs, "testFunc")
-	assert.Len(t, funcs, 1)
+	require.Contains(t, funcs, "testFunc")
+	require.Len(t, funcs, 1)
 }
 
 func TestRegistry_Plugins(t *testing.T) {
@@ -115,7 +114,7 @@ func TestRegistry_Plugins(t *testing.T) {
 	plugins := reg.Plugins(context.Background())
 
 	// Assert
-	assert.Len(t, plugins, 2)
+	require.Len(t, plugins, 2)
 }
 
 func TestRegistry_Groups(t *testing.T) {
@@ -143,9 +142,9 @@ func TestRegistry_Groups(t *testing.T) {
 	groups := reg.Groups(context.Background())
 
 	// Assert
-	assert.Len(t, groups, 1)
-	assert.Equal(t, "test-plugin", groups[0].Plugin.Name)
-	assert.Len(t, groups[0].Funcs, 1)
+	require.Len(t, groups, 1)
+	require.Equal(t, "test-plugin", groups[0].Plugin.Name)
+	require.Len(t, groups[0].Funcs, 1)
 }
 
 func TestRegistry_Hooks(t *testing.T) {
@@ -173,7 +172,7 @@ func TestRegistry_Hooks(t *testing.T) {
 	hooks := reg.Hooks("hooks")
 
 	// Assert
-	assert.Len(t, hooks, 1)
+	require.Len(t, hooks, 1)
 }
 
 func TestRegistry_Hooks_EmptyGroup(t *testing.T) {
@@ -186,7 +185,7 @@ func TestRegistry_Hooks_EmptyGroup(t *testing.T) {
 	hooks := reg.Hooks("")
 
 	// Assert
-	assert.Nil(t, hooks)
+	require.Nil(t, hooks)
 }
 
 func TestRegistry_NormalizeInfo_ForceSource(t *testing.T) {
@@ -205,7 +204,7 @@ func TestRegistry_NormalizeInfo_ForceSource(t *testing.T) {
 	normalized := reg.normalizeInfo(info)
 
 	// Assert
-	assert.Equal(t, forceSource, normalized.Source)
+	require.Equal(t, forceSource, normalized.Source)
 }
 
 func TestRegistry_NormalizeInfo_DefaultKind(t *testing.T) {
@@ -222,7 +221,7 @@ func TestRegistry_NormalizeInfo_DefaultKind(t *testing.T) {
 	normalized := reg.normalizeInfo(info)
 
 	// Assert
-	assert.Equal(t, "external", normalized.Kind)
+	require.Equal(t, "external", normalized.Kind)
 }
 
 func TestRegistry_NormalizeInfo_DefaultCapabilities(t *testing.T) {
@@ -240,7 +239,7 @@ func TestRegistry_NormalizeInfo_DefaultCapabilities(t *testing.T) {
 	normalized := reg.normalizeInfo(info)
 
 	// Assert
-	assert.Equal(t, []string{"template-funcs"}, normalized.Capabilities)
+	require.Equal(t, []string{"template-funcs"}, normalized.Capabilities)
 }
 
 func TestRegistry_AddDepend(t *testing.T) {
@@ -255,8 +254,8 @@ func TestRegistry_AddDepend(t *testing.T) {
 
 	// Assert
 	deps := reg.pluginDeps["plugin1"]
-	assert.Contains(t, deps, "plugin2")
-	assert.Contains(t, deps, "plugin3")
+	require.Contains(t, deps, "plugin2")
+	require.Contains(t, deps, "plugin3")
 }
 
 func TestRegistry_AddDepend_Duplicate(t *testing.T) {
@@ -271,7 +270,7 @@ func TestRegistry_AddDepend_Duplicate(t *testing.T) {
 
 	// Assert
 	deps := reg.pluginDeps["plugin1"]
-	assert.Len(t, deps, 1)
+	require.Len(t, deps, 1)
 }
 
 func TestRegistry_ParseDecorates(t *testing.T) {
@@ -331,8 +330,8 @@ func TestRegistry_ParseDecorates(t *testing.T) {
 			target, plugin := parseDecorates(tt.spec)
 
 			// Assert
-			assert.Equal(t, tt.expected, target)
-			assert.Equal(t, tt.plugin, plugin)
+			require.Equal(t, tt.expected, target)
+			require.Equal(t, tt.plugin, plugin)
 		})
 	}
 }
@@ -352,8 +351,8 @@ func TestRegistry_SortedPluginOrder(t *testing.T) {
 	order, skipped := reg.sortedPluginOrder()
 
 	// Assert
-	assert.Len(t, order, 2)
-	assert.Nil(t, skipped)
+	require.Len(t, order, 2)
+	require.Nil(t, skipped)
 }
 
 func TestRegistry_SortedPluginOrder_WithDependencies(t *testing.T) {
@@ -372,10 +371,10 @@ func TestRegistry_SortedPluginOrder_WithDependencies(t *testing.T) {
 	order, skipped := reg.sortedPluginOrder()
 
 	// Assert
-	assert.Len(t, order, 2)
-	assert.Nil(t, skipped)
-	assert.Equal(t, "plugin1", order[0])
-	assert.Equal(t, "plugin2", order[1])
+	require.Len(t, order, 2)
+	require.Nil(t, skipped)
+	require.Equal(t, "plugin1", order[0])
+	require.Equal(t, "plugin2", order[1])
 }
 
 func TestRegistry_ZeroIndegreeQueue(t *testing.T) {
@@ -394,9 +393,9 @@ func TestRegistry_ZeroIndegreeQueue(t *testing.T) {
 	queue := reg.zeroIndegreeQueue(indegree)
 
 	// Assert
-	assert.Contains(t, queue, "plugin1")
-	assert.Contains(t, queue, "plugin3")
-	assert.NotContains(t, queue, "plugin2")
+	require.Contains(t, queue, "plugin1")
+	require.Contains(t, queue, "plugin3")
+	require.NotContains(t, queue, "plugin2")
 }
 
 func TestRegistry_CollectCycles(t *testing.T) {
@@ -420,9 +419,9 @@ func TestRegistry_CollectCycles(t *testing.T) {
 	skipped := reg.collectCycles(registered, indegree, orderedCount)
 
 	// Assert
-	assert.Len(t, skipped, 2)
-	assert.Contains(t, skipped, "plugin2")
-	assert.Contains(t, skipped, "plugin3")
+	require.Len(t, skipped, 2)
+	require.Contains(t, skipped, "plugin2")
+	require.Contains(t, skipped, "plugin3")
 }
 
 func TestRegistry_CollectCycles_NoCycles(t *testing.T) {
@@ -444,5 +443,5 @@ func TestRegistry_CollectCycles_NoCycles(t *testing.T) {
 	skipped := reg.collectCycles(registered, indegree, orderedCount)
 
 	// Assert
-	assert.Nil(t, skipped)
+	require.Nil(t, skipped)
 }

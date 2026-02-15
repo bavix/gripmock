@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
@@ -32,7 +31,7 @@ func TestWrapFunc_AlreadyFunc(t *testing.T) {
 	// Assert
 	require.NotNil(t, wrapped)
 	require.NoError(t, err)
-	assert.Equal(t, testString, result)
+	require.Equal(t, testString, result)
 }
 
 func TestWrapFunc_SimpleFunc(t *testing.T) {
@@ -50,7 +49,7 @@ func TestWrapFunc_SimpleFunc(t *testing.T) {
 	// Assert
 	require.NotNil(t, wrapped)
 	require.NoError(t, err)
-	assert.Equal(t, testString, result)
+	require.Equal(t, testString, result)
 }
 
 func TestWrapFunc_FuncWithArgs(t *testing.T) {
@@ -69,7 +68,7 @@ func TestWrapFunc_FuncWithArgs(t *testing.T) {
 	// Assert
 	require.NotNil(t, wrapped)
 	require.NoError(t, err)
-	assert.Equal(t, 5, result)
+	require.Equal(t, 5, result)
 }
 
 func TestWrapFunc_FuncWithError(t *testing.T) {
@@ -87,7 +86,7 @@ func TestWrapFunc_FuncWithError(t *testing.T) {
 	// Assert
 	require.NotNil(t, wrapped)
 	require.NoError(t, err)
-	assert.Equal(t, testString, result)
+	require.Equal(t, testString, result)
 }
 
 func TestWrapFunc_FuncWithErrorReturn(t *testing.T) {
@@ -107,8 +106,8 @@ func TestWrapFunc_FuncWithErrorReturn(t *testing.T) {
 	// Assert
 	require.NotNil(t, wrapped)
 	require.Error(t, err)
-	assert.Equal(t, expectedErr, err)
-	assert.Empty(t, result)
+	require.Equal(t, expectedErr, err)
+	require.Empty(t, result)
 }
 
 func TestWrapFunc_UnsupportedResultCount(t *testing.T) {
@@ -123,8 +122,8 @@ func TestWrapFunc_UnsupportedResultCount(t *testing.T) {
 
 	require.NotNil(t, wrapped)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unsupported result count")
-	assert.Nil(t, result)
+	require.Contains(t, err.Error(), "unsupported result count")
+	require.Nil(t, result)
 }
 
 func TestWrapFunc_WithContext(t *testing.T) {
@@ -142,7 +141,7 @@ func TestWrapFunc_WithContext(t *testing.T) {
 	// Assert
 	require.NotNil(t, wrapped)
 	require.NoError(t, err)
-	assert.Equal(t, testString, result)
+	require.Equal(t, testString, result)
 }
 
 func TestWrapFunc_InvalidType(t *testing.T) {
@@ -155,7 +154,7 @@ func TestWrapFunc_InvalidType(t *testing.T) {
 	wrapped := wrapFunc(invalidInput)
 
 	// Assert
-	assert.Nil(t, wrapped)
+	require.Nil(t, wrapped)
 }
 
 func TestWrapDecorator_ValidDecorator(t *testing.T) {
@@ -189,7 +188,7 @@ func TestWrapDecorator_ValidDecorator(t *testing.T) {
 	// Assert
 	require.NotNil(t, wrapped)
 	require.NoError(t, err)
-	assert.Equal(t, "decorated: "+baseString, result)
+	require.Equal(t, "decorated: "+baseString, result)
 }
 
 func TestWrapDecorator_InvalidType(t *testing.T) {
@@ -202,7 +201,7 @@ func TestWrapDecorator_InvalidType(t *testing.T) {
 	wrapped := wrapDecorator(invalidInput)
 
 	// Assert
-	assert.Nil(t, wrapped)
+	require.Nil(t, wrapped)
 }
 
 func TestIsNilAssignable(t *testing.T) {
@@ -227,7 +226,7 @@ func TestIsNilAssignable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, tt.want, isNilAssignable(tt.typ))
+			require.Equal(t, tt.want, isNilAssignable(tt.typ))
 		})
 	}
 }
@@ -246,8 +245,8 @@ func TestCoerceArg(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.Equal(t, 1, val.Interface())
-	assert.Equal(t, 1, idx)
+	require.Equal(t, 1, val.Interface())
+	require.Equal(t, 1, idx)
 }
 
 func TestCoerceArg_NilValue(t *testing.T) {
@@ -264,7 +263,7 @@ func TestCoerceArg_NilValue(t *testing.T) {
 
 	// Assert
 	require.NoError(t, err)
-	assert.True(t, val.IsNil())
+	require.True(t, val.IsNil())
 }
 
 func TestCoerceArg_NotEnoughArgs(t *testing.T) {
@@ -281,7 +280,7 @@ func TestCoerceArg_NotEnoughArgs(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not enough arguments")
+	require.Contains(t, err.Error(), "not enough arguments")
 }
 
 func TestCoerceArg_TypeMismatch(t *testing.T) {
@@ -298,5 +297,5 @@ func TestCoerceArg_TypeMismatch(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "want")
+	require.Contains(t, err.Error(), "want")
 }

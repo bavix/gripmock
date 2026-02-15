@@ -2,7 +2,7 @@ package plugintest
 
 import "github.com/bavix/gripmock/v3/pkg/plugins"
 
-// Re-export public plugin API for tests so plugin tests don't have to import pkg/plugins.
+// Re-exports public plugin API for tests.
 type (
 	Registry        = plugins.Registry
 	Func            = plugins.Func

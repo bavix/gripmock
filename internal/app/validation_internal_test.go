@@ -1,11 +1,13 @@
 package app
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 
+	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -649,13 +651,32 @@ func TestValidateStub_WithValidator(t *testing.T) {
 			},
 			wantErr: false, // This is actually a valid client streaming stub
 		},
+		{
+			name: "options.times negative",
+			stub: &stuber.Stub{
+				Service: "TestService",
+				Method:  "TestMethod",
+				Input: stuber.InputData{
+					Equals: map[string]any{"key": "value"},
+				},
+				Output: stuber.Output{
+					Data: map[string]any{"result": "success"},
+				},
+				Options: stuber.StubOptions{Times: -1},
+			},
+			wantErr: true,
+			errMsg:  "Options.Times must be >= 0",
+		},
 	}
+
+	server, err := NewRestServer(context.Background(), stuber.NewBudgerigar(features.New()), nil, nil, nil)
+	require.NoError(t, err)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := validateStub(tt.stub)
+			err := server.validateStub(tt.stub)
 
 			if tt.wantErr {
 				require.Error(t, err)

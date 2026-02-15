@@ -6,13 +6,18 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/suite"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/bavix/features"
+	"github.com/bavix/gripmock/v3/internal/domain/history"
+	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -34,7 +39,7 @@ type RestServerTestSuite struct {
 func (s *RestServerTestSuite) SetupSuite() {
 	s.budgerigar = stuber.NewBudgerigar(features.New())
 	extender := &mockExtender{}
-	server, err := NewRestServer(context.Background(), s.budgerigar, extender)
+	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil)
 	s.Require().NoError(err)
 	s.server = server
 }
@@ -46,11 +51,11 @@ func (s *RestServerTestSuite) SetupTest() {
 
 // TestNewRestServer tests REST server creation.
 func (s *RestServerTestSuite) TestNewRestServer() {
-	ctx := context.Background()
+	ctx := s.T().Context()
 	budgerigar := stuber.NewBudgerigar(features.New())
 	extender := &mockExtender{}
 
-	server, err := NewRestServer(ctx, budgerigar, extender)
+	server, err := NewRestServer(ctx, budgerigar, extender, nil, nil)
 	s.Require().NoError(err)
 	s.Require().NotNil(server)
 }
@@ -287,6 +292,119 @@ func (s *RestServerTestSuite) TestListStubs() {
 	s.Len(response, 1)
 }
 
+// TestAddDescriptors tests POST /api/descriptors with binary FileDescriptorSet.
+func (s *RestServerTestSuite) TestAddDescriptors() {
+	ctx := s.T().Context()
+	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
+	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
+	s.Require().NoError(err)
+	s.Require().NotEmpty(fdsSlice)
+
+	body, err := proto.Marshal(fdsSlice[0])
+	s.Require().NoError(err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/descriptors", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	w := httptest.NewRecorder()
+
+	s.server.AddDescriptors(w, req)
+
+	s.Equal(http.StatusOK, w.Code)
+
+	var addResp struct {
+		Message    string   `json:"message"`
+		ServiceIDs []string `json:"serviceIDs"`
+	}
+
+	err = json.Unmarshal(w.Body.Bytes(), &addResp)
+	s.Require().NoError(err)
+	s.Equal("ok", addResp.Message)
+	s.Contains(addResp.ServiceIDs, "helloworld.Greeter")
+
+	// Verify service appears in ServicesList
+	w2 := httptest.NewRecorder()
+	s.server.ServicesList(w2, httptest.NewRequest(http.MethodGet, "/api/services", nil))
+	s.Equal(http.StatusOK, w2.Code)
+
+	var services []map[string]any
+	s.Require().NoError(json.Unmarshal(w2.Body.Bytes(), &services))
+	s.Require().NotEmpty(services)
+
+	ids := make([]string, 0, len(services))
+	for _, svc := range services {
+		if id, ok := svc["id"].(string); ok {
+			ids = append(ids, id)
+		}
+	}
+
+	s.Contains(ids, "helloworld.Greeter")
+}
+
+// TestListDescriptors tests GET /api/descriptors.
+func (s *RestServerTestSuite) TestListDescriptors() {
+	// Add a descriptor first
+	ctx := s.T().Context()
+	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
+	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
+	s.Require().NoError(err)
+
+	body, err := proto.Marshal(fdsSlice[0])
+	s.Require().NoError(err)
+
+	addReq := httptest.NewRequest(http.MethodPost, "/api/descriptors", bytes.NewReader(body))
+	addReq.Header.Set("Content-Type", "application/octet-stream")
+
+	w := httptest.NewRecorder()
+	s.server.AddDescriptors(w, addReq)
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	// List descriptors - verify serviceID appears
+	w2 := httptest.NewRecorder()
+	s.server.ListDescriptors(w2, httptest.NewRequest(http.MethodGet, "/api/descriptors", nil))
+	s.Equal(http.StatusOK, w2.Code)
+
+	var resp struct {
+		ServiceIDs []string `json:"serviceIDs"`
+	}
+
+	s.Require().NoError(json.Unmarshal(w2.Body.Bytes(), &resp))
+	s.Require().NotEmpty(resp.ServiceIDs)
+	s.Contains(resp.ServiceIDs, "helloworld.Greeter")
+}
+
+// TestDeleteService tests DELETE /api/services/{serviceID}.
+func (s *RestServerTestSuite) TestDeleteService() {
+	ctx := s.T().Context()
+	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
+	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
+	s.Require().NoError(err)
+
+	body, err := proto.Marshal(fdsSlice[0])
+	s.Require().NoError(err)
+
+	// Add descriptors
+	req := httptest.NewRequest(http.MethodPost, "/api/descriptors", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/octet-stream")
+
+	w := httptest.NewRecorder()
+	s.server.AddDescriptors(w, req)
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	// Delete service
+	delReq := httptest.NewRequest(http.MethodDelete, "/api/services/helloworld.Greeter", nil)
+	delReq = mux.SetURLVars(delReq, map[string]string{"serviceID": "helloworld.Greeter"})
+
+	w2 := httptest.NewRecorder()
+	s.server.DeleteService(w2, delReq, "helloworld.Greeter")
+	s.Equal(http.StatusNoContent, w2.Code)
+
+	// Delete non-existent returns 404
+	w3 := httptest.NewRecorder()
+	s.server.DeleteService(w3, delReq, "helloworld.Greeter")
+	s.Equal(http.StatusNotFound, w3.Code)
+}
+
 // TestListUnusedStubs tests listing unused stubs.
 func (s *RestServerTestSuite) TestListUnusedStubs() {
 	w := httptest.NewRecorder()
@@ -315,6 +433,86 @@ func (s *RestServerTestSuite) TestListUsedStubs() {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	s.Require().NoError(err)
 	s.Empty(response) // No stubs used yet
+}
+
+// TestListHistory tests history endpoint (empty when history is disabled).
+func (s *RestServerTestSuite) TestListHistory() {
+	w := httptest.NewRecorder()
+	s.server.ListHistory(w, httptest.NewRequest(http.MethodGet, "/api/history", nil))
+	s.Equal(http.StatusOK, w.Code)
+
+	var list []any
+	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &list))
+	s.Empty(list)
+}
+
+// TestListHistory_RedactsSensitiveKeys tests that ListHistory returns redacted values when store has redact keys.
+func (s *RestServerTestSuite) TestListHistory_RedactsSensitiveKeys() {
+	store := history.NewMemoryStore(0, history.WithRedactKeys([]string{"password", "token"}))
+	store.Record(history.CallRecord{
+		Service:  "svc",
+		Method:   "M",
+		Request:  map[string]any{"user": "alice", "password": "secret123"},
+		Response: map[string]any{"token": "jwt-xxx"},
+	})
+
+	server, err := NewRestServer(s.T().Context(), stuber.NewBudgerigar(features.New()), &mockExtender{}, store, nil)
+	s.Require().NoError(err)
+
+	w := httptest.NewRecorder()
+	server.ListHistory(w, httptest.NewRequest(http.MethodGet, "/api/history", nil))
+	s.Equal(http.StatusOK, w.Code)
+
+	var list []map[string]any
+	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &list))
+	s.Len(list, 1)
+	req, ok := list[0]["request"].(map[string]any)
+	s.Require().True(ok)
+	resp, ok := list[0]["response"].(map[string]any)
+	s.Require().True(ok)
+	s.Equal("alice", req["user"])
+	s.Equal("[REDACTED]", req["password"])
+	s.Equal("[REDACTED]", resp["token"])
+}
+
+// TestVerifyCallsWithHistory tests verify endpoint with history store.
+func (s *RestServerTestSuite) TestVerifyCallsWithHistory() {
+	store := history.NewMemoryStore(0)
+	store.Record(history.CallRecord{Service: "svc", Method: "M", Request: map[string]any{"x": "1"}})
+	store.Record(history.CallRecord{Service: "svc", Method: "M", Request: map[string]any{"x": "2"}})
+	server, err := NewRestServer(s.T().Context(), stuber.NewBudgerigar(features.New()), &mockExtender{}, store, nil)
+	s.Require().NoError(err)
+
+	// GET /api/history returns records
+	w := httptest.NewRecorder()
+	server.ListHistory(w, httptest.NewRequest(http.MethodGet, "/api/history", nil))
+	s.Equal(http.StatusOK, w.Code)
+
+	var list []map[string]any
+	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &list))
+	s.Len(list, 2)
+
+	// POST /api/verify with correct count passes
+	body, err := json.Marshal(map[string]any{"service": "svc", "method": "M", "expectedCount": 2})
+	s.Require().NoError(err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/verify", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w2 := httptest.NewRecorder()
+	server.VerifyCalls(w2, req)
+	s.Equal(http.StatusOK, w2.Code)
+
+	// Wrong count fails
+	body3, err := json.Marshal(map[string]any{"service": "svc", "method": "M", "expectedCount": 1})
+	s.Require().NoError(err)
+
+	req3 := httptest.NewRequest(http.MethodPost, "/api/verify", bytes.NewReader(body3))
+	req3.Header.Set("Content-Type", "application/json")
+
+	w3 := httptest.NewRecorder()
+	server.VerifyCalls(w3, req3)
+	s.Equal(http.StatusBadRequest, w3.Code)
 }
 
 // TestLiveness tests liveness endpoint.

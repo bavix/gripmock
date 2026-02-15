@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -39,8 +38,8 @@ func TestDelayWithTypesDuration(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that delay was preserved
-	assert.Equal(t, types.Duration(100*time.Millisecond), unmarshaledStub.Output.Delay)
-	assert.Equal(t, 100*time.Millisecond, time.Duration(unmarshaledStub.Output.Delay))
+	require.Equal(t, types.Duration(100*time.Millisecond), unmarshaledStub.Output.Delay)
+	require.Equal(t, 100*time.Millisecond, time.Duration(unmarshaledStub.Output.Delay))
 }
 
 func TestDelayStringFormat(t *testing.T) {
@@ -62,6 +61,6 @@ func TestDelayStringFormat(t *testing.T) {
 	err := json.Unmarshal([]byte(jsonData), &stub)
 	require.NoError(t, err)
 
-	assert.Equal(t, types.Duration(100*time.Millisecond), stub.Output.Delay)
-	assert.Equal(t, 100*time.Millisecond, time.Duration(stub.Output.Delay))
+	require.Equal(t, types.Duration(100*time.Millisecond), stub.Output.Delay)
+	require.Equal(t, 100*time.Millisecond, time.Duration(stub.Output.Delay))
 }

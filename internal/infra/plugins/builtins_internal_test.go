@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugintest"
@@ -22,11 +21,11 @@ func TestRegisterBuiltins(t *testing.T) {
 	funcs := reg.Funcs()
 
 	// Assert
-	assert.Contains(t, funcs, "upper")
-	assert.Contains(t, funcs, "lower")
-	assert.Contains(t, funcs, "json")
-	assert.Contains(t, funcs, "add")
-	assert.Contains(t, funcs, "uuid")
+	require.Contains(t, funcs, "upper")
+	require.Contains(t, funcs, "lower")
+	require.Contains(t, funcs, "json")
+	require.Contains(t, funcs, "add")
+	require.Contains(t, funcs, "uuid")
 }
 
 func TestStringFuncs(t *testing.T) {
@@ -36,19 +35,19 @@ func TestStringFuncs(t *testing.T) {
 	funcs := stringFuncs()
 
 	// Assert
-	assert.Contains(t, funcs, "upper")
-	assert.Contains(t, funcs, "lower")
-	assert.Contains(t, funcs, "title")
-	assert.Contains(t, funcs, "join")
-	assert.Contains(t, funcs, "split")
+	require.Contains(t, funcs, "upper")
+	require.Contains(t, funcs, "lower")
+	require.Contains(t, funcs, "title")
+	require.Contains(t, funcs, "join")
+	require.Contains(t, funcs, "split")
 
 	upper, ok := funcs["upper"].(func(string) string)
 	require.True(t, ok)
-	assert.Equal(t, "HELLO", upper("hello"))
+	require.Equal(t, "HELLO", upper("hello"))
 
 	lower, ok := funcs["lower"].(func(string) string)
 	require.True(t, ok)
-	assert.Equal(t, "hello", lower("HELLO"))
+	require.Equal(t, "hello", lower("HELLO"))
 }
 
 func TestJsonFuncs(t *testing.T) {
@@ -65,9 +64,9 @@ func TestJsonFuncs(t *testing.T) {
 	result := jsonFunc(input)
 
 	// Assert
-	assert.Contains(t, funcs, "json")
-	assert.Contains(t, result, "key")
-	assert.Contains(t, result, "value")
+	require.Contains(t, funcs, "json")
+	require.Contains(t, result, "key")
+	require.Contains(t, result, "value")
 }
 
 func TestFormatFuncs(t *testing.T) {
@@ -85,9 +84,9 @@ func TestFormatFuncs(t *testing.T) {
 	result := sprintf(format, value)
 
 	// Assert
-	assert.Contains(t, funcs, "sprintf")
-	assert.Contains(t, funcs, "str")
-	assert.Equal(t, "hello 123", result)
+	require.Contains(t, funcs, "sprintf")
+	require.Contains(t, funcs, "str")
+	require.Equal(t, "hello 123", result)
 }
 
 func TestNumberFuncs(t *testing.T) {
@@ -108,12 +107,12 @@ func TestNumberFuncs(t *testing.T) {
 	floatResult := floatFunc(input)
 
 	// Assert
-	assert.Contains(t, funcs, "int")
-	assert.Contains(t, funcs, "int64")
-	assert.Contains(t, funcs, "float")
-	assert.Contains(t, funcs, "decimal")
-	assert.Equal(t, 42, intResult)
-	assert.InDelta(t, 42.5, floatResult, 0.001)
+	require.Contains(t, funcs, "int")
+	require.Contains(t, funcs, "int64")
+	require.Contains(t, funcs, "float")
+	require.Contains(t, funcs, "decimal")
+	require.Equal(t, 42, intResult)
+	require.InDelta(t, 42.5, floatResult, 0.001)
 }
 
 func TestArrayFuncs(t *testing.T) {
@@ -132,9 +131,9 @@ func TestArrayFuncs(t *testing.T) {
 	sliceResult := extractFunc(sliceInput, 1)
 
 	// Assert
-	assert.Contains(t, funcs, "extract")
-	assert.Equal(t, "value", mapResult)
-	assert.Equal(t, "b", sliceResult)
+	require.Contains(t, funcs, "extract")
+	require.Equal(t, "value", mapResult)
+	require.Equal(t, "b", sliceResult)
 }
 
 func TestCompareFuncs(t *testing.T) {
@@ -155,15 +154,15 @@ func TestCompareFuncs(t *testing.T) {
 	eqResult2 := eq(5, 3)
 
 	// Assert
-	assert.Contains(t, funcs, "gt")
-	assert.Contains(t, funcs, "lt")
-	assert.Contains(t, funcs, "gte")
-	assert.Contains(t, funcs, "lte")
-	assert.Contains(t, funcs, "eq")
-	assert.True(t, gtResult1)
-	assert.False(t, gtResult2)
-	assert.True(t, eqResult1)
-	assert.False(t, eqResult2)
+	require.Contains(t, funcs, "gt")
+	require.Contains(t, funcs, "lt")
+	require.Contains(t, funcs, "gte")
+	require.Contains(t, funcs, "lte")
+	require.Contains(t, funcs, "eq")
+	require.True(t, gtResult1)
+	require.False(t, gtResult2)
+	require.True(t, eqResult1)
+	require.False(t, eqResult2)
 }
 
 func TestMathFuncs(t *testing.T) {
@@ -191,39 +190,39 @@ func TestMathFuncs(t *testing.T) {
 	mulResult := mul(3, 4)
 
 	// Assert
-	assert.Contains(t, funcs, "round")
-	assert.Contains(t, funcs, "floor")
-	assert.Contains(t, funcs, "ceil")
-	assert.Contains(t, funcs, "add")
-	assert.Contains(t, funcs, "sub")
-	assert.Contains(t, funcs, "div")
-	assert.Contains(t, funcs, "mod")
-	assert.Contains(t, funcs, "sum")
-	assert.Contains(t, funcs, "mul")
-	assert.Contains(t, funcs, "avg")
-	assert.Contains(t, funcs, "min")
-	assert.Contains(t, funcs, "max")
-	assert.InDelta(t, 3.0, roundResult1, 0.001)
-	assert.InDelta(t, 4.0, roundResult2, 0.001)
-	assert.InDelta(t, 10.0, addResult, 0.001)
-	assert.InDelta(t, 2.0, subResult, 0.001)
-	assert.InDelta(t, 12.0, mulResult, 0.001)
+	require.Contains(t, funcs, "round")
+	require.Contains(t, funcs, "floor")
+	require.Contains(t, funcs, "ceil")
+	require.Contains(t, funcs, "add")
+	require.Contains(t, funcs, "sub")
+	require.Contains(t, funcs, "div")
+	require.Contains(t, funcs, "mod")
+	require.Contains(t, funcs, "sum")
+	require.Contains(t, funcs, "mul")
+	require.Contains(t, funcs, "avg")
+	require.Contains(t, funcs, "min")
+	require.Contains(t, funcs, "max")
+	require.InDelta(t, 3.0, roundResult1, 0.001)
+	require.InDelta(t, 4.0, roundResult2, 0.001)
+	require.InDelta(t, 10.0, addResult, 0.001)
+	require.InDelta(t, 2.0, subResult, 0.001)
+	require.InDelta(t, 12.0, mulResult, 0.001)
 }
 
 func TestTimeFuncs(t *testing.T) {
 	t.Parallel()
 
 	funcs := timeFuncs()
-	assert.Contains(t, funcs, "now")
-	assert.Contains(t, funcs, "unix")
-	assert.Contains(t, funcs, "format")
+	require.Contains(t, funcs, "now")
+	require.Contains(t, funcs, "unix")
+	require.Contains(t, funcs, "format")
 }
 
 func TestUuidFuncs(t *testing.T) {
 	t.Parallel()
 
 	funcs := uuidFuncMap()
-	assert.Contains(t, funcs, "uuid")
+	require.Contains(t, funcs, "uuid")
 
 	uuidFunc, ok := funcs["uuid"].(func() string)
 	require.True(t, ok)
@@ -231,7 +230,7 @@ func TestUuidFuncs(t *testing.T) {
 	uuid1 := uuidFunc()
 	uuid2 := uuidFunc()
 
-	assert.NotEqual(t, uuid1, uuid2)
+	require.NotEqual(t, uuid1, uuid2)
 	_, err := uuid.Parse(uuid1)
 	require.NoError(t, err)
 }
@@ -240,24 +239,24 @@ func TestEncodingFuncs(t *testing.T) {
 	t.Parallel()
 
 	funcs := encodingFuncs()
-	assert.Contains(t, funcs, "bytes")
-	assert.Contains(t, funcs, "string2base64")
-	assert.Contains(t, funcs, "bytes2base64")
-	assert.Contains(t, funcs, "uuid2base64")
-	assert.Contains(t, funcs, "uuid2bytes")
-	assert.Contains(t, funcs, "uuid2int64")
+	require.Contains(t, funcs, "bytes")
+	require.Contains(t, funcs, "string2base64")
+	require.Contains(t, funcs, "bytes2base64")
+	require.Contains(t, funcs, "uuid2base64")
+	require.Contains(t, funcs, "uuid2bytes")
+	require.Contains(t, funcs, "uuid2int64")
 
 	bytesFunc, ok := funcs["bytes"].(func(string) []byte)
 	require.True(t, ok)
-	assert.Equal(t, []byte("hello"), bytesFunc("hello"))
+	require.Equal(t, []byte("hello"), bytesFunc("hello"))
 
 	str2b64, ok := funcs["string2base64"].(func(string) string)
 	require.True(t, ok)
-	assert.Equal(t, "aGVsbG8=", str2b64("hello"))
+	require.Equal(t, "aGVsbG8=", str2b64("hello"))
 
 	b2b64, ok := funcs["bytes2base64"].(func([]byte) string)
 	require.True(t, ok)
-	assert.Equal(t, "aGVsbG8=", b2b64([]byte("hello")))
+	require.Equal(t, "aGVsbG8=", b2b64([]byte("hello")))
 
 	id := uuid.New().String()
 	u2b64, ok := funcs["uuid2base64"].(func(string) (string, error))
@@ -265,22 +264,22 @@ func TestEncodingFuncs(t *testing.T) {
 
 	res, err := u2b64(id)
 	require.NoError(t, err)
-	assert.NotEmpty(t, res)
+	require.NotEmpty(t, res)
 
 	u2bytes, ok := funcs["uuid2bytes"].(func(string) ([]byte, error))
 	require.True(t, ok)
 
 	b, err := u2bytes(id)
 	require.NoError(t, err)
-	assert.Len(t, b, 16)
+	require.Len(t, b, 16)
 
 	u2int64, ok := funcs["uuid2int64"].(func(string) (string, error))
 	require.True(t, ok)
 
 	s, err := u2int64(id)
 	require.NoError(t, err)
-	assert.Contains(t, s, "high")
-	assert.Contains(t, s, "low")
+	require.Contains(t, s, "high")
+	require.Contains(t, s, "low")
 }
 
 func TestConvertToFloat64(t *testing.T) {
@@ -310,10 +309,10 @@ func TestConvertToFloat64(t *testing.T) {
 			result, ok := convertToFloat64(tt.input)
 
 			// Assert
-			assert.Equal(t, tt.ok, ok)
+			require.Equal(t, tt.ok, ok)
 
 			if ok {
-				assert.InDelta(t, tt.expected, result, 0.001)
+				require.InDelta(t, tt.expected, result, 0.001)
 			}
 		})
 	}
@@ -346,10 +345,10 @@ func TestConvertToInt(t *testing.T) {
 			result, ok := convertToInt(tt.input)
 
 			// Assert
-			assert.Equal(t, tt.ok, ok)
+			require.Equal(t, tt.ok, ok)
 
 			if ok {
-				assert.Equal(t, tt.expected, result)
+				require.Equal(t, tt.expected, result)
 			}
 		})
 	}
@@ -367,8 +366,8 @@ func TestAdd(t *testing.T) {
 	invalidResult := add(invalidArgs...)
 
 	// Assert
-	assert.InDelta(t, 10.0, validResult, 0.001)
-	assert.InDelta(t, 0.0, invalidResult, 0.001)
+	require.InDelta(t, 10.0, validResult, 0.001)
+	require.InDelta(t, 0.0, invalidResult, 0.001)
 }
 
 func TestSubtract(t *testing.T) {
@@ -384,9 +383,9 @@ func TestSubtract(t *testing.T) {
 	invalidResult := subtract(invalidArgs...)
 
 	// Assert
-	assert.InDelta(t, 2.0, validResult, 0.001)
-	assert.InDelta(t, 0.0, emptyResult, 0.001)
-	assert.InDelta(t, 0.0, invalidResult, 0.001)
+	require.InDelta(t, 2.0, validResult, 0.001)
+	require.InDelta(t, 0.0, emptyResult, 0.001)
+	require.InDelta(t, 0.0, invalidResult, 0.001)
 }
 
 func TestDivide(t *testing.T) {
@@ -402,9 +401,9 @@ func TestDivide(t *testing.T) {
 	emptyResult := divide()
 
 	// Assert
-	assert.InDelta(t, 2.0, validResult, 0.001)
-	assert.InDelta(t, 10.0, zeroDivResult, 0.001) // Division by zero returns original value
-	assert.InDelta(t, 0.0, emptyResult, 0.001)
+	require.InDelta(t, 2.0, validResult, 0.001)
+	require.InDelta(t, 10.0, zeroDivResult, 0.001) // Division by zero returns original value
+	require.InDelta(t, 0.0, emptyResult, 0.001)
 }
 
 func TestModulo(t *testing.T) {
@@ -421,9 +420,9 @@ func TestModulo(t *testing.T) {
 	singleResult := modulo(singleArg...)
 
 	// Assert
-	assert.InDelta(t, 1.0, validResult, 0.001)
-	assert.InDelta(t, 0.0, zeroModResult, 0.001)
-	assert.InDelta(t, 0.0, singleResult, 0.001)
+	require.InDelta(t, 1.0, validResult, 0.001)
+	require.InDelta(t, 0.0, zeroModResult, 0.001)
+	require.InDelta(t, 0.0, singleResult, 0.001)
 }
 
 func TestSum(t *testing.T) {
@@ -437,8 +436,8 @@ func TestSum(t *testing.T) {
 	emptyResult := sum()
 
 	// Assert
-	assert.InDelta(t, 15.0, validResult, 0.001)
-	assert.InDelta(t, 0.0, emptyResult, 0.001)
+	require.InDelta(t, 15.0, validResult, 0.001)
+	require.InDelta(t, 0.0, emptyResult, 0.001)
 }
 
 func TestProduct(t *testing.T) {
@@ -452,8 +451,8 @@ func TestProduct(t *testing.T) {
 	emptyResult := product()
 
 	// Assert
-	assert.InDelta(t, 120.0, validResult, 0.001)
-	assert.InDelta(t, 1.0, emptyResult, 0.001)
+	require.InDelta(t, 120.0, validResult, 0.001)
+	require.InDelta(t, 1.0, emptyResult, 0.001)
 }
 
 func TestAverage(t *testing.T) {
@@ -467,8 +466,8 @@ func TestAverage(t *testing.T) {
 	emptyResult := average()
 
 	// Assert
-	assert.InDelta(t, 3.0, validResult, 0.001)
-	assert.InDelta(t, 0.0, emptyResult, 0.001)
+	require.InDelta(t, 3.0, validResult, 0.001)
+	require.InDelta(t, 0.0, emptyResult, 0.001)
 }
 
 func TestMinValue(t *testing.T) {
@@ -482,8 +481,8 @@ func TestMinValue(t *testing.T) {
 	emptyResult := minValue()
 
 	// Assert
-	assert.InDelta(t, 1.0, validResult, 0.001)
-	assert.InDelta(t, 0.0, emptyResult, 0.001)
+	require.InDelta(t, 1.0, validResult, 0.001)
+	require.InDelta(t, 0.0, emptyResult, 0.001)
 }
 
 func TestMaxValue(t *testing.T) {
@@ -497,8 +496,8 @@ func TestMaxValue(t *testing.T) {
 	emptyResult := maxValue()
 
 	// Assert
-	assert.InDelta(t, 5.0, validResult, 0.001)
-	assert.InDelta(t, 0.0, emptyResult, 0.001)
+	require.InDelta(t, 5.0, validResult, 0.001)
+	require.InDelta(t, 0.0, emptyResult, 0.001)
 }
 
 func TestExtract(t *testing.T) {
@@ -517,9 +516,9 @@ func TestExtract(t *testing.T) {
 	invalidResult := extract(sliceInput, invalidIndex)
 
 	// Assert
-	assert.Equal(t, "value", mapResult)
-	assert.Equal(t, "b", sliceResult)
-	assert.Nil(t, invalidResult)
+	require.Equal(t, "value", mapResult)
+	require.Equal(t, "b", sliceResult)
+	require.Nil(t, invalidResult)
 }
 
 func TestExtractFromSlice(t *testing.T) {
@@ -538,8 +537,8 @@ func TestExtractFromSlice(t *testing.T) {
 	invalidResult := extractFromSlice(length, invalidIndex, getter)
 
 	// Assert
-	assert.Equal(t, "b", validResult)
-	assert.Nil(t, invalidResult)
+	require.Equal(t, "b", validResult)
+	require.Nil(t, invalidResult)
 }
 
 func TestExtractFromObjects(t *testing.T) {
@@ -559,9 +558,9 @@ func TestExtractFromObjects(t *testing.T) {
 	require.IsType(t, []any{}, result)
 	names, ok := result.([]any)
 	require.True(t, ok)
-	assert.Len(t, names, 2)
-	assert.Contains(t, names, "a")
-	assert.Contains(t, names, "b")
+	require.Len(t, names, 2)
+	require.Contains(t, names, "a")
+	require.Contains(t, names, "b")
 }
 
 func TestMinFloat(t *testing.T) {
@@ -576,8 +575,8 @@ func TestMinFloat(t *testing.T) {
 	result2 := minFloat(a2, b2)
 
 	// Assert
-	assert.InDelta(t, 1.0, result1, 0.001)
-	assert.InDelta(t, 2.0, result2, 0.001)
+	require.InDelta(t, 1.0, result1, 0.001)
+	require.InDelta(t, 2.0, result2, 0.001)
 }
 
 func TestMaxFloat(t *testing.T) {
@@ -592,8 +591,8 @@ func TestMaxFloat(t *testing.T) {
 	result2 := maxFloat(a2, b2)
 
 	// Assert
-	assert.InDelta(t, 2.0, result1, 0.001)
-	assert.InDelta(t, 3.0, result2, 0.001)
+	require.InDelta(t, 2.0, result1, 0.001)
+	require.InDelta(t, 3.0, result2, 0.001)
 }
 
 func TestTitleCase(t *testing.T) {
@@ -606,7 +605,7 @@ func TestTitleCase(t *testing.T) {
 	result := titleCase(input)
 
 	// Assert
-	assert.Equal(t, "HELLO", result)
+	require.Equal(t, "HELLO", result)
 }
 
 func TestBuiltinInfo(t *testing.T) {
@@ -616,7 +615,7 @@ func TestBuiltinInfo(t *testing.T) {
 	info := builtinInfo()
 
 	// Assert
-	assert.Equal(t, "gripmock", info.Name)
-	assert.Equal(t, "builtin", info.Kind)
-	assert.Contains(t, info.Capabilities, "template-funcs")
+	require.Equal(t, "gripmock", info.Name)
+	require.Equal(t, "builtin", info.Kind)
+	require.Contains(t, info.Capabilities, "template-funcs")
 }

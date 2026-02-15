@@ -278,6 +278,36 @@ output:
     code: 5
 ```
 
+## Options Examples
+
+### Match Limit (times)
+
+```yaml
+# Stub matches exactly once
+- service: AuthService
+  method: Login
+  input:
+    equals:
+      username: "test"
+  output:
+    data:
+      token: "jwt-token"
+  options:
+    times: 1
+
+# Stub matches up to 5 times (for retry testing)
+- service: PaymentService
+  method: Charge
+  input:
+    contains:
+      amount: 100
+  output:
+    data:
+      transactionId: "tx-123"
+  options:
+    times: 5
+```
+
 ## Complex Examples
 
 ### E-commerce Order Service

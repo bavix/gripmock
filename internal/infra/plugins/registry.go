@@ -3,6 +3,7 @@ package plugins
 import (
 	"context"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -91,7 +92,7 @@ func (r *Registry) Plugins(ctx context.Context) []pkgplugins.PluginInfo {
 	for _, name := range order {
 		info := r.plugins[name]
 		if deps, ok := r.pluginDeps[name]; ok {
-			info.Depends = append([]string(nil), deps...)
+			info.Depends = slices.Clone(deps)
 		}
 
 		result = append(result, info)
@@ -115,7 +116,7 @@ func (r *Registry) Groups(ctx context.Context) []pkgplugins.PluginWithFuncs {
 	for _, name := range order {
 		info := r.plugins[name]
 		if deps, ok := r.pluginDeps[name]; ok {
-			info.Depends = append([]string(nil), deps...)
+			info.Depends = slices.Clone(deps)
 		}
 
 		result = append(result, pkgplugins.PluginWithFuncs{

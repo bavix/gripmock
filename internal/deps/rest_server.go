@@ -11,10 +11,13 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/bavix/gripmock/v3/internal/app"
+	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
+	"github.com/bavix/gripmock/v3/internal/infra/httputil"
 	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
 )
 
+//nolint:funlen
 func (b *Builder) RestServe(
 	ctx context.Context,
 	stubPath string,
@@ -22,7 +25,12 @@ func (b *Builder) RestServe(
 	extender := b.Extender(ctx)
 	go extender.ReadFromPath(ctx, stubPath)
 
-	apiServer, err := app.NewRestServer(ctx, b.Budgerigar(), extender)
+	var historyReader history.Reader
+	if store := b.HistoryStore(); store != nil {
+		historyReader = store
+	}
+
+	apiServer, err := app.NewRestServer(ctx, b.Budgerigar(), extender, historyReader, b.StubValidator())
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create rest server")
 	}
@@ -37,6 +45,7 @@ func (b *Builder) RestServe(
 		BaseURL:    "/api",
 		BaseRouter: router,
 		Middlewares: []rest.MiddlewareFunc{
+			httputil.MaxBodySize(httputil.MaxBodyBytes()),
 			muxmiddleware.PanicRecoveryMiddleware,
 			muxmiddleware.ContentType,
 			muxmiddleware.RequestLogger,
@@ -44,11 +53,21 @@ func (b *Builder) RestServe(
 	})
 	router.PathPrefix("/").Handler(http.FileServerFS(ui)).Methods(http.MethodGet)
 
-	const timeout = time.Millisecond * 25
+	const (
+		readHeaderTimeout = 10 * time.Second
+		readTimeout       = 30 * time.Second
+		writeTimeout      = 30 * time.Second
+		idleTimeout       = 120 * time.Second
+		maxHeaderBytes    = 1 << 20
+	)
 
 	srv := &http.Server{
 		Addr:              b.config.HTTPAddr,
-		ReadHeaderTimeout: timeout,
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+		MaxHeaderBytes:    maxHeaderBytes,
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},
@@ -57,8 +76,9 @@ func (b *Builder) RestServe(
 			handlers.AllowedHeaders([]string{
 				"Accept", "Accept-Language", "Content-Type", "Content-Language", "Origin",
 				"X-GripMock-RequestInternal",
+				"X-Gripmock-Session",
 			}),
-			handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodDelete}),
+			handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPatch}),
 		)(router),
 	}
 

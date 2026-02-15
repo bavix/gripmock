@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -17,11 +16,8 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
-	"github.com/bavix/gripmock/v3/internal/infra/template"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
-	"github.com/bavix/gripmock/v3/pkg/plugintest"
 )
 
 const (
@@ -103,23 +99,10 @@ func (m *mockFullServerStream) SendHeader(md metadata.MD) error {
 func (m *mockFullServerStream) SetTrailer(md metadata.MD) {
 }
 
-func createTestMockerForStream() *grpcMocker {
-	structDesc := (&structpb.Struct{}).ProtoReflect().Descriptor()
-	testRegistry := plugintest.NewRegistry()
-	templateEngine := template.New(context.Background(), testRegistry)
-
-	return &grpcMocker{
-		budgerigar:     stuber.NewBudgerigar(features.New()),
-		templateEngine: templateEngine,
-		inputDesc:      structDesc,
-		outputDesc:     structDesc,
-	}
-}
-
 func TestHandleServerStream_WithArrayStream(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMocker(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
@@ -127,7 +110,7 @@ func TestHandleServerStream_WithArrayStream(t *testing.T) {
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	stream := &mockFullServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		sentMessages:     make([]*dynamicpb.Message, 0),
 		receivedMessages: []*dynamicpb.Message{inputMsg},
 		recvMsgLimit:     1,
@@ -152,13 +135,13 @@ func TestHandleServerStream_WithArrayStream(t *testing.T) {
 
 	err := mocker.handleServerStream(stream)
 	require.NoError(t, err)
-	assert.Len(t, stream.sentMessages, 2)
+	require.Len(t, stream.sentMessages, 2)
 }
 
 func TestHandleServerStream_WithNonArrayStream(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMocker(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
@@ -166,7 +149,7 @@ func TestHandleServerStream_WithNonArrayStream(t *testing.T) {
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	stream := &mockFullServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		sentMessages:     make([]*dynamicpb.Message, 0),
 		receivedMessages: []*dynamicpb.Message{inputMsg},
 		recvMsgLimit:     1,
@@ -188,20 +171,20 @@ func TestHandleServerStream_WithNonArrayStream(t *testing.T) {
 
 	err := mocker.handleServerStream(stream)
 	require.NoError(t, err)
-	assert.Len(t, stream.sentMessages, 1)
+	require.Len(t, stream.sentMessages, 1)
 }
 
 func TestHandleServerStream_WithHeaders(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMocker(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
 	mocker.methodName = testMethodName
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	ctx := metadata.NewIncomingContext(context.Background(), metadata.New(map[string]string{
+	ctx := metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{
 		"x-user": "testuser",
 	}))
 	stream := &mockFullServerStream{
@@ -232,14 +215,14 @@ func TestHandleServerStream_WithHeaders(t *testing.T) {
 
 	err := mocker.handleServerStream(stream)
 	require.NoError(t, err)
-	assert.NotNil(t, stream.headers)
-	assert.Equal(t, "test", stream.headers.Get("x-response")[0])
+	require.NotNil(t, stream.headers)
+	require.Equal(t, "test", stream.headers.Get("x-response")[0])
 }
 
 func TestHandleServerStream_WithError(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMocker(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
@@ -247,7 +230,7 @@ func TestHandleServerStream_WithError(t *testing.T) {
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	stream := &mockFullServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		sentMessages:     make([]*dynamicpb.Message, 0),
 		receivedMessages: []*dynamicpb.Message{inputMsg},
 		recvMsgLimit:     1,
@@ -272,15 +255,15 @@ func TestHandleServerStream_WithError(t *testing.T) {
 
 	err := mocker.handleServerStream(stream)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "test error")
+	require.Contains(t, err.Error(), "test error")
 }
 
 func TestHandleServerStream_EOF(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMocker(t)
 	stream := &mockFullServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		recvMsgError: io.EOF,
 	}
@@ -292,22 +275,22 @@ func TestHandleServerStream_EOF(t *testing.T) {
 func TestHandleServerStream_RecvError(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMocker(t)
 	stream := &mockFullServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		recvMsgError: status.Error(codes.Internal, "receive error"),
 	}
 
 	err := mocker.handleServerStream(stream)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to receive message")
+	require.Contains(t, err.Error(), "failed to receive message")
 }
 
 func TestHandleServerStream_NotFound(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMocker(t)
 	mocker.fullMethod = testServiceName + "/" + testMethodName
 	mocker.fullServiceName = testServiceName
 	mocker.serviceName = testServiceName
@@ -315,7 +298,7 @@ func TestHandleServerStream_NotFound(t *testing.T) {
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	stream := &mockFullServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		sentMessages:     make([]*dynamicpb.Message, 0),
 		receivedMessages: []*dynamicpb.Message{inputMsg},
 		recvMsgLimit:     1,
@@ -323,15 +306,15 @@ func TestHandleServerStream_NotFound(t *testing.T) {
 
 	err := mocker.handleServerStream(stream)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to find response")
+	require.Contains(t, err.Error(), "failed to find response")
 }
 
 func TestHandleNonArrayStreamData_SendsMessages(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMocker(t)
 	stream := &mockFullServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		recvMsgLimit: 1,
 	}
@@ -345,15 +328,15 @@ func TestHandleNonArrayStreamData_SendsMessages(t *testing.T) {
 
 	err := mocker.handleNonArrayStreamData(stream, stub)
 	require.NoError(t, err)
-	assert.Len(t, stream.sentMessages, 1)
+	require.Len(t, stream.sentMessages, 1)
 }
 
 func TestHandleNonArrayStreamData_WithDelay(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMocker(t)
 	stream := &mockFullServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		recvMsgLimit: 1,
 	}
@@ -371,16 +354,16 @@ func TestHandleNonArrayStreamData_WithDelay(t *testing.T) {
 	duration := time.Since(start)
 
 	require.NoError(t, err)
-	assert.GreaterOrEqual(t, duration, 10*time.Millisecond)
+	require.GreaterOrEqual(t, duration, 10*time.Millisecond)
 }
 
 func TestHandleNonArrayStreamData_WithTemplates(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMocker(t)
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	stream := &mockFullServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		sentMessages:     make([]*dynamicpb.Message, 0),
 		receivedMessages: []*dynamicpb.Message{inputMsg},
 		recvMsgLimit:     1,
@@ -395,14 +378,14 @@ func TestHandleNonArrayStreamData_WithTemplates(t *testing.T) {
 
 	err := mocker.handleNonArrayStreamData(stream, stub)
 	require.NoError(t, err)
-	assert.Len(t, stream.sentMessages, 1)
+	require.Len(t, stream.sentMessages, 1)
 }
 
 func TestHandleNonArrayStreamData_ContextCancelled(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
-	ctx, cancel := context.WithCancel(context.Background())
+	mocker := createTestMocker(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
 	stream := &mockFullServerStream{
@@ -420,15 +403,15 @@ func TestHandleNonArrayStreamData_ContextCancelled(t *testing.T) {
 
 	err := mocker.handleNonArrayStreamData(stream, stub)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, context.Canceled)
+	require.ErrorIs(t, err, context.Canceled)
 }
 
 func TestHandleNonArrayStreamData_WithError(t *testing.T) {
 	t.Parallel()
 
-	mocker := createTestMockerForStream()
+	mocker := createTestMocker(t)
 	stream := &mockFullServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
 		recvMsgLimit: 0,
 	}
@@ -443,7 +426,7 @@ func TestHandleNonArrayStreamData_WithError(t *testing.T) {
 
 	err := mocker.handleNonArrayStreamData(stream, stub)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "test error")
+	require.Contains(t, err.Error(), "test error")
 }
 
 func TestReceiveStreamMessage_Success(t *testing.T) {
@@ -451,7 +434,7 @@ func TestReceiveStreamMessage_Success(t *testing.T) {
 
 	msg := dynamicpb.NewMessage((&structpb.Struct{}).ProtoReflect().Descriptor())
 	stream := &mockFullServerStream{
-		ctx:              context.Background(),
+		ctx:              t.Context(),
 		receivedMessages: []*dynamicpb.Message{msg},
 		recvMsgLimit:     1,
 	}
@@ -465,13 +448,13 @@ func TestReceiveStreamMessage_Error(t *testing.T) {
 
 	msg := dynamicpb.NewMessage((&structpb.Struct{}).ProtoReflect().Descriptor())
 	stream := &mockFullServerStream{
-		ctx:          context.Background(),
+		ctx:          t.Context(),
 		recvMsgError: status.Error(codes.Internal, "receive error"),
 	}
 
 	err := receiveStreamMessage(stream, msg)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to receive message")
+	require.Contains(t, err.Error(), "failed to receive message")
 }
 
 func TestProcessHeaders_EmptyMetadata(t *testing.T) {
@@ -479,7 +462,7 @@ func TestProcessHeaders_EmptyMetadata(t *testing.T) {
 
 	md := metadata.New(map[string]string{})
 	result := processHeaders(md)
-	assert.Nil(t, result)
+	require.Nil(t, result)
 }
 
 func TestProcessHeaders_WithHeaders(t *testing.T) {
@@ -491,10 +474,10 @@ func TestProcessHeaders_WithHeaders(t *testing.T) {
 		":authority": "localhost",
 	})
 	result := processHeaders(md)
-	assert.NotNil(t, result)
-	assert.Equal(t, "testuser", result["x-user"])
-	assert.Equal(t, "test", result["x-request"])
-	assert.NotContains(t, result, ":authority")
+	require.NotNil(t, result)
+	require.Equal(t, "testuser", result["x-user"])
+	require.Equal(t, "test", result["x-request"])
+	require.NotContains(t, result, ":authority")
 }
 
 func TestProcessHeaders_ExcludedHeaders(t *testing.T) {
@@ -508,12 +491,12 @@ func TestProcessHeaders_ExcludedHeaders(t *testing.T) {
 		"x-custom":             "value",
 	})
 	result := processHeaders(md)
-	assert.NotNil(t, result)
-	assert.NotContains(t, result, "content-type")
-	assert.NotContains(t, result, "grpc-accept-encoding")
-	assert.NotContains(t, result, "user-agent")
-	assert.NotContains(t, result, "accept-encoding")
-	assert.Equal(t, "value", result["x-custom"])
+	require.NotNil(t, result)
+	require.NotContains(t, result, "content-type")
+	require.NotContains(t, result, "grpc-accept-encoding")
+	require.NotContains(t, result, "user-agent")
+	require.NotContains(t, result, "accept-encoding")
+	require.Equal(t, "value", result["x-custom"])
 }
 
 func TestProcessHeaders_MultipleValues(t *testing.T) {
@@ -525,8 +508,8 @@ func TestProcessHeaders_MultipleValues(t *testing.T) {
 		"x-header", "value3",
 	)
 	result := processHeaders(md)
-	assert.NotNil(t, result)
-	assert.Equal(t, "value1;value2;value3", result["x-header"])
+	require.NotNil(t, result)
+	require.Equal(t, "value1;value2;value3", result["x-header"])
 }
 
 // TestConvertToMap_Proto3DefaultValues verifies that scalar fields with default values (e.g. 0.0)

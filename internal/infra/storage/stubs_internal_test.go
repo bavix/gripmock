@@ -70,7 +70,6 @@ func TestStubsStorage_Initialization(t *testing.T) {
 func TestStubsStorage_WithRealDependencies(t *testing.T) {
 	t.Parallel()
 
-	// Test with real dependencies - simplified to avoid hanging
 	storage := NewStub(nil, nil, nil)
 	require.NotNil(t, storage)
 }
@@ -458,7 +457,6 @@ func TestStubsStorage_ReadFromPathWithEmptyPath(t *testing.T) {
 func TestStubsStorage_ReadFromPathWithNonExistentPath(t *testing.T) {
 	t.Parallel()
 
-	// Create a mock watcher to avoid nil pointer dereference
 	mockWatcher := &watcher.StubWatcher{}
 	storage := NewStub(nil, nil, mockWatcher)
 	ctx := context.Background()
@@ -474,7 +472,6 @@ func TestStubsStorage_ReadFromPathWithValidPath(t *testing.T) {
 	// Create a temporary directory
 	tempDir := t.TempDir()
 
-	// Create a mock watcher to avoid nil pointer dereference
 	mockWatcher := &watcher.StubWatcher{}
 	storage := NewStub(nil, nil, mockWatcher)
 	ctx := context.Background()
@@ -495,7 +492,6 @@ func TestStubsStorage_ReadFromPathWithSubdirectories(t *testing.T) {
 	err := os.Mkdir(subDir, 0o750)
 	require.NoError(t, err)
 
-	// Create a mock watcher to avoid nil pointer dereference
 	mockWatcher := &watcher.StubWatcher{}
 	storage := NewStub(nil, nil, mockWatcher)
 	ctx := context.Background()
@@ -516,7 +512,6 @@ func TestStubsStorage_ReadFromPathWithNonStubFiles(t *testing.T) {
 	err := os.WriteFile(nonStubFile, []byte("test content"), 0o600)
 	require.NoError(t, err)
 
-	// Create a mock watcher to avoid nil pointer dereference
 	mockWatcher := &watcher.StubWatcher{}
 	storage := NewStub(nil, nil, mockWatcher)
 	ctx := context.Background()

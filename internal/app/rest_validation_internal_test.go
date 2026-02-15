@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -25,7 +24,7 @@ type RestValidationTestSuite struct {
 func (s *RestValidationTestSuite) SetupSuite() {
 	s.budgerigar = stuber.NewBudgerigar(features.New())
 	extender := &mockExtender{}
-	server, err := NewRestServer(context.Background(), s.budgerigar, extender)
+	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil)
 	s.Require().NoError(err)
 	s.server = server
 }

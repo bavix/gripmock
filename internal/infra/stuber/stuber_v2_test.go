@@ -1573,6 +1573,137 @@ func TestPriorityHeadersOverEquals(t *testing.T) {
 	require.Empty(t, foundStub.Output.Headers)
 }
 
+//nolint:funlen
+func TestBudgerigar_FindByQuery_SessionIsolation(t *testing.T) {
+	t.Parallel()
+
+	s := stuber.NewBudgerigar(features.New())
+
+	// Global stub (Session empty) - visible to all
+	globalStub := &stuber.Stub{
+		Service: "svc",
+		Method:  "M",
+		Input:   stuber.InputData{Equals: map[string]any{"x": "1"}},
+		Output:  stuber.Output{Data: map[string]any{"v": "global"}},
+	}
+	// Session A stub - only visible when Query.Session == "A"
+	stubA := &stuber.Stub{
+		Service: "svc",
+		Method:  "M",
+		Session: "A",
+		Input:   stuber.InputData{Equals: map[string]any{"x": "2"}},
+		Output:  stuber.Output{Data: map[string]any{"v": "session-a"}},
+	}
+	// Session B stub - only visible when Query.Session == "B"
+	stubB := &stuber.Stub{
+		Service: "svc",
+		Method:  "M",
+		Session: "B",
+		Input:   stuber.InputData{Equals: map[string]any{"x": "3"}},
+		Output:  stuber.Output{Data: map[string]any{"v": "session-b"}},
+	}
+
+	s.PutMany(globalStub, stubA, stubB)
+
+	// Query without session: only global stub matches
+	result, err := s.FindByQuery(stuber.Query{
+		Service: "svc", Method: "M", Session: "",
+		Input: []map[string]any{{"x": "1"}},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result.Found())
+	require.Equal(t, "global", result.Found().Output.Data["v"])
+
+	// Query without session, matching session-A input: no exact match (session stubs hidden)
+	result, err = s.FindByQuery(stuber.Query{
+		Service: "svc", Method: "M", Session: "",
+		Input: []map[string]any{{"x": "2"}},
+	})
+	require.NoError(t, err)
+	require.Nil(t, result.Found(), "session-A stub must be invisible when query has no session")
+
+	// Query with Session A: matches session-A stub
+	result, err = s.FindByQuery(stuber.Query{
+		Service: "svc", Method: "M", Session: "A",
+		Input: []map[string]any{{"x": "2"}},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result.Found())
+	require.Equal(t, "session-a", result.Found().Output.Data["v"])
+
+	// Query with Session A can also match global
+	result, err = s.FindByQuery(stuber.Query{
+		Service: "svc", Method: "M", Session: "A",
+		Input: []map[string]any{{"x": "1"}},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result.Found())
+	require.Equal(t, "global", result.Found().Output.Data["v"])
+
+	// Query with Session B: matches session-B stub, not A
+	result, err = s.FindByQuery(stuber.Query{
+		Service: "svc", Method: "M", Session: "B",
+		Input: []map[string]any{{"x": "3"}},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result.Found())
+	require.Equal(t, "session-b", result.Found().Output.Data["v"])
+}
+
+// TestBudgerigar_Times_ConcurrentNoRace verifies Times limit under concurrent load without race.
+func TestBudgerigar_Times_ConcurrentNoRace(t *testing.T) {
+	t.Parallel()
+
+	s := stuber.NewBudgerigar(features.New())
+	s.PutMany(&stuber.Stub{
+		Service: "helloworld.Greeter",
+		Method:  "SayHello",
+		Input:   stuber.InputData{Equals: map[string]any{"name": "limited"}},
+		Output:  stuber.Output{Data: map[string]any{"message": "ok"}},
+		Options: stuber.StubOptions{Times: 2},
+	})
+
+	query := stuber.Query{
+		Service: "helloworld.Greeter",
+		Method:  "SayHello",
+		Input:   []map[string]any{{"name": "limited"}},
+	}
+
+	// 10 goroutines, stub allows only 2 — exactly 2 should succeed
+	const concurrency = 10
+
+	results := make(chan error, concurrency)
+	for range concurrency {
+		go func() {
+			result, err := s.FindByQuery(query)
+			if err != nil {
+				results <- err
+
+				return
+			}
+
+			if result.Found() == nil {
+				results <- stuber.ErrStubNotFound
+
+				return
+			}
+
+			results <- nil
+		}()
+	}
+
+	var successCount int
+
+	for range concurrency {
+		err := <-results
+		if err == nil {
+			successCount++
+		}
+	}
+
+	require.Equal(t, 2, successCount, "Times(2) must allow exactly 2 matches under concurrent load")
+}
+
 func createTestStubs() (*stuber.Stub, *stuber.Stub) {
 	// Create first stub: simple equals match without headers
 	stub1 := &stuber.Stub{

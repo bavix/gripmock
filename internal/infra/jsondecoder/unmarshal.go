@@ -2,6 +2,7 @@ package jsondecoder
 
 import (
 	"bytes"
+	"slices"
 
 	"github.com/goccy/go-json"
 )
@@ -41,7 +42,7 @@ func UnmarshalSlice(data []byte, v any) error {
 
 	// If the input is not a JSON array, wrap it in an array
 	if len(input) > 0 && input[0] == '{' && input[len(input)-1] == '}' {
-		input = append(append([]byte{'['}, input...), ']')
+		input = slices.Concat([]byte{'['}, input, []byte{']'})
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(input))
