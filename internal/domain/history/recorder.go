@@ -274,4 +274,3 @@ func (s *MemoryStore) FilterSeq(opts FilterOpts) iter.Seq[CallRecord] {
 func (s *MemoryStore) FilterByMethod(service, method string) []CallRecord {
 	return s.Filter(FilterOpts{Service: service, Method: method})
 }
-
