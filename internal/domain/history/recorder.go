@@ -157,7 +157,7 @@ func redactMap(m map[string]any, keys map[string]struct{}) map[string]any {
 
 func redactSlice(arr []any, keys map[string]struct{}) []any {
 	if arr == nil {
-		return arr
+		return nil
 	}
 
 	out := make([]any, len(arr))

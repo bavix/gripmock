@@ -635,11 +635,13 @@ func (s *searcher) used() []*Stub {
 	defer s.mu.RUnlock()
 
 	usedIDs := make(map[uuid.UUID]struct{})
+
 	for key, n := range s.stubCallCount {
 		if n > 0 {
 			usedIDs[key.id] = struct{}{}
 		}
 	}
+
 	ids := make([]uuid.UUID, 0, len(usedIDs))
 	for id := range usedIDs {
 		ids = append(ids, id)
@@ -655,6 +657,7 @@ func (s *searcher) unused() []*Stub {
 
 	// Pre-compute used IDs to avoid repeated map lookups
 	usedIDs := make(map[uuid.UUID]struct{})
+
 	for key, n := range s.stubCallCount {
 		if n > 0 {
 			usedIDs[key.id] = struct{}{}
@@ -663,6 +666,7 @@ func (s *searcher) unused() []*Stub {
 
 	// Collect unused stubs in a single pass
 	unused := make([]*Stub, 0)
+
 	for stub := range s.iterAll() {
 		if _, exists := usedIDs[stub.ID]; !exists {
 			unused = append(unused, stub)
@@ -725,6 +729,7 @@ func (s *searcher) tryReserve(query Query, stub *Stub) bool {
 	defer s.mu.Unlock()
 
 	key := callCountKey{id: stub.ID, session: query.Session}
+
 	times := stub.EffectiveTimes()
 	if times > 0 && s.stubCallCount[key] >= times {
 		return false

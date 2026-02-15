@@ -1126,8 +1126,12 @@ func (s *GRPCServer) setupHealthCheck(server *grpc.Server, descResolver *protore
 	s.healthcheck = healthcheck
 }
 
-//nolint:lll
-func (s *GRPCServer) registerServices(ctx context.Context, server *grpc.Server, descriptors []*descriptorpb.FileDescriptorSet, reg *protoregistry.Files) {
+func (s *GRPCServer) registerServices(
+	ctx context.Context,
+	server *grpc.Server,
+	descriptors []*descriptorpb.FileDescriptorSet,
+	reg *protoregistry.Files,
+) {
 	logger := zerolog.Ctx(ctx)
 
 	for _, descriptor := range descriptors {
@@ -1149,8 +1153,12 @@ func (s *GRPCServer) createServiceDesc(file *descriptorpb.FileDescriptorProto, s
 	}
 }
 
-//nolint:lll
-func (s *GRPCServer) registerServiceMethods(ctx context.Context, serviceDesc *grpc.ServiceDesc, svc *descriptorpb.ServiceDescriptorProto, reg *protoregistry.Files) {
+func (s *GRPCServer) registerServiceMethods(
+	ctx context.Context,
+	serviceDesc *grpc.ServiceDesc,
+	svc *descriptorpb.ServiceDescriptorProto,
+	reg *protoregistry.Files,
+) {
 	logger := zerolog.Ctx(ctx)
 
 	for _, method := range svc.GetMethod() {
