@@ -4,7 +4,6 @@ import (
 	"context"
 	stderrors "errors"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -15,10 +14,16 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/descriptorpb"
 
+	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
+	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
+	"github.com/bavix/gripmock/v3/internal/infra/httputil"
 	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
@@ -36,20 +41,35 @@ type Extender interface {
 
 // RestServer handles HTTP REST API requests for stub management.
 type RestServer struct {
-	ok         atomic.Bool
-	budgerigar *stuber.Budgerigar
+	ok              atomic.Bool
+	budgerigar      *stuber.Budgerigar
+	history         history.Reader
+	validator       *validator.Validate
+	restDescriptors *descriptors.Registry
 }
 
 var _ rest.ServerInterface = &RestServer{}
 
 // NewRestServer creates a new REST server instance with the specified dependencies.
+// If historyReader is nil, /api/history and /api/verify return empty/error.
+// If stubValidator is nil, a shared default validator is used.
 func NewRestServer(
 	ctx context.Context,
 	budgerigar *stuber.Budgerigar,
 	extender Extender,
+	historyReader history.Reader,
+	stubValidator *validator.Validate,
 ) (*RestServer, error) {
+	v := stubValidator
+	if v == nil {
+		v = defaultStubValidator()
+	}
+
 	server := &RestServer{
-		budgerigar: budgerigar,
+		budgerigar:      budgerigar,
+		history:         historyReader,
+		validator:       v,
+		restDescriptors: descriptors.NewRegistry(),
 	}
 
 	go func() {
@@ -63,35 +83,20 @@ func NewRestServer(
 	return server, nil
 }
 
-// ServicesList returns a list of all available gRPC services.
+const (
+	servicesListCap   = 16
+	serviceMethodsCap = 32
+)
+
+// ServicesList returns a list of all available gRPC services (startup + REST-added).
 func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
-	results := make([]rest.Service, 0)
+	results := make([]rest.Service, 0, servicesListCap)
 
 	protoregistry.GlobalFiles.RangeFiles(func(file protoreflect.FileDescriptor) bool {
-		services := file.Services()
-		for i := range services.Len() {
-			service := services.Get(i)
-			methods := service.Methods()
-
-			serviceResult := rest.Service{
-				Id:      string(service.FullName()),
-				Name:    string(service.Name()),
-				Package: string(file.Package()),
-				Methods: make([]rest.Method, 0, methods.Len()),
-			}
-
-			for j := range methods.Len() {
-				method := methods.Get(j)
-				serviceResult.Methods = append(serviceResult.Methods, rest.Method{
-					Id:   fmt.Sprintf("%s/%s", string(service.FullName()), string(method.Name())),
-					Name: string(method.Name()),
-				})
-			}
-
-			results = append(results, serviceResult)
-		}
-
-		return true
+		return h.collectServices(file, &results)
+	})
+	h.restDescriptors.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+		return h.collectServices(file, &results)
 	})
 
 	h.writeResponse(r.Context(), w, results)
@@ -108,32 +113,17 @@ func splitLast(s string, sep string) []string {
 
 // ServiceMethodsList returns a list of methods for the specified service.
 func (h *RestServer) ServiceMethodsList(w http.ResponseWriter, r *http.Request, serviceID string) {
-	results := make([]rest.Method, 0)
-
+	results := make([]rest.Method, 0, serviceMethodsCap)
 	packageName := splitLast(serviceID, ".")[0]
+	collect := h.collectMethods(serviceID, &results)
 
-	protoregistry.GlobalFiles.RangeFilesByPackage(protoreflect.FullName(packageName), func(file protoreflect.FileDescriptor) bool {
-		services := file.Services()
-		for i := range services.Len() {
-			service := services.Get(i)
-
-			if string(service.FullName()) != serviceID {
-				continue
-			}
-
-			methods := service.Methods()
-
-			for j := range methods.Len() {
-				method := methods.Get(j)
-
-				results = append(results, rest.Method{
-					Id:   fmt.Sprintf("%s/%s", string(service.FullName()), string(method.Name())),
-					Name: string(method.Name()),
-				})
-			}
+	protoregistry.GlobalFiles.RangeFilesByPackage(protoreflect.FullName(packageName), collect)
+	h.restDescriptors.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+		if string(file.Package()) != packageName {
+			return true
 		}
 
-		return true
+		return collect(file)
 	})
 
 	h.writeResponse(r.Context(), w, results)
@@ -156,18 +146,97 @@ func (h *RestServer) Liveness(w http.ResponseWriter, r *http.Request) {
 	h.liveness(r.Context(), w)
 }
 
+const sessionHeader = "X-Gripmock-Session"
+
+// ListHistory returns recorded gRPC calls.
+func (h *RestServer) ListHistory(w http.ResponseWriter, r *http.Request) {
+	if h.history == nil {
+		h.writeResponse(r.Context(), w, rest.HistoryList{})
+
+		return
+	}
+
+	calls := h.history.Filter(history.FilterOpts{Session: r.Header.Get(sessionHeader)})
+
+	out := make(rest.HistoryList, len(calls))
+	for i, c := range calls {
+		out[i] = historyCallRecordToRest(c)
+	}
+
+	h.writeResponse(r.Context(), w, out)
+}
+
+func historyCallRecordToRest(c history.CallRecord) rest.CallRecord {
+	r := rest.CallRecord{
+		Service: new(c.Service),
+		Method:  new(c.Method),
+		StubId:  new(c.StubID),
+	}
+	if c.Request != nil {
+		r.Request = &c.Request
+	}
+
+	if c.Response != nil {
+		r.Response = &c.Response
+	}
+
+	if c.Error != "" {
+		r.Error = &c.Error
+	}
+
+	if !c.Timestamp.IsZero() {
+		r.Timestamp = &c.Timestamp
+	}
+
+	return r
+}
+
+// VerifyCalls verifies that a method was called the expected number of times.
+func (h *RestServer) VerifyCalls(w http.ResponseWriter, r *http.Request) {
+	if h.history == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		h.writeResponse(r.Context(), w, rest.VerifyError{Message: new("history is disabled")})
+
+		return
+	}
+
+	var req rest.VerifyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		h.writeResponseError(r.Context(), w, errors.Wrap(err, "invalid verify request"))
+
+		return
+	}
+
+	calls := h.history.Filter(history.FilterOpts{
+		Service: req.Service,
+		Method:  req.Method,
+		Session: r.Header.Get(sessionHeader),
+	})
+
+	actual := len(calls)
+	if actual != req.ExpectedCount {
+		w.WriteHeader(http.StatusBadRequest)
+		h.writeResponse(r.Context(), w, rest.VerifyError{
+			Message:  new(fmt.Sprintf("expected %s/%s to be called %d times, got %d", req.Service, req.Method, req.ExpectedCount, actual)),
+			Expected: &req.ExpectedCount,
+			Actual:   &actual,
+		})
+
+		return
+	}
+
+	h.writeResponse(r.Context(), w, rest.MessageOK{Message: "ok", Time: time.Now()})
+}
+
 // AddStub inserts new stubs.
 func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
-	byt, err := io.ReadAll(r.Body)
+	byt, err := httputil.RequestBody(r)
 	if err != nil {
 		h.responseError(r.Context(), w, err)
 
 		return
 	}
-
-	defer func() {
-		_ = r.Body.Close()
-	}()
 
 	var inputs []*stuber.Stub
 
@@ -177,8 +246,13 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sess := r.Header.Get(sessionHeader)
 	for _, stub := range inputs {
-		if err := validateStub(stub); err != nil {
+		if sess != "" {
+			stub.Session = sess
+		}
+
+		if err := h.validateStub(stub); err != nil {
 			h.validationError(r.Context(), w, err)
 
 			return
@@ -186,6 +260,80 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeResponse(r.Context(), w, h.budgerigar.PutMany(inputs...))
+}
+
+// ListDescriptors returns service IDs of descriptors added via POST /descriptors.
+func (h *RestServer) ListDescriptors(w http.ResponseWriter, r *http.Request) {
+	h.writeResponse(r.Context(), w, rest.DescriptorServiceIDs{ServiceIDs: h.restDescriptors.ServiceIDs()})
+}
+
+// AddDescriptors accepts binary FileDescriptorSet and registers it for discovery.
+// Returns service IDs; use DELETE /services/{serviceID} to remove.
+func (h *RestServer) AddDescriptors(w http.ResponseWriter, r *http.Request) {
+	byt, err := httputil.RequestBody(r)
+	if err != nil {
+		h.responseError(r.Context(), w, err)
+
+		return
+	}
+
+	if len(byt) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		h.writeResponseError(r.Context(), w, errors.New("empty body"))
+
+		return
+	}
+
+	var fds descriptorpb.FileDescriptorSet
+	if err := proto.Unmarshal(byt, &fds); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		h.writeResponseError(r.Context(), w, errors.Wrap(err, "invalid FileDescriptorSet"))
+
+		return
+	}
+
+	var serviceIDs []string
+
+	for _, fd := range fds.GetFile() {
+		if fd == nil {
+			continue
+		}
+
+		fileDesc, err := protodesc.NewFile(fd, protoregistry.GlobalFiles)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			h.writeResponseError(r.Context(), w, errors.Wrapf(err, "failed to load file %s", fd.GetName()))
+
+			return
+		}
+
+		h.restDescriptors.Register(fileDesc)
+
+		services := fileDesc.Services()
+
+		for i := range services.Len() {
+			serviceIDs = append(serviceIDs, string(services.Get(i).FullName()))
+		}
+	}
+
+	h.writeResponse(r.Context(), w, rest.AddDescriptorsResponse{
+		Message:    "ok",
+		Time:       time.Now(),
+		ServiceIDs: serviceIDs,
+	})
+}
+
+// DeleteService removes a service added via POST /descriptors.
+// Services from startup (proto path) cannot be removed and return 404.
+func (h *RestServer) DeleteService(w http.ResponseWriter, _ *http.Request, serviceID string) {
+	if h.restDescriptors.UnregisterByService(serviceID) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		h.writeResponseError(context.Background(), w, errors.Errorf("service %s not found or not removable", serviceID))
+
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // DeleteStubByID removes a stub by ID.
@@ -197,16 +345,12 @@ func (h *RestServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, uuid
 
 // BatchStubsDelete removes multiple stubs by ID.
 func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
-	byt, err := io.ReadAll(r.Body)
+	byt, err := httputil.RequestBody(r)
 	if err != nil {
 		h.responseError(r.Context(), w, err)
 
 		return
 	}
-
-	defer func() {
-		_ = r.Body.Close()
-	}()
 
 	var inputs []uuid.UUID
 
@@ -289,6 +433,60 @@ func (h *RestServer) FindByID(w http.ResponseWriter, r *http.Request, uuid rest.
 	h.writeResponse(r.Context(), w, stub)
 }
 
+func (h *RestServer) collectServices(file protoreflect.FileDescriptor, results *[]rest.Service) bool {
+	services := file.Services()
+
+	for i := range services.Len() {
+		service := services.Get(i)
+		methods := service.Methods()
+
+		serviceResult := rest.Service{
+			Id:      string(service.FullName()),
+			Name:    string(service.Name()),
+			Package: string(file.Package()),
+			Methods: make([]rest.Method, 0, methods.Len()),
+		}
+
+		for j := range methods.Len() {
+			method := methods.Get(j)
+			serviceResult.Methods = append(serviceResult.Methods, rest.Method{
+				Id:   fmt.Sprintf("%s/%s", string(service.FullName()), string(method.Name())),
+				Name: string(method.Name()),
+			})
+		}
+
+		*results = append(*results, serviceResult)
+	}
+
+	return true
+}
+
+func (h *RestServer) collectMethods(serviceID string, results *[]rest.Method) func(protoreflect.FileDescriptor) bool {
+	return func(file protoreflect.FileDescriptor) bool {
+		services := file.Services()
+
+		for i := range services.Len() {
+			service := services.Get(i)
+
+			if string(service.FullName()) != serviceID {
+				continue
+			}
+
+			methods := service.Methods()
+
+			for j := range methods.Len() {
+				method := methods.Get(j)
+				*results = append(*results, rest.Method{
+					Id:   fmt.Sprintf("%s/%s", string(service.FullName()), string(method.Name())),
+					Name: string(method.Name()),
+				})
+			}
+		}
+
+		return true
+	}
+}
+
 // liveness handles the liveness probe response.
 func (h *RestServer) liveness(ctx context.Context, w http.ResponseWriter) {
 	h.writeResponse(ctx, w, rest.MessageOK{Message: "ok", Time: time.Now()})
@@ -316,8 +514,6 @@ func (h *RestServer) writeResponseError(ctx context.Context, w http.ResponseWrit
 }
 
 // writeResponse writes a successful response to the HTTP writer.
-// Do not call responseError on encode failure to avoid stack overflow:
-// responseError -> writeResponseError -> writeResponse -> responseError.
 func (h *RestServer) writeResponse(ctx context.Context, w http.ResponseWriter, data any) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		zerolog.Ctx(ctx).Err(err).Msg("failed to encode JSON response")
@@ -325,36 +521,21 @@ func (h *RestServer) writeResponse(ctx context.Context, w http.ResponseWriter, d
 }
 
 // validateStub validates if the stub is valid or not.
-func validateStub(stub *stuber.Stub) error {
-	validate := validator.New()
+func (h *RestServer) validateStub(stub *stuber.Stub) error {
+	if err := h.validator.Struct(stub); err != nil {
+		validationErrors, ok := stderrors.AsType[validator.ValidationErrors](err)
+		if !ok {
+			return err
+		}
 
-	// Register custom validation functions
-	if err := validate.RegisterValidation("valid_input_config", validateInputConfiguration); err != nil {
-		return err
-	}
+		if len(validationErrors) > 0 {
+			fieldError := validationErrors[0]
 
-	if err := validate.RegisterValidation("valid_output_config", validateOutputConfiguration); err != nil {
-		return err
-	}
-
-	// Create a validation struct with tags
-	vStub := &validationStub{
-		Service: stub.Service,
-		Method:  stub.Method,
-		Input:   stub.Input,
-		Inputs:  stub.Inputs,
-		Output:  stub.Output,
-	}
-
-	if err := validate.Struct(vStub); err != nil {
-		if validationErrors, ok := stderrors.AsType[validator.ValidationErrors](err); ok {
-			for _, fieldError := range validationErrors {
-				return &ValidationError{
-					Field:   fieldError.Field(),
-					Tag:     fieldError.Tag(),
-					Value:   fieldError.Value(),
-					Message: getValidationMessage(fieldError),
-				}
+			return &ValidationError{
+				Field:   fieldError.Field(),
+				Tag:     fieldError.Tag(),
+				Value:   fieldError.Value(),
+				Message: getValidationMessage(fieldError),
 			}
 		}
 

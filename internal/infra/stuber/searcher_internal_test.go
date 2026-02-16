@@ -11,7 +11,6 @@ import (
 
 func TestEmpty(t *testing.T) {
 	t.Parallel()
-	// Empty test file to avoid package import issues
 	//nolint:testifylint
 	require.True(t, true)
 }

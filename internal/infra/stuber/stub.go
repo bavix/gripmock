@@ -7,16 +7,28 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
+// StubOptions holds optional behavior settings for a stub.
+type StubOptions struct {
+	Times int `json:"times,omitempty" validate:"gte=0"` // Max number of matches; 0 = unlimited.
+}
+
 // Stub represents a gRPC service method and its associated data.
 type Stub struct {
-	ID       uuid.UUID   `json:"id"`               // The unique identifier of the stub.
-	Service  string      `json:"service"`          // The name of the service.
-	Method   string      `json:"method"`           // The name of the method.
-	Priority int         `json:"priority"`         // The priority score of the stub.
-	Headers  InputHeader `json:"headers"`          // The headers of the request.
-	Input    InputData   `json:"input"`            // The input data for unary requests (mutually exclusive with Inputs).
-	Inputs   []InputData `json:"inputs,omitempty"` // The inputs data for client streaming requests (mutually exclusive with Input).
-	Output   Output      `json:"output"`           // The output data of the response.
+	ID       uuid.UUID   `json:"id"`                                               // The unique identifier of the stub.
+	Service  string      `json:"service"           validate:"required"`            // The name of the service.
+	Method   string      `json:"method"            validate:"required"`            // The name of the method.
+	Session  string      `json:"session,omitempty"`                                // Session ID for isolation (empty = global).
+	Priority int         `json:"priority"`                                         // The priority score of the stub.
+	Options  StubOptions `json:"options,omitempty"`                                //nolint:modernize
+	Headers  InputHeader `json:"headers"`                                          // The headers of the request.
+	Input    InputData   `json:"input"             validate:"valid_input_config"`  // Unary input (mutually exclusive with Inputs).
+	Inputs   []InputData `json:"inputs,omitempty"  validate:"valid_input_config"`  // Client streaming inputs (mutually exclusive with Input).
+	Output   Output      `json:"output"            validate:"valid_output_config"` // The output data of the response.
+}
+
+// EffectiveTimes returns the stub's max match count; 0 means unlimited.
+func (s *Stub) EffectiveTimes() int {
+	return s.Options.Times
 }
 
 // IsUnary returns true if this stub is for unary requests (has Input data).

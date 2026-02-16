@@ -22,6 +22,8 @@ tags:
     description: Dashboard
   - name: healthcheck
     description: Healthcheck
+  - name: descriptors
+    description: Protocol Buffer descriptors (FileDescriptorSet)
 paths:
   # healthcheck
   /health/liveness:
@@ -58,6 +60,48 @@ paths:
                 $ref: '#/components/schemas/MessageOK'
         '400':
           description: Bad Request
+        '500':
+          description: Internal Server Error
+
+  # descriptors
+  /descriptors:
+    get:
+      tags:
+        - descriptors
+      summary: List service IDs from REST-added descriptors
+      description: Returns service IDs (e.g. helloworld.Greeter) added via POST /descriptors. Use DELETE /services/{serviceID} to remove.
+      operationId: listDescriptors
+      responses:
+        '200':
+          description: List of removable service IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DescriptorServiceIDs'
+        '500':
+          description: Internal Server Error
+    post:
+      tags:
+        - descriptors
+      summary: Upload FileDescriptorSet
+      description: Accepts binary Protocol Buffers FileDescriptorSet. Registers descriptors for dynamic service discovery. Returns service IDs for later removal via DELETE /services/{serviceID}.
+      operationId: addDescriptors
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Descriptors registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddDescriptorsResponse'
+        '400':
+          description: Invalid or empty FileDescriptorSet
         '500':
           description: Internal Server Error
 
@@ -109,6 +153,27 @@ paths:
           description: Invalid service ID
         '404':
           description: Service not found
+        '500':
+          description: Internal Server Error
+  /services/{serviceID}:
+    delete:
+      tags:
+        - services
+      summary: Remove service
+      description: Removes a service added via POST /descriptors. Services from startup (proto path) cannot be removed.
+      operationId: deleteService
+      parameters:
+        - name: serviceID
+          in: path
+          description: Full service name (e.g. helloworld.Greeter)
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Service removed successfully
+        '404':
+          description: Service not found (not added via REST or already removed)
         '500':
           description: Internal Server Error
 
@@ -308,6 +373,53 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SearchRequest'
+
+  # history & verify
+  /history:
+    get:
+      tags:
+        - history
+      summary: Get call history
+      description: Returns recorded gRPC calls (when history is enabled)
+      operationId: listHistory
+      responses:
+        '200':
+          description: List of recorded calls
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryList'
+        '500':
+          description: Internal Server Error
+  /verify:
+    post:
+      tags:
+        - verify
+      summary: Verify call counts
+      description: Asserts that a method was called a specified number of times
+      operationId: verifyCalls
+      responses:
+        '200':
+          description: Verification passed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageOK'
+        '400':
+          description: Verification failed (wrong call count)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyError'
+        '500':
+          description: Internal Server Error
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+
 components:
   schemas:
     # health
@@ -324,6 +436,35 @@ components:
           type: string
           format: date-time
           x-omitzero: false
+    AddDescriptorsResponse:
+      type: object
+      required:
+        - message
+        - time
+        - serviceIDs
+      properties:
+        message:
+          type: string
+          x-omitzero: false
+        time:
+          type: string
+          format: date-time
+          x-omitzero: false
+        serviceIDs:
+          type: array
+          items:
+            type: string
+          description: Service IDs (e.g. helloworld.Greeter) registered. Use DELETE /services/{serviceID} to remove.
+    DescriptorServiceIDs:
+      type: object
+      required:
+        - serviceIDs
+      properties:
+        serviceIDs:
+          type: array
+          items:
+            type: string
+          description: Service IDs added via POST /descriptors
     # services
     Service:
       type: object
@@ -431,6 +572,53 @@ components:
             path: google.golang.org/grpc/codes
           example: 3
           x-go-type-skip-optional-pointer: true
+    CallRecord:
+      type: object
+      properties:
+        service:
+          type: string
+        method:
+          type: string
+        request:
+          type: object
+          additionalProperties: true
+        response:
+          type: object
+          additionalProperties: true
+        error:
+          type: string
+        stubId:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    HistoryList:
+      type: array
+      items:
+        $ref: '#/components/schemas/CallRecord'
+    VerifyRequest:
+      type: object
+      required:
+        - service
+        - method
+        - expectedCount
+      properties:
+        service:
+          type: string
+        method:
+          type: string
+        expectedCount:
+          type: integer
+          minimum: 0
+    VerifyError:
+      type: object
+      properties:
+        message:
+          type: string
+        expected:
+          type: integer
+        actual:
+          type: integer
     Stub:
       type: object
       required:
@@ -468,6 +656,19 @@ components:
         output:
           $ref: '#/components/schemas/StubOutput'
           x-omitzero: false
+        options:
+          $ref: '#/components/schemas/StubOptions'
+          x-omitzero: true
+    StubOptions:
+      type: object
+      description: Optional behavior settings for a stub
+      properties:
+        times:
+          type: integer
+          description: Max number of matches; 0 = unlimited
+          minimum: 0
+          default: 0
+          x-go-type-skip-optional-pointer: true
     StubInput:
       type: object
       properties:

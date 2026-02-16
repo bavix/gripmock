@@ -13,7 +13,6 @@ type ConstantsTestSuite struct {
 
 // TestConstants tests that all constants are properly defined.
 func (s *ConstantsTestSuite) TestConstants() {
-	// Test excluded headers list
 	s.Require().NotEmpty(excludedHeaders)
 	s.Require().Contains(excludedHeaders, ":authority")
 	s.Require().Contains(excludedHeaders, "content-type")
@@ -24,7 +23,7 @@ func (s *ConstantsTestSuite) TestConstants() {
 
 // TestExcludedHeadersContent tests the content of excluded headers.
 func (s *ConstantsTestSuite) TestExcludedHeadersContent() {
-	expectedHeaders := []string{
+	expected := []string{
 		":authority",
 		"content-type",
 		"grpc-accept-encoding",
@@ -32,7 +31,11 @@ func (s *ConstantsTestSuite) TestExcludedHeadersContent() {
 		"accept-encoding",
 	}
 
-	s.Require().Equal(expectedHeaders, excludedHeaders)
+	s.Require().Len(excludedHeaders, len(expected))
+
+	for _, h := range expected {
+		s.Require().Contains(excludedHeaders, h)
+	}
 }
 
 // TestLoggingFieldsFormat tests logging fields format constants.

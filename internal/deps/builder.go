@@ -2,9 +2,14 @@ package deps
 
 import (
 	"context"
+	"slices"
 	"sync"
 
+	"github.com/go-playground/validator/v10"
+
+	"github.com/bavix/gripmock/v3/internal/app"
 	"github.com/bavix/gripmock/v3/internal/config"
+	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 	internalplugins "github.com/bavix/gripmock/v3/internal/infra/plugins"
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
@@ -20,6 +25,12 @@ type Builder struct {
 
 	budgerigar     *stuber.Budgerigar
 	budgerigarOnce sync.Once
+
+	historyStore     *history.MemoryStore
+	historyStoreOnce sync.Once
+
+	stubValidator     *validator.Validate
+	stubValidatorOnce sync.Once
 
 	extender     *storage.Extender
 	extenderOnce sync.Once
@@ -59,17 +70,14 @@ func WithEnder(ender *lifecycle.Manager) Option {
 // WithPlugins sets additional plugin paths (e.g. from CLI flags).
 func WithPlugins(paths []string) Option {
 	return func(builder *Builder) {
-		builder.pluginPaths = append(make([]string, 0, len(paths)), paths...)
+		builder.pluginPaths = slices.Clone(paths)
 	}
 }
 
 func (b *Builder) LoadPlugins(ctx context.Context) {
 	b.pluginOnce.Do(func() {
 		reg := internalplugins.NewRegistry()
-
-		allPaths := make([]string, 0, len(b.config.TemplatePluginPaths)+len(b.pluginPaths))
-		allPaths = append(allPaths, b.config.TemplatePluginPaths...)
-		allPaths = append(allPaths, b.pluginPaths...)
+		allPaths := slices.Concat(b.config.TemplatePluginPaths, b.pluginPaths)
 		loader := internalplugins.NewLoader(allPaths)
 		loader.Load(ctx, reg)
 		b.pluginRegistry = reg
@@ -84,4 +92,34 @@ func (b *Builder) PluginInfos(ctx context.Context) []pkgplugins.PluginWithFuncs 
 	}
 
 	return b.pluginRegistry.Groups(ctx)
+}
+
+// HistoryStore returns the shared in-memory history store when HistoryEnabled.
+// Returns nil when history is disabled.
+func (b *Builder) HistoryStore() *history.MemoryStore {
+	if !b.config.HistoryEnabled {
+		return nil
+	}
+
+	b.historyStoreOnce.Do(func() {
+		opts := []history.MemoryStoreOption{
+			history.WithMessageMaxBytes(b.config.HistoryMessageMaxBytes),
+		}
+		if len(b.config.HistoryRedactKeys) > 0 {
+			opts = append(opts, history.WithRedactKeys(b.config.HistoryRedactKeys))
+		}
+
+		b.historyStore = history.NewMemoryStore(b.config.HistoryLimit.Int64(), opts...)
+	})
+
+	return b.historyStore
+}
+
+// StubValidator returns the shared stub validator (created once per Builder).
+func (b *Builder) StubValidator() *validator.Validate {
+	b.stubValidatorOnce.Do(func() {
+		b.stubValidator = app.NewStubValidator()
+	})
+
+	return b.stubValidator
 }

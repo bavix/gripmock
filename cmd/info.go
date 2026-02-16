@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -160,7 +161,7 @@ func renderPluginGroup(g *pluginGroup) string {
 	renderKeyValue(&b, ctx, "Source", formatSource(g.info.Source))
 
 	if len(g.info.Depends) > 0 {
-		deps := append([]string(nil), g.info.Depends...)
+		deps := slices.Clone(g.info.Depends)
 		sort.Strings(deps)
 		renderKeyValue(&b, ctx, "Depends", strings.Join(deps, ", "))
 	}
@@ -195,7 +196,7 @@ func renderCapabilities(caps []string) string {
 		return ""
 	}
 
-	sorted := append([]string(nil), caps...)
+	sorted := slices.Clone(caps)
 	sort.Strings(sorted)
 
 	return strings.Join(sorted, ", ")

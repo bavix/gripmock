@@ -17,8 +17,7 @@ import (
 // ErrMaxRecursionDepthExceeded is returned when structure nesting exceeds MaxRecursionDepth.
 var ErrMaxRecursionDepthExceeded = errors.New("maximum recursion depth exceeded")
 
-// MaxRecursionDepth is the maximum allowed nesting depth for ProcessMap/ProcessStream
-// to prevent stack overflow from maliciously or accidentally deeply nested structures.
+// MaxRecursionDepth is the maximum allowed nesting depth for ProcessMap/ProcessStream.
 const MaxRecursionDepth = 250
 
 // Data represents the context data available for template rendering.

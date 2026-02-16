@@ -11,15 +11,28 @@ import (
 func TestEquals_Simple(t *testing.T) {
 	t.Parallel()
 
-	require.True(t, deeply.Equals("a", "a"))
-	require.False(t, deeply.Equals("a", "b"))
+	// Arrange
+	value1 := "a"
+	value2 := "a"
+	value3 := "b"
+	slice1 := []int{1, 2, 3}
+	slice2 := []int{1, 2, 3}
 
-	require.True(t, deeply.Equals([]int{1, 2, 3}, []int{1, 2, 3}))
+	// Act
+	result1 := deeply.Equals(value1, value2)
+	result2 := deeply.Equals(value1, value3)
+	result3 := deeply.Equals(slice1, slice2)
+
+	// Assert
+	require.True(t, result1)
+	require.False(t, result2)
+	require.True(t, result3)
 }
 
 func TestEquals_Map_Left(t *testing.T) {
 	t.Parallel()
 
+	// Arrange
 	a := map[string]any{
 		"a": "a",
 		"b": "b",
@@ -40,15 +53,29 @@ func TestEquals_Map_Left(t *testing.T) {
 		"a": "a",
 	}
 
-	require.True(t, deeply.Equals(a, b))
+	// Act
+	result1 := deeply.Equals(a, b)
 
+	// Assert
+	require.True(t, result1)
+
+	// Arrange
 	delete(a, "a")
 
-	require.False(t, deeply.Equals(a, b))
+	// Act
+	result2 := deeply.Equals(a, b)
 
+	// Assert
+	require.False(t, result2)
+
+	// Arrange
 	a["a"] = true
 
-	require.False(t, deeply.Equals(a, b))
+	// Act
+	result3 := deeply.Equals(a, b)
+
+	// Assert
+	require.False(t, result3)
 }
 
 func TestEquals_Map_Right(t *testing.T) {

@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -28,7 +27,7 @@ type RestServerExtendedTestSuite struct {
 func (s *RestServerExtendedTestSuite) SetupSuite() {
 	s.budgerigar = stuber.NewBudgerigar(features.New())
 	extender := &mockExtender{}
-	server, err := NewRestServer(context.Background(), s.budgerigar, extender)
+	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil)
 	s.Require().NoError(err)
 	s.server = server
 }

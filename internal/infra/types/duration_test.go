@@ -50,10 +50,13 @@ func TestDuration_UnmarshalJSON(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
+			// Arrange
 			var duration types.Duration
 
+			// Act
 			err := json.Unmarshal([]byte(testCase.input), &duration)
 
+			// Assert
 			if testCase.wantErr {
 				require.Error(t, err)
 			} else {

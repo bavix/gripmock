@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +17,7 @@ func TestSpecList_Specs(t *testing.T) {
 	list := SpecList(specs)
 
 	got := list.Specs()
-	assert.Equal(t, specs, got)
+	require.Equal(t, specs, got)
 }
 
 func TestSpecList_Specs_Empty(t *testing.T) {
@@ -26,7 +25,7 @@ func TestSpecList_Specs_Empty(t *testing.T) {
 
 	var list SpecList
 	got := list.Specs()
-	assert.Nil(t, got)
+	require.Nil(t, got)
 }
 
 func TestSpecs(t *testing.T) {
@@ -40,7 +39,7 @@ func TestSpecs(t *testing.T) {
 	require.NotNil(t, provider)
 
 	got := provider.Specs()
-	assert.Equal(t, specs, got)
+	require.Equal(t, specs, got)
 }
 
 func TestSpecs_Variadic(t *testing.T) {
@@ -52,9 +51,9 @@ func TestSpecs_Variadic(t *testing.T) {
 	)
 	got := provider.Specs()
 	require.Len(t, got, 2)
-	assert.Equal(t, "x", got[0].Name)
-	assert.Equal(t, "y", got[1].Name)
-	assert.Equal(t, "desc", got[1].Description)
+	require.Equal(t, "x", got[0].Name)
+	require.Equal(t, "y", got[1].Name)
+	require.Equal(t, "desc", got[1].Description)
 }
 
 func TestNewPlugin(t *testing.T) {
@@ -71,10 +70,10 @@ func TestNewPlugin(t *testing.T) {
 	plugin := NewPlugin(info, provider)
 	require.NotNil(t, plugin)
 
-	assert.Equal(t, info, plugin.Info())
+	require.Equal(t, info, plugin.Info())
 	providers := plugin.Providers()
 	require.Len(t, providers, 1)
-	assert.Equal(t, []FuncSpec{spec}, providers[0].Specs())
+	require.Equal(t, []FuncSpec{spec}, providers[0].Specs())
 }
 
 func TestNewPlugin_MultipleProviders(t *testing.T) {
@@ -87,8 +86,8 @@ func TestNewPlugin_MultipleProviders(t *testing.T) {
 	plugin := NewPlugin(info, p1, p2)
 	providers := plugin.Providers()
 	require.Len(t, providers, 2)
-	assert.Len(t, providers[0].Specs(), 1)
-	assert.Len(t, providers[1].Specs(), 2)
+	require.Len(t, providers[0].Specs(), 1)
+	require.Len(t, providers[1].Specs(), 2)
 }
 
 func TestNewPlugin_NoProviders(t *testing.T) {
@@ -96,8 +95,8 @@ func TestNewPlugin_NoProviders(t *testing.T) {
 
 	info := PluginInfo{Name: "empty"}
 	plugin := NewPlugin(info)
-	assert.Empty(t, plugin.Providers())
-	assert.Equal(t, info, plugin.Info())
+	require.Empty(t, plugin.Providers())
+	require.Equal(t, info, plugin.Info())
 }
 
 func TestPlugin_WorksWithRegistry(t *testing.T) {
@@ -113,35 +112,35 @@ func TestPlugin_WorksWithRegistry(t *testing.T) {
 	rec.AddPlugin(plugin.Info(), plugin.Providers())
 
 	require.Len(t, rec.added, 1)
-	assert.Equal(t, info, rec.added[0].info)
-	assert.Len(t, rec.added[0].providers, 1)
-	assert.Equal(t, "upper", rec.added[0].providers[0].Specs()[0].Name)
+	require.Equal(t, info, rec.added[0].info)
+	require.Len(t, rec.added[0].providers, 1)
+	require.Equal(t, "upper", rec.added[0].providers[0].Specs()[0].Name)
 }
 
 func TestFuncSpec_ZeroValue(t *testing.T) {
 	t.Parallel()
 
 	var spec FuncSpec
-	assert.Empty(t, spec.Name)
-	assert.Empty(t, spec.Group)
-	assert.Nil(t, spec.Fn)
+	require.Empty(t, spec.Name)
+	require.Empty(t, spec.Group)
+	require.Nil(t, spec.Fn)
 }
 
 func TestPluginInfo_ZeroValue(t *testing.T) {
 	t.Parallel()
 
 	var info PluginInfo
-	assert.Empty(t, info.Name)
-	assert.Nil(t, info.Authors)
-	assert.Nil(t, info.Depends)
+	require.Empty(t, info.Name)
+	require.Nil(t, info.Authors)
+	require.Nil(t, info.Depends)
 }
 
 func TestPluginWithFuncs_ZeroValue(t *testing.T) {
 	t.Parallel()
 
 	var pwf PluginWithFuncs
-	assert.Empty(t, pwf.Plugin.Name)
-	assert.Nil(t, pwf.Funcs)
+	require.Empty(t, pwf.Plugin.Name)
+	require.Nil(t, pwf.Funcs)
 }
 
 // recordRegistry is a minimal Registry impl that records AddPlugin calls for testing.

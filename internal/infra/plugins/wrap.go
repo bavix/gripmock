@@ -10,9 +10,7 @@ import (
 
 var contextType = reflect.TypeOf((*context.Context)(nil)).Elem() //nolint:gochecknoglobals,modernize
 
-// wrapFunc normalizes arbitrary function shapes into the canonical Func used by
-// the runtime registry. It mirrors plugintest.Wrap but keeps it internal to
-// avoid leaking helper API.
+// wrapFunc normalizes arbitrary function shapes into the canonical Func used by the runtime registry.
 func wrapFunc(fn any) pkgplugins.Func {
 	switch f := fn.(type) {
 	case pkgplugins.Func:

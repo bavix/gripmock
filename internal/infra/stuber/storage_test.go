@@ -30,16 +30,19 @@ func newTestStubWithID(id uuid.UUID, service, method string, priority int) *Stub
 func TestAdd(t *testing.T) {
 	t.Parallel()
 
+	// Arrange
 	s := newStorage()
-	s.upsert(
-		newTestStub("Greeter1", "SayHello1", 0),
-		newTestStub("Greeter1", "SayHello1", 0),
-		newTestStub("Greeter2", "SayHello2", 0),
-		newTestStub("Greeter3", "SayHello2", 0),
-		newTestStub("Greeter4", "SayHello3", 0),
-		newTestStub("Greeter5", "SayHello3", 0),
-	)
+	stub1 := newTestStub("Greeter1", "SayHello1", 0)
+	stub2 := newTestStub("Greeter1", "SayHello1", 0)
+	stub3 := newTestStub("Greeter2", "SayHello2", 0)
+	stub4 := newTestStub("Greeter3", "SayHello2", 0)
+	stub5 := newTestStub("Greeter4", "SayHello3", 0)
+	stub6 := newTestStub("Greeter5", "SayHello3", 0)
 
+	// Act
+	s.upsert(stub1, stub2, stub3, stub4, stub5, stub6)
+
+	// Assert
 	require.Len(t, s.items, 5)
 	require.Len(t, s.itemsByID, 6)
 }
@@ -47,11 +50,15 @@ func TestAdd(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	t.Parallel()
 
+	// Arrange
 	id := uuid.New()
-
 	s := newStorage()
-	s.upsert(newTestStubWithID(id, "Greeter", "SayHello", 0))
+	initialStub := newTestStubWithID(id, "Greeter", "SayHello", 0)
 
+	// Act
+	s.upsert(initialStub)
+
+	// Assert
 	require.Len(t, s.items, 1)
 	require.Len(t, s.itemsByID, 1)
 
@@ -59,8 +66,13 @@ func TestUpdate(t *testing.T) {
 	require.NotNil(t, v)
 	require.Equal(t, 0, v.Priority)
 
-	s.upsert(newTestStubWithID(id, "Greeter", "SayHello", 42))
+	// Arrange
+	updatedStub := newTestStubWithID(id, "Greeter", "SayHello", 42)
 
+	// Act
+	s.upsert(updatedStub)
+
+	// Assert
 	require.Len(t, s.items, 1)
 	require.Len(t, s.itemsByID, 1)
 
@@ -607,7 +619,6 @@ func TestInitStringCache_HandlesInvalidSize(t *testing.T) {
 	cacheMu.Lock()
 	defer cacheMu.Unlock()
 
-	// Save and restore cache so we don't break other tests
 	defer initStringCache(stringCacheSize)
 
 	// initStringCache does not panic; it logs and sets cache to nil on error

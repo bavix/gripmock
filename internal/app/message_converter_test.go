@@ -31,11 +31,14 @@ func TestMessageConverter_ConvertToMap_NilMessage(t *testing.T) {
 func TestMessageConverter_ConvertToMap_StringValue(t *testing.T) {
 	t.Parallel()
 
+	// Arrange
 	converter := app.NewMessageConverter()
-
 	msg := wrapperspb.String("test value")
+
+	// Act
 	result := converter.ConvertToMap(msg)
 
+	// Assert
 	require.NotNil(t, result)
 	require.Equal(t, "test value", result["value"])
 }
@@ -43,11 +46,14 @@ func TestMessageConverter_ConvertToMap_StringValue(t *testing.T) {
 func TestMessageConverter_ConvertToMap_Int32Value(t *testing.T) {
 	t.Parallel()
 
+	// Arrange
 	converter := app.NewMessageConverter()
-
 	msg := wrapperspb.Int32(42)
+
+	// Act
 	result := converter.ConvertToMap(msg)
 
+	// Assert
 	require.NotNil(t, result)
 	require.Contains(t, result, "value")
 }
@@ -55,11 +61,14 @@ func TestMessageConverter_ConvertToMap_Int32Value(t *testing.T) {
 func TestMessageConverter_ConvertToMap_BoolValue(t *testing.T) {
 	t.Parallel()
 
+	// Arrange
 	converter := app.NewMessageConverter()
-
 	msg := wrapperspb.Bool(true)
+
+	// Act
 	result := converter.ConvertToMap(msg)
 
+	// Assert
 	require.NotNil(t, result)
 	require.Contains(t, result, "value")
 }
@@ -67,11 +76,14 @@ func TestMessageConverter_ConvertToMap_BoolValue(t *testing.T) {
 func TestMessageConverter_ConvertToMap_DoubleValue(t *testing.T) {
 	t.Parallel()
 
+	// Arrange
 	converter := app.NewMessageConverter()
-
 	msg := wrapperspb.Double(3.14)
+
+	// Act
 	result := converter.ConvertToMap(msg)
 
+	// Assert
 	require.NotNil(t, result)
 	require.Contains(t, result, "value")
 }
@@ -79,11 +91,14 @@ func TestMessageConverter_ConvertToMap_DoubleValue(t *testing.T) {
 func TestMessageConverter_ConvertToMap_BytesValue(t *testing.T) {
 	t.Parallel()
 
+	// Arrange
 	converter := app.NewMessageConverter()
-
 	msg := wrapperspb.Bytes([]byte("hello"))
+
+	// Act
 	result := converter.ConvertToMap(msg)
 
+	// Assert
 	require.NotNil(t, result)
 	require.Equal(t, "aGVsbG8=", result["value"]) // base64 encoded "hello"
 }
@@ -91,6 +106,7 @@ func TestMessageConverter_ConvertToMap_BytesValue(t *testing.T) {
 func TestMessageConverter_ConvertToMap_Struct(t *testing.T) {
 	t.Parallel()
 
+	// Arrange
 	converter := app.NewMessageConverter()
 
 	fields := map[string]*structpb.Value{
@@ -103,7 +119,10 @@ func TestMessageConverter_ConvertToMap_Struct(t *testing.T) {
 		Fields: fields,
 	}
 
+	// Act
 	result := converter.ConvertToMap(msg)
+
+	// Assert
 	require.NotNil(t, result)
 	fieldsMap, ok := result["fields"].(map[string]any)
 	require.True(t, ok)
@@ -631,7 +650,6 @@ func TestMessageConverter_ConvertToMap_Unicode(t *testing.T) {
 
 	converter := app.NewMessageConverter()
 
-	// Test with unicode characters (ASCII only to avoid gosmopolitan issues)
 	msg := wrapperspb.String("test 🚀 rocket")
 	result := converter.ConvertToMap(msg)
 

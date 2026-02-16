@@ -8,10 +8,14 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"github.com/bavix/gripmock/v3/internal/infra/httputil"
 	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
 )
 
-// RequestLogger logs the request and response.
+const logBodyLimit = 4 << 10 // 4KB max body for structured logging
+
+// RequestLogger logs the request and response. Uses pooled buffer for body read.
+// Place after MaxBodySize middleware. Body is read once and replayed to handlers.
 func RequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		logger := zerolog.Ctx(r.Context())
@@ -19,11 +23,13 @@ func RequestLogger(next http.Handler) http.Handler {
 		ip, err := getIP(r)
 		start := time.Now()
 
-		bodyBytes, _ := io.ReadAll(r.Body)
-
-		_ = r.Body.Close()
-
-		r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		bodyBytes, readErr := httputil.ReadBody(r)
+		if readErr != nil {
+			r.Body = io.NopCloser(bytes.NewReader(nil))
+		} else {
+			r.Body = io.NopCloser(bytes.NewReader(bodyBytes))
+			r = r.WithContext(httputil.ContextWithBody(r.Context(), bodyBytes))
+		}
 
 		next.ServeHTTP(ww, r)
 
@@ -37,11 +43,12 @@ func RequestLogger(next http.Handler) http.Handler {
 			Int("bytes", ww.bytesWritten).
 			Int("code", ww.status)
 
-		var result []any
+		if len(bodyBytes) <= logBodyLimit {
+			var result []any
 
-		err = jsondecoder.UnmarshalSlice(bodyBytes, &result)
-		if err == nil {
-			event.RawJSON("input", bodyBytes)
+			if jsondecoder.UnmarshalSlice(bodyBytes, &result) == nil {
+				event.RawJSON("input", bodyBytes)
+			}
 		}
 
 		event.Send()
