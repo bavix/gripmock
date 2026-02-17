@@ -38,6 +38,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		b.Budgerigar(),
 		b.Extender(ctx),
 		recorder,
+		b.DescriptorRegistry(),
 	)
 
 	server, err := grpcServer.Build(ctx)

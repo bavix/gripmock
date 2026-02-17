@@ -30,7 +30,14 @@ func (b *Builder) RestServe(
 		historyReader = store
 	}
 
-	apiServer, err := app.NewRestServer(ctx, b.Budgerigar(), extender, historyReader, b.StubValidator())
+	apiServer, err := app.NewRestServer(
+		ctx,
+		b.Budgerigar(),
+		extender,
+		historyReader,
+		b.StubValidator(),
+		b.DescriptorRegistry(),
+	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create rest server")
 	}

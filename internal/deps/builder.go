@@ -9,6 +9,7 @@ import (
 
 	"github.com/bavix/gripmock/v3/internal/app"
 	"github.com/bavix/gripmock/v3/internal/config"
+	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 	internalplugins "github.com/bavix/gripmock/v3/internal/infra/plugins"
@@ -31,6 +32,9 @@ type Builder struct {
 
 	stubValidator     *validator.Validate
 	stubValidatorOnce sync.Once
+
+	descriptorRegistry     *descriptors.Registry
+	descriptorRegistryOnce sync.Once
 
 	extender     *storage.Extender
 	extenderOnce sync.Once
@@ -122,4 +126,12 @@ func (b *Builder) StubValidator() *validator.Validate {
 	})
 
 	return b.stubValidator
+}
+
+func (b *Builder) DescriptorRegistry() *descriptors.Registry {
+	b.descriptorRegistryOnce.Do(func() {
+		b.descriptorRegistry = descriptors.NewRegistry()
+	})
+
+	return b.descriptorRegistry
 }

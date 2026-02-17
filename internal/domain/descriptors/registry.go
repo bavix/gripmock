@@ -1,6 +1,7 @@
 package descriptors
 
 import (
+	"sort"
 	"sync"
 
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -93,6 +94,8 @@ func (r *Registry) Paths() []string {
 		out = append(out, p)
 	}
 
+	sort.Strings(out)
+
 	return out
 }
 
@@ -111,6 +114,8 @@ func (r *Registry) ServiceIDs() []string {
 	}
 
 	r.mu.RUnlock()
+
+	sort.Strings(ids)
 
 	return ids
 }

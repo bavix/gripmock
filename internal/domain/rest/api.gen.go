@@ -51,6 +51,55 @@ type ID = openapi_types.UUID
 // ListID defines model for ListID.
 type ListID = []ID
 
+// McpError defines model for McpError.
+type McpError struct {
+	Code    int            `json:"code"`
+	Data    map[string]any `json:"data,omitempty"`
+	Message string         `json:"message"`
+}
+
+// McpID defines model for McpID.
+type McpID struct {
+	union json.RawMessage
+}
+
+// McpID0 defines model for .
+type McpID0 = string
+
+// McpID1 defines model for .
+type McpID1 = int
+
+// McpInfoResponse defines model for McpInfoResponse.
+type McpInfoResponse struct {
+	Methods         []string     `json:"methods"`
+	ProtocolVersion string       `json:"protocolVersion"`
+	ServerName      string       `json:"serverName"`
+	ServerVersion   string       `json:"serverVersion"`
+	Transport       McpTransport `json:"transport"`
+}
+
+// McpRequest defines model for McpRequest.
+type McpRequest struct {
+	Id      *McpID         `json:"id"`
+	Jsonrpc string         `json:"jsonrpc"`
+	Method  string         `json:"method"`
+	Params  map[string]any `json:"params,omitempty"`
+}
+
+// McpResponse defines model for McpResponse.
+type McpResponse struct {
+	Error   *McpError      `json:"error,omitempty"`
+	Id      *McpID         `json:"id"`
+	Jsonrpc string         `json:"jsonrpc"`
+	Result  map[string]any `json:"result,omitempty"`
+}
+
+// McpTransport defines model for McpTransport.
+type McpTransport struct {
+	Methods []string `json:"methods"`
+	Path    string   `json:"path"`
+}
+
 // MessageOK defines model for MessageOK.
 type MessageOK struct {
 	Message string    `json:"message"`
@@ -162,6 +211,9 @@ type AddStubJSONBody struct {
 	union json.RawMessage
 }
 
+// McpMessageJSONRequestBody defines body for McpMessage for application/json ContentType.
+type McpMessageJSONRequestBody = McpRequest
+
 // AddStubJSONRequestBody defines body for AddStub for application/json ContentType.
 type AddStubJSONRequestBody AddStubJSONBody
 
@@ -173,6 +225,68 @@ type SearchStubsJSONRequestBody = SearchRequest
 
 // VerifyCallsJSONRequestBody defines body for VerifyCalls for application/json ContentType.
 type VerifyCallsJSONRequestBody = VerifyRequest
+
+// AsMcpID0 returns the union data inside the McpID as a McpID0
+func (t McpID) AsMcpID0() (McpID0, error) {
+	var body McpID0
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromMcpID0 overwrites any union data inside the McpID as the provided McpID0
+func (t *McpID) FromMcpID0(v McpID0) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeMcpID0 performs a merge with any union data inside the McpID, using the provided McpID0
+func (t *McpID) MergeMcpID0(v McpID0) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsMcpID1 returns the union data inside the McpID as a McpID1
+func (t McpID) AsMcpID1() (McpID1, error) {
+	var body McpID1
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromMcpID1 overwrites any union data inside the McpID as the provided McpID1
+func (t *McpID) FromMcpID1(v McpID1) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeMcpID1 performs a merge with any union data inside the McpID, using the provided McpID1
+func (t *McpID) MergeMcpID1(v McpID1) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t McpID) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *McpID) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -191,6 +305,12 @@ type ServerInterface interface {
 	// Get call history
 	// (GET /history)
 	ListHistory(w http.ResponseWriter, r *http.Request)
+	// MCP transport metadata
+	// (GET /mcp)
+	McpInfo(w http.ResponseWriter, r *http.Request)
+	// MCP JSON-RPC endpoint
+	// (POST /mcp)
+	McpMessage(w http.ResponseWriter, r *http.Request)
 	// Services
 	// (GET /services)
 	ServicesList(w http.ResponseWriter, r *http.Request)
@@ -302,6 +422,34 @@ func (siw *ServerInterfaceWrapper) ListHistory(w http.ResponseWriter, r *http.Re
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListHistory(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// McpInfo operation middleware
+func (siw *ServerInterfaceWrapper) McpInfo(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.McpInfo(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// McpMessage operation middleware
+func (siw *ServerInterfaceWrapper) McpMessage(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.McpMessage(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -659,6 +807,10 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/health/readiness", wrapper.Readiness).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/history", wrapper.ListHistory).Methods("GET")
+
+	r.HandleFunc(options.BaseURL+"/mcp", wrapper.McpInfo).Methods("GET")
+
+	r.HandleFunc(options.BaseURL+"/mcp", wrapper.McpMessage).Methods("POST")
 
 	r.HandleFunc(options.BaseURL+"/services", wrapper.ServicesList).Methods("GET")
 

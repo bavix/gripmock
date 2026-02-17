@@ -565,10 +565,6 @@ func TestStubsStorage_ReadByFileWithValidJson(t *testing.T) {
 		if err := tempFile.Close(); err != nil {
 			t.Logf("Failed to close temp file: %v", err)
 		}
-
-		if err := os.Remove(tempFile.Name()); err != nil {
-			t.Logf("Failed to remove temp file: %v", err)
-		}
 	}()
 
 	jsonContent := `[
@@ -605,10 +601,6 @@ func TestStubsStorage_ReadByFileWithInvalidJson(t *testing.T) {
 	defer func() {
 		if err := tempFile.Close(); err != nil {
 			t.Logf("Failed to close temp file: %v", err)
-		}
-
-		if err := os.Remove(tempFile.Name()); err != nil {
-			t.Logf("Failed to remove temp file: %v", err)
 		}
 	}()
 
@@ -732,10 +724,6 @@ func TestStubsStorage_ReadStubWithValidJson(t *testing.T) {
 		if err := tempFile.Close(); err != nil {
 			t.Logf("Failed to close temp file: %v", err)
 		}
-
-		if err := os.Remove(tempFile.Name()); err != nil {
-			t.Logf("Failed to remove temp file: %v", err)
-		}
 	}()
 
 	// Use valid UUID for ID
@@ -783,10 +771,6 @@ func TestStubsStorage_ReadStubWithInvalidJson(t *testing.T) {
 	defer func() {
 		if err := tempFile.Close(); err != nil {
 			t.Logf("Failed to close temp file: %v", err)
-		}
-
-		if err := os.Remove(tempFile.Name()); err != nil {
-			t.Logf("Failed to remove temp file: %v", err)
 		}
 	}()
 

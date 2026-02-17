@@ -24,6 +24,8 @@ tags:
     description: Healthcheck
   - name: descriptors
     description: Protocol Buffer descriptors (FileDescriptorSet)
+  - name: mcp
+    description: Model Context Protocol (MCP) integration
 paths:
   # healthcheck
   /health/liveness:
@@ -102,6 +104,47 @@ paths:
                 $ref: '#/components/schemas/AddDescriptorsResponse'
         '400':
           description: Invalid or empty FileDescriptorSet
+        '500':
+          description: Internal Server Error
+
+  # mcp
+  /mcp:
+    get:
+      tags:
+        - mcp
+      summary: MCP transport metadata
+      description: Returns MCP server metadata, supported protocol versions and transport details.
+      operationId: mcpInfo
+      responses:
+        '200':
+          description: MCP metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpInfoResponse'
+        '500':
+          description: Internal Server Error
+    post:
+      tags:
+        - mcp
+      summary: MCP JSON-RPC endpoint
+      description: Accepts MCP JSON-RPC requests (`initialize`, `ping`, `tools/list`, `tools/call`) and returns JSON-RPC responses.
+      operationId: mcpMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/McpRequest'
+      responses:
+        '200':
+          description: MCP JSON-RPC response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpResponse'
+        '400':
+          description: Invalid JSON request
         '500':
           description: Internal Server Error
 
@@ -465,6 +508,111 @@ components:
           items:
             type: string
           description: Service IDs added via POST /descriptors
+    McpTransport:
+      type: object
+      required:
+        - path
+        - methods
+      properties:
+        path:
+          type: string
+          example: /api/mcp
+        methods:
+          type: array
+          items:
+            type: string
+    McpTool:
+      type: object
+      required:
+        - name
+        - description
+        - inputSchema
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        inputSchema:
+          type: object
+          additionalProperties: true
+          x-go-type: map[string]any
+          x-go-type-skip-optional-pointer: true
+    McpInfoResponse:
+      type: object
+      required:
+        - protocolVersion
+        - serverName
+        - serverVersion
+        - transport
+        - methods
+      properties:
+        protocolVersion:
+          type: string
+        serverName:
+          type: string
+        serverVersion:
+          type: string
+        transport:
+          $ref: '#/components/schemas/McpTransport'
+        methods:
+          type: array
+          items:
+            type: string
+    McpRequest:
+      type: object
+      required:
+        - jsonrpc
+        - method
+      properties:
+        jsonrpc:
+          type: string
+          example: "2.0"
+        id:
+          $ref: '#/components/schemas/McpID'
+        method:
+          type: string
+        params:
+          type: object
+          additionalProperties: true
+          x-go-type: map[string]any
+          x-go-type-skip-optional-pointer: true
+    McpError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+          x-go-type: map[string]any
+          x-go-type-skip-optional-pointer: true
+    McpResponse:
+      type: object
+      required:
+        - jsonrpc
+      properties:
+        jsonrpc:
+          type: string
+          example: "2.0"
+        id:
+          $ref: '#/components/schemas/McpID'
+        result:
+          type: object
+          additionalProperties: true
+          x-go-type: map[string]any
+          x-go-type-skip-optional-pointer: true
+        error:
+          $ref: '#/components/schemas/McpError'
+    McpID:
+      nullable: true
+      oneOf:
+        - type: string
+        - type: integer
     # services
     Service:
       type: object

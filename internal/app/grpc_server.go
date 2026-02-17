@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"maps"
 	"reflect"
 	"runtime"
 	"strings"
@@ -36,6 +37,7 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
 
+	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	protoloc "github.com/bavix/gripmock/v3/internal/domain/proto"
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
@@ -59,6 +61,7 @@ var excludedHeaders = map[string]struct{}{
 
 const (
 	sessionHeaderKey = "x-gripmock-session" // gRPC metadata keys are lowercase
+	unknownValue     = "unknown"
 
 	// High-load gRPC server tuning.
 	keepaliveMaxIdle     = 5 * time.Minute
@@ -86,8 +89,10 @@ var (
 )
 
 func sessionFromMetadata(md metadata.MD) string {
-	if v := md.Get(sessionHeaderKey); len(v) > 0 && v[0] != "" {
-		return v[0]
+	for _, v := range md.Get(sessionHeaderKey) {
+		if sessionID := strings.TrimSpace(v); sessionID != "" {
+			return sessionID
+		}
 	}
 
 	return ""
@@ -136,6 +141,7 @@ type GRPCServer struct {
 	budgerigar  *stuber.Budgerigar
 	waiter      Extender
 	recorder    history.Recorder
+	descriptors *descriptors.Registry
 	healthcheck *health.Server
 }
 
@@ -1021,19 +1027,34 @@ func NewGRPCServer(
 	budgerigar *stuber.Budgerigar,
 	waiter Extender,
 	recorder history.Recorder,
+	descriptorRegistry *descriptors.Registry,
 ) *GRPCServer {
+	registry := descriptorRegistry
+	if registry == nil {
+		registry = descriptors.NewRegistry()
+	}
+
 	return &GRPCServer{
-		network:    network,
-		address:    address,
-		params:     params,
-		budgerigar: budgerigar,
-		waiter:     waiter,
-		recorder:   recorder,
+		network:     network,
+		address:     address,
+		params:      params,
+		budgerigar:  budgerigar,
+		waiter:      waiter,
+		recorder:    recorder,
+		descriptors: registry,
 	}
 }
 
 func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
-	descriptors, err := protoset.Build(ctx, s.params.Imports(), s.params.ProtoPath())
+	imports := []string{}
+	protoPaths := []string{}
+
+	if s.params != nil {
+		imports = s.params.Imports()
+		protoPaths = s.params.ProtoPath()
+	}
+
+	descriptors, err := protoset.Build(ctx, imports, protoPaths)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build descriptors")
 	}
@@ -1062,9 +1083,10 @@ func BuildFromDescriptorSet(
 	}
 
 	s := &GRPCServer{
-		budgerigar: budgerigar,
-		waiter:     waiter,
-		recorder:   recorder,
+		budgerigar:  budgerigar,
+		waiter:      waiter,
+		recorder:    recorder,
+		descriptors: descriptors.NewRegistry(),
 	}
 	server := s.createServer(ctx)
 	s.setupHealthCheck(server, reg)
@@ -1101,7 +1123,126 @@ func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 			grpccontext.StreamInterceptor(logger),
 			LogStreamInterceptor,
 		),
+		grpc.UnknownServiceHandler(s.handleUnknownService),
 	)
+}
+
+func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error {
+	fullMethod, ok := grpc.MethodFromServerStream(stream)
+	if !ok {
+		return status.Error(codes.Unimplemented, "method not found")
+	}
+
+	serviceName, methodName := splitMethodName(fullMethod)
+	if serviceName == unknownValue || methodName == unknownValue {
+		return status.Error(codes.Unimplemented, "method not found")
+	}
+
+	methodDesc, err := s.findMethodDescriptor(serviceName, methodName)
+	if err != nil {
+		return status.Error(codes.Unimplemented, err.Error())
+	}
+
+	templateEngine := template.New(stream.Context(), nil)
+	mocker := &grpcMocker{
+		budgerigar:      s.budgerigar,
+		templateEngine:  templateEngine,
+		recorder:        s.recorder,
+		inputDesc:       methodDesc.Input(),
+		outputDesc:      methodDesc.Output(),
+		fullServiceName: serviceName,
+		serviceName:     serviceName,
+		methodName:      methodName,
+		fullMethod:      fullMethod,
+		serverStream:    methodDesc.IsStreamingServer(),
+		clientStream:    methodDesc.IsStreamingClient(),
+	}
+
+	if methodDesc.IsStreamingServer() || methodDesc.IsStreamingClient() {
+		return mocker.streamHandler(nil, stream)
+	}
+
+	req := dynamicpb.NewMessage(methodDesc.Input())
+	if err := stream.RecvMsg(req); err != nil {
+		return err
+	}
+
+	resp, err := mocker.handleUnary(stream.Context(), req)
+	if err != nil {
+		return err
+	}
+
+	return stream.SendMsg(resp)
+}
+
+//nolint:ireturn
+func (s *GRPCServer) findMethodDescriptor(serviceName, methodName string) (protoreflect.MethodDescriptor, error) {
+	if method := findMethodInGlobalFiles(serviceName, methodName); method != nil {
+		return method, nil
+	}
+
+	var found protoreflect.MethodDescriptor
+
+	s.descriptors.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+		services := file.Services()
+		for i := range services.Len() {
+			service := services.Get(i)
+			if string(service.FullName()) != serviceName {
+				continue
+			}
+
+			methods := service.Methods()
+			for j := range methods.Len() {
+				method := methods.Get(j)
+				if string(method.Name()) != methodName {
+					continue
+				}
+
+				found = method
+
+				return false
+			}
+		}
+
+		return true
+	})
+
+	if found == nil {
+		return nil, errors.Errorf("unknown service/method: %s/%s", serviceName, methodName)
+	}
+
+	return found, nil
+}
+
+//nolint:ireturn
+func findMethodInGlobalFiles(serviceName, methodName string) protoreflect.MethodDescriptor {
+	var found protoreflect.MethodDescriptor
+
+	protoregistry.GlobalFiles.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+		services := file.Services()
+		for i := range services.Len() {
+			service := services.Get(i)
+			if string(service.FullName()) != serviceName {
+				continue
+			}
+
+			methods := service.Methods()
+			for j := range methods.Len() {
+				method := methods.Get(j)
+				if string(method.Name()) != methodName {
+					continue
+				}
+
+				found = method
+
+				return false
+			}
+		}
+
+		return true
+	})
+
+	return found
 }
 
 func (s *GRPCServer) setupHealthCheck(server *grpc.Server, descResolver *protoregistry.Files) {
@@ -1109,21 +1250,90 @@ func (s *GRPCServer) setupHealthCheck(server *grpc.Server, descResolver *protore
 	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_NOT_SERVING)
 	healthgrpc.RegisterHealthServer(server, healthcheck)
 
+	provider := &dynamicServiceInfoProvider{base: server, registry: s.descriptors}
+
+	var staticResolver protodesc.Resolver = protoregistry.GlobalFiles
 	if descResolver != nil {
-		reflectionSvr := reflection.NewServerV1(reflection.ServerOptions{
-			Services:           server,
-			DescriptorResolver: descResolver,
-		})
-		reflectiongrpc.RegisterServerReflectionServer(server, reflectionSvr)
-		reflectiongrpcv1alpha.RegisterServerReflectionServer(server, reflection.NewServer(reflection.ServerOptions{
-			Services:           server,
-			DescriptorResolver: descResolver,
-		}))
-	} else {
-		reflection.Register(server)
+		staticResolver = descResolver
 	}
 
+	resolver := &dynamicDescriptorResolver{
+		static:  staticResolver,
+		dynamic: s.descriptors,
+	}
+
+	reflectionSvr := reflection.NewServerV1(reflection.ServerOptions{
+		Services:           provider,
+		DescriptorResolver: resolver,
+	})
+	reflectiongrpc.RegisterServerReflectionServer(server, reflectionSvr)
+
+	reflectiongrpcv1alpha.RegisterServerReflectionServer(server, reflection.NewServer(reflection.ServerOptions{
+		Services:           provider,
+		DescriptorResolver: resolver,
+	}))
+
 	s.healthcheck = healthcheck
+}
+
+type dynamicServiceInfoProvider struct {
+	base     reflection.ServiceInfoProvider
+	registry *descriptors.Registry
+}
+
+func (p *dynamicServiceInfoProvider) GetServiceInfo() map[string]grpc.ServiceInfo {
+	result := make(map[string]grpc.ServiceInfo)
+
+	if p.base != nil {
+		maps.Copy(result, p.base.GetServiceInfo())
+	}
+
+	if p.registry != nil {
+		p.registry.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+			services := file.Services()
+			for i := range services.Len() {
+				serviceName := string(services.Get(i).FullName())
+				if _, ok := result[serviceName]; !ok {
+					result[serviceName] = grpc.ServiceInfo{}
+				}
+			}
+
+			return true
+		})
+	}
+
+	return result
+}
+
+type dynamicDescriptorResolver struct {
+	static  protodesc.Resolver
+	dynamic *descriptors.Registry
+}
+
+//nolint:ireturn
+func (r *dynamicDescriptorResolver) FindFileByPath(path string) (protoreflect.FileDescriptor, error) {
+	return (&fallbackResolver{Primary: r.dynamicFiles(), Fallback: r.static}).FindFileByPath(path)
+}
+
+//nolint:ireturn
+func (r *dynamicDescriptorResolver) FindDescriptorByName(name protoreflect.FullName) (protoreflect.Descriptor, error) {
+	return (&fallbackResolver{Primary: r.dynamicFiles(), Fallback: r.static}).FindDescriptorByName(name)
+}
+
+func (r *dynamicDescriptorResolver) dynamicFiles() *protoregistry.Files {
+	if r.dynamic == nil {
+		return nil
+	}
+
+	reg := new(protoregistry.Files)
+
+	r.dynamic.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+		_ = reg.RegisterFile(file)
+
+		return true
+	})
+
+	return reg
 }
 
 func (s *GRPCServer) registerServices(
@@ -1229,7 +1439,9 @@ func (s *GRPCServer) startHealthCheckRoutine(ctx context.Context) {
 			}
 		}()
 
-		s.waiter.Wait(ctx)
+		if s.waiter != nil {
+			s.waiter.Wait(ctx)
+		}
 
 		select {
 		case <-ctx.Done():
@@ -1340,13 +1552,12 @@ func LogStreamInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamSe
 
 func splitMethodName(fullMethod string) (string, string) {
 	const (
-		slash   = "/"
-		unknown = "unknown"
+		slash = "/"
 	)
 
 	parts := strings.Split(fullMethod, slash)
 	if len(parts) != 3 { //nolint:mnd
-		return unknown, unknown
+		return unknownValue, unknownValue
 	}
 
 	return parts[1], parts[2]
@@ -1357,7 +1568,7 @@ func getPeerAddress(p *peer.Peer) string {
 		return p.Addr.String()
 	}
 
-	return "unknown"
+	return unknownValue
 }
 
 func protoToJSON(msg any) []byte {

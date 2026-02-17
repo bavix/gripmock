@@ -24,7 +24,7 @@ type AdminPanelTestSuite struct {
 // SetupSuite initializes the test suite.
 func (s *AdminPanelTestSuite) SetupSuite() {
 	s.budgerigar = stuber.NewBudgerigar(features.New())
-	server, err := NewRestServer(s.T().Context(), s.budgerigar, nil, nil, nil)
+	server, err := NewRestServer(s.T().Context(), s.budgerigar, nil, nil, nil, nil)
 	s.Require().NoError(err)
 	s.server = server
 }

@@ -59,12 +59,12 @@ func (f *StubNotFoundFormatter) formatStreamInput(input []map[string]any) string
 	for i, inputMsg := range input {
 		inputString, err := json.MarshalIndent(inputMsg, "", "\t")
 		if err != nil {
-			templateSb78.WriteString(fmt.Sprintf("[%d] Error marshaling input: %v\n", i, err))
+			_, _ = fmt.Fprintf(&templateSb78, "[%d] Error marshaling input: %v\n", i, err)
 
 			continue
 		}
 
-		templateSb78.WriteString(fmt.Sprintf("[%d]\n%s\n\n", i, inputString))
+		_, _ = fmt.Fprintf(&templateSb78, "[%d]\n%s\n\n", i, inputString)
 	}
 
 	template += templateSb78.String()

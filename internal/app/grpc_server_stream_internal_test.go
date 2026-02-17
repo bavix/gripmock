@@ -512,6 +512,46 @@ func TestProcessHeaders_MultipleValues(t *testing.T) {
 	require.Equal(t, "value1;value2;value3", result["x-header"])
 }
 
+func TestSessionFromMetadata_Empty(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	md := metadata.New(nil)
+
+	// Act
+	result := sessionFromMetadata(md)
+
+	// Assert
+	require.Empty(t, result)
+}
+
+func TestSessionFromMetadata_FirstNonEmptyTrimmed(t *testing.T) {
+	t.Parallel()
+
+	md := metadata.Pairs(
+		sessionHeaderKey, "   ",
+		sessionHeaderKey, "  test-session  ",
+	)
+
+	// Act
+	result := sessionFromMetadata(md)
+
+	// Assert
+	require.Equal(t, "test-session", result)
+}
+
+func TestSessionFromMetadata_HeaderAbsent(t *testing.T) {
+	t.Parallel()
+
+	md := metadata.Pairs("x-other", "value")
+
+	// Act
+	result := sessionFromMetadata(md)
+
+	// Assert
+	require.Empty(t, result)
+}
+
 // TestConvertToMap_Proto3DefaultValues verifies that scalar fields with default values (e.g. 0.0)
 // are included in the result. Proto3 omits default values on the wire, so Range skips them;
 // we iterate over the descriptor to include all fields for stub matching.
