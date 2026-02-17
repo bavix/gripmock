@@ -1,6 +1,4 @@
-ARG BUILDER_IMAGE=golang:1.26-alpine3.23
-
-FROM ${BUILDER_IMAGE} AS builder
+FROM golang:1.26-alpine3.23
 
 ARG version
 
