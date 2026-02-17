@@ -110,6 +110,7 @@ export default defineConfig({
         text: 'Plugins',
         items: [
           { text: 'Overview', link: '/guide/plugins/' },
+          { text: 'Builder Image', link: '/guide/plugins/builder-image' },
           { text: 'Advanced', link: '/guide/plugins/advanced' },
           { text: 'Testing', link: '/guide/plugins/testing' }
         ],

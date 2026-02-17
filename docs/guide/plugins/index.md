@@ -42,6 +42,8 @@ go build -buildmode=plugin -o myplugin.so ./path/to/plugin
 gripmock --plugins=./myplugin.so service.proto
 ```
 
+For production-like compatibility, build plugins with the matching `:<tag>-builder` image and run with `:<tag>`. See [Builder Image](./builder-image.md).
+
 ## Use
 
 ::: v-pre
@@ -60,3 +62,4 @@ output:
 
 - [Advanced](./advanced.md) - Decorators
 - [Testing](./testing.md) - Tests
+- [Builder Image](./builder-image.md) - Compatibility model
