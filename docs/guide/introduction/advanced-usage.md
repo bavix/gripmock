@@ -31,9 +31,11 @@ services:
 - **Explicit Files**: List all required `.proto` files in the command to prevent `File not found` errors  
 - **Path Consistency**: Ensure volume paths (`./src/proto:/proto`) match import paths in your `.proto` files  
 
-## Using Proto Descriptors (Binary Support)
+## Using Proto Descriptors (Binary Support) <VersionTag version="v3.7.0" />
 
 GripMock supports compiled Protocol Buffers descriptors (`.pb` files) for improved performance and simplified dependency management. This is especially useful for projects with multiple interdependent proto files.
+
+For dynamic descriptor loading over HTTP (without restarting GripMock), see [Descriptor API (`/api/descriptors`)](/guide/api/descriptors).
 
 ### Descriptor Generation
 **Using Protocol Buffers Compiler (`protoc`)**:
@@ -305,6 +307,7 @@ Match requests based on headers:
    ```bash
    protoc --proto_path=./src/proto --go_out=. ./src/proto/user/user.proto
    ```
+3. Validate runtime descriptor loading with the API walkthrough: [Descriptor API (`/api/descriptors`)](/guide/api/descriptors)
 
 ## Performance Tips
 - **Stub Prioritization**: GripMock returns the **first matching stub**. Order stubs from most to least specific.  

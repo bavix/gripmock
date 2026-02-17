@@ -120,6 +120,7 @@ export default defineConfig({
         text: 'API',
         items: [
           { text: 'MCP API', link: '/guide/api/mcp/' },
+          { text: 'Descriptors API', link: '/guide/api/descriptors' },
           {
             text: 'Stubs',
             items: [

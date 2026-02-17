@@ -69,6 +69,10 @@ Access it at `http://localhost:4771/` when you start GripMock.
 - **MCP API** <VersionTag version="v3.7.0" />: Exposed at `POST /api/mcp` for agent-oriented workflows
 - **Embedded SDK** <VersionTag version="v3.7.0" />: Programmatic GripMock usage in Go tests with built-in verification helpers
 
+## Runtime descriptor loading <VersionTag version="v3.7.0" />
+
+Need to load `.pb` descriptors into a running server without restart? See [Descriptor API (`/api/descriptors`)](/guide/api/descriptors).
+
 ## Getting Started
 
 1. **Install**: Download or use Docker

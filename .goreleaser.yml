@@ -19,9 +19,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w -X github.com/bavix/gripmock/v3/cmd.version={{.Version}}
-    env:
-      - CGO_ENABLED=0
+      - -s -w -X github.com/bavix/gripmock/v3/internal/infra/build.Version={{.Version}}
 
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
