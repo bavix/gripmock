@@ -11,7 +11,7 @@ type Fallback struct {
 	Fallback protodesc.Resolver
 }
 
-//nolint:ireturn // protodesc.Resolver requires interface return types.
+//nolint:ireturn
 func (r *Fallback) FindFileByPath(path string) (protoreflect.FileDescriptor, error) {
 	if r.Primary != nil {
 		if fd, err := r.Primary.FindFileByPath(path); err == nil {
@@ -26,7 +26,7 @@ func (r *Fallback) FindFileByPath(path string) (protoreflect.FileDescriptor, err
 	return nil, protoregistry.NotFound
 }
 
-//nolint:ireturn // protodesc.Resolver requires interface return types.
+//nolint:ireturn
 func (r *Fallback) FindDescriptorByName(name protoreflect.FullName) (protoreflect.Descriptor, error) {
 	if r.Primary != nil {
 		if desc, err := r.Primary.FindDescriptorByName(name); err == nil {

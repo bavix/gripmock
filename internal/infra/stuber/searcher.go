@@ -581,6 +581,23 @@ func (s *searcher) upsert(values ...*Stub) []uuid.UUID {
 //
 // Returns the number of stub values that were successfully deleted.
 func (s *searcher) del(ids ...uuid.UUID) int {
+	if len(ids) == 0 {
+		return 0
+	}
+
+	idSet := make(map[uuid.UUID]struct{}, len(ids))
+	for _, id := range ids {
+		idSet[id] = struct{}{}
+	}
+
+	s.mu.Lock()
+	for key := range s.stubCallCount {
+		if _, ok := idSet[key.id]; ok {
+			delete(s.stubCallCount, key)
+		}
+	}
+	s.mu.Unlock()
+
 	return s.storage.del(ids...)
 }
 

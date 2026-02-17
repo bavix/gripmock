@@ -140,7 +140,7 @@ func TestRun_RealPort(t *testing.T) {
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"),
 		WithListenAddr("tcp", ":0"),
-		WithHealthyTimeout(5*time.Second),
+		WithHealthCheckTimeout(5*time.Second),
 	)
 
 	require.NotNil(t, mock.Conn())
@@ -152,7 +152,7 @@ func TestRun_RealPort_DefaultNetwork(t *testing.T) {
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"),
 		WithListenAddr("", ":0"),
-		WithHealthyTimeout(5*time.Second),
+		WithHealthCheckTimeout(5*time.Second),
 	)
 
 	require.Regexp(t, `^127\.0\.0\.1:\d+$`, mock.Addr())
@@ -161,7 +161,7 @@ func TestRun_RealPort_DefaultNetwork(t *testing.T) {
 func TestRun_DefaultHealthyTimeout(t *testing.T) {
 	t.Parallel()
 
-	mock := mustRunWithProto(t, sdkProtoPath("greeter"), WithHealthyTimeout(0))
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"), WithHealthCheckTimeout(0))
 	require.NotNil(t, mock.Conn())
 }
 
@@ -218,7 +218,7 @@ func TestRun_ListenError(t *testing.T) {
 	_, err := Run(t,
 		WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))),
 		WithListenAddr("tcp", ":99999"),
-		WithHealthyTimeout(5*time.Second),
+		WithHealthCheckTimeout(5*time.Second),
 	)
 	require.Error(t, err)
 	errStr := err.Error()
@@ -239,7 +239,7 @@ func TestRun_ListenAddrString_UnixFallback(t *testing.T) {
 	mock, err := Run(t,
 		WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))),
 		WithListenAddr("unix", sockPath),
-		WithHealthyTimeout(2*time.Second),
+		WithHealthCheckTimeout(2*time.Second),
 	)
 	if err != nil {
 		t.Logf("Run failed for unix (may hit listenAddrString before client dial): %v", err)
@@ -270,12 +270,12 @@ func TestRun_MockFrom(t *testing.T) {
 
 	mock1 := mustRunWithProto(t, sdkProtoPath("greeter"),
 		WithListenAddr("tcp", ":0"),
-		WithHealthyTimeout(5*time.Second),
+		WithHealthCheckTimeout(5*time.Second),
 	)
 
 	mock2, err := Run(t,
 		MockFrom(mock1.Addr()),
-		WithHealthyTimeout(5*time.Second),
+		WithHealthCheckTimeout(5*time.Second),
 	)
 	require.NoError(t, err)
 	require.NotNil(t, mock2)
@@ -373,7 +373,7 @@ func TestRun_MockFrom_NoServices(t *testing.T) {
 	go func() { _ = server.Serve(lis) }()
 	defer server.GracefulStop()
 
-	_, err = Run(t, MockFrom(addr), WithHealthyTimeout(2*time.Second))
+	_, err = Run(t, MockFrom(addr), WithHealthCheckTimeout(2*time.Second))
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no services found via reflection")
 }
@@ -381,7 +381,7 @@ func TestRun_MockFrom_NoServices(t *testing.T) {
 func TestRun_MockFrom_InvalidAddr(t *testing.T) {
 	t.Parallel()
 
-	_, err := Run(t, MockFrom("localhost:59999"), WithHealthyTimeout(100*time.Millisecond))
+	_, err := Run(t, MockFrom("localhost:59999"), WithHealthCheckTimeout(100*time.Millisecond))
 	require.Error(t, err)
 	errStr := err.Error()
 	require.True(t,
@@ -393,7 +393,7 @@ func TestRun_MockFrom_InvalidAddr(t *testing.T) {
 func TestRun_HealthyTimeout(t *testing.T) {
 	t.Parallel()
 
-	_, err := Run(t, WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))), WithHealthyTimeout(1))
+	_, err := Run(t, WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))), WithHealthCheckTimeout(1))
 	require.Error(t, err)
 	errStr := err.Error()
 	require.True(t,
@@ -778,7 +778,7 @@ func TestRun_Remote_ConnectionRefused(t *testing.T) {
 	t.Parallel()
 
 	// Use a port that's unlikely to have a listener (gripmock uses 4770)
-	mock, err := Run(t, Remote("127.0.0.1:15999"), WithHealthyTimeout(500*time.Millisecond))
+	mock, err := Run(t, WithRemote("127.0.0.1:15999", "http://127.0.0.1:16000"), WithHealthCheckTimeout(500*time.Millisecond))
 	if err == nil {
 		mock.Close()
 		t.Fatal("expected error when connecting to non-existent gripmock")
@@ -791,8 +791,8 @@ func TestRun_Remote_WithCustomRestURL(t *testing.T) {
 
 	// Verify Remote option accepts custom rest URL (still fails to connect, but option is applied)
 	_, err := Run(t,
-		Remote("127.0.0.1:15998", "http://127.0.0.1:15999"),
-		WithHealthyTimeout(200*time.Millisecond),
+		WithRemote("127.0.0.1:15998", "http://127.0.0.1:15999"),
+		WithHealthCheckTimeout(200*time.Millisecond),
 	)
 	require.Error(t, err)
 }
@@ -860,8 +860,8 @@ func TestRun_Remote_Integration(t *testing.T) {
 	time.Sleep(8 * time.Second)
 
 	mock, err := Run(t,
-		Remote(grpcAddr, restURL),
-		WithHealthyTimeout(10*time.Second),
+		WithRemote(grpcAddr, restURL),
+		WithHealthCheckTimeout(10*time.Second),
 	)
 	if err != nil {
 		t.Skipf("skipping: cannot connect to gripmock: %v", err)
@@ -954,11 +954,11 @@ func TestRun_VerifyStubTimesErr_NoError_WhenMatch(t *testing.T) {
 	// Test VerifyStubTimesErr returns no error when expected and actual calls match
 	// Since we now require non-nil TestingT and cleanup always runs, we ensure
 	// the cleanup verification passes by making expected and actual calls match.
-	
+
 	fds := mustBuildFDS(t, sdkProtoPath("greeter"))
 	mock, err := Run(t, WithDescriptors(fds))
 	require.NoError(t, err)
-	
+
 	// Setup a stub with Times(1) and make exactly 1 call so cleanup verification passes
 	mock.Stub("helloworld.Greeter", "SayHello").When(Equals("name", "x")).Reply(Data("message", "ok")).Times(1).Commit()
 

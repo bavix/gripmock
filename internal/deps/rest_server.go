@@ -22,6 +22,8 @@ func (b *Builder) RestServe(
 	ctx context.Context,
 	stubPath string,
 ) (*http.Server, error) {
+	b.StartSessionGC(ctx)
+
 	extender := b.Extender(ctx)
 	go extender.ReadFromPath(ctx, stubPath)
 
@@ -54,6 +56,7 @@ func (b *Builder) RestServe(
 		Middlewares: []rest.MiddlewareFunc{
 			httputil.MaxBodySize(httputil.MaxBodyBytes()),
 			muxmiddleware.PanicRecoveryMiddleware,
+			muxmiddleware.TransportSession,
 			muxmiddleware.ContentType,
 			muxmiddleware.RequestLogger,
 		},

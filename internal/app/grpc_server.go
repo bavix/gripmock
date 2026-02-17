@@ -45,6 +45,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
+	"github.com/bavix/gripmock/v3/internal/pkg/session"
 )
 
 // excludedHeaders contains headers that should be excluded from stub matching.
@@ -91,6 +92,8 @@ var (
 func sessionFromMetadata(md metadata.MD) string {
 	for _, v := range md.Get(sessionHeaderKey) {
 		if sessionID := strings.TrimSpace(v); sessionID != "" {
+			session.Touch(sessionID)
+
 			return sessionID
 		}
 	}
@@ -336,9 +339,9 @@ func convertScalar(fd protoreflect.FieldDescriptor, value protoreflect.Value) an
 	}
 }
 
-func (m *grpcMocker) delay(ctx context.Context, delayDur types.Duration) {
+func (m *grpcMocker) delay(ctx context.Context, delayDur types.Duration) error {
 	if delayDur == 0 {
-		return
+		return nil
 	}
 
 	timer := time.NewTimer(time.Duration(delayDur))
@@ -346,9 +349,9 @@ func (m *grpcMocker) delay(ctx context.Context, delayDur types.Duration) {
 
 	select {
 	case <-ctx.Done():
-		return
+		return status.FromContextError(ctx.Err()).Err()
 	case <-timer.C:
-		return
+		return nil
 	}
 }
 
@@ -411,6 +414,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	return m.handleNonArrayStreamData(stream, found)
 }
 
+//nolint:funlen
 func (m *grpcMocker) handleArrayStreamData(
 	stream grpc.ServerStream,
 	found *stuber.Stub,
@@ -435,7 +439,9 @@ func (m *grpcMocker) handleArrayStreamData(
 			)
 		}
 
-		m.delay(stream.Context(), found.Output.Delay)
+		if err := m.delay(stream.Context(), found.Output.Delay); err != nil {
+			return err
+		}
 
 		outputDataCopy := deepCopyMapAny(outputData)
 		requestData := convertToMap(inputMsg)
@@ -473,7 +479,7 @@ func (m *grpcMocker) handleArrayStreamData(
 	return nil
 }
 
-//nolint:cyclop
+//nolint:cyclop,funlen
 func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *stuber.Stub) error {
 	if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil {
 		return err
@@ -488,7 +494,9 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 		default:
 		}
 
-		m.delay(stream.Context(), found.Output.Delay)
+		if err := m.delay(stream.Context(), found.Output.Delay); err != nil {
+			return err
+		}
 
 		outputDataCopy := deepCopyMapAny(found.Output.Data)
 
@@ -607,7 +615,9 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		return nil, status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundError(query, result).Error())
 	}
 
-	m.delay(ctx, found.Output.Delay)
+	if err := m.delay(ctx, found.Output.Delay); err != nil {
+		return nil, err
+	}
 
 	outputToUse := found.Output
 	requestData := convertToMap(req)
@@ -852,7 +862,9 @@ func (m *grpcMocker) sendClientStreamResponse(
 	messages []map[string]any,
 	requestTime time.Time,
 ) error {
-	m.delay(stream.Context(), found.Output.Delay)
+	if err := m.delay(stream.Context(), found.Output.Delay); err != nil {
+		return err
+	}
 
 	if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
 		return err
@@ -935,7 +947,9 @@ func (m *grpcMocker) processBidiStreamMessage(
 		return errors.Wrap(err, "failed to process bidirectional message")
 	}
 
-	m.delay(stream.Context(), stub.Output.Delay)
+	if err := m.delay(stream.Context(), stub.Output.Delay); err != nil {
+		return err
+	}
 
 	requestData := convertToMap(inputMsg)
 

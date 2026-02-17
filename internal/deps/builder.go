@@ -42,6 +42,8 @@ type Builder struct {
 	pluginPaths    []string
 	pluginRegistry *internalplugins.Registry
 	pluginOnce     sync.Once
+
+	sessionGCOnce sync.Once
 }
 
 func NewBuilder(opts ...Option) *Builder {

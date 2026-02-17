@@ -1261,9 +1261,23 @@ func (s *RestServerTestSuite) addStubJSONWithRequest(
 }
 
 func (s *RestServerTestSuite) addDebugScopeStubs(server *RestServer) {
+	s.addStubJSONWithRequest(
+		server,
+		`[{"service":"svc.Greeter","method":"SayHello","input":{"equals":{"name":"Alex"}},"output":{"data":{"message":"Hi A"}}}]`,
+		func(req *http.Request) {
+			req.Header.Set("X-Gripmock-Session", "A")
+		},
+	)
+
+	s.addStubJSONWithRequest(
+		server,
+		`[{"service":"svc.Greeter","method":"SayHello","input":{"equals":{"name":"Alex"}},"output":{"data":{"message":"Hi B"}}}]`,
+		func(req *http.Request) {
+			req.Header.Set("X-Gripmock-Session", "B")
+		},
+	)
+
 	s.addStubJSON(server, `[
-		{"service":"svc.Greeter","method":"SayHello","session":"A","input":{"equals":{"name":"Alex"}},"output":{"data":{"message":"Hi A"}}},
-		{"service":"svc.Greeter","method":"SayHello","session":"B","input":{"equals":{"name":"Alex"}},"output":{"data":{"message":"Hi B"}}},
 		{"service":"svc.Greeter","method":"SayHello","input":{"equals":{"name":"Alex"}},"output":{"data":{"message":"Hi Global"}}}
 	]`)
 }

@@ -657,9 +657,7 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 
 	sess := session.FromRequest(r)
 	for _, stub := range inputs {
-		if sess != "" {
-			stub.Session = sess
-		}
+		stub.Session = sess
 
 		if err := h.validateStub(stub); err != nil {
 			h.validationError(r.Context(), w, err)

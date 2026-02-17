@@ -1,6 +1,9 @@
 package sdk
 
 import (
+	"net"
+	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -27,13 +30,17 @@ type options struct {
 	mockFromAddr    string
 	remoteAddr      string // gRPC address for remote mode
 	remoteRestURL   string // REST base URL (e.g. "http://localhost:4771") for remote mode
+	httpClient      *http.Client
 	session         string // X-Gripmock-Session for isolation (remote mode)
+	sessionTTL      time.Duration
+	grpcTimeout     time.Duration
 	listenNetwork   string // "tcp" for real port
 	listenAddr      string // ":0" for real port
 	healthyTimeout  time.Duration
 }
 
 const defaultHealthyTimeout = 10 * time.Second
+const defaultSessionTTL = 60 * time.Second
 
 // Option configures Run behavior.
 type Option func(*options)
@@ -61,8 +68,8 @@ func WithListenAddr(network, addr string) Option {
 	}
 }
 
-// WithHealthyTimeout sets the timeout for health check.
-func WithHealthyTimeout(d time.Duration) Option {
+// WithHealthCheckTimeout sets timeout for readiness/health check.
+func WithHealthCheckTimeout(d time.Duration) Option {
 	return func(o *options) {
 		o.healthyTimeout = d
 	}
@@ -75,17 +82,21 @@ func MockFrom(addr string) Option {
 	}
 }
 
-// Remote configures the mock to connect to an external gripmock process (phase 0.5).
+// WithRemote configures the mock to connect to an external gripmock process.
 // grpcAddr is the gRPC server address (e.g. "localhost:4770").
-// Stubs are added via REST API; if restURL is empty, it defaults to "http://{host}:4771".
-func Remote(grpcAddr string, restURL ...string) Option {
+// restURL is the REST base URL used for management operations (e.g. "http://localhost:4771").
+func WithRemote(grpcAddr string, restURL string) Option {
 	return func(o *options) {
-		o.remoteAddr = grpcAddr
-		if len(restURL) > 0 && restURL[0] != "" {
-			o.remoteRestURL = restURL[0]
-		} else {
-			o.remoteRestURL = deriveRestURLFromGrpcAddr(grpcAddr)
-		}
+		o.remoteAddr = normalizeRemoteAddr(grpcAddr)
+		o.remoteRestURL = normalizeRemoteRestURL(restURL)
+	}
+}
+
+// WithHTTPClient overrides the HTTP client used by WithRemote mode for REST API calls.
+// If not set, SDK uses a default client with 10s timeout.
+func WithHTTPClient(client *http.Client) Option {
+	return func(o *options) {
+		o.httpClient = client
 	}
 }
 
@@ -93,38 +104,77 @@ func Remote(grpcAddr string, restURL ...string) Option {
 // Stubs and history are partitioned by session; use with t.Parallel() when sharing one gripmock.
 func WithSession(sessionID string) Option {
 	return func(o *options) {
-		o.session = sessionID
+		o.session = strings.TrimSpace(sessionID)
+	}
+}
+
+// WithSessionTTL configures automatic cleanup time for session-scoped remote resources.
+// Only applies to WithRemote mode.
+func WithSessionTTL(d time.Duration) Option {
+	return func(o *options) {
+		o.sessionTTL = d
+	}
+}
+
+// WithGRPCTimeout sets default per-RPC timeout for remote gRPC calls.
+// Applied only when call context has no deadline.
+func WithGRPCTimeout(d time.Duration) Option {
+	return func(o *options) {
+		o.grpcTimeout = d
 	}
 }
 
 func deriveRestURLFromGrpcAddr(grpcAddr string) string {
-	host, _, _ := splitHostPort(grpcAddr)
+	host := extractHost(normalizeRemoteAddr(grpcAddr))
 	if host == "" {
 		host = "127.0.0.1"
 	}
-	// IPv6 addresses must be wrapped in brackets in URLs
-	if strings.Contains(host, ":") {
-		return "http://[" + host + "]:4771"
-	}
-	return "http://" + host + ":4771"
+
+	return (&url.URL{Scheme: "http", Host: net.JoinHostPort(host, "4771")}).String()
 }
 
-func splitHostPort(addr string) (host, port string, err error) {
-	// Handle "[::1]:4770" format
-	if len(addr) > 0 && addr[0] == '[' {
-		end := strings.Index(addr, "]")
-		if end == -1 {
-			return addr, "", nil
+func normalizeRemoteAddr(addr string) string {
+	addr = strings.TrimSpace(addr)
+	if strings.Contains(addr, "://") {
+		if parsed, err := url.Parse(addr); err == nil && parsed.Host != "" {
+			addr = parsed.Host
 		}
-		host = addr[1:end]
-		if end+1 < len(addr) && addr[end+1] == ':' {
-			port = addr[end+2:]
-		}
-		return host, port, nil
 	}
-	idx := strings.LastIndex(addr, ":")
-	if idx == -1 {
-		return addr, "", nil
+
+	addr = strings.TrimSuffix(addr, "/")
+
+	return addr
+}
+
+func normalizeRemoteRestURL(restURL string) string {
+	restURL = strings.TrimSpace(restURL)
+	if restURL == "" {
+		return ""
 	}
-	return addr[:idx], addr[idx+1:], nil
+
+	if !strings.Contains(restURL, "://") {
+		restURL = "http://" + restURL
+	}
+
+	parsed, err := url.Parse(restURL)
+	if err != nil {
+		return strings.TrimRight(restURL, "/")
+	}
+
+	parsed.Path = strings.TrimRight(parsed.Path, "/")
+
+	return parsed.String()
+}
+
+func extractHost(addr string) string {
+	host, _, err := net.SplitHostPort(addr)
+	if err == nil {
+		return host
+	}
+
+	if strings.HasPrefix(addr, "[") && strings.HasSuffix(addr, "]") {
+		return strings.Trim(addr, "[]")
+	}
+
+	return strings.TrimSuffix(addr, "/")
 }
