@@ -16,7 +16,7 @@ Sessions in GripMock have the following lifecycle characteristics:
 
 1. **Creation**: Sessions are created when the first stub is registered with a specific session ID
 2. **Active Period**: During this time, the session stores stubs and history for that session
-3. **Automatic Cleanup**: Sessions may be automatically cleaned up based on server configuration
+3. **Automatic Cleanup**: Session resources can be cleaned automatically by the SDK and/or server policies
 4. **Manual Cleanup**: Sessions can be explicitly cleared via API calls
 
 ## Using Sessions
@@ -27,7 +27,7 @@ To use sessions, specify a session ID when connecting to a remote GripMock insta
 func TestMyService_WithSession(t *testing.T) {
     // ARRANGE
     mock, err := sdk.Run(t,
-        sdk.Remote("localhost:4770", "http://localhost:4771"),
+        sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithFileDescriptor(service.File_service_proto),
         sdk.WithSession("test-session-123"), // Isolate this test's stubs and history
     )
@@ -68,37 +68,36 @@ Always use unique session identifiers to prevent conflicts:
 ```go
 // Good: Use test name as session ID for uniqueness
 mock, err := sdk.Run(t,
-    sdk.Remote("localhost:4770", "http://localhost:4771"),
+    sdk.WithRemote("localhost:4770", "http://localhost:4771"),
     sdk.WithSession(t.Name()), // Uses test function name as session ID
 )
 
 // Good: Use UUID for guaranteed uniqueness
 sessionID := uuid.New().String()
 mock, err := sdk.Run(t,
-    sdk.Remote("localhost:4770", "http://localhost:4771"),
+    sdk.WithRemote("localhost:4770", "http://localhost:4771"),
     sdk.WithSession(sessionID),
 )
 ```
 
 ### 2. Clean Up Sessions
 
-While sessions are automatically cleaned up when tests complete, you can also explicitly clear them:
+`mock.Close()` cleans remote stubs associated with the active session. You can also set a TTL to trigger automatic cleanup:
 
 ```go
 func TestMyService_WithCleanup(t *testing.T) {
     sessionID := "test-" + t.Name()
     
     mock, err := sdk.Run(t,
-        sdk.Remote("localhost:4770", "http://localhost:4771"),
+        sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithSession(sessionID),
+        sdk.WithSessionTTL(30 * time.Second),
     )
     require.NoError(t, err)
 
     // Test logic here...
     
-    // Session is automatically cleaned up when mock is closed,
-    // but you can also explicitly clear it if needed
-    // This would clear all stubs and history for this session
+    // Resources for this session are cleaned on Close() and via TTL.
 }
 ```
 
@@ -109,7 +108,7 @@ When using sessions, verification occurs within the context of that session:
 ```go
 func TestMyService_SessionVerification(t *testing.T) {
     mock, err := sdk.Run(t,
-        sdk.Remote("localhost:4770", "http://localhost:4771"),
+        sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithFileDescriptor(service.File_service_proto),
         sdk.WithSession(t.Name()),
     )
@@ -139,11 +138,15 @@ Sessions can be configured with various options depending on your needs:
 
 ### Session Timeouts
 
-Sessions may have configurable timeouts for automatic cleanup:
+By default, SDK schedules remote session cleanup with TTL `60s`. Use `sdk.WithSessionTTL(...)` to override:
 
 ```go
-// Sessions automatically expire after a period of inactivity
-// This is configured on the server side and affects all sessions
+mock, err := sdk.Run(t,
+    sdk.WithRemote("localhost:4770", "http://localhost:4771"),
+    sdk.WithSession(t.Name()),
+    sdk.WithSessionTTL(2*time.Minute),
+)
+require.NoError(t, err)
 ```
 
 ### Session Persistence
@@ -165,7 +168,7 @@ func TestMyService_Parallel(t *testing.T) {
     t.Parallel() // Safe with sessions
 
     mock, err := sdk.Run(t,
-        sdk.Remote("localhost:4770", "http://localhost:4771"),
+        sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithFileDescriptor(service.File_service_proto),
         sdk.WithSession(t.Name()), // Each parallel test gets its own session
     )
@@ -177,36 +180,25 @@ func TestMyService_Parallel(t *testing.T) {
 
 ### Integration Testing Pattern
 
-For integration tests that need to maintain state across multiple test methods:
+For integration tests that need shared state, create the mock in test setup code that has access to `t` (for example in suite setup helpers):
 
 ```go
-// In your test suite setup
-var sharedSessionMock sdk.Mock
+func runSharedSessionMock(t *testing.T) sdk.Mock {
+    t.Helper()
 
-func TestMain(m *testing.M) {
-    // Create a shared session for the entire test suite
-    var err error
-    sharedSessionMock, err = sdk.Run(nil,
-        sdk.Remote("localhost:4770", "http://localhost:4771"),
+    mock, err := sdk.Run(t,
+        sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithSession("integration-suite"),
     )
-    if err != nil {
-        log.Fatal(err)
-    }
-    
-    // Run tests
-    exitCode := m.Run()
-    
-    // Cleanup
-    _ = sharedSessionMock.Close()
-    
-    os.Exit(exitCode)
+    require.NoError(t, err)
+
+    return mock
 }
 ```
 
 ## Session Limitations
 
-- Sessions are only applicable when using remote mode (`sdk.Remote`)
+- Sessions are only applicable when using remote mode (`sdk.WithRemote`)
 - Session IDs should be unique to prevent conflicts
 - Session data persists until explicitly cleared or the server restarts/cleans up
 - Each session consumes server resources, so avoid creating excessive numbers of sessions

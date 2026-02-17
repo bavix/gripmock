@@ -63,7 +63,7 @@ func TestMyService_Parallel(t *testing.T) {
     
     // ARRANGE
     mock, err := sdk.Run(t,
-        sdk.Remote("localhost:4770"),
+        sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithFileDescriptor(service.File_service_proto),
         sdk.WithSession(t.Name()), // Isolate this test's stubs
     )
@@ -87,17 +87,15 @@ func TestMyService_Parallel(t *testing.T) {
 
 ## Proper Cleanup
 
-When not passing `t` to `Run`, ensure manual cleanup:
+Always pass `t` to `Run`. The SDK registers cleanup automatically and verifies `Times(...)` expectations:
 
 ```go
-// When using Run(nil, ...) - for non-test usage
-func TestNonTestUsage(t *testing.T) { // Using t for assertions only
+func TestCleanupIsAutomatic(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(nil, sdk.WithFileDescriptor(service.File_service_proto)) // Note: nil instead of t
+    mock, err := sdk.Run(t, sdk.WithFileDescriptor(service.File_service_proto))
     if err != nil {
         t.Fatalf("Failed to start GripMock: %v", err)
     }
-    defer func() { _ = mock.Close() }() // Manual cleanup required
 
     mock.Stub("MyService", "MyMethod").
         When(sdk.Equals("id", "manual")).
@@ -112,6 +110,8 @@ func TestNonTestUsage(t *testing.T) { // Using t for assertions only
     // ASSERT
     require.NoError(t, err)
     require.Equal(t, "manual-success", resp.Result)
+
+    // No explicit mock.Close() is required in tests.
 }
 ```
 

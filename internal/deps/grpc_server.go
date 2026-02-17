@@ -14,6 +14,8 @@ import (
 
 //nolint:funlen
 func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
+	b.StartSessionGC(ctx)
+
 	listener, err := (&net.ListenConfig{}).Listen(ctx, b.config.GRPCNetwork, b.config.GRPCAddr)
 	if err != nil {
 		return errors.Wrap(err, "failed to listen")

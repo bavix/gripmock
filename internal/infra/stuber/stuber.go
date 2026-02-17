@@ -56,6 +56,29 @@ func (b *Budgerigar) DeleteByID(ids ...uuid.UUID) int {
 	return b.searcher.del(ids...)
 }
 
+// DeleteSession deletes all stubs that belong to the provided session.
+// Empty session is treated as global and is not deleted by this method.
+func (b *Budgerigar) DeleteSession(session string) int {
+	if session == "" {
+		return 0
+	}
+
+	all := b.searcher.all()
+	ids := make([]uuid.UUID, 0, len(all))
+
+	for _, stub := range all {
+		if stub.Session == session {
+			ids = append(ids, stub.ID)
+		}
+	}
+
+	if len(ids) == 0 {
+		return 0
+	}
+
+	return b.searcher.del(ids...)
+}
+
 // FindByID retrieves the Stub value associated with the given ID.
 func (b *Budgerigar) FindByID(id uuid.UUID) *Stub {
 	return b.searcher.findByID(id)

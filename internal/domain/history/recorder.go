@@ -43,6 +43,11 @@ type Reader interface {
 	FilterByMethod(service, method string) []CallRecord
 }
 
+// SessionCleaner removes records for a specific session.
+type SessionCleaner interface {
+	DeleteSession(session string) int
+}
+
 // MemoryStore implements both Recorder and Reader (in-memory).
 // LimitBytes 0 means unlimited. MessageMaxBytes 0 means no truncation.
 type MemoryStore struct {
@@ -273,4 +278,36 @@ func (s *MemoryStore) FilterSeq(opts FilterOpts) iter.Seq[CallRecord] {
 // FilterByMethod implements Reader. Delegates to Filter for compatibility.
 func (s *MemoryStore) FilterByMethod(service, method string) []CallRecord {
 	return s.Filter(FilterOpts{Service: service, Method: method})
+}
+
+// DeleteSession removes records that belong strictly to the provided session.
+// Global records (Session == "") are not affected.
+func (s *MemoryStore) DeleteSession(session string) int {
+	if session == "" {
+		return 0
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	kept := s.calls[:0]
+	deleted := 0
+
+	var bytesAfter int64
+
+	for _, c := range s.calls {
+		if c.Session == session {
+			deleted++
+
+			continue
+		}
+
+		kept = append(kept, c)
+		bytesAfter += estimateRecordSize(c)
+	}
+
+	s.calls = kept
+	s.currentBytes = bytesAfter
+
+	return deleted
 }

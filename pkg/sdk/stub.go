@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -149,6 +150,7 @@ func (c *stubBuilderCore) Times(n int) StubBuilder {
 
 func (c *stubBuilderCore) Commit() {
 	stub := &stuber.Stub{
+		ID:       uuid.New(),
 		Service:  c.service,
 		Method:   c.method,
 		Input:    c.data.input,
