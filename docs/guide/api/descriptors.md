@@ -146,6 +146,6 @@ curl -s http://localhost:4771/api/stubs
 
 ## Related endpoints
 
-- `POST /api/stubs`
-- `GET /api/stubs`
-- `DELETE /api/stubs`
+- [`POST /api/stubs` (upsert)](/guide/api/stubs/upsert)
+- [`GET /api/stubs` (list)](/guide/api/stubs/list)
+- [`DELETE /api/stubs` (purge)](/guide/api/stubs/purge)
