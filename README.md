@@ -30,6 +30,8 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 
 📖 **[Full Documentation](https://bavix.github.io/gripmock/)** - Complete guide with examples
 
+- **Descriptor API (`/api/descriptors`)**: runtime loading of compiled proto descriptors (`.pb`) with validated curl workflow: [docs](https://bavix.github.io/gripmock/guide/api/descriptors)
+
 ## 🆚 Why Choose Our Fork?
 
 This service is a fork of [tokopedia/gripmock](https://github.com/tokopedia/gripmock), but you should choose our fork. Here's why:
@@ -282,6 +284,7 @@ input:
 ### REST API Endpoints
 
 - `GET /api/stubs` - List all stubs
+- `POST /api/descriptors` - Load protobuf descriptor set (`FileDescriptorSet`) at runtime
 - `POST /api/stubs` - Add new stub
 - `POST /api/stubs/search` - Find matching stub
 - `DELETE /api/stubs` - Clear all stubs

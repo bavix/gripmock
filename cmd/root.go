@@ -39,6 +39,7 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 
 		zerolog.Ctx(ctx).Info().
 			Str("release", build.Version).
+			Int("pid", os.Getpid()).
 			Msg("Starting GripMock")
 
 		go func() {
@@ -68,7 +69,7 @@ func restServe(ctx context.Context, builder *deps.Builder) error {
 		return errors.Wrap(err, "failed to start rest server")
 	}
 
-	zerolog.Ctx(ctx).Info().Str("addr", srv.Addr).Int("pid", os.Getpid()).Msg("HTTP server is now running")
+	zerolog.Ctx(ctx).Info().Str("addr", srv.Addr).Msg("HTTP server is now running")
 
 	ch := make(chan error)
 
