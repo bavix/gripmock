@@ -1,5 +1,19 @@
 # Changelog
 
+## v3.7.1 - 2026-02-17
+
+### What's Changed
+
+* Add real-world example to Embedded SDK documentation by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/743
+* Refactor Dockerfile and CI workflows for builder image support by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/744
+* Enhance documentation with new features and experimental APIs by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/745
+* Refactor Dockerfile to remove builder image argument by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/746
+* Update documentation and configuration for Descriptor API by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/747
+* Update Descriptor API documentation to include detailed endpoint descriptions and improve clarity by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/748
+* Enhance SDK documentation and functionality for remote mode by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/749
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.7.0...v3.7.1
+
 ## v3.7.0 - 2026-02-17
 
 ### What's Changed
