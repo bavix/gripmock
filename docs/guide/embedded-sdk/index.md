@@ -10,6 +10,12 @@
 
 The GripMock Embedded SDK provides an integrated way to use GripMock directly within your Go tests without requiring external processes or containers. This approach offers faster test execution and better integration with your development workflow.
 
+## Real-World Example
+
+Looking for a full project that uses embedded mode in practice?
+
+- [bavix/greeter-gripmock-embedded](https://github.com/bavix/greeter-gripmock-embedded) - End-to-end example of GripMock Embedded SDK usage
+
 ## Why Use the Embedded SDK?
 
 The GripMock Embedded SDK offers several key advantages over traditional external mock server approaches:
