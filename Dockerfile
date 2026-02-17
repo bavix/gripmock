@@ -1,4 +1,6 @@
-FROM golang:1.26-alpine3.23 AS builder
+ARG BUILDER_IMAGE=golang:1.26-alpine3.23
+
+FROM ${BUILDER_IMAGE} AS builder
 
 ARG version
 
@@ -13,7 +15,7 @@ RUN apk add --no-cache binutils \
     && apk del binutils \
     && rm -rf /root/.cache /go/pkg /tmp/* /var/cache/*
 
-RUN chmod +x /gripmock-src/entrypoint.sh && chmod +x /usr/local/bin/gripmock
+RUN chmod +x /usr/local/bin/gripmock
 
 FROM alpine:3.23
 
@@ -26,11 +28,10 @@ LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.vendor="bavix"
 
 COPY --from=builder /usr/local/bin/gripmock /usr/local/bin/gripmock
-COPY --from=builder /gripmock-src/entrypoint.sh /entrypoint.sh
 
 EXPOSE 4770 4771
 
 HEALTHCHECK --start-interval=1s --start-period=30s \
     CMD gripmock check --silent
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/gripmock"]

@@ -15,17 +15,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Cache APT packages
-        uses: actions/cache@v5
-        with:
-          path: |
-            /var/cache/apt
-            /var/lib/apt
-          key: ${{ runner.os }}-apt-cache
-  
-      - name: Install jq
-        run: sudo apt-get install -y jq
-
       -
         name: Docker meta
         id: meta
@@ -36,10 +25,23 @@ jobs:
             ghcr.io/bavix/gripmock
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
+
+      -
+        name: Docker meta (builder)
+        id: meta_builder
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            bavix/gripmock
+            ghcr.io/bavix/gripmock
+          tags: |
+            type=ref,event=branch,suffix=-builder
+            type=semver,pattern={{version}}-builder
+            type=semver,pattern={{major}}.{{minor}}-builder
+            type=semver,pattern={{major}}-builder
       
       -
         name: Set up QEMU
@@ -66,16 +68,34 @@ jobs:
           username: ${{ secrets.DOCKERHUB_LOGIN }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push builder image
+        id: build_builder
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: Dockerfile.builder
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta_builder.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            version=${{ github.ref_name }}
+          outputs: type=image,name=builder-target,annotation-index.org.opencontainers.image.description=gRPC Mock Server Builder
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push runtime image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
           build-args: |
             version=${{ github.ref_name }}
+            BUILDER_IMAGE=bavix/gripmock@${{ steps.build_builder.outputs.digest }}
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
           cache-from: type=gha
           cache-to: type=gha,mode=max

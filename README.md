@@ -18,10 +18,13 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 - ⚡ **20-35% Faster** - Enhanced performance for quicker tests
 - 🔒 **100% Backward Compatible** - All existing tests continue to work
 - 🐳 **Docker Ready** - Lightweight container for CI/CD
+- 🧱 **Builder Image** - Build Go plugins with `bavix/gripmock:<tag>-builder` for runtime compatibility
 - 🖥️ **Web Interface** - Manage stubs through a friendly dashboard
 - 📋 **JSON Schema** - Full IDE support with validation
 - ❤️ **Health Checks** - Production-ready monitoring endpoints
 - 🔌 **Plugin System** - Extend template functions with custom plugins
+- 🧪 **Embedded SDK (Experimental)** - Run GripMock inside Go tests and services
+- 🧪 **MCP API (Experimental)** - Use Model Context Protocol endpoints for tool integration
 
 ## 📚 Documentation
 
@@ -76,6 +79,12 @@ curl -s https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup
 #### 🐳 Docker
 ```bash
 docker pull bavix/gripmock
+```
+
+For plugin builds, use the paired builder image:
+
+```bash
+docker pull bavix/gripmock:v3.7.1-builder
 ```
 
 #### 🔧 Go Install
