@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.7.0 - 2026-02-17
+
+### What's Changed
+
+* Add descriptors endpoint and history verification features by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/738
+* Update dependencies, enhance MCP API, and refactor server functionality by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/742
+* Bump google.golang.org/grpc from 1.79.0 to 1.79.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/740
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.6.1...v3.7.0
+
 ## v3.6.1 - 2026-02-13
 
 ### What's Changed
