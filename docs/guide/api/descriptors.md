@@ -1,6 +1,6 @@
 # Descriptor API (`/api/descriptors`) <VersionTag version="v3.7.0" />
 
-Runtime loading of protobuf descriptors (`google.protobuf.FileDescriptorSet`) without restarting GripMock.
+Load protobuf descriptors (`google.protobuf.FileDescriptorSet`) into a running GripMock instance without restart.
 
 ## Endpoint contract
 
@@ -29,8 +29,8 @@ Success response (`200 OK`):
 
 Field notes:
 
-- `message`: fixed `ok` for successful load
-- `serviceIDs`: fully-qualified service names extracted from descriptor
+- `message`: `ok` when descriptor loading succeeds
+- `serviceIDs`: fully-qualified service names found in the descriptor
 - `time`: server timestamp (dynamic)
 
 Common error (`400 Bad Request`):
@@ -39,11 +39,11 @@ Common error (`400 Bad Request`):
 {"error":"invalid FileDescriptorSet: proto: cannot parse invalid wire-format data"}
 ```
 
-This means the uploaded file is not a valid `FileDescriptorSet`.
+This usually means the uploaded file is not a valid `FileDescriptorSet`.
 
 ## Validated workflow (unitconverter)
 
-The sequence below was re-run against release binary (`gripmock` via Homebrew v3.7.0).
+This flow was re-checked on the Homebrew release binary (`gripmock` v3.7.0).
 
 ### 1) Start server
 
@@ -51,7 +51,7 @@ The sequence below was re-run against release binary (`gripmock` via Homebrew v3
 gripmock
 ```
 
-Local source equivalent:
+If you run from this repository source:
 
 ```bash
 go run main.go
@@ -71,7 +71,7 @@ curl -X POST http://localhost:4771/api/descriptors \
   --data-binary "@service.pb"
 ```
 
-Expected: `message=ok`, `serviceIDs` includes `unitconverter.v1.UnitConversionService`.
+Expected: `message=ok`, and `serviceIDs` includes `unitconverter.v1.UnitConversionService`.
 
 ### 4) Load stub
 
@@ -93,7 +93,7 @@ Expected: `1 passed`.
 
 ## Building `service.pb`
 
-`/api/descriptors` accepts only descriptor sets, not arbitrary protobuf payloads.
+`/api/descriptors` accepts descriptor sets only.
 
 With `protoc`:
 
@@ -113,9 +113,9 @@ buf build -o service.pb
 
 ## Transport details
 
-- Use `--data-binary`, not `-d`, for binary uploads.
-- If `localhost` is not reachable in your environment, use `127.0.0.1`.
-- If proxy env vars interfere with local calls, use:
+- Use `--data-binary`, not `-d`, for binary uploads
+- If `localhost` is not reachable in your environment, use `127.0.0.1`
+- If HTTP proxy variables interfere with local calls, use:
 
 ```bash
 curl --noproxy '*' -X POST http://localhost:4771/api/descriptors \
@@ -128,7 +128,7 @@ curl --noproxy '*' -X POST http://localhost:4771/api/descriptors \
 `invalid FileDescriptorSet`:
 
 - rebuild descriptor as `FileDescriptorSet`
-- for `protoc`, keep `--include_imports` when imports exist
+- with `protoc`, keep `--include_imports` when imports exist
 
 `Test path does not exist` in `grpctestify`:
 
@@ -137,6 +137,12 @@ curl --noproxy '*' -X POST http://localhost:4771/api/descriptors \
 Service not found during tests:
 
 - load descriptors first, then stubs, then run tests
+
+Quick sanity check for admin API reachability:
+
+```bash
+curl -s http://localhost:4771/api/stubs
+```
 
 ## Related endpoints
 
