@@ -24,7 +24,7 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 	Use:     "gripmock",
 	Short:   "gRPC Mock Server",
 	Version: build.Version,
-	Args:    cobra.MinimumNArgs(1),
+	Args:    cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		builder := deps.NewBuilder(
 			deps.WithDefaultConfig(),

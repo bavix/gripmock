@@ -122,6 +122,18 @@ func (m *mockServer) VerifyCalls(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (m *mockServer) McpInfo(w http.ResponseWriter, _ *http.Request) {
+	m.called["McpInfo"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (m *mockServer) McpMessage(w http.ResponseWriter, _ *http.Request) {
+	m.called["McpMessage"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func (m *mockServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, _ ID) {
 	m.called["DeleteStubByID"] = true
 
@@ -157,6 +169,8 @@ func TestHandler_Routes(t *testing.T) {
 		{http.MethodPost, "/stubs", "AddStub"},
 		{http.MethodGet, "/descriptors", "ListDescriptors"},
 		{http.MethodPost, "/descriptors", "AddDescriptors"},
+		{http.MethodGet, "/mcp", "McpInfo"},
+		{http.MethodPost, "/mcp", "McpMessage"},
 		{http.MethodDelete, "/services/myservice", "DeleteService"},
 		{http.MethodPost, "/stubs/batchDelete", "BatchStubsDelete"},
 		{http.MethodPost, "/stubs/search", "SearchStubs"},
