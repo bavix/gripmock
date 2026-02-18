@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.7.3 - 2026-02-18
+
+### What's Changed
+
+* Enhance CI/CD workflows and add Windows support by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/751
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.7.2...v3.7.3
+
 ## v3.7.2 - 2026-02-18
 
 ### What's Changed
