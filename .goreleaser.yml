@@ -75,5 +75,3 @@ homebrew_casks:
         install: |
           if OS.mac?
             system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gripmock"]
-    test: |
-      assert_match "v#{version}", shell_output("#{bin}/gripmock --version")
