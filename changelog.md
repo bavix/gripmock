@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.7.4 - 2026-02-18
+
+### What's Changed
+
+* Enable Windows support in CI workflow by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/752
+* Goreleaser deprecated fix by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/753
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.7.3...v3.7.4
+
 ## v3.7.3 - 2026-02-18
 
 ### What's Changed
