@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.7.5 - 2026-02-18
+
+### What's Changed
+
+* Add missing 'end' statement in Homebrew installation script in .goreleaser.yml by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/754
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.7.4...v3.7.5
+
 ## v3.7.4 - 2026-02-18
 
 ### What's Changed
