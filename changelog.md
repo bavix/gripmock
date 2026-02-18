@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.7.6 - 2026-02-18
+
+### What's Changed
+
+* Update Homebrew installation method to use Cask and add GripMock configuration in .goreleaser.yml by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/755
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.7.5...v3.7.6
+
 ## v3.7.5 - 2026-02-18
 
 ### What's Changed
