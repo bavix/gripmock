@@ -139,6 +139,31 @@ func mcpDescriptorRegistrationArgError(err error) error {
 	return mcpInvalidArgErrorWithCause(err.Error(), err)
 }
 
+func mcpUUIDArgError(key, value string, err error) error {
+	message := key + " must be a UUID"
+	if value != "" {
+		message += ": " + value
+	}
+
+	if err == nil {
+		return mcpInvalidArgError(message)
+	}
+
+	return mcpInvalidArgErrorWithCause(message+": "+err.Error(), err)
+}
+
+func mcpStringListArgError(key string) error {
+	return mcpInvalidArgError(key + " must be a non-empty array of strings")
+}
+
+func mcpStubPayloadArgError(err error) error {
+	if err == nil {
+		return mcpInvalidArgError("invalid stubs payload")
+	}
+
+	return mcpInvalidArgErrorWithCause("invalid stubs payload: "+err.Error(), err)
+}
+
 func invalidFileDescriptorSetError(err error) error {
 	message := ErrInvalidFileDescriptorSet.Error()
 	if err != nil {

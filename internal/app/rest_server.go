@@ -94,6 +94,7 @@ func NewRestServer(
 const (
 	servicesListCap   = 16
 	serviceMethodsCap = 32
+	stubSchemaURL     = "https://bavix.github.io/gripmock/schema/stub.json"
 )
 
 // ServicesList returns a list of all available gRPC services (startup + REST-added).
@@ -180,6 +181,7 @@ func (h *RestServer) McpInfo(w http.ResponseWriter, r *http.Request) {
 			"tools/list",
 			"tools/call",
 		},
+		Tools: mcpToolsForInfo(mcpusecase.ListRuntimeTools()),
 		Transport: rest.McpTransport{
 			Path:    "/api/mcp",
 			Methods: []string{http.MethodGet, http.MethodPost},
@@ -239,7 +241,7 @@ func handleMCPRequest(h *RestServer, r *http.Request, req rest.McpRequest) rest.
 	case "ping":
 		return mcpusecase.PingResponse(req.Id)
 	case "tools/list":
-		return mcpusecase.ToolsListResponse(req.Id, mcpusecase.ListTools())
+		return mcpusecase.ToolsListResponse(req.Id, mcpusecase.ListRuntimeTools())
 	case "tools/call":
 		return handleMCPToolCall(h, r, req)
 	default:
@@ -250,6 +252,24 @@ func handleMCPRequest(h *RestServer, r *http.Request, req rest.McpRequest) rest.
 			map[string]any{"method": req.Method},
 		)
 	}
+}
+
+func mcpToolsForInfo(tools []map[string]any) []rest.McpTool {
+	out := make([]rest.McpTool, 0, len(tools))
+
+	for _, tool := range tools {
+		name, _ := tool["name"].(string)
+		description, _ := tool["description"].(string)
+		inputSchema, _ := tool["inputSchema"].(map[string]any)
+
+		out = append(out, rest.McpTool{
+			Name:        name,
+			Description: description,
+			InputSchema: inputSchema,
+		})
+	}
+
+	return out
 }
 
 func handleMCPToolCall(h *RestServer, r *http.Request, req rest.McpRequest) rest.McpResponse {
@@ -286,6 +306,18 @@ func callMCPToolDispatch(h *RestServer, name string, args map[string]any) (map[s
 		mcpusecase.ToolHistoryList:     func(toolArgs map[string]any) (map[string]any, error) { return mcpHistoryList(h, toolArgs) },
 		mcpusecase.ToolHistoryErrors:   func(toolArgs map[string]any) (map[string]any, error) { return mcpHistoryErrors(h, toolArgs) },
 		mcpusecase.ToolDebugCall:       func(toolArgs map[string]any) (map[string]any, error) { return mcpDebugCall(h, toolArgs) },
+		mcpusecase.ToolSchemaStub:      func(toolArgs map[string]any) (map[string]any, error) { return mcpSchemaStub(h, toolArgs) },
+		mcpusecase.ToolStubsUpsert:     func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsUpsert(h, toolArgs) },
+		mcpusecase.ToolStubsList:       func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsList(h, toolArgs) },
+		mcpusecase.ToolStubsGet:        func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsGet(h, toolArgs) },
+		mcpusecase.ToolStubsDelete:     func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsDelete(h, toolArgs) },
+		mcpusecase.ToolStubsBatchDelete: func(toolArgs map[string]any) (map[string]any, error) {
+			return mcpStubsBatchDelete(h, toolArgs)
+		},
+		mcpusecase.ToolStubsPurge:  func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsPurge(h, toolArgs) },
+		mcpusecase.ToolStubsSearch: func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsSearch(h, toolArgs) },
+		mcpusecase.ToolStubsUsed:   func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsUsed(h, toolArgs) },
+		mcpusecase.ToolStubsUnused: func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsUnused(h, toolArgs) },
 	}
 
 	result, err, found := mcpusecase.DispatchTool(name, args, handlers)
@@ -294,6 +326,10 @@ func callMCPToolDispatch(h *RestServer, name string, args map[string]any) (map[s
 	}
 
 	return result, err
+}
+
+func mcpSchemaStub(_ *RestServer, _ map[string]any) (map[string]any, error) {
+	return map[string]any{"schemaUrl": stubSchemaURL}, nil
 }
 
 func mcpDescriptorsAdd(h *RestServer, args map[string]any) (map[string]any, error) {
@@ -389,6 +425,394 @@ func mcpDebugCall(h *RestServer, args map[string]any) (map[string]any, error) {
 	}
 
 	return debugCall(h, service, method, session, limit, stubsLimit), nil
+}
+
+func mcpStubsUpsert(h *RestServer, args map[string]any) (map[string]any, error) {
+	rawStubs, ok := args["stubs"]
+	if !ok || rawStubs == nil {
+		return nil, mcpRequiredArgError("stubs")
+	}
+
+	stubs, err := decodeMCPStubsArg(rawStubs)
+	if err != nil {
+		return nil, err
+	}
+
+	sessionID, _ := args["session"].(string)
+
+	for _, stub := range stubs {
+		stub.Session = sessionID
+
+		if err = h.validateStub(stub); err != nil {
+			return nil, mcpInvalidArgErrorWithCause(err.Error(), err)
+		}
+	}
+
+	ids := h.budgerigar.PutMany(stubs...)
+
+	return map[string]any{"ids": uuidListToStringSlice(ids)}, nil
+}
+
+func mcpStubsList(h *RestServer, args map[string]any) (map[string]any, error) {
+	stubs, err := listMCPStubs(h.budgerigar.All(), args)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{"stubs": stubs}, nil
+}
+
+func mcpStubsUsed(h *RestServer, args map[string]any) (map[string]any, error) {
+	stubs, err := listMCPStubs(h.budgerigar.Used(), args)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{"stubs": stubs}, nil
+}
+
+func mcpStubsUnused(h *RestServer, args map[string]any) (map[string]any, error) {
+	stubs, err := listMCPStubs(h.budgerigar.Unused(), args)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{"stubs": stubs}, nil
+}
+
+func mcpStubsGet(h *RestServer, args map[string]any) (map[string]any, error) {
+	id, err := mcpUUIDArg(args, "id")
+	if err != nil {
+		return nil, err
+	}
+
+	found := h.budgerigar.FindByID(id)
+
+	if found == nil {
+		return map[string]any{"found": false, "id": id.String()}, nil
+	}
+
+	return map[string]any{"found": true, "stub": found}, nil
+}
+
+func mcpStubsDelete(h *RestServer, args map[string]any) (map[string]any, error) {
+	id, err := mcpUUIDArg(args, "id")
+	if err != nil {
+		return nil, err
+	}
+
+	deleted := h.budgerigar.DeleteByID(id) > 0
+
+	return map[string]any{"deleted": deleted, "id": id.String()}, nil
+}
+
+func mcpStubsBatchDelete(h *RestServer, args map[string]any) (map[string]any, error) {
+	idStrings, err := mcpStringSliceArg(args, "ids")
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]uuid.UUID, 0, len(idStrings))
+	deletedIDs := make([]string, 0, len(idStrings))
+	notFoundIDs := make([]string, 0)
+
+	for _, idString := range idStrings {
+		id, parseErr := uuid.Parse(idString)
+		if parseErr != nil {
+			return nil, mcpUUIDArgError("ids", idString, parseErr)
+		}
+
+		ids = append(ids, id)
+
+		if h.budgerigar.FindByID(id) == nil {
+			notFoundIDs = append(notFoundIDs, idString)
+		} else {
+			deletedIDs = append(deletedIDs, idString)
+		}
+	}
+
+	if len(ids) > 0 {
+		h.budgerigar.DeleteByID(ids...)
+	}
+
+	return map[string]any{
+		"deletedIds":  deletedIDs,
+		"notFoundIds": notFoundIDs,
+	}, nil
+}
+
+func mcpStubsPurge(h *RestServer, args map[string]any) (map[string]any, error) {
+	sessionID, _ := args["session"].(string)
+	if sessionID != "" {
+		deletedCount := h.budgerigar.DeleteSession(sessionID)
+
+		return map[string]any{"deletedCount": deletedCount, "session": sessionID}, nil
+	}
+
+	deletedCount := len(h.budgerigar.All())
+	h.budgerigar.Clear()
+
+	return map[string]any{"deletedCount": deletedCount}, nil
+}
+
+func mcpStubsSearch(h *RestServer, args map[string]any) (map[string]any, error) {
+	service, _ := args["service"].(string)
+	if service == "" {
+		return nil, mcpRequiredArgError("service")
+	}
+
+	method, _ := args["method"].(string)
+	if method == "" {
+		return nil, mcpRequiredArgError("method")
+	}
+
+	input, err := mcpSearchInput(args)
+	if err != nil {
+		return nil, err
+	}
+
+	headers, err := mcpHeadersArg(args)
+	if err != nil {
+		return nil, err
+	}
+
+	sessionID, _ := args["session"].(string)
+
+	result, searchErr := h.budgerigar.FindByQuery(stuber.Query{
+		Service: service,
+		Method:  method,
+		Session: sessionID,
+		Headers: headers,
+		Input:   input,
+	})
+	if searchErr != nil {
+		return mcpSearchNotMatchedResponse(searchErr), nil
+	}
+
+	found := result.Found()
+	if found == nil {
+		response := map[string]any{"matched": false}
+
+		if similar := result.Similar(); similar != nil {
+			response["similarStubId"] = similar.ID.String()
+		}
+
+		return response, nil
+	}
+
+	return map[string]any{
+		"matched": true,
+		"stubId":  found.ID.String(),
+		"output":  found.Output,
+	}, nil
+}
+
+func decodeMCPStubsArg(raw any) ([]*stuber.Stub, error) {
+	payload, err := json.Marshal(raw)
+	if err != nil {
+		return nil, mcpStubPayloadArgError(err)
+	}
+
+	var items []*stuber.Stub
+	if err = jsondecoder.UnmarshalSlice(payload, &items); err != nil {
+		return nil, mcpStubPayloadArgError(err)
+	}
+
+	if len(items) == 0 {
+		return nil, mcpInvalidArgError("stubs cannot be empty")
+	}
+
+	return items, nil
+}
+
+func listMCPStubs(stubs []*stuber.Stub, args map[string]any) ([]*stuber.Stub, error) {
+	service, _ := args["service"].(string)
+	method, _ := args["method"].(string)
+	sessionID, _ := args["session"].(string)
+
+	limit, err := mcpIntArg(args, "limit", 0)
+	if err != nil {
+		return nil, err
+	}
+
+	offset, err := mcpIntArg(args, "offset", 0)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := filterMCPStubs(stubs, service, method, sessionID)
+
+	if offset >= len(filtered) {
+		return []*stuber.Stub{}, nil
+	}
+
+	filtered = filtered[offset:]
+
+	if limit > 0 && len(filtered) > limit {
+		filtered = filtered[:limit]
+	}
+
+	return filtered, nil
+}
+
+func mcpUUIDArg(args map[string]any, key string) (uuid.UUID, error) {
+	value, _ := args[key].(string)
+	if value == "" {
+		return uuid.Nil, mcpRequiredArgError(key)
+	}
+
+	id, err := uuid.Parse(value)
+	if err != nil {
+		return uuid.Nil, mcpUUIDArgError(key, value, err)
+	}
+
+	return id, nil
+}
+
+func mcpStringSliceArg(args map[string]any, key string) ([]string, error) {
+	raw, ok := args[key]
+	if !ok || raw == nil {
+		return nil, mcpRequiredArgError(key)
+	}
+
+	switch values := raw.(type) {
+	case []string:
+		return validateMCPStringSlice(values, key)
+	case []any:
+		return convertMCPAnyStringSlice(values, key)
+	default:
+		return nil, mcpStringListArgError(key)
+	}
+}
+
+func mcpSearchInput(args map[string]any) ([]map[string]any, error) {
+	if rawInput, ok := args["input"]; ok && rawInput != nil {
+		return parseMCPInputArg(rawInput)
+	}
+
+	payload, ok := args["payload"].(map[string]any)
+	if !ok || payload == nil {
+		return nil, mcpRequiredArgError("payload")
+	}
+
+	return []map[string]any{payload}, nil
+}
+
+func mcpHeadersArg(args map[string]any) (map[string]any, error) {
+	rawHeaders, ok := args["headers"]
+	if !ok || rawHeaders == nil {
+		return map[string]any{}, nil
+	}
+
+	headers, ok := rawHeaders.(map[string]any)
+	if !ok {
+		return nil, mcpInvalidArgError("headers must be an object")
+	}
+
+	return headers, nil
+}
+
+func mcpSearchNotMatchedResponse(searchErr error) map[string]any {
+	return map[string]any{"matched": false, "error": searchErr.Error()}
+}
+
+func filterMCPStubs(stubs []*stuber.Stub, service, method, sessionID string) []*stuber.Stub {
+	filtered := make([]*stuber.Stub, 0, len(stubs))
+
+	for _, stub := range stubs {
+		if !mcpStubMatchesFilters(stub, service, method, sessionID) {
+			continue
+		}
+
+		filtered = append(filtered, stub)
+	}
+
+	return filtered
+}
+
+func mcpStubMatchesFilters(stub *stuber.Stub, service, method, sessionID string) bool {
+	if service != "" && stub.Service != service {
+		return false
+	}
+
+	if method != "" && stub.Method != method {
+		return false
+	}
+
+	return stubVisibleForSession(stub.Session, sessionID)
+}
+
+func validateMCPStringSlice(values []string, key string) ([]string, error) {
+	if len(values) == 0 {
+		return nil, mcpInvalidArgError(key + " cannot be empty")
+	}
+
+	if slices.Contains(values, "") {
+		return nil, mcpStringListArgError(key)
+	}
+
+	return values, nil
+}
+
+func convertMCPAnyStringSlice(values []any, key string) ([]string, error) {
+	if len(values) == 0 {
+		return nil, mcpInvalidArgError(key + " cannot be empty")
+	}
+
+	out := make([]string, 0, len(values))
+	for _, item := range values {
+		value, ok := item.(string)
+		if !ok || value == "" {
+			return nil, mcpStringListArgError(key)
+		}
+
+		out = append(out, value)
+	}
+
+	return out, nil
+}
+
+func parseMCPInputArg(rawInput any) ([]map[string]any, error) {
+	switch input := rawInput.(type) {
+	case []map[string]any:
+		if len(input) == 0 {
+			return nil, mcpInvalidArgError("input cannot be empty")
+		}
+
+		return input, nil
+	case []any:
+		if len(input) == 0 {
+			return nil, mcpInvalidArgError("input cannot be empty")
+		}
+
+		return convertMCPAnyMapSlice(input)
+	default:
+		return nil, mcpInvalidArgError("input must be an array")
+	}
+}
+
+func convertMCPAnyMapSlice(input []any) ([]map[string]any, error) {
+	out := make([]map[string]any, 0, len(input))
+	for _, item := range input {
+		message, ok := item.(map[string]any)
+		if !ok {
+			return nil, mcpInvalidArgError("input must contain JSON objects")
+		}
+
+		out = append(out, message)
+	}
+
+	return out, nil
+}
+
+func uuidListToStringSlice(ids []uuid.UUID) []string {
+	out := make([]string, 0, len(ids))
+
+	for _, id := range ids {
+		out = append(out, id.String())
+	}
+
+	return out
 }
 
 func debugCall(h *RestServer, service, method, session string, historyLimit, stubsLimit int) map[string]any {

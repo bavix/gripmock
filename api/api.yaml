@@ -545,6 +545,7 @@ components:
         - serverVersion
         - transport
         - methods
+        - tools
       properties:
         protocolVersion:
           type: string
@@ -558,6 +559,33 @@ components:
           type: array
           items:
             type: string
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/McpTool'
+      example:
+        protocolVersion: "2024-11-05"
+        serverName: gripmock
+        serverVersion: 3.7.1
+        transport:
+          path: /api/mcp
+          methods: [GET, POST]
+        methods: [initialize, ping, tools/list, tools/call]
+        tools:
+          - name: stubs.upsert
+            description: Create or update one or many stubs
+            inputSchema:
+              type: object
+              required: [stubs]
+              properties:
+                stubs:
+                  oneOf:
+                    - type: object
+                    - type: array
+          - name: schema.stub
+            description: Return JSON Schema URL for stubs payload
+            inputSchema:
+              type: object
     McpRequest:
       type: object
       required:
@@ -576,6 +604,24 @@ components:
           additionalProperties: true
           x-go-type: map[string]any
           x-go-type-skip-optional-pointer: true
+      example:
+        jsonrpc: "2.0"
+        id: 10
+        method: tools/call
+        params:
+          name: stubs.upsert
+          arguments:
+            stubs:
+              service: unitconverter.v1.UnitConversionService
+              method: ConvertWeight
+              input:
+                equals:
+                  value: 1
+                  from_unit: POUNDS
+                  to_unit: KILOGRAMS
+              output:
+                data:
+                  converted_value: 0.453592
     McpError:
       type: object
       required:
@@ -608,6 +654,17 @@ components:
           x-go-type-skip-optional-pointer: true
         error:
           $ref: '#/components/schemas/McpError'
+      example:
+        jsonrpc: "2.0"
+        id: 10
+        result:
+          content:
+            - type: text
+              text: OK
+          structuredContent:
+            ids:
+              - fc800277-9bbb-4e0b-988e-4cf01b525085
+          isError: false
     McpID:
       nullable: true
       oneOf:
