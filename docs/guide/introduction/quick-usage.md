@@ -16,7 +16,7 @@ brew tap gripmock/tap
 #### Step 2: Install GripMock <VersionTag version="v3.2.4" />
 Install GripMock with the following command:
 ```bash
-brew install gripmock
+brew install --cask gripmock
 ```
 
 #### Step 3: Check Installation

@@ -390,7 +390,7 @@ func TestBuild_WithDescriptorOnly(t *testing.T) {
 	descFile := filepath.Join(tempDir, "test.pb")
 	fds := &descriptorpb.FileDescriptorSet{
 		File: []*descriptorpb.FileDescriptorProto{
-			{Name: new("test.proto")},
+			{Name: new("test_descriptor_only.proto")},
 		},
 	}
 	descData, err := proto.Marshal(fds)
@@ -411,7 +411,7 @@ func TestBuild_WithProtosetFile(t *testing.T) {
 	protosetFile := filepath.Join(tempDir, "test.protoset")
 	fds := &descriptorpb.FileDescriptorSet{
 		File: []*descriptorpb.FileDescriptorProto{
-			{Name: new("test.proto")},
+			{Name: new("test_protoset_file.proto")},
 		},
 	}
 	descData, err := proto.Marshal(fds)
