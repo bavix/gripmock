@@ -92,7 +92,7 @@ func (s *StubWatcherTestSuite) TestWatchDisabled() {
 
 	watcher := NewStubWatcher(cfg)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(s.T().Context(), 100*time.Millisecond)
 	defer cancel()
 
 	ch, err := watcher.Watch(ctx, s.T().TempDir())
@@ -124,7 +124,7 @@ func (s *StubWatcherTestSuite) TestWatchWithValidPath() {
 	err := os.WriteFile(testFile, []byte("test: data"), 0o600)
 	s.Require().NoError(err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(s.T().Context(), 200*time.Millisecond)
 	defer cancel()
 
 	ch, err := watcher.Watch(ctx, tempDir)
@@ -149,7 +149,7 @@ func (s *StubWatcherTestSuite) TestWatchWithInvalidPath() {
 
 	watcher := NewStubWatcher(cfg)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(s.T().Context(), 100*time.Millisecond)
 	defer cancel()
 
 	// Should handle invalid path gracefully
@@ -180,7 +180,7 @@ func (s *StubWatcherTestSuite) TestWatchWithTimer() {
 	err := os.WriteFile(testFile, []byte("test: data"), 0o600)
 	s.Require().NoError(err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	ctx, cancel := context.WithTimeout(s.T().Context(), 200*time.Millisecond)
 	defer cancel()
 
 	ch, err := watcher.Watch(ctx, tempDir)
@@ -209,7 +209,7 @@ func (s *StubWatcherTestSuite) TestWatchContextCancellation() {
 
 	watcher := NewStubWatcher(cfg)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.T().Context())
 	cancel() // Cancel immediately
 
 	// Should return quickly when context is cancelled
@@ -253,7 +253,7 @@ func (s *StubWatcherTestSuite) TestWatchWithMultipleFiles() {
 		s.Require().NoError(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(s.T().Context(), 100*time.Millisecond)
 	defer cancel()
 
 	ch, err := watcher.Watch(ctx, tempDir)

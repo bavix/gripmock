@@ -47,15 +47,19 @@ func TestProcessor_AddImport(t *testing.T) {
 
 	// Test processor.addImport method
 	processor := newProcessor([]string{})
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Test adding new import
-	processor.addImport(ctx, "/new/path")
-	require.Contains(t, processor.imports, "/new/path")
-	require.True(t, processor.seenDirs["/new/path"])
+	importPath := "/new/path"
+	processor.addImport(ctx, importPath)
+
+	absPath, err := filepath.Abs(importPath)
+	require.NoError(t, err)
+	require.Contains(t, processor.imports, absPath)
+	require.True(t, processor.seenDirs[absPath])
 
 	// Test adding duplicate import
-	processor.addImport(ctx, "/new/path")
+	processor.addImport(ctx, importPath)
 	require.Len(t, processor.imports, 1) // Should not add duplicate
 }
 
@@ -105,8 +109,8 @@ func TestFindPathByImports(t *testing.T) {
 			t.Parallel()
 
 			importPath, relPath := findPathByImports(tc.filePath, tc.imports)
-			require.Equal(t, tc.expectedImport, importPath)
-			require.Equal(t, tc.expectedPath, relPath)
+			require.Equal(t, filepath.FromSlash(tc.expectedImport), importPath)
+			require.Equal(t, filepath.FromSlash(tc.expectedPath), relPath)
 		})
 	}
 }
@@ -116,7 +120,7 @@ func TestProcessor_ProcessFile_ProtoFile(t *testing.T) {
 
 	// Test processing proto file
 	processor := newProcessor([]string{})
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create temporary proto file
 	tempDir := t.TempDir()
@@ -134,7 +138,7 @@ func TestProcessor_ProcessFile_DescriptorFile(t *testing.T) {
 
 	// Test processing descriptor file
 	processor := newProcessor([]string{})
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create temporary descriptor file
 	tempDir := t.TempDir()
@@ -165,7 +169,7 @@ func TestProcessor_ProcessFile_UnsupportedFile(t *testing.T) {
 
 	// Test processing unsupported file
 	processor := newProcessor([]string{})
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create temporary unsupported file
 	tempDir := t.TempDir()
@@ -183,7 +187,7 @@ func TestProcessor_ProcessDirectory(t *testing.T) {
 
 	// Test processing directory
 	processor := newProcessor([]string{})
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create temporary directory with mixed files
 	tempDir := t.TempDir()
@@ -232,7 +236,7 @@ func TestProcessor_Process_WithContextCancellation(t *testing.T) {
 
 	// Test processing with context cancellation
 	processor := newProcessor([]string{})
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	// Cancel context immediately
 	cancel()
@@ -246,7 +250,7 @@ func TestBuild_WithValidPaths(t *testing.T) {
 	t.Parallel()
 
 	// Test Build with valid paths
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create temporary directory with proto file
 	tempDir := t.TempDir()
@@ -264,7 +268,7 @@ func TestBuild_WithDuplicatePaths(t *testing.T) {
 	t.Parallel()
 
 	// Test Build with duplicate paths
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create temporary directory
 	tempDir := t.TempDir()
@@ -346,7 +350,7 @@ func TestFindMinimalPaths(t *testing.T) {
 func TestBuild_WithNonExistentPath(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := Build(ctx, []string{}, []string{"/non/existent/path.proto"})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to stat path")
@@ -355,7 +359,7 @@ func TestBuild_WithNonExistentPath(t *testing.T) {
 func TestBuild_WithNonExistentImportPath(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	protoFile := filepath.Join(tempDir, "test.proto")
 	require.NoError(t, os.WriteFile(protoFile, []byte("syntax = \"proto3\";"), 0o600))
@@ -367,7 +371,7 @@ func TestBuild_WithNonExistentImportPath(t *testing.T) {
 func TestBuild_WithDirectoryPath(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	protoFile := filepath.Join(tempDir, "test.proto")
 	require.NoError(t, os.WriteFile(protoFile, []byte("syntax = \"proto3\";"), 0o600))
@@ -381,7 +385,7 @@ func TestBuild_WithDirectoryPath(t *testing.T) {
 func TestBuild_WithDescriptorOnly(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	descFile := filepath.Join(tempDir, "test.pb")
 	fds := &descriptorpb.FileDescriptorSet{
@@ -402,7 +406,7 @@ func TestBuild_WithDescriptorOnly(t *testing.T) {
 func TestBuild_WithProtosetFile(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	protosetFile := filepath.Join(tempDir, "test.protoset")
 	fds := &descriptorpb.FileDescriptorSet{
@@ -424,7 +428,7 @@ func TestProcessor_Process_NonExistentPath(t *testing.T) {
 	t.Parallel()
 
 	processor := newProcessor([]string{})
-	ctx := context.Background()
+	ctx := t.Context()
 
 	err := processor.process(ctx, []string{"/non/existent/path"})
 	require.Error(t, err)
@@ -435,7 +439,7 @@ func TestProcessor_ProcessDirectory_ContextCancellation(t *testing.T) {
 	t.Parallel()
 
 	processor := newProcessor([]string{})
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	tempDir := t.TempDir()
 
 	// Create a proto file so the directory has content
@@ -452,7 +456,7 @@ func TestProcessor_AddProtoFile(t *testing.T) {
 	t.Parallel()
 
 	processor := newProcessor([]string{})
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	protoFile := filepath.Join(tempDir, "test.proto")
 	require.NoError(t, os.WriteFile(protoFile, []byte("syntax = \"proto3\";"), 0o600))
@@ -467,7 +471,7 @@ func TestProcessor_AddDescriptorFile(t *testing.T) {
 	t.Parallel()
 
 	processor := newProcessor([]string{})
-	ctx := context.Background()
+	ctx := t.Context()
 	tempDir := t.TempDir()
 	descFile := filepath.Join(tempDir, "test.pb")
 	fds := &descriptorpb.FileDescriptorSet{

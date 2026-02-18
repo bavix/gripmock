@@ -28,7 +28,7 @@ func TestUnaryInterceptor(t *testing.T) {
 		return resp, nil
 	}
 
-	ctx := logger.WithContext(context.Background())
+	ctx := logger.WithContext(t.Context())
 
 	result, err := interceptor(ctx, req, nil, handler)
 	require.NoError(t, err)
@@ -43,7 +43,7 @@ func TestStreamInterceptor(t *testing.T) {
 
 	// Create a mock server stream
 	mockStream := &mockServerStream{
-		ctx: context.Background(),
+		ctx: t.Context(),
 	}
 
 	// Test successful stream
@@ -62,7 +62,7 @@ func TestStreamInterceptor(t *testing.T) {
 func TestServerStreamWrapper(t *testing.T) {
 	t.Parallel()
 
-	originalCtx := context.Background()
+	originalCtx := t.Context()
 	mockStream := &mockServerStream{ctx: originalCtx}
 
 	wrapper := serverStreamWrapper{
@@ -132,7 +132,7 @@ func TestPanicRecoveryUnaryInterceptor(t *testing.T) {
 	t.Parallel()
 
 	logger := zerolog.New(zerolog.NewTestWriter(t))
-	ctx := logger.WithContext(context.Background())
+	ctx := logger.WithContext(t.Context())
 	info := &grpc.UnaryServerInfo{FullMethod: "/test.Service/Method"}
 
 	t.Run("no panic", func(t *testing.T) {
@@ -161,7 +161,7 @@ func TestPanicRecoveryUnaryInterceptor(t *testing.T) {
 func TestPanicRecoveryStreamInterceptor(t *testing.T) {
 	t.Parallel()
 
-	mockStream := &mockServerStream{ctx: context.Background()}
+	mockStream := &mockServerStream{ctx: t.Context()}
 	info := &grpc.StreamServerInfo{FullMethod: "/test.Service/Stream"}
 
 	t.Run("no panic", func(t *testing.T) {

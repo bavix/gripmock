@@ -23,7 +23,7 @@ var errBoom = errors.New("boom")
 func TestManager_OrderAndClear(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	var calls []int
 
@@ -53,7 +53,7 @@ func TestManager_OrderAndClear(t *testing.T) {
 func TestManager_LogsErrors(t *testing.T) {
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	logger := &testLogger{}
 	m := lifecycle.New(logger)
 

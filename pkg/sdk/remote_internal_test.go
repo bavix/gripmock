@@ -346,7 +346,7 @@ func TestSessionInterceptors(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	ctx := context.Background()
+	ctx := t.Context()
 	unaryCalled := false
 	streamCalled := false
 
@@ -378,7 +378,7 @@ func TestTimeoutInterceptors(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	ctx := context.Background()
+	ctx := t.Context()
 	timeout := 50 * time.Millisecond
 	unaryCalled := false
 	streamCalled := false

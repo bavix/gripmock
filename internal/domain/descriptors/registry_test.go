@@ -1,7 +1,6 @@
 package descriptors_test
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 
@@ -18,7 +17,7 @@ import (
 func mustFileDesc(t *testing.T, protoPath string) protoreflect.FileDescriptor {
 	t.Helper()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
 	require.NoError(t, err)
 	require.NotEmpty(t, fdsSlice)

@@ -22,7 +22,7 @@ import (
 func Test_resolveDescriptorsFromReflection_InvalidAddress(t *testing.T) {
 	t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	// Invalid address - may fail at NewClient or at first RPC (lazy connect)
@@ -60,7 +60,7 @@ func Test_resolveDescriptorsFromReflection_StreamAborted(t *testing.T) {
 	go func() { _ = server.Serve(lis) }()
 	defer server.GracefulStop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 
 	_, err = resolveDescriptorsFromReflection(ctx, addr)
@@ -91,7 +91,7 @@ func Test_resolveDescriptorsFromReflection_ConnectionClosed(t *testing.T) {
 		}
 	}()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 
 	_, err = resolveDescriptorsFromReflection(ctx, addr)
@@ -145,7 +145,7 @@ func Test_resolveDescriptorsFromReflection_UnexpectedResponse(t *testing.T) {
 	go func() { _ = server.Serve(lis) }()
 	defer server.GracefulStop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 
 	_, err = resolveDescriptorsFromReflection(ctx, addr)
@@ -205,7 +205,7 @@ func Test_resolveDescriptorsFromReflection_ErrorResponse(t *testing.T) {
 	go func() { _ = server.Serve(lis) }()
 	defer server.GracefulStop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 
 	_, err = resolveDescriptorsFromReflection(ctx, addr)
@@ -264,7 +264,7 @@ func Test_resolveDescriptorsFromReflection_UnexpectedFileResponse(t *testing.T) 
 	go func() { _ = server.Serve(lis) }()
 	defer server.GracefulStop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 
 	_, err = resolveDescriptorsFromReflection(ctx, addr)
@@ -324,7 +324,7 @@ func Test_resolveDescriptorsFromReflection_CorruptProto(t *testing.T) {
 	go func() { _ = server.Serve(lis) }()
 	defer server.GracefulStop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 
 	_, err = resolveDescriptorsFromReflection(ctx, addr)
@@ -390,7 +390,7 @@ func Test_resolveDescriptorsFromReflection_EmptyNameKey(t *testing.T) {
 	go func() { _ = server.Serve(lis) }()
 	defer server.GracefulStop()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	defer cancel()
 
 	fds, err := resolveDescriptorsFromReflection(ctx, addr)

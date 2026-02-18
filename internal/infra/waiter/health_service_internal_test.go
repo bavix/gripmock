@@ -40,7 +40,7 @@ func TestService_PingWithTimeout_NilClient(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 	timeout := 100 * time.Millisecond
 	serviceName := testServiceName
 
@@ -54,7 +54,7 @@ func TestService_Ping_NilClient(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 	serviceName := testServiceName
 
 	// Test ping with nil client (should panic or return error)
@@ -67,7 +67,7 @@ func TestService_PingWithTimeout_ContextTimeout(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 1*time.Nanosecond)
 
 	defer cancel()
 
@@ -84,7 +84,7 @@ func TestService_PingWithTimeout_ZeroTimeout(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	timeout := time.Duration(0)
 	serviceName := testServiceName
@@ -99,7 +99,7 @@ func TestService_PingWithTimeout_NegativeTimeout(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 	timeout := -1 * time.Second
 	serviceName := testServiceName
 
@@ -113,7 +113,7 @@ func TestService_Ping_EmptyServiceName(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	serviceName := ""
 
@@ -158,7 +158,7 @@ func TestService_PingWithTimeout_CancelledContext(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	cancel() // Cancel immediately
 
@@ -175,7 +175,7 @@ func TestService_Ping_CancelledContext(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	cancel() // Cancel immediately
 
@@ -191,7 +191,7 @@ func TestService_PingWithTimeout_VeryLongTimeout(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	timeout := 24 * time.Hour // Very long timeout
 	serviceName := testServiceName
@@ -206,7 +206,7 @@ func TestService_PingWithTimeout_ContextWithDeadline(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(-1*time.Second))
+	ctx, cancel := context.WithDeadline(t.Context(), time.Now().Add(-1*time.Second))
 
 	defer cancel()
 
@@ -223,7 +223,7 @@ func TestService_Ping_ContextWithValues(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.WithValue(context.Background(), testKey, "value")
+	ctx := context.WithValue(t.Context(), testKey, "value")
 	serviceName := testServiceName
 
 	// Test with context that has values
@@ -236,7 +236,7 @@ func TestService_PingWithTimeout_ContextWithValues(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.WithValue(context.Background(), testKey, "value")
+	ctx := context.WithValue(t.Context(), testKey, "value")
 	timeout := 100 * time.Millisecond
 	serviceName := testServiceName
 
@@ -250,7 +250,7 @@ func TestService_Ping_ServiceNameWithSpecialCharacters(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 	serviceName := "test-service-with-special-chars-!@#$%^&*()"
 
 	// Test with service name containing special characters
@@ -263,7 +263,7 @@ func TestService_PingWithTimeout_ServiceNameWithSpecialCharacters(t *testing.T) 
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 	timeout := 100 * time.Millisecond
 	serviceName := "test-service-with-special-chars-!@#$%^&*()"
 
@@ -277,7 +277,7 @@ func TestService_Ping_UnicodeServiceName(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 	serviceName := "тест-сервис-с-unicode"
 
 	// Test with unicode service name
@@ -290,7 +290,7 @@ func TestService_PingWithTimeout_UnicodeServiceName(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 	timeout := 100 * time.Millisecond
 	serviceName := "тест-сервис-с-unicode"
 
@@ -304,7 +304,7 @@ func TestService_Ping_VeryLongServiceName(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 	serviceName := string(make([]byte, 10000)) // Very long service name
 
 	// Test with very long service name
@@ -317,7 +317,7 @@ func TestService_PingWithTimeout_VeryLongServiceName(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 	timeout := 100 * time.Millisecond
 	serviceName := string(make([]byte, 10000)) // Very long service name
 
@@ -331,7 +331,7 @@ func TestService_Ping_ServiceNameWithNewlines(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 	serviceName := "test\nservice\nwith\nnewlines"
 
 	// Test with service name containing newlines
@@ -344,7 +344,7 @@ func TestService_PingWithTimeout_ServiceNameWithNewlines(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
-	ctx := context.Background()
+	ctx := t.Context()
 	timeout := 100 * time.Millisecond
 	serviceName := "test\nservice\nwith\nnewlines"
 
