@@ -5,6 +5,10 @@ on:
       - "master"
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   GRPC_TESTIFY_VERSION: "1.0.0"
   GRPCURL_VERSION: "1.9.3"
@@ -26,7 +30,7 @@ jobs:
 
       - name: Run unit tests with coverage
         run: |
-          mkdir -p $GOCOVERDIR
+          mkdir -p "$GOCOVERDIR"
           go test -cover -covermode=atomic ./... -args -test.gocoverdir="$GOCOVERDIR"
         shell: bash
 
@@ -35,6 +39,114 @@ jobs:
         with:
           name: coverage-unit
           path: /tmp/cover-unit
+
+  unit-tests-matrix:
+    name: "Unit Tests (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Run unit tests
+        run: go test ./...
+
+  binary-smoke-tests:
+    name: "Binary Smoke (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build and smoke-test binary (Linux/macOS)
+        if: matrix.os != 'windows-latest'
+        run: |
+          bin="$RUNNER_TEMP/gripmock"
+          go build -o "$bin" .
+          "$bin" --version
+          "$bin" --help
+
+          "$bin" --stub=examples examples >"$RUNNER_TEMP/gripmock.log" 2>&1 &
+          pid=$!
+
+          cleanup() {
+            kill -INT "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+          }
+
+          trap cleanup EXIT
+          "$bin" check --timeout=60s --silent
+          cleanup
+          trap - EXIT
+
+      - name: Build and smoke-test binary (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $bin = Join-Path $env:RUNNER_TEMP "gripmock.exe"
+          go build -o $bin .
+
+          & $bin --version
+          & $bin --help
+
+          $stdout = Join-Path $env:RUNNER_TEMP "gripmock.out.log"
+          $stderr = Join-Path $env:RUNNER_TEMP "gripmock.err.log"
+          $proc = Start-Process -FilePath $bin -ArgumentList "--stub=examples", "examples" -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
+
+          try {
+            & $bin check --timeout=60s --silent
+          }
+          finally {
+            if ($null -ne $proc) {
+              Stop-Process -Id $proc.Id -ErrorAction SilentlyContinue
+            }
+          }
+
+  goreleaser-check:
+    name: "GoReleaser Check"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Setup GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          install-only: true
+
+      - name: Validate GoReleaser config
+        run: goreleaser check
+
+      - name: Build snapshot with GoReleaser
+        run: goreleaser build --snapshot --clean
 
   e2e-tests:
     name: "E2E Tests"
@@ -65,7 +177,7 @@ jobs:
             curl -sSL "https://github.com/fullstorydev/grpcurl/releases/download/v${{ env.GRPCURL_VERSION }}/grpcurl_${{ env.GRPCURL_VERSION }}_linux_x86_64.tar.gz" | tar -xz
             chmod +x grpcurl
           fi
-          echo "$(pwd)" >> $GITHUB_PATH
+          pwd >> "$GITHUB_PATH"
 
           if [ ! -f grpctestify.sh ]; then
             curl -sSL https://github.com/gripmock/grpctestify/releases/download/v${{ env.GRPC_TESTIFY_VERSION }}/grpctestify.sh -o grpctestify.sh

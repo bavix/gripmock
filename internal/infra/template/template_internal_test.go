@@ -1,7 +1,6 @@
 package template
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,7 +10,7 @@ import (
 func TestEngine_Render(t *testing.T) {
 	t.Parallel()
 
-	engine := New(context.Background(), nil)
+	engine := New(t.Context(), nil)
 
 	tests := []struct {
 		name     string
@@ -149,7 +148,7 @@ func TestIsTemplateString(t *testing.T) {
 func TestEngine_ProcessMap(t *testing.T) {
 	t.Parallel()
 
-	engine := New(context.Background(), nil)
+	engine := New(t.Context(), nil)
 
 	data := map[string]any{
 		"name": "{{.Request.name}}",
@@ -191,7 +190,7 @@ func TestEngine_ProcessMap(t *testing.T) {
 func TestEngine_ProcessStream(t *testing.T) {
 	t.Parallel()
 
-	engine := New(context.Background(), nil)
+	engine := New(t.Context(), nil)
 
 	t.Run("stream with templates", func(t *testing.T) {
 		t.Parallel()
@@ -233,7 +232,7 @@ func TestEngine_ProcessStream(t *testing.T) {
 func TestEngine_ProcessHeaders(t *testing.T) {
 	t.Parallel()
 
-	engine := New(context.Background(), nil)
+	engine := New(t.Context(), nil)
 
 	headers := map[string]string{
 		"x-user-id": "{{.Request.user_id}}",
@@ -261,7 +260,7 @@ func TestEngine_ProcessHeaders(t *testing.T) {
 func TestEngine_ProcessError(t *testing.T) {
 	t.Parallel()
 
-	engine := New(context.Background(), nil)
+	engine := New(t.Context(), nil)
 
 	tests := []struct {
 		name         string
@@ -403,7 +402,7 @@ func TestHasTemplatesInStream(t *testing.T) {
 func TestProcessMap_MaxRecursionDepthExceeded(t *testing.T) {
 	t.Parallel()
 
-	engine := New(context.Background(), nil)
+	engine := New(t.Context(), nil)
 
 	// Build nested structure exceeding MaxRecursionDepth (250)
 	data := make(map[string]any)
@@ -423,7 +422,7 @@ func TestProcessMap_MaxRecursionDepthExceeded(t *testing.T) {
 func TestProcessMap_AtMaxRecursionDepth(t *testing.T) {
 	t.Parallel()
 
-	engine := New(context.Background(), nil)
+	engine := New(t.Context(), nil)
 
 	// Build nested structure at exactly MaxRecursionDepth - should succeed
 	data := make(map[string]any)

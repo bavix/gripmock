@@ -78,6 +78,11 @@ brew install gripmock
 curl -s https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.sh | sh -s
 ```
 
+#### 🪟 PowerShell (Windows)
+```powershell
+irm https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.ps1 | iex
+```
+
 #### 🐳 Docker
 ```bash
 docker pull bavix/gripmock

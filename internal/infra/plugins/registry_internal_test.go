@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -111,7 +110,7 @@ func TestRegistry_Plugins(t *testing.T) {
 	reg.AddPlugin(info2, nil)
 
 	// Act
-	plugins := reg.Plugins(context.Background())
+	plugins := reg.Plugins(t.Context())
 
 	// Assert
 	require.Len(t, plugins, 2)
@@ -139,7 +138,7 @@ func TestRegistry_Groups(t *testing.T) {
 	reg.AddPlugin(info, specs)
 
 	// Act
-	groups := reg.Groups(context.Background())
+	groups := reg.Groups(t.Context())
 
 	// Assert
 	require.Len(t, groups, 1)

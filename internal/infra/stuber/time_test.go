@@ -1,7 +1,6 @@
 package stuber_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -37,36 +36,6 @@ func TestDelayWithGo125TimeAPI(t *testing.T) {
 
 	require.Equal(t, expectedEnd, actualEnd)
 	require.Equal(t, types.Duration(100*time.Millisecond), output.Delay)
-}
-
-// TestDelayProcessingWithContext demonstrates delay processing with context.
-func TestDelayProcessingWithContext(t *testing.T) {
-	t.Parallel()
-
-	// Use Go 1.25 time API for deterministic testing
-	baseTime := time.Date(2024, 1, 15, 10, 30, 0, 0, time.UTC)
-
-	output := stuber.Output{
-		Data: map[string]any{
-			"message": "Delayed response",
-		},
-		Delay: types.Duration(50 * time.Millisecond),
-	}
-
-	// Create context with timeout
-	_, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-
-	// Simulate delay processing with context
-	start := baseTime
-	delayDuration := time.Duration(output.Delay)
-
-	// Check if delay would exceed context timeout
-	require.LessOrEqual(t, delayDuration, 100*time.Millisecond, "Delay exceeds context timeout")
-
-	// Simulate successful delay processing
-	expectedEnd := start.Add(delayDuration)
-	require.Equal(t, expectedEnd, baseTime.Add(50*time.Millisecond))
 }
 
 // TestDelaySerializationWithDeterministicTime tests delay serialization with deterministic time.

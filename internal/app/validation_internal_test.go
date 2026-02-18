@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -669,7 +668,7 @@ func TestValidateStub_WithValidator(t *testing.T) {
 		},
 	}
 
-	server, err := NewRestServer(context.Background(), stuber.NewBudgerigar(features.New()), nil, nil, nil, nil)
+	server, err := NewRestServer(t.Context(), stuber.NewBudgerigar(features.New()), nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	for _, tt := range tests {

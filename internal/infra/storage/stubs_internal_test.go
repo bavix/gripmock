@@ -435,7 +435,7 @@ func TestStubsStorage_WaitWithTimeout(t *testing.T) {
 
 	storage := NewStub(nil, nil, nil)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
 	defer cancel()
 
 	// Test wait with timeout
@@ -447,7 +447,7 @@ func TestStubsStorage_ReadFromPathWithEmptyPath(t *testing.T) {
 	t.Parallel()
 
 	storage := NewStub(nil, nil, nil)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Test reading from empty path
 	storage.ReadFromPath(ctx, "")
@@ -459,7 +459,7 @@ func TestStubsStorage_ReadFromPathWithNonExistentPath(t *testing.T) {
 
 	mockWatcher := &watcher.StubWatcher{}
 	storage := NewStub(nil, nil, mockWatcher)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Test reading from non-existent path
 	storage.ReadFromPath(ctx, "/non/existent/path")
@@ -474,7 +474,7 @@ func TestStubsStorage_ReadFromPathWithValidPath(t *testing.T) {
 
 	mockWatcher := &watcher.StubWatcher{}
 	storage := NewStub(nil, nil, mockWatcher)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Test reading from valid empty directory
 	storage.ReadFromPath(ctx, tempDir)
@@ -494,7 +494,7 @@ func TestStubsStorage_ReadFromPathWithSubdirectories(t *testing.T) {
 
 	mockWatcher := &watcher.StubWatcher{}
 	storage := NewStub(nil, nil, mockWatcher)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Test reading from directory with subdirectories
 	storage.ReadFromPath(ctx, tempDir)
@@ -514,7 +514,7 @@ func TestStubsStorage_ReadFromPathWithNonStubFiles(t *testing.T) {
 
 	mockWatcher := &watcher.StubWatcher{}
 	storage := NewStub(nil, nil, mockWatcher)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Test reading from directory with non-stub files
 	storage.ReadFromPath(ctx, tempDir)
@@ -547,7 +547,7 @@ func TestStubsStorage_ReadFromPathWithJsonFiles(t *testing.T) {
 	mockStorage := &stuber.Budgerigar{}
 	mockWatcher := &watcher.StubWatcher{}
 	storage := NewStub(mockStorage, nil, mockWatcher)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Test reading from directory with JSON files
 	storage.ReadFromPath(ctx, tempDir)
@@ -584,7 +584,7 @@ func TestStubsStorage_ReadByFileWithValidJson(t *testing.T) {
 	// Create a mock storage
 	mockStorage := &stuber.Budgerigar{}
 	storage := NewStub(mockStorage, nil, nil)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Test reading a valid JSON file
 	storage.readByFile(ctx, tempFile.Name())
@@ -611,7 +611,7 @@ func TestStubsStorage_ReadByFileWithInvalidJson(t *testing.T) {
 	// Create a mock storage
 	mockStorage := &stuber.Budgerigar{}
 	storage := NewStub(mockStorage, nil, nil)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Test reading an invalid JSON file
 	storage.readByFile(ctx, tempFile.Name())
@@ -622,7 +622,7 @@ func TestStubsStorage_ReadByFileWithNonExistentFile(t *testing.T) {
 	t.Parallel()
 
 	storage := NewStub(nil, nil, nil)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Test reading a non-existent file
 	storage.readByFile(ctx, "/non/existent/file.json")
@@ -633,7 +633,7 @@ func TestStubsStorage_CheckUniqIDsWithDuplicateIDs(t *testing.T) {
 	t.Parallel()
 
 	storage := NewStub(nil, nil, nil)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create stubs with duplicate IDs
 	testID1 := uuid.New()
@@ -653,7 +653,7 @@ func TestStubsStorage_CheckUniqIDsWithNilIDs(t *testing.T) {
 	t.Parallel()
 
 	storage := NewStub(nil, nil, nil)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create stubs with nil IDs
 	stubs := []*stuber.Stub{
@@ -825,7 +825,7 @@ func TestReadFromPath_WithFile(t *testing.T) {
 		storage := createTestStorage(t)
 
 		// Test reading from file
-		storage.readFromPath(context.Background(), stubFile)
+		storage.readFromPath(t.Context(), stubFile)
 
 		// Verify that the file was processed (no errors)
 	})
@@ -842,7 +842,7 @@ func TestReadFromPath_WithFile(t *testing.T) {
 		storage := createTestStorage(t)
 
 		// Test reading from non-stub file
-		storage.readFromPath(context.Background(), nonStubFile)
+		storage.readFromPath(t.Context(), nonStubFile)
 
 		// Should not cause any errors
 	})
@@ -852,7 +852,7 @@ func TestReadFromPath_WithFile(t *testing.T) {
 		storage := createTestStorage(t)
 
 		// Test reading from non-existent file
-		storage.readFromPath(context.Background(), "/non/existent/file.yml")
+		storage.readFromPath(t.Context(), "/non/existent/file.yml")
 
 		// Should not cause any errors
 	})
@@ -885,7 +885,7 @@ func TestReadFromPath_WithDirectory(t *testing.T) {
 		storage := createTestStorage(t)
 
 		// Test reading from directory
-		storage.readFromPath(context.Background(), tempDir)
+		storage.readFromPath(t.Context(), tempDir)
 
 		// Should process stub files and ignore non-stub files
 	})
@@ -908,7 +908,7 @@ func TestReadFromPath_WithDirectory(t *testing.T) {
 		storage := createTestStorage(t)
 
 		// Test reading from directory with subdirectories
-		storage.readFromPath(context.Background(), tempDir)
+		storage.readFromPath(t.Context(), tempDir)
 
 		// Should recursively process subdirectories
 	})
@@ -920,7 +920,7 @@ func TestReadFromPath_WithDirectory(t *testing.T) {
 		storage := createTestStorage(t)
 
 		// Test reading from empty directory
-		storage.readFromPath(context.Background(), tempDir)
+		storage.readFromPath(t.Context(), tempDir)
 
 		// Should not cause any errors
 	})
@@ -930,7 +930,7 @@ func TestReadFromPath_WithDirectory(t *testing.T) {
 		storage := createTestStorage(t)
 
 		// Test reading from non-existent directory
-		storage.readFromPath(context.Background(), "/non/existent/directory")
+		storage.readFromPath(t.Context(), "/non/existent/directory")
 
 		// Should handle error gracefully
 	})
@@ -960,7 +960,7 @@ func TestReadFromPath_FileExtensionFiltering(t *testing.T) {
 		storage := createTestStorage(t)
 
 		// Test reading from directory
-		storage.readFromPath(context.Background(), tempDir)
+		storage.readFromPath(t.Context(), tempDir)
 
 		// Should only process .yml, .yaml, and .json files
 		// and ignore .txt and .md files
@@ -1008,9 +1008,9 @@ func TestReadFromPath_Integration(t *testing.T) {
 		storage := createTestStorage(t)
 
 		// Test reading from directory (should process both files)
-		storage.readFromPath(context.Background(), tempDir)
+		storage.readFromPath(t.Context(), tempDir)
 
 		// Test reading from specific file
-		storage.readFromPath(context.Background(), stubFile)
+		storage.readFromPath(t.Context(), stubFile)
 	})
 }

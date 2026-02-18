@@ -1,7 +1,6 @@
 package deps_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -39,7 +38,7 @@ func TestBuilder_Extender(t *testing.T) {
 	t.Parallel()
 	// Test extender creation
 	builder := deps.NewBuilder()
-	extender := builder.Extender(context.Background())
+	extender := builder.Extender(t.Context())
 	require.NotNil(t, extender)
 }
 
@@ -52,7 +51,7 @@ func TestBuilder_SingletonPattern(t *testing.T) {
 	budgerigar2 := builder.Budgerigar()
 	require.Equal(t, budgerigar1, budgerigar2)
 
-	extender1 := builder.Extender(context.Background())
-	extender2 := builder.Extender(context.Background())
+	extender1 := builder.Extender(t.Context())
+	extender2 := builder.Extender(t.Context())
 	require.Equal(t, extender1, extender2)
 }
