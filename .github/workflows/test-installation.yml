@@ -1,8 +1,17 @@
-name: Test GripMock Installation Script
+name: Test GripMock Installation Scripts
 
 on:
   pull_request:
     branches: [ master ]
+    paths:
+      - setup.sh
+      - setup.ps1
+      - .goreleaser.yml
+      - .github/workflows/test-installation.yml
+
+concurrency:
+  group: install-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test-installation:
@@ -14,6 +23,7 @@ jobs:
           - os: ubuntu-22.04-arm
           - os: macos-15-intel
           - os: macos-latest
+          - os: windows-latest
 
     steps:
     - name: Checkout repository
@@ -32,7 +42,16 @@ jobs:
         # Ensure shasum is available (it should be by default on macOS)
         which shasum || echo "shasum not found, will use sha256sum if available"
 
+    - name: Prepare environment (Windows)
+      if: startsWith(matrix.os, 'windows')
+      shell: pwsh
+      run: |
+        if (-not (Test-Path .\setup.ps1)) {
+          throw "setup.ps1 not found"
+        }
+
     - name: Prepare environment
+      if: ${{ !startsWith(matrix.os, 'windows') }}
       run: |
         chmod +x ./setup.sh
         # Ensure /usr/local/bin exists and is writable
@@ -40,6 +59,7 @@ jobs:
         sudo chmod 755 /usr/local/bin
 
     - name: First installation
+      if: ${{ !startsWith(matrix.os, 'windows') }}
       shell: sh
       run: |
         # Clean up any existing installation
@@ -47,32 +67,88 @@ jobs:
         # Run installation with GitHub token for API access
         sudo GITHUB_TOKEN=${{ github.token }} ./setup.sh
 
+    - name: First installation (Windows)
+      if: startsWith(matrix.os, 'windows')
+      shell: pwsh
+      run: |
+        $installDir = Join-Path $env:RUNNER_TEMP "gripmock-bin"
+        Remove-Item -Path $installDir -Recurse -Force -ErrorAction SilentlyContinue
+        .\setup.ps1 -InstallDir $installDir -NoPathUpdate
+
     - name: Verify installation
+      if: ${{ !startsWith(matrix.os, 'windows') }}
       shell: sh
       run: |
         test -f /usr/local/bin/gripmock
         test -x /usr/local/bin/gripmock
         gripmock --version
 
+    - name: Verify installation (Windows)
+      if: startsWith(matrix.os, 'windows')
+      shell: pwsh
+      run: |
+        $installDir = Join-Path $env:RUNNER_TEMP "gripmock-bin"
+        $binary = Join-Path $installDir "gripmock.exe"
+        if (-not (Test-Path $binary)) {
+          throw "gripmock.exe not found"
+        }
+        & $binary --version
+
     - name: Second installation (upgrade check)
+      if: ${{ !startsWith(matrix.os, 'windows') }}
       shell: sh
       run: |
         sudo GITHUB_TOKEN=${{ github.token }} ./setup.sh
 
+    - name: Second installation (Windows upgrade check)
+      if: startsWith(matrix.os, 'windows')
+      shell: pwsh
+      run: |
+        $installDir = Join-Path $env:RUNNER_TEMP "gripmock-bin"
+        .\setup.ps1 -InstallDir $installDir -NoPathUpdate
+
     - name: Verify after second installation
+      if: ${{ !startsWith(matrix.os, 'windows') }}
       shell: sh
       run: |
         test -f /usr/local/bin/gripmock
         test -x /usr/local/bin/gripmock
         gripmock --version
 
+    - name: Verify after second installation (Windows)
+      if: startsWith(matrix.os, 'windows')
+      shell: pwsh
+      run: |
+        $installDir = Join-Path $env:RUNNER_TEMP "gripmock-bin"
+        $binary = Join-Path $installDir "gripmock.exe"
+        if (-not (Test-Path $binary)) {
+          throw "gripmock.exe not found after reinstall"
+        }
+        & $binary --version
+
     - name: Test basic functionality
+      if: ${{ !startsWith(matrix.os, 'windows') }}
       shell: sh
       run: |
         gripmock --help | head -5
 
+    - name: Test basic functionality (Windows)
+      if: startsWith(matrix.os, 'windows')
+      shell: pwsh
+      run: |
+        $installDir = Join-Path $env:RUNNER_TEMP "gripmock-bin"
+        $binary = Join-Path $installDir "gripmock.exe"
+        & $binary --help
+
     - name: Cleanup
-      if: always()
+      if: always() && !startsWith(matrix.os, 'windows')
       run: |
         sudo rm -f /usr/local/bin/gripmock || true
       shell: sh
+
+    - name: Cleanup (Windows)
+      if: always() && startsWith(matrix.os, 'windows')
+      shell: pwsh
+      run: |
+        $installDir = Join-Path $env:RUNNER_TEMP "gripmock-bin"
+        Remove-Item -Path $installDir -Recurse -Force -ErrorAction SilentlyContinue
