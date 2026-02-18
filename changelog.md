@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.7.2 - 2026-02-18
+
+### What's Changed
+
+* Add MCP tools for stub management and enhance API documentation by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/750
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.7.1...v3.7.2
+
 ## v3.7.1 - 2026-02-17
 
 ### What's Changed
