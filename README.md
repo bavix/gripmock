@@ -70,7 +70,7 @@ Choose your preferred installation method:
 #### 🍺 Homebrew (Recommended)
 ```bash
 brew tap gripmock/tap
-brew install gripmock
+brew install --cask gripmock
 ```
 
 #### 📦 Shell Script

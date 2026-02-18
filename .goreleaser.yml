@@ -51,6 +51,35 @@ changelog:
       - '^docs:'
       - '^test:'
 
+brews:
+  - name: gripmock
+    repository:
+      owner: gripmock
+      name: homebrew-tap
+      branch: master
+    directory: Formula
+    homepage: https://bavix.github.io/gripmock/
+    description: "A mock server for gRPC services using .proto files or compiled .pb descriptors"
+    license: "MIT"
+    url_template: "https://github.com/bavix/gripmock/releases/download/v{{ .Version }}/gripmock_{{ .Version }}_{{ .Os }}_{{ .Arch }}.tar.gz"
+    commit_author:
+      name: github-actions
+      email: github-actions@users.noreply.github.com
+    commit_msg_template: "Update GripMock to {{ .Version }}"
+
+    # Deprecation warning mechanism
+    custom_block: |
+      deprecate! date: "2026-02-18", because: "moved to cask. Please run `brew install --cask gripmock`"
+
+    caveats: |
+      The 'gripmock' formula is deprecated and will be removed in future versions.
+      Please migrate to the cask version:
+        brew uninstall gripmock
+        brew install --cask gripmock
+
+    test: |
+      assert_match "v#{version}", shell_output("#{bin}/gripmock --version")
+
 homebrew_casks:
   - name: gripmock
     repository:
