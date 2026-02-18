@@ -75,6 +75,7 @@ type McpInfoResponse struct {
 	ProtocolVersion string       `json:"protocolVersion"`
 	ServerName      string       `json:"serverName"`
 	ServerVersion   string       `json:"serverVersion"`
+	Tools           []McpTool    `json:"tools"`
 	Transport       McpTransport `json:"transport"`
 }
 
@@ -92,6 +93,13 @@ type McpResponse struct {
 	Id      *McpID         `json:"id"`
 	Jsonrpc string         `json:"jsonrpc"`
 	Result  map[string]any `json:"result,omitempty"`
+}
+
+// McpTool defines model for McpTool.
+type McpTool struct {
+	Description string         `json:"description"`
+	InputSchema map[string]any `json:"inputSchema"`
+	Name        string         `json:"name"`
 }
 
 // McpTransport defines model for McpTransport.

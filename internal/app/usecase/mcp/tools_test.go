@@ -20,6 +20,7 @@ func TestListTools_ContainsAllExpectedTools(t *testing.T) {
 		mcpusecase.ToolHistoryList:     {},
 		mcpusecase.ToolHistoryErrors:   {},
 		mcpusecase.ToolDebugCall:       {},
+		mcpusecase.ToolSchemaStub:      {},
 	}
 
 	// Act
