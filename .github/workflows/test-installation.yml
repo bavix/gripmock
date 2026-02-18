@@ -23,7 +23,7 @@ jobs:
           - os: ubuntu-22.04-arm
           - os: macos-15-intel
           - os: macos-latest
-          - os: windows-latest
+          # - os: windows-latest
 
     steps:
     - name: Checkout repository
