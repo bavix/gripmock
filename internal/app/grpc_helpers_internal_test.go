@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/peer"
+	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -27,6 +28,19 @@ func createTestMocker(t *testing.T) *grpcMocker {
 		templateEngine: templateEngine,
 		inputDesc:      structDesc,
 		outputDesc:     structDesc,
+	}
+}
+
+func createTestStream(t *testing.T, mocker *grpcMocker) *mockFullServerStream {
+	t.Helper()
+
+	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
+
+	return &mockFullServerStream{
+		ctx:              t.Context(),
+		sentMessages:     make([]*dynamicpb.Message, 0),
+		receivedMessages: []*dynamicpb.Message{inputMsg},
+		recvMsgLimit:     1,
 	}
 }
 
