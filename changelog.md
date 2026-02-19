@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.7.7 - 2026-02-19
+
+### What's Changed
+
+* Add tests for handling empty server streams and update stream handling logic by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/758
+
+Many thanks to [@blockin90](https://github.com/blockin90) for issue https://github.com/bavix/gripmock/issues/757
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.7.6...v3.7.7
+
 ## v3.7.6 - 2026-02-18
 
 ### What's Changed
