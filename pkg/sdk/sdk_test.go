@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -995,4 +996,42 @@ func TestMock_Close_Idempotent(t *testing.T) {
 	require.NoError(t, err)
 	err = mock.Close()
 	require.NoError(t, err) // second Close is no-op
+}
+
+func TestRun_ReplyStream_EmptyStream(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("search"))
+
+	mock.Stub("search.SearchService", "Search").
+		When(Equals("query", "empty")).
+		ReplyStream().
+		Commit()
+
+	inDesc, err := reg.FindDescriptorByName("search.SearchRequest")
+	require.NoError(t, err)
+
+	outDesc, err := reg.FindDescriptorByName("search.SearchResult")
+	require.NoError(t, err)
+
+	in := dynamicpb.NewMessage(inDesc.(protoreflect.MessageDescriptor))
+	queryFd := inDesc.(protoreflect.MessageDescriptor).Fields().ByName("query")
+	in.Set(queryFd, protoreflect.ValueOfString("empty"))
+
+	stream, err := mock.Conn().NewStream(ctx, &grpc.StreamDesc{
+		StreamName:    "Search",
+		ServerStreams: true,
+		ClientStreams: false,
+	}, "/search.SearchService/Search")
+	require.NoError(t, err)
+
+	err = stream.SendMsg(in)
+	require.NoError(t, err)
+
+	out := dynamicpb.NewMessage(outDesc.(protoreflect.MessageDescriptor))
+	err = stream.RecvMsg(out)
+	require.Error(t, err)
+	require.Equal(t, io.EOF, err)
 }

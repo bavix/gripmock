@@ -1,0 +1,8 @@
+--- ENDPOINT ---
+search.SearchService/Search
+
+--- REQUEST ---
+{"query":"specific"}
+
+--- RESPONSE ---
+{"id":"10","title":"Specific Result","description":"The only match for this query","relevanceScore":1}

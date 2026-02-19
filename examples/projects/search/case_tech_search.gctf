@@ -1,0 +1,10 @@
+--- ENDPOINT ---
+search.SearchService/Search
+
+--- REQUEST ---
+{"query":"grpc","category":"tech"}
+
+--- RESPONSE ---
+{"id":"1","title":"Introduction to gRPC","description":"Learn the basics of gRPC framework","relevanceScore":0.95}
+{"id":"2","title":"gRPC vs REST","description":"Comparison of RPC architectures","relevanceScore":0.87}
+{"id":"3","title":"gRPC Best Practices","description":"Production-ready gRPC implementation","relevanceScore":0.82}

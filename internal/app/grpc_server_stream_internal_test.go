@@ -309,6 +309,42 @@ func TestHandleServerStream_NotFound(t *testing.T) {
 	require.Contains(t, err.Error(), "failed to find response")
 }
 
+func TestHandleServerStream_EmptyStream(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMocker(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+
+	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
+	stream := &mockFullServerStream{
+		ctx:              t.Context(),
+		sentMessages:     make([]*dynamicpb.Message, 0),
+		receivedMessages: []*dynamicpb.Message{inputMsg},
+		recvMsgLimit:     1,
+	}
+
+	stub := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: testServiceName,
+		Method:  testMethodName,
+		Input: stuber.InputData{
+			Contains: map[string]any{},
+		},
+		Output: stuber.Output{
+			Stream: []any{},
+		},
+	}
+
+	mocker.budgerigar.PutMany(stub)
+
+	err := mocker.handleServerStream(stream)
+	require.NoError(t, err)
+	require.Empty(t, stream.sentMessages)
+}
+
 func TestHandleNonArrayStreamData_SendsMessages(t *testing.T) {
 	t.Parallel()
 

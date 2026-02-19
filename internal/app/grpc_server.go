@@ -393,7 +393,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		}
 	}
 
-	if found.IsServerStream() {
+	if found.Output.Stream != nil {
 		if len(found.Output.Stream) > 0 {
 			if err := m.handleArrayStreamData(stream, found, inputMsg, requestTime); err != nil {
 				return err
@@ -409,6 +409,8 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
 			return err
 		}
+
+		return nil
 	}
 
 	return m.handleNonArrayStreamData(stream, found)
