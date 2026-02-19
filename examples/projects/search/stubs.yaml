@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+# Example: Search with multiple results
+- service: SearchService
+  method: Search
+  input:
+    equals:
+      query: "grpc"
+      category: "tech"
+  output:
+    stream:
+      - id: "1"
+        title: "Introduction to gRPC"
+        description: "Learn the basics of gRPC framework"
+        relevance_score: 0.95
+      - id: "2"
+        title: "gRPC vs REST"
+        description: "Comparison of RPC architectures"
+        relevance_score: 0.87
+      - id: "3"
+        title: "gRPC Best Practices"
+        description: "Production-ready gRPC implementation"
+        relevance_score: 0.82
+
+# Example: Search with empty results (issue #757)
+- service: SearchService
+  method: Search
+  input:
+    equals:
+      query: "nonexistent"
+  output:
+    stream: []
+
+# Example: Search with single result
+- service: SearchService
+  method: Search
+  input:
+    equals:
+      query: "specific"
+  output:
+    stream:
+      - id: "10"
+        title: "Specific Result"
+        description: "The only match for this query"
+        relevance_score: 1.0
+
+# Example: Search in empty category (should return no results)
+- service: SearchService
+  method: Search
+  input:
+    equals:
+      category: "empty"
+  output:
+    stream: []

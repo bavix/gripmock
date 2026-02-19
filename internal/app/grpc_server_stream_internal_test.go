@@ -108,13 +108,7 @@ func TestHandleServerStream_WithArrayStream(t *testing.T) {
 	mocker.serviceName = testServiceName
 	mocker.methodName = testMethodName
 
-	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	stream := &mockFullServerStream{
-		ctx:              t.Context(),
-		sentMessages:     make([]*dynamicpb.Message, 0),
-		receivedMessages: []*dynamicpb.Message{inputMsg},
-		recvMsgLimit:     1,
-	}
+	stream := createTestStream(t, mocker)
 
 	stub := &stuber.Stub{
 		ID:      uuid.New(),
@@ -147,13 +141,7 @@ func TestHandleServerStream_WithNonArrayStream(t *testing.T) {
 	mocker.serviceName = testServiceName
 	mocker.methodName = testMethodName
 
-	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	stream := &mockFullServerStream{
-		ctx:              t.Context(),
-		sentMessages:     make([]*dynamicpb.Message, 0),
-		receivedMessages: []*dynamicpb.Message{inputMsg},
-		recvMsgLimit:     1,
-	}
+	stream := createTestStream(t, mocker)
 
 	stub := &stuber.Stub{
 		ID:      uuid.New(),
@@ -183,16 +171,11 @@ func TestHandleServerStream_WithHeaders(t *testing.T) {
 	mocker.serviceName = testServiceName
 	mocker.methodName = testMethodName
 
-	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	ctx := metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{
 		"x-user": "testuser",
 	}))
-	stream := &mockFullServerStream{
-		ctx:              ctx,
-		sentMessages:     make([]*dynamicpb.Message, 0),
-		receivedMessages: []*dynamicpb.Message{inputMsg},
-		recvMsgLimit:     1,
-	}
+	stream := createTestStream(t, mocker)
+	stream.ctx = ctx
 
 	stub := &stuber.Stub{
 		ID:      uuid.New(),
@@ -228,13 +211,7 @@ func TestHandleServerStream_WithError(t *testing.T) {
 	mocker.serviceName = testServiceName
 	mocker.methodName = testMethodName
 
-	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	stream := &mockFullServerStream{
-		ctx:              t.Context(),
-		sentMessages:     make([]*dynamicpb.Message, 0),
-		receivedMessages: []*dynamicpb.Message{inputMsg},
-		recvMsgLimit:     1,
-	}
+	stream := createTestStream(t, mocker)
 
 	stub := &stuber.Stub{
 		ID:      uuid.New(),
@@ -262,11 +239,8 @@ func TestHandleServerStream_EOF(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
-	stream := &mockFullServerStream{
-		ctx:          t.Context(),
-		sentMessages: make([]*dynamicpb.Message, 0),
-		recvMsgError: io.EOF,
-	}
+	stream := createTestStream(t, mocker)
+	stream.recvMsgError = io.EOF
 
 	err := mocker.handleServerStream(stream)
 	require.NoError(t, err)
@@ -276,11 +250,8 @@ func TestHandleServerStream_RecvError(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
-	stream := &mockFullServerStream{
-		ctx:          t.Context(),
-		sentMessages: make([]*dynamicpb.Message, 0),
-		recvMsgError: status.Error(codes.Internal, "receive error"),
-	}
+	stream := createTestStream(t, mocker)
+	stream.recvMsgError = status.Error(codes.Internal, "receive error")
 
 	err := mocker.handleServerStream(stream)
 	require.Error(t, err)
@@ -296,17 +267,41 @@ func TestHandleServerStream_NotFound(t *testing.T) {
 	mocker.serviceName = testServiceName
 	mocker.methodName = testMethodName
 
-	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	stream := &mockFullServerStream{
-		ctx:              t.Context(),
-		sentMessages:     make([]*dynamicpb.Message, 0),
-		receivedMessages: []*dynamicpb.Message{inputMsg},
-		recvMsgLimit:     1,
-	}
+	stream := createTestStream(t, mocker)
 
 	err := mocker.handleServerStream(stream)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to find response")
+}
+
+func TestHandleServerStream_EmptyStream(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMocker(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+
+	stream := createTestStream(t, mocker)
+
+	stub := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: testServiceName,
+		Method:  testMethodName,
+		Input: stuber.InputData{
+			Contains: map[string]any{},
+		},
+		Output: stuber.Output{
+			Stream: []any{},
+		},
+	}
+
+	mocker.budgerigar.PutMany(stub)
+
+	err := mocker.handleServerStream(stream)
+	require.NoError(t, err)
+	require.Empty(t, stream.sentMessages)
 }
 
 func TestHandleNonArrayStreamData_SendsMessages(t *testing.T) {

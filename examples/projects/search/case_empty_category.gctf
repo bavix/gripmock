@@ -1,0 +1,7 @@
+--- ENDPOINT ---
+search.SearchService/Search
+
+--- REQUEST ---
+{"category":"empty"}
+
+--- RESPONSE ---

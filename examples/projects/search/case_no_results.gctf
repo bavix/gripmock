@@ -1,0 +1,7 @@
+--- ENDPOINT ---
+search.SearchService/Search
+
+--- REQUEST ---
+{"query":"nonexistent"}
+
+--- RESPONSE ---

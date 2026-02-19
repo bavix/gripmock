@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package search;
+
+service SearchService {
+  rpc Search(SearchRequest) returns (stream SearchResult);
+}
+
+message SearchRequest {
+  string query = 1;
+  int32 limit = 2;
+  string category = 3;
+}
+
+message SearchResult {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  double relevance_score = 4;
+}
