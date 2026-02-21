@@ -34,6 +34,8 @@ func init() {
 }
 
 // getRegex returns a cached regex or compiles the pattern.
+//
+//nolint:unused
 func getRegex(pattern string) (*regexp.Regexp, error) {
 	if regexCache != nil {
 		if re, exists := regexCache.Get(pattern); exists {
@@ -50,18 +52,7 @@ func getRegex(pattern string) (*regexp.Regexp, error) {
 	return re, err
 }
 
-// getRegexCacheStats returns regex cache statistics (length, capacity).
-//
-//nolint:unparam
-func getRegexCacheStats() (int, int) {
-	if regexCache == nil {
-		return 0, regexCacheSize
-	}
-
-	return regexCache.Len(), regexCacheSize // Fixed capacity
-}
-
-// clearRegexCache clears the regex cache.
+// clearRegexCache clears the regex cache (for testing).
 func clearRegexCache() {
 	if regexCache != nil {
 		regexCache.Purge()

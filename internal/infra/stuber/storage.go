@@ -459,22 +459,11 @@ func (s *storage) id(value string) uint32 {
 	return hash
 }
 
-// clearStringHashCache clears the string hash cache.
+// clearStringHashCache clears the string hash cache (for testing).
 func clearStringHashCache() {
 	if globalStringCache != nil {
 		globalStringCache.Purge()
 	}
-}
-
-// getStringHashCacheStats returns cache statistics (length, capacity).
-//
-//nolint:unparam
-func getStringHashCacheStats() (int, int) {
-	if globalStringCache == nil {
-		return 0, stringCacheSize
-	}
-
-	return globalStringCache.Len(), stringCacheSize // Fixed capacity
 }
 
 // ClearAllCaches clears all LRU caches (for testing purposes).

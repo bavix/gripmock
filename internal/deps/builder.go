@@ -67,12 +67,6 @@ func WithConfig(config config.Config) Option {
 	}
 }
 
-func WithEnder(ender *lifecycle.Manager) Option {
-	return func(builder *Builder) {
-		builder.ender = ender
-	}
-}
-
 // WithPlugins sets additional plugin paths (e.g. from CLI flags).
 func WithPlugins(paths []string) Option {
 	return func(builder *Builder) {

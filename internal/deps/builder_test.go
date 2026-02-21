@@ -8,7 +8,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/config"
 	"github.com/bavix/gripmock/v3/internal/deps"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
-	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 )
 
 func TestBuilder_Basic(t *testing.T) {
@@ -45,23 +44,6 @@ func TestBuilder_WithConfig(t *testing.T) {
 	// Test builder with custom config
 	cfg := config.Load()
 	builder := deps.NewBuilder(deps.WithConfig(cfg))
-	require.NotNil(t, builder)
-}
-
-func TestBuilder_WithEnder(t *testing.T) {
-	t.Parallel()
-	// Test builder with custom ender
-	ender := lifecycle.New(nil)
-	builder := deps.NewBuilder(deps.WithEnder(ender))
-	require.NotNil(t, builder)
-}
-
-func TestBuilder_MultipleOptions(t *testing.T) {
-	t.Parallel()
-	// Test builder with multiple options
-	cfg := config.Load()
-	ender := lifecycle.New(nil)
-	builder := deps.NewBuilder(deps.WithConfig(cfg), deps.WithEnder(ender))
 	require.NotNil(t, builder)
 }
 
