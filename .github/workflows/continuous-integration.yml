@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GRPC_TESTIFY_VERSION: "1.0.0"
+  GRPCTESTIFY_VERSION: "1.0.0"
   GRPCURL_VERSION: "1.9.3"
   GO_VERSION: "1.26"
 
@@ -165,7 +165,9 @@ jobs:
           path: |
             grpcurl
             grpctestify.sh
-          key: deps-cache-${{ runner.os }}-grpc-testify-${{ env.GRPC_TESTIFY_VERSION }}-grpcurl-${{ env.GRPCURL_VERSION }}-v1
+            grpctestify
+            ${{ env.HOME }}/.cargo
+          key: deps-cache-${{ runner.os }}-grpcurl-${{ env.GRPCURL_VERSION }}-grpctestify-rust-v1
 
       - name: Install dependencies
         run: |
@@ -180,9 +182,23 @@ jobs:
           pwd >> "$GITHUB_PATH"
 
           if [ ! -f grpctestify.sh ]; then
-            curl -sSL https://github.com/gripmock/grpctestify/releases/download/v${{ env.GRPC_TESTIFY_VERSION }}/grpctestify.sh -o grpctestify.sh
+            curl -sSL https://github.com/gripmock/grpctestify/releases/download/v${{ env.GRPCTESTIFY_VERSION }}/grpctestify.sh -o grpctestify.sh
             chmod +x grpctestify.sh
           fi
+
+          echo "Building grpctestify (Rust) from source..."
+          if ! command -v cargo &> /dev/null; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+            source "$HOME/.cargo/env"
+          fi
+          if [ ! -d grpctestify-rust ]; then
+            git clone --branch develop --depth 1 https://github.com/gripmock/grpctestify-rust.git
+          fi
+          cd grpctestify-rust
+          cargo build --release
+          cp target/release/grpctestify ..
+          cd ..
+          chmod +x grpctestify
 
       - name: Build GripMock Server with coverage
         run: |
@@ -201,9 +217,13 @@ jobs:
           mkdir -p /tmp/cover-check
           GOCOVERDIR=/tmp/cover-check /tmp/gripmock check --timeout=60s --silent
 
-      - name: Run examples
+      - name: Run examples (grpctestify.sh)
         run: |
           ./grpctestify.sh examples/
+
+      - name: Run examples (grpctestify Rust)
+        run: |
+          ./grpctestify examples/
 
       - name: Stop GripMock Server gracefully
         run: |
