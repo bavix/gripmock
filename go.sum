@@ -3,8 +3,6 @@ github.com/apapsch/go-jsonmerge/v2 v2.0.0 h1:axGnT1gRIfimI7gJifB699GoE/oq+F2MU7D
 github.com/apapsch/go-jsonmerge/v2 v2.0.0/go.mod h1:lvDnEdqiQrp0O42VQGgmlKpxL1AP2+08jFMw88y4klk=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1 h1:HwpRHbFMcZLEVr42D4p7XBqjyuxQH5SMiErDT4WkJ2k=
 github.com/aymanbagabas/go-osc52/v2 v2.0.1/go.mod h1:uYgXzlJ7ZpABp8OJ+exZzJJhRNQ2ASbcXHWsFqH8hp8=
-github.com/bavix/apis v1.1.0 h1:otvYRMF2I+I3jc6U8l+fsLqxrD/l36BnGFYdbaVCQZQ=
-github.com/bavix/apis v1.1.0/go.mod h1:gJsOj4ctwiKo0syyjhXlznECzio11vCvO6/jhY2omkc=
 github.com/bavix/features v1.0.4 h1:rQj1eXmH2uaOEi2qE6NsotNAq+GBdNzZcEPGKApagGU=
 github.com/bavix/features v1.0.4/go.mod h1:qO+vPz+rN/P0ycka2qNvHhmcGufLRbQQ6xHV6npi0Ws=
 github.com/bavix/gripmock-ui v1.1.1 h1:wMcc2J7iVNr4HUtWU6QmSwlDy1OjefmrXuSSRf258rc=
