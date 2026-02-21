@@ -90,10 +90,6 @@ func hasValidInputData(input stuber.InputData) bool {
 	return input.Contains != nil || input.Equals != nil || input.Matches != nil
 }
 
-func hasValidOutputData(output stuber.Output) bool {
-	return output.Error != "" || output.Data != nil || output.Code != nil
-}
-
 // getValidationMessage returns a user-friendly validation error message.
 func getValidationMessage(fieldError validator.FieldError) string {
 	switch fieldError.Tag() {
@@ -128,91 +124,4 @@ func getRequiredFieldMessage(fieldName string) string {
 	default:
 		return fieldName + " is required"
 	}
-}
-
-// Legacy functions for backward compatibility (deprecated)
-// These will be removed in future versions
-
-// hasValidInput checks if the stub has valid input configuration for unary requests.
-//
-// Deprecated: Use validateStub instead.
-func hasValidInput(stub *stuber.Stub) bool {
-	return hasValidInputData(stub.Input)
-}
-
-// hasValidInputs checks if the stub has valid inputs configuration for client streaming.
-//
-// Deprecated: Use validateStub instead.
-func hasValidInputs(stub *stuber.Stub) bool {
-	return len(stub.Inputs) > 0
-}
-
-// hasValidOutput checks if the stub has valid output configuration for unary requests.
-//
-// Deprecated: Use validateStub instead.
-func hasValidOutput(stub *stuber.Stub) bool {
-	return hasValidOutputData(stub.Output)
-}
-
-// hasValidStreamOutput checks if the stub has valid stream output configuration for server streaming.
-//
-// Deprecated: Use validateStub instead.
-func hasValidStreamOutput(stub *stuber.Stub) bool {
-	return len(stub.Output.Stream) > 0
-}
-
-// validateUnaryStub validates unary stub configuration.
-//
-// Deprecated: Use validateStub instead.
-func validateUnaryStub(stub *stuber.Stub) error {
-	if !hasValidInput(stub) {
-		return ErrInputCannotBeEmpty
-	}
-
-	if !hasValidOutput(stub) {
-		return ErrOutputCannotBeEmpty
-	}
-
-	return nil
-}
-
-// validateClientStreamStub validates client streaming stub configuration.
-//
-// Deprecated: Use validateStub instead.
-func validateClientStreamStub(stub *stuber.Stub) error {
-	if !hasValidInputs(stub) {
-		return ErrInputsCannotBeEmptyForClient
-	}
-
-	return nil
-}
-
-// validateServerStreamStub validates server streaming stub configuration.
-//
-// Deprecated: Use validateStub instead.
-func validateServerStreamStub(stub *stuber.Stub) error {
-	if !hasValidInput(stub) {
-		return ErrInputCannotBeEmpty
-	}
-
-	if !hasValidStreamOutput(stub) {
-		return ErrStreamCannotBeEmptyForServer
-	}
-
-	return nil
-}
-
-// validateBidirectionalStub validates bidirectional streaming stub configuration.
-//
-// Deprecated: Use validateStub instead.
-func validateBidirectionalStub(stub *stuber.Stub) error {
-	if !hasValidInputs(stub) {
-		return ErrInputsCannotBeEmptyForBidi
-	}
-
-	if !hasValidStreamOutput(stub) {
-		return ErrStreamCannotBeEmptyForBidi
-	}
-
-	return nil
 }
