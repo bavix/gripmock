@@ -6,7 +6,7 @@ require (
 	github.com/bavix/features v1.0.4
 	github.com/bavix/gripmock-ui v1.1.1
 	github.com/bufbuild/protocompile v0.14.1
-	github.com/caarlos0/env/v11 v11.3.1
+	github.com/caarlos0/env/v11 v11.4.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/cockroachdb/errors v1.12.0
 	github.com/fsnotify/fsnotify v1.9.0
