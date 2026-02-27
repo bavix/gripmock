@@ -242,19 +242,19 @@ jobs:
           cache: true
 
       - name: Download unit coverage
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: coverage-unit
           path: /tmp/cover-unit
 
       - name: Download e2e coverage
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: coverage-e2e
           path: /tmp/cover-e2e
 
       - name: Download check coverage
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: coverage-check
           path: /tmp/cover-check
