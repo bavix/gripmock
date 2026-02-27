@@ -35,7 +35,7 @@ jobs:
         shell: bash
 
       - name: Upload unit coverage
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-unit
           path: /tmp/cover-unit
@@ -218,13 +218,13 @@ jobs:
           rm -f /tmp/gripmock.pid
 
       - name: Upload e2e coverage
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-e2e
           path: /tmp/cover-e2e
 
       - name: Upload check coverage
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-check
           path: /tmp/cover-check
@@ -278,7 +278,7 @@ jobs:
           path-to-lcov: coverage.txt
 
       - name: Upload coverage report as artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: coverage.txt
