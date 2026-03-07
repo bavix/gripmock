@@ -1,0 +1,15 @@
+--- ADDRESS ---
+localhost:5782
+
+--- ENDPOINT ---
+tlsdemo.tls13.v1.SecureGreeter/SayHello
+
+--- TLS ---
+ca_cert: certs/ca.crt
+server_name: localhost
+
+--- REQUEST ---
+{"name":"TLS13"}
+
+--- RESPONSE ---
+{"message":"Hello, TLS13! (TLS 1.3)"}

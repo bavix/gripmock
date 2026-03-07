@@ -1,0 +1,15 @@
+--- ADDRESS ---
+localhost:5780
+
+--- ENDPOINT ---
+tlsdemo.tls12.v1.SecureGreeter/SayHello
+
+--- TLS ---
+ca_cert: certs/ca.crt
+server_name: localhost
+
+--- REQUEST ---
+{"name":"TLS12"}
+
+--- RESPONSE ---
+{"message":"Hello, TLS12! (TLS 1.2)"}

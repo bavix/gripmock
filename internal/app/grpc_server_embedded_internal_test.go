@@ -44,6 +44,7 @@ func TestGRPCServerBuildWithoutStartupDescriptors(t *testing.T) {
 		NewInstantExtender(),
 		nil,
 		descriptors.NewRegistry(),
+		nil,
 	)
 
 	grpcServer, err := server.Build(ctx)
@@ -79,6 +80,7 @@ func TestGRPCServerFindMethodDescriptorFromDynamicRegistry(t *testing.T) {
 		NewInstantExtender(),
 		nil,
 		registry,
+		nil,
 	)
 
 	method, err := server.findMethodDescriptor("helloworld.Greeter", "SayHello")

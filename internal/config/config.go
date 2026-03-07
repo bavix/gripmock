@@ -47,6 +47,19 @@ type Config struct {
 
 	// Plugins configuration.
 	TemplatePluginPaths []string `env:"TEMPLATE_PLUGIN_PATHS"`
+
+	// gRPC TLS configuration.
+	GRPCTLSCertFile   string `env:"GRPC_TLS_CERT_FILE"`
+	GRPCTLSKeyFile    string `env:"GRPC_TLS_KEY_FILE"`
+	GRPCTLSClientAuth bool   `env:"GRPC_TLS_CLIENT_AUTH" envDefault:"false"`
+	GRPCTLSCAFile     string `env:"GRPC_TLS_CA_FILE"`
+	GRPCTLSMinVersion string `env:"GRPC_TLS_MIN_VERSION" envDefault:"1.2"`
+
+	// HTTP TLS configuration.
+	HTTPTLSCertFile   string `env:"HTTP_TLS_CERT_FILE"`
+	HTTPTLSKeyFile    string `env:"HTTP_TLS_KEY_FILE"`
+	HTTPTLSClientAuth bool   `env:"HTTP_TLS_CLIENT_AUTH" envDefault:"false"`
+	HTTPTLSCAFile     string `env:"HTTP_TLS_CA_FILE"`
 }
 
 // Load returns configuration from environment with sensible defaults.

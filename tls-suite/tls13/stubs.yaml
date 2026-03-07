@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: tlsdemo.tls13.v1.SecureGreeter
+  method: SayHello
+  input:
+    matches:
+      name: ".+"
+  output:
+    data:
+      message: "Hello, {{.Request.name}}! (TLS 1.3)"

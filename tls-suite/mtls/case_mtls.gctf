@@ -1,0 +1,17 @@
+--- ADDRESS ---
+localhost:5784
+
+--- ENDPOINT ---
+tlsdemo.mtls.v1.SecureGreeter/SayHello
+
+--- TLS ---
+ca_cert: certs/ca.crt
+client_cert: certs/client.crt
+client_key: certs/client.key
+server_name: localhost
+
+--- REQUEST ---
+{"name":"MutualTLS"}
+
+--- RESPONSE ---
+{"message":"Hello, MutualTLS! (mTLS)"}
