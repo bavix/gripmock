@@ -1,0 +1,66 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+- service: errordetails.ErrorDetailsService
+  method: Unary
+  input:
+    equals:
+      id: "unary-error"
+  output:
+    error: "Unary validation failed"
+    code: 3
+    details:
+      - type: "type.googleapis.com/google.rpc.ErrorInfo"
+        reason: "UNARY_INVALID"
+        domain: "errordetails.example.local"
+        metadata:
+          method: "Unary"
+          field: "id"
+      - type: "type.googleapis.com/google.rpc.BadRequest"
+        field_violations:
+          - field: "id"
+            description: "id must be set"
+
+- service: errordetails.ErrorDetailsService
+  method: ServerStream
+  input:
+    equals:
+      id: "server-error"
+  output:
+    error: "Server stream validation failed"
+    code: 3
+    details:
+      - type: "type.googleapis.com/google.rpc.ErrorInfo"
+        reason: "SERVER_STREAM_INVALID"
+        domain: "errordetails.example.local"
+        metadata:
+          method: "ServerStream"
+
+- service: errordetails.ErrorDetailsService
+  method: ClientStream
+  input:
+    equals:
+      id: "client-error"
+  output:
+    error: "Client stream validation failed"
+    code: 3
+    details:
+      - type: "type.googleapis.com/google.rpc.ErrorInfo"
+        reason: "CLIENT_STREAM_INVALID"
+        domain: "errordetails.example.local"
+        metadata:
+          method: "ClientStream"
+
+- service: errordetails.ErrorDetailsService
+  method: BidiStream
+  input:
+    equals:
+      id: "bidi-error"
+  output:
+    error: "Bidi stream validation failed"
+    code: 3
+    details:
+      - type: "type.googleapis.com/google.rpc.ErrorInfo"
+        reason: "BIDI_STREAM_INVALID"
+        domain: "errordetails.example.local"
+        metadata:
+          method: "BidiStream"

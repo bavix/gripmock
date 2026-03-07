@@ -249,12 +249,20 @@ Provide detailed error information:
 output:
   error: "Validation failed"
   code: 3  # INVALID_ARGUMENT
-  data:
-    details:
-      field: "email"
-      reason: "Invalid email format"
-      suggestion: "Use valid email format"
+  details:
+    - type: "type.googleapis.com/google.rpc.ErrorInfo"
+      reason: "API_DISABLED"
+      domain: "example.service.local"
+      metadata:
+        service: "example.service.local"
+        consumer: "projects/123"
+    - type: "type.googleapis.com/google.rpc.BadRequest"
+      field_violations:
+        - field: "email"
+          description: "Invalid email format"
 ```
+
+`output.details` is encoded into gRPC status details (`google.protobuf.Any`).
 
 ## API Version Compatibility
 

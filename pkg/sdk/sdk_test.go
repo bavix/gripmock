@@ -29,6 +29,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/dynamicpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -315,6 +316,35 @@ func TestRunReplyError(t *testing.T) {
 		Commit()
 }
 
+func TestRunReplyErrorWithDetails(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
+
+	mock.Stub("helloworld.Greeter", "SayHello").
+		When(Equals("name", "error-details")).
+		ReplyErrorWithDetails(codes.InvalidArgument, "validation failed", map[string]any{
+			"type":  "type.googleapis.com/google.protobuf.StringValue",
+			"value": "invalid name value",
+		}).
+		Commit()
+
+	err := mock.Conn().Invoke(ctx, "/helloworld.Greeter/SayHello", createGreeterRequest(t, reg, "error-details"), &dynamicpb.Message{})
+	require.Error(t, err)
+
+	st := status.Convert(err)
+	require.Equal(t, codes.InvalidArgument, st.Code())
+	require.Equal(t, "validation failed", st.Message())
+
+	details := st.Details()
+	require.Len(t, details, 1)
+
+	msg, ok := details[0].(*wrapperspb.StringValue)
+	require.True(t, ok)
+	require.Equal(t, "invalid name value", msg.GetValue())
+}
+
 func TestRunPriority(t *testing.T) {
 	t.Parallel()
 
@@ -475,6 +505,13 @@ func TestHelpersHeaderEquals(t *testing.T) {
 	require.Equal(t, "Bearer token", h.Equals["authorization"])
 }
 
+func TestHelpersHeaderMatches(t *testing.T) {
+	t.Parallel()
+	h := HeaderMatches("authorization", `^Bearer\s+.+$`)
+	require.NotNil(t, h.Matches)
+	require.Equal(t, `^Bearer\s+.+$`, h.Matches["authorization"])
+}
+
 func TestHelpersHeaderMap(t *testing.T) {
 	t.Parallel()
 	h := HeaderMap("x-id", "123", "x-name", "test")
@@ -510,11 +547,17 @@ func TestHelpersMergeOutput(t *testing.T) {
 		Data("message", "Hi", "code", 200),
 		ReplyHeader("x-custom", "value"),
 		ReplyDelay(10*time.Millisecond),
+		ReplyErrWithDetails(codes.InvalidArgument, "validation failed", map[string]any{
+			"type":  "type.googleapis.com/google.protobuf.StringValue",
+			"value": "merge detail",
+		}),
 	)
 	require.Equal(t, "Hi", out.Data["message"])
 	require.Equal(t, 200, out.Data["code"])
 	require.Equal(t, "value", out.Headers["x-custom"])
 	require.NotZero(t, out.Delay)
+	require.Equal(t, "validation failed", out.Error)
+	require.Len(t, out.Details, 1)
 }
 
 func TestHelpersMergeHeaders(t *testing.T) {
@@ -532,6 +575,7 @@ func TestHelpersReplyOutputModifiers(t *testing.T) {
 	require.Equal(t, map[string]string{"x": "y"}, ReplyHeader("x", "y").Headers)
 	require.NotZero(t, ReplyDelay(10*time.Millisecond).Delay)
 	require.Equal(t, "err", ReplyErr(codes.InvalidArgument, "err").Error)
+	require.Len(t, ReplyErrWithDetails(codes.InvalidArgument, "err", map[string]any{"type": "type.googleapis.com/google.protobuf.StringValue", "value": "v"}).Details, 1)
 	out := StreamItem("msg", "hi")
 	require.Len(t, out.Stream, 1)
 	require.Equal(t, "hi", out.Stream[0].(map[string]any)["msg"])
@@ -973,7 +1017,7 @@ func TestRunVerifyStubTimesErrNoErrorWhenMatch(t *testing.T) {
 	require.NoError(t, err) // Should be no error since calls match expected times
 }
 
-func TestRunWIthSessionEmbeddedNoop(t *testing.T) {
+func TestRunWIthSessionEmbeddedNop(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()

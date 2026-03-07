@@ -37,10 +37,6 @@ func (c *captureTestingT) Fail() {
 }
 
 func (c *captureTestingT) Context() context.Context {
-	if c.ctx == nil {
-		return context.Background()
-	}
-
 	return c.ctx
 }
 
@@ -233,7 +229,7 @@ func TestRemoteHistoryAndVerifier(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	ts := &captureTestingT{}
+	ts := &captureTestingT{ctx: t.Context()}
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	rest := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -437,7 +433,7 @@ func TestRemoteMethodVerifierRequestCreationError(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	ts := &captureTestingT{}
+	ts := &captureTestingT{ctx: t.Context()}
 	mv := &remoteMethodVerifier{mock: &remoteMock{restBaseURL: "://bad-url", httpClient: http.DefaultClient}, service: "svc", method: "M"}
 
 	// Act

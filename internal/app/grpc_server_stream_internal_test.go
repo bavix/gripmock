@@ -42,14 +42,10 @@ type mockFullServerStream struct {
 
 func (m *mockFullServerStream) Context() context.Context {
 	if m.contextCancelled {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(m.ctx)
 		cancel()
 
 		return ctx
-	}
-
-	if m.ctx == nil {
-		m.ctx = context.Background()
 	}
 
 	return m.ctx

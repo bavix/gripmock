@@ -69,7 +69,7 @@ func validateOutputConfiguration(fl validator.FieldLevel) bool {
 		return false
 	}
 
-	hasDataOutput := v.Output.Error != "" || v.Output.Data != nil || v.Output.Code != nil
+	hasDataOutput := v.Output.Error != "" || v.Output.Data != nil || v.Output.Code != nil || len(v.Output.Details) > 0
 	hasStreamOutput := len(v.Output.Stream) > 0
 
 	// Must have exactly one type of output configuration

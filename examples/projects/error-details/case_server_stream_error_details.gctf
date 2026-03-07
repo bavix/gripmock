@@ -1,0 +1,23 @@
+--- ENDPOINT ---
+errordetails.ErrorDetailsService/ServerStream
+
+--- REQUEST ---
+{
+  "id": "server-error"
+}
+
+--- ERROR ---
+{
+  "code": 3,
+  "message": "Server stream validation failed",
+  "details": [
+    {
+      "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+      "reason": "SERVER_STREAM_INVALID",
+      "domain": "errordetails.example.local",
+      "metadata": {
+        "method": "ServerStream"
+      }
+    }
+  ]
+}

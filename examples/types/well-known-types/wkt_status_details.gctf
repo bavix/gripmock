@@ -1,0 +1,33 @@
+--- ENDPOINT ---
+wkt.StatusDetailsService/GetProfile
+
+--- REQUEST ---
+{
+  "userId": "missing"
+}
+
+--- ERROR ---
+{
+  "code": 3,
+  "message": "Validation failed",
+  "details": [
+    {
+      "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+      "reason": "USER_ID_MISSING",
+      "domain": "wkt.example.local",
+      "metadata": {
+        "service": "profile",
+        "field": "userId"
+      }
+    },
+    {
+      "@type": "type.googleapis.com/google.rpc.BadRequest",
+      "fieldViolations": [
+        {
+          "field": "userId",
+          "description": "userId is required"
+        }
+      ]
+    }
+  ]
+}

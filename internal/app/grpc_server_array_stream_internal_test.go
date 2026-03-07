@@ -31,7 +31,7 @@ type mockArrayStreamServerStream struct {
 
 func (m *mockArrayStreamServerStream) Context() context.Context {
 	if m.contextCancelled {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(m.ctx)
 		cancel()
 
 		return ctx

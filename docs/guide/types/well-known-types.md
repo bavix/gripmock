@@ -199,6 +199,23 @@ grpcurl -plaintext -d '{
 }
 ```
 
+### gRPC Status Details via `Any`
+`output.details` in stubs also uses `google.protobuf.Any` internally.
+
+```yaml
+output:
+  code: 3
+  error: "Validation failed"
+  details:
+    - type: "type.googleapis.com/google.rpc.ErrorInfo"
+      reason: "API_DISABLED"
+      domain: "example.service.local"
+      metadata:
+        service: "example.service.local"
+```
+
+`google.rpc.ErrorInfo`, `google.rpc.BadRequest`, and similar messages are not WKT themselves, but they are transported through WKT `Any`.
+
 ## 4. `google.protobuf.Struct`, `Value`, and `ListValue`
 Dynamic key-value structures for unstructured data.
 

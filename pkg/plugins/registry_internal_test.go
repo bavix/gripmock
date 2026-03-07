@@ -165,3 +165,13 @@ func (r *recordRegistry) Plugins(context.Context) []PluginInfo { return nil }
 func (r *recordRegistry) Groups(context.Context) []PluginWithFuncs { return nil }
 
 func (r *recordRegistry) Hooks(string) []Func { return nil }
+
+func TestRecordRegistryNopMethods(t *testing.T) {
+	t.Parallel()
+
+	r := &recordRegistry{}
+	require.Nil(t, r.Funcs())
+	require.Nil(t, r.Plugins(t.Context()))
+	require.Nil(t, r.Groups(t.Context()))
+	require.Nil(t, r.Hooks("hook"))
+}

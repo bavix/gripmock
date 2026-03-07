@@ -29,7 +29,7 @@ func TestMemoryStoreDeleteSessionRemovesOnlySessionRecords(t *testing.T) {
 	require.Empty(t, all[1].Session)
 }
 
-func TestMemoryStoreDeleteSessionEmptySessionNoop(t *testing.T) {
+func TestMemoryStoreDeleteSessionEmptySessionNop(t *testing.T) {
 	t.Parallel()
 
 	// Arrange

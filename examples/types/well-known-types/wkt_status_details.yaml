@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: StatusDetailsService
+  method: GetProfile
+  input:
+    equals:
+      userId: "missing"
+  output:
+    error: "Validation failed"
+    code: 3
+    details:
+      - type: "type.googleapis.com/google.rpc.ErrorInfo"
+        reason: "USER_ID_MISSING"
+        domain: "wkt.example.local"
+        metadata:
+          service: "profile"
+          field: "userId"
+      - type: "type.googleapis.com/google.rpc.BadRequest"
+        field_violations:
+          - field: "userId"
+            description: "userId is required"

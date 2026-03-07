@@ -1,0 +1,24 @@
+--- ENDPOINT ---
+errordetails.ErrorDetailsService/BidiStream
+
+--- REQUEST ---
+{
+  "id": "bidi-error",
+  "text": "hello"
+}
+
+--- ERROR ---
+{
+  "code": 3,
+  "message": "Bidi stream validation failed",
+  "details": [
+    {
+      "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+      "reason": "BIDI_STREAM_INVALID",
+      "domain": "errordetails.example.local",
+      "metadata": {
+        "method": "BidiStream"
+      }
+    }
+  ]
+}

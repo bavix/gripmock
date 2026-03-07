@@ -150,10 +150,11 @@ type GRPCServer struct {
 }
 
 type grpcMocker struct {
-	budgerigar     *stuber.Budgerigar
-	templateEngine *template.Engine
-	errorFormatter *ErrorFormatter
-	recorder       history.Recorder
+	budgerigar         *stuber.Budgerigar
+	templateEngine     *template.Engine
+	errorFormatter     *ErrorFormatter
+	recorder           history.Recorder
+	descriptorResolver protodesc.Resolver
 
 	inputDesc  protoreflect.MessageDescriptor
 	outputDesc protoreflect.MessageDescriptor
@@ -426,14 +427,14 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 				return err
 			}
 
-			if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
+			if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil { //nolint:wrapcheck
 				return err
 			}
 
 			return nil
 		}
 
-		if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
+		if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil { //nolint:wrapcheck
 			return err
 		}
 
@@ -788,14 +789,13 @@ func (m *grpcMocker) setResponseHeadersAny(ctx context.Context, stream grpc.Serv
 }
 
 func (m *grpcMocker) handleOutputError(_ context.Context, _ grpc.ServerStream, output stuber.Output) error {
-	if output.Error != "" || output.Code != nil {
-		if output.Code == nil {
-			return status.Error(codes.Aborted, output.Error)
-		}
+	st, err := m.statusFromOutput(output)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
 
-		if *output.Code != codes.OK {
-			return status.Error(*output.Code, output.Error)
-		}
+	if st != nil {
+		return st.Err()
 	}
 
 	return nil
@@ -1102,6 +1102,8 @@ func (m *grpcMocker) prepareBidiOutput(stub *stuber.Stub, templateData template.
 		Stream:  streamCopy,
 		Headers: headersCopy,
 		Error:   stub.Output.Error,
+		Code:    stub.Output.Code,
+		Details: deepCopyDetails(stub.Output.Details),
 		Delay:   stub.Output.Delay,
 	}
 
@@ -1247,18 +1249,19 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 
 	templateEngine := template.New(stream.Context(), nil)
 	mocker := &grpcMocker{
-		budgerigar:      s.budgerigar,
-		templateEngine:  templateEngine,
-		errorFormatter:  NewErrorFormatter(),
-		recorder:        s.recorder,
-		inputDesc:       methodDesc.Input(),
-		outputDesc:      methodDesc.Output(),
-		fullServiceName: serviceName,
-		serviceName:     serviceName,
-		methodName:      methodName,
-		fullMethod:      fullMethod,
-		serverStream:    methodDesc.IsStreamingServer(),
-		clientStream:    methodDesc.IsStreamingClient(),
+		budgerigar:         s.budgerigar,
+		templateEngine:     templateEngine,
+		errorFormatter:     NewErrorFormatter(),
+		recorder:           s.recorder,
+		descriptorResolver: &dynamicDescriptorResolver{static: protoregistry.GlobalFiles, dynamic: s.descriptors},
+		inputDesc:          methodDesc.Input(),
+		outputDesc:         methodDesc.Output(),
+		fullServiceName:    serviceName,
+		serviceName:        serviceName,
+		methodName:         methodName,
+		fullMethod:         fullMethod,
+		serverStream:       methodDesc.IsStreamingServer(),
+		clientStream:       methodDesc.IsStreamingClient(),
 	}
 
 	if methodDesc.IsStreamingServer() || methodDesc.IsStreamingClient() {
@@ -1481,7 +1484,7 @@ func (s *GRPCServer) registerServiceMethods(
 			logger.Fatal().Err(err).Msg("Failed to get output message descriptor")
 		}
 
-		m := s.createGrpcMocker(ctx, serviceDesc, svc, method, inputDesc, outputDesc)
+		m := s.createGrpcMocker(ctx, serviceDesc, svc, method, inputDesc, outputDesc, reg)
 
 		if method.GetServerStreaming() || method.GetClientStreaming() {
 			serviceDesc.Streams = append(serviceDesc.Streams, grpc.StreamDesc{
@@ -1505,14 +1508,21 @@ func (s *GRPCServer) createGrpcMocker(
 	svc *descriptorpb.ServiceDescriptorProto,
 	method *descriptorpb.MethodDescriptorProto,
 	inputDesc, outputDesc protoreflect.MessageDescriptor,
+	reg *protoregistry.Files,
 ) *grpcMocker {
 	templateEngine := template.New(ctx, nil)
 
+	var resolver protodesc.Resolver = protoregistry.GlobalFiles
+	if reg != nil {
+		resolver = reg
+	}
+
 	return &grpcMocker{
-		budgerigar:     s.budgerigar,
-		templateEngine: templateEngine,
-		errorFormatter: NewErrorFormatter(),
-		recorder:       s.recorder,
+		budgerigar:         s.budgerigar,
+		templateEngine:     templateEngine,
+		errorFormatter:     NewErrorFormatter(),
+		recorder:           s.recorder,
+		descriptorResolver: resolver,
 
 		inputDesc:  inputDesc,
 		outputDesc: outputDesc,

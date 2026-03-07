@@ -225,6 +225,23 @@
           "minimum": 0,
           "maximum": 16
         },
+        "details": {
+          "type": "array",
+          "description": "gRPC status details packed as google.protobuf.Any payloads; each item must include 'type' with full type URL",
+          "items": {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Full Any type URL (e.g., type.googleapis.com/google.rpc.ErrorInfo)"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
         "delay": {
           "type": "string",
           "description": "Delay timing: for unary calls - before response; for streaming - between messages (e.g., '100ms', '2.5s', '1m')",
