@@ -383,12 +383,14 @@ jobs:
           }
 
           trap cleanup EXIT
+
           "$bin" check --timeout=60s --silent
 
-          GRPCTESTIFY_TLS_CA_FILE="${{ matrix.grpctestify_tls_ca_file }}" \
-          GRPCTESTIFY_TLS_SERVER_NAME="${{ matrix.grpctestify_tls_server_name }}" \
-          GRPCTESTIFY_TLS_CERT_FILE="${{ matrix.grpctestify_tls_cert_file }}" \
-          GRPCTESTIFY_TLS_KEY_FILE="${{ matrix.grpctestify_tls_key_file }}" \
+          export GRPCTESTIFY_TLS_CA_FILE="${{ matrix.grpctestify_tls_ca_file }}"
+          export GRPCTESTIFY_TLS_SERVER_NAME="${{ matrix.grpctestify_tls_server_name }}"
+          export GRPCTESTIFY_TLS_CERT_FILE="${{ matrix.grpctestify_tls_cert_file }}"
+          export GRPCTESTIFY_TLS_KEY_FILE="${{ matrix.grpctestify_tls_key_file }}"
+
           ./grpctestify examples/
 
   coverage-report:
