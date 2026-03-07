@@ -3,6 +3,7 @@ package tls
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"io/fs"
 	"os"
 	"strings"
 
@@ -151,7 +152,7 @@ func parseMinVersion(raw string) (uint16, error) {
 func ensureFile(path string) error {
 	info, err := os.Stat(path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return errors.Wrapf(ErrFileNotFound, "%s: %s", ErrFileNotFound.Error(), path)
 		}
 
