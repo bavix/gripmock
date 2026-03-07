@@ -11,20 +11,14 @@ import (
 	"github.com/bavix/gripmock/v3/internal/app"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/domain/proto"
-	infraTLS "github.com/bavix/gripmock/v3/internal/infra/tls"
 )
 
 //nolint:funlen,cyclop
 func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 	b.StartSessionGC(ctx)
 
-	grpcTLS := infraTLS.TLSConfig{
-		CertFile:   b.config.GRPCTLSCertFile,
-		KeyFile:    b.config.GRPCTLSKeyFile,
-		ClientAuth: b.config.GRPCTLSClientAuth,
-		CAFile:     b.config.GRPCTLSCAFile,
-		MinVersion: b.config.GRPCTLSMinVersion,
-	}
+	grpcTLS := b.grpcTLSConfig()
+	grpcTLS.ClientAuth = b.config.GRPCTLSClientAuth
 
 	var (
 		tlsCfg *tls.Config

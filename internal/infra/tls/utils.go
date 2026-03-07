@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/fs"
+	"net"
 	"os"
 	"strings"
 
@@ -13,6 +14,9 @@ import (
 const (
 	MinTLSVersion12 = "1.2"
 	MinTLSVersion13 = "1.3"
+	localServerName = "localhost"
+	ipv4AnyAddr     = "0.0.0.0"
+	ipv6AnyAddr     = "::"
 )
 
 var (
@@ -66,8 +70,53 @@ func (t TLSConfig) BuildTLSConfig() (*tls.Config, error) {
 	return tlsConfig, nil
 }
 
+func (t TLSConfig) BuildClientTLSConfig(target string) (*tls.Config, error) {
+	if err := t.ValidateClient(); err != nil {
+		return nil, err
+	}
+
+	minVersion, err := parseMinVersion(t.MinVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	tlsConfig := &tls.Config{MinVersion: minVersion}
+	certFile := strings.TrimSpace(t.CertFile)
+	keyFile := strings.TrimSpace(t.KeyFile)
+
+	if strings.TrimSpace(t.CAFile) != "" {
+		caPool, loadErr := t.LoadCA()
+		if loadErr != nil {
+			return nil, loadErr
+		}
+
+		tlsConfig.RootCAs = caPool
+	}
+
+	if certFile != "" {
+		cert, loadErr := tls.LoadX509KeyPair(certFile, keyFile)
+		if loadErr != nil {
+			return nil, errors.Wrap(loadErr, "failed to load certificate pair")
+		}
+
+		tlsConfig.Certificates = []tls.Certificate{cert}
+	}
+
+	host, _, splitErr := net.SplitHostPort(target)
+	if splitErr == nil {
+		host = normalizeServerName(host)
+		tlsConfig.ServerName = host
+	}
+
+	return tlsConfig, nil
+}
+
 func (t TLSConfig) IsEnabled() bool {
 	return strings.TrimSpace(t.CertFile) != "" && strings.TrimSpace(t.KeyFile) != ""
+}
+
+func (t TLSConfig) IsClientEnabled() bool {
+	return strings.TrimSpace(t.CAFile) != "" || t.IsEnabled()
 }
 
 func (t TLSConfig) LoadCertificates() (tls.Certificate, error) {
@@ -98,11 +147,11 @@ func (t TLSConfig) LoadCA() (*x509.CertPool, error) {
 }
 
 func (t TLSConfig) Validate() error {
-	if strings.TrimSpace(t.CertFile) == "" {
+	if certFile := strings.TrimSpace(t.CertFile); certFile == "" {
 		return ErrCertRequired
 	}
 
-	if strings.TrimSpace(t.KeyFile) == "" {
+	if keyFile := strings.TrimSpace(t.KeyFile); keyFile == "" {
 		return ErrKeyRequired
 	}
 
@@ -127,6 +176,51 @@ func (t TLSConfig) Validate() error {
 	_, err := parseMinVersion(t.MinVersion)
 
 	return err
+}
+
+func (t TLSConfig) ValidateClient() error {
+	certFile := strings.TrimSpace(t.CertFile)
+	keyFile := strings.TrimSpace(t.KeyFile)
+	caFile := strings.TrimSpace(t.CAFile)
+
+	if certFile != "" && keyFile == "" {
+		return ErrKeyRequired
+	}
+
+	if certFile == "" && keyFile != "" {
+		return ErrCertRequired
+	}
+
+	if certFile != "" {
+		if err := ensureFile(certFile); err != nil {
+			return errors.Wrap(err, "invalid cert file")
+		}
+	}
+
+	if keyFile != "" {
+		if err := ensureFile(keyFile); err != nil {
+			return errors.Wrap(err, "invalid key file")
+		}
+	}
+
+	if caFile != "" {
+		if err := ensureFile(caFile); err != nil {
+			return errors.Wrap(err, "invalid CA file")
+		}
+	}
+
+	_, err := parseMinVersion(t.MinVersion)
+
+	return err
+}
+
+func normalizeServerName(host string) string {
+	clean := strings.TrimSpace(strings.Trim(host, "[]"))
+	if clean == "" || clean == ipv4AnyAddr || clean == ipv6AnyAddr {
+		return localServerName
+	}
+
+	return clean
 }
 
 func parseMinVersion(raw string) (uint16, error) {

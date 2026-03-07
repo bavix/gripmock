@@ -369,11 +369,12 @@ jobs:
           bin="$RUNNER_TEMP/gripmock"
           go build -o "$bin" .
 
-          GRPC_TLS_CERT_FILE="${{ matrix.grpc_tls_cert_file }}" \
-          GRPC_TLS_KEY_FILE="${{ matrix.grpc_tls_key_file }}" \
-          GRPC_TLS_CA_FILE="${{ matrix.grpc_tls_ca_file }}" \
-          GRPC_TLS_MIN_VERSION="${{ matrix.grpc_tls_min_version }}" \
-          GRPC_TLS_CLIENT_AUTH="${{ matrix.grpc_tls_client_auth }}" \
+          export GRPC_TLS_CERT_FILE="${{ matrix.grpc_tls_cert_file }}"
+          export GRPC_TLS_KEY_FILE="${{ matrix.grpc_tls_key_file }}"
+          export GRPC_TLS_CA_FILE="${{ matrix.grpc_tls_ca_file }}"
+          export GRPC_TLS_MIN_VERSION="${{ matrix.grpc_tls_min_version }}"
+          export GRPC_TLS_CLIENT_AUTH="${{ matrix.grpc_tls_client_auth }}"
+
           "$bin" --stub=examples examples &
           pid=$!
 

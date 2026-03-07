@@ -136,6 +136,71 @@ func TestValidatePathIsDirectory(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestBuildClientTLSConfig(t *testing.T) {
+	t.Parallel()
+
+	t.Run("missing key with cert", func(t *testing.T) {
+		t.Parallel()
+
+		certFile, _ := mustSelfSignedServerCert(t)
+
+		cfg := infraTLS.TLSConfig{CertFile: certFile}
+		_, err := cfg.BuildClientTLSConfig("localhost:4770")
+		require.ErrorIs(t, err, infraTLS.ErrKeyRequired)
+	})
+
+	t.Run("missing cert with key", func(t *testing.T) {
+		t.Parallel()
+
+		_, keyFile := mustSelfSignedServerCert(t)
+
+		cfg := infraTLS.TLSConfig{KeyFile: keyFile}
+		_, err := cfg.BuildClientTLSConfig("localhost:4770")
+		require.ErrorIs(t, err, infraTLS.ErrCertRequired)
+	})
+
+	t.Run("sets defaults for wildcard host", func(t *testing.T) {
+		t.Parallel()
+
+		cfg := infraTLS.TLSConfig{}
+		tlsCfg, err := cfg.BuildClientTLSConfig("0.0.0.0:4770")
+		require.NoError(t, err)
+		require.Equal(t, "localhost", tlsCfg.ServerName)
+		require.EqualValues(t, tls.VersionTLS12, tlsCfg.MinVersion)
+	})
+
+	t.Run("loads client certificate pair", func(t *testing.T) {
+		t.Parallel()
+
+		certFile, keyFile := mustSelfSignedServerCert(t)
+
+		cfg := infraTLS.TLSConfig{CertFile: certFile, KeyFile: keyFile, MinVersion: infraTLS.MinTLSVersion13}
+		tlsCfg, err := cfg.BuildClientTLSConfig("localhost:4770")
+		require.NoError(t, err)
+		require.Len(t, tlsCfg.Certificates, 1)
+		require.EqualValues(t, tls.VersionTLS13, tlsCfg.MinVersion)
+	})
+
+	t.Run("fails on invalid CA", func(t *testing.T) {
+		t.Parallel()
+
+		caFile := filepath.Join(t.TempDir(), "bad-ca.pem")
+		require.NoError(t, os.WriteFile(caFile, []byte("not-a-pem"), 0o600))
+
+		cfg := infraTLS.TLSConfig{CAFile: caFile}
+		_, err := cfg.BuildClientTLSConfig("localhost:4770")
+		require.ErrorIs(t, err, infraTLS.ErrParseCertFailed)
+	})
+}
+
+func TestTLSConfigIsClientEnabled(t *testing.T) {
+	t.Parallel()
+
+	require.False(t, (infraTLS.TLSConfig{}).IsClientEnabled())
+	require.True(t, (infraTLS.TLSConfig{CAFile: "ca.crt"}).IsClientEnabled())
+	require.True(t, (infraTLS.TLSConfig{CertFile: "cert.crt", KeyFile: "key.key"}).IsClientEnabled())
+}
+
 func mustSelfSignedServerCert(t *testing.T) (string, string) {
 	t.Helper()
 
