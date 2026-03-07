@@ -6,10 +6,10 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/gripmock/v3/internal/pkg/session"
+	"github.com/bavix/gripmock/v3/internal/infra/session"
 )
 
-func TestTracker_ExpiredAndForget(t *testing.T) {
+func TestTrackerExpiredAndForget(t *testing.T) {
 	t.Parallel()
 
 	// Arrange

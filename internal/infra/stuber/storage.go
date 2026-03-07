@@ -289,23 +289,29 @@ func (s *storage) yieldSortedValuesHeap(indexes []uint64, yield func(*Stub) bool
 // posByPN attempts to resolve IDs for a given left and right name pair.
 // It first tries to resolve the full left name with the right name, and then
 // attempts to resolve using a truncated version of the left name if necessary.
+// Returns error if service or method is not found - this is part of the public contract.
 //
 // Parameters:
-// - left: The left name for matching.
-// - right: The right name for matching.
+// - left: The left name for matching (service name).
+// - right: The right name for matching (method name).
 //
 // Returns:
-// - [][2]uint64: A slice of resolved ID pairs.
-// - error: An error if no IDs were resolved.
+// - []uint64: A slice of resolved ID pairs.
+// - error: ErrLeftNotFound (service not found) or ErrRightNotFound (method not found).
 func (s *storage) posByPN(left, right string) ([]uint64, error) {
 	// Initialize a slice to store the resolved IDs.
 	var resolvedIDs []uint64
+
+	// Track the last error for reporting
+	var lastErr error
 
 	// Attempt to resolve the full left name with the right name.
 	id, err := s.posByN(left, right)
 	if err == nil {
 		// Append the resolved ID to the slice.
 		resolvedIDs = append(resolvedIDs, id)
+	} else {
+		lastErr = err
 	}
 
 	// Check for a potential truncation point in the left name.
@@ -319,7 +325,7 @@ func (s *storage) posByPN(left, right string) ([]uint64, error) {
 			resolvedIDs = append(resolvedIDs, id)
 		} else if errors.Is(err, ErrRightNotFound) && len(resolvedIDs) == 0 {
 			// Return an error if the right name was not found
-			// and no IDs were resolved.
+			// and no IDs were resolved (even with truncated name).
 			return nil, err
 		}
 	}
@@ -327,7 +333,7 @@ func (s *storage) posByPN(left, right string) ([]uint64, error) {
 	// Return an error if no IDs were resolved.
 	if len(resolvedIDs) == 0 {
 		// Return the original error if we have it.
-		return nil, err
+		return nil, lastErr
 	}
 
 	// Return the resolved IDs.
@@ -485,7 +491,8 @@ func (s *storage) posByN(leftName, rightName string) (uint64, error) {
 		return 0, ErrLeftNotFound
 	}
 
-	key := s.pos(leftID, s.id(rightName))
+	rightID := s.id(rightName)
+	key := s.pos(leftID, rightID)
 
 	if _, exists := s.items[key]; !exists {
 		return 0, ErrRightNotFound

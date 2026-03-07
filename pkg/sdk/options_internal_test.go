@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWithRemote_AssignsRemoteConfig(t *testing.T) {
+func TestWithRemoteAssignsRemoteConfig(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -22,7 +22,7 @@ func TestWithRemote_AssignsRemoteConfig(t *testing.T) {
 	require.Equal(t, "http://localhost:4771", o.remoteRestURL)
 }
 
-func TestWithRemote_NormalizesRemoteConfig(t *testing.T) {
+func TestWithRemoteNormalizesRemoteConfig(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -36,7 +36,7 @@ func TestWithRemote_NormalizesRemoteConfig(t *testing.T) {
 	require.Equal(t, "http://localhost:4771", o.remoteRestURL)
 }
 
-func TestWithHTTPClient_AssignsClient(t *testing.T) {
+func TestWithHTTPClientAssignsClient(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -50,7 +50,7 @@ func TestWithHTTPClient_AssignsClient(t *testing.T) {
 	require.Same(t, client, o.httpClient)
 }
 
-func TestWithSessionTTL_AssignsTTL(t *testing.T) {
+func TestWithSessionTTLAssignsTTL(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -69,7 +69,7 @@ func TestDefaultSessionTTL(t *testing.T) {
 	require.Equal(t, 60*time.Second, defaultSessionTTL)
 }
 
-func TestWithGRPCTimeout_AssignsTimeout(t *testing.T) {
+func TestWithGRPCTimeoutAssignsTimeout(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -82,7 +82,7 @@ func TestWithGRPCTimeout_AssignsTimeout(t *testing.T) {
 	require.Equal(t, 3*time.Second, o.grpcTimeout)
 }
 
-func TestWithSession_TrimsSessionID(t *testing.T) {
+func TestWithSessionTrimsSessionID(t *testing.T) {
 	t.Parallel()
 
 	// Arrange

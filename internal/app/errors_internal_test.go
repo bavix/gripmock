@@ -15,7 +15,7 @@ func TestNewErrorFormatter(t *testing.T) {
 	require.NotNil(t, formatter)
 }
 
-func TestErrorFormatter_CreateStubNotFoundError(t *testing.T) {
+func TestErrorFormatterCreateStubNotFoundError(t *testing.T) {
 	t.Parallel()
 
 	formatter := NewErrorFormatter()
@@ -53,7 +53,7 @@ func TestErrorFormatter_CreateStubNotFoundError(t *testing.T) {
 	}
 }
 
-func TestErrorFormatter_CreateClientStreamError(t *testing.T) {
+func TestErrorFormatterCreateClientStreamError(t *testing.T) {
 	t.Parallel()
 
 	formatter := NewErrorFormatter()
@@ -91,7 +91,7 @@ func TestErrorFormatter_CreateClientStreamError(t *testing.T) {
 	}
 }
 
-func TestErrorFormatter_FormatStubNotFoundError(t *testing.T) {
+func TestErrorFormatterFormatStubNotFoundError(t *testing.T) {
 	t.Parallel()
 
 	formatter := NewErrorFormatter()

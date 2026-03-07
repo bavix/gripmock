@@ -20,7 +20,7 @@ func TestNewRegistry(t *testing.T) {
 	require.NotNil(t, reg.plugins)
 }
 
-func TestNewRegistry_WithForceSource(t *testing.T) {
+func TestNewRegistryWithForceSource(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -34,7 +34,7 @@ func TestNewRegistry_WithForceSource(t *testing.T) {
 	require.Equal(t, forceSource, reg.forceSource)
 }
 
-func TestRegistry_AddPlugin(t *testing.T) {
+func TestRegistryAddPlugin(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -62,7 +62,7 @@ func TestRegistry_AddPlugin(t *testing.T) {
 	require.Contains(t, reg.funcs, "testFunc")
 }
 
-func TestRegistry_Funcs(t *testing.T) {
+func TestRegistryFuncs(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -90,7 +90,7 @@ func TestRegistry_Funcs(t *testing.T) {
 	require.Len(t, funcs, 1)
 }
 
-func TestRegistry_Plugins(t *testing.T) {
+func TestRegistryPlugins(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -116,7 +116,7 @@ func TestRegistry_Plugins(t *testing.T) {
 	require.Len(t, plugins, 2)
 }
 
-func TestRegistry_Groups(t *testing.T) {
+func TestRegistryGroups(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -146,7 +146,7 @@ func TestRegistry_Groups(t *testing.T) {
 	require.Len(t, groups[0].Funcs, 1)
 }
 
-func TestRegistry_Hooks(t *testing.T) {
+func TestRegistryHooks(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -174,7 +174,7 @@ func TestRegistry_Hooks(t *testing.T) {
 	require.Len(t, hooks, 1)
 }
 
-func TestRegistry_Hooks_EmptyGroup(t *testing.T) {
+func TestRegistryHOoksEmptyGroup(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -187,7 +187,7 @@ func TestRegistry_Hooks_EmptyGroup(t *testing.T) {
 	require.Nil(t, hooks)
 }
 
-func TestRegistry_NormalizeInfo_ForceSource(t *testing.T) {
+func TestRegistryNOrmalizeInfoForceSource(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -206,7 +206,7 @@ func TestRegistry_NormalizeInfo_ForceSource(t *testing.T) {
 	require.Equal(t, forceSource, normalized.Source)
 }
 
-func TestRegistry_NormalizeInfo_DefaultKind(t *testing.T) {
+func TestRegistryNOrmalizeInfoDefaultKind(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -223,7 +223,7 @@ func TestRegistry_NormalizeInfo_DefaultKind(t *testing.T) {
 	require.Equal(t, "external", normalized.Kind)
 }
 
-func TestRegistry_NormalizeInfo_DefaultCapabilities(t *testing.T) {
+func TestRegistryNOrmalizeInfoDefaultCapabilities(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -241,7 +241,7 @@ func TestRegistry_NormalizeInfo_DefaultCapabilities(t *testing.T) {
 	require.Equal(t, []string{"template-funcs"}, normalized.Capabilities)
 }
 
-func TestRegistry_AddDepend(t *testing.T) {
+func TestRegistryAddDepend(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -257,7 +257,7 @@ func TestRegistry_AddDepend(t *testing.T) {
 	require.Contains(t, deps, "plugin3")
 }
 
-func TestRegistry_AddDepend_Duplicate(t *testing.T) {
+func TestRegistryADdDependDuplicate(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -272,7 +272,7 @@ func TestRegistry_AddDepend_Duplicate(t *testing.T) {
 	require.Len(t, deps, 1)
 }
 
-func TestRegistry_ParseDecorates(t *testing.T) {
+func TestRegistryParseDecorates(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -335,7 +335,7 @@ func TestRegistry_ParseDecorates(t *testing.T) {
 	}
 }
 
-func TestRegistry_SortedPluginOrder(t *testing.T) {
+func TestRegistrySortedPluginOrder(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -354,7 +354,7 @@ func TestRegistry_SortedPluginOrder(t *testing.T) {
 	require.Nil(t, skipped)
 }
 
-func TestRegistry_SortedPluginOrder_WithDependencies(t *testing.T) {
+func TestRegistrySOrtedPluginOrderWithDependencies(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -376,7 +376,7 @@ func TestRegistry_SortedPluginOrder_WithDependencies(t *testing.T) {
 	require.Equal(t, "plugin2", order[1])
 }
 
-func TestRegistry_ZeroIndegreeQueue(t *testing.T) {
+func TestRegistryZeroIndegreeQueue(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -397,7 +397,7 @@ func TestRegistry_ZeroIndegreeQueue(t *testing.T) {
 	require.NotContains(t, queue, "plugin2")
 }
 
-func TestRegistry_CollectCycles(t *testing.T) {
+func TestRegistryCollectCycles(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -423,7 +423,7 @@ func TestRegistry_CollectCycles(t *testing.T) {
 	require.Contains(t, skipped, "plugin3")
 }
 
-func TestRegistry_CollectCycles_NoCycles(t *testing.T) {
+func TestRegistryCOllectCyclesNoCycles(t *testing.T) {
 	t.Parallel()
 
 	// Arrange

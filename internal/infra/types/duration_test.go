@@ -10,7 +10,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
-func TestDuration_UnmarshalJSON(t *testing.T) {
+func TestDurationUnmarshalJSON(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -67,7 +67,7 @@ func TestDuration_UnmarshalJSON(t *testing.T) {
 	}
 }
 
-func TestDuration_MarshalJSON(t *testing.T) {
+func TestDurationMarshalJSON(t *testing.T) {
 	t.Parallel()
 
 	duration := types.Duration(100 * time.Millisecond)

@@ -8,7 +8,7 @@ import (
 	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
 )
 
-func TestServingStatus_Constants(t *testing.T) {
+func TestServingStatusConstants(t *testing.T) {
 	t.Parallel()
 
 	// Test that constants are properly defined
@@ -18,7 +18,7 @@ func TestServingStatus_Constants(t *testing.T) {
 	require.Equal(t, ServiceUnknown, ServingStatus(healthv1.HealthCheckResponse_SERVICE_UNKNOWN))
 }
 
-func TestServingStatus_Values(t *testing.T) {
+func TestServingStatusValues(t *testing.T) {
 	t.Parallel()
 
 	// Test that constants have expected values
@@ -28,7 +28,7 @@ func TestServingStatus_Values(t *testing.T) {
 	require.Equal(t, uint32(3), uint32(ServiceUnknown))
 }
 
-func TestServingStatus_TypeConversion(t *testing.T) {
+func TestServingStatusTypeConversion(t *testing.T) {
 	t.Parallel()
 
 	// Test type conversion from protobuf enum to our type
@@ -43,7 +43,7 @@ func TestServingStatus_TypeConversion(t *testing.T) {
 	require.Equal(t, ServiceUnknown, ServingStatus(protoServiceUnknown))
 }
 
-func TestServingStatus_Comparison(t *testing.T) {
+func TestServingStatusComparison(t *testing.T) {
 	t.Parallel()
 
 	// Test comparison operations
@@ -58,7 +58,7 @@ func TestServingStatus_Comparison(t *testing.T) {
 	require.NotEqual(t, NotServing, ServiceUnknown)
 }
 
-func TestServingStatus_StringRepresentation(t *testing.T) {
+func TestServingStatusStringRepresentation(t *testing.T) {
 	t.Parallel()
 
 	// Test string representation through fmt.Sprintf
@@ -79,7 +79,7 @@ func TestServingStatus_StringRepresentation(t *testing.T) {
 	require.NotEqual(t, notServingStr, serviceUnknownStr)
 }
 
-func TestServingStatus_Arithmetic(t *testing.T) {
+func TestServingStatusArithmetic(t *testing.T) {
 	t.Parallel()
 
 	// Test arithmetic operations
@@ -94,7 +94,7 @@ func TestServingStatus_Arithmetic(t *testing.T) {
 	require.Equal(t, ServiceUnknown-1, ServingStatus(2))
 }
 
-func TestServingStatus_BitwiseOperations(t *testing.T) {
+func TestServingStatusBitwiseOperations(t *testing.T) {
 	t.Parallel()
 
 	// Test bitwise operations
@@ -109,7 +109,7 @@ func TestServingStatus_BitwiseOperations(t *testing.T) {
 	require.Equal(t, NotServing|ServiceUnknown, ServingStatus(3))
 }
 
-func TestServingStatus_Validation(t *testing.T) {
+func TestServingStatusValidation(t *testing.T) {
 	t.Parallel()
 
 	// Test that our constants are valid
@@ -133,7 +133,7 @@ func isValidServingStatus(status ServingStatus) bool {
 	}
 }
 
-func TestServingStatus_ConversionToProto(t *testing.T) {
+func TestServingStatusConversionToProto(t *testing.T) {
 	t.Parallel()
 
 	// Test conversion back to protobuf enum
@@ -148,7 +148,7 @@ func TestServingStatus_ConversionToProto(t *testing.T) {
 	require.Equal(t, healthv1.HealthCheckResponse_SERVICE_UNKNOWN, protoServiceUnknown)
 }
 
-func TestServingStatus_EdgeCases(t *testing.T) {
+func TestServingStatusEdgeCases(t *testing.T) {
 	t.Parallel()
 
 	// Test edge cases
@@ -164,7 +164,7 @@ func TestServingStatus_EdgeCases(t *testing.T) {
 	require.False(t, isValidServingStatus(invalidStatus))
 }
 
-func TestServingStatus_UsageInContext(t *testing.T) {
+func TestServingStatusUsageInContext(t *testing.T) {
 	t.Parallel()
 
 	// Test usage in a more realistic context

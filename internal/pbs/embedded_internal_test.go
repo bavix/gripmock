@@ -19,7 +19,7 @@ func TestNewResolver(t *testing.T) {
 	require.Len(t, resolver.items, 2) // googleapis and protobuf
 }
 
-func TestNewResolver_EmbeddedData(t *testing.T) {
+func TestNewResolverEmbeddedData(t *testing.T) {
 	t.Parallel()
 
 	// Test that embedded data is not empty
@@ -27,7 +27,7 @@ func TestNewResolver_EmbeddedData(t *testing.T) {
 	require.NotEmpty(t, protobuf)
 }
 
-func TestThirdPartyResolver_FindFileByPath_ExistingFile(t *testing.T) {
+func TestThirdPartyResolverFIndFileByPathExistingFile(t *testing.T) {
 	t.Parallel()
 
 	// Test finding an existing file
@@ -46,7 +46,7 @@ func TestThirdPartyResolver_FindFileByPath_ExistingFile(t *testing.T) {
 	}
 }
 
-func TestThirdPartyResolver_FindFileByPath_NonExistentFile(t *testing.T) {
+func TestThirdPartyResolverFIndFileByPathNonExistentFile(t *testing.T) {
 	t.Parallel()
 
 	// Test finding a non-existent file
@@ -59,7 +59,7 @@ func TestThirdPartyResolver_FindFileByPath_NonExistentFile(t *testing.T) {
 	require.Empty(t, result)
 }
 
-func TestThirdPartyResolver_FindFileByPath_EmptyPath(t *testing.T) {
+func TestThirdPartyResolverFIndFileByPathEmptyPath(t *testing.T) {
 	t.Parallel()
 
 	// Test finding with empty path
@@ -72,7 +72,7 @@ func TestThirdPartyResolver_FindFileByPath_EmptyPath(t *testing.T) {
 	require.Empty(t, result)
 }
 
-func TestThirdPartyResolver_FindFileByPath_NilResolver(t *testing.T) {
+func TestThirdPartyResolverFIndFileByPathNilResolver(t *testing.T) {
 	t.Parallel()
 
 	// Test with nil resolver (edge case)
@@ -84,7 +84,7 @@ func TestThirdPartyResolver_FindFileByPath_NilResolver(t *testing.T) {
 	}
 }
 
-func TestThirdPartyResolver_Struct(t *testing.T) {
+func TestThirdPartyResolverStruct(t *testing.T) {
 	t.Parallel()
 
 	// Test ThirdPartyResolver struct
@@ -97,7 +97,7 @@ func TestThirdPartyResolver_Struct(t *testing.T) {
 	require.Empty(t, resolver.items)
 }
 
-func TestThirdPartyResolver_WithEmptyItems(t *testing.T) {
+func TestThirdPartyResolverWithEmptyItems(t *testing.T) {
 	t.Parallel()
 
 	// Test resolver with empty items
@@ -111,7 +111,7 @@ func TestThirdPartyResolver_WithEmptyItems(t *testing.T) {
 	require.Empty(t, result)
 }
 
-func TestThirdPartyResolver_WithNilItems(t *testing.T) {
+func TestThirdPartyResolverWithNilItems(t *testing.T) {
 	t.Parallel()
 
 	// Test resolver with nil items
@@ -125,7 +125,7 @@ func TestThirdPartyResolver_WithNilItems(t *testing.T) {
 	require.Empty(t, result)
 }
 
-func TestThirdPartyResolver_WithSingleItem(t *testing.T) {
+func TestThirdPartyResolverWithSingleItem(t *testing.T) {
 	t.Parallel()
 
 	// Test resolver with single item
@@ -148,7 +148,7 @@ func TestThirdPartyResolver_WithSingleItem(t *testing.T) {
 	require.Equal(t, "test.proto", result.Proto.GetName())
 }
 
-func TestThirdPartyResolver_WithMultipleItems(t *testing.T) {
+func TestThirdPartyResolverWithMultipleItems(t *testing.T) {
 	t.Parallel()
 
 	// Test resolver with multiple items
@@ -189,7 +189,7 @@ func TestThirdPartyResolver_WithMultipleItems(t *testing.T) {
 	require.Equal(t, protoregistry.NotFound, err)
 }
 
-func TestThirdPartyResolver_WithEmptyFileList(t *testing.T) {
+func TestThirdPartyResolverWithEmptyFileList(t *testing.T) {
 	t.Parallel()
 
 	// Test resolver with empty file list
@@ -207,7 +207,7 @@ func TestThirdPartyResolver_WithEmptyFileList(t *testing.T) {
 	require.Empty(t, result)
 }
 
-func TestThirdPartyResolver_WithNilFileList(t *testing.T) {
+func TestThirdPartyResolverWithNilFileList(t *testing.T) {
 	t.Parallel()
 
 	// Test resolver with nil file list
@@ -225,7 +225,7 @@ func TestThirdPartyResolver_WithNilFileList(t *testing.T) {
 	require.Empty(t, result)
 }
 
-func TestThirdPartyResolver_WithFileWithoutName(t *testing.T) {
+func TestThirdPartyResolverWithFileWithoutName(t *testing.T) {
 	t.Parallel()
 
 	// Test resolver with file without name
@@ -247,7 +247,7 @@ func TestThirdPartyResolver_WithFileWithoutName(t *testing.T) {
 	require.Empty(t, result)
 }
 
-func TestThirdPartyResolver_WithEmptyFileName(t *testing.T) {
+func TestThirdPartyResolverWithEmptyFileName(t *testing.T) {
 	t.Parallel()
 
 	// Test resolver with empty file name
@@ -269,7 +269,7 @@ func TestThirdPartyResolver_WithEmptyFileName(t *testing.T) {
 	require.Empty(t, result)
 }
 
-func TestThirdPartyResolver_WithMatchingEmptyName(t *testing.T) {
+func TestThirdPartyResolverWithMatchingEmptyName(t *testing.T) {
 	t.Parallel()
 
 	// Test resolver with matching empty name
@@ -292,7 +292,7 @@ func TestThirdPartyResolver_WithMatchingEmptyName(t *testing.T) {
 	require.Empty(t, result.Proto.GetName())
 }
 
-func TestThirdPartyResolver_WithSpecialCharacters(t *testing.T) {
+func TestThirdPartyResolverWithSpecialCharacters(t *testing.T) {
 	t.Parallel()
 
 	// Test resolver with special characters in file names
@@ -333,7 +333,7 @@ func TestThirdPartyResolver_WithSpecialCharacters(t *testing.T) {
 	}
 }
 
-func TestThirdPartyResolver_WithLongPath(t *testing.T) {
+func TestThirdPartyResolverWithLongPath(t *testing.T) {
 	t.Parallel()
 
 	// Test resolver with long path
@@ -355,7 +355,7 @@ func TestThirdPartyResolver_WithLongPath(t *testing.T) {
 	require.Equal(t, "very/long/path/to/file.proto", result.Proto.GetName())
 }
 
-func TestThirdPartyResolver_WithUnicodePath(t *testing.T) {
+func TestThirdPartyResolverWithUnicodePath(t *testing.T) {
 	t.Parallel()
 
 	// Test resolver with unicode path
@@ -377,7 +377,7 @@ func TestThirdPartyResolver_WithUnicodePath(t *testing.T) {
 	require.Equal(t, "тест/файл.proto", result.Proto.GetName())
 }
 
-func TestThirdPartyResolver_WithDuplicateNames(t *testing.T) {
+func TestThirdPartyResolverWithDuplicateNames(t *testing.T) {
 	t.Parallel()
 
 	// Test resolver with duplicate file names (should return first match)

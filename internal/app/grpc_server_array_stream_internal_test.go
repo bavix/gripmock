@@ -67,7 +67,7 @@ func (m *mockArrayStreamServerStream) SendHeader(md metadata.MD) error {
 func (m *mockArrayStreamServerStream) SetTrailer(md metadata.MD) {
 }
 
-func TestHandleArrayStreamData_SendsAllMessages(t *testing.T) {
+func TestHandleArrayStreamDataSendsAllMessages(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -97,7 +97,7 @@ func TestHandleArrayStreamData_SendsAllMessages(t *testing.T) {
 	require.Len(t, stream.sentMessages, 3)
 }
 
-func TestHandleArrayStreamData_EmptyStream(t *testing.T) {
+func TestHandleArrayStreamDataEmptyStream(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -121,7 +121,7 @@ func TestHandleArrayStreamData_EmptyStream(t *testing.T) {
 	require.Empty(t, stream.sentMessages)
 }
 
-func TestHandleArrayStreamData_WithDelay(t *testing.T) {
+func TestHandleArrayStreamDataWithDelay(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -155,7 +155,7 @@ func TestHandleArrayStreamData_WithDelay(t *testing.T) {
 	require.GreaterOrEqual(t, duration, time.Duration(delay))
 }
 
-func TestHandleArrayStreamData_WithTemplates(t *testing.T) {
+func TestHandleArrayStreamDataWithTemplates(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -194,7 +194,7 @@ func TestHandleArrayStreamData_WithTemplates(t *testing.T) {
 	require.NotNil(t, msg2Map)
 }
 
-func TestHandleArrayStreamData_InvalidDataType(t *testing.T) {
+func TestHandleArrayStreamDataInvalidDataType(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -225,7 +225,7 @@ func TestHandleArrayStreamData_InvalidDataType(t *testing.T) {
 	require.Contains(t, st.Message(), "invalid data format")
 }
 
-func TestHandleArrayStreamData_SendMsgError(t *testing.T) {
+func TestHandleArrayStreamDataSendMsgError(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -253,7 +253,7 @@ func TestHandleArrayStreamData_SendMsgError(t *testing.T) {
 	require.Contains(t, err.Error(), "send error")
 }
 
-func TestHandleArrayStreamData_ContextCancelled(t *testing.T) {
+func TestHandleArrayStreamDataContextCancelled(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -280,7 +280,7 @@ func TestHandleArrayStreamData_ContextCancelled(t *testing.T) {
 	require.Equal(t, context.Canceled, err)
 }
 
-func TestHandleArrayStreamData_MessageIndexInTemplates(t *testing.T) {
+func TestHandleArrayStreamDataMessageIndexInTemplates(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -314,7 +314,7 @@ func TestHandleArrayStreamData_MessageIndexInTemplates(t *testing.T) {
 	}
 }
 
-func TestHandleArrayStreamData_WithHeaders(t *testing.T) {
+func TestHandleArrayStreamDataWithHeaders(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -346,7 +346,7 @@ func TestHandleArrayStreamData_WithHeaders(t *testing.T) {
 	require.NotNil(t, msgMap)
 }
 
-func TestHandleArrayStreamData_EOFError(t *testing.T) {
+func TestHandleArrayStreamDataEOFError(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)

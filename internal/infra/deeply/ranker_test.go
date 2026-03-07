@@ -18,7 +18,7 @@ func ranker(expect any, actual []any) []any {
 	return actual
 }
 
-func TestRankMatch_Simple(t *testing.T) {
+func TestRankMatchSimple(t *testing.T) {
 	t.Parallel()
 
 	require.Equal(t, []any{"a", "ab", "abc"}, ranker("a", []any{"a", "ab", "abc"}))
@@ -33,7 +33,7 @@ func TestRankMatch_Simple(t *testing.T) {
 		ranker([]int{1, 2, 3}, []any{[]int{1, 2, 3}, []int{3, 2, 1}, []int{1}}))
 }
 
-func TestRankMatch_Map_Left(t *testing.T) {
+func TestRankMatchMapLeft(t *testing.T) {
 	t.Parallel()
 
 	a := map[string]any{
@@ -75,7 +75,7 @@ func TestRankMatch_Map_Left(t *testing.T) {
 	require.Equal(t, []any{b, c}, ranker(a, []any{c, b}))
 }
 
-func TestRankMatch_Map_Right(t *testing.T) {
+func TestRankMatchMapRight(t *testing.T) {
 	t.Parallel()
 
 	a := map[string]any{
@@ -113,7 +113,7 @@ func TestRankMatch_Map_Right(t *testing.T) {
 	require.Equal(t, []any{b, c}, ranker(a, []any{c, b}))
 }
 
-func TestRankMatch_Boundary(t *testing.T) {
+func TestRankMatchBoundary(t *testing.T) {
 	t.Parallel()
 
 	require.Equal(t, []any{nil, false, true, 0, 1}, ranker(nil, []any{false, true, 0, 1, nil}))
@@ -133,7 +133,7 @@ func TestRankMatch_Boundary(t *testing.T) {
 	require.Greater(t, deeply.RankMatch(map[string]any{}, map[string]any{}), 0.)
 }
 
-func TestRankMatch_RegularDigits(t *testing.T) {
+func TestRankMatchRegularDigits(t *testing.T) {
 	t.Parallel()
 
 	require.Greater(t, deeply.RankMatch("[0-9]", 9), 0.)

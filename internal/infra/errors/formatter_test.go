@@ -9,15 +9,8 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-func TestNewStubNotFoundFormatter(t *testing.T) {
-	t.Parallel()
-
-	formatter := errors.NewStubNotFoundFormatter()
-	require.NotNil(t, formatter)
-}
-
 //nolint:funlen
-func TestStubNotFoundFormatter_Format(t *testing.T) {
+func TestStubNotFoundFormatterFormat(t *testing.T) {
 	t.Parallel()
 
 	formatter := errors.NewStubNotFoundFormatter()
@@ -96,7 +89,7 @@ func TestStubNotFoundFormatter_Format(t *testing.T) {
 }
 
 //nolint:funlen
-func TestStubNotFoundFormatter_FormatStreaming(t *testing.T) {
+func TestStubNotFoundFormatterFormatStreaming(t *testing.T) {
 	t.Parallel()
 
 	formatter := errors.NewStubNotFoundFormatter()
@@ -229,7 +222,7 @@ func TestStubNotFoundFormatter_FormatStreaming(t *testing.T) {
 	})
 }
 
-func TestStubNotFoundFormatter_FormatClosestMatches(t *testing.T) {
+func TestStubNotFoundFormatterFormatClosestMatches(t *testing.T) {
 	t.Parallel()
 
 	formatter := errors.NewStubNotFoundFormatter()

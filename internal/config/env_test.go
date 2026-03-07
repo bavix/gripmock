@@ -8,7 +8,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/config"
 )
 
-func TestConfig_Defaults(t *testing.T) {
+func TestConfigDefaults(t *testing.T) {
 	t.Parallel()
 
 	conf := config.Load()
@@ -28,7 +28,7 @@ func TestConfig_Defaults(t *testing.T) {
 }
 
 //nolint:paralleltest
-func TestConfig_Override(t *testing.T) {
+func TestConfigOverride(t *testing.T) {
 	env := map[string]string{
 		"LOG_LEVEL":           "trace",
 		"PACKAGE_SIMPLER":     "false",

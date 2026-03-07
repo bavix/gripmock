@@ -61,7 +61,7 @@ func TestFindBySorted(t *testing.T) {
 	runFindBySortedTests(t, newBudgerigar)
 }
 
-func TestPutMany_FixID(t *testing.T) {
+func TestPutManyFixID(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())
@@ -108,11 +108,12 @@ func TestRelationship(t *testing.T) {
 		&stuber.Stub{ID: uuid.New(), Service: "Greeter2", Method: "SayHello2"},
 	)
 
+	// Service exists but method doesn't - should return ErrMethodNotFound
 	_, err := s.FindBy("Greeter1", "SayHello2")
 	require.ErrorIs(t, err, stuber.ErrMethodNotFound)
 }
 
-func TestBudgerigar_Unused(t *testing.T) {
+func TestBudgerigarUnused(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
@@ -166,7 +167,7 @@ func TestBudgerigar_Unused(t *testing.T) {
 	require.Equal(t, map[string]any{"message": "hello world"}, r.Found().Output.Data)
 }
 
-func TestBudgerigar_SearchWithHeaders(t *testing.T) {
+func TestBudgerigarSearchWithHeaders(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
@@ -225,7 +226,7 @@ func TestBudgerigar_SearchWithHeaders(t *testing.T) {
 }
 
 //nolint:funlen
-func TestBudgerigar_SearchWithPackageAndWithoutPackage(t *testing.T) {
+func TestBudgerigarSearchWithPackageAndWithoutPackage(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
@@ -321,7 +322,7 @@ func TestBudgerigar_SearchWithPackageAndWithoutPackage(t *testing.T) {
 	checkItems("Gripmock", 2) // Only the stubs for Gripmock service
 }
 
-func TestBudgerigar_SearchEmpty(t *testing.T) {
+func TestBudgerigarSearchEmpty(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
@@ -361,7 +362,7 @@ func TestBudgerigar_SearchEmpty(t *testing.T) {
 	}, r.Found().Output.Data)
 }
 
-func TestBudgerigar_SearchWithHeaders_Similar(t *testing.T) {
+func TestBudgerigarSearchWithHeadersSimilar(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
@@ -420,7 +421,7 @@ func TestBudgerigar_SearchWithHeaders_Similar(t *testing.T) {
 	}, r.Similar().Output.Data)
 }
 
-func TestResult_MatchesRegexInt(t *testing.T) {
+func TestResultMatchesRegexInt(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
@@ -462,7 +463,7 @@ func TestResult_MatchesRegexInt(t *testing.T) {
 	}, r.Found().Output.Data)
 }
 
-func TestResult_Similar(t *testing.T) {
+func TestResultSimilar(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
@@ -492,7 +493,7 @@ func TestResult_Similar(t *testing.T) {
 	require.NotNil(t, r.Similar())
 }
 
-func TestStuber_MatchesEqualsFound(t *testing.T) {
+func TestStuberMatchesEqualsFound(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
@@ -535,7 +536,7 @@ func TestStuber_MatchesEqualsFound(t *testing.T) {
 	require.Nil(t, r.Similar())
 }
 
-func TestStuber_EqualsIgnoreArrayOrder(t *testing.T) {
+func TestStuberEqualsIgnoreArrayOrder(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
@@ -632,7 +633,7 @@ func TestDelete(t *testing.T) {
 	require.Empty(t, all)
 }
 
-func TestBudgerigar_Clear(t *testing.T) {
+func TestBudgerigarClear(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
@@ -661,7 +662,7 @@ func TestBudgerigar_Clear(t *testing.T) {
 	require.Empty(t, s.All())
 }
 
-func TestBudgerigar_FindByQuery_FoundWithPriority(t *testing.T) {
+func TestBudgerigarFindByQueryFoundWithPriority(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
@@ -714,7 +715,7 @@ func TestBudgerigar_FindByQuery_FoundWithPriority(t *testing.T) {
 	require.Equal(t, "success", r.Found().Output.Data["result"])
 }
 
-func TestBudgerigar_Used(t *testing.T) {
+func TestBudgerigarUsed(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())
@@ -743,7 +744,7 @@ func TestBudgerigar_Used(t *testing.T) {
 	require.Equal(t, stub1.ID, used[0].ID)
 }
 
-func TestBudgerigar_FindByQuery_WithID(t *testing.T) {
+func TestBudgerigarFindByQueryWithID(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())
@@ -779,7 +780,7 @@ func TestBudgerigar_FindByQuery_WithID(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestBudgerigar_FindByQuery_InternalRequest(t *testing.T) {
+func TestBudgerigarFindByQueryInternalRequest(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())

@@ -9,7 +9,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
-func TestByteSize_UnmarshalText(t *testing.T) {
+func TestByteSizeUnmarshalText(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -51,7 +51,7 @@ func TestByteSize_UnmarshalText(t *testing.T) {
 	}
 }
 
-func TestByteSize_Int64(t *testing.T) {
+func TestByteSizeInt64(t *testing.T) {
 	t.Parallel()
 
 	var b types.ByteSize
@@ -60,7 +60,7 @@ func TestByteSize_Int64(t *testing.T) {
 	require.Equal(t, int64(12345), b.Int64())
 }
 
-func TestByteSize_TextUnmarshaler(t *testing.T) {
+func TestByteSizeTextUnmarshaler(t *testing.T) {
 	t.Parallel()
 
 	var b types.ByteSize

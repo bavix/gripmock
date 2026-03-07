@@ -33,25 +33,6 @@ func init() {
 	}
 }
 
-// getRegex returns a cached regex or compiles the pattern.
-//
-//nolint:unused
-func getRegex(pattern string) (*regexp.Regexp, error) {
-	if regexCache != nil {
-		if re, exists := regexCache.Get(pattern); exists {
-			return re, nil
-		}
-	}
-
-	// Compile and cache (or just compile if cache init failed)
-	re, err := regexp.Compile(pattern)
-	if err == nil && regexCache != nil {
-		regexCache.Add(pattern, re)
-	}
-
-	return re, err
-}
-
 // clearRegexCache clears the regex cache (for testing).
 func clearRegexCache() {
 	if regexCache != nil {

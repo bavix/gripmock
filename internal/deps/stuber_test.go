@@ -8,25 +8,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/deps"
 )
 
-func TestStuber_Basic(t *testing.T) {
-	t.Parallel()
-	// Test basic stuber functionality
-	require.NotNil(t, "stuber package exists")
-}
-
-func TestStuber_Empty(t *testing.T) {
-	t.Parallel()
-	// Test empty stuber case
-	require.NotNil(t, "stuber package exists")
-}
-
-func TestStuber_Initialization(t *testing.T) {
-	t.Parallel()
-	// Test stuber initialization
-	require.NotNil(t, "stuber package initialized")
-}
-
-func TestBuilder_Budgerigar(t *testing.T) {
+func TestBuilderBudgerigar(t *testing.T) {
 	t.Parallel()
 	// Test budgerigar creation
 	builder := deps.NewBuilder()
@@ -34,7 +16,7 @@ func TestBuilder_Budgerigar(t *testing.T) {
 	require.NotNil(t, budgerigar)
 }
 
-func TestBuilder_Extender(t *testing.T) {
+func TestBuilderExtender(t *testing.T) {
 	t.Parallel()
 	// Test extender creation
 	builder := deps.NewBuilder()
@@ -42,7 +24,7 @@ func TestBuilder_Extender(t *testing.T) {
 	require.NotNil(t, extender)
 }
 
-func TestBuilder_SingletonPattern(t *testing.T) {
+func TestBuilderSingletonPattern(t *testing.T) {
 	t.Parallel()
 	// Test that budgerigar and extender are singletons
 	builder := deps.NewBuilder()

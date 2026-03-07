@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/bavix/gripmock/v3/internal/infra/protoconv"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -73,10 +74,14 @@ func (f *StubNotFoundFormatter) formatStreamInput(input []map[string]any) string
 }
 
 // formatSingleInput formats a single input message.
+// Excludes fields with default/empty values for cleaner output.
 func (f *StubNotFoundFormatter) formatSingleInput(input map[string]any) string {
 	template := "Input:\n\n"
 
-	inputString, err := json.MarshalIndent(input, "", "\t")
+	// Filter out default values using shared utility with ExcludeDefaults option
+	filteredInput := protoconv.ConvertMap(input, protoconv.ExcludeDefaults)
+
+	inputString, err := json.MarshalIndent(filteredInput, "", "\t")
 	if err != nil {
 		return template + fmt.Sprintf("Error marshaling input: %v\n\n", err)
 	}

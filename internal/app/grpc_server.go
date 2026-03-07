@@ -40,12 +40,13 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	protoloc "github.com/bavix/gripmock/v3/internal/domain/proto"
-	"github.com/bavix/gripmock/v3/internal/domain/protoset"
+	protosetdom "github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/grpccontext"
+	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
+	"github.com/bavix/gripmock/v3/internal/infra/session"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
-	"github.com/bavix/gripmock/v3/internal/pkg/session"
 )
 
 // excludedHeaders contains headers that should be excluded from stub matching.
@@ -373,24 +374,56 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	query := m.newQuery(stream.Context(), inputMsg)
 
 	result, err := m.budgerigar.FindByQuery(query)
-	if err != nil {
-		return errors.Wrap(err, "failed to find response")
+
+	// Handle both error and nil result cases with unified error formatting
+	if err != nil || (result != nil && result.Found() == nil) {
+		errorFormatter := NewErrorFormatter()
+
+		// Create empty result if we don't have one (error case)
+		if result == nil {
+			result = &stuber.Result{}
+		}
+
+		return status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundError(query, result).Error())
 	}
 
 	found := result.Found()
-	if found == nil {
-		return status.Errorf(codes.NotFound, "No response found: %v", result.Similar())
+
+	if err := m.delay(stream.Context(), found.Output.Delay); err != nil {
+		return err
 	}
 
-	if found.Output.Headers != nil {
-		mdResp := make(metadata.MD, len(found.Output.Headers))
-		for k, v := range found.Output.Headers {
-			mdResp.Append(k, strings.Split(v, ";")...)
+	outputToUse := found.Output
+	requestData := convertToMap(inputMsg)
+
+	headers := make(map[string]any)
+	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+		headers = processHeaders(md)
+	}
+
+	templateData := template.Data{
+		Request:      requestData,
+		Headers:      headers,
+		MessageIndex: 0,
+		RequestTime:  requestTime,
+		Timestamp:    requestTime,
+		State:        make(map[string]any),
+		Requests:     []any{requestData},
+		StubID:       found.ID.String(),
+		RequestID:    found.ID.String(),
+	}
+
+	if template.HasTemplatesInHeaders(outputToUse.Headers) {
+		headersCopy := deepCopyStringMap(outputToUse.Headers)
+		if err := m.templateEngine.ProcessHeaders(headersCopy, templateData); err != nil {
+			return errors.Wrap(err, "failed to process header templates")
 		}
 
-		if err := stream.SetHeader(mdResp); err != nil {
-			return errors.Wrap(err, "failed to set headers")
-		}
+		outputToUse.Headers = headersCopy
+	}
+
+	if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
+		return errors.Wrap(err, "failed to set headers")
 	}
 
 	if found.Output.Stream != nil {
@@ -606,16 +639,20 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 	query := m.newQuery(ctx, req)
 
 	result, err := m.budgerigar.FindByQuery(query)
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
 
-	found := result.Found()
-	if found == nil {
+	// Handle both error and nil result cases with unified error formatting
+	if err != nil || (result != nil && result.Found() == nil) {
 		errorFormatter := NewErrorFormatter()
+
+		// Create empty result if we don't have one (error case)
+		if result == nil {
+			result = &stuber.Result{}
+		}
 
 		return nil, status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundError(query, result).Error())
 	}
+
+	found := result.Found()
 
 	if err := m.delay(ctx, found.Output.Delay); err != nil {
 		return nil, err
@@ -842,12 +879,28 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 	}
 
 	if foundErr != nil || result == nil || result.Found() == nil {
-		errorMsg := fmt.Sprintf("Failed to find response for client stream (service: %s, method: %s)", m.serviceName, m.methodName)
-		if foundErr != nil {
-			errorMsg += fmt.Sprintf(" - Error: %v", foundErr)
+		// Use error formatter to include "Closest Match" details
+		errorFormatter := NewErrorFormatter()
+
+		// Build query for error formatting
+		query := stuber.Query{
+			Service: m.fullServiceName,
+			Method:  m.methodName,
+			Input:   messages,
+		}
+		if len(md) > 0 {
+			query.Headers = processHeaders(md)
+			query.Session = sessionFromMetadata(md)
 		}
 
-		return nil, status.Error(codes.NotFound, errorMsg)
+		// Create empty result if we don't have one
+		if result == nil {
+			result = &stuber.Result{}
+		}
+
+		errMsg := errorFormatter.FormatStubNotFoundError(query, result).Error()
+
+		return nil, status.Error(codes.NotFound, errMsg)
 	}
 
 	found := result.Found()
@@ -916,7 +969,24 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 
 	bidiResult, err := m.budgerigar.FindByQueryBidi(queryBidi)
 	if err != nil {
-		return errors.Wrap(err, "failed to initialize bidirectional streaming session")
+		// Use error formatter to include "Closest Match" details
+		errorFormatter := NewErrorFormatter()
+
+		// Build query for error formatting
+		query := stuber.Query{
+			Service: m.fullServiceName,
+			Method:  m.methodName,
+			Input:   []map[string]any{},
+		}
+		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+			query.Headers = processHeaders(md)
+			query.Session = sessionFromMetadata(md)
+		}
+
+		// Create empty result for error formatting
+		result := &stuber.Result{}
+
+		return status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundError(query, result).Error())
 	}
 
 	for {
@@ -1070,9 +1140,15 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 		protoPaths = s.params.ProtoPath()
 	}
 
-	descriptors, err := protoset.Build(ctx, imports, protoPaths)
+	descriptors, err := protosetdom.Build(ctx, imports, protoPaths)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build descriptors")
+	}
+
+	// Wait for stubs to load before registering services
+	// This ensures stubs are available when gRPC server starts accepting requests
+	if s.waiter != nil {
+		s.waiter.Wait(ctx)
 	}
 
 	server := s.createServer(ctx)
@@ -1191,7 +1267,6 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 	return stream.SendMsg(resp)
 }
 
-//nolint:ireturn
 func (s *GRPCServer) findMethodDescriptor(serviceName, methodName string) (protoreflect.MethodDescriptor, error) {
 	if method := findMethodInGlobalFiles(serviceName, methodName); method != nil {
 		return method, nil
@@ -1230,7 +1305,6 @@ func (s *GRPCServer) findMethodDescriptor(serviceName, methodName string) (proto
 	return found, nil
 }
 
-//nolint:ireturn
 func findMethodInGlobalFiles(serviceName, methodName string) protoreflect.MethodDescriptor {
 	var found protoreflect.MethodDescriptor
 
@@ -1326,14 +1400,12 @@ type dynamicDescriptorResolver struct {
 	dynamic *descriptors.Registry
 }
 
-//nolint:ireturn
 func (r *dynamicDescriptorResolver) FindFileByPath(path string) (protoreflect.FileDescriptor, error) {
-	return (&fallbackResolver{Primary: r.dynamicFiles(), Fallback: r.static}).FindFileByPath(path)
+	return (&protosetinfra.Fallback{Primary: r.dynamicFiles(), Fallback: r.static}).FindFileByPath(path)
 }
 
-//nolint:ireturn
 func (r *dynamicDescriptorResolver) FindDescriptorByName(name protoreflect.FullName) (protoreflect.Descriptor, error) {
-	return (&fallbackResolver{Primary: r.dynamicFiles(), Fallback: r.static}).FindDescriptorByName(name)
+	return (&protosetinfra.Fallback{Primary: r.dynamicFiles(), Fallback: r.static}).FindDescriptorByName(name)
 }
 
 func (r *dynamicDescriptorResolver) dynamicFiles() *protoregistry.Files {
@@ -1455,10 +1527,7 @@ func (s *GRPCServer) startHealthCheckRoutine(ctx context.Context) {
 			}
 		}()
 
-		if s.waiter != nil {
-			s.waiter.Wait(ctx)
-		}
-
+		// Stubs are already loaded in Build(), just mark server as ready
 		select {
 		case <-ctx.Done():
 			return
@@ -1477,7 +1546,6 @@ func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.Se
 	return svc.GetName()
 }
 
-//nolint:ireturn
 func getMessageDescriptor(reg *protoregistry.Files, messageType string) (protoreflect.MessageDescriptor, error) {
 	if reg == nil {
 		reg = protoregistry.GlobalFiles

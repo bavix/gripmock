@@ -8,7 +8,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 )
 
-func TestMemoryStoreDeleteSession_RemovesOnlySessionRecords(t *testing.T) {
+func TestMemoryStoreDeleteSessionRemovesOnlySessionRecords(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -29,7 +29,7 @@ func TestMemoryStoreDeleteSession_RemovesOnlySessionRecords(t *testing.T) {
 	require.Empty(t, all[1].Session)
 }
 
-func TestMemoryStoreDeleteSession_EmptySessionNoop(t *testing.T) {
+func TestMemoryStoreDeleteSessionEmptySessionNoop(t *testing.T) {
 	t.Parallel()
 
 	// Arrange

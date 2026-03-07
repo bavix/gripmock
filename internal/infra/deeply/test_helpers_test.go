@@ -35,17 +35,17 @@ func runSliceOrderIgnoreChecks(t *testing.T, fn func(expect, actual any) bool) {
 	})
 }
 
-func TestRunSliceOrderIgnoreChecks_UsesEquals(t *testing.T) {
+func TestRunSliceOrderIgnoreChecksUsesEquals(t *testing.T) {
 	t.Parallel()
 	runSliceOrderIgnoreChecks(t, deeply.EqualsIgnoreArrayOrder)
 }
 
-func TestRunSliceOrderIgnoreChecks_UsesContains(t *testing.T) {
+func TestRunSliceOrderIgnoreChecksUsesContains(t *testing.T) {
 	t.Parallel()
 	runSliceOrderIgnoreChecks(t, deeply.ContainsIgnoreArrayOrder)
 }
 
-func TestRunSliceOrderIgnoreChecks_UsesMatches(t *testing.T) {
+func TestRunSliceOrderIgnoreChecksUsesMatches(t *testing.T) {
 	t.Parallel()
 	runSliceOrderIgnoreChecks(t, deeply.MatchesIgnoreArrayOrder)
 }

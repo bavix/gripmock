@@ -8,7 +8,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/deeply"
 )
 
-func TestMatches_Simple(t *testing.T) {
+func TestMatchesSimple(t *testing.T) {
 	t.Parallel()
 
 	require.True(t, deeply.Matches("a", "a"))
@@ -18,7 +18,7 @@ func TestMatches_Simple(t *testing.T) {
 	require.False(t, deeply.Matches([]int{1, 2, 3}, []int{1, 3, 2}))
 }
 
-func TestMatches_Map_Left(t *testing.T) {
+func TestMatchesMapLeft(t *testing.T) {
 	t.Parallel()
 
 	a := map[string]any{
@@ -56,7 +56,7 @@ func TestMatches_Map_Left(t *testing.T) {
 	require.False(t, deeply.Matches(a, b))
 }
 
-func TestMatches_Map_Right(t *testing.T) {
+func TestMatchesMapRight(t *testing.T) {
 	t.Parallel()
 
 	a := map[string]any{
@@ -90,7 +90,7 @@ func TestMatches_Map_Right(t *testing.T) {
 	require.False(t, deeply.Matches(a, b))
 }
 
-func TestMatches_Slices_Left(t *testing.T) {
+func TestMatchesSLicesLeft(t *testing.T) {
 	t.Parallel()
 
 	require.True(t, deeply.Matches([]int{1, 2, 3}, []int{1, 2, 3}))
@@ -104,7 +104,7 @@ func TestMatches_Slices_Left(t *testing.T) {
 	require.False(t, deeply.Matches([]any{1, 2}, []any{1, 2, 3}))
 }
 
-func TestMatches_Slices_Right(t *testing.T) {
+func TestMatchesSLicesRight(t *testing.T) {
 	t.Parallel()
 
 	require.False(t, deeply.Matches([]string{"^hello$"}, []string{"hell!"}))
@@ -120,13 +120,13 @@ func TestMatches_Slices_Right(t *testing.T) {
 	require.False(t, deeply.Matches([]any{1, 2, 3}, []any{1, 2}))
 }
 
-func TestMatches_Slices_OrderIgnore(t *testing.T) {
+func TestMatchesSLicesOrderIgnore(t *testing.T) {
 	t.Parallel()
 
 	runSliceOrderIgnoreChecks(t, deeply.MatchesIgnoreArrayOrder)
 }
 
-func TestMatches_RegularDigits(t *testing.T) {
+func TestMatchesRegularDigits(t *testing.T) {
 	t.Parallel()
 
 	require.True(t, deeply.Matches("[0-9]", 9))
@@ -139,7 +139,7 @@ func TestMatches_RegularDigits(t *testing.T) {
 }
 
 //nolint:funlen
-func TestMatches_Boundary_True(t *testing.T) {
+func TestMatchesBOundaryTrue(t *testing.T) {
 	t.Parallel()
 
 	require.True(t, deeply.Matches([]string{"[a]", "[b]", "[cd]"}, []string{"a", "b", "d"}))
@@ -210,7 +210,7 @@ func TestMatches_Boundary_True(t *testing.T) {
 	}))
 }
 
-func TestMatches_Boundary_False(t *testing.T) {
+func TestMatchesBOundaryFalse(t *testing.T) {
 	t.Parallel()
 
 	require.False(t, deeply.Matches([]string{"a", "a", "a"}, []string{"a", "b", "c"}))

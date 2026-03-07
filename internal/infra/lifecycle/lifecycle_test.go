@@ -20,7 +20,7 @@ func (l *testLogger) Err(err error) {
 
 var errBoom = errors.New("boom")
 
-func TestManager_OrderAndClear(t *testing.T) {
+func TestManagerOrderAndClear(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -50,7 +50,7 @@ func TestManager_OrderAndClear(t *testing.T) {
 	require.Equal(t, []int{2, 1}, calls)
 }
 
-func TestManager_LogsErrors(t *testing.T) {
+func TestManagerLogsErrors(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()

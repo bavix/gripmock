@@ -26,7 +26,7 @@ func TestNewProcessor(t *testing.T) {
 	require.Equal(t, []string{ProtobufSetExt, ProtoSetExt}, processor.allowedDescExts)
 }
 
-func TestProcessor_Result(t *testing.T) {
+func TestProcessorResult(t *testing.T) {
 	t.Parallel()
 
 	// Test processor.result() method
@@ -42,7 +42,7 @@ func TestProcessor_Result(t *testing.T) {
 	require.Equal(t, []string{"file1.pb", "file2.protoset"}, result.descriptors)
 }
 
-func TestProcessor_AddImport(t *testing.T) {
+func TestProcessorAddImport(t *testing.T) {
 	t.Parallel()
 
 	// Test processor.addImport method
@@ -115,7 +115,7 @@ func TestFindPathByImports(t *testing.T) {
 	}
 }
 
-func TestProcessor_ProcessFile_ProtoFile(t *testing.T) {
+func TestProcessorPRocessFileProtoFile(t *testing.T) {
 	t.Parallel()
 
 	// Test processing proto file
@@ -133,7 +133,7 @@ func TestProcessor_ProcessFile_ProtoFile(t *testing.T) {
 	require.Contains(t, processor.protos, "test.proto")
 }
 
-func TestProcessor_ProcessFile_DescriptorFile(t *testing.T) {
+func TestProcessorPRocessFileDescriptorFile(t *testing.T) {
 	t.Parallel()
 
 	// Test processing descriptor file
@@ -164,7 +164,7 @@ func TestProcessor_ProcessFile_DescriptorFile(t *testing.T) {
 	require.Contains(t, processor.descriptors, descFile)
 }
 
-func TestProcessor_ProcessFile_UnsupportedFile(t *testing.T) {
+func TestProcessorPRocessFileUnsupportedFile(t *testing.T) {
 	t.Parallel()
 
 	// Test processing unsupported file
@@ -182,7 +182,7 @@ func TestProcessor_ProcessFile_UnsupportedFile(t *testing.T) {
 	require.Contains(t, err.Error(), "unsupported file type")
 }
 
-func TestProcessor_ProcessDirectory(t *testing.T) {
+func TestProcessorProcessDirectory(t *testing.T) {
 	t.Parallel()
 
 	// Test processing directory
@@ -231,7 +231,7 @@ func TestProcessor_ProcessDirectory(t *testing.T) {
 	require.NotContains(t, processor.descriptors, unsupportedFile)
 }
 
-func TestProcessor_Process_WithContextCancellation(t *testing.T) {
+func TestProcessorPRocessWithContextCancellation(t *testing.T) {
 	t.Parallel()
 
 	// Test processing with context cancellation
@@ -246,7 +246,7 @@ func TestProcessor_Process_WithContextCancellation(t *testing.T) {
 	require.Equal(t, context.Canceled, err)
 }
 
-func TestBuild_WithValidPaths(t *testing.T) {
+func TestBuildWithValidPaths(t *testing.T) {
 	t.Parallel()
 
 	// Test Build with valid paths
@@ -264,7 +264,7 @@ func TestBuild_WithValidPaths(t *testing.T) {
 	require.Len(t, results, 1)
 }
 
-func TestBuild_WithDuplicatePaths(t *testing.T) {
+func TestBuildWithDuplicatePaths(t *testing.T) {
 	t.Parallel()
 
 	// Test Build with duplicate paths
@@ -288,7 +288,7 @@ func TestBuild_WithDuplicatePaths(t *testing.T) {
 	require.NotNil(t, results)
 }
 
-func TestConfigure_Getters(t *testing.T) {
+func TestConfigureGetters(t *testing.T) {
 	t.Parallel()
 
 	processor := newProcessor([]string{"/import1"})
@@ -347,7 +347,7 @@ func TestFindMinimalPaths(t *testing.T) {
 	}
 }
 
-func TestBuild_WithNonExistentPath(t *testing.T) {
+func TestBuildWithNonExistentPath(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -356,7 +356,7 @@ func TestBuild_WithNonExistentPath(t *testing.T) {
 	require.Contains(t, err.Error(), "failed to stat path")
 }
 
-func TestBuild_WithNonExistentImportPath(t *testing.T) {
+func TestBuildWithNonExistentImportPath(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -368,7 +368,7 @@ func TestBuild_WithNonExistentImportPath(t *testing.T) {
 	require.NoError(t, err) // imports can be non-existent if we only use descriptors
 }
 
-func TestBuild_WithDirectoryPath(t *testing.T) {
+func TestBuildWithDirectoryPath(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -382,7 +382,7 @@ func TestBuild_WithDirectoryPath(t *testing.T) {
 	require.Len(t, results, 1)
 }
 
-func TestBuild_WithDescriptorOnly(t *testing.T) {
+func TestBuildWithDescriptorOnly(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -403,7 +403,7 @@ func TestBuild_WithDescriptorOnly(t *testing.T) {
 	require.Len(t, results, 1)
 }
 
-func TestBuild_WithProtosetFile(t *testing.T) {
+func TestBuildWithProtosetFile(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -424,7 +424,7 @@ func TestBuild_WithProtosetFile(t *testing.T) {
 	require.Len(t, results, 1)
 }
 
-func TestProcessor_Process_NonExistentPath(t *testing.T) {
+func TestProcessorPRocessNonExistentPath(t *testing.T) {
 	t.Parallel()
 
 	processor := newProcessor([]string{})
@@ -435,7 +435,7 @@ func TestProcessor_Process_NonExistentPath(t *testing.T) {
 	require.Contains(t, err.Error(), "failed to stat path")
 }
 
-func TestProcessor_ProcessDirectory_ContextCancellation(t *testing.T) {
+func TestProcessorPRocessDirectoryContextCancellation(t *testing.T) {
 	t.Parallel()
 
 	processor := newProcessor([]string{})
@@ -452,7 +452,7 @@ func TestProcessor_ProcessDirectory_ContextCancellation(t *testing.T) {
 	require.Equal(t, context.Canceled, err)
 }
 
-func TestProcessor_AddProtoFile(t *testing.T) {
+func TestProcessorAddProtoFile(t *testing.T) {
 	t.Parallel()
 
 	processor := newProcessor([]string{})
@@ -467,7 +467,7 @@ func TestProcessor_AddProtoFile(t *testing.T) {
 	require.Contains(t, processor.protos, "test.proto")
 }
 
-func TestProcessor_AddDescriptorFile(t *testing.T) {
+func TestProcessorAddDescriptorFile(t *testing.T) {
 	t.Parallel()
 
 	processor := newProcessor([]string{})

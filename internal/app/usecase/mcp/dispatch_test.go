@@ -11,7 +11,7 @@ import (
 
 var errDispatchBoom = errors.New("boom")
 
-func TestDispatchTool_CallsMatchingHandler(t *testing.T) {
+func TestDispatchToolCallsMatchingHandler(t *testing.T) {
 	t.Parallel()
 
 	handlers := map[string]mcpusecase.ToolHandler{
@@ -27,7 +27,7 @@ func TestDispatchTool_CallsMatchingHandler(t *testing.T) {
 	require.Equal(t, map[string]any{"echo": 7}, result)
 }
 
-func TestDispatchTool_ReturnsNotFoundForUnknownTool(t *testing.T) {
+func TestDispatchToolReturnsNotFoundForUnknownTool(t *testing.T) {
 	t.Parallel()
 
 	result, err, found := mcpusecase.DispatchTool("missing", nil, map[string]mcpusecase.ToolHandler{})
@@ -37,7 +37,7 @@ func TestDispatchTool_ReturnsNotFoundForUnknownTool(t *testing.T) {
 	require.Equal(t, map[string]any{}, result)
 }
 
-func TestDispatchTool_PropagatesHandlerError(t *testing.T) {
+func TestDispatchToolPropagatesHandlerError(t *testing.T) {
 	t.Parallel()
 
 	handlers := map[string]mcpusecase.ToolHandler{

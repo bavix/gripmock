@@ -78,7 +78,7 @@ func mustRunWithProtoAndReg(t *testing.T, protoPath string, opts ...Option) (Moc
 	return mock, reg
 }
 
-func TestRun_EmbeddedBufconn(t *testing.T) {
+func TestRunEmbeddedBufconn(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
@@ -92,7 +92,7 @@ func TestRun_EmbeddedBufconn(t *testing.T) {
 		Commit()
 }
 
-func TestRun_DescriptorsAppend(t *testing.T) {
+func TestRunDescriptorsAppend(t *testing.T) {
 	t.Parallel()
 
 	fdsGreeter := mustBuildFDS(t, sdkProtoPath("greeter"))
@@ -109,7 +109,7 @@ func TestRun_DescriptorsAppend(t *testing.T) {
 	require.NotNil(t, mock.Conn())
 }
 
-func TestRun_DescriptorsAppend_Dedup(t *testing.T) {
+func TestRunDEscriptorsAppendDedup(t *testing.T) {
 	t.Parallel()
 
 	fds := mustBuildFDS(t, sdkProtoPath("greeter"))
@@ -124,7 +124,7 @@ func TestRun_DescriptorsAppend_Dedup(t *testing.T) {
 		Commit()
 }
 
-func TestRun_WhenStreamReplyStream(t *testing.T) {
+func TestRunWhenStreamReplyStream(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("calculator"))
@@ -136,7 +136,7 @@ func TestRun_WhenStreamReplyStream(t *testing.T) {
 		Commit()
 }
 
-func TestRun_RealPort(t *testing.T) {
+func TestRunRealPort(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"),
@@ -148,7 +148,7 @@ func TestRun_RealPort(t *testing.T) {
 	require.Regexp(t, `^127\.0\.0\.1:\d+$`, mock.Addr())
 }
 
-func TestRun_RealPort_DefaultNetwork(t *testing.T) {
+func TestRunREalPortDefaultNetwork(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"),
@@ -159,14 +159,14 @@ func TestRun_RealPort_DefaultNetwork(t *testing.T) {
 	require.Regexp(t, `^127\.0\.0\.1:\d+$`, mock.Addr())
 }
 
-func TestRun_DefaultHealthyTimeout(t *testing.T) {
+func TestRunDefaultHealthyTimeout(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"), WithHealthCheckTimeout(0))
 	require.NotNil(t, mock.Conn())
 }
 
-func TestRun_ContextFromT(t *testing.T) {
+func TestRunContextFromT(t *testing.T) {
 	t.Parallel()
 
 	// Run(t, opts) resolves context from t.Context() when t is *testing.T
@@ -179,7 +179,7 @@ func TestRun_ContextFromT(t *testing.T) {
 		Commit()
 }
 
-func TestRun_Validation(t *testing.T) {
+func TestRunValidation(t *testing.T) {
 	t.Parallel()
 
 	_, err := Run(t)
@@ -187,7 +187,7 @@ func TestRun_Validation(t *testing.T) {
 	require.Contains(t, err.Error(), "descriptors required")
 }
 
-func TestRun_InvalidDescriptors(t *testing.T) {
+func TestRunInvalidDescriptors(t *testing.T) {
 	t.Parallel()
 
 	// FileDescriptorSet with invalid file (field number 0 is invalid)
@@ -213,7 +213,7 @@ func TestRun_InvalidDescriptors(t *testing.T) {
 	require.Contains(t, err.Error(), "failed to create files registry")
 }
 
-func TestRun_ListenError(t *testing.T) {
+func TestRunListenError(t *testing.T) {
 	t.Parallel()
 
 	_, err := Run(t,
@@ -230,7 +230,7 @@ func TestRun_ListenError(t *testing.T) {
 		"err=%v", err)
 }
 
-func TestRun_ListenAddrString_UnixFallback(t *testing.T) {
+func TestRunLIstenAddrStringUnixFallback(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("Unix sockets not supported on Windows")
@@ -250,7 +250,7 @@ func TestRun_ListenAddrString_UnixFallback(t *testing.T) {
 	require.Contains(t, mock.Addr(), ".sock")
 }
 
-func TestRun_ReplyStream_SkipsNilData(t *testing.T) {
+func TestRunREplyStreamSkipsNilData(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("track-streaming"))
@@ -266,7 +266,7 @@ func TestRun_ReplyStream_SkipsNilData(t *testing.T) {
 		Commit()
 }
 
-func TestRun_MockFrom(t *testing.T) {
+func TestRunMockFrom(t *testing.T) {
 	t.Parallel()
 
 	mock1 := mustRunWithProto(t, sdkProtoPath("greeter"),
@@ -284,7 +284,7 @@ func TestRun_MockFrom(t *testing.T) {
 	require.Equal(t, "bufnet", mock2.Addr()) // mock2 uses bufconn by default
 }
 
-func TestRun_ReplyStream(t *testing.T) {
+func TestRunReplyStream(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("track-streaming"))
@@ -299,7 +299,7 @@ func TestRun_ReplyStream(t *testing.T) {
 		Commit()
 }
 
-func TestRun_ReplyError(t *testing.T) {
+func TestRunReplyError(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
@@ -315,7 +315,7 @@ func TestRun_ReplyError(t *testing.T) {
 		Commit()
 }
 
-func TestRun_Priority(t *testing.T) {
+func TestRunPriority(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
@@ -333,7 +333,7 @@ func TestRun_Priority(t *testing.T) {
 		Commit()
 }
 
-func TestRun_Contains(t *testing.T) {
+func TestRunContains(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
@@ -344,7 +344,7 @@ func TestRun_Contains(t *testing.T) {
 		Commit()
 }
 
-func TestRun_Map(t *testing.T) {
+func TestRunMap(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
@@ -355,7 +355,7 @@ func TestRun_Map(t *testing.T) {
 		Commit()
 }
 
-func TestRun_MockFrom_NoServices(t *testing.T) {
+func TestRunMOckFromNoServices(t *testing.T) {
 	t.Parallel()
 
 	// Start minimal gRPC server with only health + reflection (no custom services)
@@ -379,7 +379,7 @@ func TestRun_MockFrom_NoServices(t *testing.T) {
 	require.Contains(t, err.Error(), "no services found via reflection")
 }
 
-func TestRun_MockFrom_InvalidAddr(t *testing.T) {
+func TestRunMOckFromInvalidAddr(t *testing.T) {
 	t.Parallel()
 
 	_, err := Run(t, MockFrom("localhost:59999"), WithHealthCheckTimeout(100*time.Millisecond))
@@ -391,7 +391,7 @@ func TestRun_MockFrom_InvalidAddr(t *testing.T) {
 			strings.Contains(errStr, "connection refused"), "err=%v", err)
 }
 
-func TestRun_HealthyTimeout(t *testing.T) {
+func TestRunHealthyTimeout(t *testing.T) {
 	t.Parallel()
 
 	_, err := Run(t, WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))), WithHealthCheckTimeout(1))
@@ -403,28 +403,28 @@ func TestRun_HealthyTimeout(t *testing.T) {
 		"err=%v", err)
 }
 
-func TestHelpers_Equals(t *testing.T) {
+func TestHelpersEquals(t *testing.T) {
 	t.Parallel()
 	id := Equals("key", "value")
 	require.NotNil(t, id.Equals)
 	require.Equal(t, "value", id.Equals["key"])
 }
 
-func TestHelpers_Contains(t *testing.T) {
+func TestHelpersContains(t *testing.T) {
 	t.Parallel()
 	id := Contains("key", "value")
 	require.NotNil(t, id.Contains)
 	require.Equal(t, "value", id.Contains["key"])
 }
 
-func TestHelpers_Matches(t *testing.T) {
+func TestHelpersMatches(t *testing.T) {
 	t.Parallel()
 	id := Matches("key", `\d+`)
 	require.NotNil(t, id.Matches)
 	require.Equal(t, `\d+`, id.Matches["key"])
 }
 
-func TestHelpers_Map(t *testing.T) {
+func TestHelpersMap(t *testing.T) {
 	t.Parallel()
 	id := Map("a", 1, "b", "two")
 	require.NotNil(t, id.Equals)
@@ -432,21 +432,21 @@ func TestHelpers_Map(t *testing.T) {
 	require.Equal(t, "two", id.Equals["b"])
 }
 
-func TestHelpers_Map_PanicOddArgs(t *testing.T) {
+func TestHelpersMapPanicOddArgs(t *testing.T) {
 	t.Parallel()
 	require.PanicsWithValue(t, "sdk.Map: need pairs (key, value), got 3 args", func() {
 		Map("a", 1, "b")
 	})
 }
 
-func TestHelpers_Map_PanicNonStringKey(t *testing.T) {
+func TestHelpersMapPanicNonStringKey(t *testing.T) {
 	t.Parallel()
 	require.PanicsWithValue(t, "sdk.Map: key at 0 must be string, got int", func() {
 		Map(123, "value")
 	})
 }
 
-func TestHelpers_Data(t *testing.T) {
+func TestHelpersData(t *testing.T) {
 	t.Parallel()
 	out := Data("msg", "hello", "n", 42)
 	require.NotNil(t, out.Data)
@@ -454,28 +454,28 @@ func TestHelpers_Data(t *testing.T) {
 	require.Equal(t, 42, out.Data["n"])
 }
 
-func TestHelpers_Data_PanicOddArgs(t *testing.T) {
+func TestHelpersDataPanicOddArgs(t *testing.T) {
 	t.Parallel()
 	require.PanicsWithValue(t, "sdk.Data: need pairs (key, value), got 3 args", func() {
 		Data("a", 1, "b")
 	})
 }
 
-func TestHelpers_Data_PanicNonStringKey(t *testing.T) {
+func TestHelpersDataPanicNonStringKey(t *testing.T) {
 	t.Parallel()
 	require.PanicsWithValue(t, "sdk.Data: key at 0 must be string, got int", func() {
 		Data(123, "value")
 	})
 }
 
-func TestHelpers_HeaderEquals(t *testing.T) {
+func TestHelpersHeaderEquals(t *testing.T) {
 	t.Parallel()
 	h := HeaderEquals("authorization", "Bearer token")
 	require.NotNil(t, h.Equals)
 	require.Equal(t, "Bearer token", h.Equals["authorization"])
 }
 
-func TestHelpers_HeaderMap(t *testing.T) {
+func TestHelpersHeaderMap(t *testing.T) {
 	t.Parallel()
 	h := HeaderMap("x-id", "123", "x-name", "test")
 	require.NotNil(t, h.Equals)
@@ -483,14 +483,14 @@ func TestHelpers_HeaderMap(t *testing.T) {
 	require.Equal(t, "test", h.Equals["x-name"])
 }
 
-func TestHelpers_IgnoreArrayOrder(t *testing.T) {
+func TestHelpersIgnoreArrayOrder(t *testing.T) {
 	t.Parallel()
 	id := IgnoreArrayOrder(Equals("arr", []any{1, 2}))
 	require.True(t, id.IgnoreArrayOrder)
 	require.Equal(t, []any{1, 2}, id.Equals["arr"])
 }
 
-func TestHelpers_Merge(t *testing.T) {
+func TestHelpersMerge(t *testing.T) {
 	t.Parallel()
 	id := Merge(
 		Equals("name", "Alex"),
@@ -504,7 +504,7 @@ func TestHelpers_Merge(t *testing.T) {
 	require.True(t, id.IgnoreArrayOrder)
 }
 
-func TestHelpers_MergeOutput(t *testing.T) {
+func TestHelpersMergeOutput(t *testing.T) {
 	t.Parallel()
 	out := MergeOutput(
 		Data("message", "Hi", "code", 200),
@@ -517,7 +517,7 @@ func TestHelpers_MergeOutput(t *testing.T) {
 	require.NotZero(t, out.Delay)
 }
 
-func TestHelpers_MergeHeaders(t *testing.T) {
+func TestHelpersMergeHeaders(t *testing.T) {
 	t.Parallel()
 	h := MergeHeaders(
 		HeaderEquals("x-id", "123"),
@@ -527,7 +527,7 @@ func TestHelpers_MergeHeaders(t *testing.T) {
 	require.Equal(t, "test", h.Contains["user-agent"])
 }
 
-func TestHelpers_ReplyOutputModifiers(t *testing.T) {
+func TestHelpersReplyOutputModifiers(t *testing.T) {
 	t.Parallel()
 	require.Equal(t, map[string]string{"x": "y"}, ReplyHeader("x", "y").Headers)
 	require.NotZero(t, ReplyDelay(10*time.Millisecond).Delay)
@@ -537,7 +537,7 @@ func TestHelpers_ReplyOutputModifiers(t *testing.T) {
 	require.Equal(t, "hi", out.Stream[0].(map[string]any)["msg"])
 }
 
-func TestRun_Merge_Integration(t *testing.T) {
+func TestRunMergeIntegration(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -552,7 +552,7 @@ func TestRun_Merge_Integration(t *testing.T) {
 	require.Equal(t, "Hi from Merge", getMessageField(t, msg, "message"))
 }
 
-func TestRun_Sugar_MatchReturn(t *testing.T) {
+func TestRunSUgarMatchReturn(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -567,7 +567,7 @@ func TestRun_Sugar_MatchReturn(t *testing.T) {
 	require.Equal(t, "Hi sugar", getMessageField(t, msg, "message"))
 }
 
-func TestRun_Sugar_Unary(t *testing.T) {
+func TestRunSugarUnary(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -581,7 +581,7 @@ func TestRun_Sugar_Unary(t *testing.T) {
 	require.Equal(t, "Hello Bob", getMessageField(t, msg, "message"))
 }
 
-func TestRun_DynamicTemplate_MatchReturn(t *testing.T) {
+func TestRunDYnamicTemplateMatchReturn(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -596,7 +596,7 @@ func TestRun_DynamicTemplate_MatchReturn(t *testing.T) {
 	require.Equal(t, "Hi Alex", getMessageField(t, msg, "message"))
 }
 
-func TestRun_DynamicTemplate_WhenReply(t *testing.T) {
+func TestRunDYnamicTemplateWhenReply(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -611,7 +611,7 @@ func TestRun_DynamicTemplate_WhenReply(t *testing.T) {
 	require.Equal(t, "Greetings Charlie!", getMessageField(t, msg, "message"))
 }
 
-func TestRun_DynamicTemplate_Unary(t *testing.T) {
+func TestRunDynamicTemplateUnary(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -625,7 +625,7 @@ func TestRun_DynamicTemplate_Unary(t *testing.T) {
 	require.Equal(t, "Dear Diana", getMessageField(t, msg, "message"))
 }
 
-func TestRun_DynamicTemplate_MergeOutput(t *testing.T) {
+func TestRunDynamicTemplateMergeOutput(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -640,7 +640,7 @@ func TestRun_DynamicTemplate_MergeOutput(t *testing.T) {
 	require.Equal(t, "Hi Eve from Merge", getMessageField(t, msg, "message"))
 }
 
-func TestRun_Sugar_Match_PanicOddArgs(t *testing.T) {
+func TestRunSUgarMatchPanicOddArgs(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
@@ -650,7 +650,7 @@ func TestRun_Sugar_Match_PanicOddArgs(t *testing.T) {
 	})
 }
 
-func TestRun_Sugar_Return_PanicOddArgs(t *testing.T) {
+func TestRunSUgarReturnPanicOddArgs(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
@@ -660,7 +660,7 @@ func TestRun_Sugar_Return_PanicOddArgs(t *testing.T) {
 	})
 }
 
-func TestRun_ReplyHeaders(t *testing.T) {
+func TestRunReplyHeaders(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
@@ -672,7 +672,7 @@ func TestRun_ReplyHeaders(t *testing.T) {
 		Commit()
 }
 
-func TestRun_WhenHeaders_Integration(t *testing.T) {
+func TestRunWHenHeadersIntegration(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -723,7 +723,7 @@ func getMessageField(t *testing.T, msg *dynamicpb.Message, field string) string 
 	return msg.Get(fd).String()
 }
 
-func TestRun_Delay(t *testing.T) {
+func TestRunDelay(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
@@ -735,7 +735,7 @@ func TestRun_Delay(t *testing.T) {
 		Commit()
 }
 
-func TestRun_Times_ExhaustedAfterLimit(t *testing.T) {
+func TestRunTImesExhaustedAfterLimit(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -775,7 +775,7 @@ func createGreeterRequest(t *testing.T, reg *protoregistry.Files, name string) *
 	return in
 }
 
-func TestRun_Remote_ConnectionRefused(t *testing.T) {
+func TestRunREmoteConnectionRefused(t *testing.T) {
 	t.Parallel()
 
 	// Use a port that's unlikely to have a listener (gripmock uses 4770)
@@ -787,7 +787,7 @@ func TestRun_Remote_ConnectionRefused(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestRun_Remote_WithCustomRestURL(t *testing.T) {
+func TestRunREmoteWithCustomRestURL(t *testing.T) {
 	t.Parallel()
 
 	// Verify Remote option accepts custom rest URL (still fails to connect, but option is applied)
@@ -798,7 +798,7 @@ func TestRun_Remote_WithCustomRestURL(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestRun_Remote_Integration(t *testing.T) {
+func TestRunREmoteIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping Remote integration test in short mode")
 	}
@@ -891,7 +891,7 @@ func TestRun_Remote_Integration(t *testing.T) {
 	mock.Verify().Total(t, 1)
 }
 
-func TestRun_HistoryAndVerify(t *testing.T) {
+func TestRunHistoryAndVerify(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -922,7 +922,7 @@ func TestRun_HistoryAndVerify(t *testing.T) {
 	mock.Verify().Total(t, 2)
 }
 
-func TestRun_VerifyStubTimes_FromStubTimes(t *testing.T) {
+func TestRunVErifyStubTimesFromStubTimes(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -938,7 +938,7 @@ func TestRun_VerifyStubTimes_FromStubTimes(t *testing.T) {
 	// Close() runs VerifyStubTimes — passes (3 calls, expected 3)
 }
 
-func TestRun_Close_VerifiesStubTimes(t *testing.T) {
+func TestRunCLoseVerifiesStubTimes(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -949,7 +949,7 @@ func TestRun_Close_VerifiesStubTimes(t *testing.T) {
 	// Close() runs VerifyStubTimes — passes (1 call, expected 1)
 }
 
-func TestRun_VerifyStubTimesErr_NoError_WhenMatch(t *testing.T) {
+func TestRunVerifyStubTimesErrNoErrorWhenMatch(t *testing.T) {
 	t.Parallel()
 
 	// Test VerifyStubTimesErr returns no error when expected and actual calls match
@@ -973,7 +973,7 @@ func TestRun_VerifyStubTimesErr_NoError_WhenMatch(t *testing.T) {
 	require.NoError(t, err) // Should be no error since calls match expected times
 }
 
-func TestRun_WithSession_EmbeddedNoop(t *testing.T) {
+func TestRunWIthSessionEmbeddedNoop(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
@@ -987,7 +987,7 @@ func TestRun_WithSession_EmbeddedNoop(t *testing.T) {
 	require.Equal(t, "ok", getMessageField(t, msg, "message"))
 }
 
-func TestMock_Close_Idempotent(t *testing.T) {
+func TestMockCLoseIdempotent(t *testing.T) {
 	t.Parallel()
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
@@ -998,7 +998,7 @@ func TestMock_Close_Idempotent(t *testing.T) {
 	require.NoError(t, err) // second Close is no-op
 }
 
-func TestRun_ReplyStream_EmptyStream(t *testing.T) {
+func TestRunREplyStreamEmptyStream(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()

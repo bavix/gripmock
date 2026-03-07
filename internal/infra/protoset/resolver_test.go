@@ -1,5 +1,4 @@
-//nolint:ireturn
-package protoresolver_test
+package protoset_test
 
 import (
 	"testing"
@@ -9,7 +8,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/bavix/gripmock/v3/internal/pkg/protoresolver"
+	"github.com/bavix/gripmock/v3/internal/infra/protoset"
 )
 
 type fakeResolver struct {
@@ -31,7 +30,7 @@ func (f *fakeResolver) FindDescriptorByName(name protoreflect.FullName) (protore
 	return f.findDescriptorByName(name)
 }
 
-func TestFallback_FindFileByPath_UsesPrimaryFirst(t *testing.T) {
+func TestFallbackFIndFileByPathUsesPrimaryFirst(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -52,7 +51,7 @@ func TestFallback_FindFileByPath_UsesPrimaryFirst(t *testing.T) {
 			return nil, protoregistry.NotFound
 		},
 	}
-	resolver := &protoresolver.Fallback{Primary: primary, Fallback: fallback}
+	resolver := &protoset.Fallback{Primary: primary, Fallback: fallback}
 
 	// Act
 	got, err := resolver.FindFileByPath(file.Path())
@@ -64,7 +63,7 @@ func TestFallback_FindFileByPath_UsesPrimaryFirst(t *testing.T) {
 	require.Equal(t, 0, fallback.findFileByPathCalls)
 }
 
-func TestFallback_FindFileByPath_FallsBackOnNotFound(t *testing.T) {
+func TestFallbackFIndFileByPathFallsBackOnNotFound(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -85,7 +84,7 @@ func TestFallback_FindFileByPath_FallsBackOnNotFound(t *testing.T) {
 			return nil, protoregistry.NotFound
 		},
 	}
-	resolver := &protoresolver.Fallback{Primary: primary, Fallback: fallback}
+	resolver := &protoset.Fallback{Primary: primary, Fallback: fallback}
 
 	// Act
 	got, err := resolver.FindFileByPath(file.Path())
@@ -97,7 +96,7 @@ func TestFallback_FindFileByPath_FallsBackOnNotFound(t *testing.T) {
 	require.Equal(t, 1, fallback.findFileByPathCalls)
 }
 
-func TestFallback_FindDescriptorByName_FallsBackOnNotFound(t *testing.T) {
+func TestFallbackFIndDescriptorByNameFallsBackOnNotFound(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -119,7 +118,7 @@ func TestFallback_FindDescriptorByName_FallsBackOnNotFound(t *testing.T) {
 			return desc, nil
 		},
 	}
-	resolver := &protoresolver.Fallback{Primary: primary, Fallback: fallback}
+	resolver := &protoset.Fallback{Primary: primary, Fallback: fallback}
 
 	// Act
 	got, err := resolver.FindDescriptorByName(fullName)
@@ -131,11 +130,11 @@ func TestFallback_FindDescriptorByName_FallsBackOnNotFound(t *testing.T) {
 	require.Equal(t, 1, fallback.findByNameCalls)
 }
 
-func TestFallback_ReturnsNotFoundWithoutResolvers(t *testing.T) {
+func TestFallbackReturnsNotFoundWithoutResolvers(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	resolver := &protoresolver.Fallback{}
+	resolver := &protoset.Fallback{}
 
 	// Act
 	_, fileErr := resolver.FindFileByPath("unknown.proto")

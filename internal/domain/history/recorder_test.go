@@ -8,7 +8,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 )
 
-func TestMemoryStore_Record_Unlimited(t *testing.T) {
+func TestMemoryStoreREcordUnlimited(t *testing.T) {
 	t.Parallel()
 
 	store := history.NewMemoryStore(0)
@@ -19,7 +19,7 @@ func TestMemoryStore_Record_Unlimited(t *testing.T) {
 	require.Len(t, store.All(), 2)
 }
 
-func TestMemoryStore_Record_WithLimit(t *testing.T) {
+func TestMemoryStoreREcordWithLimit(t *testing.T) {
 	t.Parallel()
 
 	// Each record is ~80-120 bytes as JSON; 200 total limit => expect 1-2 records after eviction
@@ -39,7 +39,7 @@ func TestMemoryStore_Record_WithLimit(t *testing.T) {
 	require.Contains(t, all[len(all)-1].Request, "i")
 }
 
-func TestMemoryStore_Filter_Combined(t *testing.T) {
+func TestMemoryStoreFIlterCombined(t *testing.T) {
 	t.Parallel()
 
 	store := &history.MemoryStore{}
@@ -65,7 +65,7 @@ func TestMemoryStore_Filter_Combined(t *testing.T) {
 	}
 }
 
-func TestMemoryStore_FilterSeq(t *testing.T) {
+func TestMemoryStoreFilterSeq(t *testing.T) {
 	t.Parallel()
 
 	store := &history.MemoryStore{}
@@ -82,7 +82,7 @@ func TestMemoryStore_FilterSeq(t *testing.T) {
 	require.Equal(t, 2, count)
 }
 
-func TestMemoryStore_Record_RedactsSensitiveKeys(t *testing.T) {
+func TestMemoryStoreREcordRedactsSensitiveKeys(t *testing.T) {
 	t.Parallel()
 
 	store := history.NewMemoryStore(0, history.WithRedactKeys([]string{"password", "token", "secret"}))
@@ -119,7 +119,7 @@ func TestMemoryStore_Record_RedactsSensitiveKeys(t *testing.T) {
 	require.Equal(t, "[REDACTED]", r.Response["secret"])
 }
 
-func TestMemoryStore_Record_RedactsInArrays(t *testing.T) {
+func TestMemoryStoreREcordRedactsInArrays(t *testing.T) {
 	t.Parallel()
 
 	store := history.NewMemoryStore(0, history.WithRedactKeys([]string{"password"}))
@@ -149,7 +149,7 @@ func TestMemoryStore_Record_RedactsInArrays(t *testing.T) {
 	require.Equal(t, "[REDACTED]", m1["password"])
 }
 
-func TestMemoryStore_Record_TruncatesLargeMessages(t *testing.T) {
+func TestMemoryStoreREcordTruncatesLargeMessages(t *testing.T) {
 	t.Parallel()
 
 	store := history.NewMemoryStore(0, history.WithMessageMaxBytes(50))
@@ -161,7 +161,7 @@ func TestMemoryStore_Record_TruncatesLargeMessages(t *testing.T) {
 	require.Equal(t, map[string]any{"_truncated": true}, all[0].Request)
 }
 
-func TestMemoryStore_FilterByMethod_BackwardCompat(t *testing.T) {
+func TestMemoryStoreFIlterByMethodBackwardCompat(t *testing.T) {
 	t.Parallel()
 
 	store := &history.MemoryStore{}

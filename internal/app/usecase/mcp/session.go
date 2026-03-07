@@ -3,7 +3,7 @@ package mcp
 import (
 	"net/http"
 
-	"github.com/bavix/gripmock/v3/internal/pkg/session"
+	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
 )
 
 func ApplyTransportSession(r *http.Request, toolName string, args map[string]any) map[string]any {
@@ -19,7 +19,7 @@ func ApplyTransportSession(r *http.Request, toolName string, args map[string]any
 		return args
 	}
 
-	if sessionID := session.FromRequest(r); sessionID != "" {
+	if sessionID := muxmiddleware.FromRequest(r); sessionID != "" {
 		args["session"] = sessionID
 	}
 

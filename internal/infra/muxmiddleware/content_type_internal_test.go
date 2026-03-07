@@ -8,26 +8,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestContentType_Basic(t *testing.T) {
+func TestContentTypeBasic(t *testing.T) {
 	t.Parallel()
 
 	// Test basic content type functionality
 	require.NotNil(t, "content type package exists")
 }
 
-func TestContentType_Empty(t *testing.T) {
+func TestContentTypeEmpty(t *testing.T) {
 	t.Parallel()
 	// Test empty content type case
 	require.NotNil(t, "content type package exists")
 }
 
-func TestContentType_Initialization(t *testing.T) {
+func TestContentTypeInitialization(t *testing.T) {
 	t.Parallel()
 	// Test content type initialization
 	require.NotNil(t, "content type package initialized")
 }
 
-func TestContentType_Middleware(t *testing.T) {
+func TestContentTypeMiddleware(t *testing.T) {
 	t.Parallel()
 	// Test ContentType middleware
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +47,7 @@ func TestContentType_Middleware(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
-func TestContentType_MiddlewareWithResponse(t *testing.T) {
+func TestContentTypeMiddlewareWithResponse(t *testing.T) {
 	t.Parallel()
 	// Test ContentType middleware with response body
 	var writeErr error
@@ -72,7 +72,7 @@ func TestContentType_MiddlewareWithResponse(t *testing.T) {
 	require.Equal(t, "test response", w.Body.String())
 }
 
-func TestContentType_MiddlewareWithExistingHeaders(t *testing.T) {
+func TestContentTypeMiddlewareWithExistingHeaders(t *testing.T) {
 	t.Parallel()
 	// Test ContentType middleware with existing headers
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +94,7 @@ func TestContentType_MiddlewareWithExistingHeaders(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
-func TestContentType_MiddlewareWithDifferentMethods(t *testing.T) {
+func TestContentTypeMiddlewareWithDifferentMethods(t *testing.T) {
 	t.Parallel()
 	// Test ContentType middleware with different HTTP methods
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

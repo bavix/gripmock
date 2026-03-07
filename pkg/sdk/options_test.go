@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_deriveRestURLFromGrpcAddr(t *testing.T) {
+func TestDeriveRestUrlFromGrpcAddr(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {

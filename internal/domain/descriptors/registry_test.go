@@ -13,7 +13,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 )
 
-//nolint:ireturn
 func mustFileDesc(t *testing.T, protoPath string) protoreflect.FileDescriptor {
 	t.Helper()
 
@@ -29,7 +28,7 @@ func mustFileDesc(t *testing.T, protoPath string) protoreflect.FileDescriptor {
 	return fileDesc
 }
 
-func TestRegistry_Register_UnregisterByPath(t *testing.T) {
+func TestRegistryREgisterUnregisterByPath(t *testing.T) {
 	t.Parallel()
 
 	reg := descriptors.NewRegistry()
@@ -47,7 +46,7 @@ func TestRegistry_Register_UnregisterByPath(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestRegistry_UnregisterByService(t *testing.T) {
+func TestRegistryUnregisterByService(t *testing.T) {
 	t.Parallel()
 
 	reg := descriptors.NewRegistry()
@@ -64,7 +63,7 @@ func TestRegistry_UnregisterByService(t *testing.T) {
 	require.Equal(t, 0, n)
 }
 
-func TestRegistry_RangeFiles(t *testing.T) {
+func TestRegistryRangeFiles(t *testing.T) {
 	t.Parallel()
 
 	reg := descriptors.NewRegistry()
@@ -94,7 +93,7 @@ func TestRegistry_RangeFiles(t *testing.T) {
 	require.Equal(t, 0, count)
 }
 
-func TestRegistry_Register_ReplacesExisting(t *testing.T) {
+func TestRegistryREgisterReplacesExisting(t *testing.T) {
 	t.Parallel()
 
 	reg := descriptors.NewRegistry()
@@ -106,7 +105,7 @@ func TestRegistry_Register_ReplacesExisting(t *testing.T) {
 	require.Len(t, reg.Paths(), 1)
 }
 
-func TestRegistry_ServiceIDs(t *testing.T) {
+func TestRegistryServiceIDs(t *testing.T) {
 	t.Parallel()
 
 	reg := descriptors.NewRegistry()

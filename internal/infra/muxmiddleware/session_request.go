@@ -1,9 +1,11 @@
-package session
+package muxmiddleware
 
 import (
 	"context"
 	"net/http"
 	"strings"
+
+	"github.com/bavix/gripmock/v3/internal/infra/session"
 )
 
 const (
@@ -32,13 +34,14 @@ func ConsumeRequest(r *http.Request) *http.Request {
 		return r
 	}
 
-	Touch(v)
+	session.Touch(v)
 
 	r.Header.Del(HeaderName)
 
 	return r.WithContext(WithContext(r.Context(), v))
 }
 
+// FromRequest extracts session ID from request context or headers.
 func FromRequest(r *http.Request) string {
 	if r == nil {
 		return ""

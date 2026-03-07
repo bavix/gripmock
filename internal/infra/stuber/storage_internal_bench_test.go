@@ -1,4 +1,4 @@
-package stuber //nolint:testpackage
+package stuber //nolint:testpackage // Uses internal functions
 
 import (
 	"iter"

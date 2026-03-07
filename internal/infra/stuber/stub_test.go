@@ -1,4 +1,4 @@
-package stuber //nolint:testpackage
+package stuber_test
 
 import (
 	"encoding/json"
@@ -9,14 +9,15 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
-func TestStub_Methods(t *testing.T) {
+func TestStubMethods(t *testing.T) {
 	t.Parallel()
 
 	id := uuid.New()
-	stub := &Stub{
+	stub := &stuber.Stub{
 		ID:       id,
 		Service:  "TestService",
 		Method:   "TestMethod",
@@ -29,10 +30,10 @@ func TestStub_Methods(t *testing.T) {
 	require.Equal(t, 10, stub.Score())
 }
 
-func TestInputData_Methods(t *testing.T) {
+func TestInputDataMethods(t *testing.T) {
 	t.Parallel()
 
-	inputData := InputData{
+	inputData := stuber.InputData{
 		IgnoreArrayOrder: true,
 		Equals:           map[string]any{"key1": "value1"},
 		Contains:         map[string]any{"key2": "value2"},
@@ -44,10 +45,10 @@ func TestInputData_Methods(t *testing.T) {
 	require.Equal(t, map[string]any{"key3": "value3"}, inputData.GetMatches())
 }
 
-func TestInputHeader_Methods(t *testing.T) {
+func TestInputHeaderMethods(t *testing.T) {
 	t.Parallel()
 
-	inputHeader := InputHeader{
+	inputHeader := stuber.InputHeader{
 		Equals:   map[string]any{"header1": "value1"},
 		Contains: map[string]any{"header2": "value2"},
 		Matches:  map[string]any{"header3": "value3"},
@@ -59,19 +60,19 @@ func TestInputHeader_Methods(t *testing.T) {
 	require.Equal(t, 3, inputHeader.Len())
 }
 
-func TestInputHeader_Len_Empty(t *testing.T) {
+func TestInputHeaderLenEmpty(t *testing.T) {
 	t.Parallel()
 
-	inputHeader := InputHeader{}
+	inputHeader := stuber.InputHeader{}
 
 	require.Equal(t, 0, inputHeader.Len())
 }
 
-func TestOutput_Fields(t *testing.T) {
+func TestOutputFields(t *testing.T) {
 	t.Parallel()
 
 	code := codes.OK
-	output := Output{
+	output := stuber.Output{
 		Headers: map[string]string{"header1": "value1"},
 		Data:    map[string]any{"data1": "value1"},
 		Stream:  []any{"message1", "message2", "message3"},
@@ -88,10 +89,10 @@ func TestOutput_Fields(t *testing.T) {
 	require.Equal(t, 100, int(output.Delay))
 }
 
-func TestOutput_Fields_EmptyStream(t *testing.T) {
+func TestOutputFieldsEmptyStream(t *testing.T) {
 	t.Parallel()
 
-	output := Output{
+	output := stuber.Output{
 		Headers: map[string]string{"header1": "value1"},
 		Data:    map[string]any{"data1": "value1"},
 		// Stream field is not set (should be nil)
@@ -102,10 +103,10 @@ func TestOutput_Fields_EmptyStream(t *testing.T) {
 	require.Nil(t, output.Stream)
 }
 
-func TestOutput_Fields_OptionalDelay(t *testing.T) {
+func TestOutputFieldsOptionalDelay(t *testing.T) {
 	t.Parallel()
 
-	output := Output{
+	output := stuber.Output{
 		Headers: map[string]string{"header1": "value1"},
 		Data:    map[string]any{"data1": "value1"},
 		// Delay field is not set (should be zero value)
@@ -116,10 +117,10 @@ func TestOutput_Fields_OptionalDelay(t *testing.T) {
 	require.Equal(t, types.Duration(0), output.Delay)
 }
 
-func TestOutput_Delay_JSONSerialization(t *testing.T) {
+func TestOutputDelayJsonSerialization(t *testing.T) {
 	t.Parallel()
 	// Test JSON serialization with delay
-	output := Output{
+	output := stuber.Output{
 		Headers: map[string]string{"content-type": "application/json"},
 		Data:    map[string]any{"message": "Hello World"},
 		Delay:   types.Duration(100 * time.Millisecond),
@@ -130,7 +131,7 @@ func TestOutput_Delay_JSONSerialization(t *testing.T) {
 	require.Contains(t, string(jsonData), `"delay":"100ms"`)
 
 	// Test JSON deserialization with delay
-	var decodedOutput Output
+	var decodedOutput stuber.Output
 
 	err = json.Unmarshal([]byte(`{"headers":{"content-type":"application/json"},"data":{"message":"Hello World"},"delay":"200ms"}`),
 		&decodedOutput)

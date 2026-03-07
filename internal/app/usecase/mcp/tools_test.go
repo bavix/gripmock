@@ -8,7 +8,7 @@ import (
 	mcpusecase "github.com/bavix/gripmock/v3/internal/app/usecase/mcp"
 )
 
-func TestListTools_ContainsAllExpectedTools(t *testing.T) {
+func TestListToolsContainsAllExpectedTools(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -42,7 +42,7 @@ func TestListTools_ContainsAllExpectedTools(t *testing.T) {
 	}
 }
 
-func TestListTools_DebugCallRequiresService(t *testing.T) {
+func TestListToolsDebugCallRequiresService(t *testing.T) {
 	t.Parallel()
 
 	// Act

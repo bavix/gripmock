@@ -9,25 +9,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLogger_Basic(t *testing.T) {
+func TestLoggerBasic(t *testing.T) {
 	t.Parallel()
 	// Test basic logger functionality
 	require.NotNil(t, "logger package exists")
 }
 
-func TestLogger_Empty(t *testing.T) {
+func TestLoggerEmpty(t *testing.T) {
 	t.Parallel()
 	// Test empty logger case
 	require.NotNil(t, "logger package exists")
 }
 
-func TestLogger_Initialization(t *testing.T) {
+func TestLoggerInitialization(t *testing.T) {
 	t.Parallel()
 	// Test logger initialization
 	require.NotNil(t, "logger package initialized")
 }
 
-func TestLogger_RequestLogger(t *testing.T) {
+func TestLoggerRequestLogger(t *testing.T) {
 	t.Parallel()
 	// Test RequestLogger middleware
 	var writeErr error
@@ -51,7 +51,7 @@ func TestLogger_RequestLogger(t *testing.T) {
 	require.Equal(t, "test response", w.Body.String())
 }
 
-func TestLogger_ResponseWriter(t *testing.T) {
+func TestLoggerResponseWriter(t *testing.T) {
 	t.Parallel()
 	// Test responseWriter struct
 	w := httptest.NewRecorder()
@@ -62,7 +62,7 @@ func TestLogger_ResponseWriter(t *testing.T) {
 	require.Equal(t, 0, rw.bytesWritten)
 }
 
-func TestLogger_RequestLoggerWithBody(t *testing.T) {
+func TestLoggerRequestLoggerWithBody(t *testing.T) {
 	t.Parallel()
 	// Test RequestLogger with request body
 	var writeErr error
@@ -88,7 +88,7 @@ func TestLogger_RequestLoggerWithBody(t *testing.T) {
 	require.Equal(t, "test response", w.Body.String())
 }
 
-func TestLogger_RequestLoggerWithInvalidJSON(t *testing.T) {
+func TestLoggerRequestLoggerWithInvalidJSON(t *testing.T) {
 	t.Parallel()
 	// Test RequestLogger with invalid JSON body
 	var writeErr error
@@ -114,7 +114,7 @@ func TestLogger_RequestLoggerWithInvalidJSON(t *testing.T) {
 	require.Equal(t, "test response", w.Body.String())
 }
 
-func TestLogger_RequestLoggerWithEmptyBody(t *testing.T) {
+func TestLoggerRequestLoggerWithEmptyBody(t *testing.T) {
 	t.Parallel()
 	// Test RequestLogger with empty body
 	var writeErr error

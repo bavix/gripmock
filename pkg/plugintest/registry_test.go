@@ -34,7 +34,7 @@ func TestNewPlugin(t *testing.T) {
 	require.Equal(t, 42, out)
 }
 
-func TestRegistry_AddPluginAndLookup(t *testing.T) {
+func TestRegistryAddPluginAndLookup(t *testing.T) {
 	t.Parallel()
 
 	reg := plugintest.NewRegistry()

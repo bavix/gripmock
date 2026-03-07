@@ -20,7 +20,7 @@ const (
 	mcpLeakEventuallyInterval = 20 * time.Millisecond
 )
 
-func TestMcpMessage_NoGoroutineLeak_OnNotifications(t *testing.T) {
+func TestMcpMessageNOGoroutineLeakOnNotifications(t *testing.T) {
 	t.Parallel()
 
 	budgerigar := stuber.NewBudgerigar(features.New())

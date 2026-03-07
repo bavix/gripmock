@@ -99,7 +99,7 @@ func (m *mockFullServerStream) SendHeader(md metadata.MD) error {
 func (m *mockFullServerStream) SetTrailer(md metadata.MD) {
 }
 
-func TestHandleServerStream_WithArrayStream(t *testing.T) {
+func TestHandleServerStreamWithArrayStream(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -132,7 +132,7 @@ func TestHandleServerStream_WithArrayStream(t *testing.T) {
 	require.Len(t, stream.sentMessages, 2)
 }
 
-func TestHandleServerStream_WithNonArrayStream(t *testing.T) {
+func TestHandleServerStreamWithNonArrayStream(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -162,7 +162,7 @@ func TestHandleServerStream_WithNonArrayStream(t *testing.T) {
 	require.Len(t, stream.sentMessages, 1)
 }
 
-func TestHandleServerStream_WithHeaders(t *testing.T) {
+func TestHandleServerStreamWithHeaders(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -202,7 +202,7 @@ func TestHandleServerStream_WithHeaders(t *testing.T) {
 	require.Equal(t, "test", stream.headers.Get("x-response")[0])
 }
 
-func TestHandleServerStream_WithError(t *testing.T) {
+func TestHandleServerStreamWithError(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -235,7 +235,7 @@ func TestHandleServerStream_WithError(t *testing.T) {
 	require.Contains(t, err.Error(), "test error")
 }
 
-func TestHandleServerStream_EOF(t *testing.T) {
+func TestHandleServerStreamEOF(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -246,7 +246,7 @@ func TestHandleServerStream_EOF(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestHandleServerStream_RecvError(t *testing.T) {
+func TestHandleServerStreamRecvError(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -258,7 +258,7 @@ func TestHandleServerStream_RecvError(t *testing.T) {
 	require.Contains(t, err.Error(), "failed to receive message")
 }
 
-func TestHandleServerStream_NotFound(t *testing.T) {
+func TestHandleServerStreamNotFound(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -271,10 +271,10 @@ func TestHandleServerStream_NotFound(t *testing.T) {
 
 	err := mocker.handleServerStream(stream)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to find response")
+	require.Contains(t, err.Error(), "Can't find stub")
 }
 
-func TestHandleServerStream_EmptyStream(t *testing.T) {
+func TestHandleServerStreamEmptyStream(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -304,7 +304,7 @@ func TestHandleServerStream_EmptyStream(t *testing.T) {
 	require.Empty(t, stream.sentMessages)
 }
 
-func TestHandleNonArrayStreamData_SendsMessages(t *testing.T) {
+func TestHandleNonArrayStreamDataSendsMessages(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -326,7 +326,7 @@ func TestHandleNonArrayStreamData_SendsMessages(t *testing.T) {
 	require.Len(t, stream.sentMessages, 1)
 }
 
-func TestHandleNonArrayStreamData_WithDelay(t *testing.T) {
+func TestHandleNonArrayStreamDataWithDelay(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -352,7 +352,7 @@ func TestHandleNonArrayStreamData_WithDelay(t *testing.T) {
 	require.GreaterOrEqual(t, duration, 10*time.Millisecond)
 }
 
-func TestHandleNonArrayStreamData_WithTemplates(t *testing.T) {
+func TestHandleNonArrayStreamDataWithTemplates(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -376,7 +376,7 @@ func TestHandleNonArrayStreamData_WithTemplates(t *testing.T) {
 	require.Len(t, stream.sentMessages, 1)
 }
 
-func TestHandleNonArrayStreamData_ContextCancelled(t *testing.T) {
+func TestHandleNonArrayStreamDataContextCancelled(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -401,7 +401,7 @@ func TestHandleNonArrayStreamData_ContextCancelled(t *testing.T) {
 	require.ErrorIs(t, err, context.Canceled)
 }
 
-func TestHandleNonArrayStreamData_WithError(t *testing.T) {
+func TestHandleNonArrayStreamDataWithError(t *testing.T) {
 	t.Parallel()
 
 	mocker := createTestMocker(t)
@@ -424,7 +424,7 @@ func TestHandleNonArrayStreamData_WithError(t *testing.T) {
 	require.Contains(t, err.Error(), "test error")
 }
 
-func TestReceiveStreamMessage_Success(t *testing.T) {
+func TestReceiveStreamMessageSuccess(t *testing.T) {
 	t.Parallel()
 
 	msg := dynamicpb.NewMessage((&structpb.Struct{}).ProtoReflect().Descriptor())
@@ -438,7 +438,7 @@ func TestReceiveStreamMessage_Success(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestReceiveStreamMessage_Error(t *testing.T) {
+func TestReceiveStreamMessageError(t *testing.T) {
 	t.Parallel()
 
 	msg := dynamicpb.NewMessage((&structpb.Struct{}).ProtoReflect().Descriptor())
@@ -452,7 +452,7 @@ func TestReceiveStreamMessage_Error(t *testing.T) {
 	require.Contains(t, err.Error(), "failed to receive message")
 }
 
-func TestProcessHeaders_EmptyMetadata(t *testing.T) {
+func TestProcessHeadersEmptyMetadata(t *testing.T) {
 	t.Parallel()
 
 	md := metadata.New(map[string]string{})
@@ -460,7 +460,7 @@ func TestProcessHeaders_EmptyMetadata(t *testing.T) {
 	require.Nil(t, result)
 }
 
-func TestProcessHeaders_WithHeaders(t *testing.T) {
+func TestProcessHeadersWithHeaders(t *testing.T) {
 	t.Parallel()
 
 	md := metadata.New(map[string]string{
@@ -475,7 +475,7 @@ func TestProcessHeaders_WithHeaders(t *testing.T) {
 	require.NotContains(t, result, ":authority")
 }
 
-func TestProcessHeaders_ExcludedHeaders(t *testing.T) {
+func TestProcessHeadersExcludedHeaders(t *testing.T) {
 	t.Parallel()
 
 	md := metadata.New(map[string]string{
@@ -494,7 +494,7 @@ func TestProcessHeaders_ExcludedHeaders(t *testing.T) {
 	require.Equal(t, "value", result["x-custom"])
 }
 
-func TestProcessHeaders_MultipleValues(t *testing.T) {
+func TestProcessHeadersMultipleValues(t *testing.T) {
 	t.Parallel()
 
 	md := metadata.Pairs(
@@ -507,7 +507,7 @@ func TestProcessHeaders_MultipleValues(t *testing.T) {
 	require.Equal(t, "value1;value2;value3", result["x-header"])
 }
 
-func TestSessionFromMetadata_Empty(t *testing.T) {
+func TestSessionFromMetadataEmpty(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -520,7 +520,7 @@ func TestSessionFromMetadata_Empty(t *testing.T) {
 	require.Empty(t, result)
 }
 
-func TestSessionFromMetadata_FirstNonEmptyTrimmed(t *testing.T) {
+func TestSessionFromMetadataFirstNonEmptyTrimmed(t *testing.T) {
 	t.Parallel()
 
 	md := metadata.Pairs(
@@ -535,7 +535,7 @@ func TestSessionFromMetadata_FirstNonEmptyTrimmed(t *testing.T) {
 	require.Equal(t, "test-session", result)
 }
 
-func TestSessionFromMetadata_HeaderAbsent(t *testing.T) {
+func TestSessionFromMetadataHeaderAbsent(t *testing.T) {
 	t.Parallel()
 
 	md := metadata.Pairs("x-other", "value")
@@ -550,7 +550,7 @@ func TestSessionFromMetadata_HeaderAbsent(t *testing.T) {
 // TestConvertToMap_Proto3DefaultValues verifies that scalar fields with default values (e.g. 0.0)
 // are included in the result. Proto3 omits default values on the wire, so Range skips them;
 // we iterate over the descriptor to include all fields for stub matching.
-func TestConvertToMap_Proto3DefaultValues(t *testing.T) {
+func TestConvertToMapProto3DefaultValues(t *testing.T) {
 	t.Parallel()
 
 	t.Run("wrapperspb_DoubleValue", func(t *testing.T) {
