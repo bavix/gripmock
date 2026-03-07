@@ -10,8 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GRPCTESTIFY_VERSION: "1.0.0"
-  GRPCURL_VERSION: "1.9.3"
+  GRPCTESTIFY_VERSION: "1.4.0"
   GO_VERSION: "1.26"
 
 jobs:
@@ -61,15 +60,18 @@ jobs:
         run: go test ./...
 
   binary-smoke-tests:
-    name: "Binary Smoke (${{ matrix.os }})"
+    name: "Binary Smoke (${{ matrix.platform }})"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: macos-latest
+            platform: macos
+          - os: windows-latest
+            platform: windows
     steps:
       - uses: actions/checkout@v6
       - name: Setup Go
@@ -79,7 +81,7 @@ jobs:
           cache: true
 
       - name: Build and smoke-test binary (Linux/macOS)
-        if: matrix.os != 'windows-latest'
+        if: matrix.platform != 'windows'
         run: |
           bin="$RUNNER_TEMP/gripmock"
           go build -o "$bin" .
@@ -100,7 +102,7 @@ jobs:
           trap - EXIT
 
       - name: Build and smoke-test binary (Windows)
-        if: matrix.os == 'windows-latest'
+        if: matrix.platform == 'windows'
         shell: pwsh
         run: |
           $bin = Join-Path $env:RUNNER_TEMP "gripmock.exe"
@@ -149,8 +151,23 @@ jobs:
         run: goreleaser build --snapshot --clean
 
   e2e-tests:
-    name: "E2E Tests"
-    runs-on: ubuntu-latest
+    name: "E2E Tests (${{ matrix.platform }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            collect_coverage: true
+          - os: macos-latest
+            platform: macos
+            collect_coverage: false
+          - os: windows-latest
+            platform: windows
+            collect_coverage: false
+    env:
+      COLLECT_COVERAGE: ${{ matrix.collect_coverage }}
     steps:
       - uses: actions/checkout@v6
       - name: Setup Go
@@ -163,87 +180,115 @@ jobs:
         uses: actions/cache@v5
         with:
           path: |
-            grpcurl
-            grpctestify.sh
             grpctestify
-            ${{ env.HOME }}/.cargo
-          key: deps-cache-${{ runner.os }}-grpcurl-${{ env.GRPCURL_VERSION }}-grpctestify-rust-v1
+            grpctestify.exe
+          key: deps-cache-${{ runner.os }}-grpctestify-rust-${{ env.GRPCTESTIFY_VERSION }}
 
-      - name: Install dependencies
+      - name: Install dependencies (Linux/macOS)
+        if: matrix.platform != 'windows'
         run: |
-          if ! which jq >/dev/null 2>&1; then
-            sudo apt-get update && sudo apt-get install -y jq
-          fi
-
-          if [ ! -f grpcurl ]; then
-            curl -sSL "https://github.com/fullstorydev/grpcurl/releases/download/v${{ env.GRPCURL_VERSION }}/grpcurl_${{ env.GRPCURL_VERSION }}_linux_x86_64.tar.gz" | tar -xz
-            chmod +x grpcurl
-          fi
           pwd >> "$GITHUB_PATH"
 
-          if [ ! -f grpctestify.sh ]; then
-            curl -sSL https://github.com/gripmock/grpctestify/releases/download/v${{ env.GRPCTESTIFY_VERSION }}/grpctestify.sh -o grpctestify.sh
-            chmod +x grpctestify.sh
+          if [ ! -f grpctestify ]; then
+            case "$RUNNER_OS/$RUNNER_ARCH" in
+              Linux/X64) grpctestify_asset="grpctestify-linux-amd64.tar.gz" ;;
+              Linux/ARM64) grpctestify_asset="grpctestify-linux-arm64.tar.gz" ;;
+              macOS/X64) grpctestify_asset="grpctestify-macos-amd64.tar.gz" ;;
+              macOS/ARM64) grpctestify_asset="grpctestify-macos-arm64.tar.gz" ;;
+              *) echo "Unsupported runner: $RUNNER_OS/$RUNNER_ARCH"; exit 1 ;;
+            esac
+            curl -sSL "https://github.com/gripmock/grpctestify-rust/releases/download/v${{ env.GRPCTESTIFY_VERSION }}/$grpctestify_asset" | tar -xz
+            chmod +x grpctestify
           fi
 
-          echo "Building grpctestify (Rust) from source..."
-          if ! command -v cargo &> /dev/null; then
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-            source "$HOME/.cargo/env"
-          fi
-          if [ ! -d grpctestify-rust ]; then
-            git clone --branch develop --depth 1 https://github.com/gripmock/grpctestify-rust.git
-          fi
-          cd grpctestify-rust
-          cargo build --release
-          cp target/release/grpctestify ..
-          cd ..
-          chmod +x grpctestify
-
-      - name: Build GripMock Server with coverage
+      - name: Install dependencies (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
         run: |
-          go build -cover -covermode=atomic -o /tmp/gripmock .
-          chmod +x /tmp/gripmock
+          if (-not (Test-Path "grpctestify.exe")) {
+            $grpctestifyZip = if ($env:RUNNER_ARCH -eq "ARM64") { "grpctestify-windows-arm64.zip" } else { "grpctestify-windows-amd64.zip" }
+            Invoke-WebRequest -Uri "https://github.com/gripmock/grpctestify-rust/releases/download/v${{ env.GRPCTESTIFY_VERSION }}/$grpctestifyZip" -OutFile "grpctestify.zip"
+            Expand-Archive -Path "grpctestify.zip" -DestinationPath "." -Force
+            Remove-Item "grpctestify.zip" -Force
+          }
 
-      - name: Start GripMock Server
+          Add-Content -Path $env:GITHUB_PATH -Value (Get-Location)
+
+      - name: Run E2E suite (Linux/macOS)
+        if: matrix.platform != 'windows'
         run: |
           find . -name "*.proto.src" -type f -delete
-          mkdir -p /tmp/cover-e2e
-          GOCOVERDIR=/tmp/cover-e2e /tmp/gripmock --stub=examples examples &
-          echo $! > /tmp/gripmock.pid
 
-      - name: Run gripmock check with coverage
-        run: |
-          mkdir -p /tmp/cover-check
-          GOCOVERDIR=/tmp/cover-check /tmp/gripmock check --timeout=60s --silent
+          bin="$RUNNER_TEMP/gripmock"
+          if [ "$COLLECT_COVERAGE" = "true" ]; then
+            go build -cover -covermode=atomic -o "$bin" .
+            mkdir -p /tmp/cover-e2e /tmp/cover-check
+            GOCOVERDIR=/tmp/cover-e2e "$bin" --stub=examples examples &
+          else
+            go build -o "$bin" .
+            "$bin" --stub=examples examples &
+          fi
+          pid=$!
 
-      - name: Run examples (grpctestify.sh)
-        run: |
-          ./grpctestify.sh examples/
+          cleanup() {
+            kill -INT "$pid" 2>/dev/null || true
+            wait "$pid" 2>/dev/null || true
+          }
 
-      - name: Run examples (grpctestify Rust)
-        run: |
+          trap cleanup EXIT
+          if [ "$COLLECT_COVERAGE" = "true" ]; then
+            GOCOVERDIR=/tmp/cover-check "$bin" check --timeout=60s --silent
+          else
+            "$bin" check --timeout=60s --silent
+          fi
           ./grpctestify examples/
 
-      - name: Stop GripMock Server gracefully
+      - name: Run E2E suite (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
         run: |
-          pid=$(cat /tmp/gripmock.pid 2>/dev/null) || true
-          if [ -n "$pid" ]; then
-            kill -INT "$pid" 2>/dev/null || true
-            for _ in $(seq 1 60); do
-              kill -0 "$pid" 2>/dev/null || break
-              sleep 1
-            done
-          fi
-          rm -f /tmp/gripmock.pid
+          Get-ChildItem -Path . -Recurse -Filter *.proto.src -File | Remove-Item -Force
+
+          $bin = Join-Path $env:RUNNER_TEMP "gripmock.exe"
+          if ($env:COLLECT_COVERAGE -eq "true") {
+            go build -cover -covermode=atomic -o $bin .
+            New-Item -ItemType Directory -Path "/tmp/cover-e2e" -Force | Out-Null
+            New-Item -ItemType Directory -Path "/tmp/cover-check" -Force | Out-Null
+            $env:GOCOVERDIR = "/tmp/cover-e2e"
+            $proc = Start-Process -FilePath $bin -ArgumentList "--stub=examples", "examples" -PassThru
+            Remove-Item Env:GOCOVERDIR
+          }
+          else {
+            go build -o $bin .
+            $proc = Start-Process -FilePath $bin -ArgumentList "--stub=examples", "examples" -PassThru
+          }
+
+          try {
+            if ($env:COLLECT_COVERAGE -eq "true") {
+              $env:GOCOVERDIR = "/tmp/cover-check"
+              & $bin check --timeout=60s --silent
+              Remove-Item Env:GOCOVERDIR
+            }
+            else {
+              & $bin check --timeout=60s --silent
+            }
+            .\grpctestify.exe examples\
+          }
+          finally {
+            if ($null -ne $proc) {
+              Stop-Process -Id $proc.Id -ErrorAction SilentlyContinue
+            }
+          }
 
       - name: Upload e2e coverage
+        if: matrix.collect_coverage
         uses: actions/upload-artifact@v7
         with:
           name: coverage-e2e
           path: /tmp/cover-e2e
 
       - name: Upload check coverage
+        if: matrix.collect_coverage
         uses: actions/upload-artifact@v7
         with:
           name: coverage-check
