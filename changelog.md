@@ -1,5 +1,28 @@
 # Changelog
 
+## v3.8.0 - 2026-03-07
+
+### What's Changed
+
+* Remove deadcode by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/762
+* go mod tidy by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/763
+* Bump goreleaser/goreleaser-action from 6 to 7 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/764
+* Bump github.com/caarlos0/env/v11 from 11.3.1 to 11.4.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/765
+* Bump rollup from 4.53.3 to 4.59.0 in the npm_and_yarn group across 1 directory by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/766
+* Bump actions/download-artifact from 7 to 8 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/768
+* Bump actions/upload-artifact from 6 to 7 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/767
+* Bump github.com/oapi-codegen/runtime from 1.1.2 to 1.2.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/769
+* sonarqube fixes & patch errors by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/778
+* Rewriting grpctestify from Bash to Rust by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/761
+* Bump docker/metadata-action from 5 to 6 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/775
+* Bump docker/build-push-action from 6 to 7 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/777
+* Bump docker/setup-buildx-action from 3 to 4 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/776
+* Bump docker/login-action from 3 to 4 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/774
+* Bump docker/setup-qemu-action from 3 to 4 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/773
+* Add support error details by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/779
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.7.7...v3.8.0
+
 ## v3.7.7 - 2026-02-19
 
 ### What's Changed
