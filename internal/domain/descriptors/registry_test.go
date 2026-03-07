@@ -13,7 +13,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 )
 
-func mustFileDesc(t *testing.T, protoPath string) protoreflect.FileDescriptor {
+func mustFileDesc(t *testing.T, protoPath string) protoreflect.FileDescriptor { //nolint:ireturn
 	t.Helper()
 
 	ctx := t.Context()

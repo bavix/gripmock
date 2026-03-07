@@ -6,6 +6,74 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type filterDefaultValuesCase struct {
+	name     string
+	input    map[string]any
+	expected map[string]any
+}
+
+type convertMapCase struct {
+	name     string
+	input    map[string]any
+	handling DefaultValueHandling
+	expected map[string]any
+}
+
+func filterDefaultValuesCases() []filterDefaultValuesCase {
+	return []filterDefaultValuesCase{
+		{name: "nil input", input: nil, expected: nil},
+		{name: "empty input", input: map[string]any{}, expected: map[string]any{}},
+		{
+			name:     "all defaults",
+			input:    map[string]any{"field1": "", "field2": 0, "field3": false, "field4": "ENUM_UNSPECIFIED"},
+			expected: map[string]any{},
+		},
+		{
+			name:     "no defaults",
+			input:    map[string]any{"field1": "value", "field2": 42, "field3": true},
+			expected: map[string]any{"field1": "value", "field2": 42, "field3": true},
+		},
+		{
+			name: "mixed values",
+			input: map[string]any{
+				"value":     1000,
+				"to_unit":   "METERS",
+				"from_unit": "LENGTH_UNIT_UNSPECIFIED",
+				"empty":     "",
+				"zero":      0,
+				"non_zero":  5,
+			},
+			expected: map[string]any{"value": 1000, "to_unit": "METERS", "non_zero": 5},
+		},
+		{
+			name:     "nested structures preserved",
+			input:    map[string]any{"nested": map[string]any{"key": "value"}, "empty": "", "list": []any{1, 2, 3}},
+			expected: map[string]any{"nested": map[string]any{"key": "value"}, "list": []any{1, 2, 3}},
+		},
+	}
+}
+
+func convertMapCases() []convertMapCase {
+	return []convertMapCase{
+		{name: "nil input with IncludeDefaults", input: nil, handling: IncludeDefaults, expected: nil},
+		{name: "nil input with ExcludeDefaults", input: nil, handling: ExcludeDefaults, expected: nil},
+		{
+			name:     "IncludeDefaults preserves all fields",
+			input:    map[string]any{"value": 1000, "to_unit": "METERS", "from_unit": "LENGTH_UNIT_UNSPECIFIED", "empty": "", "zero": 0},
+			handling: IncludeDefaults,
+			expected: map[string]any{"value": 1000, "to_unit": "METERS", "from_unit": "LENGTH_UNIT_UNSPECIFIED", "empty": "", "zero": 0},
+		},
+		{
+			name:     "ExcludeDefaults filters default values",
+			input:    map[string]any{"value": 1000, "to_unit": "METERS", "from_unit": "LENGTH_UNIT_UNSPECIFIED", "empty": "", "zero": 0},
+			handling: ExcludeDefaults,
+			expected: map[string]any{"value": 1000, "to_unit": "METERS"},
+		},
+		{name: "empty map with IncludeDefaults", input: map[string]any{}, handling: IncludeDefaults, expected: map[string]any{}},
+		{name: "empty map with ExcludeDefaults", input: map[string]any{}, handling: ExcludeDefaults, expected: map[string]any{}},
+	}
+}
+
 func TestIsDefaultValue(t *testing.T) {
 	t.Parallel()
 
@@ -63,75 +131,7 @@ func TestIsDefaultValue(t *testing.T) {
 func TestFilterDefaultValues(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		input    map[string]any
-		expected map[string]any
-	}{
-		{
-			name:     "nil input",
-			input:    nil,
-			expected: nil,
-		},
-		{
-			name:     "empty input",
-			input:    map[string]any{},
-			expected: map[string]any{},
-		},
-		{
-			name: "all defaults",
-			input: map[string]any{
-				"field1": "",
-				"field2": 0,
-				"field3": false,
-				"field4": "ENUM_UNSPECIFIED",
-			},
-			expected: map[string]any{},
-		},
-		{
-			name: "no defaults",
-			input: map[string]any{
-				"field1": "value",
-				"field2": 42,
-				"field3": true,
-			},
-			expected: map[string]any{
-				"field1": "value",
-				"field2": 42,
-				"field3": true,
-			},
-		},
-		{
-			name: "mixed values",
-			input: map[string]any{
-				"value":     1000,
-				"to_unit":   "METERS",
-				"from_unit": "LENGTH_UNIT_UNSPECIFIED",
-				"empty":     "",
-				"zero":      0,
-				"non_zero":  5,
-			},
-			expected: map[string]any{
-				"value":    1000,
-				"to_unit":  "METERS",
-				"non_zero": 5,
-			},
-		},
-		{
-			name: "nested structures preserved",
-			input: map[string]any{
-				"nested": map[string]any{"key": "value"},
-				"empty":  "",
-				"list":   []any{1, 2, 3},
-			},
-			expected: map[string]any{
-				"nested": map[string]any{"key": "value"},
-				"list":   []any{1, 2, 3},
-			},
-		},
-	}
-
-	for _, tt := range tests {
+	for _, tt := range filterDefaultValuesCases() {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -165,72 +165,7 @@ func TestFilterDefaultValuesDoesNotModifyOriginal(t *testing.T) {
 func TestConvertMap(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name     string
-		input    map[string]any
-		handling DefaultValueHandling
-		expected map[string]any
-	}{
-		{
-			name:     "nil input with IncludeDefaults",
-			input:    nil,
-			handling: IncludeDefaults,
-			expected: nil,
-		},
-		{
-			name:     "nil input with ExcludeDefaults",
-			input:    nil,
-			handling: ExcludeDefaults,
-			expected: nil,
-		},
-		{
-			name: "IncludeDefaults preserves all fields",
-			input: map[string]any{
-				"value":     1000,
-				"to_unit":   "METERS",
-				"from_unit": "LENGTH_UNIT_UNSPECIFIED",
-				"empty":     "",
-				"zero":      0,
-			},
-			handling: IncludeDefaults,
-			expected: map[string]any{
-				"value":     1000,
-				"to_unit":   "METERS",
-				"from_unit": "LENGTH_UNIT_UNSPECIFIED",
-				"empty":     "",
-				"zero":      0,
-			},
-		},
-		{
-			name: "ExcludeDefaults filters default values",
-			input: map[string]any{
-				"value":     1000,
-				"to_unit":   "METERS",
-				"from_unit": "LENGTH_UNIT_UNSPECIFIED",
-				"empty":     "",
-				"zero":      0,
-			},
-			handling: ExcludeDefaults,
-			expected: map[string]any{
-				"value":   1000,
-				"to_unit": "METERS",
-			},
-		},
-		{
-			name:     "empty map with IncludeDefaults",
-			input:    map[string]any{},
-			handling: IncludeDefaults,
-			expected: map[string]any{},
-		},
-		{
-			name:     "empty map with ExcludeDefaults",
-			input:    map[string]any{},
-			handling: ExcludeDefaults,
-			expected: map[string]any{},
-		},
-	}
-
-	for _, tt := range tests {
+	for _, tt := range convertMapCases() {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 

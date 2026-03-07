@@ -62,7 +62,7 @@ input:
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result, err := convertor.Execute("test", []byte(tt.input))
+			result, err := convertor.Execute(t.Context(), "test", []byte(tt.input))
 			require.NoError(t, err)
 			require.JSONEq(t, tt.expected, string(result))
 		})
@@ -114,7 +114,7 @@ list:
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result, err := convertor.Execute("test", []byte(tt.input))
+			result, err := convertor.Execute(t.Context(), "test", []byte(tt.input))
 			require.NoError(t, err)
 			require.JSONEq(t, tt.expected, string(result))
 		})
@@ -131,7 +131,7 @@ input:
   equals:
     field: value
 `
-	result, err := convertor.Execute("test", []byte(input))
+	result, err := convertor.Execute(t.Context(), "test", []byte(input))
 	require.NoError(t, err)
 
 	// YAML should be converted to JSON
@@ -143,7 +143,7 @@ func TestEmptyInput(t *testing.T) {
 
 	convertor := yaml2json.New(nil)
 
-	result, err := convertor.Execute("test", []byte{})
+	result, err := convertor.Execute(t.Context(), "test", []byte{})
 	require.NoError(t, err)
 	// Empty YAML converts to null JSON
 	require.Contains(t, string(result), "null")
@@ -155,7 +155,7 @@ func TestWhitespaceOnly(t *testing.T) {
 	convertor := yaml2json.New(nil)
 
 	input := "   \n  \n  "
-	result, err := convertor.Execute("test", []byte(input))
+	result, err := convertor.Execute(t.Context(), "test", []byte(input))
 	require.NoError(t, err)
 
 	// Whitespace-only YAML converts to empty/null JSON

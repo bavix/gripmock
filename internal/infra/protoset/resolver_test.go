@@ -18,13 +18,13 @@ type fakeResolver struct {
 	findByNameCalls      int
 }
 
-func (f *fakeResolver) FindFileByPath(path string) (protoreflect.FileDescriptor, error) {
+func (f *fakeResolver) FindFileByPath(path string) (protoreflect.FileDescriptor, error) { //nolint:ireturn
 	f.findFileByPathCalls++
 
 	return f.findFileByPath(path)
 }
 
-func (f *fakeResolver) FindDescriptorByName(name protoreflect.FullName) (protoreflect.Descriptor, error) {
+func (f *fakeResolver) FindDescriptorByName(name protoreflect.FullName) (protoreflect.Descriptor, error) { //nolint:ireturn
 	f.findByNameCalls++
 
 	return f.findDescriptorByName(name)

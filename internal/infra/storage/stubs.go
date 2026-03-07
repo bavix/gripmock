@@ -201,7 +201,7 @@ func (s *Extender) isStubFile(filename string) bool {
 }
 
 func (s *Extender) readByFile(ctx context.Context, filePath string) {
-	stubs, err := s.readStub(filePath)
+	stubs, err := s.readStub(ctx, filePath)
 	if err != nil {
 		s.handleFileReadError(ctx, filePath, err)
 
@@ -319,14 +319,14 @@ func genID(stub *stuber.Stub, freeIDs uuid.UUIDs) (uuid.UUID, uuid.UUIDs) {
 	return uuid.New(), nil
 }
 
-func (s *Extender) readStub(path string) ([]*stuber.Stub, error) {
+func (s *Extender) readStub(ctx context.Context, path string) ([]*stuber.Stub, error) {
 	file, err := os.ReadFile(path) //nolint:gosec
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read file %s", path)
 	}
 
 	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
-		file, err = s.converter.Execute(path, file)
+		file, err = s.converter.Execute(ctx, path, file)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to unmarshal file %s", path)
 		}

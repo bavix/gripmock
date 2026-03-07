@@ -19,9 +19,7 @@ func newEngine(reg plugins.Registry) *engine {
 	return &engine{reg: reg}
 }
 
-func (e *engine) Execute(name string, data []byte) ([]byte, error) {
-	_ = name
-
+func (e *engine) Execute(ctx context.Context, name string, data []byte) ([]byte, error) {
 	// Check if data contains template markers
 	if !containsTemplateMarkers(data) {
 		return data, nil
@@ -29,7 +27,7 @@ func (e *engine) Execute(name string, data []byte) ([]byte, error) {
 
 	// Execute template functions at load time (for static templates)
 	// and escape runtime templates ({{.Request}}, {{.Headers}}, etc.) for later processing
-	executed := e.executeTemplates(data)
+	executed := e.executeTemplates(ctx, name, data)
 
 	return executed, nil
 }
@@ -45,9 +43,9 @@ func containsTemplateMarkers(data []byte) bool {
 var runtimeTemplatePattern = regexp.MustCompile(`\{\{[^}]*\.(Request|Headers|MessageIndex|Requests|State)[^}]*\}\}`)
 
 // executeTemplates executes static template functions at load time and escapes runtime templates.
-func (e *engine) executeTemplates(data []byte) []byte {
+func (e *engine) executeTemplates(ctx context.Context, name string, data []byte) []byte {
 	// Get template functions from registry
-	funcs := e.getTemplateFuncs()
+	funcs := e.getTemplateFuncs(ctx)
 
 	// Process line by line
 	lines := strings.Split(string(data), "\n")
@@ -67,7 +65,7 @@ func (e *engine) executeTemplates(data []byte) []byte {
 			result = append(result, escapeTemplateInLine(line))
 		} else {
 			// Execute static template functions at load time
-			executed := e.executeStaticTemplate(line, funcs)
+			executed := e.executeStaticTemplate(name, line, funcs)
 			result = append(result, executed)
 		}
 	}
@@ -76,16 +74,16 @@ func (e *engine) executeTemplates(data []byte) []byte {
 }
 
 // getTemplateFuncs returns template functions from the registry.
-func (e *engine) getTemplateFuncs() template.FuncMap {
+func (e *engine) getTemplateFuncs(ctx context.Context) template.FuncMap {
 	if e.reg == nil {
 		return template.FuncMap{}
 	}
 
-	return getFunctions(e.reg)
+	return getFunctions(ctx, e.reg)
 }
 
 // getFunctions returns template functions from the registry, wrapped for use with text/template.
-func getFunctions(reg plugins.Registry) template.FuncMap {
+func getFunctions(ctx context.Context, reg plugins.Registry) template.FuncMap {
 	raw := reg.Funcs()
 	out := make(template.FuncMap, len(raw))
 
@@ -94,7 +92,7 @@ func getFunctions(reg plugins.Registry) template.FuncMap {
 			out[name] = func(args ...any) (any, error) {
 				callArgs := normalizeArgs(args)
 
-				return typed(context.Background(), callArgs...)
+				return typed(ctx, callArgs...)
 			}
 
 			continue
@@ -128,7 +126,7 @@ func normalizeArgs(args []any) []any {
 }
 
 // executeStaticTemplate executes a static template function at load time.
-func (e *engine) executeStaticTemplate(line string, funcs template.FuncMap) string {
+func (e *engine) executeStaticTemplate(name, line string, funcs template.FuncMap) string {
 	if len(funcs) == 0 {
 		return escapeTemplateInLine(line)
 	}
@@ -136,7 +134,7 @@ func (e *engine) executeStaticTemplate(line string, funcs template.FuncMap) stri
 	// Extract and execute the template
 	content := extractTemplateContent(line)
 
-	tmpl, err := template.New("inline").Funcs(funcs).Parse(content)
+	tmpl, err := template.New(name).Funcs(funcs).Parse(content)
 	if err != nil {
 		return escapeTemplateInLine(line)
 	}

@@ -152,6 +152,7 @@ type GRPCServer struct {
 type grpcMocker struct {
 	budgerigar     *stuber.Budgerigar
 	templateEngine *template.Engine
+	errorFormatter *ErrorFormatter
 	recorder       history.Recorder
 
 	inputDesc  protoreflect.MessageDescriptor
@@ -356,7 +357,7 @@ func (m *grpcMocker) delay(ctx context.Context, delayDur types.Duration) error {
 	}
 }
 
-//nolint:nestif,cyclop
+//nolint:nestif,cyclop,funlen
 func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	inputMsg := dynamicpb.NewMessage(m.inputDesc)
 
@@ -375,16 +376,9 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 
 	result, err := m.budgerigar.FindByQuery(query)
 
-	// Handle both error and nil result cases with unified error formatting
-	if err != nil || (result != nil && result.Found() == nil) {
-		errorFormatter := NewErrorFormatter()
-
-		// Create empty result if we don't have one (error case)
-		if result == nil {
-			result = &stuber.Result{}
-		}
-
-		return status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundError(query, result).Error())
+	result, err = m.ensureServerStreamResult(query, result, err)
+	if err != nil {
+		return err
 	}
 
 	found := result.Found()
@@ -447,6 +441,22 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	}
 
 	return m.handleNonArrayStreamData(stream, found)
+}
+
+func (m *grpcMocker) ensureServerStreamResult(
+	query stuber.Query,
+	result *stuber.Result,
+	err error,
+) (*stuber.Result, error) {
+	if err == nil && (result == nil || result.Found() != nil) {
+		return result, nil
+	}
+
+	if result == nil {
+		result = &stuber.Result{}
+	}
+
+	return nil, status.Error(codes.NotFound, m.errorFormatter.FormatStubNotFoundError(query, result).Error())
 }
 
 //nolint:funlen
@@ -1239,6 +1249,7 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 	mocker := &grpcMocker{
 		budgerigar:      s.budgerigar,
 		templateEngine:  templateEngine,
+		errorFormatter:  NewErrorFormatter(),
 		recorder:        s.recorder,
 		inputDesc:       methodDesc.Input(),
 		outputDesc:      methodDesc.Output(),
@@ -1267,7 +1278,7 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 	return stream.SendMsg(resp)
 }
 
-func (s *GRPCServer) findMethodDescriptor(serviceName, methodName string) (protoreflect.MethodDescriptor, error) {
+func (s *GRPCServer) findMethodDescriptor(serviceName, methodName string) (protoreflect.MethodDescriptor, error) { //nolint:ireturn
 	if method := findMethodInGlobalFiles(serviceName, methodName); method != nil {
 		return method, nil
 	}
@@ -1305,7 +1316,7 @@ func (s *GRPCServer) findMethodDescriptor(serviceName, methodName string) (proto
 	return found, nil
 }
 
-func findMethodInGlobalFiles(serviceName, methodName string) protoreflect.MethodDescriptor {
+func findMethodInGlobalFiles(serviceName, methodName string) protoreflect.MethodDescriptor { //nolint:ireturn
 	var found protoreflect.MethodDescriptor
 
 	protoregistry.GlobalFiles.RangeFiles(func(file protoreflect.FileDescriptor) bool {
@@ -1400,11 +1411,11 @@ type dynamicDescriptorResolver struct {
 	dynamic *descriptors.Registry
 }
 
-func (r *dynamicDescriptorResolver) FindFileByPath(path string) (protoreflect.FileDescriptor, error) {
+func (r *dynamicDescriptorResolver) FindFileByPath(path string) (protoreflect.FileDescriptor, error) { //nolint:ireturn
 	return (&protosetinfra.Fallback{Primary: r.dynamicFiles(), Fallback: r.static}).FindFileByPath(path)
 }
 
-func (r *dynamicDescriptorResolver) FindDescriptorByName(name protoreflect.FullName) (protoreflect.Descriptor, error) {
+func (r *dynamicDescriptorResolver) FindDescriptorByName(name protoreflect.FullName) (protoreflect.Descriptor, error) { //nolint:ireturn
 	return (&protosetinfra.Fallback{Primary: r.dynamicFiles(), Fallback: r.static}).FindDescriptorByName(name)
 }
 
@@ -1500,6 +1511,7 @@ func (s *GRPCServer) createGrpcMocker(
 	return &grpcMocker{
 		budgerigar:     s.budgerigar,
 		templateEngine: templateEngine,
+		errorFormatter: NewErrorFormatter(),
 		recorder:       s.recorder,
 
 		inputDesc:  inputDesc,
@@ -1546,7 +1558,7 @@ func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.Se
 	return svc.GetName()
 }
 
-func getMessageDescriptor(reg *protoregistry.Files, messageType string) (protoreflect.MessageDescriptor, error) {
+func getMessageDescriptor(reg *protoregistry.Files, messageType string) (protoreflect.MessageDescriptor, error) { //nolint:ireturn
 	if reg == nil {
 		reg = protoregistry.GlobalFiles
 	}

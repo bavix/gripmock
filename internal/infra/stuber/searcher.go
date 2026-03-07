@@ -936,49 +936,29 @@ func (s *searcher) processStubs(query Query, stubs []*Stub) (*Result, error) {
 
 // processStubsSequential processes stubs sequentially (original logic).
 func (s *searcher) processStubsSequential(query Query, stubs []*Stub) (*Result, error) {
-	type scoredStub struct {
-		stub        *Stub
-		score       float64
-		specificity int
-		totalScore  float64
-		matches     bool
-	}
-
 	var (
-		matches            []scoredStub
-		mostSimilar        *Stub
-		highestRank        float64 = -1 // Initialize to -1 so first stub always becomes mostSimilar
-		highestSpecificity         = -1
+		matches []rankedMatch
+		best    similarCandidate
 	)
 
 	for _, stub := range stubs {
-		rank := s.fastRankV2(query, stub)
-		priorityBonus := float64(stub.Priority) * PriorityMultiplier
-		specificity := s.calcSpecificity(stub, query)
-		totalScore := rank + priorityBonus
+		candidate := s.buildSimilarCandidate(query, stub)
 
 		if s.fastMatchV2(query, stub) {
-			matches = append(matches, scoredStub{stub: stub, score: totalScore, specificity: specificity, totalScore: totalScore, matches: true})
+			matches = append(matches, rankedMatch{
+				stub:        stub,
+				specificity: candidate.specificity,
+				totalScore:  candidate.score,
+			})
 		}
 
-		// Select most similar stub: prefer higher specificity, then lower stub field count (prefer exact match)
-		// This ensures we pick stubs with most matching fields but fewest extra fields
-		stubFieldCount := s.getStubFieldCount(stub)
-		if mostSimilar == nil {
-			mostSimilar, highestRank, highestSpecificity = stub, totalScore, specificity
-		} else {
-			currentBestFieldCount := s.getStubFieldCount(mostSimilar)
-			// Prefer: higher specificity, then fewer fields (more precise match)
-			if specificity > highestSpecificity ||
-				(specificity == highestSpecificity && stubFieldCount < currentBestFieldCount) ||
-				(specificity == highestSpecificity && stubFieldCount == currentBestFieldCount && totalScore > highestRank) {
-				mostSimilar, highestRank, highestSpecificity = stub, totalScore, specificity
-			}
+		if best.shouldReplace(candidate) {
+			best = candidate
 		}
 	}
 
 	// Sort matches by specificity desc, then totalScore desc
-	slices.SortFunc(matches, func(a, b scoredStub) int {
+	slices.SortFunc(matches, func(a, b rankedMatch) int {
 		if a.specificity != b.specificity {
 			return b.specificity - a.specificity
 		}
@@ -1000,11 +980,49 @@ func (s *searcher) processStubsSequential(query Query, stubs []*Stub) (*Result, 
 		}
 	}
 
-	if mostSimilar != nil {
-		return &Result{similar: mostSimilar}, nil
+	if best.stub != nil {
+		return &Result{similar: best.stub}, nil
 	}
 
 	return nil, ErrStubNotFound
+}
+
+type rankedMatch struct {
+	stub        *Stub
+	specificity int
+	totalScore  float64
+}
+
+type similarCandidate struct {
+	stub        *Stub
+	score       float64
+	specificity int
+	fieldCount  int
+}
+
+func (s *searcher) buildSimilarCandidate(query Query, stub *Stub) similarCandidate {
+	return similarCandidate{
+		stub:        stub,
+		score:       s.fastRankV2(query, stub) + float64(stub.Priority)*PriorityMultiplier,
+		specificity: s.calcSpecificity(stub, query),
+		fieldCount:  s.getStubFieldCount(stub),
+	}
+}
+
+func (c similarCandidate) shouldReplace(other similarCandidate) bool {
+	if c.stub == nil {
+		return true
+	}
+
+	if other.specificity != c.specificity {
+		return other.specificity > c.specificity
+	}
+
+	if other.fieldCount != c.fieldCount {
+		return other.fieldCount < c.fieldCount
+	}
+
+	return other.score > c.score
 }
 
 // getStubFieldCount returns the total number of fields in the stub's input.

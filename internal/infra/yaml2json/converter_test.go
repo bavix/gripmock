@@ -20,7 +20,7 @@ func TestConverter(t *testing.T) {
 	// see: https://bavix.github.io/uuid-ui/
 	// 77465064-a0ce-48a3-b7e4-d50f88e55093 => d0ZQZKDOSKO35NUPiOVQkw==
 	// e351220b-4847-42f5-8abb-c052b87ff2d4 => {"high":-773977811204288029,"low":-3102276763665777782}
-	bytes, err := convertor.Execute("hello", []byte(`
+	bytes, err := convertor.Execute(t.Context(), "hello", []byte(`
 yaml2json:
   base64: {{ uuid2base64 "77465064-a0ce-48a3-b7e4-d50f88e55093" }}
   highLow: {{ uuid2int64 "e351220b-4847-42f5-8abb-c052b87ff2d4" }}
@@ -49,7 +49,7 @@ func TestConverterWithRegistry(t *testing.T) {
 	convertor := yaml2json.New(reg)
 
 	// Template functions should be executed at load time when registry is available
-	bytes, err := convertor.Execute("hello", []byte(`
+	bytes, err := convertor.Execute(t.Context(), "hello", []byte(`
 - input:
     equals:
       uuids: {{ uuid2int64 "e351220b-4847-42f5-8abb-c052b87ff2d4" }}
@@ -70,7 +70,7 @@ func TestConverterWIthRegistryArray(t *testing.T) {
 	convertor := yaml2json.New(reg)
 
 	// Template functions should be executed at load time when registry is available
-	bytes, err := convertor.Execute("hello", []byte(`
+	bytes, err := convertor.Execute(t.Context(), "hello", []byte(`
 - input:
     equals:
       uuids:
@@ -99,7 +99,7 @@ func TestConverterStubFile(t *testing.T) {
 	data, err := os.ReadFile("../../../examples/projects/identifier/stubs.yaml")
 	require.NoError(t, err)
 
-	result, err := convertor.Execute("test", data)
+	result, err := convertor.Execute(t.Context(), "test", data)
 	require.NoError(t, err)
 
 	// Parse and check the result
@@ -151,7 +151,7 @@ func TestStubMatcherJsonNumberPrecision(t *testing.T) {
         - {{ uuid2int64 "e351220b-4847-42f5-8abb-c052b87ff2d4" }}
 `)
 
-	result, err := convertor.Execute("test", stubYAML)
+	result, err := convertor.Execute(t.Context(), "test", stubYAML)
 	require.NoError(t, err)
 
 	t.Logf("Raw JSON: %s", string(result))
@@ -210,7 +210,7 @@ func TestStubMatcherFullFlow(t *testing.T) {
 	data, err := os.ReadFile("../../../examples/projects/identifier/stubs.yaml")
 	require.NoError(t, err)
 
-	result, err := convertor.Execute("test", data)
+	result, err := convertor.Execute(t.Context(), "test", data)
 	require.NoError(t, err)
 
 	t.Logf("Raw JSON length: %d", len(result))
@@ -272,7 +272,7 @@ func TestStubMatcherEndToEnd(t *testing.T) {
 	data, err := os.ReadFile("../../../examples/projects/identifier/stubs.yaml")
 	require.NoError(t, err)
 
-	result, err := convertor.Execute("test", data)
+	result, err := convertor.Execute(t.Context(), "test", data)
 	require.NoError(t, err)
 
 	// Parse with json.Number support
@@ -319,7 +319,7 @@ func TestStubMatcherEndToEnd(t *testing.T) {
 func TestPanic2Error(t *testing.T) {
 	t.Parallel()
 
-	_, err := yaml2json.New(nil).Execute("hello", []byte(`
+	_, err := yaml2json.New(nil).Execute(t.Context(), "hello", []byte(`
 yaml2json:
   base64: {{ uuid2base64 "no-uuid" }}
 `))
@@ -333,7 +333,7 @@ func TestExecuteNoTemplateMarkers(t *testing.T) {
 	conv := yaml2json.New(nil)
 	data := []byte("key: value\nnested:\n  a: 1")
 
-	bytes, err := conv.Execute("test", data)
+	bytes, err := conv.Execute(t.Context(), "test", data)
 	require.NoError(t, err)
 	require.JSONEq(t, `{"key":"value","nested":{"a":1}}`, string(bytes))
 }
@@ -343,7 +343,7 @@ func TestExecuteEmptyData(t *testing.T) {
 
 	conv := yaml2json.New(nil)
 
-	bytes, err := conv.Execute("test", []byte{})
+	bytes, err := conv.Execute(t.Context(), "test", []byte{})
 	require.NoError(t, err)
 	require.Contains(t, string(bytes), "null")
 }
