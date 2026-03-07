@@ -241,6 +241,7 @@ jobs:
           else
             "$bin" check --timeout=60s --silent
           fi
+
           ./grpctestify examples/
 
       - name: Run E2E suite (Windows)
@@ -272,6 +273,7 @@ jobs:
             else {
               & $bin check --timeout=60s --silent
             }
+
             .\grpctestify.exe examples\
           }
           finally {
@@ -295,44 +297,42 @@ jobs:
           path: /tmp/cover-check
 
   e2e-tls-tests:
-    name: "E2E TLS (${{ matrix.suite }})"
+    name: "E2E TLS (${{ matrix.tls_mode }})"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - suite: tls12
-            grpc_port: "5780"
-            http_port: "5781"
-            cert_file: tls-suite/tls12/certs/server.crt
-            key_file: tls-suite/tls12/certs/server.key
-            ca_file: ""
+          - tls_mode: tls12
+            grpc_tls_cert_file: third_party/tls/tls12/server.crt
+            grpc_tls_key_file: third_party/tls/tls12/server.key
+            grpc_tls_ca_file: ""
             grpc_tls_min_version: "1.2"
             grpc_tls_client_auth: "false"
-          - suite: tls13
-            grpc_port: "5782"
-            http_port: "5783"
-            cert_file: tls-suite/tls13/certs/server.crt
-            key_file: tls-suite/tls13/certs/server.key
-            ca_file: ""
+            grpctestify_tls_cert_file: ""
+            grpctestify_tls_key_file: ""
+            grpctestify_tls_ca_file: third_party/tls/tls12/ca.crt
+            grpctestify_tls_server_name: localhost
+          - tls_mode: tls13
+            grpc_tls_cert_file: third_party/tls/tls13/server.crt
+            grpc_tls_key_file: third_party/tls/tls13/server.key
+            grpc_tls_ca_file: ""
             grpc_tls_min_version: "1.3"
             grpc_tls_client_auth: "false"
-          - suite: mtls
-            grpc_port: "5784"
-            http_port: "5785"
-            cert_file: tls-suite/mtls/certs/server.crt
-            key_file: tls-suite/mtls/certs/server.key
-            ca_file: tls-suite/mtls/certs/ca.crt
+            grpctestify_tls_cert_file: ""
+            grpctestify_tls_key_file: ""
+            grpctestify_tls_ca_file: third_party/tls/tls13/ca.crt
+            grpctestify_tls_server_name: localhost
+          - tls_mode: mtls
+            grpc_tls_cert_file: third_party/tls/mtls/server.crt
+            grpc_tls_key_file: third_party/tls/mtls/server.key
+            grpc_tls_ca_file: third_party/tls/mtls/ca.crt
             grpc_tls_min_version: "1.2"
             grpc_tls_client_auth: "true"
-    env:
-      GRPC_PORT: ${{ matrix.grpc_port }}
-      HTTP_PORT: ${{ matrix.http_port }}
-      GRPC_TLS_CERT_FILE: ${{ matrix.cert_file }}
-      GRPC_TLS_KEY_FILE: ${{ matrix.key_file }}
-      GRPC_TLS_CA_FILE: ${{ matrix.ca_file }}
-      GRPC_TLS_MIN_VERSION: ${{ matrix.grpc_tls_min_version }}
-      GRPC_TLS_CLIENT_AUTH: ${{ matrix.grpc_tls_client_auth }}
+            grpctestify_tls_cert_file: third_party/tls/mtls/client.crt
+            grpctestify_tls_key_file: third_party/tls/mtls/client.key
+            grpctestify_tls_ca_file: third_party/tls/mtls/ca.crt
+            grpctestify_tls_server_name: localhost
     steps:
       - uses: actions/checkout@v6
       - name: Setup Go
@@ -341,42 +341,55 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
+      - name: Set up cache for dependencies
+        uses: actions/cache@v5
+        with:
+          path: grpctestify
+          key: deps-cache-${{ runner.os }}-grpctestify-rust-${{ env.GRPCTESTIFY_VERSION }}
+
       - name: Install grpctestify
         run: |
+          pwd >> "$GITHUB_PATH"
+
           if [ ! -f grpctestify ]; then
             case "$RUNNER_ARCH" in
               X64) grpctestify_asset="grpctestify-linux-amd64.tar.gz" ;;
               ARM64) grpctestify_asset="grpctestify-linux-arm64.tar.gz" ;;
               *) echo "Unsupported runner arch: $RUNNER_ARCH"; exit 1 ;;
             esac
+
             curl -sSL "https://github.com/gripmock/grpctestify-rust/releases/download/v${{ env.GRPCTESTIFY_VERSION }}/$grpctestify_asset" | tar -xz
             chmod +x grpctestify
           fi
 
-      - name: Build gripmock binary
-        run: go build -o "$RUNNER_TEMP/gripmock" .
-
-      - name: Start GripMock TLS server
+      - name: Run E2E TLS suite
         run: |
-          nohup "$RUNNER_TEMP/gripmock" "tls-suite/${{ matrix.suite }}/service.proto" --stub "tls-suite/${{ matrix.suite }}" >/tmp/gripmock-tls-${{ matrix.suite }}.log 2>&1 &
-          echo $! > "$RUNNER_TEMP/gripmock-tls-${{ matrix.suite }}.pid"
+          find . -name "*.proto.src" -type f -delete
 
-      - name: Wait for GripMock readiness
-        run: |
-          "$RUNNER_TEMP/gripmock" check --timeout=60s --silent
+          bin="$RUNNER_TEMP/gripmock"
+          go build -o "$bin" .
 
-      - name: Run grpctestify suite
-        run: ./grpctestify "tls-suite/${{ matrix.suite }}"
+          GRPC_TLS_CERT_FILE="${{ matrix.grpc_tls_cert_file }}" \
+          GRPC_TLS_KEY_FILE="${{ matrix.grpc_tls_key_file }}" \
+          GRPC_TLS_CA_FILE="${{ matrix.grpc_tls_ca_file }}" \
+          GRPC_TLS_MIN_VERSION="${{ matrix.grpc_tls_min_version }}" \
+          GRPC_TLS_CLIENT_AUTH="${{ matrix.grpc_tls_client_auth }}" \
+          "$bin" --stub=examples examples &
+          pid=$!
 
-      - name: Stop GripMock TLS server
-        if: always()
-        run: |
-          pid_file="$RUNNER_TEMP/gripmock-tls-${{ matrix.suite }}.pid"
-          if [ -f "$pid_file" ]; then
-            pid="$(cat "$pid_file")"
+          cleanup() {
             kill -INT "$pid" 2>/dev/null || true
             wait "$pid" 2>/dev/null || true
-          fi
+          }
+
+          trap cleanup EXIT
+          "$bin" check --timeout=60s --silent
+
+          GRPCTESTIFY_TLS_CA_FILE="${{ matrix.grpctestify_tls_ca_file }}" \
+          GRPCTESTIFY_TLS_SERVER_NAME="${{ matrix.grpctestify_tls_server_name }}" \
+          GRPCTESTIFY_TLS_CERT_FILE="${{ matrix.grpctestify_tls_cert_file }}" \
+          GRPCTESTIFY_TLS_KEY_FILE="${{ matrix.grpctestify_tls_key_file }}" \
+          ./grpctestify examples/
 
   coverage-report:
     name: "Coverage Report"
