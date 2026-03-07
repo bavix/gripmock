@@ -78,7 +78,11 @@ func TestOutputFields(t *testing.T) {
 		Stream:  []any{"message1", "message2", "message3"},
 		Error:   "test error",
 		Code:    &code,
-		Delay:   types.Duration(100),
+		Details: []map[string]any{{
+			"type":   "type.googleapis.com/google.rpc.ErrorInfo",
+			"reason": "UNIT_TEST",
+		}},
+		Delay: types.Duration(100),
 	}
 
 	require.Equal(t, map[string]string{"header1": "value1"}, output.Headers)
@@ -86,6 +90,7 @@ func TestOutputFields(t *testing.T) {
 	require.Equal(t, []any{"message1", "message2", "message3"}, output.Stream)
 	require.Equal(t, "test error", output.Error)
 	require.Equal(t, &code, output.Code)
+	require.Len(t, output.Details, 1)
 	require.Equal(t, 100, int(output.Delay))
 }
 

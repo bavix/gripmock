@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 	"google.golang.org/grpc/codes"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -20,6 +21,7 @@ type StubBuilder interface {
 	Return(kv ...any) StubBuilder
 	ReplyStream(msgs ...stuber.Output) StubBuilder
 	ReplyError(code codes.Code, msg string) StubBuilder
+	ReplyErrorWithDetails(code codes.Code, msg string, details ...map[string]any) StubBuilder
 	ReplyHeaders(headers map[string]string) StubBuilder
 	ReplyHeaderPairs(kv ...string) StubBuilder
 	Delay(d time.Duration) StubBuilder
@@ -86,12 +88,14 @@ func (c *stubBuilderCore) Unary(inKey string, inVal any, outKey string, outVal a
 }
 
 func (c *stubBuilderCore) ReplyStream(msgs ...stuber.Output) StubBuilder {
-	stream := make([]any, 0, len(msgs))
-	for _, o := range msgs {
-		if o.Data != nil {
-			stream = append(stream, o.Data)
+	stream := lo.FilterMap(msgs, func(o stuber.Output, _ int) (any, bool) {
+		if o.Data == nil {
+			return nil, false
 		}
-	}
+
+		return o.Data, true
+	})
+
 	c.data.output = stuber.Output{Stream: stream}
 	return c
 }
@@ -99,6 +103,12 @@ func (c *stubBuilderCore) ReplyStream(msgs ...stuber.Output) StubBuilder {
 func (c *stubBuilderCore) ReplyError(code codes.Code, msg string) StubBuilder {
 	codeCopy := code
 	c.data.output = stuber.Output{Code: &codeCopy, Error: msg}
+	return c
+}
+
+func (c *stubBuilderCore) ReplyErrorWithDetails(code codes.Code, msg string, details ...map[string]any) StubBuilder {
+	codeCopy := code
+	c.data.output = stuber.Output{Code: &codeCopy, Error: msg, Details: details}
 	return c
 }
 
@@ -243,25 +253,20 @@ func Merge(inputs ...stuber.InputData) stuber.InputData {
 		if in.IgnoreArrayOrder {
 			out.IgnoreArrayOrder = true
 		}
-		for k, v := range in.Equals {
-			if out.Equals == nil {
-				out.Equals = make(map[string]any)
-			}
-			out.Equals[k] = v
+
+		if len(in.Equals) > 0 {
+			out.Equals = lo.Assign(out.Equals, in.Equals)
 		}
-		for k, v := range in.Contains {
-			if out.Contains == nil {
-				out.Contains = make(map[string]any)
-			}
-			out.Contains[k] = v
+
+		if len(in.Contains) > 0 {
+			out.Contains = lo.Assign(out.Contains, in.Contains)
 		}
-		for k, v := range in.Matches {
-			if out.Matches == nil {
-				out.Matches = make(map[string]any)
-			}
-			out.Matches[k] = v
+
+		if len(in.Matches) > 0 {
+			out.Matches = lo.Assign(out.Matches, in.Matches)
 		}
 	}
+
 	return out
 }
 
@@ -269,25 +274,19 @@ func Merge(inputs ...stuber.InputData) stuber.InputData {
 func MergeHeaders(headers ...stuber.InputHeader) stuber.InputHeader {
 	out := stuber.InputHeader{}
 	for _, h := range headers {
-		for k, v := range h.Equals {
-			if out.Equals == nil {
-				out.Equals = make(map[string]any)
-			}
-			out.Equals[k] = v
+		if len(h.Equals) > 0 {
+			out.Equals = lo.Assign(out.Equals, h.Equals)
 		}
-		for k, v := range h.Contains {
-			if out.Contains == nil {
-				out.Contains = make(map[string]any)
-			}
-			out.Contains[k] = v
+
+		if len(h.Contains) > 0 {
+			out.Contains = lo.Assign(out.Contains, h.Contains)
 		}
-		for k, v := range h.Matches {
-			if out.Matches == nil {
-				out.Matches = make(map[string]any)
-			}
-			out.Matches[k] = v
+
+		if len(h.Matches) > 0 {
+			out.Matches = lo.Assign(out.Matches, h.Matches)
 		}
 	}
+
 	return out
 }
 
@@ -329,6 +328,13 @@ func ReplyErr(code codes.Code, msg string) stuber.Output {
 	return stuber.Output{Code: &c, Error: msg}
 }
 
+// ReplyErrWithDetails returns Output with error response and gRPC status details. Use with Merge.
+func ReplyErrWithDetails(code codes.Code, msg string, details ...map[string]any) stuber.Output {
+	c := code
+
+	return stuber.Output{Code: &c, Error: msg, Details: details}
+}
+
 // StreamItem returns Output with one stream message (for server streaming). Use with Merge or ReplyStream.
 func StreamItem(kv ...any) stuber.Output {
 	if len(kv) == 0 {
@@ -341,32 +347,31 @@ func StreamItem(kv ...any) stuber.Output {
 func MergeOutput(outputs ...stuber.Output) stuber.Output {
 	out := stuber.Output{}
 	for _, o := range outputs {
-		if o.Data != nil {
-			if out.Data == nil {
-				out.Data = make(map[string]any)
-			}
-			for k, v := range o.Data {
-				out.Data[k] = v
-			}
+		if len(o.Data) > 0 {
+			out.Data = lo.Assign(out.Data, o.Data)
 		}
-		if o.Headers != nil {
-			if out.Headers == nil {
-				out.Headers = make(map[string]string)
-			}
-			for k, v := range o.Headers {
-				out.Headers[k] = v
-			}
+
+		if len(o.Headers) > 0 {
+			out.Headers = lo.Assign(out.Headers, o.Headers)
 		}
+
 		if o.Error != "" {
 			out.Error = o.Error
 			out.Code = o.Code
 		}
+
 		if o.Delay != 0 {
 			out.Delay = o.Delay
 		}
+
 		if len(o.Stream) > 0 {
 			out.Stream = append(out.Stream, o.Stream...)
 		}
+
+		if len(o.Details) > 0 {
+			out.Details = append(out.Details, o.Details...)
+		}
 	}
+
 	return out
 }

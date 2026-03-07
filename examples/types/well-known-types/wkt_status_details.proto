@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+import "google/rpc/error_details.proto";
+
+package wkt;
+
+service StatusDetailsService {
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse) {}
+}
+
+message GetProfileRequest {
+  string userId = 1;
+}
+
+message GetProfileResponse {
+  bool success = 1;
+  google.rpc.ErrorInfo info = 2;
+}

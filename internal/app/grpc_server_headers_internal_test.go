@@ -4,7 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -15,6 +17,7 @@ import (
 // mockServerStream mocks grpc.ServerStream for testing.
 type mockServerStream struct {
 	headers metadata.MD
+	ctx     context.Context //nolint:containedctx
 }
 
 func (m *mockServerStream) SetHeader(md metadata.MD) error {
@@ -34,7 +37,7 @@ func (m *mockServerStream) SetTrailer(md metadata.MD) {
 }
 
 func (m *mockServerStream) Context() context.Context {
-	return context.Background()
+	return m.ctx
 }
 
 func (m *mockServerStream) SendMsg(any) error {
@@ -58,7 +61,7 @@ func TestHandleOutputErrorWithHeaders(t *testing.T) {
 		},
 	}
 
-	stream := &mockServerStream{}
+	stream := &mockServerStream{ctx: t.Context()}
 	mocker := &grpcMocker{}
 
 	// Test header setting
@@ -88,7 +91,7 @@ func TestHandleOutputErrorWithoutHeaders(t *testing.T) {
 		Code:  &[]codes.Code{codes.InvalidArgument}[0],
 	}
 
-	stream := &mockServerStream{}
+	stream := &mockServerStream{ctx: t.Context()}
 	mocker := &grpcMocker{}
 
 	// Test error handling
@@ -114,7 +117,7 @@ func TestHandleOutputErrorSuccess(t *testing.T) {
 		},
 	}
 
-	stream := &mockServerStream{}
+	stream := &mockServerStream{ctx: t.Context()}
 	mocker := &grpcMocker{}
 
 	// Test header setting
@@ -141,7 +144,7 @@ func TestHandleOutputErrorNilCode(t *testing.T) {
 		},
 	}
 
-	stream := &mockServerStream{}
+	stream := &mockServerStream{ctx: t.Context()}
 	mocker := &grpcMocker{}
 
 	// Test header setting
@@ -159,4 +162,60 @@ func TestHandleOutputErrorNilCode(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, codes.Aborted, st.Code()) // Default code for nil
 	require.Equal(t, "Error without code", st.Message())
+}
+
+func TestHandleOutputErrorWithDetails(t *testing.T) {
+	t.Parallel()
+
+	output := stuber.Output{
+		Error: "Validation failed",
+		Code:  &[]codes.Code{codes.InvalidArgument}[0],
+		Details: []map[string]any{
+			{
+				"type":   "type.googleapis.com/google.rpc.ErrorInfo",
+				"reason": "API_DISABLED",
+				"domain": "example.local",
+				"metadata": map[string]any{
+					"service": "example.local",
+				},
+			},
+		},
+	}
+
+	mocker := &grpcMocker{}
+
+	err := mocker.handleOutputError(t.Context(), nil, output)
+	require.Error(t, err)
+
+	st := status.Convert(err)
+	require.Equal(t, codes.InvalidArgument, st.Code())
+	require.Equal(t, "Validation failed", st.Message())
+
+	details := st.Details()
+	require.Len(t, details, 1)
+
+	info, ok := details[0].(*errdetails.ErrorInfo)
+	require.True(t, ok)
+	assert.Equal(t, "API_DISABLED", info.GetReason())
+	assert.Equal(t, "example.local", info.GetDomain())
+	assert.Equal(t, "example.local", info.GetMetadata()["service"])
+}
+
+func TestHandleOutputErrorWithInvalidDetails(t *testing.T) {
+	t.Parallel()
+
+	output := stuber.Output{
+		Error: "Validation failed",
+		Code:  &[]codes.Code{codes.InvalidArgument}[0],
+		Details: []map[string]any{
+			{"reason": "missing-type"},
+		},
+	}
+
+	mocker := &grpcMocker{}
+
+	err := mocker.handleOutputError(t.Context(), nil, output)
+	require.Error(t, err)
+	require.Equal(t, codes.Internal, status.Code(err))
+	require.Contains(t, status.Convert(err).Message(), "output.details")
 }

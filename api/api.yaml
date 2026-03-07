@@ -943,6 +943,18 @@ components:
             path: google.golang.org/grpc/codes
           example: 3
           x-go-type-skip-optional-pointer: true
+        details:
+          type: array
+          description: gRPC status details packed into google.protobuf.Any (each item must contain type URL in `type`)
+          items:
+            type: object
+            required: [type]
+            properties:
+              type:
+                type: string
+                description: Full Any type URL (for example, type.googleapis.com/google.rpc.ErrorInfo)
+            additionalProperties: true
+          x-go-type-skip-optional-pointer: true
         delay:
           type: string
           x-go-type: gptypes.Duration

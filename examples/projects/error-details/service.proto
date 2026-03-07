@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+import "google/rpc/error_details.proto";
+
+package errordetails;
+
+service ErrorDetailsService {
+  rpc Unary(CallRequest) returns (CallResponse) {}
+  rpc ServerStream(CallRequest) returns (stream CallResponse) {}
+  rpc ClientStream(stream CallRequest) returns (CallResponse) {}
+  rpc BidiStream(stream CallRequest) returns (stream CallResponse) {}
+}
+
+message CallRequest {
+  string id = 1;
+  string text = 2;
+}
+
+message CallResponse {
+  string status = 1;
+  google.rpc.ErrorInfo info = 2;
+}

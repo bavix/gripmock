@@ -52,3 +52,16 @@ func deepCopyStringMap(src map[string]string) map[string]string {
 
 	return dst
 }
+
+func deepCopyDetails(src []map[string]any) []map[string]any {
+	if src == nil {
+		return nil
+	}
+
+	dst := make([]map[string]any, len(src))
+	for i, item := range src {
+		dst[i] = deepCopyMapAny(item)
+	}
+
+	return dst
+}

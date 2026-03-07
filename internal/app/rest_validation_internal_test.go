@@ -234,11 +234,30 @@ func (s *RestValidationTestSuite) TestAddStubValidConfigurations() {
 		},
 		{
 			name: "valid unary stub with code output",
-			jsonData: `[{
+			jsonData: `[{ 
 				"service": "test.Service",
 				"method": "TestMethod",
 				"input": {"contains": {"key": "value"}},
 				"output": {"code": 14, "error": "Service unavailable"}
+			}]`,
+		},
+		{
+			name: "valid unary stub with grpc details",
+			jsonData: `[{ 
+				"service": "test.Service",
+				"method": "TestMethod",
+				"input": {"contains": {"key": "value"}},
+				"output": {
+					"code": 3,
+					"error": "Validation failed",
+					"details": [
+						{
+							"type": "type.googleapis.com/google.rpc.ErrorInfo",
+							"reason": "API_DISABLED",
+							"domain": "example.local"
+						}
+					]
+				}
 			}]`,
 		},
 		{

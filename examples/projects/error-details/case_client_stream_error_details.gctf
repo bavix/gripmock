@@ -1,0 +1,30 @@
+--- ENDPOINT ---
+errordetails.ErrorDetailsService/ClientStream
+
+--- REQUEST ---
+{
+  "id": "client-error",
+  "text": "part-1"
+}
+
+--- REQUEST ---
+{
+  "id": "client-error",
+  "text": "part-2"
+}
+
+--- ERROR ---
+{
+  "code": 3,
+  "message": "Client stream validation failed",
+  "details": [
+    {
+      "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+      "reason": "CLIENT_STREAM_INVALID",
+      "domain": "errordetails.example.local",
+      "metadata": {
+        "method": "ClientStream"
+      }
+    }
+  ]
+}
