@@ -6,7 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
-	"github.com/bavix/gripmock/v3/internal/pkg/session"
+	"github.com/bavix/gripmock/v3/internal/infra/session"
 )
 
 func (b *Builder) StartSessionGC(ctx context.Context) {

@@ -1,7 +1,6 @@
-package stuber //nolint:testpackage
+package stuber
 
 import (
-	"iter"
 	"maps"
 	"testing"
 
@@ -121,21 +120,12 @@ func TestFindAll(t *testing.T) {
 		newTestStub("Greeter1", "SayHello3", 0),
 	)
 
-	collect := func(seq iter.Seq[*Stub]) []*Stub {
-		var res []*Stub
-		for v := range seq {
-			res = append(res, v)
-		}
-
-		return res
-	}
-
 	t.Run("Greeter1/SayHello1", func(t *testing.T) {
 		t.Parallel()
 
 		seq, err := s.findAll("Greeter1", "SayHello1")
 		require.NoError(t, err)
-		require.Len(t, collect(seq), 2)
+		require.Len(t, collectStubs(seq), 2)
 	})
 
 	t.Run("Greeter2/SayHello2", func(t *testing.T) {
@@ -143,7 +133,7 @@ func TestFindAll(t *testing.T) {
 
 		seq, err := s.findAll("Greeter2", "SayHello2")
 		require.NoError(t, err)
-		require.Len(t, collect(seq), 1)
+		require.Len(t, collectStubs(seq), 1)
 	})
 
 	t.Run("Greeter3/SayHello2", func(t *testing.T) {
@@ -151,7 +141,7 @@ func TestFindAll(t *testing.T) {
 
 		seq, err := s.findAll("Greeter3", "SayHello2")
 		require.NoError(t, err)
-		require.Len(t, collect(seq), 1)
+		require.Len(t, collectStubs(seq), 1)
 	})
 
 	t.Run("Greeter3/SayHello3", func(t *testing.T) {
@@ -237,22 +227,13 @@ func TestFindAllSorted(t *testing.T) {
 
 	s.upsert(item1, item2, item3, item4)
 
-	collect := func(seq iter.Seq[*Stub]) []*Stub {
-		var res []*Stub
-		for v := range seq {
-			res = append(res, v)
-		}
-
-		return res
-	}
-
 	t.Run("sorted by score descending", func(t *testing.T) {
 		t.Parallel()
 
 		seq, err := s.findAll("Greeter1", "SayHello1")
 		require.NoError(t, err)
 
-		results := collect(seq)
+		results := collectStubs(seq)
 		require.Len(t, results, 3)
 
 		// Should be sorted by score in descending order: 30, 20, 10
@@ -267,7 +248,7 @@ func TestFindAllSorted(t *testing.T) {
 		seq, err := s.findAll("Greeter2", "SayHello2")
 		require.NoError(t, err)
 
-		results := collect(seq)
+		results := collectStubs(seq)
 		require.Len(t, results, 1)
 		require.Equal(t, 50, results[0].Priority)
 	})
@@ -387,7 +368,7 @@ func TestStorageFindByIDs(t *testing.T) {
 	require.Empty(t, notFound)
 }
 
-func TestStorageFindAll_EmptyResult(t *testing.T) {
+func TestStorageFindAllEmptyResult(t *testing.T) {
 	t.Parallel()
 
 	s := newStorage()
@@ -399,7 +380,7 @@ func TestStorageFindAll_EmptyResult(t *testing.T) {
 	require.ErrorIs(t, err, ErrLeftNotFound)
 }
 
-func TestStorageUpsert_Empty(t *testing.T) {
+func TestStorageUpsertEmpty(t *testing.T) {
 	t.Parallel()
 
 	s := newStorage()
@@ -408,7 +389,7 @@ func TestStorageUpsert_Empty(t *testing.T) {
 	require.Nil(t, result)
 }
 
-func TestStorageDel_NonExistent(t *testing.T) {
+func TestStorageDelNonExistent(t *testing.T) {
 	t.Parallel()
 
 	s := newStorage()
@@ -418,7 +399,7 @@ func TestStorageDel_NonExistent(t *testing.T) {
 	require.Equal(t, 0, deleted)
 }
 
-func TestStorageFindAll_HeapPath_SingleIndexManyItems(t *testing.T) {
+func TestStorageFindAllHEapPathSingleIndexManyItems(t *testing.T) {
 	t.Parallel()
 
 	s := newStorage()
@@ -446,7 +427,7 @@ func TestStorageFindAll_HeapPath_SingleIndexManyItems(t *testing.T) {
 	}
 }
 
-func TestStorageFindAll_HeapPath_MultipleIndexes(t *testing.T) {
+func TestStorageFindAllHEapPathMultipleIndexes(t *testing.T) {
 	t.Parallel()
 
 	s := newStorage()
@@ -474,7 +455,7 @@ func TestStorageFindAll_HeapPath_MultipleIndexes(t *testing.T) {
 	require.Equal(t, 1, results[3].Priority)
 }
 
-func TestStorageFindAll_YieldEarlyExit(t *testing.T) {
+func TestStorageFindAllYieldEarlyExit(t *testing.T) {
 	t.Parallel()
 
 	s := newStorage()
@@ -498,7 +479,7 @@ func TestStorageFindAll_YieldEarlyExit(t *testing.T) {
 	require.Equal(t, 2, count)
 }
 
-func TestStorageFindByIDs_EarlyExit(t *testing.T) {
+func TestStorageFindByIDsEarlyExit(t *testing.T) {
 	t.Parallel()
 
 	s := newStorage()
@@ -525,7 +506,7 @@ func TestStorageFindByIDs_EarlyExit(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
-func TestStorageFindAll_SliceSortPath(t *testing.T) {
+func TestStorageFindAllSliceSortPath(t *testing.T) {
 	t.Parallel()
 
 	s := newStorage()
@@ -550,7 +531,7 @@ func TestStorageFindAll_SliceSortPath(t *testing.T) {
 	}
 }
 
-func TestStorageFindAll_SingleItemFastPath(t *testing.T) {
+func TestStorageFindAllSingleItemFastPath(t *testing.T) {
 	t.Parallel()
 
 	s := newStorage()
@@ -568,7 +549,7 @@ func TestStorageFindAll_SingleItemFastPath(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
-func TestStorageFindAll_HeapPathEarlyExit(t *testing.T) {
+func TestStorageFindAllHeapPathEarlyExit(t *testing.T) {
 	t.Parallel()
 
 	s := newStorage()
@@ -591,7 +572,7 @@ func TestStorageFindAll_HeapPathEarlyExit(t *testing.T) {
 	require.Equal(t, 2, count)
 }
 
-func TestStorageFindAll_SlicePathEarlyExit(t *testing.T) {
+func TestStorageFindAllSlicePathEarlyExit(t *testing.T) {
 	t.Parallel()
 
 	s := newStorage()
@@ -614,7 +595,7 @@ func TestStorageFindAll_SlicePathEarlyExit(t *testing.T) {
 	require.Equal(t, 1, count)
 }
 
-func TestStorageFindAll_ThreeItemSort(t *testing.T) {
+func TestStorageFindAllThreeItemSort(t *testing.T) {
 	t.Parallel()
 
 	s := newStorage()

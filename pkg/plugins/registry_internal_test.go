@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSpecList_Specs(t *testing.T) {
+func TestSpecListSpecs(t *testing.T) {
 	t.Parallel()
 
 	specs := []FuncSpec{
@@ -20,7 +20,7 @@ func TestSpecList_Specs(t *testing.T) {
 	require.Equal(t, specs, got)
 }
 
-func TestSpecList_Specs_Empty(t *testing.T) {
+func TestSpecListSPecsEmpty(t *testing.T) {
 	t.Parallel()
 
 	var list SpecList
@@ -42,7 +42,7 @@ func TestSpecs(t *testing.T) {
 	require.Equal(t, specs, got)
 }
 
-func TestSpecs_Variadic(t *testing.T) {
+func TestSpecsVariadic(t *testing.T) {
 	t.Parallel()
 
 	provider := Specs(
@@ -76,7 +76,7 @@ func TestNewPlugin(t *testing.T) {
 	require.Equal(t, []FuncSpec{spec}, providers[0].Specs())
 }
 
-func TestNewPlugin_MultipleProviders(t *testing.T) {
+func TestNewPluginMultipleProviders(t *testing.T) {
 	t.Parallel()
 
 	info := PluginInfo{Name: "multi"}
@@ -90,7 +90,7 @@ func TestNewPlugin_MultipleProviders(t *testing.T) {
 	require.Len(t, providers[1].Specs(), 2)
 }
 
-func TestNewPlugin_NoProviders(t *testing.T) {
+func TestNewPluginNoProviders(t *testing.T) {
 	t.Parallel()
 
 	info := PluginInfo{Name: "empty"}
@@ -99,7 +99,7 @@ func TestNewPlugin_NoProviders(t *testing.T) {
 	require.Equal(t, info, plugin.Info())
 }
 
-func TestPlugin_WorksWithRegistry(t *testing.T) {
+func TestPluginWorksWithRegistry(t *testing.T) {
 	t.Parallel()
 
 	rec := &recordRegistry{}
@@ -117,7 +117,7 @@ func TestPlugin_WorksWithRegistry(t *testing.T) {
 	require.Equal(t, "upper", rec.added[0].providers[0].Specs()[0].Name)
 }
 
-func TestFuncSpec_ZeroValue(t *testing.T) {
+func TestFuncSpecZeroValue(t *testing.T) {
 	t.Parallel()
 
 	var spec FuncSpec
@@ -126,7 +126,7 @@ func TestFuncSpec_ZeroValue(t *testing.T) {
 	require.Nil(t, spec.Fn)
 }
 
-func TestPluginInfo_ZeroValue(t *testing.T) {
+func TestPluginInfoZeroValue(t *testing.T) {
 	t.Parallel()
 
 	var info PluginInfo
@@ -135,7 +135,7 @@ func TestPluginInfo_ZeroValue(t *testing.T) {
 	require.Nil(t, info.Depends)
 }
 
-func TestPluginWithFuncs_ZeroValue(t *testing.T) {
+func TestPluginWithFuncsZeroValue(t *testing.T) {
 	t.Parallel()
 
 	var pwf PluginWithFuncs

@@ -20,21 +20,6 @@ func NewLoader(paths []string) *Loader {
 	return &Loader{paths: paths}
 }
 
-func (l *Loader) WithGlob(glob string) *Loader {
-	if glob == "" {
-		return l
-	}
-
-	matches, err := filepath.Glob(glob)
-	if err != nil {
-		return l
-	}
-
-	l.paths = append(l.paths, matches...)
-
-	return l
-}
-
 //nolint:cyclop
 func (l *Loader) Load(ctx context.Context, reg pkgplugins.Registry) {
 	logger := zerolog.Ctx(ctx)

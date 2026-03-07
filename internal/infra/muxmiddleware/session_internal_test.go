@@ -6,11 +6,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/bavix/gripmock/v3/internal/pkg/session"
 )
 
-func TestTransportSession_MovesHeaderToContextAndStripsHeader(t *testing.T) {
+func TestTransportSessionMovesHeaderToContextAndStripsHeader(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -20,12 +18,12 @@ func TestTransportSession_MovesHeaderToContextAndStripsHeader(t *testing.T) {
 	)
 
 	h := TransportSession(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
-		gotSession = session.FromRequest(r)
-		gotHeader = r.Header.Get(session.HeaderName)
+		gotSession = FromRequest(r)
+		gotHeader = r.Header.Get(HeaderName)
 	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(session.HeaderName, "A")
+	req.Header.Set(HeaderName, "A")
 
 	w := httptest.NewRecorder()
 

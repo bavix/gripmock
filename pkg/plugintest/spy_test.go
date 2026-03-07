@@ -9,7 +9,7 @@ import (
 	"github.com/bavix/gripmock/v3/pkg/plugintest"
 )
 
-func TestSpyFunc_NilBase(t *testing.T) {
+func TestSpyFuncNilBase(t *testing.T) {
 	t.Parallel()
 
 	spy := plugintest.NewSpy(nil)

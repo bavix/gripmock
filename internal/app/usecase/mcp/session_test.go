@@ -25,7 +25,7 @@ func TestToolUsesSession(t *testing.T) {
 	}
 }
 
-func TestToolUsesSession_FalseForOtherTools(t *testing.T) {
+func TestToolUsesSessionFalseForOtherTools(t *testing.T) {
 	t.Parallel()
 
 	// Act
@@ -35,7 +35,7 @@ func TestToolUsesSession_FalseForOtherTools(t *testing.T) {
 	require.False(t, usesSession)
 }
 
-func TestApplyTransportSession_InjectsHeaderSession(t *testing.T) {
+func TestApplyTransportSessionInjectsHeaderSession(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -49,7 +49,7 @@ func TestApplyTransportSession_InjectsHeaderSession(t *testing.T) {
 	require.Equal(t, "A", args["session"])
 }
 
-func TestApplyTransportSession_DoesNotOverrideExplicitSession(t *testing.T) {
+func TestApplyTransportSessionDoesNotOverrideExplicitSession(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -63,7 +63,7 @@ func TestApplyTransportSession_DoesNotOverrideExplicitSession(t *testing.T) {
 	require.Equal(t, "B", args["session"])
 }
 
-func TestApplyTransportSession_SkipsUnsupportedTool(t *testing.T) {
+func TestApplyTransportSessionSkipsUnsupportedTool(t *testing.T) {
 	t.Parallel()
 
 	// Arrange

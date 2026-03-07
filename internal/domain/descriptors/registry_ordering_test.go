@@ -10,7 +10,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 )
 
-func TestRegistry_PathsSorted(t *testing.T) {
+func TestRegistryPathsSorted(t *testing.T) {
 	t.Parallel()
 
 	reg := descriptors.NewRegistry()
@@ -27,7 +27,7 @@ func TestRegistry_PathsSorted(t *testing.T) {
 	require.True(t, sort.StringsAreSorted(paths))
 }
 
-func TestRegistry_ServiceIDsSorted(t *testing.T) {
+func TestRegistryServiceIDsSorted(t *testing.T) {
 	t.Parallel()
 
 	reg := descriptors.NewRegistry()

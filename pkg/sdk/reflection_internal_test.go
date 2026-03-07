@@ -17,9 +17,9 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 
-// Test_resolveDescriptorsFromReflection_ConnectionClosed verifies error when server
+// TestResolveDescriptorsFromReflection_ConnectionClosed verifies error when server
 // closes connection before/during reflection (covers Recv/Send error paths).
-func Test_resolveDescriptorsFromReflection_InvalidAddress(t *testing.T) {
+func TestResolveDescriptorsFromReflectionInvalidAddress(t *testing.T) {
 	t.Parallel()
 
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
@@ -45,7 +45,7 @@ func (f *fakeReflectionAbortImmediately) ServerReflectionInfo(stream reflectionp
 	return status.Error(codes.Internal, "server abort")
 }
 
-func Test_resolveDescriptorsFromReflection_StreamAborted(t *testing.T) {
+func TestResolveDescriptorsFromReflectionStreamAborted(t *testing.T) {
 	t.Parallel()
 
 	lis, err := net.Listen("tcp", ":0")
@@ -73,7 +73,7 @@ func Test_resolveDescriptorsFromReflection_StreamAborted(t *testing.T) {
 			strings.Contains(errStr, "Internal"))
 }
 
-func Test_resolveDescriptorsFromReflection_ConnectionClosed(t *testing.T) {
+func TestResolveDescriptorsFromReflectionConnectionClosed(t *testing.T) {
 	t.Parallel()
 
 	lis, err := net.Listen("tcp", ":0")
@@ -123,7 +123,7 @@ func (f *fakeReflectionServer) ServerReflectionInfo(stream reflectionpb.ServerRe
 	return stream.Send(f.response)
 }
 
-func Test_resolveDescriptorsFromReflection_UnexpectedResponse(t *testing.T) {
+func TestResolveDescriptorsFromReflectionUnexpectedResponse(t *testing.T) {
 	t.Parallel()
 
 	lis, err := net.Listen("tcp", ":0")
@@ -190,7 +190,7 @@ func (f *fakeReflectionErrorResponse) ServerReflectionInfo(stream reflectionpb.S
 	}
 }
 
-func Test_resolveDescriptorsFromReflection_ErrorResponse(t *testing.T) {
+func TestResolveDescriptorsFromReflectionErrorResponse(t *testing.T) {
 	t.Parallel()
 
 	lis, err := net.Listen("tcp", ":0")
@@ -249,7 +249,7 @@ func (f *fakeReflectionUnexpectedFileResp) ServerReflectionInfo(stream reflectio
 	}
 }
 
-func Test_resolveDescriptorsFromReflection_UnexpectedFileResponse(t *testing.T) {
+func TestResolveDescriptorsFromReflectionUnexpectedFileResponse(t *testing.T) {
 	t.Parallel()
 
 	lis, err := net.Listen("tcp", ":0")
@@ -309,7 +309,7 @@ func (f *fakeReflectionCorruptProto) ServerReflectionInfo(stream reflectionpb.Se
 	}
 }
 
-func Test_resolveDescriptorsFromReflection_CorruptProto(t *testing.T) {
+func TestResolveDescriptorsFromReflectionCorruptProto(t *testing.T) {
 	t.Parallel()
 
 	lis, err := net.Listen("tcp", ":0")
@@ -375,7 +375,7 @@ func (f *fakeReflectionEmptyName) ServerReflectionInfo(stream reflectionpb.Serve
 	}
 }
 
-func Test_resolveDescriptorsFromReflection_EmptyNameKey(t *testing.T) {
+func TestResolveDescriptorsFromReflectionEmptyNameKey(t *testing.T) {
 	t.Parallel()
 
 	lis, err := net.Listen("tcp", ":0")

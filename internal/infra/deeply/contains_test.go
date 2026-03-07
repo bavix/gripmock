@@ -9,7 +9,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/deeply"
 )
 
-func TestContains_Simple(t *testing.T) {
+func TestContainsSimple(t *testing.T) {
 	t.Parallel()
 
 	require.True(t, deeply.Contains("a", "a"))
@@ -19,7 +19,7 @@ func TestContains_Simple(t *testing.T) {
 	require.False(t, deeply.Contains([]int{1, 2, 3}, []int{1, 3, 2}))
 }
 
-func TestContains_Map_Left(t *testing.T) {
+func TestContainsMapLeft(t *testing.T) {
 	t.Parallel()
 
 	a := map[string]any{
@@ -53,7 +53,7 @@ func TestContains_Map_Left(t *testing.T) {
 	require.False(t, deeply.Contains(a, b))
 }
 
-func TestContains_Map_Right(t *testing.T) {
+func TestContainsMapRight(t *testing.T) {
 	t.Parallel()
 
 	a := map[string]any{
@@ -87,7 +87,7 @@ func TestContains_Map_Right(t *testing.T) {
 	require.False(t, deeply.Contains(a, b))
 }
 
-func TestContains_Slices_Left(t *testing.T) {
+func TestContainsSLicesLeft(t *testing.T) {
 	t.Parallel()
 
 	require.True(t, deeply.Contains([]int{1, 2, 3}, []int{1, 2, 3}))
@@ -101,7 +101,7 @@ func TestContains_Slices_Left(t *testing.T) {
 	require.False(t, deeply.Contains([]any{1, 2}, []any{1, 2, 3}))
 }
 
-func TestContains_Slices_Right(t *testing.T) {
+func TestContainsSLicesRight(t *testing.T) {
 	t.Parallel()
 
 	require.True(t, deeply.Contains([]int{1, 2, 3}, []int{1, 2, 3}))
@@ -115,7 +115,7 @@ func TestContains_Slices_Right(t *testing.T) {
 	require.False(t, deeply.Contains([]any{1, 2, 3}, []any{1, 2}))
 }
 
-func TestContains_MapStable(t *testing.T) {
+func TestContainsMapStable(t *testing.T) {
 	t.Parallel()
 
 	a := map[string][]any{
@@ -165,13 +165,13 @@ func TestContains_MapStable(t *testing.T) {
 	require.True(t, deeply.ContainsIgnoreArrayOrder([]string{"a", "c", "b"}, []string{"a", "b", "c"}))
 }
 
-func TestContains_Slices_OrderIgnore(t *testing.T) {
+func TestContainsSLicesOrderIgnore(t *testing.T) {
 	t.Parallel()
 
 	runSliceOrderIgnoreChecks(t, deeply.ContainsIgnoreArrayOrder)
 }
 
-func TestContains_Boundary(t *testing.T) {
+func TestContainsBoundary(t *testing.T) {
 	t.Parallel()
 
 	require.False(t, deeply.Contains([]string{"a", "a", "a"}, []string{"a", "b", "c"}))

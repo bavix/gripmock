@@ -10,15 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/bavix/features"
+	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
-	"github.com/bavix/gripmock/v3/internal/pkg/session"
 )
 
 type nopExtender struct{}
 
 func (nopExtender) Wait(context.Context) {}
 
-func TestRestAddStub_SessionFromHeaderOnly(t *testing.T) {
+func TestRestAddStubSessionFromHeaderOnly(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -31,7 +31,7 @@ func TestRestAddStub_SessionFromHeaderOnly(t *testing.T) {
 	]`)
 	req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(session.HeaderName, "HEADER")
+	req.Header.Set(muxmiddleware.HeaderName, "HEADER")
 
 	w := httptest.NewRecorder()
 
@@ -46,7 +46,7 @@ func TestRestAddStub_SessionFromHeaderOnly(t *testing.T) {
 	require.Equal(t, "HEADER", all[0].Session)
 }
 
-func TestRestAddStub_WithoutHeaderUsesGlobal(t *testing.T) {
+func TestRestAddStubWithoutHeaderUsesGlobal(t *testing.T) {
 	t.Parallel()
 
 	// Arrange

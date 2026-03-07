@@ -9,7 +9,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
 )
 
-func TestErrorResponse_UsesJSONRPCVersion(t *testing.T) {
+func TestErrorResponseUsesJSONRPCVersion(t *testing.T) {
 	t.Parallel()
 
 	id := new(rest.McpID)
@@ -25,7 +25,7 @@ func TestErrorResponse_UsesJSONRPCVersion(t *testing.T) {
 	require.Equal(t, id, resp.Id)
 }
 
-func TestParsePayloadErrorResponse_UsesParseCode(t *testing.T) {
+func TestParsePayloadErrorResponseUsesParseCode(t *testing.T) {
 	t.Parallel()
 
 	resp := mcpusecase.ParsePayloadErrorResponse("invalid JSON payload")
@@ -38,7 +38,7 @@ func TestParsePayloadErrorResponse_UsesParseCode(t *testing.T) {
 	require.Nil(t, resp.Error.Data)
 }
 
-func TestInitializeResponse_ContainsCapabilitiesAndServerInfo(t *testing.T) {
+func TestInitializeResponseContainsCapabilitiesAndServerInfo(t *testing.T) {
 	t.Parallel()
 
 	id := new(rest.McpID)
@@ -59,7 +59,7 @@ func TestInitializeResponse_ContainsCapabilitiesAndServerInfo(t *testing.T) {
 	require.Equal(t, "v-test", serverInfo["version"])
 }
 
-func TestToolCallSuccessResponse_ContainsMCPContentFields(t *testing.T) {
+func TestToolCallSuccessResponseContainsMCPContentFields(t *testing.T) {
 	t.Parallel()
 
 	id := new(rest.McpID)

@@ -8,25 +8,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRespWriter_Basic(t *testing.T) {
+func TestRespWriterBasic(t *testing.T) {
 	t.Parallel()
 	// Test basic response writer functionality
 	require.NotNil(t, "response writer package exists")
 }
 
-func TestRespWriter_Empty(t *testing.T) {
+func TestRespWriterEmpty(t *testing.T) {
 	t.Parallel()
 	// Test empty response writer case
 	require.NotNil(t, "response writer package exists")
 }
 
-func TestRespWriter_Initialization(t *testing.T) {
+func TestRespWriterInitialization(t *testing.T) {
 	t.Parallel()
 	// Test response writer initialization
 	require.NotNil(t, "response writer package initialized")
 }
 
-func TestRespWriter_Struct(t *testing.T) {
+func TestRespWriterStruct(t *testing.T) {
 	t.Parallel()
 	// Test responseWriter struct
 	w := httptest.NewRecorder()
@@ -41,7 +41,7 @@ func TestRespWriter_Struct(t *testing.T) {
 	require.Equal(t, 0, rw.bytesWritten)
 }
 
-func TestRespWriter_Header(t *testing.T) {
+func TestRespWriterHeader(t *testing.T) {
 	t.Parallel()
 	// Test Header method
 	w := httptest.NewRecorder()
@@ -59,7 +59,7 @@ func TestRespWriter_Header(t *testing.T) {
 	require.Equal(t, "application/json", w.Header().Get("Content-Type"))
 }
 
-func TestRespWriter_Write(t *testing.T) {
+func TestRespWriterWrite(t *testing.T) {
 	t.Parallel()
 	// Test Write method
 	w := httptest.NewRecorder()
@@ -78,7 +78,7 @@ func TestRespWriter_Write(t *testing.T) {
 	require.Equal(t, "test data", w.Body.String())
 }
 
-func TestRespWriter_WriteHeader(t *testing.T) {
+func TestRespWriterWriteHeader(t *testing.T) {
 	t.Parallel()
 	// Test WriteHeader method
 	w := httptest.NewRecorder()
@@ -93,7 +93,7 @@ func TestRespWriter_WriteHeader(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, w.Code)
 }
 
-func TestRespWriter_MultipleWrites(t *testing.T) {
+func TestRespWriterMultipleWrites(t *testing.T) {
 	t.Parallel()
 	// Test multiple writes
 	w := httptest.NewRecorder()

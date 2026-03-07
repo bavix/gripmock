@@ -16,7 +16,7 @@ const (
 	baseString = "base"
 )
 
-func TestWrapFunc_AlreadyFunc(t *testing.T) {
+func TestWrapFuncAlreadyFunc(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -34,7 +34,7 @@ func TestWrapFunc_AlreadyFunc(t *testing.T) {
 	require.Equal(t, testString, result)
 }
 
-func TestWrapFunc_SimpleFunc(t *testing.T) {
+func TestWrapFuncSimpleFunc(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -52,7 +52,7 @@ func TestWrapFunc_SimpleFunc(t *testing.T) {
 	require.Equal(t, testString, result)
 }
 
-func TestWrapFunc_FuncWithArgs(t *testing.T) {
+func TestWrapFuncFuncWithArgs(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -71,7 +71,7 @@ func TestWrapFunc_FuncWithArgs(t *testing.T) {
 	require.Equal(t, 5, result)
 }
 
-func TestWrapFunc_FuncWithError(t *testing.T) {
+func TestWrapFuncFuncWithError(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -89,7 +89,7 @@ func TestWrapFunc_FuncWithError(t *testing.T) {
 	require.Equal(t, testString, result)
 }
 
-func TestWrapFunc_FuncWithErrorReturn(t *testing.T) {
+func TestWrapFuncFuncWithErrorReturn(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -110,7 +110,7 @@ func TestWrapFunc_FuncWithErrorReturn(t *testing.T) {
 	require.Empty(t, result)
 }
 
-func TestWrapFunc_UnsupportedResultCount(t *testing.T) {
+func TestWrapFuncUnsupportedResultCount(t *testing.T) {
 	t.Parallel()
 
 	fn := func() (int, int, int) {
@@ -126,7 +126,7 @@ func TestWrapFunc_UnsupportedResultCount(t *testing.T) {
 	require.Nil(t, result)
 }
 
-func TestWrapFunc_WithContext(t *testing.T) {
+func TestWrapFuncWithContext(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -144,7 +144,7 @@ func TestWrapFunc_WithContext(t *testing.T) {
 	require.Equal(t, testString, result)
 }
 
-func TestWrapFunc_InvalidType(t *testing.T) {
+func TestWrapFuncInvalidType(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -157,7 +157,7 @@ func TestWrapFunc_InvalidType(t *testing.T) {
 	require.Nil(t, wrapped)
 }
 
-func TestWrapDecorator_ValidDecorator(t *testing.T) {
+func TestWrapDecoratorValidDecorator(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -191,7 +191,7 @@ func TestWrapDecorator_ValidDecorator(t *testing.T) {
 	require.Equal(t, "decorated: "+baseString, result)
 }
 
-func TestWrapDecorator_InvalidType(t *testing.T) {
+func TestWrapDecoratorInvalidType(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -249,7 +249,7 @@ func TestCoerceArg(t *testing.T) {
 	require.Equal(t, 1, idx)
 }
 
-func TestCoerceArg_NilValue(t *testing.T) {
+func TestCoerceArgNilValue(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -266,7 +266,7 @@ func TestCoerceArg_NilValue(t *testing.T) {
 	require.True(t, val.IsNil())
 }
 
-func TestCoerceArg_NotEnoughArgs(t *testing.T) {
+func TestCoerceArgNotEnoughArgs(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -283,7 +283,7 @@ func TestCoerceArg_NotEnoughArgs(t *testing.T) {
 	require.Contains(t, err.Error(), "not enough arguments")
 }
 
-func TestCoerceArg_TypeMismatch(t *testing.T) {
+func TestCoerceArgTypeMismatch(t *testing.T) {
 	t.Parallel()
 
 	// Arrange

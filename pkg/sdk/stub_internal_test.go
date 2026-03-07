@@ -9,7 +9,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-func TestStubBuilderCommit_AssignsNonNilID(t *testing.T) {
+func TestStubBuilderCommitAssignsNonNilID(t *testing.T) {
 	t.Parallel()
 
 	// Arrange

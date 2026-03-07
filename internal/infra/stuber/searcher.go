@@ -11,6 +11,8 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
+
+	"github.com/bavix/gripmock/v3/internal/infra/protoconv"
 )
 
 // PriorityMultiplier is used to boost stub priority in ranking calculations.
@@ -711,9 +713,9 @@ func (s *searcher) find(query Query) (*Result, error) {
 
 // searchByID retrieves the Stub value associated with the given ID from the searcher.
 func (s *searcher) searchByID(query Query) (*Result, error) {
-	_, err := s.storage.posByPN(query.Service, query.Method)
-	if err != nil {
-		return nil, s.wrap(err)
+	indexes, _ := s.storage.posByPN(query.Service, query.Method)
+	if len(indexes) == 0 {
+		return nil, s.wrap(ErrServiceNotFound)
 	}
 
 	found := s.findByID(*query.ID)
@@ -767,9 +769,9 @@ func (s *searcher) findBidi(query QueryBidi) (*BidiResult, error) {
 	}
 
 	// Check if the given service and method are valid
-	_, err := s.storage.posByPN(query.Service, query.Method)
-	if err != nil {
-		return nil, s.wrap(err)
+	indexes, _ := s.storage.posByPN(query.Service, query.Method)
+	if len(indexes) == 0 {
+		return nil, s.wrap(ErrServiceNotFound)
 	}
 
 	// Fetch all stubs for this service/method
@@ -795,9 +797,9 @@ func (s *searcher) findBidi(query QueryBidi) (*BidiResult, error) {
 // Since we can't use bidirectional streaming for ID-based queries, we fallback to regular search.
 func (s *searcher) searchByIDBidi(query QueryBidi) (*BidiResult, error) {
 	// Check if the given service and method are valid
-	_, err := s.storage.posByPN(query.Service, query.Method)
-	if err != nil {
-		return nil, s.wrap(err)
+	indexes, _ := s.storage.posByPN(query.Service, query.Method)
+	if len(indexes) == 0 {
+		return nil, s.wrap(ErrServiceNotFound)
 	}
 
 	// Search for the Stub value with the given ID
@@ -872,8 +874,26 @@ func filterBySession(stubs []*Stub, session string) []*Stub {
 func (s *searcher) searchOptimized(query Query) (*Result, error) {
 	// Get stubs from storage (single call - optimized)
 	seq, err := s.storage.findAll(query.Service, query.Method)
+	// If service/method not found, try to find similar stubs with same method from other services
 	if err != nil {
-		return nil, s.wrap(err)
+		allStubs := s.all()
+		allStubs = filterBySession(allStubs, query.Session)
+		allStubs = s.filterExhaustedStubs(allStubs, query.Session)
+
+		// Filter stubs by method name to find similar matches
+		sameMethodStubs := make([]*Stub, 0, len(allStubs))
+		for _, stub := range allStubs {
+			if stub.Method == query.Method {
+				sameMethodStubs = append(sameMethodStubs, stub)
+			}
+		}
+
+		if len(sameMethodStubs) == 0 {
+			return nil, ErrStubNotFound
+		}
+
+		// Find most similar stub from stubs with same method
+		return s.processStubs(query, sameMethodStubs)
 	}
 
 	// Collect all stubs in a single pass
@@ -916,37 +936,29 @@ func (s *searcher) processStubs(query Query, stubs []*Stub) (*Result, error) {
 
 // processStubsSequential processes stubs sequentially (original logic).
 func (s *searcher) processStubsSequential(query Query, stubs []*Stub) (*Result, error) {
-	type scoredStub struct {
-		stub        *Stub
-		score       float64
-		specificity int
-		totalScore  float64
-		matches     bool
-	}
-
 	var (
-		matches     []scoredStub
-		mostSimilar *Stub
-		highestRank float64
+		matches []rankedMatch
+		best    similarCandidate
 	)
 
 	for _, stub := range stubs {
-		rank := s.fastRankV2(query, stub)
-		priorityBonus := float64(stub.Priority) * PriorityMultiplier
-		specificity := s.calcSpecificity(stub, query)
-		totalScore := rank + priorityBonus
+		candidate := s.buildSimilarCandidate(query, stub)
 
 		if s.fastMatchV2(query, stub) {
-			matches = append(matches, scoredStub{stub: stub, score: totalScore, specificity: specificity, totalScore: totalScore, matches: true})
+			matches = append(matches, rankedMatch{
+				stub:        stub,
+				specificity: candidate.specificity,
+				totalScore:  candidate.score,
+			})
 		}
 
-		if totalScore > highestRank {
-			mostSimilar, highestRank = stub, totalScore
+		if best.shouldReplace(candidate) {
+			best = candidate
 		}
 	}
 
 	// Sort matches by specificity desc, then totalScore desc
-	slices.SortFunc(matches, func(a, b scoredStub) int {
+	slices.SortFunc(matches, func(a, b rankedMatch) int {
 		if a.specificity != b.specificity {
 			return b.specificity - a.specificity
 		}
@@ -968,11 +980,65 @@ func (s *searcher) processStubsSequential(query Query, stubs []*Stub) (*Result, 
 		}
 	}
 
-	if mostSimilar != nil {
-		return &Result{similar: mostSimilar}, nil
+	if best.stub != nil {
+		return &Result{similar: best.stub}, nil
 	}
 
 	return nil, ErrStubNotFound
+}
+
+type rankedMatch struct {
+	stub        *Stub
+	specificity int
+	totalScore  float64
+}
+
+type similarCandidate struct {
+	stub        *Stub
+	score       float64
+	specificity int
+	fieldCount  int
+}
+
+func (s *searcher) buildSimilarCandidate(query Query, stub *Stub) similarCandidate {
+	return similarCandidate{
+		stub:        stub,
+		score:       s.fastRankV2(query, stub) + float64(stub.Priority)*PriorityMultiplier,
+		specificity: s.calcSpecificity(stub, query),
+		fieldCount:  s.getStubFieldCount(stub),
+	}
+}
+
+func (c similarCandidate) shouldReplace(other similarCandidate) bool {
+	if c.stub == nil {
+		return true
+	}
+
+	if other.specificity != c.specificity {
+		return other.specificity > c.specificity
+	}
+
+	if other.fieldCount != c.fieldCount {
+		return other.fieldCount < c.fieldCount
+	}
+
+	return other.score > c.score
+}
+
+// getStubFieldCount returns the total number of fields in the stub's input.
+func (s *searcher) getStubFieldCount(stub *Stub) int {
+	count := 0
+	count += len(stub.Input.Equals)
+	count += len(stub.Input.Contains)
+	count += len(stub.Input.Matches)
+
+	for _, input := range stub.Inputs {
+		count += len(input.Equals)
+		count += len(input.Contains)
+		count += len(input.Matches)
+	}
+
+	return count
 }
 
 // processStubsParallel processes stubs in parallel using goroutines.
@@ -1390,38 +1456,75 @@ func (s *searcher) calcSpecificity(stub *Stub, query Query) int {
 // calcSpecificityUnary calculates specificity for unary case.
 // Counts the number of fields that exist in both stub and query.
 // Supports all field types: Equals, Contains, and Matches.
+// Supports field name variations (camelCase vs snake_case).
+// Excludes fields with default/empty values from specificity calculation.
 //
 // Parameters:
 // - stubInput: The stub's input data
 // - queryData: The query's input data
 //
 // Returns:
-// - int: The number of matching fields.
+// - int: The number of matching fields (excluding default values).
 func (s *searcher) calcSpecificityUnary(stubInput InputData, queryData map[string]any) int {
 	specificity := 0
 
+	// Helper function to check if field exists with variations and has non-default value
+	fieldExistsWithNonDefaultValue := func(stubKey string) bool {
+		// Try to find the field in query with variations
+		queryValue, found := s.getQueryValueWithVariations(queryData, stubKey)
+		if !found {
+			return false
+		}
+		// Check if query value is non-default
+		return !protoconv.IsDefaultValue(queryValue)
+	}
+
 	// Count equals fields
 	for key := range stubInput.Equals {
-		if _, exists := queryData[key]; exists {
+		if fieldExistsWithNonDefaultValue(key) {
 			specificity++
 		}
 	}
 
 	// Count contains fields
 	for key := range stubInput.Contains {
-		if _, exists := queryData[key]; exists {
+		if fieldExistsWithNonDefaultValue(key) {
 			specificity++
 		}
 	}
 
 	// Count matches fields
 	for key := range stubInput.Matches {
-		if _, exists := queryData[key]; exists {
+		if fieldExistsWithNonDefaultValue(key) {
 			specificity++
 		}
 	}
 
 	return specificity
+}
+
+// getQueryValueWithVariations tries to find a value in query using field name variations.
+func (s *searcher) getQueryValueWithVariations(queryData map[string]any, stubKey string) (any, bool) {
+	// Direct match
+	if value, exists := queryData[stubKey]; exists {
+		return value, true
+	}
+	// Try snake_case
+	variant := toSnakeCase(stubKey)
+	if variant != stubKey {
+		if value, exists := queryData[variant]; exists {
+			return value, true
+		}
+	}
+	// Try camelCase
+	variant = toCamelCase(stubKey)
+	if variant != stubKey {
+		if value, exists := queryData[variant]; exists {
+			return value, true
+		}
+	}
+
+	return nil, false
 }
 
 // calcSpecificityStream calculates specificity for stream case.

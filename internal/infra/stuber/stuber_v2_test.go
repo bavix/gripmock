@@ -64,7 +64,7 @@ func TestFindBySortedV2(t *testing.T) {
 	runFindBySortedTests(t, newBudgerigar)
 }
 
-func TestPutMany_FixIDV2(t *testing.T) {
+func TestPutManyFixIDV2(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())
@@ -135,7 +135,7 @@ func TestRelationshipV2(t *testing.T) {
 	require.NotNil(t, s.FindByID(stub2.ID))
 }
 
-func TestBudgerigar_UnusedV2(t *testing.T) {
+func TestBudgerigarUnusedV2(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())
@@ -173,7 +173,7 @@ func TestBudgerigar_UnusedV2(t *testing.T) {
 	require.Equal(t, stub2.ID, unused[0].ID)
 }
 
-func TestBudgerigar_SearchWithHeadersV2(t *testing.T) {
+func TestBudgerigarSearchWithHeadersV2(t *testing.T) {
 	t.Parallel()
 	// Clear all caches before test
 	stuber.ClearAllCaches()
@@ -220,7 +220,7 @@ func TestBudgerigar_SearchWithHeadersV2(t *testing.T) {
 	require.NotNil(t, result.Similar()) // Should find similar match
 }
 
-func TestBudgerigar_SearchEmptyV2(t *testing.T) {
+func TestBudgerigarSearchEmptyV2(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())
@@ -234,7 +234,7 @@ func TestBudgerigar_SearchEmptyV2(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestBudgerigar_SearchWithHeaders_SimilarV2(t *testing.T) {
+func TestBudgerigarSearchWithHeadersSimilarV2(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())
@@ -267,7 +267,7 @@ func TestBudgerigar_SearchWithHeaders_SimilarV2(t *testing.T) {
 	require.NotNil(t, result.Similar()) // Should find similar match
 }
 
-func TestResult_SimilarV2(t *testing.T) {
+func TestResultSimilarV2(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())
@@ -296,7 +296,7 @@ func TestResult_SimilarV2(t *testing.T) {
 	require.NotNil(t, result.Similar())
 }
 
-func TestStuber_MatchesEqualsFoundV2(t *testing.T) {
+func TestStuberMatchesEqualsFoundV2(t *testing.T) {
 	t.Parallel()
 	// Clear all caches before test
 	stuber.ClearAllCaches()
@@ -359,7 +359,7 @@ func TestDeleteV2(t *testing.T) {
 	require.Nil(t, s.FindByID(stub.ID))
 }
 
-func TestBudgerigar_ClearV2(t *testing.T) {
+func TestBudgerigarClearV2(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())
@@ -382,7 +382,7 @@ func TestBudgerigar_ClearV2(t *testing.T) {
 	require.Nil(t, s.FindByID(stub2.ID))
 }
 
-func TestBudgerigar_FindByQuery_FoundWithPriorityV2(t *testing.T) {
+func TestBudgerigarFindByQueryFoundWithPriorityV2(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())
@@ -431,9 +431,9 @@ func TestBudgerigar_FindByQuery_FoundWithPriorityV2(t *testing.T) {
 	require.Equal(t, "Hello from stub2", result.Found().Output.Data["message"])
 }
 
-// TestDivideByZero_ClientStreaming mimics case_divide_by_zero.gctf:
+// TestDivideByZeroClientStreaming mimics case_divide_by_zero.gctf:
 // two stubs (universal + divide-by-zero), query [100, 0.0] must match divide-by-zero by priority.
-func TestDivideByZero_ClientStreaming(t *testing.T) {
+func TestDivideByZeroClientStreaming(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())
@@ -493,7 +493,7 @@ func TestDivideByZero_ClientStreaming(t *testing.T) {
 	require.Equal(t, codes.Unknown, *found.Output.Code)
 }
 
-func TestBudgerigar_UsedV2(t *testing.T) {
+func TestBudgerigarUsedV2(t *testing.T) {
 	t.Parallel()
 	// Clear all caches before test
 	stuber.ClearAllCaches()
@@ -531,7 +531,7 @@ func TestBudgerigar_UsedV2(t *testing.T) {
 	require.Len(t, used, 1)
 }
 
-func TestBudgerigar_FindByQuery_WithIDV2(t *testing.T) {
+func TestBudgerigarFindByQueryWithIDV2(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())
@@ -1574,7 +1574,7 @@ func TestPriorityHeadersOverEquals(t *testing.T) {
 }
 
 //nolint:funlen
-func TestBudgerigar_FindByQuery_SessionIsolation(t *testing.T) {
+func TestBudgerigarFindByQuerySessionIsolation(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())
@@ -1651,7 +1651,7 @@ func TestBudgerigar_FindByQuery_SessionIsolation(t *testing.T) {
 }
 
 // TestBudgerigar_Times_ConcurrentNoRace verifies Times limit under concurrent load without race.
-func TestBudgerigar_Times_ConcurrentNoRace(t *testing.T) {
+func TestBudgerigarTImesConcurrentNoRace(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar(features.New())

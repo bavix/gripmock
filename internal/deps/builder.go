@@ -77,6 +77,8 @@ func WithPlugins(paths []string) Option {
 func (b *Builder) LoadPlugins(ctx context.Context) {
 	b.pluginOnce.Do(func() {
 		reg := internalplugins.NewRegistry()
+		internalplugins.RegisterBuiltins(reg)
+
 		allPaths := slices.Concat(b.config.TemplatePluginPaths, b.pluginPaths)
 		loader := internalplugins.NewLoader(allPaths)
 		loader.Load(ctx, reg)

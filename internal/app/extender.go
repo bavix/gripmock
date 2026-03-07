@@ -4,11 +4,9 @@ import "context"
 
 type instantExtender struct{}
 
-func (e *instantExtender) Wait(ctx context.Context) {}
-
 // NewInstantExtender returns an Extender that never blocks.
-//
-//nolint:ireturn
-func NewInstantExtender() Extender {
+func NewInstantExtender() *instantExtender {
 	return &instantExtender{}
 }
+
+func (e *instantExtender) Wait(ctx context.Context) {}

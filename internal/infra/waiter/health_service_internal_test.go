@@ -25,7 +25,7 @@ func TestNewService(t *testing.T) {
 	require.Nil(t, service.client)
 }
 
-func TestService_Struct(t *testing.T) {
+func TestServiceStruct(t *testing.T) {
 	t.Parallel()
 
 	// Test Service struct initialization
@@ -36,7 +36,7 @@ func TestService_Struct(t *testing.T) {
 	require.Nil(t, service.client)
 }
 
-func TestService_PingWithTimeout_NilClient(t *testing.T) {
+func TestServicePIngWithTimeoutNilClient(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -50,7 +50,7 @@ func TestService_PingWithTimeout_NilClient(t *testing.T) {
 	})
 }
 
-func TestService_Ping_NilClient(t *testing.T) {
+func TestServicePIngNilClient(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -63,7 +63,7 @@ func TestService_Ping_NilClient(t *testing.T) {
 	})
 }
 
-func TestService_PingWithTimeout_ContextTimeout(t *testing.T) {
+func TestServicePIngWithTimeoutContextTimeout(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -80,7 +80,7 @@ func TestService_PingWithTimeout_ContextTimeout(t *testing.T) {
 	})
 }
 
-func TestService_PingWithTimeout_ZeroTimeout(t *testing.T) {
+func TestServicePIngWithTimeoutZeroTimeout(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -95,7 +95,7 @@ func TestService_PingWithTimeout_ZeroTimeout(t *testing.T) {
 	})
 }
 
-func TestService_PingWithTimeout_NegativeTimeout(t *testing.T) {
+func TestServicePIngWithTimeoutNegativeTimeout(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -109,7 +109,7 @@ func TestService_PingWithTimeout_NegativeTimeout(t *testing.T) {
 	})
 }
 
-func TestService_Ping_EmptyServiceName(t *testing.T) {
+func TestServicePIngEmptyServiceName(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -123,7 +123,7 @@ func TestService_Ping_EmptyServiceName(t *testing.T) {
 	})
 }
 
-func TestService_Ping_NilContext(t *testing.T) {
+func TestServicePIngNilContext(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -138,7 +138,7 @@ func TestService_Ping_NilContext(t *testing.T) {
 	})
 }
 
-func TestService_PingWithTimeout_NilContext(t *testing.T) {
+func TestServicePIngWithTimeoutNilContext(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -154,7 +154,7 @@ func TestService_PingWithTimeout_NilContext(t *testing.T) {
 	})
 }
 
-func TestService_PingWithTimeout_CancelledContext(t *testing.T) {
+func TestServicePIngWithTimeoutCancelledContext(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -171,7 +171,7 @@ func TestService_PingWithTimeout_CancelledContext(t *testing.T) {
 	})
 }
 
-func TestService_Ping_CancelledContext(t *testing.T) {
+func TestServicePIngCancelledContext(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -187,7 +187,7 @@ func TestService_Ping_CancelledContext(t *testing.T) {
 	})
 }
 
-func TestService_PingWithTimeout_VeryLongTimeout(t *testing.T) {
+func TestServicePIngWithTimeoutVeryLongTimeout(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -202,7 +202,7 @@ func TestService_PingWithTimeout_VeryLongTimeout(t *testing.T) {
 	})
 }
 
-func TestService_PingWithTimeout_ContextWithDeadline(t *testing.T) {
+func TestServicePIngWithTimeoutContextWithDeadline(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -219,7 +219,7 @@ func TestService_PingWithTimeout_ContextWithDeadline(t *testing.T) {
 	})
 }
 
-func TestService_Ping_ContextWithValues(t *testing.T) {
+func TestServicePIngContextWithValues(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -232,7 +232,7 @@ func TestService_Ping_ContextWithValues(t *testing.T) {
 	})
 }
 
-func TestService_PingWithTimeout_ContextWithValues(t *testing.T) {
+func TestServicePIngWithTimeoutContextWithValues(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -246,7 +246,7 @@ func TestService_PingWithTimeout_ContextWithValues(t *testing.T) {
 	})
 }
 
-func TestService_Ping_ServiceNameWithSpecialCharacters(t *testing.T) {
+func TestServicePIngServiceNameWithSpecialCharacters(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -259,7 +259,7 @@ func TestService_Ping_ServiceNameWithSpecialCharacters(t *testing.T) {
 	})
 }
 
-func TestService_PingWithTimeout_ServiceNameWithSpecialCharacters(t *testing.T) {
+func TestServicePIngWithTimeoutServiceNameWithSpecialCharacters(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -273,7 +273,7 @@ func TestService_PingWithTimeout_ServiceNameWithSpecialCharacters(t *testing.T) 
 	})
 }
 
-func TestService_Ping_UnicodeServiceName(t *testing.T) {
+func TestServicePIngUnicodeServiceName(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -286,7 +286,7 @@ func TestService_Ping_UnicodeServiceName(t *testing.T) {
 	})
 }
 
-func TestService_PingWithTimeout_UnicodeServiceName(t *testing.T) {
+func TestServicePIngWithTimeoutUnicodeServiceName(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -300,7 +300,7 @@ func TestService_PingWithTimeout_UnicodeServiceName(t *testing.T) {
 	})
 }
 
-func TestService_Ping_VeryLongServiceName(t *testing.T) {
+func TestServicePIngVeryLongServiceName(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -313,7 +313,7 @@ func TestService_Ping_VeryLongServiceName(t *testing.T) {
 	})
 }
 
-func TestService_PingWithTimeout_VeryLongServiceName(t *testing.T) {
+func TestServicePIngWithTimeoutVeryLongServiceName(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -327,7 +327,7 @@ func TestService_PingWithTimeout_VeryLongServiceName(t *testing.T) {
 	})
 }
 
-func TestService_Ping_ServiceNameWithNewlines(t *testing.T) {
+func TestServicePIngServiceNameWithNewlines(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)
@@ -340,7 +340,7 @@ func TestService_Ping_ServiceNameWithNewlines(t *testing.T) {
 	})
 }
 
-func TestService_PingWithTimeout_ServiceNameWithNewlines(t *testing.T) {
+func TestServicePIngWithTimeoutServiceNameWithNewlines(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(nil)

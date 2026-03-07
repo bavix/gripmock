@@ -46,6 +46,7 @@ func NewStub(
 	}
 }
 
+// Wait waits for stubs to be loaded.
 func (s *Extender) Wait(ctx context.Context) {
 	select {
 	case <-ctx.Done():
@@ -55,6 +56,60 @@ func (s *Extender) Wait(ctx context.Context) {
 	}
 }
 
+// SignalLoaded closes the channel to signal that stubs are loaded (used when no stub path is provided).
+func (s *Extender) SignalLoaded() {
+	close(s.ch)
+}
+
+// ReadFromPathSync loads stubs from the given path synchronously.
+// Unlike ReadFromPath, this method blocks until all initial stubs are loaded.
+// File watching continues asynchronously after initial load.
+func (s *Extender) ReadFromPathSync(ctx context.Context, pathDir string) {
+	if pathDir == "" {
+		close(s.ch)
+
+		return
+	}
+
+	zerolog.Ctx(ctx).Info().Msg("Loading stubs from directory (preserving API stubs)")
+
+	s.readFromPath(ctx, pathDir)
+	close(s.ch)
+
+	// Continue watching for changes asynchronously (don't block on watcher)
+	if isDirectory(pathDir) {
+		ch, err := s.watcher.Watch(ctx, pathDir)
+		if err != nil {
+			return
+		}
+
+		// Process file changes asynchronously without blocking
+		go func() {
+			for file := range ch {
+				zerolog.Ctx(ctx).
+					Debug().
+					Str("path", file).
+					Msg("Updating stub")
+
+				go func() {
+					defer func() {
+						if r := recover(); r != nil {
+							zerolog.Ctx(ctx).
+								Error().
+								Interface("panic", r).
+								Str("file", file).
+								Msg("Panic recovered while processing stub file")
+						}
+					}()
+
+					s.readByFile(ctx, file)
+				}()
+			}
+		}()
+	}
+}
+
+// ReadFromPath loads stubs from the given path asynchronously (legacy behavior).
 func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
 	if pathDir == "" {
 		close(s.ch)
@@ -146,7 +201,7 @@ func (s *Extender) isStubFile(filename string) bool {
 }
 
 func (s *Extender) readByFile(ctx context.Context, filePath string) {
-	stubs, err := s.readStub(filePath)
+	stubs, err := s.readStub(ctx, filePath)
 	if err != nil {
 		s.handleFileReadError(ctx, filePath, err)
 
@@ -264,14 +319,14 @@ func genID(stub *stuber.Stub, freeIDs uuid.UUIDs) (uuid.UUID, uuid.UUIDs) {
 	return uuid.New(), nil
 }
 
-func (s *Extender) readStub(path string) ([]*stuber.Stub, error) {
+func (s *Extender) readStub(ctx context.Context, path string) ([]*stuber.Stub, error) {
 	file, err := os.ReadFile(path) //nolint:gosec
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read file %s", path)
 	}
 
 	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
-		file, err = s.converter.Execute(path, file)
+		file, err = s.converter.Execute(ctx, path, file)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to unmarshal file %s", path)
 		}

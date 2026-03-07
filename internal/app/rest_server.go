@@ -31,8 +31,9 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/build"
 	"github.com/bavix/gripmock/v3/internal/infra/httputil"
 	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
+	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
+	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
-	"github.com/bavix/gripmock/v3/internal/pkg/session"
 )
 
 // Extender defines the interface for extending stub functionality.
@@ -989,7 +990,7 @@ func (h *RestServer) ListHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	calls := h.history.Filter(history.FilterOpts{Session: session.FromRequest(r)})
+	calls := h.history.Filter(history.FilterOpts{Session: muxmiddleware.FromRequest(r)})
 
 	out := make(rest.HistoryList, len(calls))
 	for i, c := range calls {
@@ -1044,7 +1045,7 @@ func (h *RestServer) VerifyCalls(w http.ResponseWriter, r *http.Request) {
 	calls := h.history.Filter(history.FilterOpts{
 		Service: req.Service,
 		Method:  req.Method,
-		Session: session.FromRequest(r),
+		Session: muxmiddleware.FromRequest(r),
 	})
 
 	actual := len(calls)
@@ -1079,7 +1080,7 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sess := session.FromRequest(r)
+	sess := muxmiddleware.FromRequest(r)
 	for _, stub := range inputs {
 		stub.Session = sess
 
@@ -1198,7 +1199,7 @@ func decodeDescriptorFiles(fds *descriptorpb.FileDescriptorSet) ([]protoreflect.
 		progress := false
 		nextPending := make([]*descriptorpb.FileDescriptorProto, 0, len(pending))
 
-		resolver := &fallbackResolver{Primary: registry, Fallback: protoregistry.GlobalFiles}
+		resolver := &protosetinfra.Fallback{Primary: registry, Fallback: protoregistry.GlobalFiles}
 
 		for _, fd := range pending {
 			fileDesc, err := protodesc.NewFile(fd, resolver)
@@ -1297,7 +1298,7 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 		_ = r.Body.Close()
 	}()
 
-	if sess := session.FromRequest(r); sess != "" {
+	if sess := muxmiddleware.FromRequest(r); sess != "" {
 		query.Session = sess
 	}
 

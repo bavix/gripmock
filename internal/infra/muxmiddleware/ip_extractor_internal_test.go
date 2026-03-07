@@ -9,25 +9,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUtils_Basic(t *testing.T) {
+func TestUtilsBasic(t *testing.T) {
 	t.Parallel()
 	// Test basic utils functionality
 	require.NotNil(t, "utils package exists")
 }
 
-func TestUtils_Empty(t *testing.T) {
+func TestUtilsEmpty(t *testing.T) {
 	t.Parallel()
 	// Test empty utils case
 	require.NotNil(t, "utils package exists")
 }
 
-func TestUtils_Initialization(t *testing.T) {
+func TestUtilsInitialization(t *testing.T) {
 	t.Parallel()
 	// Test utils initialization
 	require.NotNil(t, "utils package initialized")
 }
 
-func TestUtils_GetIP(t *testing.T) {
+func TestUtilsGetIP(t *testing.T) {
 	t.Parallel()
 	// Test getIP function
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -38,7 +38,7 @@ func TestUtils_GetIP(t *testing.T) {
 	require.NotNil(t, ip) // Just check that we get a valid IP
 }
 
-func TestUtils_GetIPWithXForwardedFor(t *testing.T) {
+func TestUtilsGetIPWithXForwardedFor(t *testing.T) {
 	t.Parallel()
 	// Test getIP with X-Forwarded-For header
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -49,7 +49,7 @@ func TestUtils_GetIPWithXForwardedFor(t *testing.T) {
 	require.Equal(t, net.ParseIP("192.168.1.1"), ip)
 }
 
-func TestUtils_GetIPWithInvalidXForwardedFor(t *testing.T) {
+func TestUtilsGetIPWithInvalidXForwardedFor(t *testing.T) {
 	t.Parallel()
 	// Test getIP with invalid X-Forwarded-For header
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -61,7 +61,7 @@ func TestUtils_GetIPWithInvalidXForwardedFor(t *testing.T) {
 	require.Equal(t, net.ParseIP("192.168.1.1"), ip)
 }
 
-func TestUtils_GetIPWithEmptyXForwardedFor(t *testing.T) {
+func TestUtilsGetIPWithEmptyXForwardedFor(t *testing.T) {
 	t.Parallel()
 	// Test getIP with empty X-Forwarded-For header
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -73,7 +73,7 @@ func TestUtils_GetIPWithEmptyXForwardedFor(t *testing.T) {
 	require.Equal(t, net.ParseIP("192.168.1.1"), ip)
 }
 
-func TestUtils_GetIPWithInvalidRemoteAddr(t *testing.T) {
+func TestUtilsGetIPWithInvalidRemoteAddr(t *testing.T) {
 	t.Parallel()
 	// Test getIP with invalid RemoteAddr
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -84,7 +84,7 @@ func TestUtils_GetIPWithInvalidRemoteAddr(t *testing.T) {
 	require.Nil(t, ip)
 }
 
-func TestUtils_GetIPWithIPv6(t *testing.T) {
+func TestUtilsGetIPWithIPv6(t *testing.T) {
 	t.Parallel()
 	// Test getIP with IPv6 address
 	req := httptest.NewRequest(http.MethodGet, "/", nil)

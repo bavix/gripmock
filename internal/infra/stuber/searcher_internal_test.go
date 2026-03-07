@@ -16,7 +16,7 @@ func TestEmpty(t *testing.T) {
 }
 
 //nolint:funlen
-func TestSearch_IgnoreArrayOrderAndFields(t *testing.T) {
+func TestSearchIgnoreArrayOrderAndFields(t *testing.T) {
 	t.Parallel()
 
 	s := newSearcher()
@@ -105,7 +105,7 @@ func TestSearch_IgnoreArrayOrderAndFields(t *testing.T) {
 }
 
 //nolint:funlen
-func TestSearch_IgnoreArrayOrder_UserScenario(t *testing.T) {
+func TestSearchIgnoreArrayOrderUserScenario(t *testing.T) {
 	t.Parallel()
 
 	s := newSearcher()
@@ -212,7 +212,7 @@ func TestSearch_IgnoreArrayOrder_UserScenario(t *testing.T) {
 }
 
 //nolint:funlen
-func TestSearch_IgnoreArrayOrder_V1API(t *testing.T) {
+func TestSearchIgnoreArrayOrderV1API(t *testing.T) {
 	t.Parallel()
 
 	s := newSearcher()
@@ -299,7 +299,7 @@ func TestSearch_IgnoreArrayOrder_V1API(t *testing.T) {
 }
 
 //nolint:funlen
-func TestSearch_Specificity_AllCases(t *testing.T) {
+func TestSearchSpecificityAllCases(t *testing.T) {
 	t.Parallel()
 
 	s := newSearcher()
@@ -369,7 +369,7 @@ func TestSearch_Specificity_AllCases(t *testing.T) {
 }
 
 //nolint:funlen
-func TestSearch_Specificity_StreamCase(t *testing.T) {
+func TestSearchSpecificityStreamCase(t *testing.T) {
 	t.Parallel()
 
 	s := newSearcher()
@@ -451,7 +451,7 @@ func TestSearch_Specificity_StreamCase(t *testing.T) {
 }
 
 //nolint:funlen
-func TestSearch_Specificity_WithContainsAndMatches(t *testing.T) {
+func TestSearchSpecificityWithContainsAndMatches(t *testing.T) {
 	t.Parallel()
 
 	s := newSearcher()
@@ -526,7 +526,7 @@ func TestSearch_Specificity_WithContainsAndMatches(t *testing.T) {
 	require.Equal(t, "stub2", res2.Found().Output.Data["result"])
 }
 
-func TestSearch_Specificity_WithIgnoreArrayOrder(t *testing.T) {
+func TestSearchSpecificityWithIgnoreArrayOrder(t *testing.T) {
 	t.Parallel()
 
 	s := newSearcher()

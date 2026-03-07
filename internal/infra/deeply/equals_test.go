@@ -8,7 +8,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/deeply"
 )
 
-func TestEquals_Simple(t *testing.T) {
+func TestEqualsSimple(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -29,7 +29,7 @@ func TestEquals_Simple(t *testing.T) {
 	require.True(t, result3)
 }
 
-func TestEquals_Map_Left(t *testing.T) {
+func TestEqualsMapLeft(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -78,7 +78,7 @@ func TestEquals_Map_Left(t *testing.T) {
 	require.False(t, result3)
 }
 
-func TestEquals_Map_Right(t *testing.T) {
+func TestEqualsMapRight(t *testing.T) {
 	t.Parallel()
 
 	a := map[string]any{
@@ -112,7 +112,7 @@ func TestEquals_Map_Right(t *testing.T) {
 	require.False(t, deeply.Equals(a, b))
 }
 
-func TestEquals_Slices_Left(t *testing.T) {
+func TestEqualsSLicesLeft(t *testing.T) {
 	t.Parallel()
 
 	require.True(t, deeply.Equals([]int{1, 2, 3}, []int{1, 2, 3}))
@@ -126,7 +126,7 @@ func TestEquals_Slices_Left(t *testing.T) {
 	require.False(t, deeply.Equals([]any{1, 2}, []any{1, 2, 3}))
 }
 
-func TestEquals_Slices_Right(t *testing.T) {
+func TestEqualsSLicesRight(t *testing.T) {
 	t.Parallel()
 
 	require.True(t, deeply.Equals([]int{1, 2, 3}, []int{1, 2, 3}))
@@ -140,13 +140,13 @@ func TestEquals_Slices_Right(t *testing.T) {
 	require.False(t, deeply.Equals([]any{1, 2, 3}, []any{1, 2}))
 }
 
-func TestEquals_Slices_OrderIgnore(t *testing.T) {
+func TestEqualsSLicesOrderIgnore(t *testing.T) {
 	t.Parallel()
 
 	runSliceOrderIgnoreChecks(t, deeply.EqualsIgnoreArrayOrder)
 }
 
-func TestEquals_Boundary(t *testing.T) {
+func TestEqualsBoundary(t *testing.T) {
 	t.Parallel()
 
 	require.False(t, deeply.Equals([]string{"a", "a", "a"}, []string{"a", "b", "c"}))

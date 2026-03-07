@@ -9,8 +9,8 @@ import (
 
 	"github.com/bavix/gripmock/v3/internal/config"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
+	"github.com/bavix/gripmock/v3/internal/infra/session"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
-	"github.com/bavix/gripmock/v3/internal/pkg/session"
 )
 
 func putStub(b *Builder, sessionID, message string) {
@@ -32,7 +32,7 @@ func putHistory(b *Builder, sessionID string) {
 }
 
 //nolint:paralleltest
-func TestBuilderCleanupExpiredSessions_RemovesTouchedSessionData(t *testing.T) {
+func TestBuilderCleanupExpiredSessionsRemovesTouchedSessionData(t *testing.T) {
 	b := NewBuilder(WithConfig(config.Config{HistoryEnabled: true}))
 	putStub(b, "A", "A")
 	putStub(b, "B", "B")
@@ -53,7 +53,7 @@ func TestBuilderCleanupExpiredSessions_RemovesTouchedSessionData(t *testing.T) {
 }
 
 //nolint:paralleltest
-func TestBuilderCleanupExpiredSessions_DoesNotDeleteGlobalSession(t *testing.T) {
+func TestBuilderCleanupExpiredSessionsDoesNotDeleteGlobalSession(t *testing.T) {
 	b := NewBuilder(WithConfig(config.Config{HistoryEnabled: true}))
 	putStub(b, "", "GLOBAL")
 	putStub(b, "A", "A")

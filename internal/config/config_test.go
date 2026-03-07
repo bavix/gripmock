@@ -8,7 +8,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/config"
 )
 
-func TestConfig_OldEnvVarNames(t *testing.T) {
+func TestConfigOldEnvVarNames(t *testing.T) {
 	// Set environment variables
 	t.Setenv("LOG_LEVEL", "debug")
 	t.Setenv("STRICT_METHOD_TITLE", "true")
@@ -67,7 +67,7 @@ func TestConfig_OldEnvVarNames(t *testing.T) {
 	require.Equal(t, expected.HistoryRedactKeys, cfg.HistoryRedactKeys)
 }
 
-func TestConfig_DefaultValues(t *testing.T) {
+func TestConfigDefaultValues(t *testing.T) {
 	t.Parallel()
 
 	expected := config.Config{
@@ -112,7 +112,7 @@ func TestConfig_DefaultValues(t *testing.T) {
 	require.Equal(t, expected.HistoryRedactKeys, cfg.HistoryRedactKeys)
 }
 
-func TestConfig_ByteSize(t *testing.T) {
+func TestConfigByteSize(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
@@ -141,7 +141,7 @@ func TestConfig_ByteSize(t *testing.T) {
 	}
 }
 
-func TestConfig_New(t *testing.T) {
+func TestConfigNew(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.Load()

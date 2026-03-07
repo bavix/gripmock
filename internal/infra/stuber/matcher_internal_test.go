@@ -346,7 +346,7 @@ func TestToFloat64(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestFieldValueEquals_JsonNumber(t *testing.T) {
+func TestFieldValueEqualsJsonNumber(t *testing.T) {
 	t.Parallel()
 	// json.Number vs float64
 	require.True(t, equals(

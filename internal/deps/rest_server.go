@@ -25,7 +25,14 @@ func (b *Builder) RestServe(
 	b.StartSessionGC(ctx)
 
 	extender := b.Extender(ctx)
-	go extender.ReadFromPath(ctx, stubPath)
+	// Load stubs synchronously before starting HTTP server
+	// This ensures stubs are available when gRPC server starts
+	if stubPath != "" {
+		extender.ReadFromPathSync(ctx, stubPath)
+	} else {
+		// No stub path, close the channel to signal completion
+		extender.SignalLoaded()
+	}
 
 	var historyReader history.Reader
 	if store := b.HistoryStore(); store != nil {

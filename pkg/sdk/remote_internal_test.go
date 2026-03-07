@@ -54,7 +54,7 @@ func stringify(args ...any) string {
 	return string(b)
 }
 
-func TestRemoteMock_CleanupStubs_BySession(t *testing.T) {
+func TestRemoteMockCLeanupStubsBySession(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -98,7 +98,7 @@ func TestRemoteMock_CleanupStubs_BySession(t *testing.T) {
 	require.ElementsMatch(t, []uuid.UUID{idA1, idA2}, deleted)
 }
 
-func TestRemoteMock_CleanupStubs_NoSessionUsesOwnedIDs(t *testing.T) {
+func TestRemoteMockCLeanupStubsNoSessionUsesOwnedIDs(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -129,7 +129,7 @@ func TestRemoteMock_CleanupStubs_NoSessionUsesOwnedIDs(t *testing.T) {
 	require.ElementsMatch(t, []uuid.UUID{id1, id2}, deleted)
 }
 
-func TestRemoteMock_ArmSessionTTL_TriggersCleanup(t *testing.T) {
+func TestRemoteMockARmSessionTTLTriggersCleanup(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -165,7 +165,7 @@ func TestRemoteMock_ArmSessionTTL_TriggersCleanup(t *testing.T) {
 	}, 500*time.Millisecond, 10*time.Millisecond)
 }
 
-func TestRunRemote_CleansSessionOnStart(t *testing.T) {
+func TestRunRemoteCleansSessionOnStart(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -216,7 +216,7 @@ func TestRunRemote_CleansSessionOnStart(t *testing.T) {
 	require.GreaterOrEqual(t, deleteCalls.Load(), int32(1))
 }
 
-func TestRemoteMock_CloseCleanupError(t *testing.T) {
+func TestRemoteMockCloseCleanupError(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -327,7 +327,7 @@ func TestRemoteAddStubAndCleanupOwnedIDs(t *testing.T) {
 	require.Equal(t, int32(2), m.expectedTotal.Load())
 }
 
-func TestRemoteMock_BatchDeleteAndSessionDeleteErrors(t *testing.T) {
+func TestRemoteMockBatchDeleteAndSessionDeleteErrors(t *testing.T) {
 	t.Parallel()
 
 	// Arrange

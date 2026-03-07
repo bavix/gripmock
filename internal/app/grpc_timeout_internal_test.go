@@ -12,7 +12,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
-func TestGrpcMockerDelay_RespectsContextTimeout(t *testing.T) {
+func TestGrpcMockerDelayRespectsContextTimeout(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -29,7 +29,7 @@ func TestGrpcMockerDelay_RespectsContextTimeout(t *testing.T) {
 	require.Equal(t, codes.DeadlineExceeded, status.Code(err))
 }
 
-func TestGrpcMockerDelay_CompletesBeforeTimeout(t *testing.T) {
+func TestGrpcMockerDelayCompletesBeforeTimeout(t *testing.T) {
 	t.Parallel()
 
 	// Arrange

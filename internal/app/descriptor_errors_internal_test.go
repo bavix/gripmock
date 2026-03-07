@@ -12,7 +12,7 @@ var (
 	errTestDuplicateSymbol   = stderrors.New("duplicate symbol")
 )
 
-func TestInvalidFileDescriptorSetError_HasStableKind(t *testing.T) {
+func TestInvalidFileDescriptorSetErrorHasStableKind(t *testing.T) {
 	t.Parallel()
 
 	err := invalidFileDescriptorSetError(errTestInvalidWireFormat)
@@ -21,7 +21,7 @@ func TestInvalidFileDescriptorSetError_HasStableKind(t *testing.T) {
 	require.NotErrorIs(t, err, ErrRegisterDescriptorFile)
 }
 
-func TestRegisterDescriptorFileError_HasStableKind(t *testing.T) {
+func TestRegisterDescriptorFileErrorHasStableKind(t *testing.T) {
 	t.Parallel()
 
 	err := registerDescriptorFileError("service.proto", errTestDuplicateSymbol)

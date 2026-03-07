@@ -146,7 +146,7 @@ func (m *mockServer) FindByID(w http.ResponseWriter, _ *http.Request, _ ID) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func TestHandler_Routes(t *testing.T) {
+func TestHandlerRoutes(t *testing.T) {
 	t.Parallel()
 
 	mock := newMockServer()
@@ -203,7 +203,7 @@ func TestHandler_Routes(t *testing.T) {
 	}
 }
 
-func TestHandlerWithOptions_BaseURL(t *testing.T) {
+func TestHandlerWithOptionsBaseURL(t *testing.T) {
 	t.Parallel()
 
 	mock := newMockServer()
@@ -216,7 +216,7 @@ func TestHandlerWithOptions_BaseURL(t *testing.T) {
 	require.True(t, mock.called["Liveness"])
 }
 
-func TestHandlerWithOptions_CustomRouter(t *testing.T) {
+func TestHandlerWithOptionsCustomRouter(t *testing.T) {
 	t.Parallel()
 
 	r := mux.NewRouter()
@@ -240,7 +240,7 @@ func TestHandlerFromMuxWithBaseURL(t *testing.T) {
 	require.True(t, mock.called["Liveness"])
 }
 
-func TestHandlerWithOptions_Middleware(t *testing.T) {
+func TestHandlerWithOptionsMiddleware(t *testing.T) {
 	t.Parallel()
 
 	mock := newMockServer()
@@ -262,7 +262,7 @@ func TestHandlerWithOptions_Middleware(t *testing.T) {
 	require.True(t, mock.called["Liveness"])
 }
 
-func TestHandlerWithOptions_CustomErrorHandler(t *testing.T) {
+func TestHandlerWithOptionsCustomErrorHandler(t *testing.T) {
 	t.Parallel()
 
 	handler := HandlerWithOptions(newMockServer(), GorillaServerOptions{
@@ -278,7 +278,7 @@ func TestHandlerWithOptions_CustomErrorHandler(t *testing.T) {
 	require.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 }
 
-func TestDeleteStubByID_InvalidUUID(t *testing.T) {
+func TestDeleteStubByIDInvalidUUID(t *testing.T) {
 	t.Parallel()
 
 	handler := HandlerWithOptions(newMockServer(), GorillaServerOptions{})
@@ -289,7 +289,7 @@ func TestDeleteStubByID_InvalidUUID(t *testing.T) {
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
-func TestFindByID_InvalidUUID(t *testing.T) {
+func TestFindByIDInvalidUUID(t *testing.T) {
 	t.Parallel()
 
 	handler := HandlerWithOptions(newMockServer(), GorillaServerOptions{})
@@ -351,7 +351,7 @@ func TestErrorTypes(t *testing.T) {
 	})
 }
 
-func TestTypes_MessageOK(t *testing.T) {
+func TestTypesMessageOK(t *testing.T) {
 	t.Parallel()
 
 	msg := MessageOK{
@@ -367,7 +367,7 @@ func TestTypes_MessageOK(t *testing.T) {
 	require.Equal(t, msg.Message, decoded.Message)
 }
 
-func TestTypes_Method(t *testing.T) {
+func TestTypesMethod(t *testing.T) {
 	t.Parallel()
 
 	m := Method{Id: "id1", Name: "Get"}
@@ -381,7 +381,7 @@ func TestTypes_Method(t *testing.T) {
 	require.Equal(t, m.Name, decoded.Name)
 }
 
-func TestTypes_Service(t *testing.T) {
+func TestTypesService(t *testing.T) {
 	t.Parallel()
 
 	svc := Service{
@@ -400,7 +400,7 @@ func TestTypes_Service(t *testing.T) {
 	require.Equal(t, svc.Name, decoded.Name)
 }
 
-func TestTypes_SearchRequest(t *testing.T) {
+func TestTypesSearchRequest(t *testing.T) {
 	t.Parallel()
 
 	id := openapi_types.UUID(uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")) //nolint:unconvert
@@ -421,7 +421,7 @@ func TestTypes_SearchRequest(t *testing.T) {
 	require.Equal(t, req.Method, decoded.Method)
 }
 
-func TestTypes_SearchResponse(t *testing.T) {
+func TestTypesSearchResponse(t *testing.T) {
 	t.Parallel()
 
 	resp := SearchResponse{
@@ -439,7 +439,7 @@ func TestTypes_SearchResponse(t *testing.T) {
 	require.Equal(t, resp.Code, decoded.Code)
 }
 
-func TestTypes_StubHeaders(t *testing.T) {
+func TestTypesStubHeaders(t *testing.T) {
 	t.Parallel()
 
 	h := StubHeaders{
@@ -456,7 +456,7 @@ func TestTypes_StubHeaders(t *testing.T) {
 	require.Equal(t, h.Contains, decoded.Contains)
 }
 
-func TestTypes_ListID(t *testing.T) {
+func TestTypesListID(t *testing.T) {
 	t.Parallel()
 
 	id1 := openapi_types.UUID(uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")) //nolint:unconvert
@@ -465,7 +465,7 @@ func TestTypes_ListID(t *testing.T) {
 	require.Len(t, list, 2)
 }
 
-func TestTypes_StubList(t *testing.T) {
+func TestTypesStubList(t *testing.T) {
 	t.Parallel()
 
 	list := StubList{

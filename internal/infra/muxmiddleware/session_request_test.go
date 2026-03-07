@@ -1,4 +1,4 @@
-package session_test
+package muxmiddleware_test
 
 import (
 	"net/http"
@@ -7,41 +7,41 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/gripmock/v3/internal/pkg/session"
+	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
 )
 
-func TestFromRequest_NilRequest(t *testing.T) {
+func TestFromRequestNilRequest(t *testing.T) {
 	t.Parallel()
 
 	// Act
-	result := session.FromRequest(nil)
+	result := muxmiddleware.FromRequest(nil)
 
 	// Assert
 	require.Empty(t, result)
 }
 
-func TestFromRequest_PrefersHeader(t *testing.T) {
+func TestFromRequestPrefersHeader(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	req.Header.Set(session.HeaderName, "  A  ")
+	req.Header.Set(muxmiddleware.HeaderName, "  A  ")
 
 	// Act
-	result := session.FromRequest(req)
+	result := muxmiddleware.FromRequest(req)
 
 	// Assert
 	require.Equal(t, "A", result)
 }
 
-func TestFromRequest_EmptyWhenNotProvided(t *testing.T) {
+func TestFromRequestEmptyWhenNotProvided(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 
 	// Act
-	result := session.FromRequest(req)
+	result := muxmiddleware.FromRequest(req)
 
 	// Assert
 	require.Empty(t, result)

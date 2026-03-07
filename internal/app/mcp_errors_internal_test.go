@@ -9,7 +9,7 @@ import (
 
 var errTestIllegalBase64Data = stderrors.New("illegal base64 data")
 
-func TestMcpInvalidArgError_HasStableKind(t *testing.T) {
+func TestMcpInvalidArgErrorHasStableKind(t *testing.T) {
 	t.Parallel()
 
 	err := mcpInvalidArgError("limit must be a non-negative integer")
@@ -17,7 +17,7 @@ func TestMcpInvalidArgError_HasStableKind(t *testing.T) {
 	require.NotErrorIs(t, err, ErrMCPToolNotFound)
 }
 
-func TestMcpMethodNotFound_HasStableKind(t *testing.T) {
+func TestMcpMethodNotFoundHasStableKind(t *testing.T) {
 	t.Parallel()
 
 	err := mcpMethodNotFound("unknown tool: x")
@@ -25,7 +25,7 @@ func TestMcpMethodNotFound_HasStableKind(t *testing.T) {
 	require.NotErrorIs(t, err, ErrMCPInvalidArgument)
 }
 
-func TestMcpInvalidRequestError_HasStableKind(t *testing.T) {
+func TestMcpInvalidRequestErrorHasStableKind(t *testing.T) {
 	t.Parallel()
 
 	err := mcpInvalidRequestError()
@@ -34,7 +34,7 @@ func TestMcpInvalidRequestError_HasStableKind(t *testing.T) {
 	require.NotErrorIs(t, err, ErrMCPInvalidArgument)
 }
 
-func TestMcpRPCMethodNotFoundError_HasStableKind(t *testing.T) {
+func TestMcpRPCMethodNotFoundErrorHasStableKind(t *testing.T) {
 	t.Parallel()
 
 	err := mcpRPCMethodNotFoundError()
@@ -43,7 +43,7 @@ func TestMcpRPCMethodNotFoundError_HasStableKind(t *testing.T) {
 	require.NotErrorIs(t, err, ErrMCPInvalidRequest)
 }
 
-func TestMcpDescriptorSetBase64ArgError_HasStableKind(t *testing.T) {
+func TestMcpDescriptorSetBase64ArgErrorHasStableKind(t *testing.T) {
 	t.Parallel()
 
 	err := mcpDescriptorSetBase64ArgError(errTestIllegalBase64Data)
@@ -53,7 +53,7 @@ func TestMcpDescriptorSetBase64ArgError_HasStableKind(t *testing.T) {
 	require.NotErrorIs(t, err, ErrMCPToolNotFound)
 }
 
-func TestMcpDescriptorRegistrationArgError_PreservesDescriptorKind(t *testing.T) {
+func TestMcpDescriptorRegistrationArgErrorPreservesDescriptorKind(t *testing.T) {
 	t.Parallel()
 
 	descriptorErr := registerDescriptorFileError("service.proto", errTestIllegalBase64Data)

@@ -10,44 +10,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 )
 
-func TestBuilder_Basic(t *testing.T) {
-	t.Parallel()
-	// Test basic builder functionality
-	builder := deps.NewBuilder()
-	require.NotNil(t, builder)
-}
-
-func TestBuilder_Empty(t *testing.T) {
-	t.Parallel()
-	// Test empty builder case
-	builder := deps.NewBuilder()
-	require.NotNil(t, builder)
-}
-
-func TestBuilder_Initialization(t *testing.T) {
-	t.Parallel()
-	// Test builder initialization
-	builder := deps.NewBuilder()
-	require.NotNil(t, builder)
-	// Verify builder is properly initialized
-}
-
-func TestBuilder_WithDefaultConfig(t *testing.T) {
-	t.Parallel()
-	// Test builder with default config
-	builder := deps.NewBuilder(deps.WithDefaultConfig())
-	require.NotNil(t, builder)
-}
-
-func TestBuilder_WithConfig(t *testing.T) {
-	t.Parallel()
-	// Test builder with custom config
-	cfg := config.Load()
-	builder := deps.NewBuilder(deps.WithConfig(cfg))
-	require.NotNil(t, builder)
-}
-
-func TestBuilder_HistoryStore_WithRedactKeys(t *testing.T) {
+func TestBuilderHIstoryStoreWithRedactKeys(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.Config{

@@ -10,9 +10,10 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
+	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
 )
 
-func TestFallbackResolver_UsesPrimaryThenFallback(t *testing.T) {
+func TestFallbackResolverUsesPrimaryThenFallback(t *testing.T) {
 	t.Parallel()
 
 	greeterFDS := mustSingleDescriptorSet(t, filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto"))
@@ -24,7 +25,7 @@ func TestFallbackResolver_UsesPrimaryThenFallback(t *testing.T) {
 	fallback, err := protodesc.NewFiles(calculatorFDS)
 	require.NoError(t, err)
 
-	resolver := &fallbackResolver{Primary: primary, Fallback: fallback}
+	resolver := &protosetinfra.Fallback{Primary: primary, Fallback: fallback}
 
 	greeterDesc, err := resolver.FindDescriptorByName(protoreflect.FullName("helloworld.Greeter"))
 	require.NoError(t, err)
@@ -35,10 +36,10 @@ func TestFallbackResolver_UsesPrimaryThenFallback(t *testing.T) {
 	require.Equal(t, protoreflect.FullName("calculator.CalculatorService"), calcDesc.FullName())
 }
 
-func TestFallbackResolver_NotFoundWhenNoResolvers(t *testing.T) {
+func TestFallbackResolverNotFoundWhenNoResolvers(t *testing.T) {
 	t.Parallel()
 
-	resolver := &fallbackResolver{}
+	resolver := &protosetinfra.Fallback{}
 	_, err := resolver.FindDescriptorByName(protoreflect.FullName("unknown.Service"))
 	require.Error(t, err)
 }

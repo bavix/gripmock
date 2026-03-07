@@ -15,7 +15,7 @@ import (
 )
 
 //nolint:paralleltest
-func TestBuildFromDescriptorSet_Greeter(t *testing.T) {
+func TestBuildFromDescriptorSetGreeter(t *testing.T) {
 	ctx := t.Context()
 	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
 	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
@@ -33,7 +33,7 @@ func TestBuildFromDescriptorSet_Greeter(t *testing.T) {
 }
 
 //nolint:paralleltest
-func TestGRPCServerBuild_WithoutStartupDescriptors(t *testing.T) {
+func TestGRPCServerBuildWithoutStartupDescriptors(t *testing.T) {
 	ctx := t.Context()
 
 	server := NewGRPCServer(
@@ -54,7 +54,7 @@ func TestGRPCServerBuild_WithoutStartupDescriptors(t *testing.T) {
 }
 
 //nolint:paralleltest
-func TestGRPCServerFindMethodDescriptor_FromDynamicRegistry(t *testing.T) {
+func TestGRPCServerFindMethodDescriptorFromDynamicRegistry(t *testing.T) {
 	ctx := t.Context()
 	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
 	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})

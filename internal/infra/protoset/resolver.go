@@ -1,4 +1,4 @@
-package protoresolver
+package protoset
 
 import (
 	"google.golang.org/protobuf/reflect/protodesc"
@@ -6,6 +6,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
+// Fallback is a protodesc.Resolver that tries primary resolver first, then falls back to secondary.
 type Fallback struct {
 	Primary  protodesc.Resolver
 	Fallback protodesc.Resolver

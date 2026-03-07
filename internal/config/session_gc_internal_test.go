@@ -9,7 +9,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/config"
 )
 
-func TestConfig_SessionGCDefaults(t *testing.T) {
+func TestConfigSessionGCDefaults(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -22,7 +22,7 @@ func TestConfig_SessionGCDefaults(t *testing.T) {
 	require.Equal(t, 60*time.Second, cfg.SessionGCTTL)
 }
 
-func TestConfig_SessionGCOverride(t *testing.T) {
+func TestConfigSessionGCOverride(t *testing.T) {
 	// Arrange
 	t.Setenv("SESSION_GC_INTERVAL", "3s")
 	t.Setenv("SESSION_GC_TTL", "45s")

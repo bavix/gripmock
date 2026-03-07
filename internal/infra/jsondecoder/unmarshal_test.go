@@ -34,7 +34,7 @@ func TestUnmarshalSlice(t *testing.T) {
 	}
 }
 
-func TestUnmarshalSlice_EdgeCases(t *testing.T) {
+func TestUnmarshalSliceEdgeCases(t *testing.T) {
 	t.Parallel()
 
 	t.Run("empty returns error", func(t *testing.T) {

@@ -1,4 +1,4 @@
-package app //nolint:testpackage
+package app
 
 import (
 	"testing"

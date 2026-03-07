@@ -1,4 +1,4 @@
-package stuber //nolint:testpackage
+package stuber
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 	"github.com/bavix/features"
 )
 
-func TestQuery_RequestInternal(t *testing.T) {
+func TestQueryRequestInternal(t *testing.T) {
 	t.Parallel()
 
 	q := Query{
@@ -40,7 +40,7 @@ func TestToggles(t *testing.T) {
 	require.True(t, togglesResult.Has(RequestInternalFlag))
 }
 
-func TestNewQuery_WithBody(t *testing.T) {
+func TestNewQueryWithBody(t *testing.T) {
 	t.Parallel()
 
 	data := map[string]any{
@@ -63,7 +63,7 @@ func TestNewQuery_WithBody(t *testing.T) {
 	require.Equal(t, map[string]any{"header": "value"}, q.Headers)
 }
 
-func TestNewQuery_WithID(t *testing.T) {
+func TestNewQueryWithID(t *testing.T) {
 	t.Parallel()
 
 	id := uuid.New()
@@ -85,7 +85,7 @@ func TestNewQuery_WithID(t *testing.T) {
 	require.Equal(t, "TestMethod", q.Method)
 }
 
-func TestNewQuery_InvalidJSON(t *testing.T) {
+func TestNewQueryInvalidJson(t *testing.T) {
 	t.Parallel()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewBufferString("invalid json"))
@@ -129,7 +129,7 @@ func TestRequestInternalQuery(t *testing.T) {
 	require.False(t, q.RequestInternal())
 }
 
-func TestNewQuery_WithInput(t *testing.T) {
+func TestNewQueryWithInput(t *testing.T) {
 	t.Parallel()
 
 	data := map[string]any{
@@ -152,7 +152,7 @@ func TestNewQuery_WithInput(t *testing.T) {
 	require.Equal(t, map[string]any{"header": "value"}, q.Headers)
 }
 
-func TestNewQuery_ServiceMethodOnly(t *testing.T) {
+func TestNewQueryServiceMethodOnly(t *testing.T) {
 	t.Parallel()
 
 	data := map[string]any{
@@ -171,7 +171,7 @@ func TestNewQuery_ServiceMethodOnly(t *testing.T) {
 	require.Nil(t, q.Data())
 }
 
-func TestNewQuery_EmptyBody(t *testing.T) {
+func TestNewQueryEmptyBody(t *testing.T) {
 	t.Parallel()
 
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewBufferString("{}"))
@@ -182,7 +182,7 @@ func TestNewQuery_EmptyBody(t *testing.T) {
 	require.Nil(t, q.Input)
 }
 
-func TestQuery_Data(t *testing.T) {
+func TestQueryData(t *testing.T) {
 	t.Parallel()
 
 	q := Query{Input: []map[string]any{{"a": 1}}}

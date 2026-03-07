@@ -7,7 +7,7 @@ import (
 )
 
 //nolint:funlen
-func TestEngine_Render(t *testing.T) {
+func TestEngineRender(t *testing.T) {
 	t.Parallel()
 
 	engine := New(t.Context(), nil)
@@ -145,7 +145,7 @@ func TestIsTemplateString(t *testing.T) {
 	}
 }
 
-func TestEngine_ProcessMap(t *testing.T) {
+func TestEngineProcessMap(t *testing.T) {
 	t.Parallel()
 
 	engine := New(t.Context(), nil)
@@ -187,7 +187,7 @@ func TestEngine_ProcessMap(t *testing.T) {
 	require.Equal(t, "second", array[1])
 }
 
-func TestEngine_ProcessStream(t *testing.T) {
+func TestEngineProcessStream(t *testing.T) {
 	t.Parallel()
 
 	engine := New(t.Context(), nil)
@@ -229,7 +229,7 @@ func TestEngine_ProcessStream(t *testing.T) {
 	})
 }
 
-func TestEngine_ProcessHeaders(t *testing.T) {
+func TestEngineProcessHeaders(t *testing.T) {
 	t.Parallel()
 
 	engine := New(t.Context(), nil)
@@ -257,7 +257,7 @@ func TestEngine_ProcessHeaders(t *testing.T) {
 	require.Equal(t, "static-value", headers["static"])
 }
 
-func TestEngine_ProcessError(t *testing.T) {
+func TestEngineProcessError(t *testing.T) {
 	t.Parallel()
 
 	engine := New(t.Context(), nil)
@@ -399,7 +399,7 @@ func TestHasTemplatesInStream(t *testing.T) {
 	}
 }
 
-func TestProcessMap_MaxRecursionDepthExceeded(t *testing.T) {
+func TestProcessMapMaxRecursionDepthExceeded(t *testing.T) {
 	t.Parallel()
 
 	engine := New(t.Context(), nil)
@@ -419,7 +419,7 @@ func TestProcessMap_MaxRecursionDepthExceeded(t *testing.T) {
 	require.ErrorIs(t, err, ErrMaxRecursionDepthExceeded)
 }
 
-func TestProcessMap_AtMaxRecursionDepth(t *testing.T) {
+func TestProcessMapAtMaxRecursionDepth(t *testing.T) {
 	t.Parallel()
 
 	engine := New(t.Context(), nil)

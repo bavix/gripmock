@@ -10,7 +10,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-func TestCollectAllServices_ReturnsSortedServicesAndMethods(t *testing.T) {
+func TestCollectAllServicesReturnsSortedServicesAndMethods(t *testing.T) {
 	t.Parallel()
 
 	server, err := NewRestServer(t.Context(), stuber.NewBudgerigar(features.New()), &mockExtender{}, nil, nil, nil)

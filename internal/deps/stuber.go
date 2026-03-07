@@ -28,6 +28,7 @@ func (b *Builder) Extender(ctx context.Context) *storage.Extender {
 			reg = b.pluginRegistry
 		} else {
 			reg = internalplugins.NewRegistry()
+			internalplugins.RegisterBuiltins(reg)
 		}
 
 		b.extender = storage.NewStub(b.Budgerigar(), yaml2json.New(reg), watcher.NewStubWatcher(b.config))

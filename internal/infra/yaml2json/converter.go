@@ -1,6 +1,8 @@
 package yaml2json
 
 import (
+	"context"
+
 	"github.com/goccy/go-yaml"
 
 	"github.com/bavix/gripmock/v3/pkg/plugins"
@@ -25,8 +27,8 @@ func New(reg plugins.Registry) *Convertor {
 // It returns a byte slice and an error.
 // The byte slice contains the JSON representation of the executed YAML data.
 // The error is non-nil if there was an error during the execution.
-func (t *Convertor) Execute(name string, data []byte) ([]byte, error) {
-	jsonData, err := t.engine.Execute(name, data)
+func (t *Convertor) Execute(ctx context.Context, name string, data []byte) ([]byte, error) {
+	jsonData, err := t.engine.Execute(ctx, name, data)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,8 @@
-package deeply //nolint:testpackage
+package deeply //nolint:testpackage // Uses internal distance() function
 
-import "testing"
+import (
+	"testing"
+)
 
 func BenchmarkDistance_SmallASCII(b *testing.B) {
 	s1 := "kitten"
