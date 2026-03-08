@@ -199,7 +199,7 @@ grpcurl -plaintext -d '{
 }
 ```
 
-### gRPC Status Details via `Any`
+### gRPC Status Details via `Any` <VersionTag version="v3.8.0" />
 `output.details` in stubs also uses `google.protobuf.Any` internally.
 
 ```yaml

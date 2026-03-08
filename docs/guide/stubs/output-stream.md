@@ -242,7 +242,7 @@ output:
       source: "mock"
 ```
 
-### Error with Details
+### Error with Details <VersionTag version="v3.8.0" />
 Provide detailed error information:
 
 ```yaml
