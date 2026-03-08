@@ -3,22 +3,22 @@ wkt.ConfigService/GetConfig
 
 --- REQUEST ---
 {
-    "configId": "config_123"
+  "configId": "config_123"
 }
 
 --- RESPONSE ---
 {
-    "settings": {
-        "fields": {
-            "theme": {
-                "stringValue": "dark"
-            },
-            "max_users": {
-                "numberValue": 100
-            },
-            "enabled": {
-                "boolValue": true
-            }
-        }
+  "settings": {
+    "fields": {
+      "enabled": {
+        "boolValue": true
+      },
+      "max_users": {
+        "numberValue": 100
+      },
+      "theme": {
+        "stringValue": "dark"
+      }
     }
+  }
 }

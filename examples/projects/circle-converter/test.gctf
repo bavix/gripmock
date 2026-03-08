@@ -2,7 +2,11 @@
 CircleService/ConvertRadiusToDiameter
 
 --- REQUEST ---
-{"radius": 5.0}
+{
+  "radius": 5.0
+}
 
 --- RESPONSE ---
-{"diameter": 10}
+{
+  "diameter": 10
+}

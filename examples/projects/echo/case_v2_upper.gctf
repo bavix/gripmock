@@ -2,7 +2,11 @@
 com.bavix.echo.v2.EchoService/SendMessage
 
 --- REQUEST ---
-{"message":"hello"}
+{
+  "message": "hello"
+}
 
 --- RESPONSE ---
-{"response":"Hello from echo server v2 (SendMessage)"}
+{
+  "response": "Hello from echo server v2 (SendMessage)"
+}

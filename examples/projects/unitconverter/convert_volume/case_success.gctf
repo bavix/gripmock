@@ -3,9 +3,9 @@ unitconverter.v1.UnitConversionService/ConvertVolume
 
 --- REQUEST ---
 {
-  "value": 1,
   "fromUnit": "GALLONS",
-  "toUnit": "LITERS"
+  "toUnit": "LITERS",
+  "value": 1
 }
 
 --- RESPONSE ---

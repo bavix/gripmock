@@ -2,7 +2,12 @@
 com.bavix.echo.v3.EchoService/SendMessage
 
 --- REQUEST ---
-{"message":"error"}
+{
+  "message": "error"
+}
 
 --- ERROR ---
-{"code": 7,"message": "Access denied"}
+{
+  "code": 7,
+  "message": "Access denied"
+}

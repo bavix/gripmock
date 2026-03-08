@@ -9,25 +9,25 @@ wkt.StatusDetailsService/GetProfile
 --- ERROR ---
 {
   "code": 3,
-  "message": "Validation failed",
   "details": [
     {
       "@type": "type.googleapis.com/google.rpc.ErrorInfo",
-      "reason": "USER_ID_MISSING",
       "domain": "wkt.example.local",
       "metadata": {
-        "service": "profile",
-        "field": "userId"
-      }
+        "field": "userId",
+        "service": "profile"
+      },
+      "reason": "USER_ID_MISSING"
     },
     {
       "@type": "type.googleapis.com/google.rpc.BadRequest",
       "fieldViolations": [
         {
-          "field": "userId",
-          "description": "userId is required"
+          "description": "userId is required",
+          "field": "userId"
         }
       ]
     }
-  ]
+  ],
+  "message": "Validation failed"
 }

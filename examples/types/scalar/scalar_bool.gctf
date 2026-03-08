@@ -3,10 +3,10 @@ scalar.AuthService/IsAdmin
 
 --- REQUEST ---
 {
-    "username": "admin_user"
+  "username": "admin_user"
 }
 
 --- RESPONSE ---
 {
-    "isAdmin": true
+  "isAdmin": true
 }

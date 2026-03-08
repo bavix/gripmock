@@ -5,9 +5,12 @@ auth.AuthService/CheckAccess
 x-api-key: wrong-key
 
 --- REQUEST ---
-{"resource": "admin:tools", "action": "delete"}
+{
+  "action": "delete",
+  "resource": "admin:tools"
+}
 
 --- RESPONSE ---
 {
-    "reason": "Invalid API key or insufficient permissions"
+  "reason": "Invalid API key or insufficient permissions"
 }

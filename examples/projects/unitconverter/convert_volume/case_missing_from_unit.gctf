@@ -3,12 +3,12 @@ unitconverter.v1.UnitConversionService/ConvertVolume
 
 --- REQUEST ---
 {
-  "value": 2,
-  "toUnit": "FLUID_OUNCES"
+  "toUnit": "FLUID_OUNCES",
+  "value": 2
 }
 
 --- ERROR ---
 {
-  "message": "fromUnit must be specified",
-  "code": 3
+  "code": 3,
+  "message": "fromUnit must be specified"
 }

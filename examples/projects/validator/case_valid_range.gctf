@@ -2,9 +2,14 @@
 validator.Validator/Validate
 
 --- REQUEST ---
-{"number": 42, "validation_type": "NUMBER_RANGE", "min": 10, "max": 100}
+{
+  "max": 100,
+  "min": 10,
+  "number": 42,
+  "validation_type": "NUMBER_RANGE"
+}
 
 --- RESPONSE ---
 {
-    "isValid": true
+  "isValid": true
 }

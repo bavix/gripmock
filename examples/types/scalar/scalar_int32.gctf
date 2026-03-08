@@ -3,11 +3,11 @@ scalar.MathService/AddInt32
 
 --- REQUEST ---
 {
-    "a": 5,
-    "b": 10
+  "a": 5,
+  "b": 10
 }
 
 --- RESPONSE ---
 {
-    "result": 15
+  "result": 15
 }

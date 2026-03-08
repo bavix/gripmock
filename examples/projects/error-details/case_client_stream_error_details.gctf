@@ -16,15 +16,15 @@ errordetails.ErrorDetailsService/ClientStream
 --- ERROR ---
 {
   "code": 3,
-  "message": "Client stream validation failed",
   "details": [
     {
       "@type": "type.googleapis.com/google.rpc.ErrorInfo",
-      "reason": "CLIENT_STREAM_INVALID",
       "domain": "errordetails.example.local",
       "metadata": {
         "method": "ClientStream"
-      }
+      },
+      "reason": "CLIENT_STREAM_INVALID"
     }
-  ]
+  ],
+  "message": "Client stream validation failed"
 }

@@ -3,13 +3,16 @@ specialized.ResourceService/UpdateResource
 
 --- REQUEST ---
 {
-    "resourceId": "resource_123",
-    "updateMask": {
-        "paths": ["name", "description"]
-    }
+  "resourceId": "resource_123",
+  "updateMask": {
+    "paths": [
+      "name",
+      "description"
+    ]
+  }
 }
 
 --- RESPONSE ---
 {
-    "success": true
+  "success": true
 }

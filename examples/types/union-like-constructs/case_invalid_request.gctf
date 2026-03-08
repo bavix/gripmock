@@ -3,27 +3,27 @@ task.v1.TaskService/CreateTask
 
 --- REQUEST ---
 {
-  "title": "",
   "description": "Invalid task",
   "sms": {
     "phone_number": "invalid-phone"
-  }
+  },
+  "title": ""
 }
 
 --- RESPONSE ---
 {
   "error": {
     "code": "INVALID_INPUT",
-    "message": "Validation failed",
     "errors": [
       {
-        "field": "title",
-        "description": "Title cannot be empty"
+        "description": "Title cannot be empty",
+        "field": "title"
       },
       {
-        "field": "sms.phone_number",
-        "description": "Invalid phone number format"
+        "description": "Invalid phone number format",
+        "field": "sms.phone_number"
       }
-    ]
+    ],
+    "message": "Validation failed"
   }
 }

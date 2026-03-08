@@ -2,11 +2,23 @@
 calculator.CalculatorService/FindMinMax
 
 --- REQUEST ---
-{"value": 5.0}
+{
+  "value": 5.0
+}
+
 --- REQUEST ---
-{"value": 15.0}
+{
+  "value": 15.0
+}
+
 --- REQUEST ---
-{"value": 10.0}
+{
+  "value": 10.0
+}
 
 --- RESPONSE ---
-{"min": 5, "max": 15, "count": 3}
+{
+  "count": 3,
+  "max": 15,
+  "min": 5
+}

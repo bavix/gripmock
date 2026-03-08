@@ -3,12 +3,12 @@ unitconverter.v1.UnitConversionService/ConvertLength
 
 --- REQUEST ---
 {
-  "value": 5,
-  "toUnit": "METERS"
+  "toUnit": "METERS",
+  "value": 5
 }
 
 --- ERROR ---
 {
-  "message": "fromUnit must be specified",
-  "code": 3
+  "code": 3,
+  "message": "fromUnit must be specified"
 }

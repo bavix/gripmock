@@ -3,13 +3,13 @@ unitconverter.v1.UnitConversionService/ConvertWeight
 
 --- REQUEST ---
 {
-  "value": -5,
   "fromUnit": "KILOGRAMS",
-  "toUnit": "POUNDS"
+  "toUnit": "POUNDS",
+  "value": -5
 }
 
 --- ERROR ---
 {
-  "message": "Value cannot be negative",
-  "code": 3
+  "code": 3,
+  "message": "Value cannot be negative"
 }

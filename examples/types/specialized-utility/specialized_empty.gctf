@@ -5,6 +5,6 @@ localhost:4770
 specialized.HealthService/CheckHealth
 
 --- REQUEST ---
+
 --- RESPONSE ---
-{
-}
+{}

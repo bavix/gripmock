@@ -2,7 +2,16 @@
 nested.ConfigurationService/UpdateConfig
 
 --- REQUEST ---
-{"host": "api.example.com", "port": 443, "use_tls": true, "env": "PRODUCTION"}
+{
+  "env": "PRODUCTION",
+  "host": "api.example.com",
+  "port": 443,
+  "use_tls": true
+}
 
 --- RESPONSE ---
-{"success": true, "message": "Configuration updated successfully", "updated_env": "PRODUCTION"}
+{
+  "message": "Configuration updated successfully",
+  "success": true,
+  "updated_env": "PRODUCTION"
+}

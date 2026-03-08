@@ -2,7 +2,10 @@
 multiverse.v1.MultiverseService/Ping
 
 --- REQUEST ---
-{"message": "error_with_trailers", "user_id": "user_647"}
+{
+  "message": "error_with_trailers",
+  "user_id": "user_647"
+}
 
 --- ERROR ---
 {

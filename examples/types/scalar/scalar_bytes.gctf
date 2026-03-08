@@ -3,10 +3,10 @@ scalar.FileService/UploadFile
 
 --- REQUEST ---
 {
-    "content": "aGVsbG8="  # "hello" in Base64
+  "content": "aGVsbG8=" # "hello" in Base64
 }
 
 --- RESPONSE ---
 {
-    "checksum": "5d41402abc4b2a76b9719d911017c592"  # MD5 hash of "hello"
+  "checksum": "5d41402abc4b2a76b9719d911017c592" # MD5 hash of "hello"
 }

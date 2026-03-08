@@ -2,10 +2,12 @@
 chat.ChatService/ReceiveMessages
 
 --- REQUEST ---
-{"user": "Bob"}
+{
+  "user": "Bob"
+}
 
 --- RESPONSE ---
 {
-    "user": "Server",
-    "text": "Welcome Bob!"
+  "text": "Welcome Bob!",
+  "user": "Server"
 }

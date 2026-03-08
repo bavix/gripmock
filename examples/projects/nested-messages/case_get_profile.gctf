@@ -2,7 +2,21 @@
 nested.ConfigurationService/GetProfile
 
 --- REQUEST ---
-{"user_id": "user123"}
+{
+  "user_id": "user123"
+}
 
 --- RESPONSE ---
-{"id": "user123", "name": "John Doe", "prefs": {"theme": "dark", "language": "en", "notifications": {"email_enabled": true, "sms_enabled": false, "frequency": "daily"}}}
+{
+  "id": "user123",
+  "name": "John Doe",
+  "prefs": {
+    "language": "en",
+    "notifications": {
+      "email_enabled": true,
+      "frequency": "daily",
+      "sms_enabled": false
+    },
+    "theme": "dark"
+  }
+}

@@ -2,10 +2,19 @@
 chat.ChatService/SendMessage
 
 --- REQUEST ---
-{"user": "Alice", "text": "Hello"}
+{
+  "text": "Hello",
+  "user": "Alice"
+}
 
 --- REQUEST ---
-{"user": "Alice", "text": "How are you?"}
+{
+  "text": "How are you?",
+  "user": "Alice"
+}
 
 --- RESPONSE ---
-{"success": true, "message": "2 messages processed"}
+{
+  "message": "2 messages processed",
+  "success": true
+}

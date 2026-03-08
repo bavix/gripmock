@@ -3,13 +3,13 @@ unitconverter.v1.UnitConversionService/ConvertVolume
 
 --- REQUEST ---
 {
-  "value": 0,
   "fromUnit": "LITERS",
-  "toUnit": "MILLILITERS"
+  "toUnit": "MILLILITERS",
+  "value": 0
 }
 
 --- ERROR ---
 {
-  "message": "Conversion factor undefined",
-  "code": 3
+  "code": 3,
+  "message": "Conversion factor undefined"
 }

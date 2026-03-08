@@ -10,15 +10,15 @@ errordetails.ErrorDetailsService/BidiStream
 --- ERROR ---
 {
   "code": 3,
-  "message": "Bidi stream validation failed",
   "details": [
     {
       "@type": "type.googleapis.com/google.rpc.ErrorInfo",
-      "reason": "BIDI_STREAM_INVALID",
       "domain": "errordetails.example.local",
       "metadata": {
         "method": "BidiStream"
-      }
+      },
+      "reason": "BIDI_STREAM_INVALID"
     }
-  ]
+  ],
+  "message": "Bidi stream validation failed"
 }

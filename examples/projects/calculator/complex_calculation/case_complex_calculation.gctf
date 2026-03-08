@@ -2,11 +2,26 @@
 calculator.CalculatorService/ComplexCalculation
 
 --- REQUEST ---
-{"value": 10.0}
+{
+  "value": 10.0
+}
+
 --- REQUEST ---
-{"value": 20.0}
+{
+  "value": 20.0
+}
+
 --- REQUEST ---
-{"value": 30.0}
+{
+  "value": 30.0
+}
 
 --- RESPONSE ---
-{"sum": 60, "product": 6000, "average": 20, "min": 10, "max": 30, "count": 3}
+{
+  "average": 20,
+  "count": 3,
+  "max": 30,
+  "min": 10,
+  "product": 6000,
+  "sum": 60
+}

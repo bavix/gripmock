@@ -6,7 +6,11 @@ x-user: Ivan
 x-token: 123
 
 --- REQUEST ---
-{"name": "Alex"}
+{
+  "name": "Alex"
+}
 
 --- RESPONSE ---
-{"message": "Hello, Ivan!"}
+{
+  "message": "Hello, Ivan!"
+}

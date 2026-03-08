@@ -3,13 +3,13 @@ wkt.DataService/StoreData
 
 --- REQUEST ---
 {
-    "payload": {
-      "@type": "type.googleapis.com/google.protobuf.StringValue",
-      "value": "test"
-    }
+  "payload": {
+    "@type": "type.googleapis.com/google.protobuf.StringValue",
+    "value": "test"
+  }
 }
 
 --- RESPONSE ---
 {
-    "success": true
+  "success": true
 }

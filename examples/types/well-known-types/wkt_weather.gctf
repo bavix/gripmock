@@ -6,11 +6,11 @@ weather.WeatherService/GetCurrentForecast
 
 --- RESPONSE ---
 {
-    "condition": "Sunny",
-    "date": {
-        "day": 5,
-        "month": 10,
-        "year": 2023
-    },
-    "temperatureC": 22.5
+  "condition": "Sunny",
+  "date": {
+    "day": 5,
+    "month": 10,
+    "year": 2023
+  },
+  "temperatureC": 22.5
 }

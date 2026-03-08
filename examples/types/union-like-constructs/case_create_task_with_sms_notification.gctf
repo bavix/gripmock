@@ -3,17 +3,17 @@ task.v1.TaskService/CreateTask
 
 --- REQUEST ---
 {
-  "title": "Team meeting",
   "description": "Project sync at 3 PM",
   "sms": {
     "phone_number": "+14155550123"
-  }
+  },
+  "title": "Team meeting"
 }
 
 --- RESPONSE ---
 {
   "success": {
-    "taskId": "TASK-789",
-    "status": "NOTIFICATION_SENT"
+    "status": "NOTIFICATION_SENT",
+    "taskId": "TASK-789"
   }
 }
