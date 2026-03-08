@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GRPCTESTIFY_VERSION: "1.4.5"
+  GRPCTESTIFY_VERSION: "1.4.6"
   GO_VERSION: "1.26"
 
 jobs:
@@ -429,6 +429,39 @@ jobs:
           export GRPCTESTIFY_TLS_KEY_FILE="${{ matrix.grpctestify_tls_key_file }}"
 
           ./grpctestify examples/
+
+  gctf-gates:
+    name: "GCTF Gates"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up cache for dependencies
+        uses: actions/cache@v5
+        with:
+          path: grpctestify
+          key: deps-cache-${{ runner.os }}-grpctestify-rust-${{ env.GRPCTESTIFY_VERSION }}
+
+      - name: Install grpctestify
+        run: |
+          pwd >> "$GITHUB_PATH"
+
+          if [ ! -f grpctestify ]; then
+            case "$RUNNER_ARCH" in
+              X64) grpctestify_asset="grpctestify-linux-amd64.tar.gz" ;;
+              ARM64) grpctestify_asset="grpctestify-linux-arm64.tar.gz" ;;
+              *) echo "Unsupported runner arch: $RUNNER_ARCH"; exit 1 ;;
+            esac
+
+            curl -sSL "https://github.com/gripmock/grpctestify-rust/releases/download/v${{ env.GRPCTESTIFY_VERSION }}/$grpctestify_asset" | tar -xz
+            chmod +x grpctestify
+          fi
+
+      - name: Check GCTF formatting
+        run: grpctestify fmt .
+
+      - name: Validate GCTF files
+        run: grpctestify check .
 
   coverage-report:
     name: "Coverage Report"
