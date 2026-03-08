@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/bufbuild/protocompile"
 	"github.com/cockroachdb/errors"
@@ -14,6 +15,7 @@ import (
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 
@@ -30,6 +32,8 @@ const (
 )
 
 var errUnsupportedFileType = errors.New("unsupported file type")
+
+var globalProtoRegistryMu sync.Mutex
 
 type Configure struct {
 	imports     []string
@@ -69,18 +73,13 @@ func createDescriptorSet(ctx context.Context, configure *Configure) (*descriptor
 		fdp := protodesc.ToFileDescriptorProto(file)
 		fds.File[i] = fdp
 
-		if value, _ := protoregistry.GlobalFiles.FindFileByPath(fdp.GetName()); value != nil {
-			zerolog.Ctx(ctx).Warn().
-				Str("name", fdp.GetName()).
-				Str("path", file.Path()).
-				Msg("File already registered")
-
-			continue
+		registered, regErr := registerGlobalFileOnce(ctx, fdp.GetName(), file.Path(), file)
+		if regErr != nil {
+			return nil, regErr
 		}
 
-		err := protoregistry.GlobalFiles.RegisterFile(file)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to register file %s", file.Path())
+		if !registered {
+			continue
 		}
 	}
 
@@ -110,7 +109,11 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 		}
 
 		for _, fd := range fds.GetFile() {
+			globalProtoRegistryMu.Lock()
+
 			if value, _ := protoregistry.GlobalFiles.FindFileByPath(fd.GetName()); value != nil {
+				globalProtoRegistryMu.Unlock()
+
 				zerolog.Ctx(ctx).Warn().
 					Str("name", fd.GetName()).
 					Str("path", descriptor).
@@ -121,10 +124,13 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 
 			fileDesc, err := protodesc.NewFile(fd, protoregistry.GlobalFiles)
 			if err != nil {
+				globalProtoRegistryMu.Unlock()
+
 				return nil, errors.Wrapf(err, "failed to create file descriptor: %s", descriptor)
 			}
 
 			err = protoregistry.GlobalFiles.RegisterFile(fileDesc)
+			globalProtoRegistryMu.Unlock()
 			if err != nil {
 				return nil, errors.Wrapf(err, "failed to register file %s", descriptor)
 			}
@@ -143,6 +149,32 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 	}
 
 	return results, nil
+}
+
+func registerGlobalFileOnce(
+	ctx context.Context,
+	fileName string,
+	filePath string,
+	file protoreflect.FileDescriptor,
+) (bool, error) {
+	globalProtoRegistryMu.Lock()
+	defer globalProtoRegistryMu.Unlock()
+
+	if value, _ := protoregistry.GlobalFiles.FindFileByPath(fileName); value != nil {
+		zerolog.Ctx(ctx).Warn().
+			Str("name", fileName).
+			Str("path", filePath).
+			Msg("File already registered")
+
+		return false, nil
+	}
+
+	err := protoregistry.GlobalFiles.RegisterFile(file)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to register file %s", filePath)
+	}
+
+	return true, nil
 }
 
 func newConfigure(ctx context.Context, imports []string, paths []string) (*Configure, error) {
