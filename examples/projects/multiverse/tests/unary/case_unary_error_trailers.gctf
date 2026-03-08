@@ -1,0 +1,15 @@
+--- ENDPOINT ---
+multiverse.v1.MultiverseService/Ping
+
+--- REQUEST ---
+{"message": "error_with_trailers", "user_id": "user_647"}
+
+--- ERROR ---
+{
+  "code": 10,
+  "message": "gRPC error message."
+}
+
+--- ASSERTS ---
+@trailer("code") == "EXTERNAL_SERVICE_ERROR_CODE"
+@trailer("message") == "External service error message"

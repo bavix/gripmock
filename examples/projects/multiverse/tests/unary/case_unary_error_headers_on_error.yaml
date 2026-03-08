@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: multiverse.v1.MultiverseService
+  method: Ping
+  input:
+    equals:
+      message: "error_with_headers"
+      user_id: "user_647"
+  output:
+    code: 10
+    error: "gRPC error message."
+    headers:
+      code: "EXTERNAL_SERVICE_ERROR_CODE"
+      message: "External service error message"
