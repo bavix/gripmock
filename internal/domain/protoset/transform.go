@@ -33,8 +33,6 @@ const (
 
 var errUnsupportedFileType = errors.New("unsupported file type")
 
-var globalProtoRegistryMu sync.Mutex
-
 type Configure struct {
 	imports     []string
 	protos      []string
@@ -45,7 +43,7 @@ func (c *Configure) Imports() []string     { return c.imports }
 func (c *Configure) Protos() []string      { return c.protos }
 func (c *Configure) Descriptors() []string { return c.descriptors }
 
-func createDescriptorSet(ctx context.Context, configure *Configure) (*descriptorpb.FileDescriptorSet, error) {
+func createDescriptorSet(ctx context.Context, configure *Configure, registryMu *sync.Mutex) (*descriptorpb.FileDescriptorSet, error) {
 	failbackResolver, err := pbs.NewResolver()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create fallback resolver")
@@ -73,21 +71,16 @@ func createDescriptorSet(ctx context.Context, configure *Configure) (*descriptor
 		fdp := protodesc.ToFileDescriptorProto(file)
 		fds.File[i] = fdp
 
-		registered, regErr := registerGlobalFileOnce(ctx, fdp.GetName(), file.Path(), file)
-		if regErr != nil {
-			return nil, regErr
-		}
-
-		if !registered {
-			continue
+		err = registerGlobalFileOnce(ctx, registryMu, fdp.GetName(), file.Path(), file)
+		if err != nil {
+			return nil, err
 		}
 	}
 
 	return fds, nil
 }
 
-//nolint:cyclop
-func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDescriptorSet, error) {
+func compile(ctx context.Context, configure *Configure, registryMu *sync.Mutex) ([]*descriptorpb.FileDescriptorSet, error) {
 	capacity := len(configure.Descriptors())
 	if len(configure.Protos()) > 0 {
 		capacity++
@@ -108,39 +101,16 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 			return nil, errors.Wrapf(err, "failed to unmarshal descriptor: %s", descriptor)
 		}
 
-		for _, fd := range fds.GetFile() {
-			globalProtoRegistryMu.Lock()
-
-			if value, _ := protoregistry.GlobalFiles.FindFileByPath(fd.GetName()); value != nil {
-				globalProtoRegistryMu.Unlock()
-
-				zerolog.Ctx(ctx).Warn().
-					Str("name", fd.GetName()).
-					Str("path", descriptor).
-					Msg("File already registered")
-
-				continue
-			}
-
-			fileDesc, err := protodesc.NewFile(fd, protoregistry.GlobalFiles)
-			if err != nil {
-				globalProtoRegistryMu.Unlock()
-
-				return nil, errors.Wrapf(err, "failed to create file descriptor: %s", descriptor)
-			}
-
-			err = protoregistry.GlobalFiles.RegisterFile(fileDesc)
-			globalProtoRegistryMu.Unlock()
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to register file %s", descriptor)
-			}
+		err = registerDescriptorSetFiles(ctx, registryMu, descriptor, fds)
+		if err != nil {
+			return nil, err
 		}
 
 		results = append(results, fds)
 	}
 
 	if len(configure.Protos()) > 0 {
-		fds, err := createDescriptorSet(ctx, configure)
+		fds, err := createDescriptorSet(ctx, configure, registryMu)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create descriptor set")
 		}
@@ -151,14 +121,53 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 	return results, nil
 }
 
+func registerDescriptorSetFiles(
+	ctx context.Context,
+	registryMu *sync.Mutex,
+	descriptorPath string,
+	fds *descriptorpb.FileDescriptorSet,
+) error {
+	for _, fd := range fds.GetFile() {
+		registryMu.Lock()
+
+		if value, _ := protoregistry.GlobalFiles.FindFileByPath(fd.GetName()); value != nil {
+			registryMu.Unlock()
+
+			zerolog.Ctx(ctx).Warn().
+				Str("name", fd.GetName()).
+				Str("path", descriptorPath).
+				Msg("File already registered")
+
+			continue
+		}
+
+		fileDesc, err := protodesc.NewFile(fd, protoregistry.GlobalFiles)
+		if err != nil {
+			registryMu.Unlock()
+
+			return errors.Wrapf(err, "failed to create file descriptor: %s", descriptorPath)
+		}
+
+		err = protoregistry.GlobalFiles.RegisterFile(fileDesc)
+		registryMu.Unlock()
+
+		if err != nil {
+			return errors.Wrapf(err, "failed to register file %s", descriptorPath)
+		}
+	}
+
+	return nil
+}
+
 func registerGlobalFileOnce(
 	ctx context.Context,
+	registryMu *sync.Mutex,
 	fileName string,
 	filePath string,
 	file protoreflect.FileDescriptor,
-) (bool, error) {
-	globalProtoRegistryMu.Lock()
-	defer globalProtoRegistryMu.Unlock()
+) error {
+	registryMu.Lock()
+	defer registryMu.Unlock()
 
 	if value, _ := protoregistry.GlobalFiles.FindFileByPath(fileName); value != nil {
 		zerolog.Ctx(ctx).Warn().
@@ -166,15 +175,15 @@ func registerGlobalFileOnce(
 			Str("path", filePath).
 			Msg("File already registered")
 
-		return false, nil
+		return nil
 	}
 
 	err := protoregistry.GlobalFiles.RegisterFile(file)
 	if err != nil {
-		return false, errors.Wrapf(err, "failed to register file %s", filePath)
+		return errors.Wrapf(err, "failed to register file %s", filePath)
 	}
 
-	return true, nil
+	return nil
 }
 
 func newConfigure(ctx context.Context, imports []string, paths []string) (*Configure, error) {
@@ -241,7 +250,7 @@ func Build(ctx context.Context, imports []string, paths []string) ([]*descriptor
 		return nil, errors.Wrap(err, "failed to create configuration")
 	}
 
-	return compile(ctx, configure)
+	return compile(ctx, configure, &sync.Mutex{})
 }
 
 type processor struct {

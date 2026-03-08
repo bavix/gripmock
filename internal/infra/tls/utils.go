@@ -80,7 +80,7 @@ func (t TLSConfig) BuildClientTLSConfig(target string) (*tls.Config, error) {
 		return nil, err
 	}
 
-	tlsConfig := &tls.Config{MinVersion: minVersion}
+	tlsConfig := &tls.Config{MinVersion: minVersion} //nolint:gosec // TLS 1.2 is intentionally supported
 	certFile := strings.TrimSpace(t.CertFile)
 	keyFile := strings.TrimSpace(t.KeyFile)
 
@@ -183,6 +183,28 @@ func (t TLSConfig) ValidateClient() error {
 	keyFile := strings.TrimSpace(t.KeyFile)
 	caFile := strings.TrimSpace(t.CAFile)
 
+	if err := validateClientCertPair(certFile, keyFile); err != nil {
+		return err
+	}
+
+	if err := validateOptionalFile(certFile, "invalid cert file"); err != nil {
+		return err
+	}
+
+	if err := validateOptionalFile(keyFile, "invalid key file"); err != nil {
+		return err
+	}
+
+	if err := validateOptionalFile(caFile, "invalid CA file"); err != nil {
+		return err
+	}
+
+	_, err := parseMinVersion(t.MinVersion)
+
+	return err
+}
+
+func validateClientCertPair(certFile, keyFile string) error {
 	if certFile != "" && keyFile == "" {
 		return ErrKeyRequired
 	}
@@ -191,27 +213,19 @@ func (t TLSConfig) ValidateClient() error {
 		return ErrCertRequired
 	}
 
-	if certFile != "" {
-		if err := ensureFile(certFile); err != nil {
-			return errors.Wrap(err, "invalid cert file")
-		}
+	return nil
+}
+
+func validateOptionalFile(path, msg string) error {
+	if path == "" {
+		return nil
 	}
 
-	if keyFile != "" {
-		if err := ensureFile(keyFile); err != nil {
-			return errors.Wrap(err, "invalid key file")
-		}
+	if err := ensureFile(path); err != nil {
+		return errors.Wrap(err, msg)
 	}
 
-	if caFile != "" {
-		if err := ensureFile(caFile); err != nil {
-			return errors.Wrap(err, "invalid CA file")
-		}
-	}
-
-	_, err := parseMinVersion(t.MinVersion)
-
-	return err
+	return nil
 }
 
 func normalizeServerName(host string) string {

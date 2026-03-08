@@ -3,15 +3,16 @@ package deps
 import (
 	"context"
 
-	infraTLS "github.com/bavix/gripmock/v3/internal/infra/tls"
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
+
+	infraTLS "github.com/bavix/gripmock/v3/internal/infra/tls"
 )
 
 func (b *Builder) grpcClientConn(useTLS bool, dsn string) (*grpc.ClientConn, error) {
-	transportCreds := credentials.TransportCredentials(insecure.NewCredentials())
+	transportCreds := insecure.NewCredentials()
 	tlsCfg := b.grpcTLSConfig()
 
 	if useTLS {
