@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.8.1 - 2026-03-08
+
+### What's Changed
+
+* tls support by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/780
+* docs marked with tags by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/781
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.8.0...v3.8.1
+
 ## v3.8.0 - 2026-03-07
 
 ### What's Changed
