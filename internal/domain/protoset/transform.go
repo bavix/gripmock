@@ -33,6 +33,9 @@ const (
 
 var errUnsupportedFileType = errors.New("unsupported file type")
 
+//nolint:gochecknoglobals // shared lock is required for GlobalFiles concurrent registration safety
+var protoRegistryMu sync.Mutex
+
 type Configure struct {
 	imports     []string
 	protos      []string
@@ -43,7 +46,7 @@ func (c *Configure) Imports() []string     { return c.imports }
 func (c *Configure) Protos() []string      { return c.protos }
 func (c *Configure) Descriptors() []string { return c.descriptors }
 
-func createDescriptorSet(ctx context.Context, configure *Configure, registryMu *sync.Mutex) (*descriptorpb.FileDescriptorSet, error) {
+func createDescriptorSet(ctx context.Context, configure *Configure) (*descriptorpb.FileDescriptorSet, error) {
 	failbackResolver, err := pbs.NewResolver()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create fallback resolver")
@@ -71,7 +74,7 @@ func createDescriptorSet(ctx context.Context, configure *Configure, registryMu *
 		fdp := protodesc.ToFileDescriptorProto(file)
 		fds.File[i] = fdp
 
-		err = registerGlobalFileOnce(ctx, registryMu, fdp.GetName(), file.Path(), file)
+		err = registerGlobalFileOnce(ctx, fdp.GetName(), file.Path(), file)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +83,7 @@ func createDescriptorSet(ctx context.Context, configure *Configure, registryMu *
 	return fds, nil
 }
 
-func compile(ctx context.Context, configure *Configure, registryMu *sync.Mutex) ([]*descriptorpb.FileDescriptorSet, error) {
+func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDescriptorSet, error) {
 	capacity := len(configure.Descriptors())
 	if len(configure.Protos()) > 0 {
 		capacity++
@@ -101,7 +104,7 @@ func compile(ctx context.Context, configure *Configure, registryMu *sync.Mutex) 
 			return nil, errors.Wrapf(err, "failed to unmarshal descriptor: %s", descriptor)
 		}
 
-		err = registerDescriptorSetFiles(ctx, registryMu, descriptor, fds)
+		err = registerDescriptorSetFiles(ctx, descriptor, fds)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +113,7 @@ func compile(ctx context.Context, configure *Configure, registryMu *sync.Mutex) 
 	}
 
 	if len(configure.Protos()) > 0 {
-		fds, err := createDescriptorSet(ctx, configure, registryMu)
+		fds, err := createDescriptorSet(ctx, configure)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to create descriptor set")
 		}
@@ -123,15 +126,14 @@ func compile(ctx context.Context, configure *Configure, registryMu *sync.Mutex) 
 
 func registerDescriptorSetFiles(
 	ctx context.Context,
-	registryMu *sync.Mutex,
 	descriptorPath string,
 	fds *descriptorpb.FileDescriptorSet,
 ) error {
 	for _, fd := range fds.GetFile() {
-		registryMu.Lock()
+		protoRegistryMu.Lock()
 
 		if value, _ := protoregistry.GlobalFiles.FindFileByPath(fd.GetName()); value != nil {
-			registryMu.Unlock()
+			protoRegistryMu.Unlock()
 
 			zerolog.Ctx(ctx).Warn().
 				Str("name", fd.GetName()).
@@ -143,13 +145,13 @@ func registerDescriptorSetFiles(
 
 		fileDesc, err := protodesc.NewFile(fd, protoregistry.GlobalFiles)
 		if err != nil {
-			registryMu.Unlock()
+			protoRegistryMu.Unlock()
 
 			return errors.Wrapf(err, "failed to create file descriptor: %s", descriptorPath)
 		}
 
 		err = protoregistry.GlobalFiles.RegisterFile(fileDesc)
-		registryMu.Unlock()
+		protoRegistryMu.Unlock()
 
 		if err != nil {
 			return errors.Wrapf(err, "failed to register file %s", descriptorPath)
@@ -161,13 +163,12 @@ func registerDescriptorSetFiles(
 
 func registerGlobalFileOnce(
 	ctx context.Context,
-	registryMu *sync.Mutex,
 	fileName string,
 	filePath string,
 	file protoreflect.FileDescriptor,
 ) error {
-	registryMu.Lock()
-	defer registryMu.Unlock()
+	protoRegistryMu.Lock()
+	defer protoRegistryMu.Unlock()
 
 	if value, _ := protoregistry.GlobalFiles.FindFileByPath(fileName); value != nil {
 		zerolog.Ctx(ctx).Warn().
@@ -250,7 +251,7 @@ func Build(ctx context.Context, imports []string, paths []string) ([]*descriptor
 		return nil, errors.Wrap(err, "failed to create configuration")
 	}
 
-	return compile(ctx, configure, &sync.Mutex{})
+	return compile(ctx, configure)
 }
 
 type processor struct {

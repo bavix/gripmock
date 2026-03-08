@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GRPCTESTIFY_VERSION: "1.4.3"
+  GRPCTESTIFY_VERSION: "1.4.4"
   GO_VERSION: "1.26"
 
 jobs:
