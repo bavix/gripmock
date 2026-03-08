@@ -306,7 +306,7 @@ jobs:
           - tls_mode: tls12
             grpc_tls_cert_file: third_party/tls/tls12/server.crt
             grpc_tls_key_file: third_party/tls/tls12/server.key
-            grpc_tls_ca_file: ""
+            grpc_tls_ca_file: third_party/tls/tls12/ca.crt
             grpc_tls_min_version: "1.2"
             grpc_tls_client_auth: "false"
             grpctestify_tls_cert_file: ""
@@ -316,7 +316,7 @@ jobs:
           - tls_mode: tls13
             grpc_tls_cert_file: third_party/tls/tls13/server.crt
             grpc_tls_key_file: third_party/tls/tls13/server.key
-            grpc_tls_ca_file: ""
+            grpc_tls_ca_file: third_party/tls/tls13/ca.crt
             grpc_tls_min_version: "1.3"
             grpc_tls_client_auth: "false"
             grpctestify_tls_cert_file: ""
@@ -328,6 +328,16 @@ jobs:
             grpc_tls_key_file: third_party/tls/mtls/server.key
             grpc_tls_ca_file: third_party/tls/mtls/ca.crt
             grpc_tls_min_version: "1.2"
+            grpc_tls_client_auth: "true"
+            grpctestify_tls_cert_file: third_party/tls/mtls/client.crt
+            grpctestify_tls_key_file: third_party/tls/mtls/client.key
+            grpctestify_tls_ca_file: third_party/tls/mtls/ca.crt
+            grpctestify_tls_server_name: localhost
+          - tls_mode: mtls13
+            grpc_tls_cert_file: third_party/tls/mtls/server.crt
+            grpc_tls_key_file: third_party/tls/mtls/server.key
+            grpc_tls_ca_file: third_party/tls/mtls/ca.crt
+            grpc_tls_min_version: "1.3"
             grpc_tls_client_auth: "true"
             grpctestify_tls_cert_file: third_party/tls/mtls/client.crt
             grpctestify_tls_key_file: third_party/tls/mtls/client.key
