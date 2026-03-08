@@ -56,6 +56,7 @@ export default defineConfig({
           { text: 'Introduction', link: '/guide/introduction' },
           { text: 'Quick Usage', link: '/guide/introduction/quick-usage' },
           { text: 'Advanced Usage', link: '/guide/introduction/advanced-usage' },
+          { text: 'TLS and mTLS', link: '/guide/introduction/tls' },
         ],
         collapsed: false,
       },

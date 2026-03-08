@@ -9,7 +9,7 @@ import (
 func (b *Builder) PingService() (*waiter.Service, error) {
 	addr := b.config.GRPCAddr
 
-	grpcConn, err := b.grpcClientConn(false, addr)
+	grpcConn, err := b.grpcClientConn(b.grpcTLSEnabled(), addr)
 	if err != nil {
 		return nil, err
 	}

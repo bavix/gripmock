@@ -31,6 +31,7 @@ GripMock is a **mock server** for **gRPC** services. Give it your `.proto` files
 - **Real-time Chat**: Test bidirectional streaming for chat applications
 - **Web Interface**: Manage your test scenarios through a friendly web UI
 - **Docker Ready**: Lightweight container perfect for CI/CD pipelines
+- **TLS and mTLS**: Native TLS support for gRPC/HTTP plus reverse-proxy termination patterns
 - **20-35% Faster**: Latest improvements make your tests run quicker
 - **Zero Breaking Changes**: All your existing tests continue to work
 - **Extensible Plugins** <VersionTag version="v3.5.0" />: Extend functionality with custom template functions

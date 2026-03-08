@@ -32,9 +32,9 @@ helloworld.Greeter/SayHello
 
 **Running tests:**
 ```bash
-make test                    # Unit tests
+make test              # Unit tests
 grpctestify examples/  # Integration tests
-make lint                    # Linter
+make lint              # Linter
 ```
 
 **Where to place tests:**

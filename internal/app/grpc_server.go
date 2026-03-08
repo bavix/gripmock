@@ -4,6 +4,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	_ "google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/health"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
@@ -147,6 +149,7 @@ type GRPCServer struct {
 	recorder    history.Recorder
 	descriptors *descriptors.Registry
 	healthcheck *health.Server
+	tlsConfig   *tls.Config
 }
 
 type grpcMocker struct {
@@ -1126,6 +1129,7 @@ func NewGRPCServer(
 	waiter Extender,
 	recorder history.Recorder,
 	descriptorRegistry *descriptors.Registry,
+	tlsConfig *tls.Config,
 ) *GRPCServer {
 	registry := descriptorRegistry
 	if registry == nil {
@@ -1140,6 +1144,7 @@ func NewGRPCServer(
 		waiter:      waiter,
 		recorder:    recorder,
 		descriptors: registry,
+		tlsConfig:   tlsConfig,
 	}
 }
 
@@ -1203,7 +1208,7 @@ func BuildFromDescriptorSet(
 func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 	logger := zerolog.Ctx(ctx)
 
-	return grpc.NewServer(
+	opts := []grpc.ServerOption{
 		grpc.NumStreamWorkers(uint32(runtimeNumStreamWorkers)), //nolint:gosec
 		grpc.MaxConcurrentStreams(maxConcurrentStreams),
 		grpc.KeepaliveParams(keepalive.ServerParameters{
@@ -1228,7 +1233,15 @@ func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 			LogStreamInterceptor,
 		),
 		grpc.UnknownServiceHandler(s.handleUnknownService),
-	)
+	}
+
+	if s.tlsConfig != nil {
+		opts = append(opts, grpc.Creds(credentials.NewTLS(s.tlsConfig)))
+
+		logger.Info().Msg("gRPC server configured with TLS")
+	}
+
+	return grpc.NewServer(opts...)
 }
 
 func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error {

@@ -2,6 +2,7 @@ package deps
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 
 	"github.com/cockroachdb/errors"
@@ -12,9 +13,24 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/proto"
 )
 
-//nolint:funlen
+//nolint:funlen,cyclop
 func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 	b.StartSessionGC(ctx)
+
+	grpcTLS := b.grpcTLSConfig()
+	grpcTLS.ClientAuth = b.config.GRPCTLSClientAuth
+
+	var (
+		tlsCfg *tls.Config
+		err    error
+	)
+
+	if grpcTLS.IsEnabled() {
+		tlsCfg, err = grpcTLS.BuildTLSConfig()
+		if err != nil {
+			return errors.Wrap(err, "failed to build TLS config")
+		}
+	}
 
 	listener, err := (&net.ListenConfig{}).Listen(ctx, b.config.GRPCNetwork, b.config.GRPCAddr)
 	if err != nil {
@@ -26,6 +42,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 	logger.Info().
 		Str("addr", listener.Addr().String()).
 		Str("network", listener.Addr().Network()).
+		Bool("tls", grpcTLS.IsEnabled()).
 		Msg("Serving gRPC")
 
 	var recorder history.Recorder
@@ -41,6 +58,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		b.Extender(ctx),
 		recorder,
 		b.DescriptorRegistry(),
+		tlsCfg,
 	)
 
 	server, err := grpcServer.Build(ctx)

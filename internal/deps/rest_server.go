@@ -15,13 +15,39 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
 	"github.com/bavix/gripmock/v3/internal/infra/httputil"
 	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
+	infraTLS "github.com/bavix/gripmock/v3/internal/infra/tls"
 )
+
+type RestServer struct {
+	server     *http.Server
+	tlsEnabled bool
+}
+
+func (s *RestServer) Addr() string {
+	return s.server.Addr
+}
+
+func (s *RestServer) TLSEnabled() bool {
+	return s.tlsEnabled
+}
+
+func (s *RestServer) ListenAndServe() error {
+	if s.tlsEnabled {
+		return s.server.ListenAndServeTLS("", "")
+	}
+
+	return s.server.ListenAndServe()
+}
+
+func (s *RestServer) Shutdown(ctx context.Context) error {
+	return s.server.Shutdown(ctx)
+}
 
 //nolint:funlen
 func (b *Builder) RestServe(
 	ctx context.Context,
 	stubPath string,
-) (*http.Server, error) {
+) (*RestServer, error) {
 	b.StartSessionGC(ctx)
 
 	extender := b.Extender(ctx)
@@ -101,5 +127,24 @@ func (b *Builder) RestServe(
 
 	b.ender.Add(srv.Shutdown)
 
-	return srv, nil
+	httpTLS := infraTLS.TLSConfig{
+		CertFile:   b.config.HTTPTLSCertFile,
+		KeyFile:    b.config.HTTPTLSKeyFile,
+		ClientAuth: b.config.HTTPTLSClientAuth,
+		CAFile:     b.config.HTTPTLSCAFile,
+		MinVersion: infraTLS.MinTLSVersion12,
+	}
+	if httpTLS.IsEnabled() {
+		tlsCfg, tlsErr := httpTLS.BuildTLSConfig()
+		if tlsErr != nil {
+			return nil, errors.Wrap(tlsErr, "failed to build HTTP TLS config")
+		}
+
+		srv.TLSConfig = tlsCfg
+	}
+
+	return &RestServer{
+		server:     srv,
+		tlsEnabled: srv.TLSConfig != nil,
+	}, nil
 }
