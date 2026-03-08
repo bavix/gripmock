@@ -58,7 +58,7 @@ gripmock --stub examples/projects/echo examples/projects/echo/service_v1.proto
 ```
 
 ### Run Tests  
-Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify)**:  
+Execute tests using **[grpctestify](https://github.com/gripmock/grpctestify-rust)**:  
 ```bash
 grpctestify examples/projects/echo/
 ```  

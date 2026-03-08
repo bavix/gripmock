@@ -6,7 +6,7 @@ Thank you for your interest in contributing to GripMock! This document provides 
 
 1. **Fork the repository** and clone your fork locally
 2. **Set up your development environment**:
-   - Install [grpctestify](https://github.com/gripmock/grpctestify) for integration tests (see [grpctestify documentation](https://gripmock.github.io/grpctestify/) for installation instructions)
+   - Install [grpctestify](https://github.com/gripmock/grpctestify-rust) for integration tests (see [grpctestify documentation](https://gripmock.github.io/grpctestify-rust/) for installation instructions)
    - Ensure you have Go installed and configured
 
 ## Testing Requirements
@@ -128,6 +128,6 @@ Documentation locations:
 ## Additional Resources
 
 - [Project Documentation](https://bavix.github.io/gripmock/)
-- [grpctestify Documentation](https://gripmock.github.io/grpctestify/)
+- [grpctestify Documentation](https://gripmock.github.io/grpctestify-rust/)
 
 Thank you for contributing to GripMock! 🚀
