@@ -158,7 +158,7 @@ export default defineConfig({
       {
         text: 'Utility',
         items: [
-          { text: 'gRPC Testify', link: 'https://gripmock.github.io/grpctestify/' },
+          { text: 'gRPC Testify', link: 'https://gripmock.github.io/grpctestify-rust/' },
         ],
         collapsed: false,
       },
