@@ -88,7 +88,10 @@ jobs:
           "$bin" --version
           "$bin" --help
 
-          "$bin" --stub=examples examples >"$RUNNER_TEMP/gripmock.log" 2>&1 &
+          grpc_port="$((30000 + RANDOM % 20000))"
+          http_port="$((30000 + RANDOM % 20000))"
+
+          GRPC_PORT="$grpc_port" HTTP_PORT="$http_port" "$bin" --stub=examples examples >"$RUNNER_TEMP/gripmock.log" 2>&1 &
           pid=$!
 
           cleanup() {
@@ -97,7 +100,12 @@ jobs:
           }
 
           trap cleanup EXIT
-          "$bin" check --timeout=60s --silent
+          if ! GRPC_PORT="$grpc_port" HTTP_PORT="$http_port" "$bin" check --timeout=60s --silent; then
+            printf 'Smoke check failed on ports grpc=%s http=%s\n' "$grpc_port" "$http_port"
+            printf '---- gripmock server log ----\n'
+            cat "$RUNNER_TEMP/gripmock.log"
+            exit 1
+          fi
           cleanup
           trap - EXIT
 
@@ -111,6 +119,9 @@ jobs:
           & $bin --version
           & $bin --help
 
+          $env:GRPC_PORT = (Get-Random -Minimum 30000 -Maximum 50000).ToString()
+          $env:HTTP_PORT = (Get-Random -Minimum 30000 -Maximum 50000).ToString()
+
           $stdout = Join-Path $env:RUNNER_TEMP "gripmock.out.log"
           $stderr = Join-Path $env:RUNNER_TEMP "gripmock.err.log"
           $proc = Start-Process -FilePath $bin -ArgumentList "--stub=examples", "examples" -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
@@ -118,10 +129,25 @@ jobs:
           try {
             & $bin check --timeout=60s --silent
           }
+          catch {
+            Write-Host "Smoke check failed on ports grpc=$($env:GRPC_PORT) http=$($env:HTTP_PORT)"
+            if (Test-Path $stdout) {
+              Write-Host "---- gripmock stdout ----"
+              Get-Content $stdout
+            }
+            if (Test-Path $stderr) {
+              Write-Host "---- gripmock stderr ----"
+              Get-Content $stderr
+            }
+            throw
+          }
           finally {
             if ($null -ne $proc) {
               Stop-Process -Id $proc.Id -ErrorAction SilentlyContinue
             }
+
+            Remove-Item Env:GRPC_PORT -ErrorAction SilentlyContinue
+            Remove-Item Env:HTTP_PORT -ErrorAction SilentlyContinue
           }
 
   goreleaser-check:
