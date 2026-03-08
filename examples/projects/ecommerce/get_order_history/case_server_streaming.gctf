@@ -2,13 +2,34 @@
 ecommerce.EcommerceService/GetOrderHistory
 
 --- REQUEST ---
-{"user_id":"USER_456","limit":3}
+{
+  "limit": 3,
+  "user_id": "USER_456"
+}
 
 --- RESPONSE ---
-{"orderId":"ORDER_456_001","orderDate":"2024-01-15","totalAmount":150,"status":"delivered","itemCount":3}
+{
+  "itemCount": 3,
+  "orderDate": "2024-01-15",
+  "orderId": "ORDER_456_001",
+  "status": "delivered",
+  "totalAmount": 150
+}
 
 --- RESPONSE ---
-{"orderId":"ORDER_456_002","orderDate":"2024-01-10","totalAmount":75.5,"status":"shipped","itemCount":2}
+{
+  "itemCount": 2,
+  "orderDate": "2024-01-10",
+  "orderId": "ORDER_456_002",
+  "status": "shipped",
+  "totalAmount": 75.5
+}
 
 --- RESPONSE ---
-{"orderId":"ORDER_456_003","orderDate":"2024-01-05","totalAmount":200,"status":"processing","itemCount":4}
+{
+  "itemCount": 4,
+  "orderDate": "2024-01-05",
+  "orderId": "ORDER_456_003",
+  "status": "processing",
+  "totalAmount": 200
+}

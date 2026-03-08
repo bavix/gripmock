@@ -3,7 +3,7 @@ extended.BookingService/GetBooking
 
 --- REQUEST ---
 {
-    "bookingId": "booking_123"
+  "bookingId": "booking_123"
 }
 
 --- RESPONSE ---

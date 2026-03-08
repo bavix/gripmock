@@ -2,7 +2,11 @@
 com.bavix.echo.v1.EchoService/SendMessage
 
 --- REQUEST ---
-{"message":"anything"}
+{
+  "message": "anything"
+}
 
 --- RESPONSE ---
-{"response":"hit"}
+{
+  "response": "hit"
+}

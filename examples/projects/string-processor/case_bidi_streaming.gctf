@@ -2,19 +2,31 @@
 stringprocessor.StringProcessorService/BidiStream
 
 --- REQUEST ---
-{"text": "Hello"}
+{
+  "text": "Hello"
+}
 
 --- RESPONSE ---
-{"result": "Hello"}
+{
+  "result": "Hello"
+}
 
 --- REQUEST ---
-{"text": "World from gRPC"}
+{
+  "text": "World from gRPC"
+}
 
 --- RESPONSE ---
-{"result": "World"}
+{
+  "result": "World"
+}
 
 --- RESPONSE ---
-{"result": "from"}
+{
+  "result": "from"
+}
 
 --- RESPONSE ---
-{"result": "gRPC"}
+{
+  "result": "gRPC"
+}

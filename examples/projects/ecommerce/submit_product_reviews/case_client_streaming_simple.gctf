@@ -2,10 +2,27 @@
 ecommerce.EcommerceService/SubmitProductReviews
 
 --- REQUEST ---
-{"product_id":"PROD_789","user_id":"USER_001","rating":5,"comment":"Great product!","review_date":"2024-01-15"}
+{
+  "comment": "Great product!",
+  "product_id": "PROD_789",
+  "rating": 5,
+  "review_date": "2024-01-15",
+  "user_id": "USER_001"
+}
 
 --- REQUEST ---
-{"product_id":"PROD_789","user_id":"USER_002","rating":4,"comment":"Good quality","review_date":"2024-01-16"}
+{
+  "comment": "Good quality",
+  "product_id": "PROD_789",
+  "rating": 4,
+  "review_date": "2024-01-16",
+  "user_id": "USER_002"
+}
 
 --- RESPONSE ---
-{"submissionId":"REVIEW_2_1734038400","reviewsCount":2,"status":"processed","averageRating":4}
+{
+  "averageRating": 4,
+  "reviewsCount": 2,
+  "status": "processed",
+  "submissionId": "REVIEW_2_1734038400"
+}

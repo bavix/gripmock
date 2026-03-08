@@ -3,10 +3,10 @@ wkt.EventService/GetEventTime
 
 --- REQUEST ---
 {
-    "eventId": "event_123"
+  "eventId": "event_123"
 }
 
 --- RESPONSE ---
 {
-    "eventTime": "2024-01-01T12:00:00Z"
+  "eventTime": "2024-01-01T12:00:00Z"
 }

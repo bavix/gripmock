@@ -2,34 +2,91 @@
 multiverse.v1.MultiverseService/UploadData
 
 --- REQUEST ---
-{"chunk_id": "large_file_001", "sequence": 1, "total_chunks": 10, "content_type": "video/mp4"}
+{
+  "chunk_id": "large_file_001",
+  "content_type": "video/mp4",
+  "sequence": 1,
+  "total_chunks": 10
+}
 
 --- REQUEST ---
-{"chunk_id": "large_file_001", "sequence": 2, "total_chunks": 10, "content_type": "video/mp4"}
+{
+  "chunk_id": "large_file_001",
+  "content_type": "video/mp4",
+  "sequence": 2,
+  "total_chunks": 10
+}
 
 --- REQUEST ---
-{"chunk_id": "large_file_001", "sequence": 3, "total_chunks": 10, "content_type": "video/mp4"}
+{
+  "chunk_id": "large_file_001",
+  "content_type": "video/mp4",
+  "sequence": 3,
+  "total_chunks": 10
+}
 
 --- REQUEST ---
-{"chunk_id": "large_file_001", "sequence": 4, "total_chunks": 10, "content_type": "video/mp4"}
+{
+  "chunk_id": "large_file_001",
+  "content_type": "video/mp4",
+  "sequence": 4,
+  "total_chunks": 10
+}
 
 --- REQUEST ---
-{"chunk_id": "large_file_001", "sequence": 5, "total_chunks": 10, "content_type": "video/mp4"}
+{
+  "chunk_id": "large_file_001",
+  "content_type": "video/mp4",
+  "sequence": 5,
+  "total_chunks": 10
+}
 
 --- REQUEST ---
-{"chunk_id": "large_file_001", "sequence": 6, "total_chunks": 10, "content_type": "video/mp4"}
+{
+  "chunk_id": "large_file_001",
+  "content_type": "video/mp4",
+  "sequence": 6,
+  "total_chunks": 10
+}
 
 --- REQUEST ---
-{"chunk_id": "large_file_001", "sequence": 7, "total_chunks": 10, "content_type": "video/mp4"}
+{
+  "chunk_id": "large_file_001",
+  "content_type": "video/mp4",
+  "sequence": 7,
+  "total_chunks": 10
+}
 
 --- REQUEST ---
-{"chunk_id": "large_file_001", "sequence": 8, "total_chunks": 10, "content_type": "video/mp4"}
+{
+  "chunk_id": "large_file_001",
+  "content_type": "video/mp4",
+  "sequence": 8,
+  "total_chunks": 10
+}
 
 --- REQUEST ---
-{"chunk_id": "large_file_001", "sequence": 9, "total_chunks": 10, "content_type": "video/mp4"}
+{
+  "chunk_id": "large_file_001",
+  "content_type": "video/mp4",
+  "sequence": 9,
+  "total_chunks": 10
+}
 
 --- REQUEST ---
-{"chunk_id": "large_file_001", "sequence": 10, "total_chunks": 10, "content_type": "video/mp4"}
+{
+  "chunk_id": "large_file_001",
+  "content_type": "video/mp4",
+  "sequence": 10,
+  "total_chunks": 10
+}
 
 --- RESPONSE ---
-{"upload_id": "upload_large_001", "success": true, "total_chunks": 10, "total_size": "10485760", "status": "completed", "completed_at": "2024-01-15T11:30:00Z"} 
+{
+  "completed_at": "2024-01-15T11:30:00Z",
+  "status": "completed",
+  "success": true,
+  "total_chunks": 10,
+  "total_size": "10485760",
+  "upload_id": "upload_large_001"
+}

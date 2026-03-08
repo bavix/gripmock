@@ -9,14 +9,14 @@ extended.ScheduleService/GetBirthday
 --- RESPONSE ---
 {
   "date": {
-    "year": 1990,
+    "day": 15,
     "month": 5,
-    "day": 15
+    "year": 1990
   },
   "reminderTime": {
     "hours": 9,
     "minutes": 1,
-    "seconds": 2,
-    "nanos": 3000000
+    "nanos": 3000000,
+    "seconds": 2
   }
 }

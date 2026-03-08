@@ -2,7 +2,9 @@
 fingerprint.Fingerprint/Check
 
 --- REQUEST ---
-{"id":"hello"}
+{
+  "id": "hello"
+}
 
 --- RESPONSE ---
 {}

@@ -5,10 +5,13 @@ auth.AuthService/CheckAccess
 x-api-key: secret-key-123
 
 --- REQUEST ---
-{"resource": "user:123", "action": "read"}
+{
+  "action": "read",
+  "resource": "user:123"
+}
 
 --- RESPONSE ---
 {
-    "allowed": true,
-    "reason": "Access granted"
+  "allowed": true,
+  "reason": "Access granted"
 }

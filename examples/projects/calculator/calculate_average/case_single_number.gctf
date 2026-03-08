@@ -2,7 +2,13 @@
 calculator.CalculatorService/CalculateAverage
 
 --- REQUEST ---
-{"value": 42.0}
+{
+  "value": 42.0
+}
 
 --- RESPONSE ---
-{"result": 42, "count": 1, "sum": 42}
+{
+  "count": 1,
+  "result": 42,
+  "sum": 42
+}

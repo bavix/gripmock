@@ -2,9 +2,13 @@
 helloworld.Greeter/SayHello
 
 --- REQUEST ---
-{"name": "Alex"}
+{
+  "name": "Alex"
+}
 
 --- RESPONSE ---
-{"message": "Hello, Alex!"}
+{
+  "message": "Hello, Alex!"
+}
 
 

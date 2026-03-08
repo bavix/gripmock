@@ -9,25 +9,25 @@ errordetails.ErrorDetailsService/Unary
 --- ERROR ---
 {
   "code": 3,
-  "message": "Unary validation failed",
   "details": [
     {
       "@type": "type.googleapis.com/google.rpc.ErrorInfo",
-      "reason": "UNARY_INVALID",
       "domain": "errordetails.example.local",
       "metadata": {
-        "method": "Unary",
-        "field": "id"
-      }
+        "field": "id",
+        "method": "Unary"
+      },
+      "reason": "UNARY_INVALID"
     },
     {
       "@type": "type.googleapis.com/google.rpc.BadRequest",
       "fieldViolations": [
         {
-          "field": "id",
-          "description": "id must be set"
+          "description": "id must be set",
+          "field": "id"
         }
       ]
     }
-  ]
+  ],
+  "message": "Unary validation failed"
 }

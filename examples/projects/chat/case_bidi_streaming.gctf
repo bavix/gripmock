@@ -3,24 +3,24 @@ chat.ChatService/Chat
 
 --- REQUEST ---
 {
-    "user": "Charlie", 
-    "text": "Hi everyone!"
+  "text": "Hi everyone!",
+  "user": "Charlie"
 }
 
 --- RESPONSE ---
 {
-    "user": "Bot",
-    "text": "Hello Charlie!"
+  "text": "Hello Charlie!",
+  "user": "Bot"
 }
 
 --- REQUEST ---
 {
-    "user": "Charlie", 
-    "text": "Anyone there?"
+  "text": "Anyone there?",
+  "user": "Charlie"
 }
 
 --- RESPONSE ---
 {
-    "user": "Bot",
-    "text": "We're here!"
+  "text": "We're here!",
+  "user": "Bot"
 }

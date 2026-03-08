@@ -2,6 +2,8 @@
 search.SearchService/Search
 
 --- REQUEST ---
-{"query":"nonexistent"}
+{
+  "query": "nonexistent"
+}
 
 --- RESPONSE ---

@@ -3,10 +3,10 @@ scalar.GreetingService/Greet
 
 --- REQUEST ---
 {
-    "name": "Alice"
+  "name": "Alice"
 }
 
 --- RESPONSE ---
 {
-    "message": "Hello, Alice!"
+  "message": "Hello, Alice!"
 }

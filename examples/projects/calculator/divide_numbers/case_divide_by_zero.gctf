@@ -2,12 +2,17 @@
 calculator.CalculatorService/DivideNumbers
 
 --- REQUEST ---
-{"value": 100.0}
+{
+  "value": 100.0
+}
+
 --- REQUEST ---
-{"value": 0.0}
+{
+  "value": 0.0
+}
 
 --- ERROR ---
 {
-    "code": 2,
-    "message": "Division by zero"
+  "code": 2,
+  "message": "Division by zero"
 }

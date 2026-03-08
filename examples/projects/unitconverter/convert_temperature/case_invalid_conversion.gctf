@@ -3,13 +3,13 @@ unitconverter.v1.UnitConversionService/ConvertTemperature
 
 --- REQUEST ---
 {
-  "value": -300,
   "fromUnit": "CELSIUS",
-  "toUnit": "KELVIN"
+  "toUnit": "KELVIN",
+  "value": -300
 }
 
 --- ERROR ---
 {
-  "message": "Temperature below absolute zero",
-  "code": 3
+  "code": 3,
+  "message": "Temperature below absolute zero"
 }

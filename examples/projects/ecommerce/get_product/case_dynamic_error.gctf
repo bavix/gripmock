@@ -2,7 +2,10 @@
 ecommerce.EcommerceService/GetProduct
 
 --- REQUEST ---
-{"product_id":"INVALID_PROD","user_id":"USER_ERROR"}
+{
+  "product_id": "INVALID_PROD",
+  "user_id": "USER_ERROR"
+}
 
 --- ERROR ---
 {

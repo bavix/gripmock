@@ -9,11 +9,15 @@ extended.AddressService/ValidateAddress
 --- RESPONSE ---
 {
   "validatedAddress": {
-    "regionCode": "US",
-    "postalCode": "94043",
+    "addressLines": [
+      "1600 Amphitheatre Parkway"
+    ],
     "administrativeArea": "CA",
     "locality": "Mountain View",
-    "addressLines": ["1600 Amphitheatre Parkway"],
-    "recipients": ["Google Inc."]
+    "postalCode": "94043",
+    "recipients": [
+      "Google Inc."
+    ],
+    "regionCode": "US"
   }
 }

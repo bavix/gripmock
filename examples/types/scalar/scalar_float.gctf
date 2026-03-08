@@ -3,11 +3,11 @@ scalar.CalculatorService/MultiplyFloat
 
 --- REQUEST ---
 {
-    "a": 3.5,
-    "b": 2.0
+  "a": 3.5,
+  "b": 2.0
 }
 
 --- RESPONSE ---
 {
-    "result": 7
+  "result": 7
 }
