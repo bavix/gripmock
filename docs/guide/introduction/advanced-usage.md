@@ -136,7 +136,7 @@ services:
 
 This approach ensures all proto definitions are pre-compiled and validated before runtime.
 
-## TLS Configuration 🔒
+## TLS Configuration 🔒 <VersionTag version="v3.8.1" />
 
 GripMock supports native TLS/mTLS via environment variables and also supports reverse-proxy TLS termination.
 
@@ -178,6 +178,29 @@ Return errors with specific status codes:
   "output": {
     "error": "Unauthorized",
     "code": 16  // gRPC 'Unauthenticated' code
+  }
+}
+```
+
+### gRPC Error Details <VersionTag version="v3.8.0" />
+Return rich gRPC status details (packed into `google.protobuf.Any`):
+
+```json
+{
+  "output": {
+    "error": "Validation failed",
+    "code": 3,
+    "details": [
+      {
+        "type": "type.googleapis.com/google.rpc.BadRequest",
+        "field_violations": [
+          {
+            "field": "email",
+            "description": "Invalid email format"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
