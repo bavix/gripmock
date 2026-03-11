@@ -932,6 +932,59 @@ func TestBidiStreamingEmptyService(t *testing.T) {
 	require.ErrorIs(t, err, stuber.ErrServiceNotFound)
 }
 
+func TestBidiStreamingMethodNotFound(t *testing.T) {
+	t.Parallel()
+
+	s := stuber.NewBudgerigar(features.New())
+
+	s.PutMany(&stuber.Stub{
+		ID:      uuid.New(),
+		Service: "ChatService",
+		Method:  "Chat",
+		Input: stuber.InputData{
+			Equals: map[string]any{"message": "hello"},
+		},
+		Output: stuber.Output{Data: map[string]any{"response": "ok"}},
+	})
+
+	query := stuber.QueryBidi{
+		Service: "ChatService",
+		Method:  "MissingMethod",
+	}
+
+	_, err := s.FindByQueryBidi(query)
+	require.Error(t, err)
+	require.ErrorIs(t, err, stuber.ErrMethodNotFound)
+}
+
+func TestBidiStreamingWithIDMethodNotFound(t *testing.T) {
+	t.Parallel()
+
+	s := stuber.NewBudgerigar(features.New())
+
+	stub := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: "ChatService",
+		Method:  "Chat",
+		Input: stuber.InputData{
+			Equals: map[string]any{"message": "hello"},
+		},
+		Output: stuber.Output{Data: map[string]any{"response": "ok"}},
+	}
+
+	s.PutMany(stub)
+
+	query := stuber.QueryBidi{
+		ID:      &stub.ID,
+		Service: "ChatService",
+		Method:  "MissingMethod",
+	}
+
+	_, err := s.FindByQueryBidi(query)
+	require.Error(t, err)
+	require.ErrorIs(t, err, stuber.ErrMethodNotFound)
+}
+
 // TestBidiStreamingWithServerStream tests bidirectional streaming with server streaming responses.
 func TestBidiStreamingWithServerStream(t *testing.T) {
 	t.Parallel()

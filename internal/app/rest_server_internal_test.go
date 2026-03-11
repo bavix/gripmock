@@ -895,6 +895,145 @@ func (s *RestServerTestSuite) TestServicesList() {
 	s.NotEmpty(w.Body.String())
 }
 
+func (s *RestServerTestSuite) TestServiceGet() {
+	w := httptest.NewRecorder()
+	s.server.ServicesList(w, httptest.NewRequest(http.MethodGet, "/api/services", nil))
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var services []map[string]any
+	err := json.Unmarshal(w.Body.Bytes(), &services)
+	s.Require().NoError(err)
+	s.Require().NotEmpty(services)
+
+	serviceID, ok := services[0]["id"].(string)
+	s.Require().True(ok)
+	s.Require().NotEmpty(serviceID)
+
+	w = httptest.NewRecorder()
+	s.server.ServiceGet(w, httptest.NewRequest(http.MethodGet, "/api/services/"+serviceID, nil), serviceID)
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var service map[string]any
+	err = json.Unmarshal(w.Body.Bytes(), &service)
+	s.Require().NoError(err)
+	s.Equal(serviceID, service["id"])
+
+	w = httptest.NewRecorder()
+	s.server.ServiceGet(w, httptest.NewRequest(http.MethodGet, "/api/services/not.exists", nil), "not.exists")
+	s.Require().Equal(http.StatusNotFound, w.Code)
+
+	var payload map[string]string
+	err = json.Unmarshal(w.Body.Bytes(), &payload)
+	s.Require().NoError(err)
+	s.Contains(payload["error"], "service not.exists not found")
+}
+
+func (s *RestServerTestSuite) TestServiceMethodGet() {
+	w := httptest.NewRecorder()
+	s.server.ServicesList(w, httptest.NewRequest(http.MethodGet, "/api/services", nil))
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var services []map[string]any
+	err := json.Unmarshal(w.Body.Bytes(), &services)
+	s.Require().NoError(err)
+	s.Require().NotEmpty(services)
+
+	var serviceID, methodID, methodName string
+
+	for _, item := range services {
+		id, _ := item["id"].(string)
+		methods, _ := item["methods"].([]any)
+		if id == "" || len(methods) == 0 {
+			continue
+		}
+
+		method, _ := methods[0].(map[string]any)
+		if method == nil {
+			continue
+		}
+
+		methodID, _ = method["id"].(string)
+		methodName, _ = method["name"].(string)
+		if methodID == "" || methodName == "" {
+			continue
+		}
+
+		serviceID = id
+
+		break
+	}
+
+	s.Require().NotEmpty(serviceID)
+	s.Require().NotEmpty(methodID)
+	s.Require().NotEmpty(methodName)
+
+	w = httptest.NewRecorder()
+	s.server.ServiceMethodGet(
+		w,
+		httptest.NewRequest(http.MethodGet, "/api/services/"+serviceID+"/methods/"+methodID, nil),
+		serviceID,
+		methodID,
+	)
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var method map[string]any
+	err = json.Unmarshal(w.Body.Bytes(), &method)
+	s.Require().NoError(err)
+	s.Equal(methodID, method["id"])
+	s.Contains(method, "requestSchema")
+	s.Contains(method, "responseSchema")
+
+	requestSchema, ok := method["requestSchema"].(map[string]any)
+	s.Require().True(ok)
+	s.Contains(requestSchema, "typeName")
+	s.Contains(requestSchema, "fields")
+
+	responseSchema, ok := method["responseSchema"].(map[string]any)
+	s.Require().True(ok)
+	s.Contains(responseSchema, "typeName")
+	s.Contains(responseSchema, "fields")
+
+	w = httptest.NewRecorder()
+	s.server.ServiceMethodGet(
+		w,
+		httptest.NewRequest(http.MethodGet, "/api/services/"+serviceID+"/methods/"+methodName, nil),
+		serviceID,
+		methodName,
+	)
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	err = json.Unmarshal(w.Body.Bytes(), &method)
+	s.Require().NoError(err)
+	s.Equal(methodName, method["name"])
+
+	w = httptest.NewRecorder()
+	s.server.ServiceMethodGet(
+		w,
+		httptest.NewRequest(http.MethodGet, "/api/services/not.exists/methods/whatever", nil),
+		"not.exists",
+		"whatever",
+	)
+	s.Require().Equal(http.StatusNotFound, w.Code)
+
+	var payload map[string]string
+	err = json.Unmarshal(w.Body.Bytes(), &payload)
+	s.Require().NoError(err)
+	s.Contains(payload["error"], "service not.exists not found")
+
+	w = httptest.NewRecorder()
+	s.server.ServiceMethodGet(
+		w,
+		httptest.NewRequest(http.MethodGet, "/api/services/"+serviceID+"/methods/not_found", nil),
+		serviceID,
+		"not_found",
+	)
+	s.Require().Equal(http.StatusNotFound, w.Code)
+
+	err = json.Unmarshal(w.Body.Bytes(), &payload)
+	s.Require().NoError(err)
+	s.Contains(payload["error"], "method not_found not found in service "+serviceID)
+}
+
 // TestValidateStubIntegration tests stub validation integration.
 //
 //nolint:funlen

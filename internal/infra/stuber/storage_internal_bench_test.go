@@ -172,6 +172,52 @@ func BenchmarkStorageFindAllSorted(b *testing.B) {
 	}
 }
 
+func BenchmarkStorageFindByMethodAvailableGlobal(b *testing.B) {
+	items := make([]*Stub, 0, b.N)
+	for i := range b.N {
+		method := "MethodA"
+		if i%2 == 0 {
+			method = "MethodB"
+		}
+
+		items = append(items, newTestStub("Svc", method, i%100))
+	}
+
+	s := newStorage()
+	s.upsert(items...)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for range b.N {
+		for range s.findByMethodAvailable("MethodB", "") { //nolint:revive
+		}
+	}
+}
+
+func BenchmarkStorageFindByMethodAvailable(b *testing.B) {
+	items := make([]*Stub, 0, b.N)
+	for i := range b.N {
+		stub := newTestStub("Svc", "Method", i%100)
+		if i%3 == 0 {
+			stub.Session = "A"
+		}
+
+		items = append(items, stub)
+	}
+
+	s := newStorage()
+	s.upsert(items...)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for range b.N {
+		for range s.findByMethodAvailable("Method", "A") { //nolint:revive
+		}
+	}
+}
+
 func BenchmarkStorageUpsert(b *testing.B) {
 	items := make([]*Stub, 0, b.N)
 	for i := range b.N {

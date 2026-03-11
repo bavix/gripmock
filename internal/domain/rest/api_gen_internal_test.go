@@ -38,6 +38,30 @@ func (m *mockServer) Readiness(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (m *mockServer) DashboardOverview(w http.ResponseWriter, _ *http.Request) {
+	m.called["DashboardOverview"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (m *mockServer) Dashboard(w http.ResponseWriter, _ *http.Request) {
+	m.called["Dashboard"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (m *mockServer) SessionsList(w http.ResponseWriter, _ *http.Request) {
+	m.called["SessionsList"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (m *mockServer) DashboardInfo(w http.ResponseWriter, _ *http.Request) {
+	m.called["DashboardInfo"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func (m *mockServer) ServicesList(w http.ResponseWriter, _ *http.Request) {
 	m.called["ServicesList"] = true
 
@@ -46,6 +70,18 @@ func (m *mockServer) ServicesList(w http.ResponseWriter, _ *http.Request) {
 
 func (m *mockServer) ServiceMethodsList(w http.ResponseWriter, _ *http.Request, _ string) {
 	m.called["ServiceMethodsList"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (m *mockServer) ServiceGet(w http.ResponseWriter, _ *http.Request, _ string) {
+	m.called["ServiceGet"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (m *mockServer) ServiceMethodGet(w http.ResponseWriter, _ *http.Request, _, _ string) {
+	m.called["ServiceMethodGet"] = true
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -94,6 +130,12 @@ func (m *mockServer) BatchStubsDelete(w http.ResponseWriter, _ *http.Request) {
 
 func (m *mockServer) SearchStubs(w http.ResponseWriter, _ *http.Request) {
 	m.called["SearchStubs"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (m *mockServer) InspectStubs(w http.ResponseWriter, _ *http.Request) {
+	m.called["InspectStubs"] = true
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -162,8 +204,14 @@ func TestHandlerRoutes(t *testing.T) {
 	}{
 		{http.MethodGet, "/health/liveness", "Liveness"},
 		{http.MethodGet, "/health/readiness", "Readiness"},
+		{http.MethodGet, "/dashboard/overview", "DashboardOverview"},
+		{http.MethodGet, "/dashboard", "Dashboard"},
+		{http.MethodGet, "/sessions", "SessionsList"},
+		{http.MethodGet, "/dashboard/info", "DashboardInfo"},
 		{http.MethodGet, "/services", "ServicesList"},
+		{http.MethodGet, "/services/myservice", "ServiceGet"},
 		{http.MethodGet, "/services/myservice/methods", "ServiceMethodsList"},
+		{http.MethodGet, "/services/myservice/methods/mymethod", "ServiceMethodGet"},
 		{http.MethodDelete, "/stubs", "PurgeStubs"},
 		{http.MethodGet, "/stubs", "ListStubs"},
 		{http.MethodPost, "/stubs", "AddStub"},
@@ -174,6 +222,7 @@ func TestHandlerRoutes(t *testing.T) {
 		{http.MethodDelete, "/services/myservice", "DeleteService"},
 		{http.MethodPost, "/stubs/batchDelete", "BatchStubsDelete"},
 		{http.MethodPost, "/stubs/search", "SearchStubs"},
+		{http.MethodPost, "/stubs/inspect", "InspectStubs"},
 		{http.MethodGet, "/stubs/unused", "ListUnusedStubs"},
 		{http.MethodGet, "/stubs/used", "ListUsedStubs"},
 		{http.MethodDelete, "/stubs/" + validUUID.String(), "DeleteStubByID"},
@@ -189,8 +238,12 @@ func TestHandlerRoutes(t *testing.T) {
 			req := httptest.NewRequest(tt.method, tt.path, nil)
 			rec := httptest.NewRecorder()
 
-			if tt.path == "/services/myservice/methods" || tt.path == "/services/myservice" {
+			if tt.path == "/services/myservice/methods" || tt.path == "/services/myservice" || tt.path == "/services/myservice/methods/mymethod" {
 				req = mux.SetURLVars(req, map[string]string{"serviceID": "myservice"})
+			}
+
+			if tt.path == "/services/myservice/methods/mymethod" {
+				req = mux.SetURLVars(req, map[string]string{"serviceID": "myservice", "methodID": "mymethod"})
 			}
 
 			if tt.path == "/stubs/"+validUUID.String() {
@@ -370,7 +423,7 @@ func TestTypesMessageOK(t *testing.T) {
 func TestTypesMethod(t *testing.T) {
 	t.Parallel()
 
-	m := Method{Id: "id1", Name: "Get"}
+	m := Method{Id: "id1", Name: "Get", MethodType: Unary}
 	data, err := json.Marshal(m)
 	require.NoError(t, err)
 
@@ -388,7 +441,7 @@ func TestTypesService(t *testing.T) {
 		Id:      "svc1",
 		Name:    "TestService",
 		Package: "pkg",
-		Methods: []Method{{Id: "m1", Name: "Get"}},
+		Methods: []Method{{Id: "m1", Name: "Get", MethodType: Unary}},
 	}
 	data, err := json.Marshal(svc)
 	require.NoError(t, err)

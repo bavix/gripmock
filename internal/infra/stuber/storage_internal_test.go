@@ -618,3 +618,80 @@ func TestStorageFindAllThreeItemSort(t *testing.T) {
 	require.Equal(t, 10, results[1].Priority)
 	require.Equal(t, 5, results[2].Priority)
 }
+
+func TestStorageFindByMethodAvailable(t *testing.T) {
+	t.Parallel()
+
+	s := newStorage()
+	leftA := newTestStub("SvcA", "SharedMethod", 1)
+	leftB := newTestStub("SvcB", "SharedMethod", 2)
+	other := newTestStub("SvcC", "OtherMethod", 3)
+
+	s.upsert(leftA, leftB, other)
+
+	stubs := collectStubs(s.findByMethodAvailable("SharedMethod", ""))
+	require.Len(t, stubs, 2)
+
+	ids := map[uuid.UUID]struct{}{}
+	for _, stub := range stubs {
+		ids[stub.ID] = struct{}{}
+	}
+
+	_, hasA := ids[leftA.ID]
+	_, hasB := ids[leftB.ID]
+
+	require.True(t, hasA)
+	require.True(t, hasB)
+}
+
+func TestStorageFindByMethodAvailableHandlesMethodUpdate(t *testing.T) {
+	t.Parallel()
+
+	id := uuid.New()
+	s := newStorage()
+
+	s.upsert(newTestStubWithID(id, "Svc", "OldMethod", 1))
+	s.upsert(newTestStubWithID(id, "Svc", "NewMethod", 2))
+
+	require.Empty(t, collectStubs(s.findByMethodAvailable("OldMethod", "")))
+	updated := collectStubs(s.findByMethodAvailable("NewMethod", ""))
+	require.Len(t, updated, 1)
+	require.Equal(t, id, updated[0].ID)
+}
+
+func TestStorageFindAllAvailableBySession(t *testing.T) {
+	t.Parallel()
+
+	s := newStorage()
+	global := newTestStub("Svc", "Method", 1)
+	sessionA := newTestStub("Svc", "Method", 2)
+	sessionA.Session = "A"
+	sessionB := newTestStub("Svc", "Method", 3)
+	sessionB.Session = "B"
+
+	s.upsert(global, sessionA, sessionB)
+
+	globalOnly, err := s.findAllAvailable("Svc", "Method", "")
+	require.NoError(t, err)
+	require.Len(t, collectStubs(globalOnly), 1)
+
+	forA, err := s.findAllAvailable("Svc", "Method", "A")
+	require.NoError(t, err)
+	require.Len(t, collectStubs(forA), 2)
+}
+
+func TestStorageFindByMethodAvailableBySession(t *testing.T) {
+	t.Parallel()
+
+	s := newStorage()
+	global := newTestStub("Svc1", "Method", 1)
+	sessionA := newTestStub("Svc2", "Method", 2)
+	sessionA.Session = "A"
+	sessionB := newTestStub("Svc3", "Method", 3)
+	sessionB.Session = "B"
+
+	s.upsert(global, sessionA, sessionB)
+
+	require.Len(t, collectStubs(s.findByMethodAvailable("Method", "")), 1)
+	require.Len(t, collectStubs(s.findByMethodAvailable("Method", "A")), 2)
+}
