@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.8.2 - 2026-03-11
+
+### What's Changed
+
+* Add tests by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/782
+* black smoke fix by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/783
+* add check&fmt grpctestify by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/784
+* (New UI) Stuber cleanup + Bump UI by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/785
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.8.1...v3.8.2
+
 ## v3.8.1 - 2026-03-08
 
 ### What's Changed
