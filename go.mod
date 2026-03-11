@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/bavix/features v1.0.4
-	github.com/bavix/gripmock-ui v1.1.1
+	github.com/bavix/gripmock-ui v1.2.0
 	github.com/bufbuild/protocompile v0.14.1
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -70,5 +70,3 @@ require (
 	golang.org/x/sys v0.42.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/bavix/gripmock-ui => ../gripmock-ui
