@@ -928,7 +928,7 @@ func (s *RestServerTestSuite) TestServiceGet() {
 
 	err = json.Unmarshal(w.Body.Bytes(), &payload)
 	s.Require().NoError(err)
-	s.Contains(payload["error"], "service not.exists not found")
+	s.Contains(payload["error"], "service not found: not.exists")
 }
 
 //nolint:funlen
@@ -1027,7 +1027,7 @@ func (s *RestServerTestSuite) TestServiceMethodGet() {
 
 	err = json.Unmarshal(w.Body.Bytes(), &payload)
 	s.Require().NoError(err)
-	s.Contains(payload["error"], "service not.exists not found")
+	s.Contains(payload["error"], "service not found: not.exists")
 
 	w = httptest.NewRecorder()
 	s.server.ServiceMethodGet(
@@ -1040,7 +1040,7 @@ func (s *RestServerTestSuite) TestServiceMethodGet() {
 
 	err = json.Unmarshal(w.Body.Bytes(), &payload)
 	s.Require().NoError(err)
-	s.Contains(payload["error"], "method not_found not found in service "+serviceID)
+	s.Contains(payload["error"], "method not found in service not_found in service "+serviceID)
 }
 
 // TestValidateStubIntegration tests stub validation integration.
