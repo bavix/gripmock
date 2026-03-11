@@ -101,6 +101,11 @@ const (
 	stubSchemaURL     = "https://bavix.github.io/gripmock/schema/stub.json"
 )
 
+var (
+	errServiceNotFound = stderrors.New("service not found")
+	errMethodNotFound  = stderrors.New("method not found in service")
+)
+
 // ServicesList returns a list of all available gRPC services (startup + REST-added).
 func (h *RestServer) ServicesList(w http.ResponseWriter, r *http.Request) {
 	h.writeResponse(r.Context(), w, h.collectAllServices())
@@ -132,7 +137,7 @@ func (h *RestServer) ServiceGet(w http.ResponseWriter, r *http.Request, serviceI
 	service, ok := h.findServiceDetailed(serviceID)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
-		h.writeResponseError(r.Context(), w, stderrors.New(fmt.Sprintf("service %s not found", serviceID)))
+		h.writeResponseError(r.Context(), w, fmt.Errorf("%w: %s", errServiceNotFound, serviceID))
 
 		return
 	}
@@ -145,7 +150,7 @@ func (h *RestServer) ServiceMethodGet(w http.ResponseWriter, r *http.Request, se
 	service, ok := h.findServiceDetailed(serviceID)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
-		h.writeResponseError(r.Context(), w, stderrors.New(fmt.Sprintf("service %s not found", serviceID)))
+		h.writeResponseError(r.Context(), w, fmt.Errorf("%w: %s", errServiceNotFound, serviceID))
 
 		return
 	}
@@ -162,7 +167,7 @@ func (h *RestServer) ServiceMethodGet(w http.ResponseWriter, r *http.Request, se
 	h.writeResponseError(
 		r.Context(),
 		w,
-		stderrors.New(fmt.Sprintf("method %s not found in service %s", methodID, serviceID)),
+		fmt.Errorf("%w %s in service %s", errMethodNotFound, methodID, serviceID),
 	)
 }
 
@@ -247,48 +252,6 @@ func (h *RestServer) DashboardInfo(w http.ResponseWriter, r *http.Request) {
 		TotalSessions:      payload.TotalSessions,
 		RuntimeDescriptors: payload.RuntimeDescriptors,
 	})
-}
-
-func (h *RestServer) dashboardPayload(r *http.Request) rest.Dashboard {
-	all := h.budgerigar.All()
-	used := h.budgerigar.Used()
-
-	payload := rest.Dashboard{
-		AppName:            "gripmock",
-		Version:            build.Version,
-		GoVersion:          runtime.Version(),
-		Compiler:           runtime.Compiler,
-		Goos:               runtime.GOOS,
-		Goarch:             runtime.GOARCH,
-		NumCPU:             runtime.NumCPU(),
-		StartedAt:          h.startedAt,
-		UptimeSeconds:      int(time.Since(h.startedAt).Seconds()),
-		Ready:              h.ok.Load(),
-		HistoryEnabled:     h.history != nil,
-		TotalServices:      len(h.collectAllServices()),
-		TotalStubs:         len(all),
-		UsedStubs:          len(used),
-		UnusedStubs:        max(len(all)-len(used), 0),
-		TotalSessions:      len(h.budgerigar.Sessions()),
-		RuntimeDescriptors: len(h.restDescriptors.ServiceIDs()),
-		TotalHistory:       0,
-		HistoryErrors:      0,
-	}
-
-	if h.history == nil {
-		return payload
-	}
-
-	records := h.history.Filter(history.FilterOpts{Session: muxmiddleware.FromRequest(r)})
-	payload.TotalHistory = len(records)
-
-	for _, record := range records {
-		if record.Error != "" {
-			payload.HistoryErrors++
-		}
-	}
-
-	return payload
 }
 
 const (
@@ -941,69 +904,6 @@ func uuidListToStringSlice(ids []uuid.UUID) []string {
 	return out
 }
 
-func (h *RestServer) findServiceDetailed(serviceID string) (rest.Service, bool) {
-	serviceDescriptor, ok := h.findServiceDescriptor(serviceID)
-	if !ok {
-		return rest.Service{}, false
-	}
-
-	return h.serviceFromDescriptor(serviceDescriptor, true), true
-}
-
-func (h *RestServer) findServiceDescriptor(serviceID string) (protoreflect.ServiceDescriptor, bool) {
-	var found protoreflect.ServiceDescriptor
-
-	collect := func(file protoreflect.FileDescriptor) bool {
-		services := file.Services()
-		for i := range services.Len() {
-			service := services.Get(i)
-			if string(service.FullName()) == serviceID {
-				found = service
-
-				return false
-			}
-		}
-
-		return true
-	}
-
-	if strings.Contains(serviceID, ".") {
-		packageName := splitLast(serviceID, ".")[0]
-
-		protoregistry.GlobalFiles.RangeFilesByPackage(protoreflect.FullName(packageName), collect)
-		if found != nil {
-			return found, true
-		}
-
-		h.restDescriptors.RangeFiles(func(file protoreflect.FileDescriptor) bool {
-			if string(file.Package()) != packageName {
-				return true
-			}
-
-			return collect(file)
-		})
-
-		if found != nil {
-			return found, true
-		}
-	}
-
-	protoregistry.GlobalFiles.RangeFiles(collect)
-	if found != nil {
-		return found, true
-	}
-
-	h.restDescriptors.RangeFiles(func(file protoreflect.FileDescriptor) bool {
-		return collect(file)
-	})
-
-	if found == nil {
-		return nil, false
-	}
-
-	return found, true
-}
-
 func debugCall(h *RestServer, service, method, session string, historyLimit, stubsLimit int) map[string]any {
 	serviceFound, methodFound := lookupServiceAndMethod(h, service, method)
 	dynamic := slices.Contains(h.restDescriptors.ServiceIDs(), service)
@@ -1644,28 +1544,6 @@ func (h *RestServer) collectAllServices() []rest.Service {
 	return results
 }
 
-func (h *RestServer) collectMethods(serviceID string, results *[]rest.Method) func(protoreflect.FileDescriptor) bool {
-	return func(file protoreflect.FileDescriptor) bool {
-		services := file.Services()
-
-		for i := range services.Len() {
-			service := services.Get(i)
-
-			if string(service.FullName()) != serviceID {
-				continue
-			}
-
-			methods := service.Methods()
-
-			for j := range methods.Len() {
-				*results = append(*results, h.methodFromDescriptor(service, methods.Get(j), false))
-			}
-		}
-
-		return true
-	}
-}
-
 func (h *RestServer) serviceFromDescriptor(
 	service protoreflect.ServiceDescriptor,
 	includeSchemas bool,
@@ -1744,6 +1622,7 @@ func (h *RestServer) messageSchemaFromDescriptor(
 	return &result
 }
 
+//nolint:funlen
 func (h *RestServer) fieldSchemaFromDescriptor(
 	field protoreflect.FieldDescriptor,
 	visiting map[protoreflect.FullName]struct{},
@@ -1817,6 +1696,8 @@ func grpcCardinality(cardinality protoreflect.Cardinality) rest.ProtoFieldSchema
 		return rest.Required
 	case protoreflect.Repeated:
 		return rest.Repeated
+	case protoreflect.Optional:
+		return rest.Optional
 	default:
 		return rest.Optional
 	}
@@ -1891,4 +1772,111 @@ func (h *RestServer) validateStub(stub *stuber.Stub) error {
 	}
 
 	return nil
+}
+
+func (h *RestServer) dashboardPayload(r *http.Request) rest.Dashboard {
+	all := h.budgerigar.All()
+	used := h.budgerigar.Used()
+
+	payload := rest.Dashboard{
+		AppName:            "gripmock",
+		Version:            build.Version,
+		GoVersion:          runtime.Version(),
+		Compiler:           runtime.Compiler,
+		Goos:               runtime.GOOS,
+		Goarch:             runtime.GOARCH,
+		NumCPU:             runtime.NumCPU(),
+		StartedAt:          h.startedAt,
+		UptimeSeconds:      int(time.Since(h.startedAt).Seconds()),
+		Ready:              h.ok.Load(),
+		HistoryEnabled:     h.history != nil,
+		TotalServices:      len(h.collectAllServices()),
+		TotalStubs:         len(all),
+		UsedStubs:          len(used),
+		UnusedStubs:        max(len(all)-len(used), 0),
+		TotalSessions:      len(h.budgerigar.Sessions()),
+		RuntimeDescriptors: len(h.restDescriptors.ServiceIDs()),
+		TotalHistory:       0,
+		HistoryErrors:      0,
+	}
+
+	if h.history == nil {
+		return payload
+	}
+
+	records := h.history.Filter(history.FilterOpts{Session: muxmiddleware.FromRequest(r)})
+	payload.TotalHistory = len(records)
+
+	for _, record := range records {
+		if record.Error != "" {
+			payload.HistoryErrors++
+		}
+	}
+
+	return payload
+}
+
+func (h *RestServer) findServiceDetailed(serviceID string) (rest.Service, bool) {
+	serviceDescriptor, ok := h.findServiceDescriptor(serviceID)
+	if !ok {
+		return rest.Service{}, false
+	}
+
+	return h.serviceFromDescriptor(serviceDescriptor, true), true
+}
+
+func (h *RestServer) findServiceDescriptor(serviceID string) (protoreflect.ServiceDescriptor, bool) { //nolint:ireturn
+	var found protoreflect.ServiceDescriptor
+
+	collect := func(file protoreflect.FileDescriptor) bool {
+		services := file.Services()
+		for i := range services.Len() {
+			service := services.Get(i)
+			if string(service.FullName()) == serviceID {
+				found = service
+
+				return false
+			}
+		}
+
+		return true
+	}
+
+	if strings.Contains(serviceID, ".") {
+		packageName := splitLast(serviceID, ".")[0]
+
+		protoregistry.GlobalFiles.RangeFilesByPackage(protoreflect.FullName(packageName), collect)
+
+		if found != nil {
+			return found, true
+		}
+
+		h.restDescriptors.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+			if string(file.Package()) != packageName {
+				return true
+			}
+
+			return collect(file)
+		})
+
+		if found != nil {
+			return found, true
+		}
+	}
+
+	protoregistry.GlobalFiles.RangeFiles(collect)
+
+	if found != nil {
+		return found, true
+	}
+
+	h.restDescriptors.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+		return collect(file)
+	})
+
+	if found == nil {
+		return nil, false
+	}
+
+	return found, true
 }

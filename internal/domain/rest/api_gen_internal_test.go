@@ -188,6 +188,7 @@ func (m *mockServer) FindByID(w http.ResponseWriter, _ *http.Request, _ ID) {
 	w.WriteHeader(http.StatusOK)
 }
 
+//nolint:funlen
 func TestHandlerRoutes(t *testing.T) {
 	t.Parallel()
 

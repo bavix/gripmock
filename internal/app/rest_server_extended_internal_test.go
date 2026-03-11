@@ -471,6 +471,7 @@ func (s *RestServerExtendedTestSuite) TestDashboard() {
 	s.Require().Equal(http.StatusOK, w.Code)
 
 	var payload map[string]any
+
 	err := json.Unmarshal(w.Body.Bytes(), &payload)
 	s.Require().NoError(err)
 

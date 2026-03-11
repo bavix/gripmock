@@ -901,6 +901,7 @@ func (s *RestServerTestSuite) TestServiceGet() {
 	s.Require().Equal(http.StatusOK, w.Code)
 
 	var services []map[string]any
+
 	err := json.Unmarshal(w.Body.Bytes(), &services)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(services)
@@ -914,6 +915,7 @@ func (s *RestServerTestSuite) TestServiceGet() {
 	s.Require().Equal(http.StatusOK, w.Code)
 
 	var service map[string]any
+
 	err = json.Unmarshal(w.Body.Bytes(), &service)
 	s.Require().NoError(err)
 	s.Equal(serviceID, service["id"])
@@ -923,17 +925,20 @@ func (s *RestServerTestSuite) TestServiceGet() {
 	s.Require().Equal(http.StatusNotFound, w.Code)
 
 	var payload map[string]string
+
 	err = json.Unmarshal(w.Body.Bytes(), &payload)
 	s.Require().NoError(err)
 	s.Contains(payload["error"], "service not.exists not found")
 }
 
+//nolint:funlen
 func (s *RestServerTestSuite) TestServiceMethodGet() {
 	w := httptest.NewRecorder()
 	s.server.ServicesList(w, httptest.NewRequest(http.MethodGet, "/api/services", nil))
 	s.Require().Equal(http.StatusOK, w.Code)
 
 	var services []map[string]any
+
 	err := json.Unmarshal(w.Body.Bytes(), &services)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(services)
@@ -942,6 +947,7 @@ func (s *RestServerTestSuite) TestServiceMethodGet() {
 
 	for _, item := range services {
 		id, _ := item["id"].(string)
+
 		methods, _ := item["methods"].([]any)
 		if id == "" || len(methods) == 0 {
 			continue
@@ -953,6 +959,7 @@ func (s *RestServerTestSuite) TestServiceMethodGet() {
 		}
 
 		methodID, _ = method["id"].(string)
+
 		methodName, _ = method["name"].(string)
 		if methodID == "" || methodName == "" {
 			continue
@@ -977,6 +984,7 @@ func (s *RestServerTestSuite) TestServiceMethodGet() {
 	s.Require().Equal(http.StatusOK, w.Code)
 
 	var method map[string]any
+
 	err = json.Unmarshal(w.Body.Bytes(), &method)
 	s.Require().NoError(err)
 	s.Equal(methodID, method["id"])
@@ -1016,6 +1024,7 @@ func (s *RestServerTestSuite) TestServiceMethodGet() {
 	s.Require().Equal(http.StatusNotFound, w.Code)
 
 	var payload map[string]string
+
 	err = json.Unmarshal(w.Body.Bytes(), &payload)
 	s.Require().NoError(err)
 	s.Contains(payload["error"], "service not.exists not found")
