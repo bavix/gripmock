@@ -16,6 +16,51 @@ import (
 	codes "google.golang.org/grpc/codes"
 )
 
+// Defines values for MethodMethodType.
+const (
+	BidiStreaming   MethodMethodType = "bidi_streaming"
+	ClientStreaming MethodMethodType = "client_streaming"
+	ServerStreaming MethodMethodType = "server_streaming"
+	Unary           MethodMethodType = "unary"
+)
+
+// Valid indicates whether the value is a known member of the MethodMethodType enum.
+func (e MethodMethodType) Valid() bool {
+	switch e {
+	case BidiStreaming:
+		return true
+	case ClientStreaming:
+		return true
+	case ServerStreaming:
+		return true
+	case Unary:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProtoFieldSchemaCardinality.
+const (
+	Optional ProtoFieldSchemaCardinality = "optional"
+	Repeated ProtoFieldSchemaCardinality = "repeated"
+	Required ProtoFieldSchemaCardinality = "required"
+)
+
+// Valid indicates whether the value is a known member of the ProtoFieldSchemaCardinality enum.
+func (e ProtoFieldSchemaCardinality) Valid() bool {
+	switch e {
+	case Optional:
+		return true
+	case Repeated:
+		return true
+	case Required:
+		return true
+	default:
+		return false
+	}
+}
+
 // AddDescriptorsResponse defines model for AddDescriptorsResponse.
 type AddDescriptorsResponse struct {
 	Message string `json:"message"`
@@ -36,6 +81,60 @@ type CallRecord struct {
 	Timestamp *time.Time      `json:"timestamp,omitempty"`
 }
 
+// Dashboard defines model for Dashboard.
+type Dashboard struct {
+	AppName            string    `json:"appName"`
+	Compiler           string    `json:"compiler"`
+	GoVersion          string    `json:"goVersion"`
+	Goarch             string    `json:"goarch"`
+	Goos               string    `json:"goos"`
+	HistoryEnabled     bool      `json:"historyEnabled"`
+	HistoryErrors      int       `json:"historyErrors"`
+	NumCPU             int       `json:"numCPU"`
+	Ready              bool      `json:"ready"`
+	RuntimeDescriptors int       `json:"runtimeDescriptors"`
+	StartedAt          time.Time `json:"startedAt"`
+	TotalHistory       int       `json:"totalHistory"`
+	TotalServices      int       `json:"totalServices"`
+	TotalSessions      int       `json:"totalSessions"`
+	TotalStubs         int       `json:"totalStubs"`
+	UnusedStubs        int       `json:"unusedStubs"`
+	UptimeSeconds      int       `json:"uptimeSeconds"`
+	UsedStubs          int       `json:"usedStubs"`
+	Version            string    `json:"version"`
+}
+
+// DashboardInfo defines model for DashboardInfo.
+type DashboardInfo struct {
+	AppName            string    `json:"appName"`
+	Compiler           string    `json:"compiler"`
+	GoVersion          string    `json:"goVersion"`
+	Goarch             string    `json:"goarch"`
+	Goos               string    `json:"goos"`
+	HistoryEnabled     bool      `json:"historyEnabled"`
+	NumCPU             int       `json:"numCPU"`
+	Ready              bool      `json:"ready"`
+	RuntimeDescriptors int       `json:"runtimeDescriptors"`
+	StartedAt          time.Time `json:"startedAt"`
+	TotalServices      int       `json:"totalServices"`
+	TotalSessions      int       `json:"totalSessions"`
+	TotalStubs         int       `json:"totalStubs"`
+	UptimeSeconds      int       `json:"uptimeSeconds"`
+	Version            string    `json:"version"`
+}
+
+// DashboardOverview defines model for DashboardOverview.
+type DashboardOverview struct {
+	HistoryErrors      int `json:"historyErrors"`
+	RuntimeDescriptors int `json:"runtimeDescriptors"`
+	TotalHistory       int `json:"totalHistory"`
+	TotalServices      int `json:"totalServices"`
+	TotalSessions      int `json:"totalSessions"`
+	TotalStubs         int `json:"totalStubs"`
+	UnusedStubs        int `json:"unusedStubs"`
+	UsedStubs          int `json:"usedStubs"`
+}
+
 // DescriptorServiceIDs defines model for DescriptorServiceIDs.
 type DescriptorServiceIDs struct {
 	// ServiceIDs Service IDs added via POST /descriptors
@@ -47,6 +146,64 @@ type HistoryList = []CallRecord
 
 // ID defines model for ID.
 type ID = openapi_types.UUID
+
+// InspectCandidate defines model for InspectCandidate.
+type InspectCandidate struct {
+	Events           []InspectCandidateEvent `json:"events"`
+	ExcludedBy       []string                `json:"excludedBy"`
+	HeadersMatched   bool                    `json:"headersMatched"`
+	Id               string                  `json:"id"`
+	InputMatched     bool                    `json:"inputMatched"`
+	Matched          bool                    `json:"matched"`
+	Method           string                  `json:"method"`
+	Priority         int                     `json:"priority"`
+	Score            float64                 `json:"score"`
+	Service          string                  `json:"service"`
+	Session          string                  `json:"session"`
+	Specificity      int                     `json:"specificity"`
+	Times            int                     `json:"times"`
+	Used             int                     `json:"used"`
+	VisibleBySession bool                    `json:"visibleBySession"`
+	WithinTimes      bool                    `json:"withinTimes"`
+}
+
+// InspectCandidateEvent defines model for InspectCandidateEvent.
+type InspectCandidateEvent struct {
+	Reason *string `json:"reason,omitempty"`
+	Result string  `json:"result"`
+	Stage  string  `json:"stage"`
+}
+
+// InspectReport defines model for InspectReport.
+type InspectReport struct {
+	Candidates       []InspectCandidate `json:"candidates"`
+	Error            string             `json:"error"`
+	FallbackToMethod bool               `json:"fallbackToMethod"`
+	MatchedStubId    string             `json:"matchedStubId"`
+	Method           string             `json:"method"`
+	Service          string             `json:"service"`
+	Session          string             `json:"session"`
+	SimilarStubId    string             `json:"similarStubId"`
+	Stages           []InspectStage     `json:"stages"`
+}
+
+// InspectRequest defines model for InspectRequest.
+type InspectRequest struct {
+	Headers map[string]any   `json:"headers,omitempty"`
+	Id      *ID              `json:"id,omitempty"`
+	Input   []map[string]any `json:"input,omitempty"`
+	Method  string           `json:"method"`
+	Service string           `json:"service"`
+	Session *string          `json:"session,omitempty"`
+}
+
+// InspectStage defines model for InspectStage.
+type InspectStage struct {
+	After   int    `json:"after"`
+	Before  int    `json:"before"`
+	Name    string `json:"name"`
+	Removed int    `json:"removed"`
+}
 
 // ListID defines model for ListID.
 type ListID = []ID
@@ -116,8 +273,63 @@ type MessageOK struct {
 
 // Method defines model for Method.
 type Method struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
+	// ClientStreaming Indicates client-side streaming method
+	ClientStreaming bool   `json:"clientStreaming,omitempty"`
+	Id              string `json:"id"`
+
+	// MethodType gRPC method interaction type
+	MethodType    MethodMethodType    `json:"methodType"`
+	Name          string              `json:"name"`
+	RequestSchema *ProtoMessageSchema `json:"requestSchema,omitempty"`
+
+	// RequestType Fully-qualified protobuf request message type
+	RequestType    *string             `json:"requestType,omitempty"`
+	ResponseSchema *ProtoMessageSchema `json:"responseSchema,omitempty"`
+
+	// ResponseType Fully-qualified protobuf response message type
+	ResponseType *string `json:"responseType,omitempty"`
+
+	// ServerStreaming Indicates server-side streaming method
+	ServerStreaming bool `json:"serverStreaming,omitempty"`
+}
+
+// MethodMethodType gRPC method interaction type
+type MethodMethodType string
+
+// ProtoFieldSchema defines model for ProtoFieldSchema.
+type ProtoFieldSchema struct {
+	Cardinality      ProtoFieldSchemaCardinality `json:"cardinality"`
+	EnumValues       *[]string                   `json:"enumValues,omitempty"`
+	JsonName         string                      `json:"jsonName"`
+	Kind             string                      `json:"kind"`
+	Map              bool                        `json:"map,omitempty"`
+	MapKeyKind       *string                     `json:"mapKeyKind,omitempty"`
+	MapValueKind     *string                     `json:"mapValueKind,omitempty"`
+	MapValueMessage  *ProtoMessageSchema         `json:"mapValueMessage,omitempty"`
+	MapValueTypeName *string                     `json:"mapValueTypeName,omitempty"`
+	Message          *ProtoMessageSchema         `json:"message,omitempty"`
+	Name             string                      `json:"name"`
+	Number           int                         `json:"number"`
+
+	// Oneof Oneof group name if field belongs to oneof
+	Oneof *string `json:"oneof,omitempty"`
+
+	// TypeName Referenced protobuf type for message/enum fields
+	TypeName *string `json:"typeName,omitempty"`
+}
+
+// ProtoFieldSchemaCardinality defines model for ProtoFieldSchema.Cardinality.
+type ProtoFieldSchemaCardinality string
+
+// ProtoMessageSchema defines model for ProtoMessageSchema.
+type ProtoMessageSchema struct {
+	Fields []ProtoFieldSchema `json:"fields"`
+
+	// RecursiveRef True when schema expansion stopped due to recursive reference
+	RecursiveRef bool `json:"recursiveRef,omitempty"`
+
+	// TypeName Fully-qualified protobuf message type name
+	TypeName string `json:"typeName"`
 }
 
 // SearchRequest defines model for SearchRequest.
@@ -143,6 +355,11 @@ type Service struct {
 	Methods []Method `json:"methods"`
 	Name    string   `json:"name"`
 	Package string   `json:"package"`
+}
+
+// Sessions defines model for Sessions.
+type Sessions struct {
+	Sessions []string `json:"sessions"`
 }
 
 // Stub defines model for Stub.
@@ -237,6 +454,9 @@ type AddStubJSONRequestBody AddStubJSONBody
 
 // BatchStubsDeleteJSONRequestBody defines body for BatchStubsDelete for application/json ContentType.
 type BatchStubsDeleteJSONRequestBody = ListID
+
+// InspectStubsJSONRequestBody defines body for InspectStubs for application/json ContentType.
+type InspectStubsJSONRequestBody = InspectRequest
 
 // SearchStubsJSONRequestBody defines body for SearchStubs for application/json ContentType.
 type SearchStubsJSONRequestBody = SearchRequest
@@ -374,6 +594,15 @@ func (t *McpID) UnmarshalJSON(b []byte) error {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Dashboard aggregate payload
+	// (GET /dashboard)
+	Dashboard(w http.ResponseWriter, r *http.Request)
+	// Dashboard runtime and build info
+	// (GET /dashboard/info)
+	DashboardInfo(w http.ResponseWriter, r *http.Request)
+	// Dashboard overview metrics
+	// (GET /dashboard/overview)
+	DashboardOverview(w http.ResponseWriter, r *http.Request)
 	// List service IDs from REST-added descriptors
 	// (GET /descriptors)
 	ListDescriptors(w http.ResponseWriter, r *http.Request)
@@ -401,9 +630,18 @@ type ServerInterface interface {
 	// Remove service
 	// (DELETE /services/{serviceID})
 	DeleteService(w http.ResponseWriter, r *http.Request, serviceID string)
+	// Service details
+	// (GET /services/{serviceID})
+	ServiceGet(w http.ResponseWriter, r *http.Request, serviceID string)
 	// Service methods
 	// (GET /services/{serviceID}/methods)
 	ServiceMethodsList(w http.ResponseWriter, r *http.Request, serviceID string)
+	// Service method details
+	// (GET /services/{serviceID}/methods/{methodID})
+	ServiceMethodGet(w http.ResponseWriter, r *http.Request, serviceID string, methodID string)
+	// Session options
+	// (GET /sessions)
+	SessionsList(w http.ResponseWriter, r *http.Request)
 	// Remove all stubs
 	// (DELETE /stubs)
 	PurgeStubs(w http.ResponseWriter, r *http.Request)
@@ -416,6 +654,9 @@ type ServerInterface interface {
 	// Deletes a batch of stubs by IDs
 	// (POST /stubs/batchDelete)
 	BatchStubsDelete(w http.ResponseWriter, r *http.Request)
+	// Inspect stub matching decision path
+	// (POST /stubs/inspect)
+	InspectStubs(w http.ResponseWriter, r *http.Request)
 	// Stub storage search
 	// (POST /stubs/search)
 	SearchStubs(w http.ResponseWriter, r *http.Request)
@@ -444,6 +685,48 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// Dashboard operation middleware
+func (siw *ServerInterfaceWrapper) Dashboard(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.Dashboard(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DashboardInfo operation middleware
+func (siw *ServerInterfaceWrapper) DashboardInfo(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DashboardInfo(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DashboardOverview operation middleware
+func (siw *ServerInterfaceWrapper) DashboardOverview(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DashboardOverview(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // ListDescriptors operation middleware
 func (siw *ServerInterfaceWrapper) ListDescriptors(w http.ResponseWriter, r *http.Request) {
@@ -582,6 +865,31 @@ func (siw *ServerInterfaceWrapper) DeleteService(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// ServiceGet operation middleware
+func (siw *ServerInterfaceWrapper) ServiceGet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "serviceID" -------------
+	var serviceID string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "serviceID", mux.Vars(r)["serviceID"], &serviceID, runtime.BindStyledParameterOptions{Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "serviceID", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ServiceGet(w, r, serviceID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ServiceMethodsList operation middleware
 func (siw *ServerInterfaceWrapper) ServiceMethodsList(w http.ResponseWriter, r *http.Request) {
 
@@ -598,6 +906,54 @@ func (siw *ServerInterfaceWrapper) ServiceMethodsList(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ServiceMethodsList(w, r, serviceID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ServiceMethodGet operation middleware
+func (siw *ServerInterfaceWrapper) ServiceMethodGet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "serviceID" -------------
+	var serviceID string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "serviceID", mux.Vars(r)["serviceID"], &serviceID, runtime.BindStyledParameterOptions{Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "serviceID", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "methodID" -------------
+	var methodID string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "methodID", mux.Vars(r)["methodID"], &methodID, runtime.BindStyledParameterOptions{Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "methodID", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ServiceMethodGet(w, r, serviceID, methodID)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SessionsList operation middleware
+func (siw *ServerInterfaceWrapper) SessionsList(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SessionsList(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -654,6 +1010,20 @@ func (siw *ServerInterfaceWrapper) BatchStubsDelete(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.BatchStubsDelete(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// InspectStubs operation middleware
+func (siw *ServerInterfaceWrapper) InspectStubs(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.InspectStubs(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -882,6 +1252,12 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	r.HandleFunc(options.BaseURL+"/dashboard", wrapper.Dashboard).Methods("GET")
+
+	r.HandleFunc(options.BaseURL+"/dashboard/info", wrapper.DashboardInfo).Methods("GET")
+
+	r.HandleFunc(options.BaseURL+"/dashboard/overview", wrapper.DashboardOverview).Methods("GET")
+
 	r.HandleFunc(options.BaseURL+"/descriptors", wrapper.ListDescriptors).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/descriptors", wrapper.AddDescriptors).Methods("POST")
@@ -900,7 +1276,13 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/services/{serviceID}", wrapper.DeleteService).Methods("DELETE")
 
+	r.HandleFunc(options.BaseURL+"/services/{serviceID}", wrapper.ServiceGet).Methods("GET")
+
 	r.HandleFunc(options.BaseURL+"/services/{serviceID}/methods", wrapper.ServiceMethodsList).Methods("GET")
+
+	r.HandleFunc(options.BaseURL+"/services/{serviceID}/methods/{methodID}", wrapper.ServiceMethodGet).Methods("GET")
+
+	r.HandleFunc(options.BaseURL+"/sessions", wrapper.SessionsList).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/stubs", wrapper.PurgeStubs).Methods("DELETE")
 
@@ -909,6 +1291,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/stubs", wrapper.AddStub).Methods("POST")
 
 	r.HandleFunc(options.BaseURL+"/stubs/batchDelete", wrapper.BatchStubsDelete).Methods("POST")
+
+	r.HandleFunc(options.BaseURL+"/stubs/inspect", wrapper.InspectStubs).Methods("POST")
 
 	r.HandleFunc(options.BaseURL+"/stubs/search", wrapper.SearchStubs).Methods("POST")
 

@@ -1,6 +1,3 @@
---- ADDRESS ---
-localhost:4770
-
 --- ENDPOINT ---
 specialized.HealthService/CheckHealth
 

@@ -361,6 +361,191 @@ func (s *RestServerExtendedTestSuite) TestStubStatistics() {
 	}
 }
 
+func (s *RestServerExtendedTestSuite) TestDashboardOverview() {
+	stubData := `[{"service":"OverviewService","method":"OverviewMethod","input":{"equals":{"ping":"ok"}},"output":{"data":{"ok":true}}}]`
+
+	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq.Header.Set("Content-Type", "application/json")
+
+	addW := httptest.NewRecorder()
+	s.server.AddStub(addW, addReq)
+	s.Require().Equal(http.StatusOK, addW.Code)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/dashboard/overview", nil)
+	w := httptest.NewRecorder()
+
+	s.server.DashboardOverview(w, req)
+
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var payload map[string]any
+
+	err := json.Unmarshal(w.Body.Bytes(), &payload)
+	s.Require().NoError(err)
+
+	s.Contains(payload, "totalServices")
+	s.Contains(payload, "totalStubs")
+	s.Contains(payload, "usedStubs")
+	s.Contains(payload, "unusedStubs")
+	s.Contains(payload, "totalSessions")
+	s.Contains(payload, "runtimeDescriptors")
+	s.Contains(payload, "totalHistory")
+	s.Contains(payload, "historyErrors")
+}
+
+func (s *RestServerExtendedTestSuite) TestSessionsList() {
+	// empty set should be [] (not null)
+	{
+		req := httptest.NewRequest(http.MethodGet, "/api/sessions", nil)
+		w := httptest.NewRecorder()
+
+		s.server.SessionsList(w, req)
+
+		s.Require().Equal(http.StatusOK, w.Code)
+
+		var payload map[string][]string
+
+		err := json.Unmarshal(w.Body.Bytes(), &payload)
+		s.Require().NoError(err)
+		s.Contains(payload, "sessions")
+		s.NotNil(payload["sessions"])
+		s.Empty(payload["sessions"])
+	}
+
+	s.server.budgerigar.PutMany(
+		&stuber.Stub{ID: uuid.New(), Service: "SessionService", Method: "M1", Session: "b"},
+		&stuber.Stub{ID: uuid.New(), Service: "SessionService", Method: "M2", Session: "a"},
+		&stuber.Stub{ID: uuid.New(), Service: "SessionService", Method: "M3", Session: "b"},
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/sessions", nil)
+	w := httptest.NewRecorder()
+
+	s.server.SessionsList(w, req)
+
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var payload map[string][]string
+
+	err := json.Unmarshal(w.Body.Bytes(), &payload)
+	s.Require().NoError(err)
+	s.Equal([]string{"a", "b"}, payload["sessions"])
+}
+
+func (s *RestServerExtendedTestSuite) TestDashboardInfo() {
+	req := httptest.NewRequest(http.MethodGet, "/api/dashboard/info", nil)
+	w := httptest.NewRecorder()
+
+	s.server.DashboardInfo(w, req)
+
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var payload map[string]any
+
+	err := json.Unmarshal(w.Body.Bytes(), &payload)
+	s.Require().NoError(err)
+
+	s.Contains(payload, "appName")
+	s.Contains(payload, "version")
+	s.Contains(payload, "goVersion")
+	s.Contains(payload, "compiler")
+	s.Contains(payload, "goos")
+	s.Contains(payload, "goarch")
+	s.Contains(payload, "numCPU")
+	s.Contains(payload, "startedAt")
+	s.Contains(payload, "uptimeSeconds")
+	s.Contains(payload, "ready")
+	s.Contains(payload, "historyEnabled")
+	s.Contains(payload, "totalServices")
+	s.Contains(payload, "totalStubs")
+	s.Contains(payload, "totalSessions")
+	s.Contains(payload, "runtimeDescriptors")
+}
+
+func (s *RestServerExtendedTestSuite) TestDashboard() {
+	req := httptest.NewRequest(http.MethodGet, "/api/dashboard", nil)
+	w := httptest.NewRecorder()
+
+	s.server.Dashboard(w, req)
+
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var payload map[string]any
+
+	err := json.Unmarshal(w.Body.Bytes(), &payload)
+	s.Require().NoError(err)
+
+	s.Contains(payload, "appName")
+	s.Contains(payload, "version")
+	s.Contains(payload, "totalServices")
+	s.Contains(payload, "totalStubs")
+	s.Contains(payload, "usedStubs")
+	s.Contains(payload, "unusedStubs")
+	s.Contains(payload, "totalSessions")
+	s.Contains(payload, "runtimeDescriptors")
+	s.Contains(payload, "totalHistory")
+	s.Contains(payload, "historyErrors")
+}
+
+func (s *RestServerExtendedTestSuite) TestStubListsNeverReturnNull() {
+	tests := []struct {
+		name    string
+		path    string
+		handler func(http.ResponseWriter, *http.Request)
+	}{
+		{name: "used", path: "/api/stubs/used", handler: s.server.ListUsedStubs},
+		{name: "unused", path: "/api/stubs/unused", handler: s.server.ListUnusedStubs},
+		{name: "all", path: "/api/stubs", handler: s.server.ListStubs},
+	}
+
+	for _, tt := range tests {
+		s.Run(tt.name, func() {
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			w := httptest.NewRecorder()
+
+			tt.handler(w, req)
+
+			s.Require().Equal(http.StatusOK, w.Code)
+			s.NotEqual("null\n", w.Body.String())
+
+			var payload []map[string]any
+
+			err := json.Unmarshal(w.Body.Bytes(), &payload)
+			s.Require().NoError(err)
+			s.NotNil(payload)
+		})
+	}
+}
+
+func (s *RestServerExtendedTestSuite) TestInspectStubsEndpoint() {
+	stubData := `[{"service":"InspectService","method":"InspectMethod","input":{"equals":{"name":"Alex"}},"output":{"data":{"ok":true}}}]`
+
+	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq.Header.Set("Content-Type", "application/json")
+
+	addW := httptest.NewRecorder()
+	s.server.AddStub(addW, addReq)
+	s.Require().Equal(http.StatusOK, addW.Code)
+
+	body := `{"service":"InspectService","method":"InspectMethod","input":[{"name":"Alex"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/stubs/inspect", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+
+	s.server.InspectStubs(w, req)
+
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	var payload map[string]any
+
+	err := json.Unmarshal(w.Body.Bytes(), &payload)
+	s.Require().NoError(err)
+	s.Contains(payload, "stages")
+	s.Contains(payload, "candidates")
+	s.Contains(payload, "matchedStubId")
+}
+
 // TestSearchStubsExtended tests advanced stub searching.
 //
 //nolint:funlen

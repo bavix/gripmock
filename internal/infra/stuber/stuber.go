@@ -112,17 +112,37 @@ func (b *Budgerigar) FindBy(service, method string) ([]*Stub, error) {
 
 // All returns all Stub values.
 func (b *Budgerigar) All() []*Stub {
-	return b.searcher.all()
+	stubs := b.searcher.all()
+	if stubs == nil {
+		return []*Stub{}
+	}
+
+	return stubs
 }
 
 // Used returns all Stub values that have been used.
 func (b *Budgerigar) Used() []*Stub {
-	return b.searcher.used()
+	stubs := b.searcher.used()
+	if stubs == nil {
+		return []*Stub{}
+	}
+
+	return stubs
 }
 
 // Unused returns all Stub values that have not been used.
 func (b *Budgerigar) Unused() []*Stub {
-	return b.searcher.unused()
+	stubs := b.searcher.unused()
+	if stubs == nil {
+		return []*Stub{}
+	}
+
+	return stubs
+}
+
+// Sessions returns sorted non-empty session IDs known by storage.
+func (b *Budgerigar) Sessions() []string {
+	return b.searcher.sessions()
 }
 
 // Clear removes all Stub values.

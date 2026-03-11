@@ -4,7 +4,7 @@ go 1.26
 
 require (
 	github.com/bavix/features v1.0.4
-	github.com/bavix/gripmock-ui v1.1.1
+	github.com/bavix/gripmock-ui v1.2.0
 	github.com/bufbuild/protocompile v0.14.1
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -24,8 +24,8 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/zeebo/xxh3 v1.1.0
-	golang.org/x/text v0.34.0
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171
+	golang.org/x/text v0.35.0
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260311181403-84a4fc48630c
 	google.golang.org/grpc v1.79.2
 	google.golang.org/protobuf v1.36.11
 )
@@ -33,14 +33,14 @@ require (
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
-	github.com/charmbracelet/colorprofile v0.4.2 // indirect
+	github.com/charmbracelet/colorprofile v0.4.3 // indirect
 	github.com/charmbracelet/x/ansi v0.11.6 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.15 // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20241215232642-bb51bb14a506 // indirect
-	github.com/cockroachdb/redact v1.1.6 // indirect
+	github.com/cockroachdb/redact v1.1.7 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.13 // indirect

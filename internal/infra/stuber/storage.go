@@ -1,10 +1,12 @@
 package stuber
 
 import (
+	"bytes"
 	"container/heap"
 	"errors"
 	"iter"
 	"log"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -41,18 +43,24 @@ var ErrRightNotFound = errors.New("right not found")
 // - items: Stores items by a composite key of hashed left and right IDs.
 // - itemsByID: Provides quick access to items by their unique UUIDs.
 type storage struct {
-	mu        sync.RWMutex
-	lefts     map[uint32]struct{}
-	items     map[uint64]map[uuid.UUID]*Stub
-	itemsByID map[uuid.UUID]*Stub
+	mu           sync.RWMutex
+	lefts        map[uint32]struct{}
+	methodSorted map[uint32]map[string][]*Stub
+	items        map[uint64]map[uuid.UUID]*Stub
+	itemSorted   map[uint64]map[string][]*Stub
+	itemsByID    map[uuid.UUID]*Stub
+	sessions     map[string]int
 }
 
 // newStorage creates a new instance of the storage struct.
 func newStorage() *storage {
 	return &storage{
-		lefts:     make(map[uint32]struct{}),
-		items:     make(map[uint64]map[uuid.UUID]*Stub),
-		itemsByID: make(map[uuid.UUID]*Stub),
+		lefts:        make(map[uint32]struct{}),
+		methodSorted: make(map[uint32]map[string][]*Stub),
+		items:        make(map[uint64]map[uuid.UUID]*Stub),
+		itemSorted:   make(map[uint64]map[string][]*Stub),
+		itemsByID:    make(map[uuid.UUID]*Stub),
+		sessions:     make(map[string]int),
 	}
 }
 
@@ -62,8 +70,69 @@ func (s *storage) clear() {
 	defer s.mu.Unlock()
 
 	s.lefts = make(map[uint32]struct{})
+	s.methodSorted = make(map[uint32]map[string][]*Stub)
 	s.items = make(map[uint64]map[uuid.UUID]*Stub)
+	s.itemSorted = make(map[uint64]map[string][]*Stub)
 	s.itemsByID = make(map[uuid.UUID]*Stub)
+	s.sessions = make(map[string]int)
+}
+
+// findByMethodAvailable retrieves method stubs visible for session.
+func (s *storage) findByMethodAvailable(method, session string) iter.Seq[*Stub] {
+	return func(yield func(*Stub) bool) {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+
+		methodID := s.id(method)
+		if session == "" {
+			for _, stub := range s.methodSorted[methodID][""] {
+				if !yield(stub) {
+					return
+				}
+			}
+
+			return
+		}
+
+		yieldMergedSorted(s.methodSorted[methodID][""], s.methodSorted[methodID][session], yield)
+	}
+}
+
+func (s *storage) hasMethodAvailable(method, session string) bool {
+	methodID := s.id(method)
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	buckets := s.methodSorted[methodID]
+	if len(buckets[""]) > 0 {
+		return true
+	}
+
+	if session == "" {
+		return false
+	}
+
+	return len(buckets[session]) > 0
+}
+
+// findAllAvailable retrieves stubs by service/method visible for session.
+func (s *storage) findAllAvailable(left, right, session string) (iter.Seq[*Stub], error) {
+	indexes, err := s.posByPN(left, right)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(yield func(*Stub) bool) {
+		s.mu.RLock()
+		defer s.mu.RUnlock()
+
+		for _, stub := range collectAvailableSorted(s.itemSorted, indexes, session) {
+			if !yield(stub) {
+				return
+			}
+		}
+	}, nil
 }
 
 // values returns an iterator sequence of all Stub items stored in the storage.
@@ -381,6 +450,10 @@ func (s *storage) upsert(values ...*Stub) []uuid.UUID {
 	for i, v := range values {
 		results[i] = v.ID
 
+		if old, exists := s.itemsByID[v.ID]; exists {
+			s.removeStubIndexes(old)
+		}
+
 		leftID := s.id(v.Service)
 		rightID := s.id(v.Method)
 		index := s.pos(leftID, rightID)
@@ -390,6 +463,9 @@ func (s *storage) upsert(values ...*Stub) []uuid.UUID {
 		}
 
 		s.items[index][v.ID] = v
+		s.upsertSessionIndex(s.itemSorted, index, v.Session, v)
+		s.upsertMethodSessionIndex(rightID, v.Session, v)
+		s.incrementSession(v.Session)
 		s.itemsByID[v.ID] = v
 		s.lefts[leftID] = struct{}{}
 	}
@@ -407,22 +483,263 @@ func (s *storage) del(keys ...uuid.UUID) int {
 
 	for _, key := range keys {
 		if v, ok := s.itemsByID[key]; ok {
-			pos := s.pos(s.id(v.Service), s.id(v.Method))
+			s.removeStubIndexes(v)
+			delete(s.itemsByID, key)
 
-			if m, exists := s.items[pos]; exists {
-				delete(m, key)
-				delete(s.itemsByID, key)
-
-				deleted++
-
-				if len(m) == 0 {
-					delete(s.items, pos)
-				}
-			}
+			deleted++
 		}
 	}
 
 	return deleted
+}
+
+func (s *storage) removeStubIndexes(stub *Stub) {
+	pos := s.pos(s.id(stub.Service), s.id(stub.Method))
+
+	if m, exists := s.items[pos]; exists {
+		delete(m, stub.ID)
+
+		if len(m) == 0 {
+			delete(s.items, pos)
+		}
+	}
+
+	s.removeSessionIndex(s.itemSorted, pos, stub.Session, stub.ID)
+	methodID := s.id(stub.Method)
+	s.removeMethodSessionIndex(methodID, stub.Session, stub.ID)
+	s.decrementSession(stub.Session)
+}
+
+func (s *storage) incrementSession(session string) {
+	if session == "" {
+		return
+	}
+
+	s.sessions[session]++
+}
+
+func (s *storage) decrementSession(session string) {
+	if session == "" {
+		return
+	}
+
+	next := s.sessions[session] - 1
+	if next <= 0 {
+		delete(s.sessions, session)
+
+		return
+	}
+
+	s.sessions[session] = next
+}
+
+func (s *storage) sessionsList() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	sessions := slices.Collect(maps.Keys(s.sessions))
+	if sessions == nil {
+		return []string{}
+	}
+
+	slices.Sort(sessions)
+
+	return sessions
+}
+
+func (s *storage) upsertSessionIndex(
+	sorted map[uint64]map[string][]*Stub,
+	key uint64,
+	session string,
+	stub *Stub,
+) {
+	sortedBuckets := sorted[key]
+	if sortedBuckets == nil {
+		sortedBuckets = make(map[string][]*Stub)
+		sorted[key] = sortedBuckets
+	}
+
+	sortedBuckets[session] = insertSortedStub(sortedBuckets[session], stub)
+}
+
+func (s *storage) upsertMethodSessionIndex(key uint32, session string, stub *Stub) {
+	sortedBuckets := s.methodSorted[key]
+	if sortedBuckets == nil {
+		sortedBuckets = make(map[string][]*Stub)
+		s.methodSorted[key] = sortedBuckets
+	}
+
+	sortedBuckets[session] = insertSortedStub(sortedBuckets[session], stub)
+}
+
+func (s *storage) removeSessionIndex(
+	sorted map[uint64]map[string][]*Stub,
+	key uint64,
+	session string,
+	id uuid.UUID,
+) {
+	sortedBuckets, exists := sorted[key]
+	if !exists {
+		return
+	}
+
+	sortedBuckets[session] = removeSortedStubByID(sortedBuckets[session], id)
+	if len(sortedBuckets[session]) == 0 {
+		delete(sortedBuckets, session)
+	}
+
+	if len(sortedBuckets) == 0 {
+		delete(sorted, key)
+	}
+}
+
+func (s *storage) removeMethodSessionIndex(key uint32, session string, id uuid.UUID) {
+	sortedBuckets, exists := s.methodSorted[key]
+	if !exists {
+		return
+	}
+
+	sortedBuckets[session] = removeSortedStubByID(sortedBuckets[session], id)
+	if len(sortedBuckets[session]) == 0 {
+		delete(sortedBuckets, session)
+	}
+
+	if len(sortedBuckets) == 0 {
+		delete(s.methodSorted, key)
+	}
+}
+
+func insertSortedStub(stubs []*Stub, stub *Stub) []*Stub {
+	idx, _ := slices.BinarySearchFunc(stubs, stub, compareStubsByPriorityAndID)
+	stubs = append(stubs, nil)
+	copy(stubs[idx+1:], stubs[idx:])
+	stubs[idx] = stub
+
+	return stubs
+}
+
+func removeSortedStubByID(stubs []*Stub, id uuid.UUID) []*Stub {
+	for i, stub := range stubs {
+		if stub.ID == id {
+			copy(stubs[i:], stubs[i+1:])
+
+			return stubs[:len(stubs)-1]
+		}
+	}
+
+	return stubs
+}
+
+func yieldMergedSorted(global, session []*Stub, yield func(*Stub) bool) {
+	i := 0
+	j := 0
+
+	for i < len(global) && j < len(session) {
+		if compareStubsByPriorityAndID(global[i], session[j]) <= 0 {
+			if !yield(global[i]) {
+				return
+			}
+
+			i++
+
+			continue
+		}
+
+		if !yield(session[j]) {
+			return
+		}
+
+		j++
+	}
+
+	for i < len(global) {
+		if !yield(global[i]) {
+			return
+		}
+
+		i++
+	}
+
+	for j < len(session) {
+		if !yield(session[j]) {
+			return
+		}
+
+		j++
+	}
+}
+
+func collectAvailableSorted(indexBuckets map[uint64]map[string][]*Stub, indexes []uint64, session string) []*Stub {
+	if len(indexes) == 0 {
+		return nil
+	}
+
+	var merged []*Stub
+
+	for _, index := range indexes {
+		buckets := indexBuckets[index]
+		if len(buckets) == 0 {
+			continue
+		}
+
+		indexStubs := buckets[""]
+		if session != "" {
+			indexStubs = mergeSortedSlices(indexStubs, buckets[session])
+		}
+
+		if len(indexStubs) == 0 {
+			continue
+		}
+
+		if len(merged) == 0 {
+			merged = indexStubs
+
+			continue
+		}
+
+		merged = mergeSortedSlices(merged, indexStubs)
+	}
+
+	return merged
+}
+
+func mergeSortedSlices(left, right []*Stub) []*Stub {
+	if len(left) == 0 {
+		return right
+	}
+
+	if len(right) == 0 {
+		return left
+	}
+
+	merged := make([]*Stub, 0, len(left)+len(right))
+	i := 0
+	j := 0
+
+	for i < len(left) && j < len(right) {
+		if compareStubsByPriorityAndID(left[i], right[j]) <= 0 {
+			merged = append(merged, left[i])
+			i++
+
+			continue
+		}
+
+		merged = append(merged, right[j])
+		j++
+	}
+
+	merged = append(merged, left[i:]...)
+	merged = append(merged, right[j:]...)
+
+	return merged
+}
+
+func compareStubsByPriorityAndID(a, b *Stub) int {
+	if a.Priority != b.Priority {
+		return b.Priority - a.Priority
+	}
+
+	return bytes.Compare(a.ID[:], b.ID[:])
 }
 
 // Global LRU cache for string hashes with size limit.

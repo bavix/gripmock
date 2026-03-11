@@ -14,14 +14,20 @@ info:
     name: MIT
     url: https://github.com/bavix/gripmock-openapi/blob/master/LICENSE
 tags:
-  - name: stubs
-    description: Stubs storage management
-  - name: services
-    description: Services reflection
-  - name: dashboard
-    description: Dashboard
   - name: healthcheck
     description: Healthcheck
+  - name: dashboard
+    description: Dashboard and runtime telemetry
+  - name: sessions
+    description: Session management
+  - name: services
+    description: Services reflection
+  - name: stubs
+    description: Stubs storage and matching
+  - name: history
+    description: Recorded gRPC call history
+  - name: verify
+    description: Verify call count expectations
   - name: descriptors
     description: Protocol Buffer descriptors (FileDescriptorSet)
   - name: mcp
@@ -65,90 +71,75 @@ paths:
         '500':
           description: Internal Server Error
 
-  # descriptors
-  /descriptors:
+  # dashboard
+  /dashboard:
     get:
       tags:
-        - descriptors
-      summary: List service IDs from REST-added descriptors
-      description: Returns service IDs (e.g. helloworld.Greeter) added via POST /descriptors. Use DELETE /services/{serviceID} to remove.
-      operationId: listDescriptors
+        - dashboard
+      summary: Dashboard aggregate payload
+      description: Returns combined dashboard counters, runtime metadata, and process state in one response.
+      operationId: dashboard
       responses:
         '200':
-          description: List of removable service IDs
+          description: Successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DescriptorServiceIDs'
+                $ref: '#/components/schemas/Dashboard'
         '500':
           description: Internal Server Error
-    post:
+  /dashboard/overview:
+    get:
       tags:
-        - descriptors
-      summary: Upload FileDescriptorSet
-      description: Accepts binary Protocol Buffers FileDescriptorSet. Registers descriptors for dynamic service discovery. Returns service IDs for later removal via DELETE /services/{serviceID}.
-      operationId: addDescriptors
-      requestBody:
-        required: true
-        content:
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
+        - dashboard
+      summary: Dashboard overview metrics
+      description: Returns lightweight aggregate counters for admin UI dashboard.
+      operationId: dashboardOverview
       responses:
         '200':
-          description: Descriptors registered successfully
+          description: Successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AddDescriptorsResponse'
-        '400':
-          description: Invalid or empty FileDescriptorSet
+                $ref: '#/components/schemas/DashboardOverview'
+        '500':
+          description: Internal Server Error
+  /dashboard/info:
+    get:
+      tags:
+        - dashboard
+      summary: Dashboard runtime and build info
+      description: Returns GripMock build metadata and current runtime process information.
+      operationId: dashboardInfo
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardInfo'
         '500':
           description: Internal Server Error
 
-  # mcp
-  /mcp:
+  # sessions
+  /sessions:
     get:
       tags:
-        - mcp
-      summary: MCP transport metadata
-      description: Returns MCP server metadata, supported protocol versions and transport details.
-      operationId: mcpInfo
+        - sessions
+      summary: Session options
+      description: Returns distinct non-empty session IDs available in current stubs.
+      operationId: sessionsList
       responses:
         '200':
-          description: MCP metadata
+          description: Successful operation
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/McpInfoResponse'
-        '500':
-          description: Internal Server Error
-    post:
-      tags:
-        - mcp
-      summary: MCP JSON-RPC endpoint
-      description: Accepts MCP JSON-RPC requests (`initialize`, `ping`, `tools/list`, `tools/call`) and returns JSON-RPC responses.
-      operationId: mcpMessage
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/McpRequest'
-      responses:
-        '200':
-          description: MCP JSON-RPC response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/McpResponse'
-        '400':
-          description: Invalid JSON request
+                $ref: '#/components/schemas/Sessions'
         '500':
           description: Internal Server Error
 
-  # internal
+  # services reflection
   /services:
     get:
       tags:
@@ -198,7 +189,66 @@ paths:
           description: Service not found
         '500':
           description: Internal Server Error
+  /services/{serviceID}/methods/{methodID}:
+    get:
+      tags:
+        - services
+      summary: Service method details
+      description: Returns exact metadata for one method (by short name or full method id).
+      operationId: serviceMethodGet
+      parameters:
+        - name: serviceID
+          in: path
+          description: Full service name (e.g. helloworld.Greeter)
+          required: true
+          schema:
+            type: string
+        - name: methodID
+          in: path
+          description: Method short name (e.g. SayHello) or full id (e.g. helloworld.Greeter/SayHello)
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Method'
+        '400':
+          description: Invalid service or method id
+        '404':
+          description: Service or method not found
+        '500':
+          description: Internal Server Error
   /services/{serviceID}:
+    get:
+      tags:
+        - services
+      summary: Service details
+      description: Returns exact metadata for one service including all methods and streaming capabilities.
+      operationId: serviceGet
+      parameters:
+        - name: serviceID
+          in: path
+          description: Full service name (e.g. helloworld.Greeter)
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Service'
+        '400':
+          description: Invalid service ID
+        '404':
+          description: Service not found
+        '500':
+          description: Internal Server Error
     delete:
       tags:
         - services
@@ -340,7 +390,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ListID'
-  '/stubs/{uuid}':
+  /stubs/{uuid}:
     get:
       tags:
         - stubs
@@ -389,7 +439,7 @@ paths:
           description: Stub not found
         '500':
           description: Internal Server Error
-  '/stubs/search':
+  /stubs/search:
     post:
       tags:
         - stubs
@@ -416,6 +466,33 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SearchRequest'
+  /stubs/inspect:
+    post:
+      tags:
+        - stubs
+      summary: Inspect stub matching decision path
+      description: Returns detailed matching stages/candidates for a query without consuming stub times.
+      operationId: inspectStubs
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InspectReport'
+        '400':
+          description: Invalid inspect criteria
+        '422':
+          description: Validation error
+        '500':
+          description: Internal Server Error
+      requestBody:
+        description: Inspect criteria including service, method, optional headers/session and input messages
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InspectRequest'
 
   # history & verify
   /history:
@@ -462,6 +539,89 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/VerifyRequest'
+
+  # descriptors
+  /descriptors:
+    get:
+      tags:
+        - descriptors
+      summary: List service IDs from REST-added descriptors
+      description: Returns service IDs (e.g. helloworld.Greeter) added via POST /descriptors. Use DELETE /services/{serviceID} to remove.
+      operationId: listDescriptors
+      responses:
+        '200':
+          description: List of removable service IDs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DescriptorServiceIDs'
+        '500':
+          description: Internal Server Error
+    post:
+      tags:
+        - descriptors
+      summary: Upload FileDescriptorSet
+      description: Accepts binary Protocol Buffers FileDescriptorSet. Registers descriptors for dynamic service discovery. Returns service IDs for later removal via DELETE /services/{serviceID}.
+      operationId: addDescriptors
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Descriptors registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddDescriptorsResponse'
+        '400':
+          description: Invalid or empty FileDescriptorSet
+        '500':
+          description: Internal Server Error
+
+  # mcp
+  /mcp:
+    get:
+      tags:
+        - mcp
+      summary: MCP transport metadata
+      description: Returns MCP server metadata, supported protocol versions and transport details.
+      operationId: mcpInfo
+      responses:
+        '200':
+          description: MCP metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpInfoResponse'
+        '500':
+          description: Internal Server Error
+    post:
+      tags:
+        - mcp
+      summary: MCP JSON-RPC endpoint
+      description: Accepts MCP JSON-RPC requests (`initialize`, `ping`, `tools/list`, `tools/call`) and returns JSON-RPC responses.
+      operationId: mcpMessage
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/McpRequest'
+      responses:
+        '200':
+          description: MCP JSON-RPC response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/McpResponse'
+        '400':
+          description: Invalid JSON request
+        '500':
+          description: Internal Server Error
 
 components:
   schemas:
@@ -698,6 +858,7 @@ components:
       required:
         - id
         - name
+        - methodType
       properties:
         id:
           type: string
@@ -705,6 +866,97 @@ components:
         name:
           type: string
           x-omitzero: false
+        methodType:
+          type: string
+          description: gRPC method interaction type
+          enum:
+            - unary
+            - client_streaming
+            - server_streaming
+            - bidi_streaming
+          x-omitzero: false
+        requestType:
+          type: string
+          description: Fully-qualified protobuf request message type
+        responseType:
+          type: string
+          description: Fully-qualified protobuf response message type
+        requestSchema:
+          $ref: '#/components/schemas/ProtoMessageSchema'
+        responseSchema:
+          $ref: '#/components/schemas/ProtoMessageSchema'
+        clientStreaming:
+          type: boolean
+          description: Indicates client-side streaming method
+          x-go-type-skip-optional-pointer: true
+        serverStreaming:
+          type: boolean
+          description: Indicates server-side streaming method
+          x-go-type-skip-optional-pointer: true
+    ProtoMessageSchema:
+      type: object
+      required:
+        - typeName
+        - fields
+      properties:
+        typeName:
+          type: string
+          description: Fully-qualified protobuf message type name
+        recursiveRef:
+          type: boolean
+          description: True when schema expansion stopped due to recursive reference
+          x-go-type-skip-optional-pointer: true
+        fields:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProtoFieldSchema'
+    ProtoFieldSchema:
+      type: object
+      required:
+        - name
+        - jsonName
+        - number
+        - kind
+        - cardinality
+      properties:
+        name:
+          type: string
+        jsonName:
+          type: string
+        number:
+          type: integer
+          minimum: 1
+        kind:
+          type: string
+        cardinality:
+          type: string
+          enum:
+            - optional
+            - required
+            - repeated
+        typeName:
+          type: string
+          description: Referenced protobuf type for message/enum fields
+        oneof:
+          type: string
+          description: Oneof group name if field belongs to oneof
+        enumValues:
+          type: array
+          items:
+            type: string
+        map:
+          type: boolean
+          x-go-type-skip-optional-pointer: true
+        mapKeyKind:
+          type: string
+        mapValueKind:
+          type: string
+        mapValueTypeName:
+          type: string
+        message:
+          $ref: '#/components/schemas/ProtoMessageSchema'
+        mapValueMessage:
+          $ref: '#/components/schemas/ProtoMessageSchema'
     # stubs
     ID:
       type: string
@@ -824,6 +1076,323 @@ components:
           type: integer
         actual:
           type: integer
+    InspectRequest:
+      type: object
+      required:
+        - service
+        - method
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        service:
+          type: string
+        method:
+          type: string
+        session:
+          type: string
+        headers:
+          type: object
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+        input:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+    InspectStage:
+      type: object
+      required:
+        - name
+        - before
+        - after
+        - removed
+      properties:
+        name:
+          type: string
+        before:
+          type: integer
+        after:
+          type: integer
+        removed:
+          type: integer
+    InspectCandidateEvent:
+      type: object
+      required:
+        - stage
+        - result
+      properties:
+        stage:
+          type: string
+        result:
+          type: string
+        reason:
+          type: string
+    InspectCandidate:
+      type: object
+      required:
+        - id
+        - service
+        - method
+        - session
+        - priority
+        - times
+        - used
+        - specificity
+        - score
+        - visibleBySession
+        - withinTimes
+        - headersMatched
+        - inputMatched
+        - matched
+        - excludedBy
+        - events
+      properties:
+        id:
+          type: string
+        service:
+          type: string
+        method:
+          type: string
+        session:
+          type: string
+        priority:
+          type: integer
+        times:
+          type: integer
+        used:
+          type: integer
+        specificity:
+          type: integer
+        score:
+          type: number
+          format: double
+        visibleBySession:
+          type: boolean
+        withinTimes:
+          type: boolean
+        headersMatched:
+          type: boolean
+        inputMatched:
+          type: boolean
+        matched:
+          type: boolean
+        excludedBy:
+          type: array
+          items:
+            type: string
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/InspectCandidateEvent'
+    InspectReport:
+      type: object
+      required:
+        - service
+        - method
+        - session
+        - matchedStubId
+        - similarStubId
+        - fallbackToMethod
+        - error
+        - stages
+        - candidates
+      properties:
+        service:
+          type: string
+        method:
+          type: string
+        session:
+          type: string
+        matchedStubId:
+          type: string
+        similarStubId:
+          type: string
+        fallbackToMethod:
+          type: boolean
+        error:
+          type: string
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/InspectStage'
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/InspectCandidate'
+    DashboardOverview:
+      type: object
+      required:
+        - totalServices
+        - totalStubs
+        - usedStubs
+        - unusedStubs
+        - totalSessions
+        - runtimeDescriptors
+        - totalHistory
+        - historyErrors
+      properties:
+        totalServices:
+          type: integer
+          minimum: 0
+        totalStubs:
+          type: integer
+          minimum: 0
+        usedStubs:
+          type: integer
+          minimum: 0
+        unusedStubs:
+          type: integer
+          minimum: 0
+        totalSessions:
+          type: integer
+          minimum: 0
+        runtimeDescriptors:
+          type: integer
+          minimum: 0
+        totalHistory:
+          type: integer
+          minimum: 0
+        historyErrors:
+          type: integer
+          minimum: 0
+    Sessions:
+      type: object
+      required:
+        - sessions
+      properties:
+        sessions:
+          type: array
+          items:
+            type: string
+    DashboardInfo:
+      type: object
+      required:
+        - appName
+        - version
+        - goVersion
+        - compiler
+        - goos
+        - goarch
+        - numCPU
+        - startedAt
+        - uptimeSeconds
+        - ready
+        - historyEnabled
+        - totalServices
+        - totalStubs
+        - totalSessions
+        - runtimeDescriptors
+      properties:
+        appName:
+          type: string
+        version:
+          type: string
+        goVersion:
+          type: string
+        compiler:
+          type: string
+        goos:
+          type: string
+        goarch:
+          type: string
+        numCPU:
+          type: integer
+          minimum: 1
+        startedAt:
+          type: string
+          format: date-time
+        uptimeSeconds:
+          type: integer
+          minimum: 0
+        ready:
+          type: boolean
+        historyEnabled:
+          type: boolean
+        totalServices:
+          type: integer
+          minimum: 0
+        totalStubs:
+          type: integer
+          minimum: 0
+        totalSessions:
+          type: integer
+          minimum: 0
+        runtimeDescriptors:
+          type: integer
+          minimum: 0
+    Dashboard:
+      type: object
+      required:
+        - appName
+        - version
+        - goVersion
+        - compiler
+        - goos
+        - goarch
+        - numCPU
+        - startedAt
+        - uptimeSeconds
+        - ready
+        - historyEnabled
+        - totalServices
+        - totalStubs
+        - usedStubs
+        - unusedStubs
+        - totalSessions
+        - runtimeDescriptors
+        - totalHistory
+        - historyErrors
+      properties:
+        appName:
+          type: string
+        version:
+          type: string
+        goVersion:
+          type: string
+        compiler:
+          type: string
+        goos:
+          type: string
+        goarch:
+          type: string
+        numCPU:
+          type: integer
+          minimum: 1
+        startedAt:
+          type: string
+          format: date-time
+        uptimeSeconds:
+          type: integer
+          minimum: 0
+        ready:
+          type: boolean
+        historyEnabled:
+          type: boolean
+        totalServices:
+          type: integer
+          minimum: 0
+        totalStubs:
+          type: integer
+          minimum: 0
+        usedStubs:
+          type: integer
+          minimum: 0
+        unusedStubs:
+          type: integer
+          minimum: 0
+        totalSessions:
+          type: integer
+          minimum: 0
+        runtimeDescriptors:
+          type: integer
+          minimum: 0
+        totalHistory:
+          type: integer
+          minimum: 0
+        historyErrors:
+          type: integer
+          minimum: 0
     Stub:
       type: object
       required:
