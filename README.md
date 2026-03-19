@@ -10,7 +10,7 @@
 
 GripMock creates a mock server from your `.proto` files or compiled `.pb` descriptors, making gRPC testing simple and efficient. Perfect for end-to-end testing, development environments, and CI/CD pipelines.
 
-[![asciicast](https://asciinema.org/a/hRP6JWqt2xNENesu.svg)](https://asciinema.org/a/hRP6JWqt2xNENesu)
+![greeter](https://raw.githubusercontent.com/bavix/.github/master/svgs/gripmock-greeter.gif)
 
 ## ✨ Features
 
