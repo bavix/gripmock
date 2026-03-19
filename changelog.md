@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.8.3 - 2026-03-19
+
+### What's Changed
+
+* Remove Telegram social link by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/786
+* Bump github.com/goccy/go-json from 0.10.5 to 0.10.6 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/787
+* Bump google.golang.org/grpc from 1.79.2 to 1.79.3 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/788
+* Bump github.com/oapi-codegen/runtime from 1.2.0 to 1.3.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/789
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.8.2...v3.8.3
+
 ## v3.8.2 - 2026-03-11
 
 ### What's Changed
