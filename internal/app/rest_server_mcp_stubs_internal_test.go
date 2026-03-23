@@ -137,7 +137,7 @@ func (s *RestServerTestSuite) TestMCPStubsSearch() {
 
 func (s *RestServerTestSuite) TestMCPInfoIncludesTools() {
 	// Arrange
-	req := httptest.NewRequest(http.MethodGet, "/api/mcp", nil)
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/mcp", nil)
 	w := httptest.NewRecorder()
 
 	// Act

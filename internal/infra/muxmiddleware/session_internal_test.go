@@ -22,7 +22,7 @@ func TestTransportSessionMovesHeaderToContextAndStripsHeader(t *testing.T) {
 		gotHeader = r.Header.Get(HeaderName)
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.Header.Set(HeaderName, "A")
 
 	w := httptest.NewRecorder()

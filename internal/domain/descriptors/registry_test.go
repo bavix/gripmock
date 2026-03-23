@@ -17,7 +17,7 @@ func mustFileDesc(t *testing.T, protoPath string) protoreflect.FileDescriptor { 
 	t.Helper()
 
 	ctx := t.Context()
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
+	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath}, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, fdsSlice)
 

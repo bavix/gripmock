@@ -31,20 +31,20 @@ const (
 	fileTypeDescriptor = "descriptor"
 )
 
-var errUnsupportedFileType = errors.New("unsupported file type")
-
 //nolint:gochecknoglobals // shared lock is required for GlobalFiles concurrent registration safety
 var protoRegistryMu sync.Mutex
 
 type Configure struct {
-	imports     []string
-	protos      []string
-	descriptors []string
+	imports        []string
+	protos         []string
+	descriptors    []string
+	descriptorSets []*descriptorpb.FileDescriptorSet
 }
 
-func (c *Configure) Imports() []string     { return c.imports }
-func (c *Configure) Protos() []string      { return c.protos }
-func (c *Configure) Descriptors() []string { return c.descriptors }
+func (c *Configure) Imports() []string                                 { return c.imports }
+func (c *Configure) Protos() []string                                  { return c.protos }
+func (c *Configure) Descriptors() []string                             { return c.descriptors }
+func (c *Configure) DescriptorSets() []*descriptorpb.FileDescriptorSet { return c.descriptorSets }
 
 func createDescriptorSet(ctx context.Context, configure *Configure) (*descriptorpb.FileDescriptorSet, error) {
 	failbackResolver, err := pbs.NewResolver()
@@ -84,7 +84,7 @@ func createDescriptorSet(ctx context.Context, configure *Configure) (*descriptor
 }
 
 func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDescriptorSet, error) {
-	capacity := len(configure.Descriptors())
+	capacity := len(configure.Descriptors()) + len(configure.DescriptorSets())
 	if len(configure.Protos()) > 0 {
 		capacity++
 	}
@@ -107,6 +107,15 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 		err = registerDescriptorSetFiles(ctx, descriptor, fds)
 		if err != nil {
 			return nil, err
+		}
+
+		results = append(results, fds)
+	}
+
+	for i, fds := range configure.DescriptorSets() {
+		source := "buf.build"
+		if err := registerDescriptorSetFiles(ctx, source, fds); err != nil {
+			return nil, errors.Wrapf(err, "failed to register in-memory descriptor set: %d", i)
 		}
 
 		results = append(results, fds)
@@ -187,11 +196,13 @@ func registerGlobalFileOnce(
 	return nil
 }
 
-func newConfigure(ctx context.Context, imports []string, paths []string) (*Configure, error) {
-	p := newProcessor(imports)
+func newConfigure(ctx context.Context, imports []string, paths []string, client BSRClient) (*Configure, error) {
+	p := newProcessor(imports, client)
 
 	err := p.process(ctx, paths)
 	if err != nil {
+		_ = p.Cleanup()
+
 		return nil, errors.Wrap(err, "failed to create configuration")
 	}
 
@@ -229,7 +240,7 @@ func findMinimalPaths(paths []string) []string {
 	return result
 }
 
-func Build(ctx context.Context, imports []string, paths []string) ([]*descriptorpb.FileDescriptorSet, error) {
+func Build(ctx context.Context, imports []string, paths []string, client BSRClient) ([]*descriptorpb.FileDescriptorSet, error) {
 	var err error
 
 	for i, importPath := range imports {
@@ -240,13 +251,22 @@ func Build(ctx context.Context, imports []string, paths []string) ([]*descriptor
 	}
 
 	for i, path := range paths {
+		source, err := ParseSource(path)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to parse source: %s", path)
+		}
+
+		if source.Type == SourceBufBuild {
+			continue
+		}
+
 		paths[i], err = filepath.Abs(path)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to resolve path: %s", path)
 		}
 	}
 
-	configure, err := newConfigure(ctx, lo.Uniq(findMinimalPaths(imports)), lo.Uniq(paths))
+	configure, err := newConfigure(ctx, lo.Uniq(findMinimalPaths(imports)), lo.Uniq(paths), client)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create configuration")
 	}
@@ -258,15 +278,18 @@ type processor struct {
 	imports          []string
 	protos           []string
 	descriptors      []string
+	descriptorSets   []*descriptorpb.FileDescriptorSet
+	bufClient        BSRClient
 	seenDirs         map[string]bool
 	seenFiles        map[string]bool
 	allowedProtoExts []string
 	allowedDescExts  []string
 }
 
-func newProcessor(initialImports []string) *processor {
+func newProcessor(initialImports []string, client BSRClient) *processor {
 	return &processor{
 		imports:   initialImports,
+		bufClient: client,
 		seenDirs:  make(map[string]bool),
 		seenFiles: make(map[string]bool),
 		allowedProtoExts: []string{
@@ -279,6 +302,11 @@ func newProcessor(initialImports []string) *processor {
 	}
 }
 
+func (p *processor) Cleanup() error {
+	return nil
+}
+
+//nolint:funcorder
 func (p *processor) process(ctx context.Context, paths []string) error {
 	logger := zerolog.Ctx(ctx)
 
@@ -291,37 +319,25 @@ func (p *processor) process(ctx context.Context, paths []string) error {
 
 		logger.Debug().Str("path", path).Msg("Processing path")
 
-		info, err := os.Stat(path)
+		source, err := ParseSource(path)
 		if err != nil {
-			return errors.Wrapf(err, "failed to stat path: %s", path)
+			return errors.Wrapf(err, "failed to parse source: %s", path)
 		}
 
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return errors.Wrapf(err, "failed to resolve absolute path: %s", path)
+		if source.Type == SourceBufBuild {
+			logger.Debug().Str("module", source.Module).Str("version", source.Version).Msg("Processing buf.build module")
 		}
 
-		switch {
-		case info.IsDir():
-			logger.Debug().Str("directory", absPath).Msg("Processing directory")
-
-			err := p.processDirectory(ctx, absPath)
-			if err != nil {
-				return errors.Wrapf(err, "failed to process directory: %s", absPath)
-			}
-		default:
-			logger.Debug().Str("file", absPath).Msg("Processing file")
-
-			err := p.processFile(ctx, absPath)
-			if err != nil {
-				return errors.Wrapf(err, "failed to process file: %s", absPath)
-			}
+		err = ProcessSource(ctx, source, p)
+		if err != nil {
+			return errors.Wrapf(err, "failed to process source: %s", source.Raw)
 		}
 	}
 
 	return nil
 }
 
+//nolint:funcorder
 func (p *processor) processDirectory(ctx context.Context, absPath string) error {
 	logger := zerolog.Ctx(ctx)
 	logger.Debug().Str("directory", absPath).Msg("Walking directory")
@@ -352,10 +368,10 @@ func (p *processor) processDirectory(ctx context.Context, absPath string) error 
 		switch {
 		case slices.Contains(p.allowedProtoExts, ext):
 			logger.Debug().Msg("Found proto file")
-			p.addProtoFile(ctx, pth)
+			p.AddProtoFile(ctx, pth)
 		case slices.Contains(p.allowedDescExts, ext):
 			logger.Debug().Msg("Found descriptor file")
-			p.addDescriptorFile(ctx, pth)
+			p.AddDescriptorFile(ctx, pth)
 		default:
 			logger.Debug().Msg("Skipping unsupported file type")
 		}
@@ -364,27 +380,7 @@ func (p *processor) processDirectory(ctx context.Context, absPath string) error 
 	}), "failed to walk directory %s", absPath)
 }
 
-func (p *processor) processFile(ctx context.Context, absPath string) error {
-	logger := zerolog.Ctx(ctx).With().Str("file", absPath).Logger()
-
-	ext := filepath.Ext(absPath)
-
-	p.addImport(ctx, filepath.Dir(absPath))
-
-	switch {
-	case slices.Contains(p.allowedProtoExts, ext):
-		logger.Debug().Msg("Adding proto file")
-		p.addProtoFile(ctx, absPath)
-	case slices.Contains(p.allowedDescExts, ext):
-		logger.Debug().Msg("Adding descriptor file")
-		p.addDescriptorFile(ctx, absPath)
-	default:
-		return errors.Wrapf(errUnsupportedFileType, "unsupported file: %s", absPath)
-	}
-
-	return nil
-}
-
+//nolint:funcorder
 func (p *processor) addImport(ctx context.Context, dir string) {
 	var (
 		dirAbs string
@@ -410,12 +406,31 @@ func (p *processor) addImport(ctx context.Context, dir string) {
 	}
 }
 
-func (p *processor) addProtoFile(ctx context.Context, filePath string) {
+func (p *processor) AddProtoFile(ctx context.Context, filePath string) {
 	p.addFile(ctx, filePath, fileTypeProto)
 }
 
-func (p *processor) addDescriptorFile(ctx context.Context, filePath string) {
+func (p *processor) AddDescriptorFile(ctx context.Context, filePath string) {
 	p.addFile(ctx, filePath, fileTypeDescriptor)
+}
+
+func (p *processor) AddImportPath(ctx context.Context, dir string) {
+	p.addImport(ctx, dir)
+}
+
+func (p *processor) ProcessBufBuild(ctx context.Context, source *Source) error {
+	if p.bufClient == nil {
+		return nil
+	}
+
+	fds, err := p.bufClient.FetchDescriptorSet(ctx, source.Module, source.Version)
+	if err != nil {
+		return errors.Wrapf(err, "failed to fetch from buf.build: %s", source.Raw)
+	}
+
+	p.descriptorSets = append(p.descriptorSets, fds)
+
+	return nil
 }
 
 func findPathByImports(filePath string, imports []string) (string, string) {
@@ -488,8 +503,9 @@ func (p *processor) addFile(ctx context.Context, filePath, fileType string) {
 
 func (p *processor) result() *Configure {
 	return &Configure{
-		imports:     lo.Uniq(p.imports),
-		protos:      lo.Uniq(p.protos),
-		descriptors: lo.Uniq(p.descriptors),
+		imports:        lo.Uniq(p.imports),
+		protos:         lo.Uniq(p.protos),
+		descriptors:    lo.Uniq(p.descriptors),
+		descriptorSets: slices.Clone(p.descriptorSets),
 	}
 }

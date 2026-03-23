@@ -47,7 +47,7 @@ func TestFallbackResolverNotFoundWhenNoResolvers(t *testing.T) {
 func mustSingleDescriptorSet(t *testing.T, protoPath string) *descriptorpb.FileDescriptorSet {
 	t.Helper()
 
-	fds, err := protoset.Build(t.Context(), nil, []string{protoPath})
+	fds, err := protoset.Build(t.Context(), nil, []string{protoPath}, nil)
 	require.NoError(t, err)
 	require.Len(t, fds, 1)
 

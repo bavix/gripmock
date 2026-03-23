@@ -175,7 +175,7 @@ func (s *RestValidationTestSuite) TestAddStubValidationErrors() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(tt.jsonData))
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(tt.jsonData))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -323,7 +323,7 @@ func (s *RestValidationTestSuite) TestAddStubValidConfigurations() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(tt.jsonData))
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(tt.jsonData))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -366,7 +366,7 @@ func (s *RestValidationTestSuite) TestAddStubInvalidJSON() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(tt.jsonData))
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(tt.jsonData))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -429,7 +429,7 @@ func (s *RestValidationTestSuite) TestAddStubContentTypeValidation() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(validStubData))
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(validStubData))
 			if tt.contentType != "" {
 				req.Header.Set("Content-Type", tt.contentType)
 			}
@@ -478,7 +478,7 @@ func (s *RestValidationTestSuite) TestAddStubSpecialCases() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(tt.jsonData))
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(tt.jsonData))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()

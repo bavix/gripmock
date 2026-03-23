@@ -60,6 +60,11 @@ type Config struct {
 	HTTPTLSKeyFile    string `env:"HTTP_TLS_KEY_FILE"`
 	HTTPTLSClientAuth bool   `env:"HTTP_TLS_CLIENT_AUTH" envDefault:"false"`
 	HTTPTLSCAFile     string `env:"HTTP_TLS_CA_FILE"`
+
+	// Buf Schema Registry configuration.
+	BSRBaseURL string        `env:"BSR_BASE_URL" envDefault:"https://buf.build"`
+	BSRToken   string        `env:"BSR_TOKEN"`
+	BSRTimeout time.Duration `env:"BSR_TIMEOUT"  envDefault:"5s"`
 }
 
 // Load returns configuration from environment with sensible defaults.

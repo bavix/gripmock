@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: connectrpc.eliza.v1.ElizaService
+  method: Say
+  input:
+    equals:
+      sentence: I feel sad
+  output:
+    data:
+      sentence: Why do you feel sad?
+
+- service: connectrpc.eliza.v1.ElizaService
+  method: Say
+  input:
+    equals:
+      sentence: Hello
+  output:
+    data:
+      sentence: Hello. How are you feeling today?

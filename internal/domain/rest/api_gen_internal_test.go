@@ -236,7 +236,7 @@ func TestHandlerRoutes(t *testing.T) {
 
 			m := newMockServer()
 			h := Handler(m)
-			req := httptest.NewRequest(tt.method, tt.path, nil)
+			req := httptest.NewRequestWithContext(t.Context(), tt.method, tt.path, nil)
 			rec := httptest.NewRecorder()
 
 			if tt.path == "/services/myservice/methods" || tt.path == "/services/myservice" || tt.path == "/services/myservice/methods/mymethod" {
@@ -264,7 +264,7 @@ func TestHandlerWithOptionsBaseURL(t *testing.T) {
 	handler := HandlerWithOptions(mock, GorillaServerOptions{
 		BaseURL: "/api",
 	})
-	req := httptest.NewRequest(http.MethodGet, "/api/health/liveness", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/health/liveness", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	require.True(t, mock.called["Liveness"])
@@ -276,7 +276,7 @@ func TestHandlerWithOptionsCustomRouter(t *testing.T) {
 	r := mux.NewRouter()
 	mock := newMockServer()
 	handler := HandlerFromMux(mock, r)
-	req := httptest.NewRequest(http.MethodGet, "/health/liveness", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/liveness", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	require.True(t, mock.called["Liveness"])
@@ -288,7 +288,7 @@ func TestHandlerFromMuxWithBaseURL(t *testing.T) {
 	r := mux.NewRouter()
 	mock := newMockServer()
 	handler := HandlerFromMuxWithBaseURL(mock, r, "/api")
-	req := httptest.NewRequest(http.MethodGet, "/api/health/liveness", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/health/liveness", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	require.True(t, mock.called["Liveness"])
@@ -309,7 +309,7 @@ func TestHandlerWithOptionsMiddleware(t *testing.T) {
 	handler := HandlerWithOptions(mock, GorillaServerOptions{
 		Middlewares: []MiddlewareFunc{mw},
 	})
-	req := httptest.NewRequest(http.MethodGet, "/health/liveness", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/health/liveness", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	require.True(t, called)
@@ -325,7 +325,7 @@ func TestHandlerWithOptionsCustomErrorHandler(t *testing.T) {
 			_, _ = w.Write([]byte(err.Error()))
 		},
 	})
-	req := httptest.NewRequest(http.MethodDelete, "/stubs/bad-uuid", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/stubs/bad-uuid", nil)
 	req = mux.SetURLVars(req, map[string]string{"uuid": "bad-uuid"})
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -336,7 +336,7 @@ func TestDeleteStubByIDInvalidUUID(t *testing.T) {
 	t.Parallel()
 
 	handler := HandlerWithOptions(newMockServer(), GorillaServerOptions{})
-	req := httptest.NewRequest(http.MethodDelete, "/stubs/invalid-uuid", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodDelete, "/stubs/invalid-uuid", nil)
 	req = mux.SetURLVars(req, map[string]string{"uuid": "invalid-uuid"})
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -347,7 +347,7 @@ func TestFindByIDInvalidUUID(t *testing.T) {
 	t.Parallel()
 
 	handler := HandlerWithOptions(newMockServer(), GorillaServerOptions{})
-	req := httptest.NewRequest(http.MethodGet, "/stubs/not-a-uuid", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/stubs/not-a-uuid", nil)
 	req = mux.SetURLVars(req, map[string]string{"uuid": "not-a-uuid"})
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)

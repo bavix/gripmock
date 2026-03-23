@@ -11,6 +11,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/config"
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
+	bufclient "github.com/bavix/gripmock/v3/internal/infra/bufclient"
 	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 	internalplugins "github.com/bavix/gripmock/v3/internal/infra/plugins"
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
@@ -35,6 +36,9 @@ type Builder struct {
 
 	descriptorRegistry     *descriptors.Registry
 	descriptorRegistryOnce sync.Once
+
+	bufClient     bufclient.Client
+	bufClientOnce sync.Once
 
 	extender     *storage.Extender
 	extenderOnce sync.Once
@@ -132,4 +136,13 @@ func (b *Builder) DescriptorRegistry() *descriptors.Registry {
 	})
 
 	return b.descriptorRegistry
+}
+
+//nolint:ireturn
+func (b *Builder) BufClient() bufclient.Client {
+	b.bufClientOnce.Do(func() {
+		b.bufClient = bufclient.NewClient(b.config)
+	})
+
+	return b.bufClient
 }

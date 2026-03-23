@@ -154,7 +154,7 @@ func TestBudgerigarUnused(t *testing.T) {
 
 	payload := `{"service":"Greeter1","method":"SayHello1","data":{"field1":"hello field1", "field2":"hello world"}}`
 
-	req := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 	q, err := stuber.NewQuery(req)
 	require.NoError(t, err)
 
@@ -209,7 +209,7 @@ func TestBudgerigarSearchWithHeaders(t *testing.T) {
 		"headers": {"authorization": "Basic dXNlcjp1c2Vy"}, 
 		"data":{"name":"simple3"}}`
 
-	req := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 	q, err := stuber.NewQuery(req)
 	require.NoError(t, err)
 
@@ -297,7 +297,7 @@ func TestBudgerigarSearchWithPackageAndWithoutPackage(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		req := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(c.payload)))
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(c.payload)))
 		q, err := stuber.NewQuery(req)
 		require.NoError(t, err)
 
@@ -346,7 +346,7 @@ func TestBudgerigarSearchEmpty(t *testing.T) {
 
 	payload := `{"data":{},"method":"ApiInfo","service":"Gripmock"}`
 
-	req := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 	q, err := stuber.NewQuery(req)
 	require.NoError(t, err)
 
@@ -405,7 +405,7 @@ func TestBudgerigarSearchWithHeadersSimilar(t *testing.T) {
 		"headers": {"authorization": "Basic dXNlcjp1c2Vy"}, 
 		"data":{"name":"simple2"}}`
 
-	req := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 	q, err := stuber.NewQuery(req)
 	require.NoError(t, err)
 
@@ -447,7 +447,7 @@ func TestResultMatchesRegexInt(t *testing.T) {
 
 	payload := `{"data":{"vint64":"10012000"},"method":"ApiInfo","service":"Gripmock"}`
 
-	req := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/stubs/search", bytes.NewReader([]byte(payload)))
 	q, err := stuber.NewQuery(req)
 	require.NoError(t, err)
 

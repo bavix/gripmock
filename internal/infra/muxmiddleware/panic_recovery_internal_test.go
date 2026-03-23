@@ -21,7 +21,7 @@ func TestPanicRecoveryMiddleware(t *testing.T) {
 		})
 
 		mw := PanicRecoveryMiddleware(next)
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 		req = req.WithContext(zerolog.New(nil).WithContext(t.Context()))
 		rec := httptest.NewRecorder()
 
@@ -39,7 +39,7 @@ func TestPanicRecoveryMiddleware(t *testing.T) {
 		})
 
 		mw := PanicRecoveryMiddleware(next)
-		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 		req = req.WithContext(zerolog.New(nil).WithContext(t.Context()))
 		rec := httptest.NewRecorder()
 

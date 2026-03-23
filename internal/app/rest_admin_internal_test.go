@@ -46,7 +46,7 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithRequestInternalHeader() {
 	}]`
 
 	// Add stub
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
 	addReq.Header.Set("Content-Type", "application/json")
 
 	addW := httptest.NewRecorder()
@@ -55,7 +55,7 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithRequestInternalHeader() {
 	s.Require().Equal(http.StatusOK, addW.Code)
 
 	// Verify stub was added and is unused initially
-	unusedReq := httptest.NewRequest(http.MethodGet, "/api/stubs/unused", nil)
+	unusedReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/unused", nil)
 	unusedW := httptest.NewRecorder()
 
 	s.server.ListUnusedStubs(unusedW, unusedReq)
@@ -74,7 +74,7 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithRequestInternalHeader() {
 		"data": {"key": "test_value"}
 	}`
 
-	searchReq := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
+	searchReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
 	searchReq.Header.Set("Content-Type", "application/json")
 	searchReq.Header.Set("X-Gripmock-Requestinternal", "true") // This is the clever part!
 
@@ -96,7 +96,7 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithRequestInternalHeader() {
 
 	// NOW THE CLEVER PART: Check that this stub is still in unused stubs
 	// because the search with X-Gripmock-Requestinternal should not mark it as used
-	unusedReq2 := httptest.NewRequest(http.MethodGet, "/api/stubs/unused", nil)
+	unusedReq2 := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/unused", nil)
 	unusedW2 := httptest.NewRecorder()
 
 	s.server.ListUnusedStubs(unusedW2, unusedReq2)
@@ -109,7 +109,7 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithRequestInternalHeader() {
 	s.Require().Len(unusedStubsAfter, 1, "Stub should still be unused after internal search")
 
 	// And check that it's NOT in used stubs
-	usedReq := httptest.NewRequest(http.MethodGet, "/api/stubs/used", nil)
+	usedReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/used", nil)
 	usedW := httptest.NewRecorder()
 
 	s.server.ListUsedStubs(usedW, usedReq)
@@ -132,7 +132,7 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithoutRequestInternalHeader() {
 	}]`
 
 	// Add stub
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
 	addReq.Header.Set("Content-Type", "application/json")
 
 	addW := httptest.NewRecorder()
@@ -147,7 +147,7 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithoutRequestInternalHeader() {
 		"data": {"key": "normal_test"}
 	}`
 
-	searchReq := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
+	searchReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
 	searchReq.Header.Set("Content-Type", "application/json")
 
 	searchW := httptest.NewRecorder()
@@ -156,7 +156,7 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithoutRequestInternalHeader() {
 	s.Equal(http.StatusOK, searchW.Code)
 
 	// Check that the stub is now in used stubs
-	usedReq := httptest.NewRequest(http.MethodGet, "/api/stubs/used", nil)
+	usedReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/used", nil)
 	usedW := httptest.NewRecorder()
 
 	s.server.ListUsedStubs(usedW, usedReq)
@@ -169,7 +169,7 @@ func (s *AdminPanelTestSuite) TestSearchStubsWithoutRequestInternalHeader() {
 	s.Require().Len(usedStubs, 1, "Stub should be marked as used after normal search")
 
 	// And check that it's NOT in unused stubs anymore
-	unusedReq := httptest.NewRequest(http.MethodGet, "/api/stubs/unused", nil)
+	unusedReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/unused", nil)
 	unusedW := httptest.NewRecorder()
 
 	s.server.ListUnusedStubs(unusedW, unusedReq)
@@ -203,7 +203,7 @@ func (s *AdminPanelTestSuite) TestMultipleInternalSearches() {
 	]`
 
 	// Add stubs
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
 	addReq.Header.Set("Content-Type", "application/json")
 
 	addW := httptest.NewRecorder()
@@ -219,7 +219,7 @@ func (s *AdminPanelTestSuite) TestMultipleInternalSearches() {
 	}
 
 	for i, searchData := range searches {
-		searchReq := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
+		searchReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
 		searchReq.Header.Set("Content-Type", "application/json")
 		searchReq.Header.Set("X-Gripmock-Requestinternal", "true")
 
@@ -230,7 +230,7 @@ func (s *AdminPanelTestSuite) TestMultipleInternalSearches() {
 	}
 
 	// Verify all stubs are still unused
-	unusedReq := httptest.NewRequest(http.MethodGet, "/api/stubs/unused", nil)
+	unusedReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/unused", nil)
 	unusedW := httptest.NewRecorder()
 
 	s.server.ListUnusedStubs(unusedW, unusedReq)
@@ -243,7 +243,7 @@ func (s *AdminPanelTestSuite) TestMultipleInternalSearches() {
 	s.Len(unusedStubs, 2, "All stubs should still be unused after multiple internal searches")
 
 	// Verify no stubs are marked as used
-	usedReq := httptest.NewRequest(http.MethodGet, "/api/stubs/used", nil)
+	usedReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/used", nil)
 	usedW := httptest.NewRecorder()
 
 	s.server.ListUsedStubs(usedW, usedReq)
@@ -277,7 +277,7 @@ func (s *AdminPanelTestSuite) TestMixedInternalAndNormalSearches() {
 	]`
 
 	// Add stubs
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
 	addReq.Header.Set("Content-Type", "application/json")
 
 	addW := httptest.NewRecorder()
@@ -287,7 +287,7 @@ func (s *AdminPanelTestSuite) TestMixedInternalAndNormalSearches() {
 
 	// Search first stub with internal header
 	searchData1 := `{"service": "TestService", "method": "InternalMethod", "data": {"type": "internal"}}`
-	searchReq1 := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData1))
+	searchReq1 := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData1))
 	searchReq1.Header.Set("Content-Type", "application/json")
 	searchReq1.Header.Set("X-Gripmock-Requestinternal", "true")
 
@@ -298,7 +298,7 @@ func (s *AdminPanelTestSuite) TestMixedInternalAndNormalSearches() {
 
 	// Search second stub WITHOUT internal header
 	searchData2 := `{"service": "TestService", "method": "NormalMethod", "data": {"type": "normal"}}`
-	searchReq2 := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData2))
+	searchReq2 := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData2))
 	searchReq2.Header.Set("Content-Type", "application/json")
 	// No X-Gripmock-Requestinternal header
 	searchW2 := httptest.NewRecorder()
@@ -307,7 +307,7 @@ func (s *AdminPanelTestSuite) TestMixedInternalAndNormalSearches() {
 	s.Equal(http.StatusOK, searchW2.Code)
 
 	// Check unused stubs - should contain only the "internal" one
-	unusedReq := httptest.NewRequest(http.MethodGet, "/api/stubs/unused", nil)
+	unusedReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/unused", nil)
 	unusedW := httptest.NewRecorder()
 
 	s.server.ListUnusedStubs(unusedW, unusedReq)
@@ -321,7 +321,7 @@ func (s *AdminPanelTestSuite) TestMixedInternalAndNormalSearches() {
 	s.Equal("InternalMethod", unusedStubs[0].Method)
 
 	// Check used stubs - should contain only the "normal" one
-	usedReq := httptest.NewRequest(http.MethodGet, "/api/stubs/used", nil)
+	usedReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/used", nil)
 	usedW := httptest.NewRecorder()
 
 	s.server.ListUsedStubs(usedW, usedReq)

@@ -24,7 +24,7 @@ func TestFromRequestPrefersHeader(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.Header.Set(muxmiddleware.HeaderName, "  A  ")
 
 	// Act
@@ -38,7 +38,7 @@ func TestFromRequestEmptyWhenNotProvided(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 
 	// Act
 	result := muxmiddleware.FromRequest(req)

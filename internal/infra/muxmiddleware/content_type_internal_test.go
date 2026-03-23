@@ -38,7 +38,7 @@ func TestContentTypeMiddleware(t *testing.T) {
 	require.NotNil(t, middleware)
 
 	// Test that middleware sets content type
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 
 	middleware.ServeHTTP(w, req)
@@ -61,7 +61,7 @@ func TestContentTypeMiddlewareWithResponse(t *testing.T) {
 	require.NotNil(t, middleware)
 
 	// Test that middleware sets content type and preserves response
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 
 	middleware.ServeHTTP(w, req)
@@ -84,7 +84,7 @@ func TestContentTypeMiddlewareWithExistingHeaders(t *testing.T) {
 	require.NotNil(t, middleware)
 
 	// Test that middleware sets content type and preserves other headers
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 
 	middleware.ServeHTTP(w, req)
@@ -110,7 +110,7 @@ func TestContentTypeMiddlewareWithDifferentMethods(t *testing.T) {
 		t.Run(method, func(t *testing.T) {
 			t.Parallel()
 
-			req := httptest.NewRequest(method, "/", nil)
+			req := httptest.NewRequestWithContext(t.Context(), method, "/", nil)
 			w := httptest.NewRecorder()
 
 			middleware.ServeHTTP(w, req)

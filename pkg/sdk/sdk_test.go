@@ -43,7 +43,7 @@ func mustBuildFDS(t *testing.T, protoPath string) *descriptorpb.FileDescriptorSe
 	t.Helper()
 
 	ctx := t.Context()
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
+	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath}, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, fdsSlice)
 
@@ -918,7 +918,7 @@ func TestRunREmoteIntegration(t *testing.T) {
 		Reply(Data("message", "Hi from Remote")).
 		Commit()
 
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
+	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath}, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, fdsSlice)
 	reg, err := protodesc.NewFiles(fdsSlice[0])

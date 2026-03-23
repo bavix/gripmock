@@ -14,7 +14,7 @@ func TestConsumeRequestMovesHeaderToContext(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.Header.Set(muxmiddleware.HeaderName, "  A  ")
 
 	// Act
@@ -30,7 +30,7 @@ func TestConsumeRequestDefaultGlobalAsEmptySession(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 
 	// Act
 	consumed := muxmiddleware.ConsumeRequest(req)
