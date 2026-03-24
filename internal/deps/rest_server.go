@@ -20,11 +20,16 @@ import (
 
 type RestServer struct {
 	server     *http.Server
+	listener   net.Listener
 	tlsEnabled bool
 }
 
 func (s *RestServer) Addr() string {
-	return s.server.Addr
+	if s.listener == nil {
+		return s.server.Addr
+	}
+
+	return s.listener.Addr().String()
 }
 
 func (s *RestServer) TLSEnabled() bool {
@@ -32,11 +37,15 @@ func (s *RestServer) TLSEnabled() bool {
 }
 
 func (s *RestServer) ListenAndServe() error {
-	if s.tlsEnabled {
-		return s.server.ListenAndServeTLS("", "")
+	if s.listener == nil {
+		return errors.New("http listener is not initialized")
 	}
 
-	return s.server.ListenAndServe()
+	if s.tlsEnabled {
+		return s.server.ServeTLS(s.listener, "", "")
+	}
+
+	return s.server.Serve(s.listener)
 }
 
 func (s *RestServer) Shutdown(ctx context.Context) error {
@@ -143,8 +152,14 @@ func (b *Builder) RestServe(
 		srv.TLSConfig = tlsCfg
 	}
 
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", b.config.HTTPAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to listen")
+	}
+
 	return &RestServer{
 		server:     srv,
+		listener:   listener,
 		tlsEnabled: srv.TLSConfig != nil,
 	}, nil
 }
