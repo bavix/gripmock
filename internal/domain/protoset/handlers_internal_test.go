@@ -74,6 +74,8 @@ func TestParseSource(t *testing.T) {
 			case SourceBufBuild:
 				require.Equal(t, tt.wantModule, src.Module)
 				require.Equal(t, tt.wantVer, src.Version)
+			case SourceReflect:
+				require.NotEmpty(t, src.ReflectAddress)
 			case SourceProto, SourceDescriptor:
 				require.Equal(t, tt.wantPath, src.Path)
 			case SourceDirectory, SourceUnknown:
@@ -97,12 +99,14 @@ func makeParseSourceCases() []parseSourceCase {
 		{name: "on-prem host with ref", raw: "bsr.company.local/team/payments:main", module: "bsr.company.local/team/payments", ver: "main"},
 	}
 
-	cases := make([]parseSourceCase, 0, len(bsrInputs)+4)
+	cases := make([]parseSourceCase, 0, len(bsrInputs)+6)
 	for _, in := range bsrInputs {
 		cases = append(cases, bsrCase(in.name, in.raw, in.module, in.ver))
 	}
 
 	cases = append(cases,
+		parseSourceCase{name: "grpc reflection source", raw: "grpc://localhost:50051", wantType: SourceReflect},
+		parseSourceCase{name: "grpcs reflection source", raw: "grpcs://api.company.local:443", wantType: SourceReflect},
 		fileCase(".proto file", "service.proto", SourceProto),
 		fileCase(".pb file", "service.pb", SourceDescriptor),
 		fileCase(".protoset file", "service.protoset", SourceDescriptor),

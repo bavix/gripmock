@@ -15,6 +15,8 @@ import (
 	bufclient "github.com/bavix/gripmock/v3/internal/infra/bufclient"
 	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 	internalplugins "github.com/bavix/gripmock/v3/internal/infra/plugins"
+	reflectclient "github.com/bavix/gripmock/v3/internal/infra/reflectclient"
+	sourceclient "github.com/bavix/gripmock/v3/internal/infra/sourceclient"
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
@@ -40,6 +42,12 @@ type Builder struct {
 
 	bufClient     protosetdom.BSRClient
 	bufClientOnce sync.Once
+
+	reflectClient     protosetdom.RemoteClient
+	reflectClientOnce sync.Once
+
+	remoteClient     protosetdom.RemoteClient
+	remoteClientOnce sync.Once
 
 	extender     *storage.Extender
 	extenderOnce sync.Once
@@ -146,4 +154,22 @@ func (b *Builder) BufClient() protosetdom.BSRClient {
 	})
 
 	return b.bufClient
+}
+
+//nolint:ireturn
+func (b *Builder) ReflectClient() protosetdom.RemoteClient {
+	b.reflectClientOnce.Do(func() {
+		b.reflectClient = reflectclient.NewClient()
+	})
+
+	return b.reflectClient
+}
+
+//nolint:ireturn
+func (b *Builder) RemoteClient() protosetdom.RemoteClient {
+	b.remoteClientOnce.Do(func() {
+		b.remoteClient = sourceclient.NewRouter(b.BufClient(), b.ReflectClient())
+	})
+
+	return b.remoteClient
 }

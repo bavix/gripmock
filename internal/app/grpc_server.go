@@ -141,16 +141,16 @@ func receiveStreamMessage(stream grpc.ServerStream, msg *dynamicpb.Message) erro
 const serviceReflection = "grpc.reflection.v1.ServerReflection"
 
 type GRPCServer struct {
-	network     string
-	address     string
-	params      *protoloc.Arguments
-	budgerigar  *stuber.Budgerigar
-	waiter      Extender
-	recorder    history.Recorder
-	descriptors *descriptors.Registry
-	bufClient   protosetdom.BSRClient
-	healthcheck *health.Server
-	tlsConfig   *tls.Config
+	network      string
+	address      string
+	params       *protoloc.Arguments
+	budgerigar   *stuber.Budgerigar
+	waiter       Extender
+	recorder     history.Recorder
+	descriptors  *descriptors.Registry
+	remoteClient protosetdom.RemoteClient
+	healthcheck  *health.Server
+	tlsConfig    *tls.Config
 }
 
 type grpcMocker struct {
@@ -1131,7 +1131,7 @@ func NewGRPCServer(
 	recorder history.Recorder,
 	descriptorRegistry *descriptors.Registry,
 	tlsConfig *tls.Config,
-	bufClient protosetdom.BSRClient,
+	remoteClient protosetdom.RemoteClient,
 ) *GRPCServer {
 	registry := descriptorRegistry
 	if registry == nil {
@@ -1139,15 +1139,15 @@ func NewGRPCServer(
 	}
 
 	return &GRPCServer{
-		network:     network,
-		address:     address,
-		params:      params,
-		budgerigar:  budgerigar,
-		waiter:      waiter,
-		recorder:    recorder,
-		descriptors: registry,
-		bufClient:   bufClient,
-		tlsConfig:   tlsConfig,
+		network:      network,
+		address:      address,
+		params:       params,
+		budgerigar:   budgerigar,
+		waiter:       waiter,
+		recorder:     recorder,
+		descriptors:  registry,
+		remoteClient: remoteClient,
+		tlsConfig:    tlsConfig,
 	}
 }
 
@@ -1160,7 +1160,7 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 		protoPaths = s.params.ProtoPath()
 	}
 
-	descriptors, err := protosetdom.Build(ctx, imports, protoPaths, s.bufClient)
+	descriptors, err := protosetdom.Build(ctx, imports, protoPaths, s.remoteClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build descriptors")
 	}
