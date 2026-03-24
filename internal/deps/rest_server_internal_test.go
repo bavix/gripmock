@@ -28,17 +28,22 @@ func TestRestServeAssignsActualPortForHTTPAddrZero(t *testing.T) {
 	require.NotEqual(t, "0", port)
 
 	errCh := make(chan error, 1)
+
 	go func() {
 		errCh <- srv.ListenAndServe()
 	}()
 
 	require.Eventually(t, func() bool {
-		conn, dialErr := net.DialTimeout("tcp", srv.Addr(), 200*time.Millisecond)
+		dialCtx, dialCancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
+		defer dialCancel()
+
+		conn, dialErr := (&net.Dialer{Timeout: 200 * time.Millisecond}).DialContext(dialCtx, "tcp", srv.Addr())
 		if dialErr != nil {
 			return false
 		}
 
 		_ = conn.Close()
+
 		return true
 	}, time.Second, 50*time.Millisecond)
 
@@ -52,7 +57,7 @@ func TestRestServeAssignsActualPortForHTTPAddrZero(t *testing.T) {
 func TestRestServeReturnsErrorWhenHTTPPortIsBusy(t *testing.T) {
 	t.Parallel()
 
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_ = listener.Close()
