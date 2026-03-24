@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.8.6 - 2026-03-24
+
+### What's Changed
+
+* gripmock builder latest=false by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/794
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.8.5...v3.8.6
+
 ## v3.8.5 - 2026-03-24
 
 ### What's Changed
