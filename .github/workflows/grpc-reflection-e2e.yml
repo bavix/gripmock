@@ -36,7 +36,7 @@ jobs:
 
       - name: Start greeter source server
         run: |
-          "$RUNNER_TEMP/gripmock" examples/projects/greeter >"$RUNNER_TEMP/gripmock-greeter.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-greeter.pid"
+          GRPC_PORT="$GREETER_GRPC_PORT" HTTP_PORT=0 "$RUNNER_TEMP/gripmock" examples/projects/greeter >"$RUNNER_TEMP/gripmock-greeter.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-greeter.pid"
 
       - name: Start calculator source server
         run: |
