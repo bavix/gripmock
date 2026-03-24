@@ -6,95 +6,63 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//nolint:funlen
+type parseSourceCase struct {
+	name       string
+	raw        string
+	wantType   SourceType
+	wantErr    bool
+	wantPath   string
+	wantModule string
+	wantVer    string
+}
+
+func bsrCase(name, raw, module, ver string) parseSourceCase {
+	return parseSourceCase{
+		name:       name,
+		raw:        raw,
+		wantType:   SourceBufBuild,
+		wantErr:    false,
+		wantModule: module,
+		wantVer:    ver,
+	}
+}
+
+func fileCase(name, raw string, typ SourceType) parseSourceCase {
+	return parseSourceCase{
+		name:     name,
+		raw:      raw,
+		wantType: typ,
+		wantErr:  false,
+		wantPath: raw,
+	}
+}
+
+func assertCanHandle(t *testing.T, h SourceHandler, valid []string, invalid []string) {
+	t.Helper()
+
+	for _, raw := range valid {
+		require.True(t, h.CanHandle(raw))
+	}
+
+	for _, raw := range invalid {
+		require.False(t, h.CanHandle(raw))
+	}
+}
+
 func TestParseSource(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name       string
-		raw        string
-		wantType   SourceType
-		wantErr    bool
-		wantPath   string
-		wantModule string
-		wantVer    string
-	}{
-		{
-			name:       "buf.build without version",
-			raw:        "buf.build/myorg/myservice",
-			wantType:   SourceBufBuild,
-			wantErr:    false,
-			wantModule: "buf.build/myorg/myservice",
-			wantVer:    "",
-		},
-		{
-			name:       "buf.build with version",
-			raw:        "buf.build/myorg/myservice:v1.0.0",
-			wantType:   SourceBufBuild,
-			wantErr:    false,
-			wantModule: "buf.build/myorg/myservice",
-			wantVer:    "v1.0.0",
-		},
-		{
-			name:       "buf.build with digest",
-			raw:        "buf.build/myorg/myservice@abc123def",
-			wantType:   SourceBufBuild,
-			wantErr:    false,
-			wantModule: "buf.build/myorg/myservice",
-			wantVer:    "abc123def",
-		},
-		{
-			name:       "buf.build with branch",
-			raw:        "buf.build/myorg/myservice:main",
-			wantType:   SourceBufBuild,
-			wantErr:    false,
-			wantModule: "buf.build/myorg/myservice",
-			wantVer:    "main",
-		},
-		{
-			name:       "on-prem host without ref",
-			raw:        "bsr.company.local/team/payments",
-			wantType:   SourceBufBuild,
-			wantErr:    false,
-			wantModule: "bsr.company.local/team/payments",
-			wantVer:    "",
-		},
-		{
-			name:       "on-prem host with ref",
-			raw:        "bsr.company.local/team/payments:main",
-			wantType:   SourceBufBuild,
-			wantErr:    false,
-			wantModule: "bsr.company.local/team/payments",
-			wantVer:    "main",
-		},
-		{
-			name:     ".proto file",
-			raw:      "service.proto",
-			wantType: SourceProto,
-			wantErr:  false,
-			wantPath: "service.proto",
-		},
-		{
-			name:     ".pb file",
-			raw:      "service.pb",
-			wantType: SourceDescriptor,
-			wantErr:  false,
-			wantPath: "service.pb",
-		},
-		{
-			name:     ".protoset file",
-			raw:      "service.protoset",
-			wantType: SourceDescriptor,
-			wantErr:  false,
-			wantPath: "service.protoset",
-		},
-		{
-			name:     "fallback to proto",
-			raw:      "invalid",
-			wantType: SourceProto,
-			wantErr:  false,
-			wantPath: "invalid",
-		},
+	tests := []parseSourceCase{
+		bsrCase("buf.build without version", "buf.build/myorg/myservice", "buf.build/myorg/myservice", ""),
+		bsrCase("buf.build with version", "buf.build/myorg/myservice:v1.0.0", "buf.build/myorg/myservice", "v1.0.0"),
+		bsrCase("buf.build with digest", "buf.build/myorg/myservice@abc123def", "buf.build/myorg/myservice", "abc123def"),
+		bsrCase("buf.build with branch", "buf.build/myorg/myservice:main", "buf.build/myorg/myservice", "main"),
+		bsrCase("on-prem host without ref", "bsr.company.local/team/payments", "bsr.company.local/team/payments", ""),
+		bsrCase("on-prem host with ref", "bsr.company.local/team/payments:main", "bsr.company.local/team/payments", "main"),
+		fileCase(".proto file", "service.proto", SourceProto),
+		fileCase(".pb file", "service.pb", SourceDescriptor),
+		fileCase(".protoset file", "service.protoset", SourceDescriptor),
+		fileCase("fallback to proto", "invalid", SourceProto),
 	}
 
 	for _, tt := range tests {
@@ -132,12 +100,10 @@ func TestHandlers(t *testing.T) {
 		t.Parallel()
 
 		h := &BufBuildHandler{}
-
-		require.True(t, h.CanHandle("buf.build/test/module"))
-		require.True(t, h.CanHandle("bsr.company.local/team/module"))
-		require.False(t, h.CanHandle("test.proto"))
-		require.False(t, h.CanHandle("test.pb"))
-		require.False(t, h.CanHandle("team/module/name"))
+		assertCanHandle(t, h,
+			[]string{"buf.build/test/module", "bsr.company.local/team/module"},
+			[]string{"test.proto", "test.pb", "team/module/name"},
+		)
 
 		src, err := h.Parse("buf.build/myorg/myservice:v1.0.0")
 		require.NoError(t, err)
@@ -150,11 +116,10 @@ func TestHandlers(t *testing.T) {
 		t.Parallel()
 
 		h := &DescriptorHandler{}
-
-		require.True(t, h.CanHandle("test.pb"))
-		require.True(t, h.CanHandle("test.protoset"))
-		require.False(t, h.CanHandle("test.proto"))
-		require.False(t, h.CanHandle("buf.build/test/module"))
+		assertCanHandle(t, h,
+			[]string{"test.pb", "test.protoset"},
+			[]string{"test.proto", "buf.build/test/module"},
+		)
 
 		src, err := h.Parse("test.pb")
 		require.NoError(t, err)
@@ -166,10 +131,10 @@ func TestHandlers(t *testing.T) {
 		t.Parallel()
 
 		h := &ProtoHandler{}
-
-		require.True(t, h.CanHandle("test.proto"))
-		require.False(t, h.CanHandle("test.pb"))
-		require.False(t, h.CanHandle("buf.build/test/module"))
+		assertCanHandle(t, h,
+			[]string{"test.proto"},
+			[]string{"test.pb", "buf.build/test/module"},
+		)
 
 		src, err := h.Parse("test.proto")
 		require.NoError(t, err)

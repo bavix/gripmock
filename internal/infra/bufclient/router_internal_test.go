@@ -22,85 +22,35 @@ func TestNewRouter(t *testing.T) {
 func TestRouterFetchDescriptorSetSuccess(t *testing.T) {
 	t.Parallel()
 
-	bufProbe := &probe{}
-	selfProbe := &probe{}
+	router, bufProbe, selfProbe, selfHost := newRouterWithProbes(t)
 
-	bufServer := newProbeServer(bufProbe)
-	t.Cleanup(bufServer.Close)
-
-	selfServer := newProbeServer(selfProbe)
-	t.Cleanup(selfServer.Close)
-
-	bufURL, _ := url.Parse(bufServer.URL)
-	selfURL, _ := url.Parse(selfServer.URL)
-	router := NewRouter(config.BSRConfig{
-		Buf:  config.BSRProfile{BaseURL: bufURL, Token: "buf-token", Timeout: 5 * time.Second},
-		Self: config.BSRProfile{BaseURL: selfURL, Token: "self-token", Timeout: 5 * time.Second},
-	})
-
-	fds, err := router.FetchDescriptorSet(t.Context(), "self.local/connectrpc/eliza", "")
+	fds, err := router.FetchDescriptorSet(t.Context(), selfHost+"/connectrpc/eliza", "")
 	require.NoError(t, err)
 	require.Len(t, fds.GetFile(), 1)
 
-	// Should have hit Buf
-	require.Equal(t, 1, bufProbe.count())
-	require.Equal(t, 0, selfProbe.count())
+	requireProbeCounts(t, bufProbe, selfProbe, 0, 1)
 }
 
 func TestRouterSelectsSelfByHost(t *testing.T) {
 	t.Parallel()
 
-	bufProbe := &probe{}
-	selfProbe := &probe{}
-
-	bufServer := newProbeServer(bufProbe)
-	t.Cleanup(bufServer.Close)
-
-	selfServer := newProbeServer(selfProbe)
-	t.Cleanup(selfServer.Close)
-
-	bufURL, _ := url.Parse(bufServer.URL)
-	selfURL, _ := url.Parse(selfServer.URL)
-	// Use the real host from the server URL
-	selfHost := selfURL.Host
-	router := NewRouter(config.BSRConfig{
-		Buf:  config.BSRProfile{BaseURL: bufURL, Token: "buf-token", Timeout: 5 * time.Second},
-		Self: config.BSRProfile{BaseURL: selfURL, Token: "self-token", Timeout: 5 * time.Second},
-	})
+	router, bufProbe, selfProbe, selfHost := newRouterWithProbes(t)
 
 	_, err := router.FetchDescriptorSet(t.Context(), selfHost+"/acme/payments", "main")
 	require.NoError(t, err)
 
-	// Should have hit Self
-	require.Equal(t, 0, bufProbe.count())
-	require.Equal(t, 1, selfProbe.count())
+	requireProbeCounts(t, bufProbe, selfProbe, 0, 1)
 }
 
 func TestRouterSelectsBufWhenSelfHostDoesNotMatch(t *testing.T) {
 	t.Parallel()
 
-	bufProbe := &probe{}
-	selfProbe := &probe{}
-
-	bufServer := newProbeServer(bufProbe)
-	t.Cleanup(bufServer.Close)
-
-	selfServer := newProbeServer(selfProbe)
-	t.Cleanup(selfServer.Close)
-
-	bufURL, _ := url.Parse(bufServer.URL)
-	selfURL, _ := url.Parse(selfServer.URL)
-	router := NewRouter(config.BSRConfig{
-		Buf:  config.BSRProfile{BaseURL: bufURL, Token: "buf-token", Timeout: 5 * time.Second},
-		Self: config.BSRProfile{BaseURL: selfURL, Token: "self-token", Timeout: 5 * time.Second},
-	})
+	router, bufProbe, selfProbe, _ := newRouterWithProbes(t)
 
 	_, err := router.FetchDescriptorSet(t.Context(), "unknown.host/acme/payments", "main")
 	require.NoError(t, err)
 
-	// Should have hit Buf
-	require.Equal(t, 1, bufProbe.count())
-	require.Equal(t, 0, selfProbe.count())
+	requireProbeCounts(t, bufProbe, selfProbe, 1, 0)
 }
 
 func TestRouterInvalidModule(t *testing.T) {
@@ -170,4 +120,36 @@ func newProbeServer(p *probe) *httptest.Server {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"fileDescriptorSet": {"file": [{"name": "service.proto", "package": "acme.v1"}]}}`))
 	}))
+}
+
+func newRouterWithProbes(t *testing.T) (*Router, *probe, *probe, string) {
+	t.Helper()
+
+	bufProbe := &probe{}
+	selfProbe := &probe{}
+
+	bufServer := newProbeServer(bufProbe)
+	t.Cleanup(bufServer.Close)
+
+	selfServer := newProbeServer(selfProbe)
+	t.Cleanup(selfServer.Close)
+
+	bufURL, err := url.Parse(bufServer.URL)
+	require.NoError(t, err)
+
+	selfURL, err := url.Parse(selfServer.URL)
+	require.NoError(t, err)
+
+	router := NewRouter(config.BSRConfig{
+		Buf:  config.BSRProfile{BaseURL: bufURL, Token: "buf-token", Timeout: 5 * time.Second},
+		Self: config.BSRProfile{BaseURL: selfURL, Token: "self-token", Timeout: 5 * time.Second},
+	})
+
+	return router, bufProbe, selfProbe, selfURL.Host
+}
+
+func requireProbeCounts(t *testing.T, bufProbe, selfProbe *probe, wantBuf, wantSelf int) {
+	t.Helper()
+	require.Equal(t, wantBuf, bufProbe.count())
+	require.Equal(t, wantSelf, selfProbe.count())
 }
