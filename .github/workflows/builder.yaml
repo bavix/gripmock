@@ -37,6 +37,8 @@ jobs:
           images: |
             bavix/gripmock
             ghcr.io/bavix/gripmock
+          flavor: |
+            latest=false
           tags: |
             type=ref,event=branch,suffix=-builder
             type=semver,pattern={{version}}-builder
