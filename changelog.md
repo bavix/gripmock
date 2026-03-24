@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.8.5 - 2026-03-24
+
+### What's Changed
+
+* Adding mock services via gRPC reflection by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/791
+* All dependencies have been updated by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/792
+* The output to the stdout port of the HTTP server has been corrected by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/793
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.8.4...v3.8.5
+
 ## v3.8.4 - 2026-03-24
 
 ### What's Changed
