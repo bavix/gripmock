@@ -19,38 +19,57 @@ func TestNewRouter(t *testing.T) {
 	require.NotNil(t, NewRouter(config.BSRConfig{}))
 }
 
-func TestRouterFetchDescriptorSetSuccess(t *testing.T) {
+func TestRouterRouting(t *testing.T) {
 	t.Parallel()
 
-	router, bufProbe, selfProbe, selfHost := newRouterWithProbes(t)
+	tests := []struct {
+		name     string
+		moduleFn func(selfHost string) string
+		version  string
+		wantBuf  int
+		wantSelf int
+	}{
+		{
+			name: "routes to self by host",
+			moduleFn: func(selfHost string) string {
+				return selfHost + "/connectrpc/eliza"
+			},
+			wantBuf:  0,
+			wantSelf: 1,
+		},
+		{
+			name: "routes to self with explicit version",
+			moduleFn: func(selfHost string) string {
+				return selfHost + "/acme/payments"
+			},
+			version:  "main",
+			wantBuf:  0,
+			wantSelf: 1,
+		},
+		{
+			name: "routes to buf when host does not match",
+			moduleFn: func(string) string {
+				return "unknown.host/acme/payments"
+			},
+			version:  "main",
+			wantBuf:  1,
+			wantSelf: 0,
+		},
+	}
 
-	fds, err := router.FetchDescriptorSet(t.Context(), selfHost+"/connectrpc/eliza", "")
-	require.NoError(t, err)
-	require.Len(t, fds.GetFile(), 1)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	requireProbeCounts(t, bufProbe, selfProbe, 0, 1)
-}
+			router, bufProbe, selfProbe, selfHost := newRouterWithProbes(t)
 
-func TestRouterSelectsSelfByHost(t *testing.T) {
-	t.Parallel()
+			fds, err := router.FetchDescriptorSet(t.Context(), tt.moduleFn(selfHost), tt.version)
+			require.NoError(t, err)
+			require.Len(t, fds.GetFile(), 1)
 
-	router, bufProbe, selfProbe, selfHost := newRouterWithProbes(t)
-
-	_, err := router.FetchDescriptorSet(t.Context(), selfHost+"/acme/payments", "main")
-	require.NoError(t, err)
-
-	requireProbeCounts(t, bufProbe, selfProbe, 0, 1)
-}
-
-func TestRouterSelectsBufWhenSelfHostDoesNotMatch(t *testing.T) {
-	t.Parallel()
-
-	router, bufProbe, selfProbe, _ := newRouterWithProbes(t)
-
-	_, err := router.FetchDescriptorSet(t.Context(), "unknown.host/acme/payments", "main")
-	require.NoError(t, err)
-
-	requireProbeCounts(t, bufProbe, selfProbe, 1, 0)
+			requireProbeCounts(t, bufProbe, selfProbe, tt.wantBuf, tt.wantSelf)
+		})
+	}
 }
 
 func TestRouterInvalidModule(t *testing.T) {

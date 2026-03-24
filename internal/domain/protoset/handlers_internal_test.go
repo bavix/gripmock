@@ -52,18 +52,7 @@ func assertCanHandle(t *testing.T, h SourceHandler, valid []string, invalid []st
 func TestParseSource(t *testing.T) {
 	t.Parallel()
 
-	tests := []parseSourceCase{
-		bsrCase("buf.build without version", "buf.build/myorg/myservice", "buf.build/myorg/myservice", ""),
-		bsrCase("buf.build with version", "buf.build/myorg/myservice:v1.0.0", "buf.build/myorg/myservice", "v1.0.0"),
-		bsrCase("buf.build with digest", "buf.build/myorg/myservice@abc123def", "buf.build/myorg/myservice", "abc123def"),
-		bsrCase("buf.build with branch", "buf.build/myorg/myservice:main", "buf.build/myorg/myservice", "main"),
-		bsrCase("on-prem host without ref", "bsr.company.local/team/payments", "bsr.company.local/team/payments", ""),
-		bsrCase("on-prem host with ref", "bsr.company.local/team/payments:main", "bsr.company.local/team/payments", "main"),
-		fileCase(".proto file", "service.proto", SourceProto),
-		fileCase(".pb file", "service.pb", SourceDescriptor),
-		fileCase(".protoset file", "service.protoset", SourceDescriptor),
-		fileCase("fallback to proto", "invalid", SourceProto),
-	}
+	tests := makeParseSourceCases()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -91,6 +80,36 @@ func TestParseSource(t *testing.T) {
 			}
 		})
 	}
+}
+
+func makeParseSourceCases() []parseSourceCase {
+	bsrInputs := []struct {
+		name   string
+		raw    string
+		module string
+		ver    string
+	}{
+		{name: "buf.build without version", raw: "buf.build/myorg/myservice", module: "buf.build/myorg/myservice"},
+		{name: "buf.build with version", raw: "buf.build/myorg/myservice:v1.0.0", module: "buf.build/myorg/myservice", ver: "v1.0.0"},
+		{name: "buf.build with digest", raw: "buf.build/myorg/myservice@abc123def", module: "buf.build/myorg/myservice", ver: "abc123def"},
+		{name: "buf.build with branch", raw: "buf.build/myorg/myservice:main", module: "buf.build/myorg/myservice", ver: "main"},
+		{name: "on-prem host without ref", raw: "bsr.company.local/team/payments", module: "bsr.company.local/team/payments"},
+		{name: "on-prem host with ref", raw: "bsr.company.local/team/payments:main", module: "bsr.company.local/team/payments", ver: "main"},
+	}
+
+	cases := make([]parseSourceCase, 0, len(bsrInputs)+4)
+	for _, in := range bsrInputs {
+		cases = append(cases, bsrCase(in.name, in.raw, in.module, in.ver))
+	}
+
+	cases = append(cases,
+		fileCase(".proto file", "service.proto", SourceProto),
+		fileCase(".pb file", "service.pb", SourceDescriptor),
+		fileCase(".protoset file", "service.protoset", SourceDescriptor),
+		fileCase("fallback to proto", "invalid", SourceProto),
+	)
+
+	return cases
 }
 
 func TestHandlers(t *testing.T) {

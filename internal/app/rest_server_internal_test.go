@@ -36,41 +36,14 @@ type RestServerTestSuite struct {
 	budgerigar *stuber.Budgerigar
 }
 
-// SetupSuite initializes the test suite.
-func (s *RestServerTestSuite) SetupSuite() {
-	s.budgerigar = stuber.NewBudgerigar(features.New())
-	extender := &mockExtender{}
-	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil, nil)
-	s.Require().NoError(err)
-	s.server = server
+type addStubCase struct {
+	name           string
+	jsonData       string
+	expectedStatus int
 }
 
-// SetupTest cleans up before each test.
-func (s *RestServerTestSuite) SetupTest() {
-	s.budgerigar.Clear()
-}
-
-// TestNewRestServer tests REST server creation.
-func (s *RestServerTestSuite) TestNewRestServer() {
-	ctx := s.T().Context()
-	budgerigar := stuber.NewBudgerigar(features.New())
-	extender := &mockExtender{}
-
-	server, err := NewRestServer(ctx, budgerigar, extender, nil, nil, nil)
-	s.Require().NoError(err)
-	s.Require().NotNil(server)
-}
-
-// TestAddStub tests stub addition functionality.
-//
-//nolint:funlen
-func (s *RestServerTestSuite) TestAddStub() {
-	tests := []struct {
-		name           string
-		jsonData       string
-		expectedStatus int
-		expectedError  error
-	}{
+func commonAddStubCases() []addStubCase {
+	return []addStubCase{
 		{
 			name: "valid unary stub",
 			jsonData: `[{
@@ -112,7 +85,7 @@ func (s *RestServerTestSuite) TestAddStub() {
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name: "invalid stub - missing service",
+			name: "missing service",
 			jsonData: `[{
 				"method": "TestMethod",
 				"input": {"contains": {"key": "value"}},
@@ -121,7 +94,7 @@ func (s *RestServerTestSuite) TestAddStub() {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name: "invalid stub - missing method",
+			name: "missing method",
 			jsonData: `[{
 				"service": "test.Service",
 				"input": {"contains": {"key": "value"}},
@@ -129,7 +102,38 @@ func (s *RestServerTestSuite) TestAddStub() {
 			}]`,
 			expectedStatus: http.StatusBadRequest,
 		},
-		{
+	}
+}
+
+// SetupSuite initializes the test suite.
+func (s *RestServerTestSuite) SetupSuite() {
+	s.budgerigar = stuber.NewBudgerigar(features.New())
+	extender := &mockExtender{}
+	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil, nil)
+	s.Require().NoError(err)
+	s.server = server
+}
+
+// SetupTest cleans up before each test.
+func (s *RestServerTestSuite) SetupTest() {
+	s.budgerigar.Clear()
+}
+
+// TestNewRestServer tests REST server creation.
+func (s *RestServerTestSuite) TestNewRestServer() {
+	ctx := s.T().Context()
+	budgerigar := stuber.NewBudgerigar(features.New())
+	extender := &mockExtender{}
+
+	server, err := NewRestServer(ctx, budgerigar, extender, nil, nil, nil)
+	s.Require().NoError(err)
+	s.Require().NotNil(server)
+}
+
+// TestAddStub tests stub addition functionality.
+func (s *RestServerTestSuite) TestAddStub() {
+	tests := append(commonAddStubCases(),
+		addStubCase{
 			name: "invalid unary stub - no input",
 			jsonData: `[{
 				"service": "test.Service",
@@ -138,7 +142,7 @@ func (s *RestServerTestSuite) TestAddStub() {
 			}]`,
 			expectedStatus: http.StatusBadRequest,
 		},
-		{
+		addStubCase{
 			name: "invalid unary stub - no output",
 			jsonData: `[{
 				"service": "test.Service",
@@ -147,7 +151,7 @@ func (s *RestServerTestSuite) TestAddStub() {
 			}]`,
 			expectedStatus: http.StatusBadRequest,
 		},
-		{
+		addStubCase{
 			name: "invalid client stream stub - no inputs",
 			jsonData: `[{
 				"service": "test.Service",
@@ -156,7 +160,7 @@ func (s *RestServerTestSuite) TestAddStub() {
 			}]`,
 			expectedStatus: http.StatusBadRequest,
 		},
-	}
+	)
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
@@ -1051,73 +1055,8 @@ func (s *RestServerTestSuite) TestServiceMethodGet() {
 }
 
 // TestValidateStubIntegration tests stub validation integration.
-//
-//nolint:funlen
 func (s *RestServerTestSuite) TestValidateStubIntegration() {
-	tests := []struct {
-		name           string
-		jsonData       string
-		expectedStatus int
-	}{
-		{
-			name: "valid unary stub",
-			jsonData: `[{
-				"service": "test.Service",
-				"method": "TestMethod",
-				"input": {"contains": {"key": "value"}},
-				"output": {"data": {"result": "success"}}
-			}]`,
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name: "valid client stream stub",
-			jsonData: `[{
-				"service": "test.Service",
-				"method": "TestClientStream",
-				"inputs": [{"contains": {"key": "value"}}],
-				"output": {"data": {"result": "success"}}
-			}]`,
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name: "valid server stream stub",
-			jsonData: `[{
-				"service": "test.Service",
-				"method": "TestServerStream",
-				"input": {"contains": {"key": "value"}},
-				"output": {"stream": [{"result": "response"}]}
-			}]`,
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name: "valid bidirectional stub",
-			jsonData: `[{
-				"service": "test.Service",
-				"method": "TestBidirectional",
-				"inputs": [{"contains": {"key": "value"}}],
-				"output": {"stream": [{"result": "response"}]}
-			}]`,
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name: "missing service",
-			jsonData: `[{
-				"method": "TestMethod",
-				"input": {"contains": {"key": "value"}},
-				"output": {"data": {"result": "success"}}
-			}]`,
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name: "missing method",
-			jsonData: `[{
-				"service": "test.Service",
-				"input": {"contains": {"key": "value"}},
-				"output": {"data": {"result": "success"}}
-			}]`,
-			expectedStatus: http.StatusBadRequest,
-		},
-	}
+	tests := commonAddStubCases()
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
