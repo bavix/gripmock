@@ -11,6 +11,17 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 
+type mockRemoteClient struct {
+	fn func(source *Source) *descriptorpb.FileDescriptorSet
+}
+
+func (m *mockRemoteClient) FetchDescriptorSet(
+	ctx context.Context,
+	source *Source,
+) (*descriptorpb.FileDescriptorSet, error) {
+	return m.fn(source), nil
+}
+
 func TestNewProcessor(t *testing.T) {
 	t.Parallel()
 
@@ -238,6 +249,30 @@ func TestProcessorProcessDirectory(t *testing.T) {
 	// Should not have processed unsupported file
 	require.NotContains(t, processor.protos, "test.txt")
 	require.NotContains(t, processor.descriptors, unsupportedFile)
+}
+
+func TestProcessorProcessReflectNamespacesDuplicateDescriptorFiles(t *testing.T) {
+	t.Parallel()
+
+	processor := newProcessor([]string{}, &mockRemoteClient{fn: func(source *Source) *descriptorpb.FileDescriptorSet {
+		name := "service.proto"
+
+		return &descriptorpb.FileDescriptorSet{
+			File: []*descriptorpb.FileDescriptorProto{{Name: &name}},
+		}
+	}})
+
+	err := processor.ProcessReflect(t.Context(), &Source{Type: SourceReflect, Raw: "grpc://localhost:4444"})
+	require.NoError(t, err)
+	require.Len(t, processor.descriptorSets, 1)
+
+	err = processor.ProcessReflect(t.Context(), &Source{Type: SourceReflect, Raw: "grpc://localhost:5555"})
+	require.NoError(t, err)
+	require.Len(t, processor.descriptorSets, 2)
+	require.NotEqual(t,
+		processor.descriptorSets[0].GetFile()[0].GetName(),
+		processor.descriptorSets[1].GetFile()[0].GetName(),
+	)
 }
 
 func TestProcessorPRocessWithContextCancellation(t *testing.T) {

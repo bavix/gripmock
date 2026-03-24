@@ -1,0 +1,77 @@
+name: gRPC Reflection E2E
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+concurrency:
+  group: grpc-reflection-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.26"
+  GREETER_GRPC_PORT: "4444"
+  CALC_GRPC_PORT: "5555"
+  TARGET_GRPC_PORT: "4770"
+  TARGET_HTTP_PORT: "4771"
+
+jobs:
+  reflection-merge-sources:
+    name: "Reflection Merge Sources"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build gripmock binary
+        run: |
+          go build -o "$RUNNER_TEMP/gripmock" .
+
+      - name: Start + check greeter source server
+        run: |
+          GRPC_PORT="$GREETER_GRPC_PORT" HTTP_PORT=0 "$RUNNER_TEMP/gripmock" examples/projects/greeter >"$RUNNER_TEMP/gripmock-greeter.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-greeter.pid"
+          GRPC_PORT="$GREETER_GRPC_PORT" "$RUNNER_TEMP/gripmock" check --timeout=60s --silent
+
+      - name: Start + check calculator source server
+        run: |
+          GRPC_PORT="$CALC_GRPC_PORT" HTTP_PORT=0 "$RUNNER_TEMP/gripmock" examples/projects/calculator >"$RUNNER_TEMP/gripmock-calculator.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-calculator.pid"
+          GRPC_PORT="$CALC_GRPC_PORT" "$RUNNER_TEMP/gripmock" check --timeout=60s --silent
+
+      - name: Start + check target server from reflection sources
+        run: |
+          GRPC_PORT="$TARGET_GRPC_PORT" HTTP_PORT="$TARGET_HTTP_PORT" "$RUNNER_TEMP/gripmock" grpc://localhost:${GREETER_GRPC_PORT} grpc://localhost:${CALC_GRPC_PORT} >"$RUNNER_TEMP/gripmock-reflect.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-reflect.pid"
+          GRPC_PORT="$TARGET_GRPC_PORT" "$RUNNER_TEMP/gripmock" check --timeout=60s --silent
+
+      - name: Verify both services were registered
+        run: |
+          grep -q "helloworld.Greeter" "$RUNNER_TEMP/gripmock-reflect.log"
+          grep -q "calculator.CalculatorService" "$RUNNER_TEMP/gripmock-reflect.log"
+
+      - name: Ensure no source was skipped
+        run: |
+          if grep -q "Skipping reflection source" "$RUNNER_TEMP/gripmock-reflect.log"; then echo "Unexpected reflection source skip detected"; cat "$RUNNER_TEMP/gripmock-reflect.log"; exit 1; fi
+
+      - name: Stop all servers
+        if: always()
+        run: |
+          for pid_file in "$RUNNER_TEMP/gripmock-reflect.pid" "$RUNNER_TEMP/gripmock-greeter.pid" "$RUNNER_TEMP/gripmock-calculator.pid"; do
+            [ -f "$pid_file" ] && kill -INT "$(cat "$pid_file")" 2>/dev/null || true
+          done
+          sleep 1
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          for f in "$RUNNER_TEMP/gripmock-greeter.log" "$RUNNER_TEMP/gripmock-calculator.log" "$RUNNER_TEMP/gripmock-reflect.log"; do
+            if [ -f "$f" ]; then
+              echo "----- $f -----"
+              cat "$f"
+            fi
+          done

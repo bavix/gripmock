@@ -65,6 +65,7 @@ export default defineConfig({
         items: [
           { text: 'Overview', link: '/guide/sources/' },
           { text: 'BSR', link: '/guide/sources/bsr' },
+          { text: 'gRPC Reflection', link: '/guide/sources/grpc-reflection' },
         ],
         collapsed: false,
       },

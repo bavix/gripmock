@@ -59,7 +59,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		recorder,
 		b.DescriptorRegistry(),
 		tlsCfg,
-		b.BufClient(),
+		b.RemoteClient(),
 	)
 
 	server, err := grpcServer.Build(ctx)

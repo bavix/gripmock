@@ -118,6 +118,19 @@ gripmock --stub stubs/ service.proto
 gripmock --stub third_party/bsr/eliza buf.build/connectrpc/eliza
 ```
 
+**Load API from live gRPC server reflection:**
+```bash
+gripmock grpc://localhost:50051
+gripmock grpcs://api.company.local:443
+```
+
+With options:
+```bash
+gripmock grpc://localhost:50051?timeout=10s
+gripmock grpcs://10.0.0.5:8443?serverName=api.company.local
+gripmock grpc://localhost:50051?bearer=<token>
+```
+
 For private BSR modules:
 ```bash
 BSR_BUF_TOKEN=<token> gripmock --stub stubs/ buf.build/acme/private-api
@@ -394,6 +407,29 @@ GripMock automatically routes modules:
 - `bsr.company.local/owner/repo` → uses Self profile
 
 For details see [BSR Documentation](https://bavix.github.io/gripmock/guide/sources/bsr/).
+
+## 🔎 gRPC Reflection Source
+
+GripMock supports descriptor loading from gRPC reflection using endpoint schemes:
+
+- `grpc://host:port` (insecure)
+- `grpcs://host:port` (TLS)
+
+Supported query parameters:
+
+- `timeout` (default `5s`)
+- `bearer` (Authorization token)
+- `serverName` (TLS SNI override)
+
+Examples:
+
+```bash
+gripmock grpc://localhost:50051
+gripmock grpcs://api.company.local:443
+gripmock grpcs://10.0.0.5:8443?serverName=api.company.local
+```
+
+Full guide: [gRPC Reflection Source](https://bavix.github.io/gripmock/guide/sources/grpc-reflection/).
 
 ## 🔗 Useful Resources
 

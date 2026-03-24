@@ -70,6 +70,6 @@ type mockBufClient struct {
 	descriptors *descriptorpb.FileDescriptorSet
 }
 
-func (m *mockBufClient) FetchDescriptorSet(ctx context.Context, module, version string) (*descriptorpb.FileDescriptorSet, error) {
+func (m *mockBufClient) FetchDescriptorSet(ctx context.Context, source *Source) (*descriptorpb.FileDescriptorSet, error) {
 	return m.descriptors, nil
 }

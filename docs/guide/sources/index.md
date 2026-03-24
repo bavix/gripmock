@@ -43,3 +43,14 @@ gripmock --stub ./stubs buf.build/connectrpc/eliza
 ```
 
 For private/on-prem usage and refs, see [BSR](/guide/sources/bsr).
+
+### 5) gRPC Reflection (`grpc://`, `grpcs://`)
+
+Load API definitions from a live gRPC server via reflection:
+
+```bash
+gripmock grpc://localhost:50051
+gripmock grpcs://api.company.local:443
+```
+
+For query parameters and TLS notes, see [gRPC Reflection Source](/guide/sources/grpc-reflection).

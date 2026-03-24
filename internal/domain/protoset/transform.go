@@ -2,10 +2,12 @@ package protoset
 
 import (
 	"context"
+	"hash/fnv"
 	"os"
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -196,8 +198,8 @@ func registerGlobalFileOnce(
 	return nil
 }
 
-func newConfigure(ctx context.Context, imports []string, paths []string, client BSRClient) (*Configure, error) {
-	p := newProcessor(imports, client)
+func newConfigure(ctx context.Context, imports []string, paths []string, remoteClient RemoteClient) (*Configure, error) {
+	p := newProcessor(imports, remoteClient)
 
 	err := p.process(ctx, paths)
 	if err != nil {
@@ -240,7 +242,12 @@ func findMinimalPaths(paths []string) []string {
 	return result
 }
 
-func Build(ctx context.Context, imports []string, paths []string, client BSRClient) ([]*descriptorpb.FileDescriptorSet, error) {
+func Build(
+	ctx context.Context,
+	imports []string,
+	paths []string,
+	remoteClient RemoteClient,
+) ([]*descriptorpb.FileDescriptorSet, error) {
 	var err error
 
 	for i, importPath := range imports {
@@ -256,7 +263,7 @@ func Build(ctx context.Context, imports []string, paths []string, client BSRClie
 			return nil, errors.Wrapf(err, "failed to parse source: %s", path)
 		}
 
-		if source.Type == SourceBufBuild {
+		if source.Type == SourceBufBuild || source.Type == SourceReflect {
 			continue
 		}
 
@@ -266,7 +273,7 @@ func Build(ctx context.Context, imports []string, paths []string, client BSRClie
 		}
 	}
 
-	configure, err := newConfigure(ctx, lo.Uniq(findMinimalPaths(imports)), lo.Uniq(paths), client)
+	configure, err := newConfigure(ctx, lo.Uniq(findMinimalPaths(imports)), lo.Uniq(paths), remoteClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create configuration")
 	}
@@ -279,19 +286,19 @@ type processor struct {
 	protos           []string
 	descriptors      []string
 	descriptorSets   []*descriptorpb.FileDescriptorSet
-	bufClient        BSRClient
+	remoteClient     RemoteClient
 	seenDirs         map[string]bool
 	seenFiles        map[string]bool
 	allowedProtoExts []string
 	allowedDescExts  []string
 }
 
-func newProcessor(initialImports []string, client BSRClient) *processor {
+func newProcessor(initialImports []string, remoteClient RemoteClient) *processor {
 	return &processor{
-		imports:   initialImports,
-		bufClient: client,
-		seenDirs:  make(map[string]bool),
-		seenFiles: make(map[string]bool),
+		imports:      initialImports,
+		remoteClient: remoteClient,
+		seenDirs:     make(map[string]bool),
+		seenFiles:    make(map[string]bool),
 		allowedProtoExts: []string{
 			ProtoExt,
 		},
@@ -325,7 +332,14 @@ func (p *processor) process(ctx context.Context, paths []string) error {
 		}
 
 		if source.Type == SourceBufBuild {
-			logger.Debug().Str("module", source.Module).Str("version", source.Version).Msg("Processing buf.build module")
+			logger.Info().Str("module", source.Module).Str("version", source.Version).Msg("Processing buf.build module")
+		}
+
+		if source.Type == SourceReflect {
+			logger.Info().
+				Str("address", source.ReflectAddress).
+				Bool("tls", source.ReflectTLS).
+				Msg("Processing gRPC reflection source")
 		}
 
 		err = ProcessSource(ctx, source, p)
@@ -419,11 +433,11 @@ func (p *processor) AddImportPath(ctx context.Context, dir string) {
 }
 
 func (p *processor) ProcessBufBuild(ctx context.Context, source *Source) error {
-	if p.bufClient == nil {
+	if p.remoteClient == nil {
 		return nil
 	}
 
-	fds, err := p.bufClient.FetchDescriptorSet(ctx, source.Module, source.Version)
+	fds, err := p.remoteClient.FetchDescriptorSet(ctx, source)
 	if err != nil {
 		return errors.Wrapf(err, "failed to fetch from buf.build: %s", source.Raw)
 	}
@@ -431,6 +445,72 @@ func (p *processor) ProcessBufBuild(ctx context.Context, source *Source) error {
 	p.descriptorSets = append(p.descriptorSets, fds)
 
 	return nil
+}
+
+func (p *processor) ProcessReflect(ctx context.Context, source *Source) error {
+	if p.remoteClient == nil {
+		return nil
+	}
+
+	fds, err := p.remoteClient.FetchDescriptorSet(ctx, source)
+	if err != nil {
+		return errors.Wrapf(err, "failed to fetch from gRPC reflection: %s", source.Raw)
+	}
+
+	fds = normalizeDescriptorSetFileNames(fds, source.Raw)
+
+	p.descriptorSets = append(p.descriptorSets, fds)
+
+	return nil
+}
+
+func normalizeDescriptorSetFileNames(fds *descriptorpb.FileDescriptorSet, sourceRaw string) *descriptorpb.FileDescriptorSet {
+	if fds == nil {
+		return nil
+	}
+
+	prefix := descriptorSetPrefix(sourceRaw)
+	nameMap := make(map[string]string, len(fds.GetFile()))
+
+	for _, file := range fds.GetFile() {
+		oldName := file.GetName()
+		if oldName == "" {
+			continue
+		}
+
+		nameMap[oldName] = prefix + "/" + oldName
+	}
+
+	out := &descriptorpb.FileDescriptorSet{File: make([]*descriptorpb.FileDescriptorProto, 0, len(fds.GetFile()))}
+
+	for index, file := range fds.GetFile() {
+		cloned := proto.Clone(file).(*descriptorpb.FileDescriptorProto) //nolint:forcetypeassert
+		oldName := file.GetName()
+
+		if oldName == "" {
+			generated := prefix + "/unknown_" + strconv.Itoa(index) + ProtoExt
+			cloned.Name = &generated
+		} else if mapped, ok := nameMap[oldName]; ok {
+			cloned.Name = &mapped
+		}
+
+		for depIndex, dependency := range cloned.GetDependency() {
+			if mapped, ok := nameMap[dependency]; ok {
+				cloned.Dependency[depIndex] = mapped
+			}
+		}
+
+		out.File = append(out.File, cloned)
+	}
+
+	return out
+}
+
+func descriptorSetPrefix(sourceRaw string) string {
+	hasher := fnv.New32a()
+	_, _ = hasher.Write([]byte(sourceRaw))
+
+	return "grpc_reflect_" + strconv.FormatUint(uint64(hasher.Sum32()), 16)
 }
 
 func findPathByImports(filePath string, imports []string) (string, string) {

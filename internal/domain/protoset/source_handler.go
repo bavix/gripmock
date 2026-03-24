@@ -16,6 +16,7 @@ type SourceHandler interface {
 
 func ParseSource(raw string) (*Source, error) {
 	handlers := []SourceHandler{
+		&GRPCHandler{},
 		&BufBuildHandler{},
 		&DescriptorHandler{},
 		&ProtoHandler{},
@@ -39,6 +40,8 @@ func ProcessSource(ctx context.Context, source *Source, processor SourceProcesso
 		return nil
 	case SourceBufBuild:
 		handler = &BufBuildHandler{}
+	case SourceReflect:
+		handler = &GRPCHandler{}
 	case SourceProto:
 		handler = &ProtoHandler{}
 	case SourceDescriptor:
