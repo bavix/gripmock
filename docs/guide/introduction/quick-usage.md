@@ -170,6 +170,16 @@ This will **automatically load all `.proto` and `.pb` files** in the `/proto` di
 > - Subdirectories are scanned recursively  
 > - **Important**: If duplicate services are found in both `.proto` and `.pb` files, GripMock will fail to start. In such cases, specify files manually instead of using folder auto-load.
 
+### Load from Buf Schema Registry (BSR)
+
+You can start GripMock from a BSR module reference directly:
+
+```bash
+gripmock --stub ./stubs buf.build/connectrpc/eliza
+```
+
+See the dedicated BSR page for refs, private modules, and env vars: [BSR](/guide/sources/bsr).
+
 ## Web UI (v3.0+)
 Access the admin panel at:  
 **http://localhost:4771/** (default port).  

@@ -11,6 +11,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/config"
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
+	protosetdom "github.com/bavix/gripmock/v3/internal/domain/protoset"
 	bufclient "github.com/bavix/gripmock/v3/internal/infra/bufclient"
 	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 	internalplugins "github.com/bavix/gripmock/v3/internal/infra/plugins"
@@ -37,7 +38,7 @@ type Builder struct {
 	descriptorRegistry     *descriptors.Registry
 	descriptorRegistryOnce sync.Once
 
-	bufClient     bufclient.Client
+	bufClient     protosetdom.BSRClient
 	bufClientOnce sync.Once
 
 	extender     *storage.Extender
@@ -139,9 +140,9 @@ func (b *Builder) DescriptorRegistry() *descriptors.Registry {
 }
 
 //nolint:ireturn
-func (b *Builder) BufClient() bufclient.Client {
+func (b *Builder) BufClient() protosetdom.BSRClient {
 	b.bufClientOnce.Do(func() {
-		b.bufClient = bufclient.NewClient(b.config)
+		b.bufClient = bufclient.NewRouter(b.config.BSR)
 	})
 
 	return b.bufClient

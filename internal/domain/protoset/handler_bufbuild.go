@@ -2,23 +2,21 @@ package protoset
 
 import (
 	"context"
-	"strings"
 )
 
 type BufBuildHandler struct{}
 
 func (h *BufBuildHandler) CanHandle(raw string) bool {
-	return strings.HasPrefix(raw, "buf.build/")
+	_, _, ok := parseBSRModuleRef(raw)
+
+	return ok
 }
 
 func (h *BufBuildHandler) Parse(raw string) (*Source, error) {
-	module := raw
-	version := ""
-
-	if before, after, ok := strings.Cut(raw, "@"); ok {
-		module, version = before, after
-	} else if before, after, ok := strings.Cut(raw, ":"); ok {
-		module, version = before, after
+	module, version, ok := parseBSRModuleRef(raw)
+	if !ok {
+		module = raw
+		version = ""
 	}
 
 	return &Source{

@@ -1,0 +1,173 @@
+package bufclient
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/bavix/gripmock/v3/internal/config"
+)
+
+func TestNewRouter(t *testing.T) {
+	t.Parallel()
+
+	require.NotNil(t, NewRouter(config.BSRConfig{}))
+}
+
+func TestRouterFetchDescriptorSetSuccess(t *testing.T) {
+	t.Parallel()
+
+	bufProbe := &probe{}
+	selfProbe := &probe{}
+
+	bufServer := newProbeServer(bufProbe)
+	t.Cleanup(bufServer.Close)
+
+	selfServer := newProbeServer(selfProbe)
+	t.Cleanup(selfServer.Close)
+
+	bufURL, _ := url.Parse(bufServer.URL)
+	selfURL, _ := url.Parse(selfServer.URL)
+	router := NewRouter(config.BSRConfig{
+		Buf:  config.BSRProfile{BaseURL: bufURL, Token: "buf-token", Timeout: 5 * time.Second},
+		Self: config.BSRProfile{BaseURL: selfURL, Token: "self-token", Timeout: 5 * time.Second},
+	})
+
+	fds, err := router.FetchDescriptorSet(t.Context(), "self.local/connectrpc/eliza", "")
+	require.NoError(t, err)
+	require.Len(t, fds.GetFile(), 1)
+
+	// Should have hit Buf
+	require.Equal(t, 1, bufProbe.count())
+	require.Equal(t, 0, selfProbe.count())
+}
+
+func TestRouterSelectsSelfByHost(t *testing.T) {
+	t.Parallel()
+
+	bufProbe := &probe{}
+	selfProbe := &probe{}
+
+	bufServer := newProbeServer(bufProbe)
+	t.Cleanup(bufServer.Close)
+
+	selfServer := newProbeServer(selfProbe)
+	t.Cleanup(selfServer.Close)
+
+	bufURL, _ := url.Parse(bufServer.URL)
+	selfURL, _ := url.Parse(selfServer.URL)
+	// Use the real host from the server URL
+	selfHost := selfURL.Host
+	router := NewRouter(config.BSRConfig{
+		Buf:  config.BSRProfile{BaseURL: bufURL, Token: "buf-token", Timeout: 5 * time.Second},
+		Self: config.BSRProfile{BaseURL: selfURL, Token: "self-token", Timeout: 5 * time.Second},
+	})
+
+	_, err := router.FetchDescriptorSet(t.Context(), selfHost+"/acme/payments", "main")
+	require.NoError(t, err)
+
+	// Should have hit Self
+	require.Equal(t, 0, bufProbe.count())
+	require.Equal(t, 1, selfProbe.count())
+}
+
+func TestRouterSelectsBufWhenSelfHostDoesNotMatch(t *testing.T) {
+	t.Parallel()
+
+	bufProbe := &probe{}
+	selfProbe := &probe{}
+
+	bufServer := newProbeServer(bufProbe)
+	t.Cleanup(bufServer.Close)
+
+	selfServer := newProbeServer(selfProbe)
+	t.Cleanup(selfServer.Close)
+
+	bufURL, _ := url.Parse(bufServer.URL)
+	selfURL, _ := url.Parse(selfServer.URL)
+	router := NewRouter(config.BSRConfig{
+		Buf:  config.BSRProfile{BaseURL: bufURL, Token: "buf-token", Timeout: 5 * time.Second},
+		Self: config.BSRProfile{BaseURL: selfURL, Token: "self-token", Timeout: 5 * time.Second},
+	})
+
+	_, err := router.FetchDescriptorSet(t.Context(), "unknown.host/acme/payments", "main")
+	require.NoError(t, err)
+
+	// Should have hit Buf
+	require.Equal(t, 1, bufProbe.count())
+	require.Equal(t, 0, selfProbe.count())
+}
+
+func TestRouterInvalidModule(t *testing.T) {
+	t.Parallel()
+
+	router := NewRouter(config.BSRConfig{})
+
+	for _, module := range []string{"broken", "buf.build/connectrpc/eliza/extra"} {
+		_, err := router.FetchDescriptorSet(t.Context(), module, "")
+		require.ErrorContains(t, err, "invalid BSR module")
+	}
+}
+
+func TestRouterWithScheme(t *testing.T) {
+	t.Parallel()
+
+	server := newFDSServer(new(string), new(string))
+	defer server.Close()
+
+	parsedURL, _ := url.Parse(server.URL)
+	router := NewRouter(config.BSRConfig{
+		Buf: config.BSRProfile{BaseURL: parsedURL, Timeout: 5 * time.Second},
+	})
+
+	_, err := router.FetchDescriptorSet(t.Context(), "https://buf.build/connectrpc/eliza", "main")
+	require.NoError(t, err)
+}
+
+func TestParseModulePreservesPort(t *testing.T) {
+	t.Parallel()
+
+	remote, owner, repo, err := parseModule("https://self.local:8443/acme/payments")
+	require.NoError(t, err)
+	require.Equal(t, "self.local:8443", remote)
+	require.Equal(t, "acme", owner)
+	require.Equal(t, "payments", repo)
+}
+
+// --- helpers ---
+
+type probe struct {
+	mu    sync.Mutex
+	calls int
+	auth  string
+}
+
+func (p *probe) count() int {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	return p.calls
+}
+
+func newProbeServer(p *probe) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/buf.registry.module.v1.FileDescriptorSetService/GetFileDescriptorSet" {
+			w.WriteHeader(http.StatusNotFound)
+
+			return
+		}
+
+		p.mu.Lock()
+		p.calls++
+		p.auth = r.Header.Get("Authorization")
+		p.mu.Unlock()
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"fileDescriptorSet": {"file": [{"name": "service.proto", "package": "acme.v1"}]}}`))
+	}))
+}

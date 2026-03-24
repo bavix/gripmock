@@ -52,6 +52,22 @@ func TestParseSource(t *testing.T) {
 			wantVer:    "main",
 		},
 		{
+			name:       "on-prem host without ref",
+			raw:        "bsr.company.local/team/payments",
+			wantType:   SourceBufBuild,
+			wantErr:    false,
+			wantModule: "bsr.company.local/team/payments",
+			wantVer:    "",
+		},
+		{
+			name:       "on-prem host with ref",
+			raw:        "bsr.company.local/team/payments:main",
+			wantType:   SourceBufBuild,
+			wantErr:    false,
+			wantModule: "bsr.company.local/team/payments",
+			wantVer:    "main",
+		},
+		{
 			name:     ".proto file",
 			raw:      "service.proto",
 			wantType: SourceProto,
@@ -118,8 +134,10 @@ func TestHandlers(t *testing.T) {
 		h := &BufBuildHandler{}
 
 		require.True(t, h.CanHandle("buf.build/test/module"))
+		require.True(t, h.CanHandle("bsr.company.local/team/module"))
 		require.False(t, h.CanHandle("test.proto"))
 		require.False(t, h.CanHandle("test.pb"))
+		require.False(t, h.CanHandle("team/module/name"))
 
 		src, err := h.Parse("buf.build/myorg/myservice:v1.0.0")
 		require.NoError(t, err)

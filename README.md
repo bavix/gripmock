@@ -113,6 +113,23 @@ gripmock service.proto
 gripmock --stub stubs/ service.proto
 ```
 
+**Load API directly from Buf Schema Registry (BSR):**
+```bash
+gripmock --stub third_party/bsr/eliza buf.build/connectrpc/eliza
+```
+
+For private BSR modules:
+```bash
+BSR_BUF_TOKEN=<token> gripmock --stub stubs/ buf.build/acme/private-api
+```
+
+For self-hosted BSR:
+```bash
+BSR_SELF_BASE_URL=https://bsr.company.local \
+BSR_SELF_TOKEN=<token> \
+gripmock --stub stubs/ bsr.company.local/team/payments
+```
+
 **Using Docker:**
 ```bash
 docker run -p 4770:4770 -p 4771:4771 \
@@ -340,6 +357,43 @@ Add schema validation to your stub files for IDE support:
 service: MyService
 method: MyMethod
 ```
+
+## 🌐 BSR Integration
+
+GripMock supports simplified integration with Buf Schema Registry:
+
+### Configuration
+
+```bash
+# Public BSR (default)
+BSR_BUF_BASE_URL=https://buf.build
+BSR_BUF_TOKEN=<token>
+
+# Self-hosted BSR
+BSR_SELF_BASE_URL=https://bsr.company.local
+BSR_SELF_TOKEN=<token>
+```
+
+### Usage
+
+```bash
+# Public module
+gripmock buf.build/connectrpc/eliza
+
+# Self-hosted module  
+gripmock bsr.company.local/team/payments:main
+
+# With stubs
+gripmock --stub stubs/ bsr.company.local/team/payments
+```
+
+### Routing
+
+GripMock automatically routes modules:
+- `buf.build/owner/repo` → uses Buf profile
+- `bsr.company.local/owner/repo` → uses Self profile
+
+For details see [BSR Documentation](https://bavix.github.io/gripmock/guide/sources/bsr/).
 
 ## 🔗 Useful Resources
 

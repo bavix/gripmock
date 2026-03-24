@@ -61,6 +61,14 @@ export default defineConfig({
         collapsed: false,
       },
       {
+        text: 'Sources',
+        items: [
+          { text: 'Overview', link: '/guide/sources/' },
+          { text: 'BSR', link: '/guide/sources/bsr' },
+        ],
+        collapsed: false,
+      },
+      {
         text: 'Stubs',
         items: [
           { text: 'JSON', link: '/guide/stubs/json' },

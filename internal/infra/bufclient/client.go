@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -16,112 +18,62 @@ import (
 )
 
 const (
-	bsrModuleParts = 3
-	defaultRef     = "main"
 	fdsEndpoint    = "/buf.registry.module.v1.FileDescriptorSetService/GetFileDescriptorSet"
+	defaultTimeout = 5 * time.Second
 )
 
-type Client interface {
-	FetchDescriptorSet(ctx context.Context, module, version string) (*descriptorpb.FileDescriptorSet, error)
+type Client struct {
+	BaseURL *url.URL
+	Token   string
+	Timeout time.Duration
 }
 
-type client struct {
-	config config.Config
-
-	httpClient *http.Client
-}
-
-type moduleRef struct {
-	remote string
-	owner  string
-	repo   string
-}
-
-type getFDSRequest struct {
-	ResourceRef                   resourceRef `json:"resourceRef"`
-	ExcludeImports                bool        `json:"excludeImports"`
-	IncludeSourceCodeInfo         bool        `json:"includeSourceCodeInfo"`
-	IncludeSourceRetentionOptions bool        `json:"includeSourceRetentionOptions"`
-}
-
-type resourceRef struct {
-	Name resourceName `json:"name"`
-}
-
-type resourceName struct {
-	Owner  string `json:"owner"`
-	Module string `json:"module"`
-	Ref    string `json:"ref"`
-}
-
-type getFDSResponse struct {
-	FileDescriptorSet json.RawMessage `json:"fileDescriptorSet"`
-}
-
-//nolint:ireturn
-func NewClient(cfg config.Config) Client {
-	httpClient := &http.Client{Timeout: cfg.BSRTimeout}
-	if cfg.BSRToken != "" {
-		httpClient.Transport = &authInterceptor{
-			transport: http.DefaultTransport,
-			token:     cfg.BSRToken,
-		}
+func NewClient(profile config.BSRProfile) *Client {
+	return &Client{
+		BaseURL: profile.BaseURL,
+		Token:   profile.Token,
+		Timeout: profile.Timeout,
 	}
-
-	return &client{config: cfg, httpClient: httpClient}
 }
 
-func (c *client) FetchDescriptorSet(ctx context.Context, module, version string) (*descriptorpb.FileDescriptorSet, error) {
-	mod, err := parseModule(module)
-	if err != nil {
-		return nil, err
-	}
-
-	baseURL := c.config.BSRBaseURL
-	if baseURL == "" {
-		baseURL = "https://" + mod.remote
-	}
-
-	ref := version
+func (c *Client) FetchDescriptorSet(ctx context.Context, owner, module, ref string) (*descriptorpb.FileDescriptorSet, error) {
 	if ref == "" {
-		ref = defaultRef
+		ref = "main"
 	}
 
-	requestBody, err := marshalRequest(mod, ref)
+	payload, err := c.buildRequestPayload(owner, module, ref)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build request payload")
+	}
+
+	req, err := c.buildRequest(ctx, payload)
 	if err != nil {
 		return nil, err
 	}
 
-	endpoint := strings.TrimRight(baseURL, "/") + fdsEndpoint
-
-	body, err := c.doRequest(ctx, endpoint, requestBody)
+	body, err := c.doRequest(req)
 	if err != nil {
 		return nil, err
 	}
 
-	return unmarshalResponse(body)
+	return c.parseResponse(body)
 }
 
-func marshalRequest(mod *moduleRef, ref string) ([]byte, error) {
-	request := getFDSRequest{
-		ResourceRef: resourceRef{
-			Name: resourceName{Owner: mod.owner, Module: mod.repo, Ref: ref},
+func (c *Client) buildRequestPayload(owner, module, ref string) ([]byte, error) {
+	return json.Marshal(map[string]any{
+		"resourceRef": map[string]any{
+			"name": map[string]any{
+				"owner":  owner,
+				"module": module,
+				"ref":    ref,
+			},
 		},
-		ExcludeImports:                false,
-		IncludeSourceCodeInfo:         false,
-		IncludeSourceRetentionOptions: true,
-	}
-
-	payload, err := json.Marshal(request)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal BSR request")
-	}
-
-	return payload, nil
+		"includeSourceRetentionOptions": true,
+	})
 }
 
-func (c *client) doRequest(ctx context.Context, endpoint string, requestBody []byte) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(requestBody))
+func (c *Client) buildRequest(ctx context.Context, payload []byte) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.BaseURL.String()+fdsEndpoint, bytes.NewReader(payload))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build BSR request")
 	}
@@ -129,14 +81,25 @@ func (c *client) doRequest(ctx context.Context, endpoint string, requestBody []b
 	req.Header.Set("Connect-Protocol-Version", "1")
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	if token := strings.TrimSpace(c.Token); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+
+	return req, nil
+}
+
+func (c *Client) doRequest(req *http.Request) ([]byte, error) {
+	timeout := c.Timeout
+	if timeout <= 0 {
+		timeout = defaultTimeout
+	}
+
+	//nolint:gosec
+	resp, err := (&http.Client{Timeout: timeout}).Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute BSR request")
 	}
-
-	defer func() {
-		_ = resp.Body.Close()
-	}()
+	defer resp.Body.Close() //nolint:errcheck
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -150,42 +113,23 @@ func (c *client) doRequest(ctx context.Context, endpoint string, requestBody []b
 	return body, nil
 }
 
-func unmarshalResponse(body []byte) (*descriptorpb.FileDescriptorSet, error) {
-	response := getFDSResponse{}
-	if err := json.Unmarshal(body, &response); err != nil {
+func (c *Client) parseResponse(body []byte) (*descriptorpb.FileDescriptorSet, error) {
+	var envelope struct {
+		FileDescriptorSet json.RawMessage `json:"fileDescriptorSet"`
+	}
+
+	if err := json.Unmarshal(body, &envelope); err != nil {
 		return nil, errors.Wrap(err, "failed to decode BSR response")
 	}
 
-	if len(response.FileDescriptorSet) == 0 {
+	if len(envelope.FileDescriptorSet) == 0 {
 		return nil, errors.New("BSR returned empty descriptor set")
 	}
 
 	fds := &descriptorpb.FileDescriptorSet{}
-	if err := protojson.Unmarshal(response.FileDescriptorSet, fds); err != nil {
+	if err := protojson.Unmarshal(envelope.FileDescriptorSet, fds); err != nil {
 		return nil, errors.Wrap(err, "failed to parse descriptor set from BSR response")
 	}
 
 	return fds, nil
-}
-
-func parseModule(module string) (*moduleRef, error) {
-	parts := strings.SplitN(module, "/", bsrModuleParts)
-	if len(parts) < bsrModuleParts {
-		return nil, errors.Errorf("invalid BSR module: %s", module)
-	}
-
-	return &moduleRef{remote: parts[0], owner: parts[1], repo: parts[2]}, nil
-}
-
-type authInterceptor struct {
-	transport http.RoundTripper
-	token     string
-}
-
-func (a *authInterceptor) RoundTrip(req *http.Request) (*http.Response, error) {
-	if a.token != "" {
-		req.Header.Set("Authorization", "Bearer "+a.token)
-	}
-
-	return a.transport.RoundTrip(req)
 }
