@@ -1,0 +1,12 @@
+--- ENDPOINT ---
+connectrpc.eliza.v1.ElizaService/Say
+
+--- REQUEST ---
+{
+  "sentence": "Hello"
+}
+
+--- RESPONSE ---
+{
+  "sentence": "Hello. How are you feeling today?"
+}

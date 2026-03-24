@@ -36,41 +36,14 @@ type RestServerTestSuite struct {
 	budgerigar *stuber.Budgerigar
 }
 
-// SetupSuite initializes the test suite.
-func (s *RestServerTestSuite) SetupSuite() {
-	s.budgerigar = stuber.NewBudgerigar(features.New())
-	extender := &mockExtender{}
-	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil, nil)
-	s.Require().NoError(err)
-	s.server = server
+type addStubCase struct {
+	name           string
+	jsonData       string
+	expectedStatus int
 }
 
-// SetupTest cleans up before each test.
-func (s *RestServerTestSuite) SetupTest() {
-	s.budgerigar.Clear()
-}
-
-// TestNewRestServer tests REST server creation.
-func (s *RestServerTestSuite) TestNewRestServer() {
-	ctx := s.T().Context()
-	budgerigar := stuber.NewBudgerigar(features.New())
-	extender := &mockExtender{}
-
-	server, err := NewRestServer(ctx, budgerigar, extender, nil, nil, nil)
-	s.Require().NoError(err)
-	s.Require().NotNil(server)
-}
-
-// TestAddStub tests stub addition functionality.
-//
-//nolint:funlen
-func (s *RestServerTestSuite) TestAddStub() {
-	tests := []struct {
-		name           string
-		jsonData       string
-		expectedStatus int
-		expectedError  error
-	}{
+func commonAddStubCases() []addStubCase {
+	return []addStubCase{
 		{
 			name: "valid unary stub",
 			jsonData: `[{
@@ -112,7 +85,7 @@ func (s *RestServerTestSuite) TestAddStub() {
 			expectedStatus: http.StatusOK,
 		},
 		{
-			name: "invalid stub - missing service",
+			name: "missing service",
 			jsonData: `[{
 				"method": "TestMethod",
 				"input": {"contains": {"key": "value"}},
@@ -121,7 +94,7 @@ func (s *RestServerTestSuite) TestAddStub() {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name: "invalid stub - missing method",
+			name: "missing method",
 			jsonData: `[{
 				"service": "test.Service",
 				"input": {"contains": {"key": "value"}},
@@ -129,7 +102,38 @@ func (s *RestServerTestSuite) TestAddStub() {
 			}]`,
 			expectedStatus: http.StatusBadRequest,
 		},
-		{
+	}
+}
+
+// SetupSuite initializes the test suite.
+func (s *RestServerTestSuite) SetupSuite() {
+	s.budgerigar = stuber.NewBudgerigar(features.New())
+	extender := &mockExtender{}
+	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil, nil)
+	s.Require().NoError(err)
+	s.server = server
+}
+
+// SetupTest cleans up before each test.
+func (s *RestServerTestSuite) SetupTest() {
+	s.budgerigar.Clear()
+}
+
+// TestNewRestServer tests REST server creation.
+func (s *RestServerTestSuite) TestNewRestServer() {
+	ctx := s.T().Context()
+	budgerigar := stuber.NewBudgerigar(features.New())
+	extender := &mockExtender{}
+
+	server, err := NewRestServer(ctx, budgerigar, extender, nil, nil, nil)
+	s.Require().NoError(err)
+	s.Require().NotNil(server)
+}
+
+// TestAddStub tests stub addition functionality.
+func (s *RestServerTestSuite) TestAddStub() {
+	tests := append(commonAddStubCases(),
+		addStubCase{
 			name: "invalid unary stub - no input",
 			jsonData: `[{
 				"service": "test.Service",
@@ -138,7 +142,7 @@ func (s *RestServerTestSuite) TestAddStub() {
 			}]`,
 			expectedStatus: http.StatusBadRequest,
 		},
-		{
+		addStubCase{
 			name: "invalid unary stub - no output",
 			jsonData: `[{
 				"service": "test.Service",
@@ -147,7 +151,7 @@ func (s *RestServerTestSuite) TestAddStub() {
 			}]`,
 			expectedStatus: http.StatusBadRequest,
 		},
-		{
+		addStubCase{
 			name: "invalid client stream stub - no inputs",
 			jsonData: `[{
 				"service": "test.Service",
@@ -156,11 +160,11 @@ func (s *RestServerTestSuite) TestAddStub() {
 			}]`,
 			expectedStatus: http.StatusBadRequest,
 		},
-	}
+	)
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodPost, "/stubs", bytes.NewBufferString(tt.jsonData))
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/stubs", bytes.NewBufferString(tt.jsonData))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -205,7 +209,7 @@ func (s *RestServerTestSuite) TestDeleteStubByID() {
 	stubID := stubs[0].ID
 
 	w := httptest.NewRecorder()
-	s.server.DeleteStubByID(w, httptest.NewRequest(http.MethodDelete, "/", nil), stubID)
+	s.server.DeleteStubByID(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodDelete, "/", nil), stubID)
 
 	s.Equal(http.StatusNoContent, w.Code)
 
@@ -250,7 +254,7 @@ func (s *RestServerTestSuite) TestBatchStubsDelete() {
 	s.Require().NoError(err)
 
 	// Delete stubs in batch
-	req := httptest.NewRequest(http.MethodPost, "/stubs/batchDelete", bytes.NewBuffer(jsonData))
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/stubs/batchDelete", bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
@@ -281,7 +285,7 @@ func (s *RestServerTestSuite) TestListStubs() {
 
 	// List stubs
 	w := httptest.NewRecorder()
-	s.server.ListStubs(w, httptest.NewRequest(http.MethodGet, "/", nil))
+	s.server.ListStubs(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil))
 
 	s.Equal(http.StatusOK, w.Code)
 
@@ -311,7 +315,7 @@ func (s *RestServerTestSuite) TestAddDescriptors() {
 
 	// Verify service appears in ServicesList
 	w2 := httptest.NewRecorder()
-	s.server.ServicesList(w2, httptest.NewRequest(http.MethodGet, "/api/services", nil))
+	s.server.ServicesList(w2, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/services", nil))
 	s.Equal(http.StatusOK, w2.Code)
 
 	var services []map[string]any
@@ -336,7 +340,7 @@ func (s *RestServerTestSuite) TestListDescriptors() {
 
 	// List descriptors - verify serviceID appears
 	w2 := httptest.NewRecorder()
-	s.server.ListDescriptors(w2, httptest.NewRequest(http.MethodGet, "/api/descriptors", nil))
+	s.server.ListDescriptors(w2, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/descriptors", nil))
 	s.Equal(http.StatusOK, w2.Code)
 
 	var resp struct {
@@ -355,7 +359,7 @@ func (s *RestServerTestSuite) TestDeleteService() {
 	s.Require().Equal(http.StatusOK, w.Code)
 
 	// Delete service
-	delReq := httptest.NewRequest(http.MethodDelete, "/api/services/helloworld.Greeter", nil)
+	delReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodDelete, "/api/services/helloworld.Greeter", nil)
 	delReq = mux.SetURLVars(delReq, map[string]string{"serviceID": "helloworld.Greeter"})
 
 	w2 := httptest.NewRecorder()
@@ -370,7 +374,7 @@ func (s *RestServerTestSuite) TestDeleteService() {
 
 func (s *RestServerTestSuite) TestMcpInfo() {
 	w := httptest.NewRecorder()
-	s.server.McpInfo(w, httptest.NewRequest(http.MethodGet, "/api/mcp", nil))
+	s.server.McpInfo(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/mcp", nil))
 
 	s.Equal(http.StatusOK, w.Code)
 
@@ -383,7 +387,7 @@ func (s *RestServerTestSuite) TestMcpInfo() {
 func (s *RestServerTestSuite) TestMcpMessageDescriptorsLifecycle() {
 	ctx := s.T().Context()
 	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
+	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath}, nil)
 	s.Require().NoError(err)
 	body, err := proto.Marshal(fdsSlice[0])
 	s.Require().NoError(err)
@@ -634,7 +638,7 @@ func (s *RestServerTestSuite) TestListStubs_EmptyByUsage() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			// Arrange
-			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil)
 
 			// Act
 			w := httptest.NewRecorder()
@@ -655,7 +659,7 @@ func (s *RestServerTestSuite) TestListStubs_EmptyByUsage() {
 // TestListHistory tests history endpoint (empty when history is disabled).
 func (s *RestServerTestSuite) TestListHistory() {
 	w := httptest.NewRecorder()
-	s.server.ListHistory(w, httptest.NewRequest(http.MethodGet, "/api/history", nil))
+	s.server.ListHistory(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/history", nil))
 	s.Equal(http.StatusOK, w.Code)
 
 	var list []any
@@ -746,7 +750,7 @@ func (s *RestServerTestSuite) TestVerifyCallsWithHistory_SessionFromHeader() {
 // TestLiveness tests liveness endpoint.
 func (s *RestServerTestSuite) TestLiveness() {
 	w := httptest.NewRecorder()
-	s.server.Liveness(w, httptest.NewRequest(http.MethodGet, "/", nil))
+	s.server.Liveness(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil))
 
 	s.Equal(http.StatusOK, w.Code)
 }
@@ -767,12 +771,12 @@ func (s *RestServerTestSuite) TestReadiness() {
 			return
 		case <-ticker.C:
 			w := httptest.NewRecorder()
-			s.server.Readiness(w, httptest.NewRequest(http.MethodGet, "/", nil))
+			s.server.Readiness(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil))
 
 			if w.Code == http.StatusOK {
 				// Server is ready, final check
 				w := httptest.NewRecorder()
-				s.server.Readiness(w, httptest.NewRequest(http.MethodGet, "/", nil))
+				s.server.Readiness(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil))
 				s.Equal(http.StatusOK, w.Code)
 
 				return
@@ -802,7 +806,7 @@ func (s *RestServerTestSuite) TestPurgeStubs() {
 
 	// Purge stubs
 	w := httptest.NewRecorder()
-	s.server.PurgeStubs(w, httptest.NewRequest(http.MethodDelete, "/", nil))
+	s.server.PurgeStubs(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodDelete, "/", nil))
 
 	s.Equal(http.StatusNoContent, w.Code)
 
@@ -879,7 +883,14 @@ func (s *RestServerTestSuite) TestSearchStubs_SessionFromHeader() {
 // TestServiceMethodsList tests listing service methods.
 func (s *RestServerTestSuite) TestServiceMethodsList() {
 	w := httptest.NewRecorder()
-	s.server.ServiceMethodsList(w, httptest.NewRequest(http.MethodGet, "/services/test.Service/methods", nil), "test.Service")
+	req := httptest.NewRequestWithContext(
+		s.T().Context(),
+		http.MethodGet,
+		"/services/test.Service/methods",
+		nil,
+	)
+
+	s.server.ServiceMethodsList(w, req, "test.Service")
 
 	s.Equal(http.StatusOK, w.Code)
 }
@@ -887,7 +898,7 @@ func (s *RestServerTestSuite) TestServiceMethodsList() {
 // TestServicesList tests listing all services.
 func (s *RestServerTestSuite) TestServicesList() {
 	w := httptest.NewRecorder()
-	s.server.ServicesList(w, httptest.NewRequest(http.MethodGet, "/", nil))
+	s.server.ServicesList(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil))
 
 	s.Equal(http.StatusOK, w.Code)
 
@@ -897,7 +908,7 @@ func (s *RestServerTestSuite) TestServicesList() {
 
 func (s *RestServerTestSuite) TestServiceGet() {
 	w := httptest.NewRecorder()
-	s.server.ServicesList(w, httptest.NewRequest(http.MethodGet, "/api/services", nil))
+	s.server.ServicesList(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/services", nil))
 	s.Require().Equal(http.StatusOK, w.Code)
 
 	var services []map[string]any
@@ -911,7 +922,7 @@ func (s *RestServerTestSuite) TestServiceGet() {
 	s.Require().NotEmpty(serviceID)
 
 	w = httptest.NewRecorder()
-	s.server.ServiceGet(w, httptest.NewRequest(http.MethodGet, "/api/services/"+serviceID, nil), serviceID)
+	s.server.ServiceGet(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/services/"+serviceID, nil), serviceID)
 	s.Require().Equal(http.StatusOK, w.Code)
 
 	var service map[string]any
@@ -921,7 +932,7 @@ func (s *RestServerTestSuite) TestServiceGet() {
 	s.Equal(serviceID, service["id"])
 
 	w = httptest.NewRecorder()
-	s.server.ServiceGet(w, httptest.NewRequest(http.MethodGet, "/api/services/not.exists", nil), "not.exists")
+	s.server.ServiceGet(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/services/not.exists", nil), "not.exists")
 	s.Require().Equal(http.StatusNotFound, w.Code)
 
 	var payload map[string]string
@@ -934,7 +945,7 @@ func (s *RestServerTestSuite) TestServiceGet() {
 //nolint:funlen
 func (s *RestServerTestSuite) TestServiceMethodGet() {
 	w := httptest.NewRecorder()
-	s.server.ServicesList(w, httptest.NewRequest(http.MethodGet, "/api/services", nil))
+	s.server.ServicesList(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/services", nil))
 	s.Require().Equal(http.StatusOK, w.Code)
 
 	var services []map[string]any
@@ -977,7 +988,7 @@ func (s *RestServerTestSuite) TestServiceMethodGet() {
 	w = httptest.NewRecorder()
 	s.server.ServiceMethodGet(
 		w,
-		httptest.NewRequest(http.MethodGet, "/api/services/"+serviceID+"/methods/"+methodID, nil),
+		httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/services/"+serviceID+"/methods/"+methodID, nil),
 		serviceID,
 		methodID,
 	)
@@ -1004,7 +1015,7 @@ func (s *RestServerTestSuite) TestServiceMethodGet() {
 	w = httptest.NewRecorder()
 	s.server.ServiceMethodGet(
 		w,
-		httptest.NewRequest(http.MethodGet, "/api/services/"+serviceID+"/methods/"+methodName, nil),
+		httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/services/"+serviceID+"/methods/"+methodName, nil),
 		serviceID,
 		methodName,
 	)
@@ -1017,7 +1028,7 @@ func (s *RestServerTestSuite) TestServiceMethodGet() {
 	w = httptest.NewRecorder()
 	s.server.ServiceMethodGet(
 		w,
-		httptest.NewRequest(http.MethodGet, "/api/services/not.exists/methods/whatever", nil),
+		httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/services/not.exists/methods/whatever", nil),
 		"not.exists",
 		"whatever",
 	)
@@ -1032,7 +1043,7 @@ func (s *RestServerTestSuite) TestServiceMethodGet() {
 	w = httptest.NewRecorder()
 	s.server.ServiceMethodGet(
 		w,
-		httptest.NewRequest(http.MethodGet, "/api/services/"+serviceID+"/methods/not_found", nil),
+		httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/services/"+serviceID+"/methods/not_found", nil),
 		serviceID,
 		"not_found",
 	)
@@ -1044,77 +1055,12 @@ func (s *RestServerTestSuite) TestServiceMethodGet() {
 }
 
 // TestValidateStubIntegration tests stub validation integration.
-//
-//nolint:funlen
 func (s *RestServerTestSuite) TestValidateStubIntegration() {
-	tests := []struct {
-		name           string
-		jsonData       string
-		expectedStatus int
-	}{
-		{
-			name: "valid unary stub",
-			jsonData: `[{
-				"service": "test.Service",
-				"method": "TestMethod",
-				"input": {"contains": {"key": "value"}},
-				"output": {"data": {"result": "success"}}
-			}]`,
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name: "valid client stream stub",
-			jsonData: `[{
-				"service": "test.Service",
-				"method": "TestClientStream",
-				"inputs": [{"contains": {"key": "value"}}],
-				"output": {"data": {"result": "success"}}
-			}]`,
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name: "valid server stream stub",
-			jsonData: `[{
-				"service": "test.Service",
-				"method": "TestServerStream",
-				"input": {"contains": {"key": "value"}},
-				"output": {"stream": [{"result": "response"}]}
-			}]`,
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name: "valid bidirectional stub",
-			jsonData: `[{
-				"service": "test.Service",
-				"method": "TestBidirectional",
-				"inputs": [{"contains": {"key": "value"}}],
-				"output": {"stream": [{"result": "response"}]}
-			}]`,
-			expectedStatus: http.StatusOK,
-		},
-		{
-			name: "missing service",
-			jsonData: `[{
-				"method": "TestMethod",
-				"input": {"contains": {"key": "value"}},
-				"output": {"data": {"result": "success"}}
-			}]`,
-			expectedStatus: http.StatusBadRequest,
-		},
-		{
-			name: "missing method",
-			jsonData: `[{
-				"service": "test.Service",
-				"input": {"contains": {"key": "value"}},
-				"output": {"data": {"result": "success"}}
-			}]`,
-			expectedStatus: http.StatusBadRequest,
-		},
-	}
+	tests := commonAddStubCases()
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodPost, "/stubs", bytes.NewBufferString(tt.jsonData))
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/stubs", bytes.NewBufferString(tt.jsonData))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -1240,7 +1186,7 @@ func (s *RestServerTestSuite) TestAddStubWithDelay() {
 			// Clear storage before each test
 			s.budgerigar.Clear()
 
-			req := httptest.NewRequest(http.MethodPost, "/stubs", bytes.NewBufferString(tt.jsonData))
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/stubs", bytes.NewBufferString(tt.jsonData))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -1289,7 +1235,7 @@ func (s *RestServerTestSuite) mcpCallWithRequest(
 	requestBody, err := json.Marshal(payload)
 	s.Require().NoError(err)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/mcp", bytes.NewReader(requestBody))
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/mcp", bytes.NewReader(requestBody))
 	req.Header.Set("Content-Type", "application/json")
 
 	if prepare != nil {
@@ -1370,7 +1316,7 @@ func (s *RestServerTestSuite) addStubJSON(server *RestServer, payload string) {
 func (s *RestServerTestSuite) greeterDescriptorSetBytes() []byte {
 	ctx := s.T().Context()
 	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
+	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath}, nil)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(fdsSlice)
 
@@ -1381,7 +1327,7 @@ func (s *RestServerTestSuite) greeterDescriptorSetBytes() []byte {
 }
 
 func (s *RestServerTestSuite) addDescriptorsPayload(server *RestServer, payload []byte) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPost, "/api/descriptors", bytes.NewReader(payload))
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/descriptors", bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/octet-stream")
 
 	w := httptest.NewRecorder()
@@ -1395,7 +1341,7 @@ func (s *RestServerTestSuite) addStubJSONWithRequest(
 	payload string,
 	prepare func(*http.Request),
 ) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(payload))
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(payload))
 	req.Header.Set("Content-Type", "application/json")
 
 	if prepare != nil {
@@ -1431,7 +1377,7 @@ func (s *RestServerTestSuite) addDebugScopeStubs(server *RestServer) {
 }
 
 func (s *RestServerTestSuite) listHistory(server *RestServer, prepare func(*http.Request)) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodGet, "/api/history", nil)
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/history", nil)
 	if prepare != nil {
 		prepare(req)
 	}
@@ -1464,7 +1410,7 @@ func (s *RestServerTestSuite) searchStubsWithRequest(
 		s.Require().NoError(err)
 	}
 
-	req := httptest.NewRequest(http.MethodPost, "/stubs/search", bytes.NewReader(body))
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/stubs/search", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	if prepare != nil {
@@ -1485,7 +1431,7 @@ func (s *RestServerTestSuite) verifyCalls(
 	body, err := json.Marshal(payload)
 	s.Require().NoError(err)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/verify", bytes.NewReader(body))
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/verify", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	if prepare != nil {

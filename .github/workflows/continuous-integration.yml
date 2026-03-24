@@ -59,6 +59,51 @@ jobs:
       - name: Run unit tests
         run: go test ./...
 
+  bsr-e2e-tests:
+    name: "BSR E2E (${{ matrix.project }})"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: eliza
+            module: buf.build/connectrpc/eliza
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Set up cache for dependencies
+        uses: actions/cache@v5
+        with:
+          path: grpctestify
+          key: deps-cache-${{ runner.os }}-grpctestify-rust-${{ env.GRPCTESTIFY_VERSION }}
+
+      - name: Install grpctestify
+        run: |
+          pwd >> "$GITHUB_PATH"
+
+          if [ ! -f grpctestify ]; then
+            case "$RUNNER_ARCH" in
+              X64) grpctestify_asset="grpctestify-linux-amd64.tar.gz" ;;
+              ARM64) grpctestify_asset="grpctestify-linux-arm64.tar.gz" ;;
+              *) echo "Unsupported runner arch: $RUNNER_ARCH"; exit 1 ;;
+            esac
+
+            curl -sSL "https://github.com/gripmock/grpctestify-rust/releases/download/v${{ env.GRPCTESTIFY_VERSION }}/$grpctestify_asset" | tar -xz
+            chmod +x grpctestify
+          fi
+
+      - name: Run BSR E2E suite
+        run: |
+          cd "third_party/bsr/${{ matrix.project }}"
+          make up MODULE="${{ matrix.module }}"
+          make test
+          make down
+
   binary-smoke-tests:
     name: "Binary Smoke (${{ matrix.platform }})"
     runs-on: ${{ matrix.os }}

@@ -29,7 +29,7 @@ func TestRestAddStubSessionFromHeaderOnly(t *testing.T) {
 	body := []byte(`[
 		{"service":"svc.Greeter","method":"SayHello","session":"BODY","input":{"equals":{"name":"Bob"}},"output":{"data":{"message":"ok"}}}
 	]`)
-	req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/stubs", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(muxmiddleware.HeaderName, "HEADER")
 
@@ -57,7 +57,7 @@ func TestRestAddStubWithoutHeaderUsesGlobal(t *testing.T) {
 	body := []byte(`[
 		{"service":"svc.Greeter","method":"SayHello","session":"BODY","input":{"equals":{"name":"Bob"}},"output":{"data":{"message":"ok"}}}
 	]`)
-	req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/stubs", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()

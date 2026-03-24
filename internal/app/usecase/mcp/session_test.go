@@ -39,7 +39,7 @@ func TestApplyTransportSessionInjectsHeaderSession(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	req := httptest.NewRequest(http.MethodPost, "/api/mcp", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/mcp", nil)
 	req.Header.Set("X-Gripmock-Session", "A")
 
 	// Act
@@ -53,7 +53,7 @@ func TestApplyTransportSessionDoesNotOverrideExplicitSession(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	req := httptest.NewRequest(http.MethodPost, "/api/mcp", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/mcp", nil)
 	req.Header.Set("X-Gripmock-Session", "A")
 
 	// Act
@@ -67,7 +67,7 @@ func TestApplyTransportSessionSkipsUnsupportedTool(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	req := httptest.NewRequest(http.MethodPost, "/api/mcp", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/mcp", nil)
 	req.Header.Set("X-Gripmock-Session", "A")
 
 	// Act

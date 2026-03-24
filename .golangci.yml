@@ -26,6 +26,8 @@ linters:
           allow:
             - $gostd
             - github.com
+            - connectrpc.com
+            - buf.build
             - google.golang.org
             - golang.org
 

@@ -567,7 +567,7 @@ func TestNewQuery(t *testing.T) {
 	t.Parallel()
 	// Test creating Query from HTTP request (supports both "data" and "input" JSON fields)
 	jsonBody := `{"service":"test","method":"test","input":[{"key":"value"}]}`
-	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(jsonBody))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewBufferString(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 
 	query, err := stuber.NewQuery(req)
@@ -617,7 +617,7 @@ func TestV2QueryFunctions(t *testing.T) {
 	t.Parallel()
 	// Test NewQuery and RequestInternal for V1 Query
 	jsonBody := `{"service":"test","method":"test","data":{"key":"value"}}`
-	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(jsonBody))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewBufferString(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 
 	query, err := stuber.NewQuery(req)

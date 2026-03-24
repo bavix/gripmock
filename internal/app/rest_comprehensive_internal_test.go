@@ -57,7 +57,7 @@ func (s *RestComprehensiveTestSuite) TestFindByID() {
 		s.Run(tt.name, func() {
 			// Use a random UUID for non-existing stub test
 			randomUUID := uuid.New()
-			req := httptest.NewRequest(http.MethodGet, "/api/stubs/"+randomUUID.String(), nil)
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/"+randomUUID.String(), nil)
 			w := httptest.NewRecorder()
 
 			s.server.FindByID(w, req, randomUUID)
@@ -110,7 +110,7 @@ func (s *RestComprehensiveTestSuite) TestBatchStubsDeleteComprehensive() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodDelete, "/api/stubs", bytes.NewBufferString(tt.requestBody))
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodDelete, "/api/stubs", bytes.NewBufferString(tt.requestBody))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -163,7 +163,7 @@ func (s *RestComprehensiveTestSuite) TestSearchStubsComprehensive() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(tt.method, "/api/stubs/search", bytes.NewBufferString(tt.requestBody))
+			req := httptest.NewRequestWithContext(s.T().Context(), tt.method, "/api/stubs/search", bytes.NewBufferString(tt.requestBody))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -201,7 +201,7 @@ func (s *RestComprehensiveTestSuite) TestServiceMethodsListComprehensive() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodGet, "/api/services/"+tt.serviceName+"/methods", nil)
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/services/"+tt.serviceName+"/methods", nil)
 			w := httptest.NewRecorder()
 
 			s.server.ServiceMethodsList(w, req, tt.serviceName)
@@ -228,13 +228,13 @@ func (s *RestComprehensiveTestSuite) TestReadinessComprehensive() {
 
 				return
 			case <-ticker.C:
-				req := httptest.NewRequest(http.MethodGet, "/api/health/readiness", nil)
+				req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/health/readiness", nil)
 				w := httptest.NewRecorder()
 				s.server.Readiness(w, req)
 
 				if w.Code == http.StatusOK {
 					// Server is ready, final check
-					req := httptest.NewRequest(http.MethodGet, "/api/health/readiness", nil)
+					req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/health/readiness", nil)
 					w := httptest.NewRecorder()
 					s.server.Readiness(w, req)
 					s.Equal(http.StatusOK, w.Code)
@@ -274,7 +274,7 @@ func (s *RestComprehensiveTestSuite) TestErrorHandling() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(tt.method, tt.endpoint, bytes.NewBufferString(tt.body))
+			req := httptest.NewRequestWithContext(s.T().Context(), tt.method, tt.endpoint, bytes.NewBufferString(tt.body))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -311,7 +311,7 @@ func (s *RestComprehensiveTestSuite) TestStubLifecycle() {
 			"output": {"data": {"result": "success"}}
 		}]`
 
-		addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+		addReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
 		addReq.Header.Set("Content-Type", "application/json")
 
 		addW := httptest.NewRecorder()
@@ -321,7 +321,7 @@ func (s *RestComprehensiveTestSuite) TestStubLifecycle() {
 		s.NotEmpty(addW.Body.String(), "Add response should not be empty")
 
 		// 2. List all stubs
-		listReq := httptest.NewRequest(http.MethodGet, "/api/stubs", nil)
+		listReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs", nil)
 		listW := httptest.NewRecorder()
 
 		s.server.ListStubs(listW, listReq)
@@ -330,7 +330,7 @@ func (s *RestComprehensiveTestSuite) TestStubLifecycle() {
 
 		// 3. Search for stub
 		searchData := `{"service": "TestService", "method": "TestMethod", "data": {"key": "value"}}`
-		searchReq := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
+		searchReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
 		searchReq.Header.Set("Content-Type", "application/json")
 
 		searchW := httptest.NewRecorder()
@@ -340,7 +340,7 @@ func (s *RestComprehensiveTestSuite) TestStubLifecycle() {
 		s.NotEmpty(searchW.Body.String(), "Search response should not be empty")
 
 		// 4. List used stubs
-		usedReq := httptest.NewRequest(http.MethodGet, "/api/stubs/used", nil)
+		usedReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/used", nil)
 		usedW := httptest.NewRecorder()
 
 		s.server.ListUsedStubs(usedW, usedReq)
@@ -348,7 +348,7 @@ func (s *RestComprehensiveTestSuite) TestStubLifecycle() {
 		s.NotEmpty(usedW.Body.String(), "Used stubs response should not be empty")
 
 		// 5. Purge all stubs
-		purgeReq := httptest.NewRequest(http.MethodDelete, "/api/stubs", nil)
+		purgeReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodDelete, "/api/stubs", nil)
 		purgeW := httptest.NewRecorder()
 
 		s.server.PurgeStubs(purgeW, purgeReq)

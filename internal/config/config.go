@@ -60,6 +60,9 @@ type Config struct {
 	HTTPTLSKeyFile    string `env:"HTTP_TLS_KEY_FILE"`
 	HTTPTLSClientAuth bool   `env:"HTTP_TLS_CLIENT_AUTH" envDefault:"false"`
 	HTTPTLSCAFile     string `env:"HTTP_TLS_CA_FILE"`
+
+	// Buf Schema Registry configuration.
+	BSR BSRConfig `envPrefix:"BSR_"`
 }
 
 // Load returns configuration from environment with sensible defaults.

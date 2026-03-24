@@ -35,7 +35,7 @@ func TestMcpMessageNOGoroutineLeakOnNotifications(t *testing.T) {
 
 	const iterations = 2000
 	for range iterations {
-		req := httptest.NewRequest(http.MethodPost, "/api/mcp", bytes.NewReader(body))
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/mcp", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 
 		w := httptest.NewRecorder()

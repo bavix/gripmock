@@ -41,7 +41,7 @@ func TestLoggerRequestLogger(t *testing.T) {
 	require.NotNil(t, middleware)
 
 	// Test that middleware works
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
 
 	middleware.ServeHTTP(w, req)
@@ -76,7 +76,7 @@ func TestLoggerRequestLoggerWithBody(t *testing.T) {
 	require.NotNil(t, middleware)
 
 	// Test with JSON body
-	req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewBufferString(`{"key":"value"}`))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", bytes.NewBufferString(`{"key":"value"}`))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
@@ -102,7 +102,7 @@ func TestLoggerRequestLoggerWithInvalidJSON(t *testing.T) {
 	require.NotNil(t, middleware)
 
 	// Test with invalid JSON body
-	req := httptest.NewRequest(http.MethodPost, "/test", bytes.NewBufferString(`invalid json`))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/test", bytes.NewBufferString(`invalid json`))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
@@ -128,7 +128,7 @@ func TestLoggerRequestLoggerWithEmptyBody(t *testing.T) {
 	require.NotNil(t, middleware)
 
 	// Test with empty body
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
 
 	middleware.ServeHTTP(w, req)

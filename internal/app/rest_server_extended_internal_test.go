@@ -80,14 +80,7 @@ func (s *RestServerExtendedTestSuite) TestAddStubWithPriority() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(tt.jsonData))
-			req.Header.Set("Content-Type", "application/json")
-
-			w := httptest.NewRecorder()
-			s.server.AddStub(w, req)
-
-			s.Require().Equal(http.StatusOK, w.Code)
-			s.Require().NotEmpty(w.Body.String())
+			s.addStubAndAssertOK(tt.jsonData)
 		})
 	}
 }
@@ -126,14 +119,7 @@ func (s *RestServerExtendedTestSuite) TestAddStubWithHeaders() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(tt.jsonData))
-			req.Header.Set("Content-Type", "application/json")
-
-			w := httptest.NewRecorder()
-			s.server.AddStub(w, req)
-
-			s.Require().Equal(http.StatusOK, w.Code)
-			s.Require().NotEmpty(w.Body.String())
+			s.addStubAndAssertOK(tt.jsonData)
 		})
 	}
 }
@@ -175,14 +161,7 @@ func (s *RestServerExtendedTestSuite) TestAddStubWithMatchers() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(tt.jsonData))
-			req.Header.Set("Content-Type", "application/json")
-
-			w := httptest.NewRecorder()
-			s.server.AddStub(w, req)
-
-			s.Require().Equal(http.StatusOK, w.Code)
-			s.Require().NotEmpty(w.Body.String())
+			s.addStubAndAssertOK(tt.jsonData)
 		})
 	}
 }
@@ -215,14 +194,7 @@ func (s *RestServerExtendedTestSuite) TestAddStubWithErrors() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(tt.jsonData))
-			req.Header.Set("Content-Type", "application/json")
-
-			w := httptest.NewRecorder()
-			s.server.AddStub(w, req)
-
-			s.Require().Equal(http.StatusOK, w.Code)
-			s.Require().NotEmpty(w.Body.String())
+			s.addStubAndAssertOK(tt.jsonData)
 		})
 	}
 }
@@ -239,7 +211,7 @@ func (s *RestServerExtendedTestSuite) TestFindStubByIDExtended() {
 		"output": {"data": {"found": true}}
 	}]`
 
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
 	addReq.Header.Set("Content-Type", "application/json")
 
 	addW := httptest.NewRecorder()
@@ -247,7 +219,7 @@ func (s *RestServerExtendedTestSuite) TestFindStubByIDExtended() {
 	s.Require().Equal(http.StatusOK, addW.Code)
 
 	// Get stub ID by listing all stubs (since AddStub might return a message)
-	listReq := httptest.NewRequest(http.MethodGet, "/api/stubs", nil)
+	listReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs", nil)
 	listW := httptest.NewRecorder()
 	s.server.ListStubs(listW, listReq)
 	s.Require().Equal(http.StatusOK, listW.Code)
@@ -293,7 +265,7 @@ func (s *RestServerExtendedTestSuite) TestFindStubByIDExtended() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodGet, "/api/stubs/"+tt.stubID.String(), nil)
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/"+tt.stubID.String(), nil)
 			w := httptest.NewRecorder()
 
 			s.server.FindByID(w, req, tt.stubID)
@@ -314,7 +286,7 @@ func (s *RestServerExtendedTestSuite) TestStubStatistics() {
 		"output": {"data": {"stats": true}}
 	}]`
 
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
 	addReq.Header.Set("Content-Type", "application/json")
 
 	addW := httptest.NewRecorder()
@@ -340,7 +312,7 @@ func (s *RestServerExtendedTestSuite) TestStubStatistics() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodGet, tt.endpoint, nil)
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, tt.endpoint, nil)
 			w := httptest.NewRecorder()
 
 			switch tt.endpoint {
@@ -364,14 +336,14 @@ func (s *RestServerExtendedTestSuite) TestStubStatistics() {
 func (s *RestServerExtendedTestSuite) TestDashboardOverview() {
 	stubData := `[{"service":"OverviewService","method":"OverviewMethod","input":{"equals":{"ping":"ok"}},"output":{"data":{"ok":true}}}]`
 
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
 	addReq.Header.Set("Content-Type", "application/json")
 
 	addW := httptest.NewRecorder()
 	s.server.AddStub(addW, addReq)
 	s.Require().Equal(http.StatusOK, addW.Code)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/dashboard/overview", nil)
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/dashboard/overview", nil)
 	w := httptest.NewRecorder()
 
 	s.server.DashboardOverview(w, req)
@@ -396,7 +368,7 @@ func (s *RestServerExtendedTestSuite) TestDashboardOverview() {
 func (s *RestServerExtendedTestSuite) TestSessionsList() {
 	// empty set should be [] (not null)
 	{
-		req := httptest.NewRequest(http.MethodGet, "/api/sessions", nil)
+		req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/sessions", nil)
 		w := httptest.NewRecorder()
 
 		s.server.SessionsList(w, req)
@@ -418,7 +390,7 @@ func (s *RestServerExtendedTestSuite) TestSessionsList() {
 		&stuber.Stub{ID: uuid.New(), Service: "SessionService", Method: "M3", Session: "b"},
 	)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/sessions", nil)
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/sessions", nil)
 	w := httptest.NewRecorder()
 
 	s.server.SessionsList(w, req)
@@ -433,7 +405,7 @@ func (s *RestServerExtendedTestSuite) TestSessionsList() {
 }
 
 func (s *RestServerExtendedTestSuite) TestDashboardInfo() {
-	req := httptest.NewRequest(http.MethodGet, "/api/dashboard/info", nil)
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/dashboard/info", nil)
 	w := httptest.NewRecorder()
 
 	s.server.DashboardInfo(w, req)
@@ -463,7 +435,7 @@ func (s *RestServerExtendedTestSuite) TestDashboardInfo() {
 }
 
 func (s *RestServerExtendedTestSuite) TestDashboard() {
-	req := httptest.NewRequest(http.MethodGet, "/api/dashboard", nil)
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/dashboard", nil)
 	w := httptest.NewRecorder()
 
 	s.server.Dashboard(w, req)
@@ -500,7 +472,7 @@ func (s *RestServerExtendedTestSuite) TestStubListsNeverReturnNull() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, tt.path, nil)
 			w := httptest.NewRecorder()
 
 			tt.handler(w, req)
@@ -520,7 +492,7 @@ func (s *RestServerExtendedTestSuite) TestStubListsNeverReturnNull() {
 func (s *RestServerExtendedTestSuite) TestInspectStubsEndpoint() {
 	stubData := `[{"service":"InspectService","method":"InspectMethod","input":{"equals":{"name":"Alex"}},"output":{"data":{"ok":true}}}]`
 
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
 	addReq.Header.Set("Content-Type", "application/json")
 
 	addW := httptest.NewRecorder()
@@ -528,7 +500,7 @@ func (s *RestServerExtendedTestSuite) TestInspectStubsEndpoint() {
 	s.Require().Equal(http.StatusOK, addW.Code)
 
 	body := `{"service":"InspectService","method":"InspectMethod","input":[{"name":"Alex"}]}`
-	req := httptest.NewRequest(http.MethodPost, "/api/stubs/inspect", bytes.NewBufferString(body))
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs/inspect", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
@@ -566,7 +538,7 @@ func (s *RestServerExtendedTestSuite) TestSearchStubsExtended() {
 		}
 	]`
 
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
 	addReq.Header.Set("Content-Type", "application/json")
 
 	addW := httptest.NewRecorder()
@@ -601,7 +573,7 @@ func (s *RestServerExtendedTestSuite) TestSearchStubsExtended() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewBufferString(tt.searchData))
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs/search", bytes.NewBufferString(tt.searchData))
 			req.Header.Set("Content-Type", "application/json")
 
 			w := httptest.NewRecorder()
@@ -640,7 +612,7 @@ func (s *RestServerExtendedTestSuite) TestServiceDiscovery() {
 		}
 	]`
 
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
 	addReq.Header.Set("Content-Type", "application/json")
 
 	addW := httptest.NewRecorder()
@@ -674,7 +646,7 @@ func (s *RestServerExtendedTestSuite) TestServiceDiscovery() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodGet, tt.endpoint, nil)
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, tt.endpoint, nil)
 			w := httptest.NewRecorder()
 
 			if tt.serviceName != "" {
@@ -713,7 +685,7 @@ func (s *RestServerExtendedTestSuite) TestHealthEndpoints() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			req := httptest.NewRequest(http.MethodGet, tt.endpoint, nil)
+			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, tt.endpoint, nil)
 			w := httptest.NewRecorder()
 
 			tt.handler(w, req)
@@ -752,7 +724,7 @@ func (s *RestServerExtendedTestSuite) TestBatchOperations() {
 		}
 	]`
 
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
 	addReq.Header.Set("Content-Type", "application/json")
 
 	addW := httptest.NewRecorder()
@@ -760,7 +732,7 @@ func (s *RestServerExtendedTestSuite) TestBatchOperations() {
 	s.Require().Equal(http.StatusOK, addW.Code)
 
 	// Get added stub IDs by listing all stubs
-	listReq := httptest.NewRequest(http.MethodGet, "/api/stubs", nil)
+	listReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs", nil)
 	listW := httptest.NewRecorder()
 	s.server.ListStubs(listW, listReq)
 	s.Require().Equal(http.StatusOK, listW.Code)
@@ -780,7 +752,7 @@ func (s *RestServerExtendedTestSuite) TestBatchOperations() {
 	batchDeleteData, err := json.Marshal(stubIDs)
 	s.Require().NoError(err)
 
-	deleteReq := httptest.NewRequest(http.MethodDelete, "/api/stubs", bytes.NewBuffer(batchDeleteData))
+	deleteReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodDelete, "/api/stubs", bytes.NewBuffer(batchDeleteData))
 	deleteReq.Header.Set("Content-Type", "application/json")
 
 	deleteW := httptest.NewRecorder()
@@ -800,7 +772,7 @@ func (s *RestServerExtendedTestSuite) TestStubPersistence() {
 		"output": {"data": {"persisted": true}}
 	}]`
 
-	addReq := httptest.NewRequest(http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
+	addReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(stubData))
 	addReq.Header.Set("Content-Type", "application/json")
 
 	addW := httptest.NewRecorder()
@@ -808,7 +780,7 @@ func (s *RestServerExtendedTestSuite) TestStubPersistence() {
 	s.Require().Equal(http.StatusOK, addW.Code)
 
 	// Verify stub exists in listing
-	listReq := httptest.NewRequest(http.MethodGet, "/api/stubs", nil)
+	listReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs", nil)
 	listW := httptest.NewRecorder()
 	s.server.ListStubs(listW, listReq)
 	s.Require().Equal(http.StatusOK, listW.Code)
@@ -834,12 +806,23 @@ func (s *RestServerExtendedTestSuite) TestStubPersistence() {
 
 	// Search for the stub
 	searchData := `{"service": "PersistenceService", "method": "PersistentMethod", "data": {"persistent": "data"}}`
-	searchReq := httptest.NewRequest(http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
+	searchReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
 	searchReq.Header.Set("Content-Type", "application/json")
 
 	searchW := httptest.NewRecorder()
 	s.server.SearchStubs(searchW, searchReq)
 	s.Require().Equal(http.StatusOK, searchW.Code)
+}
+
+func (s *RestServerExtendedTestSuite) addStubAndAssertOK(payload string) {
+	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs", bytes.NewBufferString(payload))
+	req.Header.Set("Content-Type", "application/json")
+
+	w := httptest.NewRecorder()
+	s.server.AddStub(w, req)
+
+	s.Require().Equal(http.StatusOK, w.Code)
+	s.Require().NotEmpty(w.Body.String())
 }
 
 // TestRestServerExtendedTestSuite runs the extended REST server test suite.

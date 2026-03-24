@@ -30,7 +30,7 @@ func TestUtilsInitialization(t *testing.T) {
 func TestUtilsGetIP(t *testing.T) {
 	t.Parallel()
 	// Test getIP function
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	// httptest.NewRequest sets a default RemoteAddr, let's use it
 
 	ip, err := getIP(req)
@@ -41,7 +41,7 @@ func TestUtilsGetIP(t *testing.T) {
 func TestUtilsGetIPWithXForwardedFor(t *testing.T) {
 	t.Parallel()
 	// Test getIP with X-Forwarded-For header
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.Header.Set("X-Forwarded-For", "10.0.0.1, 192.168.1.1")
 
 	ip, err := getIP(req)
@@ -52,7 +52,7 @@ func TestUtilsGetIPWithXForwardedFor(t *testing.T) {
 func TestUtilsGetIPWithInvalidXForwardedFor(t *testing.T) {
 	t.Parallel()
 	// Test getIP with invalid X-Forwarded-For header
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.Header.Set("X-Forwarded-For", "invalid-ip")
 	req.RemoteAddr = "192.168.1.1:8080" // Set specific IP for this test
 
@@ -64,7 +64,7 @@ func TestUtilsGetIPWithInvalidXForwardedFor(t *testing.T) {
 func TestUtilsGetIPWithEmptyXForwardedFor(t *testing.T) {
 	t.Parallel()
 	// Test getIP with empty X-Forwarded-For header
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.Header.Set("X-Forwarded-For", "")
 	req.RemoteAddr = "192.168.1.1:8080" // Set specific IP for this test
 
@@ -76,7 +76,7 @@ func TestUtilsGetIPWithEmptyXForwardedFor(t *testing.T) {
 func TestUtilsGetIPWithInvalidRemoteAddr(t *testing.T) {
 	t.Parallel()
 	// Test getIP with invalid RemoteAddr
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.RemoteAddr = "invalid-addr"
 
 	ip, err := getIP(req)
@@ -87,7 +87,7 @@ func TestUtilsGetIPWithInvalidRemoteAddr(t *testing.T) {
 func TestUtilsGetIPWithIPv6(t *testing.T) {
 	t.Parallel()
 	// Test getIP with IPv6 address
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
 	req.RemoteAddr = "[::1]:8080"
 
 	ip, err := getIP(req)

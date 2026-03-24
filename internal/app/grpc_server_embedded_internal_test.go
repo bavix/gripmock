@@ -18,7 +18,7 @@ import (
 func TestBuildFromDescriptorSetGreeter(t *testing.T) {
 	ctx := t.Context()
 	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
+	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath}, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, fdsSlice)
 
@@ -45,6 +45,7 @@ func TestGRPCServerBuildWithoutStartupDescriptors(t *testing.T) {
 		nil,
 		descriptors.NewRegistry(),
 		nil,
+		nil,
 	)
 
 	grpcServer, err := server.Build(ctx)
@@ -58,7 +59,7 @@ func TestGRPCServerBuildWithoutStartupDescriptors(t *testing.T) {
 func TestGRPCServerFindMethodDescriptorFromDynamicRegistry(t *testing.T) {
 	ctx := t.Context()
 	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath})
+	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath}, nil)
 	require.NoError(t, err)
 
 	files, err := protodesc.NewFiles(fdsSlice[0])
@@ -80,6 +81,7 @@ func TestGRPCServerFindMethodDescriptorFromDynamicRegistry(t *testing.T) {
 		NewInstantExtender(),
 		nil,
 		registry,
+		nil,
 		nil,
 	)
 

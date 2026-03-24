@@ -28,7 +28,7 @@ func TestReflectionIncludesDynamicService(t *testing.T) {
 	defer cancel()
 
 	registry := descriptors.NewRegistry()
-	grpcServer := NewGRPCServer("tcp", "127.0.0.1:0", nil, stuber.NewBudgerigar(features.New()), nil, nil, registry, nil)
+	grpcServer := NewGRPCServer("tcp", "127.0.0.1:0", nil, stuber.NewBudgerigar(features.New()), nil, nil, registry, nil, nil)
 
 	server, err := grpcServer.Build(ctx)
 	require.NoError(t, err)
@@ -76,7 +76,7 @@ func registerGreeterDescriptors(t *testing.T, ctx context.Context, registry *des
 	t.Helper()
 
 	protoPath := filepath.Join("..", "..", "examples", "projects", "greeter", "service.proto")
-	fdsList, err := protoset.Build(ctx, nil, []string{protoPath})
+	fdsList, err := protoset.Build(ctx, nil, []string{protoPath}, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, fdsList)
 

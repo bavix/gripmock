@@ -1533,6 +1533,7 @@ func (h *RestServer) collectAllServices() []rest.Service {
 	protoregistry.GlobalFiles.RangeFiles(func(file protoreflect.FileDescriptor) bool {
 		return h.collectServices(file, &results)
 	})
+
 	h.restDescriptors.RangeFiles(func(file protoreflect.FileDescriptor) bool {
 		return h.collectServices(file, &results)
 	})
@@ -1864,7 +1865,9 @@ func (h *RestServer) findServiceDescriptor(serviceID string) (protoreflect.Servi
 		}
 	}
 
-	protoregistry.GlobalFiles.RangeFiles(collect)
+	protoregistry.GlobalFiles.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+		return collect(file)
+	})
 
 	if found != nil {
 		return found, true

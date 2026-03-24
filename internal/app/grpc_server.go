@@ -148,6 +148,7 @@ type GRPCServer struct {
 	waiter      Extender
 	recorder    history.Recorder
 	descriptors *descriptors.Registry
+	bufClient   protosetdom.BSRClient
 	healthcheck *health.Server
 	tlsConfig   *tls.Config
 }
@@ -1130,6 +1131,7 @@ func NewGRPCServer(
 	recorder history.Recorder,
 	descriptorRegistry *descriptors.Registry,
 	tlsConfig *tls.Config,
+	bufClient protosetdom.BSRClient,
 ) *GRPCServer {
 	registry := descriptorRegistry
 	if registry == nil {
@@ -1144,6 +1146,7 @@ func NewGRPCServer(
 		waiter:      waiter,
 		recorder:    recorder,
 		descriptors: registry,
+		bufClient:   bufClient,
 		tlsConfig:   tlsConfig,
 	}
 }
@@ -1157,7 +1160,7 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 		protoPaths = s.params.ProtoPath()
 	}
 
-	descriptors, err := protosetdom.Build(ctx, imports, protoPaths)
+	descriptors, err := protosetdom.Build(ctx, imports, protoPaths, s.bufClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build descriptors")
 	}

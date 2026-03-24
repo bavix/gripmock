@@ -1,0 +1,12 @@
+--- ENDPOINT ---
+connectrpc.eliza.v1.ElizaService/Say
+
+--- REQUEST ---
+{
+  "sentence": "I feel sad"
+}
+
+--- RESPONSE ---
+{
+  "sentence": "Why do you feel sad?"
+}

@@ -97,7 +97,8 @@ func TestNewQueryInvalidJson(t *testing.T) {
 func TestNewQueryBidi(t *testing.T) {
 	t.Parallel()
 
-	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewBufferString(`{"service":"svc","method":"mthd","headers":{"h":"v"}}`))
+	body := `{"service":"svc","method":"mthd","headers":{"h":"v"}}`
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	q, err := NewQueryBidi(req)
 	require.NoError(t, err)
