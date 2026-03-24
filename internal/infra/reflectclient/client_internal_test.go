@@ -71,30 +71,8 @@ func (f *fakeReflectionServer) ServerReflectionInfo(stream reflectionpb.ServerRe
 func TestClientFetchDescriptorSet(t *testing.T) {
 	t.Parallel()
 
-	name := "test.proto"
-	pkg := "test"
-
-	fdp := &descriptorpb.FileDescriptorProto{Name: &name, Package: &pkg}
-	raw, err := proto.Marshal(fdp)
-	require.NoError(t, err)
-
-	lis, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = lis.Close() })
-
-	_, port, err := net.SplitHostPort(lis.Addr().String())
-	require.NoError(t, err)
-
-	addr := net.JoinHostPort("127.0.0.1", port)
-
-	server := grpc.NewServer()
-	reflectionpb.RegisterServerReflectionServer(server, &fakeReflectionServer{rawFile: raw})
-
-	go func() {
-		_ = server.Serve(lis)
-	}()
-
-	t.Cleanup(server.GracefulStop)
+	raw := newRawDescriptor(t, "test.proto")
+	addr, _ := startFakeReflectionServer(t, raw, "")
 
 	client := NewClient()
 	source := &protoset.Source{ReflectAddress: addr, ReflectTimeout: time.Second}
@@ -108,12 +86,32 @@ func TestClientFetchDescriptorSet(t *testing.T) {
 func TestClientFetchDescriptorSetWithBearer(t *testing.T) {
 	t.Parallel()
 
-	name := "auth.proto"
-	pkg := "test"
+	raw := newRawDescriptor(t, "auth.proto")
+	addr, fake := startFakeReflectionServer(t, raw, "Bearer secret")
 
-	fdp := &descriptorpb.FileDescriptorProto{Name: &name, Package: &pkg}
+	client := NewClient()
+	source := &protoset.Source{ReflectAddress: addr, ReflectTimeout: time.Second, ReflectBearer: "secret"}
+
+	fds, err := client.FetchDescriptorSet(t.Context(), source)
+	require.NoError(t, err)
+	require.Len(t, fds.GetFile(), 1)
+	require.Equal(t, "Bearer secret", fake.seenAuth)
+}
+
+func newRawDescriptor(t *testing.T, fileName string) []byte {
+	t.Helper()
+
+	pkg := "test"
+	fdp := &descriptorpb.FileDescriptorProto{Name: &fileName, Package: &pkg}
+
 	raw, err := proto.Marshal(fdp)
 	require.NoError(t, err)
+
+	return raw
+}
+
+func startFakeReflectionServer(t *testing.T, raw []byte, requiredAuth string) (string, *fakeReflectionServer) {
+	t.Helper()
 
 	lis, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
@@ -124,7 +122,7 @@ func TestClientFetchDescriptorSetWithBearer(t *testing.T) {
 
 	addr := net.JoinHostPort("127.0.0.1", port)
 
-	fake := &fakeReflectionServer{rawFile: raw, requireAuth: "Bearer secret"}
+	fake := &fakeReflectionServer{rawFile: raw, requireAuth: requiredAuth}
 	server := grpc.NewServer()
 	reflectionpb.RegisterServerReflectionServer(server, fake)
 
@@ -134,13 +132,7 @@ func TestClientFetchDescriptorSetWithBearer(t *testing.T) {
 
 	t.Cleanup(server.GracefulStop)
 
-	client := NewClient()
-	source := &protoset.Source{ReflectAddress: addr, ReflectTimeout: time.Second, ReflectBearer: "secret"}
-
-	fds, err := client.FetchDescriptorSet(t.Context(), source)
-	require.NoError(t, err)
-	require.Len(t, fds.GetFile(), 1)
-	require.Equal(t, "Bearer secret", fake.seenAuth)
+	return addr, fake
 }
 
 func first(items []string) string {
