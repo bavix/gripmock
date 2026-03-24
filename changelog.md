@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.8.4 - 2026-03-24
+
+### What's Changed
+
+* add support bsr (buf.build) by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/790
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.8.3...v3.8.4
+
 ## v3.8.3 - 2026-03-19
 
 ### What's Changed
