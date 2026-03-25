@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	stderrors "errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"runtime"
 	"slices"
@@ -18,6 +19,8 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
+	mcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/rs/zerolog"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
@@ -47,10 +50,12 @@ type RestServer struct {
 	ok              atomic.Bool
 	startedAt       time.Time
 	descriptorOpsMu sync.Mutex
+	mcpHandlerOnce  sync.Once
 	budgerigar      *stuber.Budgerigar
 	history         history.Reader
 	validator       *validator.Validate
 	restDescriptors *descriptors.Registry
+	mcpHandler      http.Handler
 }
 
 var _ rest.ServerInterface = &RestServer{}
@@ -254,160 +259,102 @@ func (h *RestServer) DashboardInfo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *RestServer) MCPHandler() http.Handler {
+	h.mcpHandlerOnce.Do(func() {
+		h.mcpHandler = newMCPStreamableHandler(h)
+	})
+
+	return h.mcpHandler
+}
+
 const (
 	debugCallDefaultLimit = 20
 	debugCallHintsCap     = 4
 )
 
-func (h *RestServer) McpInfo(w http.ResponseWriter, r *http.Request) {
-	h.writeResponse(r.Context(), w, rest.McpInfoResponse{
-		ProtocolVersion: mcpusecase.ProtocolVersion,
-		ServerName:      "gripmock",
-		ServerVersion:   build.Version,
-		Methods: []string{
-			"initialize",
-			"ping",
-			"tools/list",
-			"tools/call",
-		},
-		Tools: mcpToolsForInfo(mcpusecase.ListRuntimeTools()),
-		Transport: rest.McpTransport{
-			Path:    "/api/mcp",
-			Methods: []string{http.MethodGet, http.MethodPost},
-		},
-	})
-}
+func newMCPStreamableHandler(h *RestServer) http.Handler {
+	server := mcp.NewServer(&mcp.Implementation{Name: "gripmock", Version: build.Version}, nil)
 
-func (h *RestServer) McpMessage(w http.ResponseWriter, r *http.Request) {
-	body, err := httputil.RequestBody(r)
-	if err != nil {
-		h.responseError(r.Context(), w, err)
-
-		return
-	}
-
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(body, &raw); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		h.writeResponse(r.Context(), w, mcpusecase.ParsePayloadErrorResponse("invalid JSON payload"))
-
-		return
-	}
-
-	_, hasID := raw["id"]
-
-	var req rest.McpRequest
-	if err := json.Unmarshal(body, &req); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		h.writeResponse(r.Context(), w, mcpusecase.ParsePayloadErrorResponse("invalid JSON payload"))
-
-		return
-	}
-
-	if req.Jsonrpc != mcpusecase.JSONRPCVersion || req.Method == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		h.writeResponse(r.Context(), w, mcpusecase.ErrorResponse(req.Id, mcpusecase.ErrorCodeInvalidReq, mcpInvalidRequestError().Error(), nil))
-
-		return
-	}
-
-	if !hasID {
-		_ = handleMCPRequest(h, r, req)
-
-		w.WriteHeader(http.StatusNoContent)
-
-		return
-	}
-
-	resp := handleMCPRequest(h, r, req)
-	h.writeResponse(r.Context(), w, resp)
-}
-
-func handleMCPRequest(h *RestServer, r *http.Request, req rest.McpRequest) rest.McpResponse {
-	switch req.Method {
-	case "initialize":
-		return mcpusecase.InitializeResponse(req.Id, build.Version)
-	case "ping":
-		return mcpusecase.PingResponse(req.Id)
-	case "tools/list":
-		return mcpusecase.ToolsListResponse(req.Id, mcpusecase.ListRuntimeTools())
-	case "tools/call":
-		return handleMCPToolCall(h, r, req)
-	default:
-		return mcpusecase.ErrorResponse(
-			req.Id,
-			mcpusecase.ErrorCodeNotFound,
-			mcpRPCMethodNotFoundError().Error(),
-			map[string]any{"method": req.Method},
-		)
-	}
-}
-
-func mcpToolsForInfo(tools []map[string]any) []rest.McpTool {
-	out := make([]rest.McpTool, 0, len(tools))
-
-	for _, tool := range tools {
+	for _, tool := range mcpusecase.ListRuntimeTools() {
 		name, _ := tool["name"].(string)
 		description, _ := tool["description"].(string)
 		inputSchema, _ := tool["inputSchema"].(map[string]any)
 
-		out = append(out, rest.McpTool{
+		if name == "" || inputSchema == nil {
+			continue
+		}
+
+		server.AddTool(&mcp.Tool{
 			Name:        name,
 			Description: description,
 			InputSchema: inputSchema,
-		})
+		}, newMCPToolHandler(h, name))
 	}
 
-	return out
+	handler := mcp.NewStreamableHTTPHandler(func(_ *http.Request) *mcp.Server {
+		return server
+	}, &mcp.StreamableHTTPOptions{
+		Stateless:    true,
+		JSONResponse: true,
+	})
+
+	return handler
 }
 
-func handleMCPToolCall(h *RestServer, r *http.Request, req rest.McpRequest) rest.McpResponse {
-	toolName, _ := req.Params["name"].(string)
-	if toolName == "" {
-		return mcpusecase.ErrorResponse(req.Id, mcpusecase.ErrorCodeInvalidArg, mcpRequiredArgError("name").Error(), nil)
-	}
-
-	args, _ := req.Params["arguments"].(map[string]any)
-	args = mcpusecase.ApplyTransportSession(r, toolName, args)
-
-	result, err := callMCPToolDispatch(h, toolName, args)
-	if err != nil {
-		if stderrors.Is(err, ErrMCPInvalidArgument) {
-			return mcpusecase.ErrorResponse(req.Id, mcpusecase.ErrorCodeInvalidArg, err.Error(), map[string]any{"tool": toolName})
+func newMCPToolHandler(h *RestServer, name string) mcp.ToolHandler {
+	return func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		var args map[string]any
+		if len(req.Params.Arguments) > 0 {
+			if err := json.Unmarshal(req.Params.Arguments, &args); err != nil {
+				return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: mcpInvalidArgError("arguments must be an object").Error()}
+			}
 		}
 
-		if stderrors.Is(err, ErrMCPToolNotFound) {
-			return mcpusecase.ErrorResponse(req.Id, mcpusecase.ErrorCodeNotFound, err.Error(), map[string]any{"tool": toolName})
+		args = mcpusecase.ApplySession(name, args, mcpSessionFromContext(ctx, req))
+
+		result, err := callMCPToolDispatch(h, name, args)
+		if err != nil {
+			return nil, mcpJSONRPCError(name, err)
 		}
 
-		return mcpusecase.ErrorResponse(req.Id, mcpusecase.ErrorCodeInternal, err.Error(), map[string]any{"tool": toolName})
+		return &mcp.CallToolResult{
+			Content:           []mcp.Content{&mcp.TextContent{Text: "OK"}},
+			StructuredContent: result,
+		}, nil
+	}
+}
+
+func mcpSessionFromContext(ctx context.Context, req *mcp.CallToolRequest) string {
+	if sessionID := muxmiddleware.FromContext(ctx); sessionID != "" {
+		return sessionID
 	}
 
-	return mcpusecase.ToolCallSuccessResponse(req.Id, result)
+	if req == nil || req.Extra == nil {
+		return ""
+	}
+
+	return strings.TrimSpace(req.Extra.Header.Get(muxmiddleware.HeaderName))
+}
+
+func mcpJSONRPCError(toolName string, err error) error {
+	data, marshalErr := json.Marshal(map[string]any{"tool": toolName})
+	if marshalErr != nil {
+		data = nil
+	}
+
+	if stderrors.Is(err, ErrMCPInvalidArgument) {
+		return &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error(), Data: data}
+	}
+
+	if stderrors.Is(err, ErrMCPToolNotFound) {
+		return &jsonrpc.Error{Code: jsonrpc.CodeMethodNotFound, Message: err.Error(), Data: data}
+	}
+
+	return &jsonrpc.Error{Code: jsonrpc.CodeInternalError, Message: err.Error(), Data: data}
 }
 
 func callMCPToolDispatch(h *RestServer, name string, args map[string]any) (map[string]any, error) {
-	handlers := map[string]mcpusecase.ToolHandler{
-		mcpusecase.ToolDescriptorsAdd:  func(toolArgs map[string]any) (map[string]any, error) { return mcpDescriptorsAdd(h, toolArgs) },
-		mcpusecase.ToolDescriptorsList: func(toolArgs map[string]any) (map[string]any, error) { return mcpDescriptorsList(h, toolArgs) },
-		mcpusecase.ToolServicesList:    func(toolArgs map[string]any) (map[string]any, error) { return mcpServicesList(h, toolArgs) },
-		mcpusecase.ToolServicesDelete:  func(toolArgs map[string]any) (map[string]any, error) { return mcpServicesDelete(h, toolArgs) },
-		mcpusecase.ToolHistoryList:     func(toolArgs map[string]any) (map[string]any, error) { return mcpHistoryList(h, toolArgs) },
-		mcpusecase.ToolHistoryErrors:   func(toolArgs map[string]any) (map[string]any, error) { return mcpHistoryErrors(h, toolArgs) },
-		mcpusecase.ToolDebugCall:       func(toolArgs map[string]any) (map[string]any, error) { return mcpDebugCall(h, toolArgs) },
-		mcpusecase.ToolSchemaStub:      func(toolArgs map[string]any) (map[string]any, error) { return mcpSchemaStub(h, toolArgs) },
-		mcpusecase.ToolStubsUpsert:     func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsUpsert(h, toolArgs) },
-		mcpusecase.ToolStubsList:       func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsList(h, toolArgs) },
-		mcpusecase.ToolStubsGet:        func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsGet(h, toolArgs) },
-		mcpusecase.ToolStubsDelete:     func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsDelete(h, toolArgs) },
-		mcpusecase.ToolStubsBatchDelete: func(toolArgs map[string]any) (map[string]any, error) {
-			return mcpStubsBatchDelete(h, toolArgs)
-		},
-		mcpusecase.ToolStubsPurge:  func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsPurge(h, toolArgs) },
-		mcpusecase.ToolStubsSearch: func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsSearch(h, toolArgs) },
-		mcpusecase.ToolStubsUsed:   func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsUsed(h, toolArgs) },
-		mcpusecase.ToolStubsUnused: func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsUnused(h, toolArgs) },
-	}
+	handlers := mcpToolHandlers(h)
 
 	result, err, found := mcpusecase.DispatchTool(name, args, handlers)
 	if !found {
@@ -417,8 +364,294 @@ func callMCPToolDispatch(h *RestServer, name string, args map[string]any) (map[s
 	return result, err
 }
 
+func mcpToolHandlers(h *RestServer) map[string]mcpusecase.ToolHandler {
+	handlers := map[string]mcpusecase.ToolHandler{}
+
+	mergeMCPToolHandlers(handlers, mcpGeneralToolHandlers(h))
+	mergeMCPToolHandlers(handlers, mcpServicesToolHandlers(h))
+	mergeMCPToolHandlers(handlers, mcpStubsToolHandlers(h))
+
+	return handlers
+}
+
+func mcpGeneralToolHandlers(h *RestServer) map[string]mcpusecase.ToolHandler {
+	return map[string]mcpusecase.ToolHandler{
+		mcpusecase.ToolHealthLiveness:  func(toolArgs map[string]any) (map[string]any, error) { return mcpHealthLiveness(h, toolArgs) },
+		mcpusecase.ToolHealthReadiness: func(toolArgs map[string]any) (map[string]any, error) { return mcpHealthReadiness(h, toolArgs) },
+		mcpusecase.ToolHealthStatus:    func(toolArgs map[string]any) (map[string]any, error) { return mcpHealthStatus(h, toolArgs) },
+		mcpusecase.ToolDashboard:       func(toolArgs map[string]any) (map[string]any, error) { return mcpDashboard(h, toolArgs) },
+		mcpusecase.ToolOverview:        func(toolArgs map[string]any) (map[string]any, error) { return mcpDashboardOverview(h, toolArgs) },
+		mcpusecase.ToolInfo:            func(toolArgs map[string]any) (map[string]any, error) { return mcpDashboardInfo(h, toolArgs) },
+		mcpusecase.ToolSessionsList:    func(toolArgs map[string]any) (map[string]any, error) { return mcpSessionsList(h, toolArgs) },
+		mcpusecase.ToolGripmockInfo:    func(toolArgs map[string]any) (map[string]any, error) { return mcpGripmockInfo(h, toolArgs) },
+		mcpusecase.ToolReflectInfo:     func(toolArgs map[string]any) (map[string]any, error) { return mcpReflectInfo(h, toolArgs) },
+		mcpusecase.ToolReflectSources:  func(toolArgs map[string]any) (map[string]any, error) { return mcpReflectSources(h, toolArgs) },
+		mcpusecase.ToolDescriptorsAdd:  func(toolArgs map[string]any) (map[string]any, error) { return mcpDescriptorsAdd(h, toolArgs) },
+		mcpusecase.ToolDescriptorsList: func(toolArgs map[string]any) (map[string]any, error) { return mcpDescriptorsList(h, toolArgs) },
+		mcpusecase.ToolHistoryList:     func(toolArgs map[string]any) (map[string]any, error) { return mcpHistoryList(h, toolArgs) },
+		mcpusecase.ToolHistoryErrors:   func(toolArgs map[string]any) (map[string]any, error) { return mcpHistoryErrors(h, toolArgs) },
+		mcpusecase.ToolVerifyCalls:     func(toolArgs map[string]any) (map[string]any, error) { return mcpVerifyCalls(h, toolArgs) },
+		mcpusecase.ToolDebugCall:       func(toolArgs map[string]any) (map[string]any, error) { return mcpDebugCall(h, toolArgs) },
+		mcpusecase.ToolSchemaStub:      func(toolArgs map[string]any) (map[string]any, error) { return mcpSchemaStub(h, toolArgs) },
+	}
+}
+
+func mcpServicesToolHandlers(h *RestServer) map[string]mcpusecase.ToolHandler {
+	return map[string]mcpusecase.ToolHandler{
+		mcpusecase.ToolServicesList:    func(toolArgs map[string]any) (map[string]any, error) { return mcpServicesList(h, toolArgs) },
+		mcpusecase.ToolServicesGet:     func(toolArgs map[string]any) (map[string]any, error) { return mcpServicesGet(h, toolArgs) },
+		mcpusecase.ToolServicesMethods: func(toolArgs map[string]any) (map[string]any, error) { return mcpServicesMethods(h, toolArgs) },
+		mcpusecase.ToolServicesMethod:  func(toolArgs map[string]any) (map[string]any, error) { return mcpServicesMethod(h, toolArgs) },
+		mcpusecase.ToolServicesDelete:  func(toolArgs map[string]any) (map[string]any, error) { return mcpServicesDelete(h, toolArgs) },
+	}
+}
+
+func mcpStubsToolHandlers(h *RestServer) map[string]mcpusecase.ToolHandler {
+	return map[string]mcpusecase.ToolHandler{
+		mcpusecase.ToolStubsUpsert: func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsUpsert(h, toolArgs) },
+		mcpusecase.ToolStubsList:   func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsList(h, toolArgs) },
+		mcpusecase.ToolStubsGet:    func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsGet(h, toolArgs) },
+		mcpusecase.ToolStubsDelete: func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsDelete(h, toolArgs) },
+		mcpusecase.ToolStubsBatchDelete: func(toolArgs map[string]any) (map[string]any, error) {
+			return mcpStubsBatchDelete(h, toolArgs)
+		},
+		mcpusecase.ToolStubsPurge:   func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsPurge(h, toolArgs) },
+		mcpusecase.ToolStubsSearch:  func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsSearch(h, toolArgs) },
+		mcpusecase.ToolStubsInspect: func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsInspect(h, toolArgs) },
+		mcpusecase.ToolStubsUsed:    func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsUsed(h, toolArgs) },
+		mcpusecase.ToolStubsUnused:  func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsUnused(h, toolArgs) },
+	}
+}
+
+func mergeMCPToolHandlers(dst map[string]mcpusecase.ToolHandler, src map[string]mcpusecase.ToolHandler) {
+	maps.Copy(dst, src)
+}
+
 func mcpSchemaStub(_ *RestServer, _ map[string]any) (map[string]any, error) {
 	return map[string]any{"schemaUrl": stubSchemaURL}, nil
+}
+
+func mcpHealthLiveness(_ *RestServer, _ map[string]any) (map[string]any, error) {
+	return map[string]any{"message": "ok", "time": time.Now()}, nil
+}
+
+func mcpHealthReadiness(h *RestServer, _ map[string]any) (map[string]any, error) {
+	ready := h.ok.Load()
+	if !ready {
+		return map[string]any{"ready": false, "message": "not ready", "time": time.Now()}, nil
+	}
+
+	return map[string]any{"ready": true, "message": "ok", "time": time.Now()}, nil
+}
+
+func mcpHealthStatus(h *RestServer, _ map[string]any) (map[string]any, error) {
+	ready := h.ok.Load()
+
+	readiness := "ok"
+	if !ready {
+		readiness = "not ready"
+	}
+
+	return map[string]any{
+		"liveness":  "ok",
+		"readiness": readiness,
+		"ready":     ready,
+		"time":      time.Now(),
+	}, nil
+}
+
+func mcpDashboard(h *RestServer, args map[string]any) (map[string]any, error) {
+	return map[string]any{"dashboard": h.dashboardPayload(mcpSessionRequest(args))}, nil
+}
+
+func mcpDashboardOverview(h *RestServer, args map[string]any) (map[string]any, error) {
+	payload := h.dashboardPayload(mcpSessionRequest(args))
+
+	return map[string]any{"overview": rest.DashboardOverview{
+		TotalServices:      payload.TotalServices,
+		TotalStubs:         payload.TotalStubs,
+		UsedStubs:          payload.UsedStubs,
+		UnusedStubs:        payload.UnusedStubs,
+		TotalSessions:      payload.TotalSessions,
+		RuntimeDescriptors: payload.RuntimeDescriptors,
+		TotalHistory:       payload.TotalHistory,
+		HistoryErrors:      payload.HistoryErrors,
+	}}, nil
+}
+
+func mcpDashboardInfo(h *RestServer, args map[string]any) (map[string]any, error) {
+	payload := h.dashboardPayload(mcpSessionRequest(args))
+
+	return map[string]any{"info": rest.DashboardInfo{
+		AppName:            payload.AppName,
+		Version:            payload.Version,
+		GoVersion:          payload.GoVersion,
+		Compiler:           payload.Compiler,
+		Goos:               payload.Goos,
+		Goarch:             payload.Goarch,
+		NumCPU:             payload.NumCPU,
+		StartedAt:          payload.StartedAt,
+		UptimeSeconds:      payload.UptimeSeconds,
+		Ready:              payload.Ready,
+		HistoryEnabled:     payload.HistoryEnabled,
+		TotalServices:      payload.TotalServices,
+		TotalStubs:         payload.TotalStubs,
+		TotalSessions:      payload.TotalSessions,
+		RuntimeDescriptors: payload.RuntimeDescriptors,
+	}}, nil
+}
+
+func mcpSessionsList(h *RestServer, _ map[string]any) (map[string]any, error) {
+	return map[string]any{"sessions": h.budgerigar.Sessions()}, nil
+}
+
+func mcpGripmockInfo(h *RestServer, _ map[string]any) (map[string]any, error) {
+	overview := h.dashboardPayload(nil)
+
+	return map[string]any{
+		"appName":            overview.AppName,
+		"version":            overview.Version,
+		"protocolVersion":    mcpusecase.ProtocolVersion,
+		"historyEnabled":     overview.HistoryEnabled,
+		"ready":              overview.Ready,
+		"totalServices":      overview.TotalServices,
+		"totalStubs":         overview.TotalStubs,
+		"totalSessions":      overview.TotalSessions,
+		"runtimeDescriptors": overview.RuntimeDescriptors,
+		"tools":              mcpusecase.ListRuntimeTools(),
+	}, nil
+}
+
+func mcpReflectInfo(h *RestServer, _ map[string]any) (map[string]any, error) {
+	runtimePaths, reflectionPrefixes, reflectionFiles := runtimeDescriptorStats(h)
+
+	globalCount := 0
+
+	protoregistry.GlobalFiles.RangeFiles(func(_ protoreflect.FileDescriptor) bool {
+		globalCount++
+
+		return true
+	})
+
+	return map[string]any{
+		"runtimeDescriptorFiles":    len(runtimePaths),
+		"reflectionDescriptorFiles": reflectionFiles,
+		"dynamicDescriptorFiles":    len(runtimePaths) - reflectionFiles,
+		"reflectionDetected":        reflectionFiles > 0,
+		"reflectionSources":         reflectionPrefixes,
+		"globalDescriptorFiles":     globalCount,
+	}, nil
+}
+
+func mcpReflectSources(h *RestServer, args map[string]any) (map[string]any, error) {
+	runtimePaths, reflectionPrefixes, _ := runtimeDescriptorStats(h)
+	reflectionPaths, dynamicPaths, _ := splitRuntimeDescriptorPaths(runtimePaths)
+
+	kind, _ := args["kind"].(string)
+	if kind == "" {
+		kind = "all"
+	}
+
+	if kind != "all" && kind != "reflection" && kind != "dynamic" {
+		return nil, mcpInvalidArgError("kind must be one of: all, reflection, dynamic")
+	}
+
+	offset, err := mcpIntArg(args, "offset", 0)
+	if err != nil {
+		return nil, err
+	}
+
+	limit, err := mcpIntArg(args, "limit", 0)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := runtimePaths
+
+	switch kind {
+	case "reflection":
+		filtered = reflectionPaths
+	case "dynamic":
+		filtered = dynamicPaths
+	}
+
+	total := len(filtered)
+	filtered = paginateStringSlice(filtered, offset, limit)
+
+	return map[string]any{
+		"kind":   kind,
+		"paths":  filtered,
+		"total":  total,
+		"offset": offset,
+		"limit":  limit,
+		"groups": map[string]any{
+			"reflection": map[string]any{"count": len(reflectionPaths)},
+			"dynamic":    map[string]any{"count": len(dynamicPaths)},
+		},
+		"reflectionSources": reflectionPrefixes,
+	}, nil
+}
+
+func runtimeDescriptorStats(h *RestServer) ([]string, []string, int) {
+	runtimePaths := h.restDescriptors.Paths()
+	reflectionPaths, _, prefixes := splitRuntimeDescriptorPaths(runtimePaths)
+
+	return runtimePaths, prefixes, len(reflectionPaths)
+}
+
+func splitRuntimeDescriptorPaths(runtimePaths []string) ([]string, []string, []string) {
+	reflectionPrefixes := make(map[string]struct{})
+	reflectionPaths := make([]string, 0, len(runtimePaths))
+	dynamicPaths := make([]string, 0, len(runtimePaths))
+
+	for _, path := range runtimePaths {
+		if !strings.HasPrefix(path, "grpc_reflect_") {
+			dynamicPaths = append(dynamicPaths, path)
+
+			continue
+		}
+
+		reflectionPaths = append(reflectionPaths, path)
+
+		prefix := path
+		if idx := strings.Index(prefix, "/"); idx > 0 {
+			prefix = prefix[:idx]
+		}
+
+		reflectionPrefixes[prefix] = struct{}{}
+	}
+
+	prefixes := make([]string, 0, len(reflectionPrefixes))
+	for prefix := range reflectionPrefixes {
+		prefixes = append(prefixes, prefix)
+	}
+
+	sort.Strings(prefixes)
+
+	return reflectionPaths, dynamicPaths, prefixes
+}
+
+func paginateStringSlice(items []string, offset int, limit int) []string {
+	if offset >= len(items) {
+		return []string{}
+	}
+
+	items = items[offset:]
+
+	if limit > 0 && len(items) > limit {
+		items = items[:limit]
+	}
+
+	return items
+}
+
+func mcpSessionRequest(args map[string]any) *http.Request {
+	req := &http.Request{Header: make(http.Header)}
+	if sessionID, _ := args["session"].(string); sessionID != "" {
+		req.Header.Set(muxmiddleware.HeaderName, sessionID)
+	}
+
+	return req
 }
 
 func mcpDescriptorsAdd(h *RestServer, args map[string]any) (map[string]any, error) {
@@ -459,6 +692,59 @@ func mcpServicesDelete(h *RestServer, args map[string]any) (map[string]any, erro
 	return map[string]any{"removed": removed > 0, "serviceID": serviceID}, nil
 }
 
+func mcpServicesGet(h *RestServer, args map[string]any) (map[string]any, error) {
+	serviceID, _ := args["serviceID"].(string)
+	if serviceID == "" {
+		return nil, mcpRequiredArgError("serviceID")
+	}
+
+	service, ok := h.findServiceDetailed(serviceID)
+	if !ok {
+		return nil, mcpInvalidArgError(errServiceNotFound.Error() + ": " + serviceID)
+	}
+
+	return map[string]any{"service": service}, nil
+}
+
+func mcpServicesMethods(h *RestServer, args map[string]any) (map[string]any, error) {
+	serviceID, _ := args["serviceID"].(string)
+	if serviceID == "" {
+		return nil, mcpRequiredArgError("serviceID")
+	}
+
+	serviceDescriptor, ok := h.findServiceDescriptor(serviceID)
+	if !ok {
+		return nil, mcpInvalidArgError(errServiceNotFound.Error() + ": " + serviceID)
+	}
+
+	return map[string]any{"methods": h.serviceFromDescriptor(serviceDescriptor, false).Methods}, nil
+}
+
+func mcpServicesMethod(h *RestServer, args map[string]any) (map[string]any, error) {
+	serviceID, _ := args["serviceID"].(string)
+	if serviceID == "" {
+		return nil, mcpRequiredArgError("serviceID")
+	}
+
+	methodID, _ := args["methodID"].(string)
+	if methodID == "" {
+		return nil, mcpRequiredArgError("methodID")
+	}
+
+	service, ok := h.findServiceDetailed(serviceID)
+	if !ok {
+		return nil, mcpInvalidArgError(errServiceNotFound.Error() + ": " + serviceID)
+	}
+
+	for _, method := range service.Methods {
+		if method.Id == methodID || method.Name == methodID {
+			return map[string]any{"method": method}, nil
+		}
+	}
+
+	return nil, mcpInvalidArgError(errMethodNotFound.Error() + " " + methodID + " in service " + serviceID)
+}
+
 func mcpHistoryList(h *RestServer, args map[string]any) (map[string]any, error) {
 	service, _ := args["service"].(string)
 	method, _ := args["method"].(string)
@@ -492,6 +778,46 @@ func mcpHistoryErrors(h *RestServer, args map[string]any) (map[string]any, error
 	}
 
 	return map[string]any{"records": errorsOnly}, nil
+}
+
+func mcpVerifyCalls(h *RestServer, args map[string]any) (map[string]any, error) {
+	service, _ := args["service"].(string)
+	if service == "" {
+		return nil, mcpRequiredArgError("service")
+	}
+
+	method, _ := args["method"].(string)
+	if method == "" {
+		return nil, mcpRequiredArgError("method")
+	}
+
+	expectedCount, err := mcpIntArg(args, "expectedCount", -1)
+	if err != nil {
+		return nil, err
+	}
+
+	if expectedCount < 0 {
+		return nil, mcpRequiredArgError("expectedCount")
+	}
+
+	if h.history == nil {
+		return map[string]any{"verified": false, "message": "history is disabled", "expected": expectedCount, "actual": 0}, nil
+	}
+
+	session, _ := args["session"].(string)
+	calls := h.history.Filter(history.FilterOpts{Service: service, Method: method, Session: session})
+	actual := len(calls)
+
+	if actual != expectedCount {
+		return map[string]any{
+			"verified": false,
+			"message":  fmt.Sprintf("expected %s/%s to be called %d times, got %d", service, method, expectedCount, actual),
+			"expected": expectedCount,
+			"actual":   actual,
+		}, nil
+	}
+
+	return map[string]any{"verified": true, "message": "ok", "expected": expectedCount, "actual": actual}, nil
 }
 
 func mcpDebugCall(h *RestServer, args map[string]any) (map[string]any, error) {
@@ -694,6 +1020,75 @@ func mcpStubsSearch(h *RestServer, args map[string]any) (map[string]any, error) 
 		"stubId":  found.ID.String(),
 		"output":  found.Output,
 	}, nil
+}
+
+func mcpStubsInspect(h *RestServer, args map[string]any) (map[string]any, error) {
+	query, err := mcpInspectQuery(args)
+	if err != nil {
+		return nil, err
+	}
+
+	report := h.budgerigar.InspectQuery(query)
+
+	return map[string]any{"report": toRestInspectReport(report)}, nil
+}
+
+func mcpInspectQuery(args map[string]any) (stuber.Query, error) {
+	service, _ := args["service"].(string)
+	if service == "" {
+		return stuber.Query{}, mcpRequiredArgError("service")
+	}
+
+	method, _ := args["method"].(string)
+	if method == "" {
+		return stuber.Query{}, mcpRequiredArgError("method")
+	}
+
+	query := stuber.Query{Service: service, Method: method}
+
+	err := mcpInspectQueryOptions(args, &query)
+	if err != nil {
+		return stuber.Query{}, err
+	}
+
+	return query, nil
+}
+
+func mcpInspectQueryOptions(args map[string]any, query *stuber.Query) error {
+	if query == nil {
+		return nil
+	}
+
+	if idValue, ok := args["id"]; ok && idValue != nil {
+		id, err := mcpUUIDArg(args, "id")
+		if err != nil {
+			return err
+		}
+
+		query.ID = &id
+	}
+
+	if sessionID, _ := args["session"].(string); sessionID != "" {
+		query.Session = sessionID
+	}
+
+	headers, err := mcpHeadersArg(args)
+	if err != nil {
+		return err
+	}
+
+	query.Headers = headers
+
+	if rawInput, ok := args["input"]; ok && rawInput != nil {
+		input, err := parseMCPInputArg(rawInput)
+		if err != nil {
+			return err
+		}
+
+		query.Input = input
+	}
+
+	return nil
 }
 
 func decodeMCPStubsArg(raw any) ([]*stuber.Stub, error) {

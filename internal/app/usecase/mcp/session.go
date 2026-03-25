@@ -7,6 +7,10 @@ import (
 )
 
 func ApplyTransportSession(r *http.Request, toolName string, args map[string]any) map[string]any {
+	return ApplySession(toolName, args, muxmiddleware.FromRequest(r))
+}
+
+func ApplySession(toolName string, args map[string]any, sessionID string) map[string]any {
 	if !ToolUsesSession(toolName) {
 		return args
 	}
@@ -19,7 +23,7 @@ func ApplyTransportSession(r *http.Request, toolName string, args map[string]any
 		return args
 	}
 
-	if sessionID := muxmiddleware.FromRequest(r); sessionID != "" {
+	if sessionID != "" {
 		args["session"] = sessionID
 	}
 
@@ -28,9 +32,9 @@ func ApplyTransportSession(r *http.Request, toolName string, args map[string]any
 
 func ToolUsesSession(toolName string) bool {
 	switch toolName {
-	case ToolHistoryList, ToolHistoryErrors, ToolDebugCall:
+	case ToolDashboard, ToolOverview, ToolInfo, ToolHistoryList, ToolHistoryErrors, ToolVerifyCalls, ToolDebugCall:
 		return true
-	case ToolStubsUpsert, ToolStubsList, ToolStubsPurge, ToolStubsSearch, ToolStubsUsed, ToolStubsUnused:
+	case ToolStubsUpsert, ToolStubsList, ToolStubsPurge, ToolStubsSearch, ToolStubsInspect, ToolStubsUsed, ToolStubsUnused:
 		return true
 	default:
 		return false

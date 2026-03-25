@@ -1,11 +1,5 @@
 package app
 
-import (
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
-)
-
 func (s *RestServerTestSuite) TestMCPStubsLifecycle() {
 	// Arrange
 	upsert := s.mcpToolCall(s.server, 1, "stubs.upsert", map[string]any{
@@ -136,22 +130,11 @@ func (s *RestServerTestSuite) TestMCPStubsSearch() {
 }
 
 func (s *RestServerTestSuite) TestMCPInfoIncludesTools() {
-	// Arrange
-	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/mcp", nil)
-	w := httptest.NewRecorder()
+	response := s.mcpCallOK(s.server, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+	result, ok := response["result"].(map[string]any)
+	s.Require().True(ok)
 
-	// Act
-	s.server.McpInfo(w, req)
-
-	// Assert
-	s.Require().Equal(http.StatusOK, w.Code)
-
-	var body map[string]any
-
-	err := json.Unmarshal(w.Body.Bytes(), &body)
-	s.Require().NoError(err)
-
-	tools, ok := body["tools"].([]any)
+	tools, ok := result["tools"].([]any)
 	s.Require().True(ok)
 	s.Require().NotEmpty(tools)
 }

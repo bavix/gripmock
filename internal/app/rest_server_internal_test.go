@@ -17,6 +17,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/bavix/features"
+	mcpusecase "github.com/bavix/gripmock/v3/internal/app/usecase/mcp"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -373,15 +374,20 @@ func (s *RestServerTestSuite) TestDeleteService() {
 }
 
 func (s *RestServerTestSuite) TestMcpInfo() {
-	w := httptest.NewRecorder()
-	s.server.McpInfo(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/mcp", nil))
+	resp := s.mcpCallOK(s.server, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "initialize",
+		"params":  mcpInitParams(),
+	})
 
-	s.Equal(http.StatusOK, w.Code)
+	result, ok := resp["result"].(map[string]any)
+	s.Require().True(ok)
+	s.Equal("2025-11-25", result["protocolVersion"])
 
-	var resp map[string]any
-	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &resp))
-	s.Equal("gripmock", resp["serverName"])
-	s.Equal("2024-11-05", resp["protocolVersion"])
+	serverInfo, ok := result["serverInfo"].(map[string]any)
+	s.Require().True(ok)
+	s.Equal("gripmock", serverInfo["name"])
 }
 
 func (s *RestServerTestSuite) TestMcpMessageDescriptorsLifecycle() {
@@ -392,7 +398,12 @@ func (s *RestServerTestSuite) TestMcpMessageDescriptorsLifecycle() {
 	body, err := proto.Marshal(fdsSlice[0])
 	s.Require().NoError(err)
 
-	initResp := s.mcpCallOK(s.server, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "initialize"})
+	initResp := s.mcpCallOK(s.server, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "initialize",
+		"params":  mcpInitParams(),
+	})
 	s.Contains(initResp, "result")
 
 	addResp := s.mcpToolCall(s.server, 2, "descriptors.add", map[string]any{
@@ -457,6 +468,254 @@ func (s *RestServerTestSuite) TestMcpMessageHistoryTools() {
 	s.Len(errorRecords, 1)
 }
 
+func (s *RestServerTestSuite) TestMcpToolsListIncludesExpandedSurface() {
+	response := s.mcpCallOK(s.server, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": map[string]any{}})
+
+	result, ok := response["result"].(map[string]any)
+	s.Require().True(ok)
+
+	tools, ok := result["tools"].([]any)
+	s.Require().True(ok)
+	s.Require().NotEmpty(tools)
+
+	names := make(map[string]struct{}, len(tools))
+	for _, raw := range tools {
+		item, ok := raw.(map[string]any)
+		s.Require().True(ok)
+
+		name, ok := item["name"].(string)
+		s.Require().True(ok)
+
+		names[name] = struct{}{}
+	}
+
+	for _, required := range []string{"health.liveness", "dashboard.full", "services.get", "verify.calls", "stubs.inspect"} {
+		_, ok = names[required]
+		s.True(ok)
+	}
+}
+
+func (s *RestServerTestSuite) TestMcpVerifyCallsTool() {
+	server := s.newRestServerWithHistory(
+		history.CallRecord{Service: "svc", Method: "M", Session: "A"},
+		history.CallRecord{Service: "svc", Method: "M", Session: "A"},
+	)
+
+	okResponse := s.mcpToolCallWithRequest(server, 1, "verify.calls", map[string]any{
+		"service":       "svc",
+		"method":        "M",
+		"expectedCount": 2,
+	}, func(req *http.Request) {
+		req.Header.Set("X-Gripmock-Session", "A")
+	})
+
+	okResult := s.mcpStructuredContent(okResponse)
+	verified, ok := okResult["verified"].(bool)
+	s.Require().True(ok)
+	s.True(verified)
+
+	badResponse := s.mcpToolCall(server, 2, "verify.calls", map[string]any{
+		"service":       "svc",
+		"method":        "M",
+		"expectedCount": 1,
+	})
+
+	badResult := s.mcpStructuredContent(badResponse)
+	verified, ok = badResult["verified"].(bool)
+	s.Require().True(ok)
+	s.False(verified)
+}
+
+func (s *RestServerTestSuite) TestMcpServicesGetTool() {
+	listResponse := s.mcpToolCall(s.server, 1, "services.list", map[string]any{})
+	listJSON := s.mcpStructuredContent(listResponse)
+
+	services, ok := listJSON["services"].([]any)
+	s.Require().True(ok)
+	s.Require().NotEmpty(services)
+
+	first, ok := services[0].(map[string]any)
+	s.Require().True(ok)
+
+	serviceID, ok := first["id"].(string)
+	s.Require().True(ok)
+	s.Require().NotEmpty(serviceID)
+
+	getResponse := s.mcpToolCall(s.server, 2, "services.get", map[string]any{"serviceID": serviceID})
+	getJSON := s.mcpStructuredContent(getResponse)
+
+	service, ok := getJSON["service"].(map[string]any)
+	s.Require().True(ok)
+	s.Equal(serviceID, service["id"])
+}
+
+func (s *RestServerTestSuite) TestMcpGripmockInfoTool() {
+	response := s.mcpToolCall(s.server, 1, "gripmock.info", map[string]any{})
+	payload := s.mcpStructuredContent(response)
+
+	_, ok := payload["appName"].(string)
+	s.True(ok)
+
+	_, ok = payload["version"].(string)
+	s.True(ok)
+
+	protocolVersion, ok := payload["protocolVersion"].(string)
+	s.True(ok)
+	s.Equal("2025-11-25", protocolVersion)
+
+	tools, ok := payload["tools"].([]any)
+	s.True(ok)
+	s.NotEmpty(tools)
+}
+
+func (s *RestServerTestSuite) TestMcpHealthStatusTool() {
+	response := s.mcpToolCall(s.server, 1, "health.status", map[string]any{})
+	payload := s.mcpStructuredContent(response)
+
+	liveness, ok := payload["liveness"].(string)
+	s.Require().True(ok)
+	s.Equal("ok", liveness)
+
+	_, ok = payload["readiness"].(string)
+	s.True(ok)
+
+	_, ok = payload["ready"].(bool)
+	s.True(ok)
+}
+
+func (s *RestServerTestSuite) TestMcpReflectInfoTool() {
+	response := s.mcpToolCall(s.server, 1, "reflect.info", map[string]any{})
+	payload := s.mcpStructuredContent(response)
+
+	_, ok := payload["runtimeDescriptorFiles"].(float64)
+	s.True(ok)
+
+	_, ok = payload["reflectionDescriptorFiles"].(float64)
+	s.True(ok)
+
+	_, ok = payload["dynamicDescriptorFiles"].(float64)
+	s.True(ok)
+
+	_, ok = payload["reflectionDetected"].(bool)
+	s.True(ok)
+}
+
+func (s *RestServerTestSuite) TestMcpReflectSourcesTool() {
+	response := s.mcpToolCall(s.server, 1, "reflect.sources", map[string]any{"kind": "all", "offset": 0, "limit": 10})
+	payload := s.mcpStructuredContent(response)
+
+	kind, ok := payload["kind"].(string)
+	s.Require().True(ok)
+	s.Equal("all", kind)
+
+	paths, ok := payload["paths"].([]any)
+	s.Require().True(ok)
+	s.NotNil(paths)
+
+	_, ok = payload["total"].(float64)
+	s.True(ok)
+
+	groups, ok := payload["groups"].(map[string]any)
+	s.Require().True(ok)
+
+	reflection, ok := groups["reflection"].(map[string]any)
+	s.Require().True(ok)
+	_, ok = reflection["count"].(float64)
+	s.True(ok)
+
+	dynamic, ok := groups["dynamic"].(map[string]any)
+	s.Require().True(ok)
+	_, ok = dynamic["count"].(float64)
+	s.True(ok)
+}
+
+func (s *RestServerTestSuite) TestMcpReflectSourcesInvalidKind() {
+	response := s.mcpToolCall(s.server, 1, "reflect.sources", map[string]any{"kind": "unexpected"})
+
+	errorPayload, ok := response["error"].(map[string]any)
+	s.Require().True(ok)
+
+	code, ok := errorPayload["code"].(float64)
+	s.Require().True(ok)
+	s.InDelta(float64(-32602), code, 0.0)
+}
+
+func (s *RestServerTestSuite) TestMcpReflectSourcesPagination() {
+	_ = s.mcpToolCall(s.server, 1, "descriptors.add", map[string]any{
+		"descriptorSetBase64": base64.StdEncoding.EncodeToString(s.greeterDescriptorSetBytes()),
+	})
+
+	response := s.mcpToolCall(s.server, 2, "reflect.sources", map[string]any{"kind": "dynamic", "offset": 0, "limit": 1})
+	payload := s.mcpStructuredContent(response)
+
+	total, ok := payload["total"].(float64)
+	s.Require().True(ok)
+	s.GreaterOrEqual(int(total), 1)
+
+	paths, ok := payload["paths"].([]any)
+	s.Require().True(ok)
+	s.LessOrEqual(len(paths), 1)
+}
+
+func (s *RestServerTestSuite) TestMcpRuntimeToolsHaveHandlers() {
+	handlers := mcpToolHandlers(s.server)
+	tools := mcpusecase.ListRuntimeTools()
+
+	for _, tool := range tools {
+		name, ok := tool["name"].(string)
+		s.Require().True(ok)
+
+		_, exists := handlers[name]
+		s.True(exists, "missing handler for runtime tool: %s", name)
+	}
+}
+
+func (s *RestServerTestSuite) TestMcpSmokeFlow() {
+	server := s.newRestServerWithHistory(history.CallRecord{Service: "svc", Method: "M"})
+
+	initResponse := s.mcpCallOK(server, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "initialize",
+		"params":  mcpInitParams(),
+	})
+	s.Contains(initResponse, "result")
+
+	toolsResponse := s.mcpCallOK(server, map[string]any{"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": map[string]any{}})
+	toolsResult, ok := toolsResponse["result"].(map[string]any)
+	s.Require().True(ok)
+	tools, ok := toolsResult["tools"].([]any)
+	s.Require().True(ok)
+	s.NotEmpty(tools)
+
+	addDescriptorsResponse := s.mcpToolCall(server, 3, "descriptors.add", map[string]any{
+		"descriptorSetBase64": base64.StdEncoding.EncodeToString(s.greeterDescriptorSetBytes()),
+	})
+	s.NotContains(addDescriptorsResponse, "error")
+
+	upsertResponse := s.mcpToolCall(server, 4, "stubs.upsert", map[string]any{
+		"stubs": map[string]any{
+			"service": "svc",
+			"method":  "M",
+			"input":   map[string]any{"equals": map[string]any{"name": "alex"}},
+			"output":  map[string]any{"data": map[string]any{"ok": true}},
+		},
+	})
+	s.NotContains(upsertResponse, "error")
+
+	historyResponse := s.mcpToolCall(server, 5, "history.list", map[string]any{"service": "svc", "method": "M", "limit": 10})
+	historyPayload := s.mcpStructuredContent(historyResponse)
+	records, ok := historyPayload["records"].([]any)
+	s.Require().True(ok)
+	s.NotEmpty(records)
+
+	verifyResponse := s.mcpToolCall(server, 6, "verify.calls", map[string]any{"service": "svc", "method": "M", "expectedCount": 1})
+	verifyPayload := s.mcpStructuredContent(verifyResponse)
+	verified, ok := verifyPayload["verified"].(bool)
+	s.Require().True(ok)
+	s.True(verified)
+}
+
 func (s *RestServerTestSuite) TestMcpDebugCallTool() {
 	server := s.newRestServerWithHistory(history.CallRecord{Service: "svc.Greeter", Method: "SayHello", Error: "not matched"})
 
@@ -517,14 +776,15 @@ func (s *RestServerTestSuite) TestMcpToolCallInvalidParamsCode() {
 
 func (s *RestServerTestSuite) TestMcpToolCallUnknownToolCode() {
 	response := s.mcpToolCall(s.server, 1, "unknown.tool", map[string]any{})
-	s.InDelta(float64(-32601), s.mcpErrorCode(response), 0.0)
+	s.InDelta(float64(-32602), s.mcpErrorCode(response), 0.0)
 }
 
 func (s *RestServerTestSuite) TestMcpNotificationReturnsNoContent() {
 	s.mcpCall(s.server, map[string]any{
 		"jsonrpc": "2.0",
-		"method":  "ping",
-	}, http.StatusNoContent)
+		"method":  "notifications/initialized",
+		"params":  map[string]any{},
+	}, http.StatusAccepted)
 }
 
 func (s *RestServerTestSuite) TestMcpHistoryList_SessionScoping() {
@@ -1237,16 +1497,17 @@ func (s *RestServerTestSuite) mcpCallWithRequest(
 
 	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/mcp", bytes.NewReader(requestBody))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json, text/event-stream")
 
 	if prepare != nil {
 		prepare(req)
 	}
 
 	w := httptest.NewRecorder()
-	server.McpMessage(w, req)
+	server.MCPHandler().ServeHTTP(w, req)
 	s.Equal(expectedStatus, w.Code)
 
-	if expectedStatus == http.StatusNoContent {
+	if expectedStatus == http.StatusNoContent || expectedStatus == http.StatusAccepted {
 		s.Empty(w.Body.String())
 
 		return nil
@@ -1260,6 +1521,14 @@ func (s *RestServerTestSuite) mcpCallWithRequest(
 
 func (s *RestServerTestSuite) mcpCallOK(server *RestServer, payload map[string]any) map[string]any {
 	return s.mcpCall(server, payload, http.StatusOK)
+}
+
+func mcpInitParams() map[string]any {
+	return map[string]any{
+		"protocolVersion": "2025-11-25",
+		"capabilities":    map[string]any{},
+		"clientInfo":      map[string]any{"name": "tests", "version": "1"},
+	}
 }
 
 func (s *RestServerTestSuite) mcpToolCall(server *RestServer, id int, name string, arguments map[string]any) map[string]any {
