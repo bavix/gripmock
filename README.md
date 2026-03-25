@@ -34,11 +34,17 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 
 - **Descriptor API (`/api/descriptors`)**: runtime loading of compiled proto descriptors (`.pb`) with validated curl workflow: [docs](https://bavix.github.io/gripmock/guide/api/descriptors)
 
-## 🆚 Why Choose Our Fork?
+## 🧬 Project Evolution
 
-This service is a fork of [tokopedia/gripmock](https://github.com/tokopedia/gripmock), but you should choose our fork. Here's why:
+GripMock originally started from ideas in [tokopedia/gripmock](https://github.com/tokopedia/gripmock), but the current implementation was fully rewritten.
 
-### 🆕 New Features
+Today it works on a fundamentally different architecture:
+
+- ✅ **No generated gRPC server code** at runtime
+- ✅ **No `cmd/exec` process orchestration** to launch generated servers
+- ✅ **Native in-process runtime engine** for predictable behavior and easier maintenance
+
+### 🆕 What You Get
 - ✅ **YAML support** as JSON alternative for static stubs
 - ✅ **Health check endpoints** (`/api/health/liveness`, `/api/health/readiness`)
 - ✅ **Header matching** support for authentication testing
