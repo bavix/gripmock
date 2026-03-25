@@ -1,4 +1,4 @@
-# Sources
+# Sources <VersionTag version="v3.8.4" />
 
 GripMock can load API definitions from different source types.
 
@@ -44,7 +44,7 @@ gripmock --stub ./stubs buf.build/connectrpc/eliza
 
 For private/on-prem usage and refs, see [BSR](/guide/sources/bsr).
 
-### 5) gRPC Reflection (`grpc://`, `grpcs://`)
+### 5) gRPC Reflection (`grpc://`, `grpcs://`) <VersionTag version="v3.8.5" />
 
 Load API definitions from a live gRPC server via reflection:
 
