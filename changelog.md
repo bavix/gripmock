@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.8.7 - 2026-03-25
+
+### What's Changed
+
+* mcp v2: migration to github.com/modelcontextprotocol/go-sdk by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/795
+* doc tags by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/796
+* project evolution by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/797
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.8.6...v3.8.7
+
 ## v3.8.6 - 2026-03-24
 
 ### What's Changed
