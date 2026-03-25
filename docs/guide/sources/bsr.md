@@ -1,4 +1,4 @@
-# Buf Schema Registry (BSR)
+# Buf Schema Registry (BSR) <VersionTag version="v3.8.4" />
 
 GripMock can load gRPC API definitions directly from Buf Schema Registry modules.
 
