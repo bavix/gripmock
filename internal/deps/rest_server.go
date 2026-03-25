@@ -103,6 +103,9 @@ func (b *Builder) RestServe(
 			muxmiddleware.RequestLogger,
 		},
 	})
+	router.Path("/api/mcp").Methods(http.MethodPost).Handler(
+		withMCPMiddlewares(apiServer.MCPHandler()),
+	)
 	router.PathPrefix("/").Handler(http.FileServerFS(ui)).Methods(http.MethodGet)
 
 	const (
@@ -162,4 +165,19 @@ func (b *Builder) RestServe(
 		listener:   listener,
 		tlsEnabled: srv.TLSConfig != nil,
 	}, nil
+}
+
+func withMCPMiddlewares(handler http.Handler) http.Handler {
+	middlewares := []func(http.Handler) http.Handler{
+		httputil.MaxBodySize(httputil.MaxBodyBytes()),
+		muxmiddleware.PanicRecoveryMiddleware,
+		muxmiddleware.TransportSession,
+		muxmiddleware.RequestLogger,
+	}
+
+	for _, middleware := range middlewares {
+		handler = middleware(handler)
+	}
+
+	return handler
 }

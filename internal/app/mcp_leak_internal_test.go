@@ -29,7 +29,7 @@ func TestMcpMessageNOGoroutineLeakOnNotifications(t *testing.T) {
 
 	baseline := runtime.NumGoroutine()
 
-	payload := map[string]any{"jsonrpc": "2.0", "method": "ping"}
+	payload := map[string]any{"jsonrpc": "2.0", "method": "notifications/initialized", "params": map[string]any{}}
 	body, err := json.Marshal(payload)
 	require.NoError(t, err)
 
@@ -37,10 +37,11 @@ func TestMcpMessageNOGoroutineLeakOnNotifications(t *testing.T) {
 	for range iterations {
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/mcp", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json, text/event-stream")
 
 		w := httptest.NewRecorder()
-		server.McpMessage(w, req)
-		require.Equal(t, http.StatusNoContent, w.Code)
+		server.MCPHandler().ServeHTTP(w, req)
+		require.Equal(t, http.StatusAccepted, w.Code)
 	}
 
 	// Allow small jitter from runtime/test infrastructure.

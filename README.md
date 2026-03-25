@@ -26,7 +26,7 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 - ❤️ **Health Checks** - Production-ready monitoring endpoints
 - 🔌 **Plugin System** - Extend template functions with custom plugins
 - 🧪 **Embedded SDK (Experimental)** - Run GripMock inside Go tests and services
-- 🧪 **MCP API (Experimental)** - Use Model Context Protocol endpoints for tool integration
+- 🧪 **MCP API (Experimental)** - MCP-first streamable HTTP API (`POST /api/mcp`, protocol `2025-11-25`) for tool integration
 
 ## 📚 Documentation
 

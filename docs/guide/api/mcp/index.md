@@ -1,52 +1,71 @@
 # MCP API <VersionTag version="v3.7.0" />
 
-⚠️ **EXPERIMENTAL FEATURE**: The MCP API is currently experimental and primarily designed for AI/agent integrations. The API is subject to change without notice and may be modified or removed in future versions. Plan your integrations for breakage tolerance and version drift.
+⚠️ **EXPERIMENTAL FEATURE**: The MCP API is designed for AI/agent integrations and may change without notice.
 
-GripMock supports MCP over HTTP JSON-RPC at `POST /api/mcp`.
+GripMock exposes MCP over HTTP at `POST /api/mcp` using `github.com/modelcontextprotocol/go-sdk`.
 
-MCP gives AI agents a single integration point to inspect services, manage dynamic descriptors, and run debug/history workflows.
+## Protocol
+
+- MCP protocol version: `2025-11-25`
+- Transport: Streamable HTTP (stateless JSON mode)
+- Endpoint: `http://127.0.0.1:4771/api/mcp`
+
+## Session behavior
+
+Session source priority:
+
+1. explicit `arguments.session`
+2. `X-Gripmock-Session` request header
+
+The header session is injected by middleware into MCP tool execution context.
 
 ## Available tools
 
-Use `tools/list` to discover the exact runtime set.
+Use `tools/list` to discover runtime tool metadata. Current tool surface:
 
-- `descriptors.add`, `descriptors.list`
-- `services.list`, `services.delete`
-- `stubs.upsert`, `stubs.list`, `stubs.get`, `stubs.delete`, `stubs.batchDelete`, `stubs.purge`, `stubs.search`, `stubs.used`, `stubs.unused`
-- `schema.stub`
-- `history.list`, `history.errors`
-- `debug.call`
-
-Minimal end-to-end MCP flow:
-
-1. `tools/call` -> `descriptors.add`
-2. `tools/call` -> `stubs.upsert`
-3. external `grpcurl` call to `localhost:4770`
-4. `tools/call` -> `history.list` or `stubs.used`
+- health: `health.liveness`, `health.readiness`, `health.status`
+- dashboard: `dashboard.full`, `dashboard.overview`, `dashboard.info`
+- sessions: `sessions.list`
+- gripmock: `gripmock.info`
+- reflection: `reflect.info`, `reflect.sources`
+- descriptors: `descriptors.add`, `descriptors.list`
+- services: `services.list`, `services.get`, `services.methods`, `services.method`, `services.delete`
+- history/verify/debug: `history.list`, `history.errors`, `verify.calls`, `debug.call`
+- stubs: `stubs.upsert`, `stubs.list`, `stubs.get`, `stubs.delete`, `stubs.batchDelete`, `stubs.purge`, `stubs.search`, `stubs.inspect`, `stubs.used`, `stubs.unused`
+- schema: `schema.stub`
 
 ## JSON-RPC examples
 
-Initialize session:
+Initialize:
 
 ```json
 {
   "jsonrpc": "2.0",
   "id": 1,
-  "method": "initialize"
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-11-25",
+    "capabilities": {},
+    "clientInfo": {
+      "name": "example-client",
+      "version": "1.0.0"
+    }
+  }
 }
 ```
 
-List available tools:
+List tools:
 
 ```json
 {
   "jsonrpc": "2.0",
   "id": 2,
-  "method": "tools/list"
+  "method": "tools/list",
+  "params": {}
 }
 ```
 
-`stubs.upsert`:
+Call tool (`stubs.upsert`):
 
 ```json
 {
@@ -77,7 +96,7 @@ List available tools:
 }
 ```
 
-`stubs.list`:
+Call tool (`stubs.inspect`):
 
 ```json
 {
@@ -85,17 +104,23 @@ List available tools:
   "id": 11,
   "method": "tools/call",
   "params": {
-    "name": "stubs.list",
+    "name": "stubs.inspect",
     "arguments": {
       "service": "unitconverter.v1.UnitConversionService",
       "method": "ConvertWeight",
-      "limit": 10
+      "input": [
+        {
+          "value": 1,
+          "from_unit": "POUNDS",
+          "to_unit": "KILOGRAMS"
+        }
+      ]
     }
   }
 }
 ```
 
-`stubs.get`:
+Call tool (`reflect.sources`) with filtering/pagination:
 
 ```json
 {
@@ -103,180 +128,27 @@ List available tools:
   "id": 12,
   "method": "tools/call",
   "params": {
-    "name": "stubs.get",
+    "name": "reflect.sources",
     "arguments": {
-      "id": "fc800277-9bbb-4e0b-988e-4cf01b525085"
+      "kind": "dynamic",
+      "offset": 0,
+      "limit": 50
     }
   }
 }
 ```
 
-`stubs.delete`:
+Notification (`notifications/initialized`):
 
 ```json
 {
   "jsonrpc": "2.0",
-  "id": 13,
-  "method": "tools/call",
-  "params": {
-    "name": "stubs.delete",
-    "arguments": {
-      "id": "fc800277-9bbb-4e0b-988e-4cf01b525085"
-    }
-  }
+  "method": "notifications/initialized",
+  "params": {}
 }
 ```
 
-`stubs.batchDelete`:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 14,
-  "method": "tools/call",
-  "params": {
-    "name": "stubs.batchDelete",
-    "arguments": {
-      "ids": [
-        "fc800277-9bbb-4e0b-988e-4cf01b525085",
-        "a6d58d6c-43ce-4c6e-8b2a-9f9a9ed6c8e1"
-      ]
-    }
-  }
-}
-```
-
-`stubs.purge`:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 15,
-  "method": "tools/call",
-  "params": {
-    "name": "stubs.purge",
-    "arguments": {}
-  }
-}
-```
-
-`stubs.search`:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 16,
-  "method": "tools/call",
-  "params": {
-    "name": "stubs.search",
-    "arguments": {
-      "service": "unitconverter.v1.UnitConversionService",
-      "method": "ConvertWeight",
-      "payload": {
-        "value": 1,
-        "from_unit": "POUNDS",
-        "to_unit": "KILOGRAMS"
-      }
-    }
-  }
-}
-```
-
-`stubs.used`:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 17,
-  "method": "tools/call",
-  "params": {
-    "name": "stubs.used",
-    "arguments": {
-      "service": "unitconverter.v1.UnitConversionService"
-    }
-  }
-}
-```
-
-`stubs.unused`:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 18,
-  "method": "tools/call",
-  "params": {
-    "name": "stubs.unused",
-    "arguments": {
-      "service": "unitconverter.v1.UnitConversionService"
-    }
-  }
-}
-```
-
-`history.list` (post-call verification):
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 19,
-  "method": "tools/call",
-  "params": {
-    "name": "history.list",
-    "arguments": {
-      "service": "unitconverter.v1.UnitConversionService",
-      "method": "ConvertWeight",
-      "limit": 5
-    }
-  }
-}
-```
-
-`schema.stub` (stub schema URL discovery):
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 20,
-  "method": "tools/call",
-  "params": {
-    "name": "schema.stub",
-    "arguments": {}
-  }
-}
-```
-
-This page focuses on connecting GripMock MCP to OpenCode.
-
-## Endpoints
-
-- `GET /api/mcp` — MCP transport metadata.
-- `POST /api/mcp` — JSON-RPC request handler.
-
-## Endpoint shape
-
-MCP for GripMock is exposed as a regular HTTP endpoint:
-
-```text
-POST http://127.0.0.1:4771/api/mcp
-Content-Type: application/json
-X-Gripmock-Session: <optional-session>
-```
-
-## Session support
-
-Session source priority:
-
-1. explicit `arguments.session`
-2. `X-Gripmock-Session` header
-
-The transport-level session is applied when `arguments.session` is omitted.
-
-## Client setup examples
-
-### OpenCode (config file example)
-
-In OpenCode, add GripMock MCP server to `~/.config/opencode/config.json`:
+## Client setup example (OpenCode)
 
 ```json
 {
@@ -291,10 +163,8 @@ In OpenCode, add GripMock MCP server to `~/.config/opencode/config.json`:
 }
 ```
 
-For session-scoped behavior, send this header:
+Optional request header for session-scoped calls:
 
 ```text
 X-Gripmock-Session: qa-run-42
 ```
-
-Use the same MCP endpoint URL: `http://localhost:4771/api/mcp`.
