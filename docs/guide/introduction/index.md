@@ -20,9 +20,19 @@ GripMock is a **mock server** for **gRPC** services. Give it your `.proto` files
 - **No Dependencies**: Works with any programming language that supports gRPC
 - **Production Ready**: Built-in health checks and Docker support
 
+## Architecture Story
+
+GripMock was initially inspired by [tokopedia/gripmock](https://github.com/tokopedia/gripmock), but the current project is fully rewritten.
+
+The modern GripMock engine is fundamentally different:
+
+- It does **not** generate gRPC server code at runtime
+- It does **not** spawn generated servers via `cmd/exec`
+- It uses a native in-process runtime for stubbing and transport handling
+
 ## Key Features
 
-- **Quick Start**: Use your `.proto` files to generate a server instantly
+- **Quick Start**: Use your `.proto` files to start a mock server instantly
 - **YAML & JSON**: Define your test responses in the format you prefer
 - **Health Monitoring**: Built-in health checks for production deployment
 - **Header Testing**: Test different authentication tokens and headers
