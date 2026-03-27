@@ -18,6 +18,10 @@ func (s *searcher) resolveSearchCandidates(query Query) ([]*Stub, error) {
 		return collectStubs(stubs), nil
 	}
 
+	if query.StrictService {
+		return nil, ErrStubNotFound
+	}
+
 	if !lookup.HasMethodAvailable(query.Method) {
 		return nil, ErrStubNotFound
 	}

@@ -37,20 +37,21 @@ func (m *grpcMocker) proxyUnary(
 		_ = grpc.SetTrailer(ctx, trailer)
 	}
 
+	captureCtx := m.newCaptureRequestContext(ctx)
 	requestData := convertToMap(req)
-	sessionID := m.sessionFromContext(ctx)
+	responseHeaders := responseHeadersFromMetadata(header, trailer)
 
 	if err != nil {
 		if capture {
-			m.recordCapturedUnaryStub(requestData, nil, err, sessionID)
+			m.recordCapturedUnaryStub(requestData, captureCtx.headers, nil, responseHeaders, err, captureCtx.sessionID)
 		}
 
 		return nil, err
 	}
 
-	responseData := convertToMap(resp)
+	responseData := messageToMap(resp)
 	if capture {
-		m.recordCapturedUnaryStub(requestData, responseData, nil, sessionID)
+		m.recordCapturedUnaryStub(requestData, captureCtx.headers, responseData, responseHeaders, nil, captureCtx.sessionID)
 	}
 
 	return resp, nil

@@ -11,19 +11,29 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 )
 
-//nolint:cyclop,funlen,wsl_v5
 func (m *grpcMocker) proxyServerStream(stream grpc.ServerStream, route *proxyroutes.Route, capture bool) error {
+	req := dynamicpb.NewMessage(m.inputDesc)
+
+	if err := stream.RecvMsg(req); err != nil {
+		return err
+	}
+
+	return m.proxyServerStreamWithRequest(stream, route, req, capture)
+}
+
+//nolint:cyclop,funlen,wsl_v5
+func (m *grpcMocker) proxyServerStreamWithRequest(
+	stream grpc.ServerStream,
+	route *proxyroutes.Route,
+	req *dynamicpb.Message,
+	capture bool,
+) error {
 	proxyCtx, cancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
 	defer cancel()
 
 	desc := &grpc.StreamDesc{ServerStreams: true, ClientStreams: false}
 	clientStream, err := route.Conn.NewStream(proxyCtx, desc, m.fullMethod)
 	if err != nil {
-		return err
-	}
-
-	req := dynamicpb.NewMessage(m.inputDesc)
-	if err = stream.RecvMsg(req); err != nil {
 		return err
 	}
 
@@ -42,6 +52,8 @@ func (m *grpcMocker) proxyServerStream(stream grpc.ServerStream, route *proxyrou
 	}
 
 	responses := make([]map[string]any, 0, proxyMessagesInitCap)
+	captureCtx := m.newCaptureRequestContext(stream.Context())
+	requestData := convertToMap(req)
 
 	for {
 		resp := dynamicpb.NewMessage(m.outputDesc)
@@ -52,13 +64,20 @@ func (m *grpcMocker) proxyServerStream(stream grpc.ServerStream, route *proxyrou
 
 		if err != nil {
 			if capture {
-				m.recordCapturedServerStreamStub(convertToMap(req), responses, m.sessionFromContext(stream.Context()))
+				m.recordCapturedServerStreamStub(
+					requestData,
+					captureCtx.headers,
+					responses,
+					responseHeadersFromClientStream(clientStream),
+					err,
+					captureCtx.sessionID,
+				)
 			}
 
 			return err
 		}
 
-		responses = append(responses, convertToMap(resp))
+		responses = append(responses, messageToMap(resp))
 
 		if err = stream.SendMsg(resp); err != nil {
 			return err
@@ -70,28 +89,26 @@ func (m *grpcMocker) proxyServerStream(stream grpc.ServerStream, route *proxyrou
 	}
 
 	if capture {
-		m.recordCapturedServerStreamStub(convertToMap(req), responses, m.sessionFromContext(stream.Context()))
+		m.recordCapturedServerStreamStub(
+			requestData,
+			captureCtx.headers,
+			responses,
+			responseHeadersFromClientStream(clientStream),
+			nil,
+			captureCtx.sessionID,
+		)
 	}
 
 	return nil
 }
 
-//nolint:cyclop,funlen,wsl_v5
 func (m *grpcMocker) proxyClientStream(stream grpc.ServerStream, route *proxyroutes.Route, capture bool) error {
-	proxyCtx, cancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
-	defer cancel()
-
-	desc := &grpc.StreamDesc{ServerStreams: false, ClientStreams: true}
-	clientStream, err := route.Conn.NewStream(proxyCtx, desc, m.fullMethod)
-	if err != nil {
-		return err
-	}
-
-	requests := make([]map[string]any, 0, proxyMessagesInitCap)
+	requestsToForward := make([]*dynamicpb.Message, 0, proxyMessagesInitCap)
 
 	for {
 		req := dynamicpb.NewMessage(m.inputDesc)
-		err = stream.RecvMsg(req)
+
+		err := stream.RecvMsg(req)
 		if errors.Is(err, io.EOF) {
 			break
 		}
@@ -100,6 +117,33 @@ func (m *grpcMocker) proxyClientStream(stream grpc.ServerStream, route *proxyrou
 			return err
 		}
 
+		requestsToForward = append(requestsToForward, req)
+	}
+
+	return m.proxyClientStreamWithRequests(stream, route, requestsToForward, capture)
+}
+
+//nolint:cyclop,funlen
+func (m *grpcMocker) proxyClientStreamWithRequests(
+	stream grpc.ServerStream,
+	route *proxyroutes.Route,
+	requestsToForward []*dynamicpb.Message,
+	capture bool,
+) error {
+	proxyCtx, cancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
+	defer cancel()
+
+	desc := &grpc.StreamDesc{ServerStreams: false, ClientStreams: true}
+
+	clientStream, err := route.Conn.NewStream(proxyCtx, desc, m.fullMethod)
+	if err != nil {
+		return err
+	}
+
+	requests := make([]map[string]any, 0, proxyMessagesInitCap)
+	captureCtx := m.newCaptureRequestContext(stream.Context())
+
+	for _, req := range requestsToForward {
 		requests = append(requests, convertToMap(req))
 
 		if err = clientStream.SendMsg(req); err != nil {
@@ -120,7 +164,14 @@ func (m *grpcMocker) proxyClientStream(stream grpc.ServerStream, route *proxyrou
 	resp := dynamicpb.NewMessage(m.outputDesc)
 	if err = clientStream.RecvMsg(resp); err != nil {
 		if capture {
-			m.recordCapturedClientStreamStub(requests, nil, err, m.sessionFromContext(stream.Context()))
+			m.recordCapturedClientStreamStub(
+				requests,
+				captureCtx.headers,
+				nil,
+				responseHeadersFromClientStream(clientStream),
+				err,
+				captureCtx.sessionID,
+			)
 		}
 
 		return err
@@ -135,7 +186,14 @@ func (m *grpcMocker) proxyClientStream(stream grpc.ServerStream, route *proxyrou
 	}
 
 	if capture {
-		m.recordCapturedClientStreamStub(requests, convertToMap(resp), nil, m.sessionFromContext(stream.Context()))
+		m.recordCapturedClientStreamStub(
+			requests,
+			captureCtx.headers,
+			messageToMap(resp),
+			responseHeadersFromClientStream(clientStream),
+			nil,
+			captureCtx.sessionID,
+		)
 	}
 
 	return nil
@@ -157,6 +215,8 @@ func (m *grpcMocker) proxyBidiStream(stream grpc.ServerStream, route *proxyroute
 		requests  = make([]map[string]any, 0, proxyMessagesInitCap)
 		responses = make([]map[string]any, 0, proxyMessagesInitCap)
 	)
+
+	captureCtx := m.newCaptureRequestContext(stream.Context())
 
 	errCh := make(chan error, proxyErrChanCap)
 
@@ -205,7 +265,7 @@ func (m *grpcMocker) proxyBidiStream(stream grpc.ServerStream, route *proxyroute
 			}
 
 			mu.Lock()
-			responses = append(responses, convertToMap(resp))
+			responses = append(responses, messageToMap(resp))
 			mu.Unlock()
 
 			if err = stream.SendMsg(resp); err != nil {
@@ -224,7 +284,19 @@ func (m *grpcMocker) proxyBidiStream(stream grpc.ServerStream, route *proxyroute
 	}
 
 	if capture {
-		m.recordCapturedBidiStub(requests, responses, m.sessionFromContext(stream.Context()))
+		captureErr := firstErr
+		if captureErr == nil {
+			captureErr = secondErr
+		}
+
+		m.recordCapturedBidiStub(
+			requests,
+			captureCtx.headers,
+			responses,
+			responseHeadersFromClientStream(clientStream),
+			captureErr,
+			captureCtx.sessionID,
+		)
 	}
 
 	if firstErr != nil {

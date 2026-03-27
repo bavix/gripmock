@@ -44,6 +44,7 @@ func (d *defaultRankStrategy) FieldCount(stub *Stub) int {
 
 func countStubFields(stub *Stub) int {
 	count := len(stub.Input.Equals) + len(stub.Input.Contains) + len(stub.Input.Matches)
+	count += len(stub.Headers.Equals) + len(stub.Headers.Contains) + len(stub.Headers.Matches)
 
 	for _, input := range stub.Inputs {
 		count += len(input.Equals) + len(input.Contains) + len(input.Matches)

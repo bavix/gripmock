@@ -187,12 +187,13 @@ func (s *searcher) newBidiResult(query QueryBidi, matchingStubs []*Stub, lookup 
 	}
 
 	result.reserveQuery = Query{
-		Service: query.Service,
-		Method:  query.Method,
-		Session: query.Session,
-		Headers: query.Headers,
-		Input:   result.inputBuf[:],
-		toggles: query.toggles,
+		Service:       query.Service,
+		Method:        query.Method,
+		Session:       query.Session,
+		StrictService: query.StrictService,
+		Headers:       query.Headers,
+		Input:         result.inputBuf[:],
+		toggles:       query.toggles,
 	}
 
 	return result

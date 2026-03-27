@@ -1,87 +1,104 @@
 package app
 
 import (
-	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/proto"
 
-	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/internal/infra/proxycapture"
 )
 
-func (m *grpcMocker) recordCapturedUnaryStub(request map[string]any, response map[string]any, callErr error, sessionID string) {
-	stub := &stuber.Stub{
-		Service: m.fullServiceName,
-		Method:  m.methodName,
-		Session: sessionID,
-		Input:   stuber.InputData{Equals: request},
-		Output:  stuber.Output{Data: response},
+func requestHeadersFromMetadata(md metadata.MD) map[string]any {
+	if len(md) == 0 {
+		return nil
 	}
 
-	if callErr != nil {
-		st := status.Convert(callErr)
-		code := st.Code()
-		stub.Output.Code = &code
-		stub.Output.Error = st.Message()
-		stub.Output.Data = nil
-	}
-
-	m.budgerigar.PutMany(stub)
+	return processHeaders(md)
 }
 
-func (m *grpcMocker) recordCapturedServerStreamStub(request map[string]any, responses []map[string]any, sessionID string) {
-	streamOutput := make([]any, 0, len(responses))
-	for _, response := range responses {
-		streamOutput = append(streamOutput, response)
-	}
-
-	m.budgerigar.PutMany(&stuber.Stub{
-		Service: m.fullServiceName,
-		Method:  m.methodName,
-		Session: sessionID,
-		Input:   stuber.InputData{Equals: request},
-		Output:  stuber.Output{Stream: streamOutput},
-	})
+func responseHeadersFromMetadata(head metadata.MD, tail metadata.MD) map[string]string {
+	return proxycapture.ResponseHeaders(head, tail)
 }
 
-func (m *grpcMocker) recordCapturedClientStreamStub(requests []map[string]any, response map[string]any, callErr error, sessionID string) {
-	inputs := make([]stuber.InputData, 0, len(requests))
-	for _, request := range requests {
-		inputs = append(inputs, stuber.InputData{Equals: request})
-	}
-
-	stub := &stuber.Stub{
-		Service: m.fullServiceName,
-		Method:  m.methodName,
-		Session: sessionID,
-		Inputs:  inputs,
-		Output:  stuber.Output{Data: response},
-	}
-
-	if callErr != nil {
-		st := status.Convert(callErr)
-		code := st.Code()
-		stub.Output.Code = &code
-		stub.Output.Error = st.Message()
-		stub.Output.Data = nil
-	}
-
-	m.budgerigar.PutMany(stub)
+func messageToMap(message proto.Message) map[string]any {
+	return proxycapture.MessageToMap(message)
 }
 
-func (m *grpcMocker) recordCapturedBidiStub(requests []map[string]any, responses []map[string]any, sessionID string) {
-	inputs := make([]stuber.InputData, 0, len(requests))
-	for _, request := range requests {
-		inputs = append(inputs, stuber.InputData{Equals: request})
-	}
+func (m *grpcMocker) recordCapturedUnaryStub(
+	request map[string]any,
+	requestHeaders map[string]any,
+	response map[string]any,
+	responseHeaders map[string]string,
+	callErr error,
+	sessionID string,
+) {
+	m.budgerigar.PutMany(proxycapture.BuildUnaryStub(
+		m.fullServiceName,
+		m.methodName,
+		sessionID,
+		request,
+		requestHeaders,
+		response,
+		responseHeaders,
+		callErr,
+	))
+}
 
-	streamOutput := make([]any, 0, len(responses))
-	for _, response := range responses {
-		streamOutput = append(streamOutput, response)
-	}
+func (m *grpcMocker) recordCapturedServerStreamStub(
+	request map[string]any,
+	requestHeaders map[string]any,
+	responses []map[string]any,
+	responseHeaders map[string]string,
+	callErr error,
+	sessionID string,
+) {
+	m.budgerigar.PutMany(proxycapture.BuildServerStreamStub(
+		m.fullServiceName,
+		m.methodName,
+		sessionID,
+		request,
+		requestHeaders,
+		responses,
+		responseHeaders,
+		callErr,
+	))
+}
 
-	m.budgerigar.PutMany(&stuber.Stub{
-		Service: m.fullServiceName,
-		Method:  m.methodName,
-		Session: sessionID,
-		Inputs:  inputs,
-		Output:  stuber.Output{Stream: streamOutput},
-	})
+func (m *grpcMocker) recordCapturedClientStreamStub(
+	requests []map[string]any,
+	requestHeaders map[string]any,
+	response map[string]any,
+	responseHeaders map[string]string,
+	callErr error,
+	sessionID string,
+) {
+	m.budgerigar.PutMany(proxycapture.BuildClientStreamStub(
+		m.fullServiceName,
+		m.methodName,
+		sessionID,
+		requests,
+		requestHeaders,
+		response,
+		responseHeaders,
+		callErr,
+	))
+}
+
+func (m *grpcMocker) recordCapturedBidiStub(
+	requests []map[string]any,
+	requestHeaders map[string]any,
+	responses []map[string]any,
+	responseHeaders map[string]string,
+	callErr error,
+	sessionID string,
+) {
+	m.budgerigar.PutMany(proxycapture.BuildBidiStub(
+		m.fullServiceName,
+		m.methodName,
+		sessionID,
+		requests,
+		requestHeaders,
+		responses,
+		responseHeaders,
+		callErr,
+	))
 }

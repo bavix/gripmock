@@ -40,7 +40,7 @@ type Registry struct {
 	index  map[string]*Route
 }
 
-//nolint:cyclop
+//nolint:cyclop,funlen
 func New(ctx context.Context, paths []string, remoteClient protosetdom.RemoteClient) (*Registry, error) {
 	sources := make([]*protosetdom.Source, 0, len(paths))
 
@@ -67,6 +67,7 @@ func New(ctx context.Context, paths []string, remoteClient protosetdom.RemoteCli
 
 	routes := make([]*Route, 0, len(sources))
 	index := make(map[string]*Route)
+	assignedServices := make(map[string]struct{})
 
 	for _, source := range sources {
 		fds, err := remoteClient.FetchDescriptorSet(ctx, source)
@@ -85,9 +86,17 @@ func New(ctx context.Context, paths []string, remoteClient protosetdom.RemoteCli
 			Conn:   conn,
 		}
 
-		for _, method := range collectDescriptorMethods(fds) {
-			if _, exists := index[method]; !exists {
-				index[method] = route
+		for service, methods := range collectServiceMethods(fds) {
+			if _, exists := assignedServices[service]; exists {
+				continue
+			}
+
+			assignedServices[service] = struct{}{}
+
+			for _, method := range methods {
+				if _, exists := index[method]; !exists {
+					index[method] = route
+				}
 			}
 		}
 
@@ -106,11 +115,7 @@ func (r *Registry) RouteByMethod(fullMethod string) *Route {
 		return route
 	}
 
-	if len(r.routes) == 0 {
-		return nil
-	}
-
-	return r.routes[0]
+	return nil
 }
 
 func (r *Registry) Close() {
@@ -209,12 +214,12 @@ func buildDialOptions(source *protosetdom.Source) []grpc.DialOption {
 	return options
 }
 
-func collectDescriptorMethods(fds *descriptorpb.FileDescriptorSet) []string {
+func collectServiceMethods(fds *descriptorpb.FileDescriptorSet) map[string][]string {
 	if fds == nil {
 		return nil
 	}
 
-	methods := make([]string, 0, descriptorMethodsInitCap)
+	serviceMethods := make(map[string][]string)
 
 	for _, file := range fds.GetFile() {
 		pkg := file.GetPackage()
@@ -225,11 +230,18 @@ func collectDescriptorMethods(fds *descriptorpb.FileDescriptorSet) []string {
 				serviceName = pkg + "." + serviceName
 			}
 
+			methods := serviceMethods[serviceName]
+			if methods == nil {
+				methods = make([]string, 0, descriptorMethodsInitCap)
+			}
+
 			for _, method := range service.GetMethod() {
 				methods = append(methods, "/"+serviceName+"/"+method.GetName())
 			}
+
+			serviceMethods[serviceName] = methods
 		}
 	}
 
-	return methods
+	return serviceMethods
 }

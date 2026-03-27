@@ -6,6 +6,7 @@ type rankedMatch struct {
 	stub        *Stub
 	specificity int
 	totalScore  float64
+	fieldCount  int
 }
 
 type chunkOutcome struct {
@@ -59,6 +60,7 @@ func (s *searcher) rankedMatchFor(query Query, stub *Stub) rankedMatch {
 		stub:        stub,
 		specificity: s.ranker.Specificity(query, stub),
 		totalScore:  s.scoreWithPriority(query, stub),
+		fieldCount:  s.ranker.FieldCount(stub),
 	}
 }
 
@@ -79,6 +81,14 @@ func compareRankedMatches(a, b rankedMatch) int {
 
 	if a.totalScore > b.totalScore {
 		return -1
+	}
+
+	if a.fieldCount != b.fieldCount {
+		if a.fieldCount > b.fieldCount {
+			return -1
+		}
+
+		return 1
 	}
 
 	return 0
