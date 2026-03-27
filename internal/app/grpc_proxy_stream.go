@@ -6,6 +6,8 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/dynamicpb"
 
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
@@ -284,10 +286,8 @@ func (m *grpcMocker) proxyBidiStream(stream grpc.ServerStream, route *proxyroute
 	}
 
 	if capture {
-		captureErr := firstErr
-		if captureErr == nil {
-			captureErr = secondErr
-		}
+		captureErr := selectCaptureError(firstErr, secondErr)
+		captureErr = sanitizeCapturedStreamError(captureErr, len(responses) > 0)
 
 		m.recordCapturedBidiStub(
 			requests,
@@ -308,4 +308,28 @@ func (m *grpcMocker) proxyBidiStream(stream grpc.ServerStream, route *proxyroute
 	}
 
 	return nil
+}
+
+func selectCaptureError(firstErr, secondErr error) error {
+	if firstErr != nil {
+		return firstErr
+	}
+
+	return secondErr
+}
+
+func sanitizeCapturedStreamError(err error, hasResponses bool) error {
+	if err == nil {
+		return nil
+	}
+
+	if !hasResponses {
+		return err
+	}
+
+	if status.Code(err) == codes.Canceled {
+		return nil
+	}
+
+	return err
 }

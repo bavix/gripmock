@@ -3,6 +3,7 @@ package proxyroutes
 import (
 	"context"
 	"crypto/tls"
+	"strings"
 
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
@@ -150,7 +151,27 @@ func ForwardIncomingMetadata(ctx context.Context) context.Context {
 		return ctx
 	}
 
-	return metadata.NewOutgoingContext(ctx, md.Copy())
+	out := metadata.MD{}
+
+	for key, values := range md {
+		k := strings.ToLower(key)
+		if strings.HasPrefix(k, ":") || strings.HasPrefix(k, "grpc-") {
+			continue
+		}
+
+		switch k {
+		case "content-type", "te", "user-agent", "accept-encoding":
+			continue
+		}
+
+		out[k] = append([]string(nil), values...)
+	}
+
+	if len(out) == 0 {
+		return ctx
+	}
+
+	return metadata.NewOutgoingContext(ctx, out)
 }
 
 func mapMode(mode string) Mode {
