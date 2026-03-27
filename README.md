@@ -14,54 +14,42 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 
 ## ✨ Features
 
-- 🚀 **Instant Setup** - Create a working gRPC server in seconds
-- 📝 **YAML & JSON Support** - Define stubs in your preferred format
-- 🔄 **All Streaming Types** - Unary, server, client, and bidirectional streaming
-- ⚡ **20-35% Faster** - Enhanced performance for quicker tests
-- 🔒 **100% Backward Compatible** - All existing tests continue to work
-- 🐳 **Docker Ready** - Lightweight container for CI/CD
-- 🧱 **Builder Image** - Build Go plugins with `bavix/gripmock:<tag>-builder` for runtime compatibility
-- 🖥️ **Web Interface** - Manage stubs through a friendly dashboard
-- 📋 **JSON Schema** - Full IDE support with validation
-- ❤️ **Health Checks** - Production-ready monitoring endpoints
-- 🔌 **Plugin System** - Extend template functions with custom plugins
-- 🧪 **Embedded SDK (Experimental)** - Run GripMock inside Go tests and services
-- 🧪 **MCP API (Experimental)** - MCP-first streamable HTTP API (`POST /api/mcp`, protocol `2025-11-25`) for tool integration
+- **Native Runtime** - Single in-process engine without runtime gRPC code generation
+- **Descriptor Sources** - Load API from `.proto`, compiled `.pb`, BSR modules, or gRPC reflection
+- **Dynamic `.pb` Service Loading** - Load compiled protobuf descriptors at runtime via API without restarts
+- **Hot Stub Management** - Create, update, and remove stubs via API/UI without server restarts
+- **Flexible Matching** - `equals`, `contains`, `matches`, headers, priority, and match limits
+- **Array-Aware Matching** - Optional array-order flexibility to reduce brittle test assertions
+- **Dynamic Templates** - Build responses from request payload, headers, and stream context
+- **Complete gRPC Coverage** - Unary, server streaming, client streaming, and bidirectional streaming
+- **Error, Details, and Delay Simulation** - Return realistic gRPC status codes, details (`Any`), and response timing
+- **TLS and mTLS Support** - Run secure gRPC/HTTP test environments with native TLS options
+- **Advanced Protobuf Type Support** - Handle well-known and extended protobuf types (`google.protobuf.*`, `google.type.*`)
+- **YAML/JSON + Schema** - Author stubs in either format with JSON Schema IDE validation
+- **Plugin Ecosystem** - Extend functions with Go plugins and matching builder image tags
+- **Operational APIs** - Health endpoints, descriptors API, stubs API, and web dashboard
+- **Embedded SDK (Experimental)** - Run GripMock inside Go tests/services with verification helpers
+- **MCP API (Experimental)** - Streamable MCP endpoint for agent and tool integrations
 
 ## 📚 Documentation
 
-📖 **[Full Documentation](https://bavix.github.io/gripmock/)** - Complete guide with examples
+**[Full Documentation](https://bavix.github.io/gripmock)** - Complete guide with examples
 
 - **Descriptor API (`/api/descriptors`)**: runtime loading of compiled proto descriptors (`.pb`) with validated curl workflow: [docs](https://bavix.github.io/gripmock/guide/api/descriptors)
 
 ## 🧬 Project Evolution
 
-GripMock originally started from ideas in [tokopedia/gripmock](https://github.com/tokopedia/gripmock), but the current implementation was fully rewritten.
+GripMock started as a fork of [tokopedia/gripmock](https://github.com/tokopedia/gripmock), and then evolved into an independent, fully rewritten project.
 
-Today it works on a fundamentally different architecture:
+Today the project focuses on a native in-process architecture and practical testing workflows:
 
-- ✅ **No generated gRPC server code** at runtime
-- ✅ **No `cmd/exec` process orchestration** to launch generated servers
-- ✅ **Native in-process runtime engine** for predictable behavior and easier maintenance
+- Native runtime without runtime gRPC code generation
+- Flexible descriptor sources: `.proto`, compiled `.pb`, BSR modules, and gRPC reflection
+- Runtime operations: hot stub updates and descriptor loading via API
+- Complete gRPC coverage: unary, server/client streaming, and bidirectional streaming
+- Extensibility and integrations: plugins, Embedded SDK, and MCP API
 
-### 🆕 What You Get
-- ✅ **YAML support** as JSON alternative for static stubs
-- ✅ **Health check endpoints** (`/api/health/liveness`, `/api/health/readiness`)
-- ✅ **Header matching** support for authentication testing
-- ✅ **gRPC error codes** for realistic error simulation
-- ✅ **Priority system** for controlling stub matching order
-- ✅ **Binary descriptor support** (`.pb` files) for faster startup
-- ✅ **Array streaming** for server streaming methods
-- ✅ **JSON Schema validation** with IDE support
-- ✅ **Enhanced performance** with 20-35% speed improvements
-- ✅ **Plugin system** for extending template functions
-
-### 🔧 Improvements
-- ✅ **Updated dependencies** - All deprecated packages fixed
-- ✅ **Reduced image size** - Optimized Docker containers
-- ✅ **Better error handling** - 404 errors for missing stubs
-- ✅ **Active maintenance** - Regular updates and bug fixes
-- ✅ **Comprehensive documentation** - Complete guides and examples
+For architecture details and benchmark methodology, see: [Performance Comparison](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
 
 ## 🖥️ Web Interface
 
@@ -75,23 +63,23 @@ Access the web dashboard at `http://localhost:4771/` to manage your stubs visual
 
 Choose your preferred installation method:
 
-#### 🍺 Homebrew (Recommended)
+#### Homebrew (Recommended)
 ```bash
 brew tap gripmock/tap
 brew install --cask gripmock
 ```
 
-#### 📦 Shell Script
+#### Shell Script
 ```bash
 curl -s https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.sh | sh -s
 ```
 
-#### 🪟 PowerShell (Windows)
+#### PowerShell (Windows)
 ```powershell
 irm https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.ps1 | iex
 ```
 
-#### 🐳 Docker
+#### Docker
 ```bash
 docker pull bavix/gripmock
 ```
@@ -102,7 +90,7 @@ For plugin builds, use the paired builder image:
 docker pull bavix/gripmock:v3.7.1-builder
 ```
 
-#### 🔧 Go Install
+#### Go Install
 ```bash
 go install github.com/bavix/gripmock/v3@latest
 ```
@@ -164,12 +152,12 @@ docker run -p 4770:4770 -p 4771:4771 \
 
 Check out our comprehensive examples in the [`examples`](https://github.com/bavix/gripmock/tree/master/examples) folder:
 
-- 🔄 **Streaming** - Server, client, and bidirectional streaming
-- 📁 **File Uploads** - Test chunked file uploads
-- 💬 **Real-time Chat** - Bidirectional communication
-- 📊 **Data Feeds** - Continuous data streaming
-- 🔐 **Authentication** - Header-based auth testing
-- ⚡ **Performance** - High-throughput scenarios
+- **Streaming** - Server, client, and bidirectional streaming
+- **File Uploads** - Test chunked file uploads
+- **Real-time Chat** - Bidirectional communication
+- **Data Feeds** - Continuous data streaming
+- **Authentication** - Header-based auth testing
+- **Performance** - High-throughput scenarios
 
 ### Greeter: dynamic stub demo
 
@@ -412,7 +400,7 @@ GripMock automatically routes modules:
 - `buf.build/owner/repo` → uses Buf profile
 - `bsr.company.local/owner/repo` → uses Self profile
 
-For details see [BSR Documentation](https://bavix.github.io/gripmock/guide/sources/bsr/).
+For details see [BSR Documentation](https://bavix.github.io/gripmock/guide/sources/bsr).
 
 ## 🔎 gRPC Reflection Source
 
@@ -435,11 +423,18 @@ gripmock grpcs://api.company.local:443
 gripmock grpcs://10.0.0.5:8443?serverName=api.company.local
 ```
 
-Full guide: [gRPC Reflection Source](https://bavix.github.io/gripmock/guide/sources/grpc-reflection/).
+Full guide: [gRPC Reflection Source](https://bavix.github.io/gripmock/guide/sources/grpc-reflection).
+
+## 📊 Benchmark Charts
+
+![Image size benchmark](docs/public/bench/image-size.svg)
+![Startup readiness benchmark](docs/public/bench/startup-ready.svg)
+![Latency percentiles benchmark](docs/public/bench/latency-percentiles.svg)
+![Throughput benchmark](docs/public/bench/throughput-rps.svg)
 
 ## 🔗 Useful Resources
 
-- 📖 **[Documentation](https://bavix.github.io/gripmock/)** - Complete guides and examples
+- 📖 **[Documentation](https://bavix.github.io/gripmock)** - Complete guides and examples
 - 🧪 **[Testing gRPC with Testcontainers](https://medium.com/skyro-tech/testing-grpc-client-with-mock-server-and-testcontainers-f51cb8a6be9a)** - Article by [@AndrewIISM](https://github.com/AndrewIISM)
 - 📋 **[JSON Schema](https://bavix.github.io/gripmock/schema/stub.json)** - Stub validation schema
 - 🔗 **[OpenAPI](https://bavix.github.io/gripmock-openapi/)** - REST API documentation

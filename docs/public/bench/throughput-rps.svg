@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="560" viewBox="0 0 1100 560">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0b1220"/><stop offset="100%" stop-color="#111827"/></linearGradient>
+<linearGradient id="bavix" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#059669"/></linearGradient>
+<linearGradient id="tkpd" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#d97706"/></linearGradient>
+</defs>
+<rect x="0" y="0" width="1100" height="560" fill="url(#bg)" rx="16"/>
+<text x="90" y="44" fill="#f9fafb" font-size="28" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif" font-weight="700">Throughput (RPS)</text>
+<text x="90" y="70" fill="#9ca3af" font-size="16" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">Higher is better. Unary Greeter benchmark, 30s, concurrency=20</text>
+<line x1="90" y1="90.0" x2="1060" y2="90.0" stroke="#1f2937" stroke-width="1"/>
+<text x="80" y="95.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">3157.3</text>
+<line x1="90" y1="166.0" x2="1060" y2="166.0" stroke="#1f2937" stroke-width="1"/>
+<text x="80" y="171.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">2525.8</text>
+<line x1="90" y1="242.0" x2="1060" y2="242.0" stroke="#1f2937" stroke-width="1"/>
+<text x="80" y="247.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">1894.4</text>
+<line x1="90" y1="318.0" x2="1060" y2="318.0" stroke="#1f2937" stroke-width="1"/>
+<text x="80" y="323.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">1262.9</text>
+<line x1="90" y1="394.0" x2="1060" y2="394.0" stroke="#1f2937" stroke-width="1"/>
+<text x="80" y="399.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">631.5</text>
+<line x1="90" y1="470.0" x2="1060" y2="470.0" stroke="#1f2937" stroke-width="1"/>
+<text x="80" y="475.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.0</text>
+<rect x="513.0" y="153.3" width="56.0" height="316.7" fill="url(#bavix)" rx="8"/>
+<rect x="581.0" y="320.9" width="56.0" height="149.1" fill="url(#tkpd)" rx="8"/>
+<text x="575.0" y="498" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">RPS</text>
+<text x="541.0" y="145.3" text-anchor="middle" fill="#86efac" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">2631.05</text>
+<text x="609.0" y="312.9" text-anchor="middle" fill="#fcd34d" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">1238.75</text>
+<rect x="90" y="514" width="14" height="14" fill="url(#bavix)" rx="3"/>
+<text x="112" y="526" fill="#d1fae5" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">bavix/gripmock</text>
+<rect x="270" y="514" width="14" height="14" fill="url(#tkpd)" rx="3"/>
+<text x="292" y="526" fill="#fef3c7" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">tkpd/gripmock</text>
+</svg>

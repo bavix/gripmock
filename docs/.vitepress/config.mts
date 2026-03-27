@@ -46,7 +46,7 @@ export default defineConfig({
       { text: 'Guide', link: '/guide/introduction/' },
       { text: 'Issues', link: 'https://github.com/bavix/gripmock/issues' },
       { text: 'Discussions', link: 'https://github.com/bavix/gripmock/discussions' },
-      { text: 'Donate', link: 'https://opencollective.com/gripmock' },
+      { text: 'Donate', link: 'https://buymeacoffee.com/babichev' },
     ],
 
     sidebar: [
@@ -54,6 +54,7 @@ export default defineConfig({
         text: 'Getting Started',
         items: [
           { text: 'Introduction', link: '/guide/introduction' },
+          { text: 'Performance Comparison', link: '/guide/introduction/performance-comparison' },
           { text: 'Quick Usage', link: '/guide/introduction/quick-usage' },
           { text: 'Advanced Usage', link: '/guide/introduction/advanced-usage' },
           { text: 'TLS and mTLS', link: '/guide/introduction/tls' },
