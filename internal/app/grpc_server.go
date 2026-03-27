@@ -45,6 +45,7 @@ import (
 	protosetdom "github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/grpccontext"
 	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
+	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/session"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
@@ -151,6 +152,7 @@ type GRPCServer struct {
 	remoteClient protosetdom.RemoteClient
 	healthcheck  *health.Server
 	tlsConfig    *tls.Config
+	proxies      *proxyroutes.Registry
 }
 
 type grpcMocker struct {
@@ -159,6 +161,7 @@ type grpcMocker struct {
 	errorFormatter     *ErrorFormatter
 	recorder           history.Recorder
 	descriptorResolver protodesc.Resolver
+	proxies            *proxyroutes.Registry
 
 	inputDesc  protoreflect.MessageDescriptor
 	outputDesc protoreflect.MessageDescriptor
@@ -172,6 +175,7 @@ type grpcMocker struct {
 	clientStream bool
 }
 
+//nolint:cyclop
 func (m *grpcMocker) streamHandler(srv any, stream grpc.ServerStream) error {
 	info := &grpc.StreamServerInfo{
 		FullMethod:     m.fullMethod,
@@ -180,16 +184,39 @@ func (m *grpcMocker) streamHandler(srv any, stream grpc.ServerStream) error {
 	}
 
 	handler := func(_ any, stream grpc.ServerStream) error {
+		route := m.proxyRoute()
+		behavior := newProxyBehavior(route)
+
+		if behavior != nil && behavior.proxyOnly() {
+			return m.proxyStream(stream, route, false)
+		}
+
+		if behavior != nil && len(m.budgerigar.All()) == 0 {
+			return m.proxyStream(stream, route, behavior.captureMiss())
+		}
+
+		var err error
+
 		switch {
 		case m.serverStream && !m.clientStream:
-			return m.handleServerStream(stream)
+			err = m.handleServerStream(stream)
 		case !m.serverStream && m.clientStream:
-			return m.handleClientStream(stream)
+			err = m.handleClientStream(stream)
 		case m.serverStream && m.clientStream:
-			return m.handleBidiStream(stream)
+			err = m.handleBidiStream(stream)
 		default:
-			return status.Errorf(codes.Unimplemented, "Unknown stream type")
+			err = status.Errorf(codes.Unimplemented, "Unknown stream type")
 		}
+
+		if behavior == nil {
+			return err
+		}
+
+		if !behavior.canFallback(err) {
+			return err
+		}
+
+		return m.proxyStream(stream, route, behavior.captureMiss())
 	}
 
 	return grpc.StreamServerInterceptor(func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
@@ -636,15 +663,39 @@ func (m *grpcMocker) unaryHandler() grpc.MethodHandler {
 				FullMethod: m.fullMethod,
 			}, func(ctx context.Context, req any) (any, error) {
 				if msg, ok := req.(*dynamicpb.Message); ok {
-					return m.handleUnary(ctx, msg)
+					return m.handleUnaryWithProxy(ctx, msg)
 				}
 
 				return nil, status.Errorf(codes.InvalidArgument, "expected *dynamicpb.Message, got %T", req)
 			})
 		}
 
+		return m.handleUnaryWithProxy(ctx, req)
+	}
+}
+
+func (m *grpcMocker) handleUnaryWithProxy(ctx context.Context, req *dynamicpb.Message) (*dynamicpb.Message, error) {
+	route := m.proxyRoute()
+	behavior := newProxyBehavior(route)
+
+	if behavior == nil {
 		return m.handleUnary(ctx, req)
 	}
+
+	if behavior.proxyOnly() {
+		return m.proxyUnary(ctx, req, route, false)
+	}
+
+	if len(m.budgerigar.All()) == 0 {
+		return m.proxyUnary(ctx, req, route, behavior.captureMiss())
+	}
+
+	resp, err := m.handleUnary(ctx, req)
+	if !behavior.canFallback(err) {
+		return resp, err
+	}
+
+	return m.proxyUnary(ctx, req, route, behavior.captureMiss())
 }
 
 //nolint:cyclop,funlen
@@ -1152,12 +1203,26 @@ func NewGRPCServer(
 }
 
 func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
+	var err error
+
 	imports := []string{}
 	protoPaths := []string{}
 
 	if s.params != nil {
 		imports = s.params.Imports()
 		protoPaths = s.params.ProtoPath()
+	}
+
+	s.proxies, err = proxyroutes.New(ctx, protoPaths, s.remoteClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to initialize proxy routes")
+	}
+
+	if s.proxies != nil {
+		go func() {
+			<-ctx.Done()
+			s.proxies.Close()
+		}()
 	}
 
 	descriptors, err := protosetdom.Build(ctx, imports, protoPaths, s.remoteClient)
@@ -1270,6 +1335,7 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 		errorFormatter:     NewErrorFormatter(),
 		recorder:           s.recorder,
 		descriptorResolver: &dynamicDescriptorResolver{static: protoregistry.GlobalFiles, dynamic: s.descriptors},
+		proxies:            s.proxies,
 		inputDesc:          methodDesc.Input(),
 		outputDesc:         methodDesc.Output(),
 		fullServiceName:    serviceName,
@@ -1539,6 +1605,7 @@ func (s *GRPCServer) createGrpcMocker(
 		errorFormatter:     NewErrorFormatter(),
 		recorder:           s.recorder,
 		descriptorResolver: resolver,
+		proxies:            s.proxies,
 
 		inputDesc:  inputDesc,
 		outputDesc: outputDesc,

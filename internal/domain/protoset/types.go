@@ -24,4 +24,6 @@ type Source struct {
 	ReflectServerName string
 	ReflectBearer     string
 	ReflectTimeout    time.Duration
+	ReflectInsecure   bool
+	ProxyMode         string
 }
