@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.9.0 - 2026-03-29
+
+### What's Changed
+
+* Bump actions/deploy-pages from 4 to 5 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/798
+* improve README readability by reducing emoji usage + bench by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/800
+* add mode: proxy, replay, capture by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/802
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.8.7...v3.9.0
+
 ## v3.8.7 - 2026-03-25
 
 ### What's Changed
