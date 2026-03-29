@@ -71,6 +71,16 @@ export default defineConfig({
         collapsed: false,
       },
       {
+        text: 'Modes',
+        items: [
+          { text: 'Overview', link: '/guide/modes/' },
+          { text: 'Proxy', link: '/guide/modes/proxy' },
+          { text: 'Replay', link: '/guide/modes/replay' },
+          { text: 'Capture', link: '/guide/modes/capture' },
+        ],
+        collapsed: false,
+      },
+      {
         text: 'Stubs',
         items: [
           { text: 'JSON', link: '/guide/stubs/json' },

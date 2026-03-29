@@ -54,3 +54,15 @@ gripmock grpcs://api.company.local:443
 ```
 
 For query parameters and TLS notes, see [gRPC Reflection Source](/guide/sources/grpc-reflection).
+
+### 6) Reflection Proxy Modes (`grpc+proxy://`, `grpc+replay://`, `grpc+capture://`) <VersionTag version="v3.9.0" />
+
+Use reflection sources with forwarding modes:
+
+```bash
+gripmock grpc+proxy://localhost:1111
+gripmock grpc+replay://localhost:1111
+gripmock grpc+capture://localhost:1111
+```
+
+For behavior details and overlap rules, see [Upstream Modes](/guide/modes/index).

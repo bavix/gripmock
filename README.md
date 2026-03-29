@@ -30,12 +30,14 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 - **Operational APIs** - Health endpoints, descriptors API, stubs API, and web dashboard
 - **Embedded SDK (Experimental)** - Run GripMock inside Go tests/services with verification helpers
 - **MCP API (Experimental)** - Streamable MCP endpoint for agent and tool integrations
+- **Upstream Modes (Experimental)** - `proxy`, `replay`, `capture` modes for gradual migration from live upstream services to local mocks
 
 ## 📚 Documentation
 
 **[Full Documentation](https://bavix.github.io/gripmock)** - Complete guide with examples
 
 - **Descriptor API (`/api/descriptors`)**: runtime loading of compiled proto descriptors (`.pb`) with validated curl workflow: [docs](https://bavix.github.io/gripmock/guide/api/descriptors)
+- **Upstream Modes (Experimental)**: `proxy`, `replay`, `capture` with practical rollout guidance: [docs](https://bavix.github.io/gripmock/guide/modes)
 
 ## 🧬 Project Evolution
 
@@ -47,6 +49,7 @@ Today the project focuses on a native in-process architecture and practical test
 - Flexible descriptor sources: `.proto`, compiled `.pb`, BSR modules, and gRPC reflection
 - Runtime operations: hot stub updates and descriptor loading via API
 - Complete gRPC coverage: unary, server/client streaming, and bidirectional streaming
+- Progressive upstream migration: reverse proxy, local-first replay, and capture-based stub bootstrap
 - Extensibility and integrations: plugins, Embedded SDK, and MCP API
 
 For architecture details and benchmark methodology, see: [Performance Comparison](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
@@ -123,6 +126,18 @@ With options:
 gripmock grpc://localhost:50051?timeout=10s
 gripmock grpcs://10.0.0.5:8443?serverName=api.company.local
 gripmock grpc://localhost:50051?bearer=<token>
+```
+
+**Use upstream modes over reflection (Experimental):**
+```bash
+# Pure reverse proxy through GripMock
+gripmock grpc+proxy://localhost:50051
+
+# Local stubs first, then upstream fallback on matcher miss
+gripmock grpc+replay://localhost:50051
+
+# Replay + record upstream misses into GripMock stubs
+gripmock grpc+capture://localhost:50051
 ```
 
 For private BSR modules:
@@ -424,6 +439,23 @@ gripmock grpcs://10.0.0.5:8443?serverName=api.company.local
 ```
 
 Full guide: [gRPC Reflection Source](https://bavix.github.io/gripmock/guide/sources/grpc-reflection).
+
+## 🔁 Upstream Modes (Experimental)
+
+⚠️ **EXPERIMENTAL FEATURE**: Upstream modes may change without notice.
+
+Upstream modes work on top of reflection sources and define runtime behavior:
+
+- `proxy` - pure reverse proxy
+- `replay` - local-first + upstream fallback
+- `capture` - replay + automatic stub recording from upstream
+
+Mode guides:
+
+- [Upstream Modes Overview](https://bavix.github.io/gripmock/guide/modes)
+- [Proxy Mode](https://bavix.github.io/gripmock/guide/modes/proxy)
+- [Replay Mode](https://bavix.github.io/gripmock/guide/modes/replay)
+- [Capture Mode](https://bavix.github.io/gripmock/guide/modes/capture)
 
 ## 📊 Benchmark Charts
 

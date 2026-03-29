@@ -48,6 +48,7 @@ The modern GripMock engine is fundamentally different:
 - **Match Limit (`options.times`)** <VersionTag version="v3.7.0" />: Limit how many times a stub can be matched before fallback logic applies
 - **Embedded SDK (Experimental)** <VersionTag version="v3.7.0" />: Run GripMock directly inside Go tests with history and verification tools
 - **MCP API (Experimental)** <VersionTag version="v3.7.0" />: Integrate AI/agent tooling through a streamable HTTP MCP endpoint
+- **Upstream Modes (Experimental)** <VersionTag version="v3.9.0" />: Use `proxy`, `replay`, and `capture` modes for gradual migration from live upstream services to local mocks
 - **Builder Image for Plugins** <VersionTag version="v3.7.1" />: Build plugins in `:<tag>-builder` and run with matching `:<tag>` for compatibility
 
 ## Streaming Support
@@ -75,10 +76,11 @@ The **dashboard** provides a user-friendly way to:
 
 Access it at `http://localhost:4771/` when you start GripMock.
 
-## Experimental APIs
+## Experimental Features
 
 - **MCP API** <VersionTag version="v3.7.0" />: Exposed at `POST /api/mcp` (MCP protocol `2025-11-25`) for agent-oriented workflows
 - **Embedded SDK** <VersionTag version="v3.7.0" />: Programmatic GripMock usage in Go tests with built-in verification helpers
+- **Upstream Modes** <VersionTag version="v3.9.0" />: Reflection-based `proxy`/`replay`/`capture` modes for reverse proxy, local-first fallback, and automatic stub recording
 
 ## Runtime descriptor loading <VersionTag version="v3.7.0" />
 
