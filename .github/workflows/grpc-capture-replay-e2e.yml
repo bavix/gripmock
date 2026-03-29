@@ -58,12 +58,30 @@ jobs:
       - name: Start + check source examples server
         run: |
           GRPC_PORT="$SOURCE_GRPC_PORT" HTTP_PORT=0 "$RUNNER_TEMP/gripmock" examples -s examples >"$RUNNER_TEMP/gripmock-source.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-source.pid"
-          GRPC_PORT="$SOURCE_GRPC_PORT" "$RUNNER_TEMP/gripmock" check --timeout=60s --silent
+
+          for _ in $(seq 1 60); do
+            if GRPC_PORT="$SOURCE_GRPC_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent; then
+              break
+            fi
+
+            sleep 1
+          done
+
+          GRPC_PORT="$SOURCE_GRPC_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent
 
       - name: Start + check capture target server
         run: |
           GRPC_PORT="$TARGET_GRPC_PORT" HTTP_PORT="$TARGET_HTTP_PORT" "$RUNNER_TEMP/gripmock" grpc+capture://localhost:${SOURCE_GRPC_PORT} >"$RUNNER_TEMP/gripmock-target.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-target.pid"
-          GRPC_PORT="$TARGET_GRPC_PORT" "$RUNNER_TEMP/gripmock" check --timeout=60s --silent
+
+          for _ in $(seq 1 60); do
+            if GRPC_PORT="$TARGET_GRPC_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent; then
+              break
+            fi
+
+            sleep 1
+          done
+
+          GRPC_PORT="$TARGET_GRPC_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent
 
       - name: Warm up capture from source
         run: |
