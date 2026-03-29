@@ -722,6 +722,7 @@ func (m *grpcMocker) captureShouldProxyUnaryByHeaders(ctx context.Context, req *
 	}
 
 	query := m.newQuery(ctx, req)
+
 	report := m.budgerigar.InspectQuery(query)
 	if report.MatchedStubID == nil {
 		return true
