@@ -16,6 +16,7 @@ type SourceHandler interface {
 
 func ParseSource(raw string) (*Source, error) {
 	handlers := []SourceHandler{
+		&ProxyHandler{},
 		&GRPCHandler{},
 		&BufBuildHandler{},
 		&DescriptorHandler{},

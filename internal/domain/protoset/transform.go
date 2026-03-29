@@ -2,12 +2,10 @@ package protoset
 
 import (
 	"context"
-	"hash/fnv"
 	"os"
 	"path/filepath"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -35,6 +33,11 @@ const (
 
 //nolint:gochecknoglobals // shared lock is required for GlobalFiles concurrent registration safety
 var protoRegistryMu sync.Mutex
+
+var (
+	errUnresolvedDescriptorDependencies = errors.New("unresolved descriptor dependencies")
+	errDescriptorSymbolConflict         = errors.New("descriptor symbol conflict")
+)
 
 type Configure struct {
 	imports        []string
@@ -135,41 +138,98 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 	return results, nil
 }
 
+//nolint:funlen,wsl_v5
 func registerDescriptorSetFiles(
 	ctx context.Context,
 	descriptorPath string,
 	fds *descriptorpb.FileDescriptorSet,
 ) error {
-	for _, fd := range fds.GetFile() {
-		protoRegistryMu.Lock()
+	pending := slices.Clone(fds.GetFile())
 
-		if value, _ := protoregistry.GlobalFiles.FindFileByPath(fd.GetName()); value != nil {
+	for len(pending) > 0 {
+		next := make([]*descriptorpb.FileDescriptorProto, 0, len(pending))
+		progress := false
+		var lastErr error
+
+		for _, fd := range pending {
+			protoRegistryMu.Lock()
+
+			if value, _ := protoregistry.GlobalFiles.FindFileByPath(fd.GetName()); value != nil {
+				protoRegistryMu.Unlock()
+
+				zerolog.Ctx(ctx).Warn().
+					Str("name", fd.GetName()).
+					Str("path", descriptorPath).
+					Msg("File already registered")
+
+				progress = true
+
+				continue
+			}
+
+			fileDesc, err := protodesc.NewFile(fd, protoregistry.GlobalFiles)
+			if err != nil {
+				protoRegistryMu.Unlock()
+				lastErr = err
+				next = append(next, fd)
+
+				continue
+			}
+
+			conflict, registerErr := registerGlobalFile(fileDesc)
 			protoRegistryMu.Unlock()
 
-			zerolog.Ctx(ctx).Warn().
-				Str("name", fd.GetName()).
-				Str("path", descriptorPath).
-				Msg("File already registered")
+			if conflict {
+				zerolog.Ctx(ctx).Warn().
+					Str("name", fd.GetName()).
+					Str("path", descriptorPath).
+					Msg("Descriptor conflicts with existing symbols; skipping")
 
-			continue
+				progress = true
+
+				continue
+			}
+
+			if registerErr != nil {
+				lastErr = registerErr
+				next = append(next, fd)
+
+				continue
+			}
+
+			progress = true
 		}
 
-		fileDesc, err := protodesc.NewFile(fd, protoregistry.GlobalFiles)
-		if err != nil {
-			protoRegistryMu.Unlock()
-
-			return errors.Wrapf(err, "failed to create file descriptor: %s", descriptorPath)
+		if len(next) == 0 {
+			return nil
 		}
 
-		err = protoregistry.GlobalFiles.RegisterFile(fileDesc)
-		protoRegistryMu.Unlock()
-
-		if err != nil {
-			return errors.Wrapf(err, "failed to register file %s", descriptorPath)
+		if !progress {
+			return errors.Wrapf(lastErr, "%w: failed to register file %s", errUnresolvedDescriptorDependencies, descriptorPath)
 		}
+
+		pending = next
 	}
 
 	return nil
+}
+
+func registerGlobalFile(file protoreflect.FileDescriptor) (bool, error) {
+	var (
+		conflict bool
+		err      error
+	)
+
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			conflict = true
+			err = errors.Wrapf(errDescriptorSymbolConflict, "%v", recovered)
+		}
+	}()
+
+	err = protoregistry.GlobalFiles.RegisterFile(file)
+
+	return conflict, err
 }
 
 func registerGlobalFileOnce(
@@ -339,7 +399,7 @@ func (p *processor) process(ctx context.Context, paths []string) error {
 			logger.Info().
 				Str("address", source.ReflectAddress).
 				Bool("tls", source.ReflectTLS).
-				Msg("Processing gRPC reflection source")
+				Msg("Processing gRPC remote source")
 		}
 
 		err = ProcessSource(ctx, source, p)
@@ -457,60 +517,9 @@ func (p *processor) ProcessReflect(ctx context.Context, source *Source) error {
 		return errors.Wrapf(err, "failed to fetch from gRPC reflection: %s", source.Raw)
 	}
 
-	fds = normalizeDescriptorSetFileNames(fds, source.Raw)
-
 	p.descriptorSets = append(p.descriptorSets, fds)
 
 	return nil
-}
-
-func normalizeDescriptorSetFileNames(fds *descriptorpb.FileDescriptorSet, sourceRaw string) *descriptorpb.FileDescriptorSet {
-	if fds == nil {
-		return nil
-	}
-
-	prefix := descriptorSetPrefix(sourceRaw)
-	nameMap := make(map[string]string, len(fds.GetFile()))
-
-	for _, file := range fds.GetFile() {
-		oldName := file.GetName()
-		if oldName == "" {
-			continue
-		}
-
-		nameMap[oldName] = prefix + "/" + oldName
-	}
-
-	out := &descriptorpb.FileDescriptorSet{File: make([]*descriptorpb.FileDescriptorProto, 0, len(fds.GetFile()))}
-
-	for index, file := range fds.GetFile() {
-		cloned := proto.Clone(file).(*descriptorpb.FileDescriptorProto) //nolint:forcetypeassert
-		oldName := file.GetName()
-
-		if oldName == "" {
-			generated := prefix + "/unknown_" + strconv.Itoa(index) + ProtoExt
-			cloned.Name = &generated
-		} else if mapped, ok := nameMap[oldName]; ok {
-			cloned.Name = &mapped
-		}
-
-		for depIndex, dependency := range cloned.GetDependency() {
-			if mapped, ok := nameMap[dependency]; ok {
-				cloned.Dependency[depIndex] = mapped
-			}
-		}
-
-		out.File = append(out.File, cloned)
-	}
-
-	return out
-}
-
-func descriptorSetPrefix(sourceRaw string) string {
-	hasher := fnv.New32a()
-	_, _ = hasher.Write([]byte(sourceRaw))
-
-	return "grpc_reflect_" + strconv.FormatUint(uint64(hasher.Sum32()), 16)
 }
 
 func findPathByImports(filePath string, imports []string) (string, string) {

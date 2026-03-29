@@ -87,6 +87,8 @@ func buildDialOptions(source *protoset.Source) []grpc.DialOption {
 			tlsConfig.ServerName = source.ReflectServerName
 		}
 
+		tlsConfig.InsecureSkipVerify = source.ReflectInsecure
+
 		options = append(options, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
 	} else {
 		options = append(options, grpc.WithTransportCredentials(insecure.NewCredentials()))

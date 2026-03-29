@@ -269,7 +269,7 @@ func TestProcessorProcessReflectNamespacesDuplicateDescriptorFiles(t *testing.T)
 	err = processor.ProcessReflect(t.Context(), &Source{Type: SourceReflect, Raw: "grpc://localhost:5555"})
 	require.NoError(t, err)
 	require.Len(t, processor.descriptorSets, 2)
-	require.NotEqual(t,
+	require.Equal(t,
 		processor.descriptorSets[0].GetFile()[0].GetName(),
 		processor.descriptorSets[1].GetFile()[0].GetName(),
 	)

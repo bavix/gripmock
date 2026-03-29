@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/base64"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"maps"
@@ -45,6 +46,7 @@ import (
 	protosetdom "github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/grpccontext"
 	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
+	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/session"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
@@ -151,6 +153,7 @@ type GRPCServer struct {
 	remoteClient protosetdom.RemoteClient
 	healthcheck  *health.Server
 	tlsConfig    *tls.Config
+	proxies      *proxyroutes.Registry
 }
 
 type grpcMocker struct {
@@ -159,6 +162,7 @@ type grpcMocker struct {
 	errorFormatter     *ErrorFormatter
 	recorder           history.Recorder
 	descriptorResolver protodesc.Resolver
+	proxies            *proxyroutes.Registry
 
 	inputDesc  protoreflect.MessageDescriptor
 	outputDesc protoreflect.MessageDescriptor
@@ -170,8 +174,11 @@ type grpcMocker struct {
 
 	serverStream bool
 	clientStream bool
+
+	strictServiceMatch bool
 }
 
+//nolint:cyclop
 func (m *grpcMocker) streamHandler(srv any, stream grpc.ServerStream) error {
 	info := &grpc.StreamServerInfo{
 		FullMethod:     m.fullMethod,
@@ -180,16 +187,47 @@ func (m *grpcMocker) streamHandler(srv any, stream grpc.ServerStream) error {
 	}
 
 	handler := func(_ any, stream grpc.ServerStream) error {
+		route := m.proxyRoute()
+		behavior := newProxyBehavior(route)
+
+		if behavior != nil && behavior.proxyOnly() {
+			return m.proxyStream(stream, route, false)
+		}
+
+		var err error
+
 		switch {
 		case m.serverStream && !m.clientStream:
-			return m.handleServerStream(stream)
+			err = m.handleServerStream(stream)
 		case !m.serverStream && m.clientStream:
-			return m.handleClientStream(stream)
+			err = m.handleClientStream(stream)
 		case m.serverStream && m.clientStream:
-			return m.handleBidiStream(stream)
+			err = m.handleBidiStream(stream)
 		default:
-			return status.Errorf(codes.Unimplemented, "Unknown stream type")
+			err = status.Errorf(codes.Unimplemented, "Unknown stream type")
 		}
+
+		if behavior == nil {
+			return err
+		}
+
+		if !behavior.canFallback(err) {
+			return err
+		}
+
+		if fallbackErr, ok := stderrors.AsType[*serverStreamFallbackError](err); ok {
+			return m.proxyServerStreamWithRequest(stream, route, fallbackErr.request, behavior.captureMiss())
+		}
+
+		if fallbackErr, ok := stderrors.AsType[*clientStreamFallbackError](err); ok {
+			return m.proxyClientStreamWithRequests(stream, route, fallbackErr.requests, behavior.captureMiss())
+		}
+
+		if fallbackErr, ok := stderrors.AsType[*bidiStreamFallbackError](err); ok {
+			return m.proxyBidiStreamWithRequests(stream, route, fallbackErr.requests, behavior.captureMiss())
+		}
+
+		return m.proxyStream(stream, route, behavior.captureMiss())
 	}
 
 	return grpc.StreamServerInterceptor(func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
@@ -199,9 +237,10 @@ func (m *grpcMocker) streamHandler(srv any, stream grpc.ServerStream) error {
 
 func (m *grpcMocker) newQuery(ctx context.Context, msg *dynamicpb.Message) stuber.Query {
 	query := stuber.Query{
-		Service: m.fullServiceName,
-		Method:  m.methodName,
-		Input:   []map[string]any{convertToMap(msg)},
+		Service:       m.fullServiceName,
+		Method:        m.methodName,
+		StrictService: m.strictServiceMatch,
+		Input:         []map[string]any{convertToMap(msg)},
 	}
 
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -215,8 +254,9 @@ func (m *grpcMocker) newQuery(ctx context.Context, msg *dynamicpb.Message) stube
 
 func (m *grpcMocker) newQueryBidi(ctx context.Context) stuber.QueryBidi {
 	query := stuber.QueryBidi{
-		Service: m.fullServiceName,
-		Method:  m.methodName,
+		Service:       m.fullServiceName,
+		Method:        m.methodName,
+		StrictService: m.strictServiceMatch,
 	}
 
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -383,6 +423,10 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 
 	result, err = m.ensureServerStreamResult(query, result, err)
 	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return &serverStreamFallbackError{err: err, request: inputMsg}
+		}
+
 		return err
 	}
 
@@ -636,15 +680,60 @@ func (m *grpcMocker) unaryHandler() grpc.MethodHandler {
 				FullMethod: m.fullMethod,
 			}, func(ctx context.Context, req any) (any, error) {
 				if msg, ok := req.(*dynamicpb.Message); ok {
-					return m.handleUnary(ctx, msg)
+					return m.handleUnaryWithProxy(ctx, msg)
 				}
 
 				return nil, status.Errorf(codes.InvalidArgument, "expected *dynamicpb.Message, got %T", req)
 			})
 		}
 
+		return m.handleUnaryWithProxy(ctx, req)
+	}
+}
+
+func (m *grpcMocker) handleUnaryWithProxy(ctx context.Context, req *dynamicpb.Message) (*dynamicpb.Message, error) {
+	route := m.proxyRoute()
+	behavior := newProxyBehavior(route)
+
+	if behavior == nil {
 		return m.handleUnary(ctx, req)
 	}
+
+	if behavior.proxyOnly() {
+		return m.proxyUnary(ctx, req, route, false)
+	}
+
+	if behavior.captureMiss() && m.captureShouldProxyUnaryByHeaders(ctx, req) {
+		return m.proxyUnary(ctx, req, route, true)
+	}
+
+	resp, err := m.handleUnary(ctx, req)
+
+	if _, ok := stderrors.AsType[*unaryStubMissError](err); !ok {
+		return resp, err
+	}
+
+	return m.proxyUnary(ctx, req, route, behavior.captureMiss())
+}
+
+func (m *grpcMocker) captureShouldProxyUnaryByHeaders(ctx context.Context, req *dynamicpb.Message) bool {
+	if !m.hasCaptureRequestHeaders(ctx) {
+		return false
+	}
+
+	query := m.newQuery(ctx, req)
+
+	report := m.budgerigar.InspectQuery(query)
+	if report.MatchedStubID == nil {
+		return true
+	}
+
+	found := m.budgerigar.FindByID(*report.MatchedStubID)
+	if found == nil {
+		return true
+	}
+
+	return found.Headers.Len() == 0
 }
 
 //nolint:cyclop,funlen
@@ -664,7 +753,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 			result = &stuber.Result{}
 		}
 
-		return nil, status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundError(query, result).Error())
+		return nil, &unaryStubMissError{err: status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundError(query, result).Error())}
 	}
 
 	found := result.Found()
@@ -807,9 +896,10 @@ func (m *grpcMocker) handleOutputError(_ context.Context, _ grpc.ServerStream, o
 
 func (m *grpcMocker) tryV2API(messages []map[string]any, md metadata.MD) (*stuber.Result, error) {
 	query := stuber.Query{
-		Service: m.fullServiceName,
-		Method:  m.methodName,
-		Input:   messages,
+		Service:       m.fullServiceName,
+		Method:        m.methodName,
+		StrictService: m.strictServiceMatch,
+		Input:         messages,
 	}
 
 	if len(md) > 0 {
@@ -825,9 +915,10 @@ func (m *grpcMocker) tryV1APIFallback(messages []map[string]any, md metadata.MD)
 		message := messages[i]
 
 		query := stuber.Query{
-			Service: m.fullServiceName,
-			Method:  m.methodName,
-			Input:   []map[string]any{message},
+			Service:       m.fullServiceName,
+			Method:        m.methodName,
+			StrictService: m.strictServiceMatch,
+			Input:         []map[string]any{message},
 		}
 
 		if len(md) > 0 {
@@ -847,13 +938,17 @@ func (m *grpcMocker) tryV1APIFallback(messages []map[string]any, md metadata.MD)
 func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 	requestTime := time.Now()
 
-	messages, err := m.collectClientMessages(stream)
+	messages, originalMessages, err := m.collectClientMessages(stream)
 	if err != nil {
 		return err
 	}
 
 	found, err := m.tryFindStub(stream, messages)
 	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			return &clientStreamFallbackError{err: err, requests: originalMessages}
+		}
+
 		return err
 	}
 
@@ -862,8 +957,9 @@ func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 
 const clientMessagesInitCap = 16
 
-func (m *grpcMocker) collectClientMessages(stream grpc.ServerStream) ([]map[string]any, error) {
+func (m *grpcMocker) collectClientMessages(stream grpc.ServerStream) ([]map[string]any, []*dynamicpb.Message, error) {
 	messages := make([]map[string]any, 0, clientMessagesInitCap)
+	originalMessages := make([]*dynamicpb.Message, 0, clientMessagesInitCap)
 
 	for {
 		inputMsg := dynamicpb.NewMessage(m.inputDesc)
@@ -874,13 +970,14 @@ func (m *grpcMocker) collectClientMessages(stream grpc.ServerStream) ([]map[stri
 		}
 
 		if err != nil {
-			return nil, err //nolint:wrapcheck
+			return nil, nil, err //nolint:wrapcheck
 		}
 
 		messages = append(messages, convertToMap(inputMsg))
+		originalMessages = append(originalMessages, proto.CloneOf(inputMsg))
 	}
 
-	return messages, nil
+	return messages, originalMessages, nil
 }
 
 func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string]any) (*stuber.Stub, error) {
@@ -898,9 +995,10 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 
 		// Build query for error formatting
 		query := stuber.Query{
-			Service: m.fullServiceName,
-			Method:  m.methodName,
-			Input:   messages,
+			Service:       m.fullServiceName,
+			Method:        m.methodName,
+			StrictService: m.strictServiceMatch,
+			Input:         messages,
 		}
 		if len(md) > 0 {
 			query.Headers = processHeaders(md)
@@ -1012,6 +1110,10 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 		}
 
 		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return &bidiStreamFallbackError{err: err, requests: []*dynamicpb.Message{inputMsg}}
+			}
+
 			return err //nolint:wrapcheck
 		}
 
@@ -1030,7 +1132,12 @@ func (m *grpcMocker) processBidiStreamMessage(
 
 	stub, err := bidiResult.Next(convertToMap(inputMsg))
 	if err != nil {
-		return errors.Wrap(err, "failed to process bidirectional message")
+		wrappedErr := errors.Wrap(err, "failed to process bidirectional message")
+		if errors.Is(err, stuber.ErrStubNotFound) {
+			return &bidiStreamFallbackError{err: wrappedErr, requests: []*dynamicpb.Message{inputMsg}}
+		}
+
+		return wrappedErr
 	}
 
 	if err := m.delay(stream.Context(), stub.Output.Delay); err != nil {
@@ -1152,12 +1259,26 @@ func NewGRPCServer(
 }
 
 func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
+	var err error
+
 	imports := []string{}
 	protoPaths := []string{}
 
 	if s.params != nil {
 		imports = s.params.Imports()
 		protoPaths = s.params.ProtoPath()
+	}
+
+	s.proxies, err = proxyroutes.New(ctx, protoPaths, s.remoteClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to initialize proxy routes")
+	}
+
+	if s.proxies != nil {
+		go func() {
+			<-ctx.Done()
+			s.proxies.Close()
+		}()
 	}
 
 	descriptors, err := protosetdom.Build(ctx, imports, protoPaths, s.remoteClient)
@@ -1270,6 +1391,7 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 		errorFormatter:     NewErrorFormatter(),
 		recorder:           s.recorder,
 		descriptorResolver: &dynamicDescriptorResolver{static: protoregistry.GlobalFiles, dynamic: s.descriptors},
+		proxies:            s.proxies,
 		inputDesc:          methodDesc.Input(),
 		outputDesc:         methodDesc.Output(),
 		fullServiceName:    serviceName,
@@ -1278,6 +1400,7 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 		fullMethod:         fullMethod,
 		serverStream:       methodDesc.IsStreamingServer(),
 		clientStream:       methodDesc.IsStreamingClient(),
+		strictServiceMatch: s.proxies != nil && s.proxies.RouteByMethod(fullMethod) != nil,
 	}
 
 	if methodDesc.IsStreamingServer() || methodDesc.IsStreamingClient() {
@@ -1461,13 +1584,31 @@ func (s *GRPCServer) registerServices(
 	reg *protoregistry.Files,
 ) {
 	logger := zerolog.Ctx(ctx)
+	registered := make(map[string]struct{})
+
+	for serviceName := range server.GetServiceInfo() {
+		registered[serviceName] = struct{}{}
+	}
 
 	for _, descriptor := range descriptors {
 		for _, file := range descriptor.GetFile() {
 			for _, svc := range file.GetService() {
 				serviceDesc := s.createServiceDesc(file, svc)
-				s.registerServiceMethods(ctx, &serviceDesc, svc, reg)
+
+				if _, exists := registered[serviceDesc.ServiceName]; exists {
+					logger.Warn().Str("service", serviceDesc.ServiceName).Msg("Service already registered; skipping")
+
+					continue
+				}
+
+				if err := s.registerServiceMethods(ctx, &serviceDesc, svc, reg); err != nil {
+					logger.Warn().Err(err).Str("service", serviceDesc.ServiceName).Msg("Skipping service due to descriptor error")
+
+					continue
+				}
+
 				server.RegisterService(&serviceDesc, nil)
+				registered[serviceDesc.ServiceName] = struct{}{}
 				logger.Info().Str("service", serviceDesc.ServiceName).Msg("Registered gRPC service")
 			}
 		}
@@ -1486,18 +1627,11 @@ func (s *GRPCServer) registerServiceMethods(
 	serviceDesc *grpc.ServiceDesc,
 	svc *descriptorpb.ServiceDescriptorProto,
 	reg *protoregistry.Files,
-) {
-	logger := zerolog.Ctx(ctx)
-
+) error {
 	for _, method := range svc.GetMethod() {
-		inputDesc, err := getMessageDescriptor(reg, method.GetInputType())
+		inputDesc, outputDesc, err := s.resolveMethodMessageDescriptors(serviceDesc.ServiceName, method, reg)
 		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to get input message descriptor")
-		}
-
-		outputDesc, err := getMessageDescriptor(reg, method.GetOutputType())
-		if err != nil {
-			logger.Fatal().Err(err).Msg("Failed to get output message descriptor")
+			return err
 		}
 
 		m := s.createGrpcMocker(ctx, serviceDesc, svc, method, inputDesc, outputDesc, reg)
@@ -1516,6 +1650,32 @@ func (s *GRPCServer) registerServiceMethods(
 			})
 		}
 	}
+
+	return nil
+}
+
+//nolint:ireturn
+func (s *GRPCServer) resolveMethodMessageDescriptors(
+	serviceName string,
+	method *descriptorpb.MethodDescriptorProto,
+	reg *protoregistry.Files,
+) (protoreflect.MessageDescriptor, protoreflect.MessageDescriptor, error) {
+	if reg != nil {
+		inputDesc, err := getMessageDescriptor(reg, method.GetInputType())
+		if err == nil {
+			outputDesc, outErr := getMessageDescriptor(reg, method.GetOutputType())
+			if outErr == nil {
+				return inputDesc, outputDesc, nil
+			}
+		}
+	}
+
+	methodDesc, err := s.findMethodDescriptor(serviceName, method.GetName())
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to resolve method descriptor %s/%s", serviceName, method.GetName())
+	}
+
+	return methodDesc.Input(), methodDesc.Output(), nil
 }
 
 func (s *GRPCServer) createGrpcMocker(
@@ -1539,6 +1699,7 @@ func (s *GRPCServer) createGrpcMocker(
 		errorFormatter:     NewErrorFormatter(),
 		recorder:           s.recorder,
 		descriptorResolver: resolver,
+		proxies:            s.proxies,
 
 		inputDesc:  inputDesc,
 		outputDesc: outputDesc,
@@ -1550,6 +1711,8 @@ func (s *GRPCServer) createGrpcMocker(
 
 		serverStream: method.GetServerStreaming(),
 		clientStream: method.GetClientStreaming(),
+
+		strictServiceMatch: s.proxies != nil && s.proxies.RouteByMethod(fmt.Sprintf("/%s/%s", serviceDesc.ServiceName, method.GetName())) != nil,
 	}
 }
 
@@ -1831,7 +1994,7 @@ func (m *grpcMocker) sendBidiResponses(
 	return sendStreamMessage(stream, outputMsg)
 }
 
-//nolint:cyclop,funlen,nestif
+//nolint:cyclop,funlen,nestif,gocognit
 func (m *grpcMocker) sendStreamResponses(
 	stream grpc.ServerStream,
 	output stuber.Output,
@@ -1840,55 +2003,69 @@ func (m *grpcMocker) sendStreamResponses(
 	requestTime time.Time,
 ) error {
 	if stub.IsClientStream() {
-		var idx int
-
-		if len(output.Stream) == 0 {
+		streamLen := len(output.Stream)
+		if streamLen == 0 {
 			return nil
 		}
 
-		if len(output.Stream) == 1 {
-			idx = 0
-		} else {
-			if messageIndex < 0 || messageIndex >= len(output.Stream) {
-				return nil
+		if messageIndex < 0 {
+			return nil
+		}
+
+		inputLen := len(stub.Inputs)
+		if inputLen == 0 || messageIndex >= inputLen {
+			return nil
+		}
+
+		start := messageIndex
+		if start >= streamLen {
+			return nil
+		}
+
+		end := start + 1
+		if messageIndex == inputLen-1 {
+			end = streamLen
+		}
+
+		for _, streamElement := range output.Stream[start:end] {
+			streamData, ok := streamElement.(map[string]any)
+			if !ok {
+				continue
 			}
 
-			idx = messageIndex
+			streamDataCopy := deepCopyMapAny(streamData)
+
+			headers := make(map[string]any)
+			if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+				headers = processHeaders(md)
+			}
+
+			templateData := template.Data{
+				Request:      nil,
+				Headers:      headers,
+				MessageIndex: messageIndex,
+				RequestTime:  requestTime,
+				Timestamp:    requestTime,
+				State:        make(map[string]any),
+				Requests:     []any{},
+				StubID:       stub.ID.String(),
+				RequestID:    stub.ID.String(),
+			}
+			if err := m.templateEngine.ProcessMap(streamDataCopy, templateData); err != nil {
+				return errors.Wrap(err, "failed to process dynamic templates")
+			}
+
+			outputMsg, err := m.newOutputMessage(streamDataCopy)
+			if err != nil {
+				return errors.Wrap(err, "failed to convert response to dynamic message")
+			}
+
+			if err := sendStreamMessage(stream, outputMsg); err != nil {
+				return err //nolint:wrapcheck
+			}
 		}
 
-		streamData, ok := output.Stream[idx].(map[string]any)
-		if !ok {
-			return nil
-		}
-
-		streamDataCopy := deepCopyMapAny(streamData)
-
-		headers := make(map[string]any)
-		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
-			headers = processHeaders(md)
-		}
-
-		templateData := template.Data{
-			Request:      nil,
-			Headers:      headers,
-			MessageIndex: messageIndex,
-			RequestTime:  requestTime,
-			Timestamp:    requestTime,
-			State:        make(map[string]any),
-			Requests:     []any{},
-			StubID:       stub.ID.String(),
-			RequestID:    stub.ID.String(),
-		}
-		if err := m.templateEngine.ProcessMap(streamDataCopy, templateData); err != nil {
-			return errors.Wrap(err, "failed to process dynamic templates")
-		}
-
-		outputMsg, err := m.newOutputMessage(streamDataCopy)
-		if err != nil {
-			return errors.Wrap(err, "failed to convert response to dynamic message")
-		}
-
-		return sendStreamMessage(stream, outputMsg)
+		return nil
 	}
 
 	for _, streamElement := range output.Stream {
