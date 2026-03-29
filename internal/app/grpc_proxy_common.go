@@ -44,6 +44,15 @@ func (m *grpcMocker) newCaptureRequestContext(ctx context.Context) captureReques
 	}
 }
 
+func (m *grpcMocker) hasCaptureRequestHeaders(ctx context.Context) bool {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return false
+	}
+
+	return len(requestHeadersFromMetadata(md)) > 0
+}
+
 func responseHeadersFromClientStream(clientStream grpc.ClientStream) map[string]string {
 	if clientStream == nil {
 		return nil

@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/base64"
+	stderrors "errors"
 	"fmt"
 	"io"
 	"maps"
@@ -214,21 +215,19 @@ func (m *grpcMocker) streamHandler(srv any, stream grpc.ServerStream) error {
 			return err
 		}
 
-		{
-			var (
-				fallbackErr  *serverStreamFallbackError
-				fallbackErr1 *clientStreamFallbackError
-			)
-
-			switch {
-			case errors.As(err, &fallbackErr):
-				return m.proxyServerStreamWithRequest(stream, route, fallbackErr.request, behavior.captureMiss())
-			case errors.As(err, &fallbackErr1):
-				return m.proxyClientStreamWithRequests(stream, route, fallbackErr1.requests, behavior.captureMiss())
-			default:
-				return m.proxyStream(stream, route, behavior.captureMiss())
-			}
+		if fallbackErr, ok := stderrors.AsType[*serverStreamFallbackError](err); ok {
+			return m.proxyServerStreamWithRequest(stream, route, fallbackErr.request, behavior.captureMiss())
 		}
+
+		if fallbackErr, ok := stderrors.AsType[*clientStreamFallbackError](err); ok {
+			return m.proxyClientStreamWithRequests(stream, route, fallbackErr.requests, behavior.captureMiss())
+		}
+
+		if fallbackErr, ok := stderrors.AsType[*bidiStreamFallbackError](err); ok {
+			return m.proxyBidiStreamWithRequests(stream, route, fallbackErr.requests, behavior.captureMiss())
+		}
+
+		return m.proxyStream(stream, route, behavior.captureMiss())
 	}
 
 	return grpc.StreamServerInterceptor(func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
@@ -704,14 +703,36 @@ func (m *grpcMocker) handleUnaryWithProxy(ctx context.Context, req *dynamicpb.Me
 		return m.proxyUnary(ctx, req, route, false)
 	}
 
+	if behavior.captureMiss() && m.captureShouldProxyUnaryByHeaders(ctx, req) {
+		return m.proxyUnary(ctx, req, route, true)
+	}
+
 	resp, err := m.handleUnary(ctx, req)
 
-	var missErr *unaryStubMissError
-	if !errors.As(err, &missErr) {
+	if _, ok := stderrors.AsType[*unaryStubMissError](err); !ok {
 		return resp, err
 	}
 
 	return m.proxyUnary(ctx, req, route, behavior.captureMiss())
+}
+
+func (m *grpcMocker) captureShouldProxyUnaryByHeaders(ctx context.Context, req *dynamicpb.Message) bool {
+	if !m.hasCaptureRequestHeaders(ctx) {
+		return false
+	}
+
+	query := m.newQuery(ctx, req)
+	report := m.budgerigar.InspectQuery(query)
+	if report.MatchedStubID == nil {
+		return true
+	}
+
+	found := m.budgerigar.FindByID(*report.MatchedStubID)
+	if found == nil {
+		return true
+	}
+
+	return found.Headers.Len() == 0
 }
 
 //nolint:cyclop,funlen
@@ -1088,6 +1109,10 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 		}
 
 		if err != nil {
+			if status.Code(err) == codes.NotFound {
+				return &bidiStreamFallbackError{err: err, requests: []*dynamicpb.Message{inputMsg}}
+			}
+
 			return err //nolint:wrapcheck
 		}
 
@@ -1106,7 +1131,12 @@ func (m *grpcMocker) processBidiStreamMessage(
 
 	stub, err := bidiResult.Next(convertToMap(inputMsg))
 	if err != nil {
-		return errors.Wrap(err, "failed to process bidirectional message")
+		wrappedErr := errors.Wrap(err, "failed to process bidirectional message")
+		if errors.Is(err, stuber.ErrStubNotFound) {
+			return &bidiStreamFallbackError{err: wrappedErr, requests: []*dynamicpb.Message{inputMsg}}
+		}
+
+		return wrappedErr
 	}
 
 	if err := m.delay(stream.Context(), stub.Output.Delay); err != nil {

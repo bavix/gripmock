@@ -201,6 +201,16 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 
 //nolint:cyclop,funlen,wsl_v5
 func (m *grpcMocker) proxyBidiStream(stream grpc.ServerStream, route *proxyroutes.Route, capture bool) error {
+	return m.proxyBidiStreamWithRequests(stream, route, nil, capture)
+}
+
+//nolint:cyclop,funlen,wsl_v5
+func (m *grpcMocker) proxyBidiStreamWithRequests(
+	stream grpc.ServerStream,
+	route *proxyroutes.Route,
+	prefetchedRequests []*dynamicpb.Message,
+	capture bool,
+) error {
 	proxyCtx, cancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
 	defer cancel()
 
@@ -221,6 +231,18 @@ func (m *grpcMocker) proxyBidiStream(stream grpc.ServerStream, route *proxyroute
 	errCh := make(chan error, proxyErrChanCap)
 
 	go func() {
+		for _, prefetched := range prefetchedRequests {
+			mu.Lock()
+			requests = append(requests, convertToMap(prefetched))
+			mu.Unlock()
+
+			if err := clientStream.SendMsg(prefetched); err != nil {
+				errCh <- err
+
+				return
+			}
+		}
+
 		for {
 			req := dynamicpb.NewMessage(m.inputDesc)
 			err := stream.RecvMsg(req)
