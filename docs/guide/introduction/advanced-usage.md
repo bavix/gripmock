@@ -271,4 +271,4 @@ Match requests based on headers:
 ## Performance Tips
 - **Stub Prioritization**: GripMock returns the **first matching stub**. Order stubs from most to least specific.  
 - **Batch Operations**: Use `POST /api/stubs/batchDelete` for bulk deletions instead of individual API calls.  
-- **Healthchecks**: Monitor with `GET /api/health/readiness` for production deployments.
+- **Health checks**: Monitor with `GET /api/health/readiness` for production deployments.

@@ -258,7 +258,7 @@ Use `ignoreArrayOrder: true` to disable array sorting checks:
 }
 ```
 
-### Healthchecks <VersionTag version="v2.0.2" />
+### Health checks <VersionTag version="v2.0.2" />
 Check service status:
 ```bash
 curl http://127.0.0.1:4771/api/health/liveness

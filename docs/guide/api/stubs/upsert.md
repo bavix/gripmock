@@ -1,7 +1,7 @@
-# **Stub API. Stubs Upsert**  
+# Stub API: Upsert Stubs
 **Upsert** (insert or update) stubs via the `/api/stubs` endpoint. This lets you add new stubs or update existing ones by specifying their `id`.  
 
-## **Example Contract (`simple.proto`)**  
+## Example Contract (`simple.proto`)
 ```proto
 syntax = "proto3";
 
@@ -21,13 +21,13 @@ message Reply {
 }
 ```
 
-## **Request**  
+## Request
 - **Method**: `POST`  
 - **URL**: `/api/stubs`  
 - **Headers**: `Content-Type: application/json`  
 - **Body**: A single `Stub` object **or** an array of `Stub` objects.  
 
-## **Examples**  
+## Examples
 
 **1. Create a Single Stub**  
 ```bash
@@ -58,13 +58,13 @@ curl -X POST -d '[
     "service": "Gripmock",
     "method": "SayHello",
     "input": { "equals": { "name": "gripmock1" } },
-    "output": { "data": { "message": "Hello GripMock. stab1", "returnCode": 42 } }
+    "output": { "data": { "message": "Hello GripMock. stub1", "returnCode": 42 } }
   },
   {
     "service": "Gripmock",
     "method": "SayHello",
     "input": { "equals": { "name": "gripmock2" } },
-    "output": { "data": { "message": "Hello GripMock. stab2", "returnCode": 42 } }
+    "output": { "data": { "message": "Hello GripMock. stub2", "returnCode": 42 } }
   }
 ]' http://127.0.0.1:4771/api/stubs
 ```
@@ -74,7 +74,7 @@ curl -X POST -d '[
 ["2378ccb8-f36e-48b0-a257-4309876bed47", "0ee02a07-4cae-4a0b-b0c1-5e7c379bc858"]
 ```
 
-## **Schema Details**  
+## Schema Details
 - **Stub Object**:  
   ```json
   {
@@ -95,7 +95,7 @@ curl -X POST -d '[
   }
   ```
 
-## **Behavior**  
+## Behavior
 - **ID Handling**:  
   - If `id` is omitted, a new UUID is generated.  
   - If `id` is provided and exists, the stub is **updated**.  
@@ -107,17 +107,17 @@ curl -X POST -d '[
   - `data`: Must align with your protobuf `Reply` message structure.  
   - `error` and `code`: Define gRPC error responses.  
 
-## **Notes**  
+## Notes
 - **Upsert Logic**: Use this endpoint to **create or update** stubs.  
 - **Batch Support**: Send an array of stubs in a single request.  
 - **Validation**: Invalid stubs (e.g., missing `service`/`method`) return `400 Bad Request`.  
 
-## **Related Endpoints**  
+## Related Endpoints
 - `GET /api/stubs`: List all stubs.  
 - `DELETE /api/stubs`: Delete all stubs.  
 - `DELETE /api/stubs/{uuid}`: Delete a specific stub by ID.  
 
-## **Schema References**
+## Schema References
 For complete schema details, see:
 - [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
 - [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)

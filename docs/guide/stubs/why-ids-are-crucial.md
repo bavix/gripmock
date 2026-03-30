@@ -33,7 +33,7 @@ http://localhost:4771/#/stubs/7f746310-a470-43dc-9eeb-355dff50d2a9/show
 ```
 
 ::: warning
-Search by ID in the admin panel will be available later, but now you can only go to the direct URL
+Search by ID in the admin panel is not available yet; use the direct URL for now.
 :::
 
 ## 3. Dead Stub Detection 🧹  
@@ -49,7 +49,7 @@ curl -X DELETE http://localhost:4771/api/stubs/7f746310-a470-43dc-9eeb-355dff50d
 ## 4. Live Reloading Magic 🔄  
 
 ::: warning
-Warning! If you don't specify ID in stubs, then when you change the file, the ID may change. Keep this in mind.
+Warning! If you do not specify IDs in your stubs, IDs may change when the file is updated.
 :::
 
 Enable automatic updates **without restarting GripMock**:  
@@ -64,7 +64,7 @@ STUB_WATCHER_TYPE=fsnotify # Filesystem events. Default value: fsnotify. Other o
 3. No API calls or restarts needed  
 
 ::: info
-In timer mode, GripMock won't unload and load all the stubs from the file system every N seconds. Only files with a changed modification time will be transferred.
+In timer mode, GripMock does not reload all stubs every N seconds. It reloads only files with updated modification times.
 :::
 
 ## 5. Collision Prevention ⚠️  

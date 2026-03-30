@@ -36,7 +36,7 @@ For a typical Order Service rollout, modes let you move in predictable stages:
 
 When multiple sources are provided:
 
-- mode applies only to services registered from that source;
+- the mode applies only to services registered from that source;
 - if a service exists in multiple sources, first source wins for that service;
 - later sources do not override already-bound services.
 

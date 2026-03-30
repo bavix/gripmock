@@ -44,7 +44,7 @@ GripMock uses simple BSR profile configuration with these environment variables:
 
 GripMock routes modules based on host matching:
 
-GripMock uses host from `BSR_SELF_BASE_URL` for routing.
+GripMock uses the host from `BSR_SELF_BASE_URL` for routing.
 
 ### Examples
 

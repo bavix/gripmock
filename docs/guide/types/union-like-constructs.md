@@ -230,6 +230,6 @@ grpcurl -plaintext \
 ## 6. Further Reading
 - [Protobuf `oneof` Documentation](https://protobuf.dev/programming-guides/proto3/#oneof)
 - [API Design Best Practices](https://cloud.google.com/apis/design/proto3)
-- [GRPC Error Handling](https://grpc.io/docs/guides/error/)
+- [gRPC Error Handling](https://grpc.io/docs/guides/error/)
 
 This pattern is widely used in APIs for payment processing, notifications, and polymorphic data structures.

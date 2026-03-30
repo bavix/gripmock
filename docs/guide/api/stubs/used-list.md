@@ -1,9 +1,9 @@
-### Expanded Documentation for `/api/stubs/used` Endpoint
+# Stub API: List Used Stubs
 
-#### **Overview**
+## Overview
 The `/api/stubs/used` endpoint retrieves a list of **stubs that have been matched during search operations**. This list is dynamically updated whenever a stub is successfully found via the `/api/stubs/search` endpoint. It provides visibility into which stubs are actively being utilized in your testing workflows.
 
-#### **Request**
+## Request
 - **Method**: `GET`
 - **URL**: `/api/stubs/used`
 - **Parameters**: None required.
@@ -14,7 +14,7 @@ The `/api/stubs/used` endpoint retrieves a list of **stubs that have been matche
 curl http://127.0.0.1:4771/api/stubs/used
 ```
 
-#### **Response**
+## Response
 - **Status Code**: `200 OK`
 - **Content-Type**: `application/json`
 - **Body**: An array of `Stub` objects (see schema below).
@@ -37,7 +37,7 @@ curl http://127.0.0.1:4771/api/stubs/used
 ]
 ```
 
-#### **Stub Object Schema**
+## Stub Object Schema
 | Field   | Type     | Description                                                                 |
 |---------|----------|-----------------------------------------------------------------------------|
 | `id`    | `string` | Unique identifier for the stub (UUID format).                              |
@@ -46,12 +46,12 @@ curl http://127.0.0.1:4771/api/stubs/used
 | `input`  | `object` | Input matching criteria (e.g., `equals`, `contains`, `matches`).          |
 | `output` | `object` | Response configuration, including `data`, `error`, and gRPC status `code`.|
 
-#### **Behavior Explanation**
+## Behavior
 - **Usage Tracking**: A stub is marked as "used" **only when it is matched during a search operation** (e.g., via `POST /api/stubs/search`).
 - **Persistence**: The "used" state is ephemeral and resets when the GripMock server restarts.
 - **Inverse of Unused**: The `/api/stubs/unused` endpoint returns stubs that have **never** been matched by a search.
 
-#### **Example Workflow**
+## Example Workflow
 1. **Create a Stub**:
    ```bash
    curl -X POST -d '{
@@ -76,16 +76,16 @@ curl http://127.0.0.1:4771/api/stubs/used
    curl http://127.0.0.1:4771/api/stubs/used
    ```
 
-#### **Notes**
+## Notes
 - **Multiple Matches**: If a stub is matched multiple times, it appears **once** in the list (no duplicates).
 - **Related Endpoints**:
   - `GET /api/stubs/unused`: List stubs never matched by a search.
   - `POST /api/stubs/search`: Mark stubs as used by matching criteria.
 - **Edge Cases**:
   - If no stubs have been used, the response is an empty array (`[]`).
-  - Stubs are **not** marked as used when fetched by `GET /api/stubs` or `GET /stubs/{uuid}`.
+  - Stubs are **not** marked as used when fetched by `GET /api/stubs` or `GET /api/stubs/{uuid}`.
 
-#### **Schema References**
+## Schema References
 For complete schema details, see:
 - [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
 - [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)

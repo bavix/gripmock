@@ -26,7 +26,3 @@ Import the SDK in your Go code:
 ```go
 import sdk "github.com/bavix/gripmock/v3/pkg/sdk"
 ```
-
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::

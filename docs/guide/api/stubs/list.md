@@ -1,7 +1,7 @@
-### **Stub API. Get Stubs List**  
+# Stub API: List Stubs
 The `/api/stubs` endpoint retrieves a list of **all registered stubs**, regardless of whether they have been used or not. This is useful for debugging and auditing stub configurations.  
 
-#### **Example Contract (`simple.proto`)**  
+## Example Contract (`simple.proto`)
 ```proto
 syntax = "proto3";
 
@@ -21,7 +21,7 @@ message Reply {
 }
 ```
 
-#### **Request**  
+## Request
 - **Method**: `GET`  
 - **URL**: `/api/stubs`  
 - **Parameters**: None required.  
@@ -32,7 +32,7 @@ message Reply {
 curl http://127.0.0.1:4771/api/stubs
 ```
 
-#### **Response**  
+## Response
 - **Status Code**: `200 OK`  
 - **Content-Type**: `application/json`  
 - **Body**: An array of `Stub` objects (see schema below).  
@@ -55,7 +55,7 @@ curl http://127.0.0.1:4771/api/stubs
 ]
 ```
 
-#### **Stub Object Schema**  
+## Stub Object Schema
 | Field    | Type     | Description                                                                 |
 |----------|----------|-----------------------------------------------------------------------------|
 | `id`     | `string` | Unique identifier for the stub (UUID format).                              |
@@ -65,12 +65,12 @@ curl http://127.0.0.1:4771/api/stubs
 | `input`  | `object` | Input matching criteria (`equals`, `contains`, `matches`, `ignoreArrayOrder`). |
 | `output` | `object` | Response configuration, including `data`, `error`, and gRPC status `code`.|  
 
-#### **Behavior**  
+## Behavior
 - **Comprehensive List**: Returns **all stubs**, including both used and unused ones.  
 - **Order**: The order of stubs is not guaranteed.  
 - **No Side Effects**: Fetching the list does **not** mark stubs as "used".  
 
-#### **Example Workflow**  
+## Example Workflow
 1. **Create Stubs**:  
    ```bash
    curl -X POST -d '[
@@ -99,7 +99,7 @@ curl http://127.0.0.1:4771/api/stubs
    ]
    ```
 
-#### **Notes**  
+## Notes
 - **Edge Cases**:  
   - If no stubs exist, returns an empty array (`[]`).  
   - Includes stubs created via `POST /api/stubs` or static configurations.  
@@ -108,7 +108,7 @@ curl http://127.0.0.1:4771/api/stubs
   - `GET /api/stubs/unused`: List stubs never matched by searches.  
   - `DELETE /api/stubs`: Purge all stubs.  
 
-#### **Schema References**
+## Schema References
 For complete schema details, see:
 - [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
 - [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)

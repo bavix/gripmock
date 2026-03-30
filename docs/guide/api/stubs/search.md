@@ -1,7 +1,7 @@
-# **Stub API. Stubs Search**  
+# Stub API: Search Stubs
 The `/api/stubs/search` endpoint allows flexible searching of stubs based on input criteria, headers, service, method, or ID. It returns the **first matching stub's output** for testing gRPC services.  
 
-## **Example Contract (`simple.proto`)**  
+## Example Contract (`simple.proto`)
 ```proto
 syntax = "proto3";
 
@@ -21,7 +21,7 @@ message Reply {
 }
 ```
 
-## **Request**  
+## Request
 - **Method**: `POST`  
 - **URL**: `/api/stubs/search`  
 - **Headers**: `Content-Type: application/json`  
@@ -36,7 +36,7 @@ message Reply {
   }
   ```
 
-## **Response**  
+## Response
 - **Status Code**: `200 OK`  
 - **Content-Type**: `application/json`  
 - **Body**:  
@@ -49,10 +49,10 @@ message Reply {
   }
   ```
 
-## **Input Matching Rules**  
+## Input Matching Rules
 Stubs are matched based on **input criteria**. Rules are evaluated in order: `equals` → `contains` → `matches`.  
 
-### **1. `equals` (Exact Match)**  
+### 1. `equals` (Exact Match)
 Matches fields **exactly** (case-sensitive).  
 **Example Stub**:  
 ```json
@@ -66,7 +66,7 @@ Matches fields **exactly** (case-sensitive).
 }
 ```
 
-### **2. `contains` (Partial Match)**
+### 2. `contains` (Partial Match)
 For example, you need a minimum of keys from those passed in the request, and not all of them.
 **Example Stub**:
 ```json
@@ -93,13 +93,13 @@ The above stub will match if the request contains **both** `name` and `details.c
 
 **Note**: This is different from `equals` in that it checks for **partial** matches.
 
-### **3. `matches` (Regular Expression)**  
-Matches if the input **contains the specified fields**.  
+### 3. `matches` (Regular Expression)
+Matches fields using **regular expressions**.  
 **Example Stub**:  
 ```json
 {
   "input": {
-    "contains": {
+    "matches": {
       "address": { "city": ".*" }
     }
   }
@@ -119,7 +119,7 @@ Uses regex patterns for matching.
 }
 ```
 
-### **`ignoreArrayOrder` Flag**  
+### `ignoreArrayOrder` Flag
 Disable array order checks:  
 ```json
 {
@@ -132,10 +132,10 @@ Disable array order checks:
 }
 ```
 
-## **Headers Matching Rules**  
+## Headers Matching Rules
 Headers are matched similarly to input:  
 
-### **1. `equals` (Exact Header Match)**  
+### 1. `equals` (Exact Header Match)
 ```json
 {
   "headers": {
@@ -146,7 +146,7 @@ Headers are matched similarly to input:
 }
 ```
 
-### **2. `contains` (Header Presence)**  
+### 2. `contains` (Header Presence)
 
 **Example Stub**:
 ```json
@@ -176,7 +176,7 @@ The above stub will match if the request contains **both** `authorization` and `
 
 **Note**: This is different from `equals` in that it checks for **partial** matches.
 
-### **3. `matches` (Header Regex)**  
+### 3. `matches` (Header Regex)
 ```json
 {
   "headers": {
@@ -197,7 +197,7 @@ The above stub will match if the request contains **both** `authorization` and `
 }
 ```
 
-## **Examples**  
+## Examples
 
 **1. Search by Data**  
 ```bash
@@ -228,20 +228,20 @@ curl -X POST -d '{
 
 **Note**: When searching by ID, the `id` field is used for exact ID matching, but `service` and `method` fields are still required as they are mandatory in the SearchRequest structure.
 
-## **Behavior**  
+## Behavior
 - **Stub Priority**: When multiple stubs match, higher `priority` values are selected first.
-- **First Match**: Returns the **first stub** that matches the criteria.  
+- **First Match**: Returns the first stub that matches after applying `priority` sorting.  
 - **No Match**: Returns `error` with code `5` (Not Found) if no stub matches.  
 
-## **Notes**  
+## Notes
 - **Edge Cases**:  
-  - If multiple stubs match, the **first created** stub is returned.  
+  - If multiple stubs share the same `priority`, the first created stub is returned.  
   - Use `ignoreArrayOrder` to ignore array element order in `equals`.  
 - **Related Endpoints**:  
   - `GET /api/stubs/used`: Track stubs matched by this endpoint.  
   - `POST /api/stubs`: Create/update stubs for testing.  
 
-## **Schema References**
+## Schema References
 For complete schema details, see:
 - [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
 - [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)

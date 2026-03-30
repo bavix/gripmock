@@ -224,4 +224,4 @@ grpcurl -plaintext -d '{
 ## Further Reading
 - [Protobuf Language Guide: Enums](https://protobuf.dev/programming-guides/proto3/#enum)
 - [Protobuf Language Guide: Maps](https://protobuf.dev/programming-guides/proto3/#maps)
-- [GRPC Best Practices](https://grpc.io/docs/guides/)
+- [gRPC Best Practices](https://grpc.io/docs/guides/)

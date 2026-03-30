@@ -12,7 +12,7 @@ The SDK provides helper functions to define stubs easily.
 
 ## Stub Method Name Forms <VersionTag version="v3.9.1" />
 
-You can define target gRPC method in two ways:
+You can define the target gRPC method in two ways:
 
 - `mock.Stub("package.Service", "Method")`
 - `mock.Stub(sdk.By("/package.Service/Method"))`
