@@ -2,15 +2,12 @@ package reflectclient
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"sort"
 	"time"
 
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 	reflectionpb "google.golang.org/grpc/reflection/grpc_reflection_v1"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -24,7 +21,6 @@ const (
 	serviceReflectionV1Alpha = "grpc.reflection.v1alpha.ServerReflection"
 	serviceHealth            = "grpc.health.v1.Health"
 	defaultTimeout           = 5 * time.Second
-	dialOptionCapacity       = 3
 )
 
 var (
@@ -65,7 +61,13 @@ func (c *Client) FetchDescriptorSet(ctx context.Context, source *protoset.Source
 
 	conn, err := grpc.NewClient(
 		"passthrough:///"+source.ReflectAddress,
-		buildDialOptions(source)...,
+		grpcclient.DialOptions(
+			source.ReflectTimeout,
+			source.ReflectTLS,
+			source.ReflectServerName,
+			source.ReflectBearer,
+			source.ReflectInsecure,
+		)...,
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to connect to %s", source.ReflectAddress)
@@ -76,38 +78,6 @@ func (c *Client) FetchDescriptorSet(ctx context.Context, source *protoset.Source
 	}()
 
 	return fetchDescriptorSet(ctx, conn)
-}
-
-func buildDialOptions(source *protoset.Source) []grpc.DialOption {
-	options := make([]grpc.DialOption, 0, dialOptionCapacity)
-
-	unaryInterceptors := []grpc.UnaryClientInterceptor{grpcclient.UnaryTimeoutInterceptor(source.ReflectTimeout)}
-	streamInterceptors := []grpc.StreamClientInterceptor{grpcclient.StreamTimeoutInterceptor(source.ReflectTimeout)}
-
-	if source.ReflectTLS {
-		tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
-		if source.ReflectServerName != "" {
-			tlsConfig.ServerName = source.ReflectServerName
-		}
-
-		tlsConfig.InsecureSkipVerify = source.ReflectInsecure
-
-		options = append(options, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
-	} else {
-		options = append(options, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	}
-
-	if source.ReflectBearer != "" {
-		unaryInterceptors = append(unaryInterceptors, grpcclient.UnaryBearerInterceptor(source.ReflectBearer))
-		streamInterceptors = append(streamInterceptors, grpcclient.StreamBearerInterceptor(source.ReflectBearer))
-	}
-
-	options = append(options,
-		grpc.WithChainUnaryInterceptor(unaryInterceptors...),
-		grpc.WithChainStreamInterceptor(streamInterceptors...),
-	)
-
-	return options
 }
 
 func fetchDescriptorSet(ctx context.Context, conn *grpc.ClientConn) (*descriptorpb.FileDescriptorSet, error) {

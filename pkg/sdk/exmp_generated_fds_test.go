@@ -7,11 +7,10 @@ import (
 
 	chatpb "github.com/bavix/gripmock/v3/pkg/sdk/internal/examplefds/gen/examples/projects/chat"
 	multiversepb "github.com/bavix/gripmock/v3/pkg/sdk/internal/examplefds/gen/examples/projects/multiverse"
+	"github.com/bavix/gripmock/v3/pkg/sdk/internal/fdstest"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/protobuf/reflect/protodesc"
-	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
 	"github.com/bavix/gripmock/v3/pkg/sdk"
@@ -29,7 +28,7 @@ func mustRunMockWithDescriptors(t *testing.T, fds *descriptorpb.FileDescriptorSe
 func TestExmpEmbeddedChatStreaming(t *testing.T) {
 	t.Parallel()
 
-	fds := descriptorSetFromFile(chatpb.File_examples_projects_chat_service_proto)
+	fds := fdstest.DescriptorSetFromFile(chatpb.File_examples_projects_chat_service_proto)
 	mock := mustRunMockWithDescriptors(t, fds)
 
 	stubChatService(mock)
@@ -73,7 +72,7 @@ func TestExmpEmbeddedChatStreaming(t *testing.T) {
 func TestExmpEmbeddedMultiverseUnaryAndStreams(t *testing.T) {
 	t.Parallel()
 
-	fds := descriptorSetFromFile(multiversepb.File_examples_projects_multiverse_service_proto)
+	fds := fdstest.DescriptorSetFromFile(multiversepb.File_examples_projects_multiverse_service_proto)
 	mock := mustRunMockWithDescriptors(t, fds)
 
 	stubMultiverseService(mock)
@@ -115,8 +114,8 @@ func TestExmpEmbeddedMultiverseUnaryAndStreams(t *testing.T) {
 func TestExmpEmbeddedMergedGeneratedDescriptors(t *testing.T) {
 	t.Parallel()
 
-	chat := descriptorSetFromFile(chatpb.File_examples_projects_chat_service_proto)
-	multiverse := descriptorSetFromFile(multiversepb.File_examples_projects_multiverse_service_proto)
+	chat := fdstest.DescriptorSetFromFile(chatpb.File_examples_projects_chat_service_proto)
+	multiverse := fdstest.DescriptorSetFromFile(multiversepb.File_examples_projects_multiverse_service_proto)
 	merged := &descriptorpb.FileDescriptorSet{File: append([]*descriptorpb.FileDescriptorProto{}, chat.GetFile()...)}
 	merged.File = append(merged.File, multiverse.GetFile()...)
 
@@ -173,27 +172,4 @@ func stubMultiverseService(mock sdk.Mock) {
 			sdk.Data("chunk_id", "c2", "sequence", 2),
 		).
 		Commit()
-}
-
-func descriptorSetFromFile(root protoreflect.FileDescriptor) *descriptorpb.FileDescriptorSet {
-	fds := &descriptorpb.FileDescriptorSet{}
-	seen := map[string]struct{}{}
-	appendFileRecursive(fds, seen, root)
-
-	return fds
-}
-
-func appendFileRecursive(fds *descriptorpb.FileDescriptorSet, seen map[string]struct{}, fd protoreflect.FileDescriptor) {
-	name := fd.Path()
-	if _, ok := seen[name]; ok {
-		return
-	}
-	seen[name] = struct{}{}
-
-	imports := fd.Imports()
-	for i := 0; i < imports.Len(); i++ {
-		appendFileRecursive(fds, seen, imports.Get(i).FileDescriptor)
-	}
-
-	fds.File = append(fds.File, protodesc.ToFileDescriptorProto(fd))
 }

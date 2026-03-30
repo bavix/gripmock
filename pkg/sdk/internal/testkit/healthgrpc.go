@@ -25,6 +25,8 @@ func StartHealthGRPC(t testing.TB) (addr string) {
 	hs := health.NewServer()
 	hs.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_SERVING)
 
+	// nosemgrep: go.grpc.security.grpc-server-insecure-connection.grpc-server-insecure-connection
+	// Test-only local health server for SDK remote-mode tests.
 	gs := grpc.NewServer()
 	healthgrpc.RegisterHealthServer(gs, hs)
 

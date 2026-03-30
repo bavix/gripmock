@@ -78,6 +78,34 @@ func (c Client) newRequest(method, requestURL string, body []byte, contentType s
 	return req, nil
 }
 
+func (c Client) buildAPIURL(path string) (string, error) {
+	apiURL, err := url.JoinPath(c.BaseURL, path)
+	if err != nil {
+		return "", fmt.Errorf("sdk: failed to build request URL: %w", err)
+	}
+
+	return apiURL, nil
+}
+
+func (c Client) sendRequest(method, path string, body []byte, contentType string) (*http.Response, error) {
+	apiURL, err := c.buildAPIURL(path)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := c.newRequest(method, apiURL, body, contentType)
+	if err != nil {
+		return nil, fmt.Errorf("sdk: failed to create request: %w", err)
+	}
+
+	resp, err := c.getHTTPClient().Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("sdk: failed to execute request: %w", err)
+	}
+
+	return resp, nil
+}
+
 func (c Client) AddStub(stub *stuber.Stub) error {
 	return c.AddStubs([]*stuber.Stub{stub})
 }
@@ -92,19 +120,14 @@ func (c Client) AddStubs(stubs []*stuber.Stub) error {
 		return fmt.Errorf("sdk: failed to marshal stubs: %w", err)
 	}
 
-	apiURL, err := url.JoinPath(c.BaseURL, "api/stubs")
+	resp, err := c.sendRequest(
+		http.MethodPost,
+		"api/stubs",
+		body,
+		"application/json",
+	)
 	if err != nil {
-		return fmt.Errorf("sdk: failed to build stubs URL: %w", err)
-	}
-
-	req, err := c.newRequest(http.MethodPost, apiURL, body, "application/json")
-	if err != nil {
-		return fmt.Errorf("sdk: failed to create request: %w", err)
-	}
-
-	resp, err := c.getHTTPClient().Do(req)
-	if err != nil {
-		return fmt.Errorf("sdk: failed to add stubs via REST: %w", err)
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -121,19 +144,14 @@ func (c Client) BatchDelete(ids []uuid.UUID) error {
 		return fmt.Errorf("sdk: failed to marshal stub IDs: %w", err)
 	}
 
-	apiURL, err := url.JoinPath(c.BaseURL, "api/stubs/batchDelete")
+	resp, err := c.sendRequest(
+		http.MethodPost,
+		"api/stubs/batchDelete",
+		body,
+		"application/json",
+	)
 	if err != nil {
-		return fmt.Errorf("sdk: failed to build batch delete URL: %w", err)
-	}
-
-	req, err := c.newRequest(http.MethodPost, apiURL, body, "application/json")
-	if err != nil {
-		return fmt.Errorf("sdk: failed to create batch delete request: %w", err)
-	}
-
-	resp, err := c.getHTTPClient().Do(req)
-	if err != nil {
-		return fmt.Errorf("sdk: failed to batch delete stubs: %w", err)
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -157,19 +175,14 @@ func (c Client) UploadDescriptors(files []*descriptorpb.FileDescriptorProto) err
 		return fmt.Errorf("sdk: failed to marshal descriptor set: %w", err)
 	}
 
-	apiURL, err := url.JoinPath(c.BaseURL, "api/descriptors")
+	resp, err := c.sendRequest(
+		http.MethodPost,
+		"api/descriptors",
+		body,
+		"application/octet-stream",
+	)
 	if err != nil {
-		return fmt.Errorf("sdk: failed to build descriptors URL: %w", err)
-	}
-
-	req, err := c.newRequest(http.MethodPost, apiURL, body, "application/octet-stream")
-	if err != nil {
-		return fmt.Errorf("sdk: failed to create descriptors request: %w", err)
-	}
-
-	resp, err := c.getHTTPClient().Do(req)
-	if err != nil {
-		return fmt.Errorf("sdk: failed to upload descriptors: %w", err)
+		return err
 	}
 	defer resp.Body.Close()
 
@@ -181,19 +194,14 @@ func (c Client) UploadDescriptors(files []*descriptorpb.FileDescriptorProto) err
 }
 
 func (c Client) FetchHistory() ([]HistoryCall, error) {
-	apiURL, err := url.JoinPath(c.BaseURL, "api/history")
+	resp, err := c.sendRequest(
+		http.MethodGet,
+		"api/history",
+		nil,
+		"",
+	)
 	if err != nil {
-		return nil, fmt.Errorf("sdk: failed to build history URL: %w", err)
-	}
-
-	req, err := c.newRequest(http.MethodGet, apiURL, nil, "")
-	if err != nil {
-		return nil, fmt.Errorf("sdk: failed to create history request: %w", err)
-	}
-
-	resp, err := c.getHTTPClient().Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("sdk: failed to fetch history: %w", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -239,19 +247,14 @@ func (c Client) VerifyMethodCalled(service, method string, expectedCount int) er
 		return fmt.Errorf("sdk: failed to marshal verify request: %w", err)
 	}
 
-	apiURL, err := url.JoinPath(c.BaseURL, "api/verify")
+	resp, err := c.sendRequest(
+		http.MethodPost,
+		"api/verify",
+		body,
+		"application/json",
+	)
 	if err != nil {
-		return fmt.Errorf("sdk: failed to build verify URL: %w", err)
-	}
-
-	req, err := c.newRequest(http.MethodPost, apiURL, body, "application/json")
-	if err != nil {
-		return fmt.Errorf("sdk: failed to create verify request: %w", err)
-	}
-
-	resp, err := c.getHTTPClient().Do(req)
-	if err != nil {
-		return fmt.Errorf("sdk: verify request failed: %w", err)
+		return err
 	}
 	defer resp.Body.Close()
 

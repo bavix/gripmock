@@ -422,94 +422,112 @@ func TestClientURLBuildErrors(t *testing.T) {
 	t.Parallel()
 
 	c := Client{BaseURL: "://bad-url", HTTPClient: &http.Client{Transport: errRoundTripper{}}}
+	name := "svc.proto"
 
-	t.Run("add-stub", func(t *testing.T) {
-		t.Parallel()
+	tests := []struct {
+		name       string
+		call       func() error
+		errContain string
+	}{
+		{
+			name: "add-stub",
+			call: func() error {
+				return c.AddStub(&stuber.Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: stuber.Output{Data: map[string]any{"ok": true}}})
+			},
+			errContain: "failed to build request URL",
+		},
+		{
+			name:       "batch-delete",
+			call:       func() error { return c.BatchDelete([]uuid.UUID{uuid.New()}) },
+			errContain: "failed to build request URL",
+		},
+		{
+			name:       "upload-descriptors",
+			call:       func() error { return c.UploadDescriptors([]*descriptorpb.FileDescriptorProto{{Name: &name}}) },
+			errContain: "failed to build request URL",
+		},
+		{
+			name: "fetch-history",
+			call: func() error {
+				_, err := c.FetchHistory()
+				return err
+			},
+			errContain: "failed to build request URL",
+		},
+		{
+			name:       "verify",
+			call:       func() error { return c.VerifyMethodCalled("svc", "M", 1) },
+			errContain: "failed to build request URL",
+		},
+	}
 
-		err := c.AddStub(&stuber.Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: stuber.Output{Data: map[string]any{"ok": true}}})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to build stubs URL")
-	})
+	for _, tc := range tests {
+		tc := tc
 
-	t.Run("batch-delete", func(t *testing.T) {
-		t.Parallel()
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-		err := c.BatchDelete([]uuid.UUID{uuid.New()})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to build batch delete URL")
-	})
-
-	t.Run("upload-descriptors", func(t *testing.T) {
-		t.Parallel()
-
-		name := "svc.proto"
-		err := c.UploadDescriptors([]*descriptorpb.FileDescriptorProto{{Name: &name}})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to build descriptors URL")
-	})
-
-	t.Run("fetch-history", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := c.FetchHistory()
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to build history URL")
-	})
-
-	t.Run("verify", func(t *testing.T) {
-		t.Parallel()
-
-		err := c.VerifyMethodCalled("svc", "M", 1)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to build verify URL")
-	})
+			err := tc.call()
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.errContain)
+		})
+	}
 }
 
 func TestClientTransportErrors(t *testing.T) {
 	t.Parallel()
 
 	c := Client{BaseURL: "http://127.0.0.1", HTTPClient: &http.Client{Transport: errRoundTripper{}}}
+	name := "svc.proto"
 
-	t.Run("add-stub", func(t *testing.T) {
-		t.Parallel()
+	tests := []struct {
+		name       string
+		call       func() error
+		errContain string
+	}{
+		{
+			name: "add-stub",
+			call: func() error {
+				return c.AddStub(&stuber.Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: stuber.Output{Data: map[string]any{"ok": true}}})
+			},
+			errContain: "failed to execute request",
+		},
+		{
+			name:       "batch-delete",
+			call:       func() error { return c.BatchDelete([]uuid.UUID{uuid.New()}) },
+			errContain: "failed to execute request",
+		},
+		{
+			name:       "upload-descriptors",
+			call:       func() error { return c.UploadDescriptors([]*descriptorpb.FileDescriptorProto{{Name: &name}}) },
+			errContain: "failed to execute request",
+		},
+		{
+			name: "fetch-history",
+			call: func() error {
+				_, err := c.FetchHistory()
+				return err
+			},
+			errContain: "failed to execute request",
+		},
+		{
+			name:       "verify",
+			call:       func() error { return c.VerifyMethodCalled("svc", "M", 1) },
+			errContain: "failed to execute request",
+		},
+	}
 
-		err := c.AddStub(&stuber.Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: stuber.Output{Data: map[string]any{"ok": true}}})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to add stubs via REST")
-	})
+	for _, tc := range tests {
+		tc := tc
 
-	t.Run("batch-delete", func(t *testing.T) {
-		t.Parallel()
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-		err := c.BatchDelete([]uuid.UUID{uuid.New()})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to batch delete stubs")
-	})
-
-	t.Run("upload-descriptors", func(t *testing.T) {
-		t.Parallel()
-
-		name := "svc.proto"
-		err := c.UploadDescriptors([]*descriptorpb.FileDescriptorProto{{Name: &name}})
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to upload descriptors")
-	})
-
-	t.Run("fetch-history", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := c.FetchHistory()
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to fetch history")
-	})
-
-	t.Run("verify", func(t *testing.T) {
-		t.Parallel()
-
-		err := c.VerifyMethodCalled("svc", "M", 1)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "verify request failed")
-	})
+			err := tc.call()
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.errContain)
+		})
+	}
 }
 
 func TestClientUsesRequestContext(t *testing.T) {

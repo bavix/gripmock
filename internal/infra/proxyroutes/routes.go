@@ -2,12 +2,9 @@ package proxyroutes
 
 import (
 	"context"
-	"crypto/tls"
 
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/descriptorpb"
 
@@ -19,7 +16,6 @@ var errRemoteClientNil = errors.New("remote client is not configured")
 
 const (
 	descriptorMethodsInitCap = 16
-	dialOptionCapacity       = 5
 )
 
 type Mode uint8
@@ -76,7 +72,13 @@ func New(ctx context.Context, paths []string, remoteClient protosetdom.RemoteCli
 			return nil, errors.Wrapf(err, "failed to fetch proxy descriptors: %s", source.Raw)
 		}
 
-		conn, err := grpc.NewClient("passthrough:///"+source.ReflectAddress, buildDialOptions(source)...)
+		conn, err := grpc.NewClient("passthrough:///"+source.ReflectAddress, grpcclient.DialOptions(
+			source.ReflectTimeout,
+			source.ReflectTLS,
+			source.ReflectServerName,
+			source.ReflectBearer,
+			source.ReflectInsecure,
+		)...)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to connect proxy upstream: %s", source.ReflectAddress)
 		}
@@ -165,38 +167,6 @@ func mapMode(mode string) Mode {
 	default:
 		return ModeProxy
 	}
-}
-
-func buildDialOptions(source *protosetdom.Source) []grpc.DialOption {
-	options := make([]grpc.DialOption, 0, dialOptionCapacity)
-
-	unaryInterceptors := []grpc.UnaryClientInterceptor{grpcclient.UnaryTimeoutInterceptor(source.ReflectTimeout)}
-	streamInterceptors := []grpc.StreamClientInterceptor{grpcclient.StreamTimeoutInterceptor(source.ReflectTimeout)}
-
-	if source.ReflectTLS {
-		tlsConfig := &tls.Config{
-			MinVersion: tls.VersionTLS12,
-			ServerName: source.ReflectServerName,
-			//nolint:gosec
-			InsecureSkipVerify: source.ReflectInsecure,
-		}
-
-		options = append(options, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
-	} else {
-		options = append(options, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	}
-
-	if source.ReflectBearer != "" {
-		unaryInterceptors = append(unaryInterceptors, grpcclient.UnaryBearerInterceptor(source.ReflectBearer))
-		streamInterceptors = append(streamInterceptors, grpcclient.StreamBearerInterceptor(source.ReflectBearer))
-	}
-
-	options = append(options,
-		grpc.WithChainUnaryInterceptor(unaryInterceptors...),
-		grpc.WithChainStreamInterceptor(streamInterceptors...),
-	)
-
-	return options
 }
 
 func collectServiceMethods(fds *descriptorpb.FileDescriptorSet) map[string][]string {

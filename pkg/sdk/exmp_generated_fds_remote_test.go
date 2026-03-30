@@ -9,6 +9,7 @@ import (
 	"time"
 
 	multiversepb "github.com/bavix/gripmock/v3/pkg/sdk/internal/examplefds/gen/examples/projects/multiverse"
+	"github.com/bavix/gripmock/v3/pkg/sdk/internal/fdstest"
 	"github.com/bavix/gripmock/v3/pkg/sdk/internal/testkit"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
@@ -21,7 +22,7 @@ func TestExmpRemoteWithGeneratedDescriptorsUploadsImports(t *testing.T) {
 	t.Parallel()
 
 	grpcAddr := testkit.StartHealthGRPC(t)
-	fds := descriptorSetFromFile(multiversepb.File_examples_projects_multiverse_service_proto)
+	fds := fdstest.DescriptorSetFromFile(multiversepb.File_examples_projects_multiverse_service_proto)
 	descriptorUploaded := make(chan struct{}, 1)
 	stubPosted := make(chan struct{}, 1)
 

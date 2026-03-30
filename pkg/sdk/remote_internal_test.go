@@ -258,7 +258,7 @@ func TestRemoteAddStubNoPanicOnBadURL(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to build stubs URL")
+	require.Contains(t, err.Error(), "failed to build request URL")
 }
 
 func TestRemoteAddStubHTTPFailureStoredAsError(t *testing.T) {

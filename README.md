@@ -38,7 +38,7 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 
 - **Descriptor API (`/api/descriptors`)**: runtime loading of compiled proto descriptors (`.pb`) with validated curl workflow: [docs](https://bavix.github.io/gripmock/guide/api/descriptors)
 - **Upstream Modes (Experimental)**: `proxy`, `replay`, `capture` with practical rollout guidance: [docs](https://bavix.github.io/gripmock/guide/modes)
-- **Embedded SDK (Experimental)**: in-process testing with stubs, verification, and context-aware remote checks: [docs](https://bavix.github.io/gripmock/guide/embedded-sdk)
+- **Embedded SDK (Experimental)**: in-process testing with stubs, verification, `sdk.By(fullMethod)` helpers, and context-aware remote checks: [docs](https://bavix.github.io/gripmock/guide/embedded-sdk)
 
 ## 🧬 Project Evolution
 

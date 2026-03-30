@@ -34,6 +34,49 @@ func (f *fakeClientStream) Context() context.Context {
 	return context.Background()
 }
 
+func invokeStreamTimeoutInterceptor(
+	t *testing.T,
+	ctx context.Context,
+	fs *fakeClientStream,
+	streamErr error,
+) (*wrappedClientStream, context.Context, error) {
+	t.Helper()
+
+	streamCtxCh := make(chan context.Context, 1)
+
+	cs, err := StreamTimeoutInterceptor(time.Second)(
+		ctx,
+		&grpc.StreamDesc{},
+		nil,
+		"/svc/M",
+		func(
+			invCtx context.Context,
+			_ *grpc.StreamDesc,
+			_ *grpc.ClientConn,
+			_ string,
+			_ ...grpc.CallOption,
+		) (grpc.ClientStream, error) {
+			streamCtxCh <- invCtx
+
+			if streamErr != nil {
+				return nil, streamErr
+			}
+
+			fs.contextFn = func() context.Context { return invCtx }
+
+			return fs, nil
+		},
+	)
+	if err != nil {
+		return nil, <-streamCtxCh, err
+	}
+
+	wrapped, ok := cs.(*wrappedClientStream)
+	require.True(t, ok)
+
+	return wrapped, <-streamCtxCh, nil
+}
+
 func TestUnaryTimeoutInterceptor(t *testing.T) {
 	t.Parallel()
 
@@ -71,30 +114,8 @@ func TestStreamTimeoutInterceptorDoesNotCancelImmediately(t *testing.T) {
 	ctx := t.Context()
 	fs := &fakeClientStream{}
 
-	streamCtxCh := make(chan context.Context, 1)
-
-	cs, err := StreamTimeoutInterceptor(time.Second)(
-		ctx,
-		&grpc.StreamDesc{},
-		nil,
-		"/svc/M",
-		func(
-			invCtx context.Context,
-			_ *grpc.StreamDesc,
-			_ *grpc.ClientConn,
-			_ string,
-			_ ...grpc.CallOption,
-		) (grpc.ClientStream, error) {
-			streamCtxCh <- invCtx
-
-			fs.contextFn = func() context.Context { return invCtx }
-
-			return fs, nil
-		},
-	)
+	cs, streamCtx, err := invokeStreamTimeoutInterceptor(t, ctx, fs, nil)
 	require.NoError(t, err)
-
-	streamCtx := <-streamCtxCh
 	require.NotNil(t, streamCtx)
 
 	select {
@@ -118,30 +139,8 @@ func TestStreamTimeoutInterceptorCancelsOnRecvError(t *testing.T) {
 	ctx := t.Context()
 	fs := &fakeClientStream{recvErr: io.EOF}
 
-	streamCtxCh := make(chan context.Context, 1)
-
-	cs, err := StreamTimeoutInterceptor(time.Second)(
-		ctx,
-		&grpc.StreamDesc{},
-		nil,
-		"/svc/M",
-		func(
-			invCtx context.Context,
-			_ *grpc.StreamDesc,
-			_ *grpc.ClientConn,
-			_ string,
-			_ ...grpc.CallOption,
-		) (grpc.ClientStream, error) {
-			streamCtxCh <- invCtx
-
-			fs.contextFn = func() context.Context { return invCtx }
-
-			return fs, nil
-		},
-	)
+	cs, streamCtx, err := invokeStreamTimeoutInterceptor(t, ctx, fs, nil)
 	require.NoError(t, err)
-
-	streamCtx := <-streamCtxCh
 
 	err = cs.RecvMsg(nil)
 	require.ErrorIs(t, err, io.EOF)
@@ -157,28 +156,7 @@ func TestStreamTimeoutInterceptorCancelsWhenStreamerFails(t *testing.T) {
 	t.Parallel()
 
 	ctx := t.Context()
-
-	streamCtxCh := make(chan context.Context, 1)
-
-	_, err := StreamTimeoutInterceptor(time.Second)(
-		ctx,
-		&grpc.StreamDesc{},
-		nil,
-		"/svc/M",
-		func(
-			invCtx context.Context,
-			_ *grpc.StreamDesc,
-			_ *grpc.ClientConn,
-			_ string,
-			_ ...grpc.CallOption,
-		) (grpc.ClientStream, error) {
-			streamCtxCh <- invCtx
-
-			return nil, errStreamCreateFailed
-		},
-	)
-
-	streamCtx := <-streamCtxCh
+	_, streamCtx, err := invokeStreamTimeoutInterceptor(t, ctx, &fakeClientStream{}, errStreamCreateFailed)
 
 	require.ErrorIs(t, err, errStreamCreateFailed)
 	require.NotNil(t, streamCtx)
