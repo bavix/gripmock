@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync/atomic"
 )
 
@@ -22,6 +23,13 @@ type HistoryReader interface {
 	FilterByMethod(service, method string) []CallRecord
 }
 
+type HistoryReaderContext interface {
+	HistoryReader
+	AllContext(ctx context.Context) ([]CallRecord, error)
+	CountContext(ctx context.Context) (int, error)
+	FilterByMethodContext(ctx context.Context, service, method string) ([]CallRecord, error)
+}
+
 // Verifier provides assertion methods for call verification.
 type Verifier interface {
 	// Method narrows verification to a specific service and method.
@@ -34,6 +42,43 @@ type Verifier interface {
 	VerifyStubTimes(t TestingT)
 	// VerifyStubTimesErr returns an error if total calls don't match the sum of Times from stubs.
 	VerifyStubTimesErr() error
+}
+
+type VerifierContext interface {
+	Verifier
+	VerifyStubTimesErrContext(ctx context.Context) error
+}
+
+func HistoryAllContext(ctx context.Context, history HistoryReader) ([]CallRecord, error) {
+	if withContext, ok := history.(HistoryReaderContext); ok {
+		return withContext.AllContext(ctx)
+	}
+
+	return history.All(), nil
+}
+
+func HistoryCountContext(ctx context.Context, history HistoryReader) (int, error) {
+	if withContext, ok := history.(HistoryReaderContext); ok {
+		return withContext.CountContext(ctx)
+	}
+
+	return history.Count(), nil
+}
+
+func HistoryFilterByMethodContext(ctx context.Context, history HistoryReader, service, method string) ([]CallRecord, error) {
+	if withContext, ok := history.(HistoryReaderContext); ok {
+		return withContext.FilterByMethodContext(ctx, service, method)
+	}
+
+	return history.FilterByMethod(service, method), nil
+}
+
+func VerifyStubTimesErrContext(ctx context.Context, verifier Verifier) error {
+	if withContext, ok := verifier.(VerifierContext); ok {
+		return withContext.VerifyStubTimesErrContext(ctx)
+	}
+
+	return verifier.VerifyStubTimesErr()
 }
 
 // MethodVerifier verifies calls for a specific method.
@@ -50,6 +95,10 @@ type verifier struct {
 }
 
 func (v *verifier) Method(service, method string) MethodVerifier {
+	if strings.TrimSpace(service) == "" || strings.TrimSpace(method) == "" {
+		panic("sdk.Verifier.Method: service and method must be non-empty")
+	}
+
 	return &methodVerifier{recorder: v.recorder, service: service, method: method}
 }
 

@@ -18,13 +18,13 @@ func TestAuthService_AuthenticatedEndpoint(t *testing.T) {
     mock, err := sdk.Run(t, sdk.WithFileDescriptor(auth.File_auth_service_proto))
     require.NoError(t, err)
 
-    mock.Stub("AuthService", "ProtectedEndpoint").
+    mock.Stub(sdk.By(AuthService_ProtectedEndpoint_FullMethodName)).
         When(sdk.Equals("resource", "secret-data")).
         WhenHeaders(sdk.HeaderEquals("authorization", "Bearer valid-token")).
         Reply(sdk.Data("data", "secret-content")).
         Commit()
 
-    mock.Stub("AuthService", "ProtectedEndpoint").
+    mock.Stub(sdk.By(AuthService_ProtectedEndpoint_FullMethodName)).
         When(sdk.Equals("resource", "secret-data")).
         WhenHeaders(sdk.HeaderEquals("authorization", "Bearer invalid-token")).
         ReplyError(codes.Unauthenticated, "Invalid token").
@@ -56,7 +56,7 @@ func TestExternalService_SlowResponse(t *testing.T) {
     mock, err := sdk.Run(t, sdk.WithFileDescriptor(external.File_external_service_proto))
     require.NoError(t, err)
 
-    mock.Stub("ExternalService", "Process").
+    mock.Stub(sdk.By(ExternalService_Process_FullMethodName)).
         When(sdk.Equals("id", "slow-request")).
         Reply(sdk.Data("result", "processed")).
         Delay(500 * time.Millisecond).
@@ -85,14 +85,14 @@ func TestUserService_GetUser_Priority(t *testing.T) {
     require.NoError(t, err)
 
     // High priority: Specific case
-    mock.Stub("UserService", "GetUser").
+    mock.Stub(sdk.By(UserService_GetUser_FullMethodName)).
         When(sdk.Equals("id", "special-user")).
         Reply(sdk.Data("name", "Special User", "role", "admin")).
         Priority(100).
         Commit()
 
     // Lower priority: General case
-    mock.Stub("UserService", "GetUser").
+    mock.Stub(sdk.By(UserService_GetUser_FullMethodName)).
         When(sdk.Contains("id", "")). // Matches any ID
         Reply(sdk.Data("name", "General User", "role", "user")).
         Priority(10).
@@ -123,7 +123,7 @@ func TestRateLimitService_LimitedCalls(t *testing.T) {
     require.NoError(t, err)
 
     // Stub matches exactly 3 times, then becomes unavailable
-    mock.Stub("RateLimitService", "Call").
+    mock.Stub(sdk.By(RateLimitService_Call_FullMethodName)).
         When(sdk.Equals("id", "limited")).
         Reply(sdk.Data("result", "ok")).
         Times(3).
@@ -156,7 +156,7 @@ func TestChatService_ServerStreaming(t *testing.T) {
     mock, err := sdk.Run(t, sdk.WithFileDescriptor(chat.File_chat_service_proto))
     require.NoError(t, err)
 
-    mock.Stub("ChatService", "ChatStream").
+    mock.Stub(sdk.By(ChatService_ChatStream_FullMethodName)).
         When(sdk.Equals("roomId", "room-123")).
         ReplyStream(
             sdk.Data("message", "Hello", "sender", "Alice"),
@@ -200,7 +200,7 @@ func TestPaymentService_Failure(t *testing.T) {
     mock, err := sdk.Run(t, sdk.WithFileDescriptor(payment.File_payment_service_proto))
     require.NoError(t, err)
 
-    mock.Stub("PaymentService", "Charge").
+    mock.Stub(sdk.By(PaymentService_Charge_FullMethodName)).
         When(sdk.Equals("amount", 0)).
         ReplyError(codes.InvalidArgument, "Amount must be greater than 0").
         Commit()
@@ -225,7 +225,7 @@ func TestAuthService_LoginWithHeaders(t *testing.T) {
     mock, err := sdk.Run(t, sdk.WithFileDescriptor(auth.File_auth_service_proto))
     require.NoError(t, err)
 
-    mock.Stub("AuthService", "Login").
+    mock.Stub(sdk.By(AuthService_Login_FullMethodName)).
         When(sdk.Equals("username", "test-user")).
         Reply(sdk.Data("token", "jwt-token")).
         ReplyHeaderPairs("x-session-id", "session-123", "x-permissions", "read,write").

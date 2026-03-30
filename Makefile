@@ -50,3 +50,9 @@ gen-imports:
 	protoc --proto_path=/tmp/gm-googleapis-sdk --descriptor_set_out=internal/pbs/googleapis.pb --include_imports $$(find /tmp/gm-googleapis-sdk -name '*.proto')
 	protoc --proto_path=/tmp/gm-protobuf-sdk --descriptor_set_out=internal/pbs/protobuf.pb --include_imports $$(find /tmp/gm-protobuf-sdk -name '*.proto')
 	rm -rf /tmp/gm-protobuf-sdk /tmp/gm-googleapis-sdk
+
+gen-sdk-examples:
+	rm -rf pkg/sdk/internal/examplefds/gen
+	mkdir -p pkg/sdk/internal/examplefds/gen
+	protoc --proto_path=. --go_out=pkg/sdk/internal/examplefds/gen --go_opt=paths=source_relative --go_opt=Mexamples/projects/chat/service.proto=github.com/bavix/gripmock/v3/pkg/sdk/internal/examplefds/gen/examples/projects/chat --go-grpc_out=pkg/sdk/internal/examplefds/gen --go-grpc_opt=paths=source_relative --go-grpc_opt=Mexamples/projects/chat/service.proto=github.com/bavix/gripmock/v3/pkg/sdk/internal/examplefds/gen/examples/projects/chat examples/projects/chat/service.proto
+	protoc --proto_path=. --go_out=pkg/sdk/internal/examplefds/gen --go_opt=paths=source_relative --go-grpc_out=pkg/sdk/internal/examplefds/gen --go-grpc_opt=paths=source_relative examples/projects/multiverse/service.proto

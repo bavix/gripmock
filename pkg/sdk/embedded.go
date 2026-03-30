@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -34,14 +35,15 @@ type embeddedMock struct {
 func (m *embeddedMock) Conn() *grpc.ClientConn { return m.conn }
 func (m *embeddedMock) Addr() string           { return m.addr }
 func (m *embeddedMock) Stub(service, method string) StubBuilder {
+	if strings.TrimSpace(service) == "" || strings.TrimSpace(method) == "" {
+		panic("sdk.Mock.Stub: service and method must be non-empty")
+	}
+
 	return &stubBuilderCore{
 		service: service,
 		method:  method,
 		onCommit: func(stub *stuber.Stub) {
-			m.budgerigar.PutMany(stub)
-			if stub.Options.Times > 0 {
-				m.expectedTotal.Add(int32(stub.Options.Times))
-			}
+			panicIfErr(m.commitStubs([]*stuber.Stub{stub}))
 		},
 	}
 }
@@ -62,6 +64,17 @@ func (m *embeddedMock) Close() error {
 		m.server.GracefulStop()
 		m.server = nil
 	}
+	return nil
+}
+
+func (m *embeddedMock) commitStubs(stubs []*stuber.Stub) error {
+	for _, stub := range stubs {
+		m.budgerigar.PutMany(stub)
+		if stub.Options.Times > 0 {
+			m.expectedTotal.Add(int32(stub.Options.Times))
+		}
+	}
+
 	return nil
 }
 

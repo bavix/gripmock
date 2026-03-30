@@ -2,23 +2,20 @@ package proxyroutes
 
 import (
 	"context"
-	"crypto/tls"
 
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/descriptorpb"
 
 	protosetdom "github.com/bavix/gripmock/v3/internal/domain/protoset"
+	grpcclient "github.com/bavix/gripmock/v3/internal/infra/grpcclient"
 )
 
 var errRemoteClientNil = errors.New("remote client is not configured")
 
 const (
 	descriptorMethodsInitCap = 16
-	dialOptionCapacity       = 3
 )
 
 type Mode uint8
@@ -75,7 +72,13 @@ func New(ctx context.Context, paths []string, remoteClient protosetdom.RemoteCli
 			return nil, errors.Wrapf(err, "failed to fetch proxy descriptors: %s", source.Raw)
 		}
 
-		conn, err := grpc.NewClient("passthrough:///"+source.ReflectAddress, buildDialOptions(source)...)
+		conn, err := grpc.NewClient("passthrough:///"+source.ReflectAddress, grpcclient.DialOptions(
+			source.ReflectTimeout,
+			source.ReflectTLS,
+			source.ReflectServerName,
+			source.ReflectBearer,
+			source.ReflectInsecure,
+		)...)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to connect proxy upstream: %s", source.ReflectAddress)
 		}
@@ -164,54 +167,6 @@ func mapMode(mode string) Mode {
 	default:
 		return ModeProxy
 	}
-}
-
-func buildDialOptions(source *protosetdom.Source) []grpc.DialOption {
-	options := make([]grpc.DialOption, 0, dialOptionCapacity)
-
-	if source.ReflectTLS {
-		tlsConfig := &tls.Config{
-			MinVersion: tls.VersionTLS12,
-			ServerName: source.ReflectServerName,
-			//nolint:gosec
-			InsecureSkipVerify: source.ReflectInsecure,
-		}
-
-		options = append(options, grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)))
-	} else {
-		options = append(options, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	}
-
-	if source.ReflectBearer == "" {
-		return options
-	}
-
-	token := source.ReflectBearer
-
-	options = append(options,
-		grpc.WithUnaryInterceptor(func(
-			ctx context.Context,
-			method string,
-			req, reply any,
-			cc *grpc.ClientConn,
-			invoker grpc.UnaryInvoker,
-			opts ...grpc.CallOption,
-		) error {
-			return invoker(metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token), method, req, reply, cc, opts...)
-		}),
-		grpc.WithStreamInterceptor(func(
-			ctx context.Context,
-			desc *grpc.StreamDesc,
-			cc *grpc.ClientConn,
-			method string,
-			streamer grpc.Streamer,
-			opts ...grpc.CallOption,
-		) (grpc.ClientStream, error) {
-			return streamer(metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token), desc, cc, method, opts...)
-		}),
-	)
-
-	return options
 }
 
 func collectServiceMethods(fds *descriptorpb.FileDescriptorSet) map[string][]string {

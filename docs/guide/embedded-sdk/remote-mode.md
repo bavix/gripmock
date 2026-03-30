@@ -32,7 +32,7 @@ func TestMyService_Remote(t *testing.T) {
     require.NoError(t, err)
 
     // Define stubs in the Arrange phase
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "remote-test")).
         Reply(sdk.Data("result", "from-remote")).
         Commit()
@@ -64,7 +64,7 @@ func TestMyService_SessionIsolation(t *testing.T) {
     require.NoError(t, err)
 
     // Stubs in this session are isolated from other tests
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "isolated")).
         Reply(sdk.Data("result", "isolated_result")).
         Commit()
@@ -93,7 +93,7 @@ func TestMyService_HealthTimeout(t *testing.T) {
     )
     require.NoError(t, err)
 
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "timeout-test")).
         Reply(sdk.Data("result", "success")).
         Commit()
@@ -120,7 +120,7 @@ func TestMyService_RemoteWithError(t *testing.T) {
     )
     require.NoError(t, err)
 
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "error-case")).
         ReplyError(codes.Internal, "Remote service error").
         Commit()
@@ -151,7 +151,7 @@ func TestMyService_ParallelExecution(t *testing.T) {
     )
     require.NoError(t, err)
 
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "parallel-test")).
         Reply(sdk.Data("result", "parallel-success")).
         Commit()
@@ -179,7 +179,7 @@ func TestMyService_RemoteVerification(t *testing.T) {
     )
     require.NoError(t, err)
 
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "verify-test")).
         Reply(sdk.Data("result", "verified")).
         Times(2). // Expect exactly 2 calls
@@ -193,7 +193,7 @@ func TestMyService_RemoteVerification(t *testing.T) {
 
     // ASSERT
     // Verification happens automatically due to Times(2) and passing t to Run
-    mock.Verify().Method("MyService", "MyMethod").Called(t, 2)
+    mock.Verify().Method(sdk.By(MyService_MyMethod_FullMethodName)).Called(t, 2)
 }
 ```
 
@@ -214,7 +214,7 @@ func TestMyService_RemoteWithCustomHTTPClient(t *testing.T) {
     )
     require.NoError(t, err)
 
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "custom-http")).
         Reply(sdk.Data("result", "ok")).
         Commit()
@@ -227,6 +227,36 @@ func TestMyService_RemoteWithCustomHTTPClient(t *testing.T) {
     // ASSERT
     require.NoError(t, err)
     require.Equal(t, "ok", resp.Result)
+}
+```
+
+## Context Propagation for Management Calls
+
+Remote mode uses HTTP management APIs (`/api/stubs`, `/api/history`, `/api/verify`, `/api/descriptors`).
+
+- Verification methods that take `t` use `t.Context()`.
+- History/verification can also be called with explicit context helpers:
+  - `sdk.HistoryAllContext(...)`
+  - `sdk.HistoryCountContext(...)`
+  - `sdk.HistoryFilterByMethodContext(...)`
+  - `sdk.VerifyStubTimesErrContext(...)`
+
+```go
+func TestMyService_RemoteContextCancel(t *testing.T) {
+    mock, err := sdk.Run(t,
+        sdk.WithRemote("localhost:4770", "http://localhost:4771"),
+        sdk.WithSession(t.Name()),
+    )
+    require.NoError(t, err)
+
+    // ... Arrange/Act ...
+
+    ctx, cancel := context.WithCancel(t.Context())
+    cancel()
+
+    err = sdk.VerifyStubTimesErrContext(ctx, mock.Verify())
+    require.Error(t, err)
+    require.ErrorIs(t, err, context.Canceled)
 }
 ```
 
@@ -245,7 +275,7 @@ func TestMyService_RemoteWithGRPCTimeout(t *testing.T) {
     )
     require.NoError(t, err)
 
-    mock.Stub("MyService", "SlowMethod").
+    mock.Stub(sdk.By(MyService_SlowMethod_FullMethodName)).
         Reply(sdk.Data("result", "ok")).
         Delay(2 * time.Second).
         Commit()
