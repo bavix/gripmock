@@ -541,7 +541,7 @@ message DataResponse {
 - service: EmptyService  
   method: GetData  
   input:  
-    matches: {}  # Required for empty input in Gripmock  
+    matches: {}  # Required for empty input in GripMock  
   output:  
     data:  
       content: "test"  
@@ -560,8 +560,8 @@ grpcurl -plaintext -d '{}' localhost:4770 extended.EmptyService/GetData
 }  
 ```  
 
-### Gripmock Specific Behavior  
-For RPC methods with empty input (e.g., `rpc GetData(google.protobuf.Empty)`), **always specify `input.matches: {}`** in the stub configuration. This ensures Gripmock correctly handles the absence of input data.
+### GripMock Specific Behavior  
+For RPC methods with empty input (e.g., `rpc GetData(google.protobuf.Empty)`), **always specify `input.matches: {}`** in the stub configuration. This ensures GripMock correctly handles the absence of input data.
 
 ## Best Practices
 1. **Currency Codes**: Always use ISO 4217 codes (e.g., `"USD"`) with `Money`.

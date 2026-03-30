@@ -1,7 +1,7 @@
-### **Stub API. Get Stubs Unused List**  
+# Stub API: List Unused Stubs
 The `/api/stubs/unused` endpoint retrieves a list of **stubs that have never been matched by a search operation**. This helps identify "dead" stubs that are defined but not actively used in testing workflows.  
 
-#### **Example Contract (`simple.proto`)**  
+## Example Contract (`simple.proto`)
 ```proto
 syntax = "proto3";
 
@@ -21,7 +21,7 @@ message Reply {
 }
 ```
 
-#### **Request**  
+## Request
 - **Method**: `GET`  
 - **URL**: `/api/stubs/unused`  
 - **Parameters**: None required.  
@@ -32,7 +32,7 @@ message Reply {
 curl http://127.0.0.1:4771/api/stubs/unused
 ```
 
-#### **Response**  
+## Response
 - **Status Code**: `200 OK`  
 - **Content-Type**: `application/json`  
 - **Body**: An array of `Stub` objects (see schema below).  
@@ -55,7 +55,7 @@ curl http://127.0.0.1:4771/api/stubs/unused
 ]
 ```
 
-#### **Stub Object Schema**  
+## Stub Object Schema
 | Field    | Type     | Description                                                                 |
 |----------|----------|-----------------------------------------------------------------------------|
 | `id`     | `string` | Unique identifier for the stub (UUID format).                              |
@@ -64,12 +64,12 @@ curl http://127.0.0.1:4771/api/stubs/unused
 | `input`  | `object` | Input matching criteria (e.g., `equals`, `contains`, `matches`).          |
 | `output` | `object` | Response configuration, including `data`, `error`, and gRPC status `code`.|  
 
-#### **Behavior Explanation**  
+## Behavior
 - **Unused Definition**: A stub is considered "unused" if it has **never** been matched by a `POST /api/stubs/search` request.  
 - **Inverse of Used**: The `/api/stubs/used` endpoint returns stubs that **have** been matched by searches.  
 - **Persistence**: The "unused" state resets when the GripMock server restarts.  
 
-#### **Example Workflow**  
+## Example Workflow
 1. **Create a Stub**:  
    ```bash
    curl -X POST -d '{
@@ -107,7 +107,7 @@ curl http://127.0.0.1:4771/api/stubs/unused
    []
    ```
 
-#### **Notes**  
+## Notes
 - **Edge Cases**:  
   - If no stubs exist, the response is an empty array (`[]`).  
   - Stubs added but never searched for will always appear in the unused list.  
@@ -116,7 +116,7 @@ curl http://127.0.0.1:4771/api/stubs/unused
   - `POST /api/stubs/search`: Mark stubs as used by matching criteria.  
   - `POST /api/stubs`: Create or update stubs.  
 
-#### **Schema References**
+## Schema References
 For complete schema details, see:
 - [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
 - [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)

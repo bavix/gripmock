@@ -293,4 +293,4 @@ grpcurl -plaintext -d '{"content": "aGVsbG8="}' localhost:4770 scalar.FileServic
 
 ## Further Reading
 - [Protobuf Scalar Types Reference](https://protobuf.dev/programming-guides/proto3/#scalar)
-- [GRPC Data Types](https://grpc.io/docs/guides/)
+- [gRPC Data Types](https://grpc.io/docs/guides/)

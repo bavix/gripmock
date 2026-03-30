@@ -1,7 +1,7 @@
-### **Stub API. Stubs Purge**  
+# Stub API: Purge Stubs
 The `/api/stubs` endpoint with the `DELETE` method removes **all stubs** from the storage. This is a destructive operation and cannot be undone.  
 
-#### **Request**  
+## Request
 - **Method**: `DELETE`  
 - **URL**: `/api/stubs`  
 - **Parameters**: None required.  
@@ -12,16 +12,16 @@ The `/api/stubs` endpoint with the `DELETE` method removes **all stubs** from th
 curl -X DELETE http://127.0.0.1:4771/api/stubs
 ```
 
-#### **Response**  
+## Response
 - **Status Code**: `204 No Content`  
 - **Body**: Empty (no content returned).  
 
-#### **Behavior**  
+## Behavior
 - **Global Deletion**: Removes **all stubs** (both used and unused).  
 - **Static Stubs**: Currently, all stubs are deleted. A future flag may allow excluding static stubs.  
 - **Irreversible**: Deleted stubs cannot be recovered.  
 
-#### **Example Workflow**  
+## Example Workflow
 1. **Create Stubs**:  
    ```bash
    curl -X POST -d '[{"service":"Gripmock","method":"SayHello","input":{"equals":{"name":"test"}}}]' http://127.0.0.1:4771/api/stubs
@@ -50,7 +50,7 @@ curl -X DELETE http://127.0.0.1:4771/api/stubs
    []
    ```
 
-#### **Notes**  
+## Notes
 - **Edge Cases**:  
   - If no stubs exist, the endpoint still returns `204`.  
   - Does not affect the `/api/stubs/used` or `/api/stubs/unused` lists (they reset automatically).  
@@ -59,7 +59,7 @@ curl -X DELETE http://127.0.0.1:4771/api/stubs
   - `POST /api/stubs`: Add new stubs.  
   - `POST /api/stubs/batchDelete`: Delete specific stubs by ID.  
 
-#### **Schema References**
+## Schema References
 For complete schema details, see:
 - [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
 - [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)

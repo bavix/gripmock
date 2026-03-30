@@ -66,4 +66,4 @@ If reflection is disabled, GripMock cannot load descriptors from this source.
 
 - Reflection and health services are skipped when building descriptor set.
 - `bearer` is sent as `Authorization: Bearer <token>`.
-- Minimal phase: no custom CA/mTLS/authority flags yet.
+- Current limitations: no custom CA, mTLS, or authority flags yet.

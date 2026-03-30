@@ -1,7 +1,7 @@
-# **Stub API. Stubs Delete**  
+# Stub API: Delete Stub
 The `/api/stubs/{uuid}` endpoint with the `DELETE` method removes a **specific stub** by its unique identifier (UUID).  
 
-## **Request**  
+## Request
 - **Method**: `DELETE`  
 - **URL**: `/api/stubs/{uuid}`  
 - **Parameters**:  
@@ -13,25 +13,21 @@ The `/api/stubs/{uuid}` endpoint with the `DELETE` method removes a **specific s
 curl -X DELETE http://127.0.0.1:4771/api/stubs/6c85b0fa-caaf-4640-a672-f56b7dd8074d
 ```
 
-## **Response**  
+## Response
 - **Success**:  
   - **Status Code**: `204 No Content`  
   - **Body**: Empty (no content returned).  
 
 - **Error**:  
-  - **Status Code**: `404 Not Found` (if the stub does not exist).  
-  - **Body**:  
-    ```json
-    { "error": "Stub with ID '6c85b0fa-caaf-4640-a672-f56b7dd8074d' not found" }
-    ```
+  - No error is returned for a non-existent stub (`DELETE` is idempotent).  
 
-## **Behavior**  
+## Behavior
 - **Idempotency**:  
   - Returns `204` even if the stub does not exist (no error).  
 - **Impact on Lists**:  
   - If the stub was marked as "used" or "unused," it is removed from both `/api/stubs/used` and `/api/stubs/unused`.  
 
-## **Example Workflow**  
+## Example Workflow
 1. **Create a Stub**:  
    ```bash
    curl -X POST -d '{
@@ -65,16 +61,16 @@ curl -X DELETE http://127.0.0.1:4771/api/stubs/6c85b0fa-caaf-4640-a672-f56b7dd80
    { "error": "Stub with ID '6c85b0fa-caaf-4640-a672-f56b7dd8074d' not found" }
    ```
 
-## **Notes**  
+## Notes
 - **Edge Cases**:  
-  - Deleting a non-existent stub does **not** return an error (idempotent operation).  
+  - Deleting a non-existent stub returns `204 No Content` (idempotent operation).  
   - Use `GET /api/stubs/{uuid}` to verify existence before deletion.  
 - **Related Endpoints**:  
   - `DELETE /api/stubs`: Purge all stubs.  
   - `POST /api/stubs`: Create or update stubs.  
   - `GET /api/stubs/used` and `GET /api/stubs/unused`: Track stub usage.  
 
-## **Schema References**
+## Schema References
 For complete schema details, see:
 - [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
 - [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)

@@ -12,7 +12,7 @@ Get started with GripMock Embedded SDK in your tests.
 
 ## Choosing Stub Signature <VersionTag version="v3.9.1" />
 
-SDK supports two forms:
+The SDK supports two forms:
 
 - `mock.Stub(service, method)`
 - `mock.Stub(sdk.By(fullMethod))` where `fullMethod` is `/package.Service/Method`
