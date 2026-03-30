@@ -128,8 +128,8 @@ func TestStreamTimeoutInterceptorDoesNotCancelImmediately(t *testing.T) {
 
 	select {
 	case <-streamCtx.Done():
-	case <-time.After(300 * time.Millisecond):
-		t.Fatal("stream context was not canceled on CloseSend")
+		t.Fatal("stream context canceled on CloseSend")
+	case <-time.After(100 * time.Millisecond):
 	}
 }
 
@@ -149,6 +149,24 @@ func TestStreamTimeoutInterceptorCancelsOnRecvError(t *testing.T) {
 	case <-streamCtx.Done():
 	case <-time.After(300 * time.Millisecond):
 		t.Fatal("stream context was not canceled after RecvMsg error")
+	}
+}
+
+func TestStreamTimeoutInterceptorCancelsOnUnaryRecvSuccess(t *testing.T) {
+	t.Parallel()
+
+	ctx := t.Context()
+	fs := &fakeClientStream{}
+
+	cs, streamCtx, err := invokeStreamTimeoutInterceptor(t, ctx, fs, nil)
+	require.NoError(t, err)
+
+	require.NoError(t, cs.RecvMsg(nil))
+
+	select {
+	case <-streamCtx.Done():
+	case <-time.After(300 * time.Millisecond):
+		t.Fatal("stream context was not canceled after unary RecvMsg success")
 	}
 }
 

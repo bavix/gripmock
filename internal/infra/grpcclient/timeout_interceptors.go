@@ -61,7 +61,11 @@ func StreamTimeoutInterceptor(timeout time.Duration) grpc.StreamClientIntercepto
 			return nil, err
 		}
 
-		return &wrappedClientStream{ClientStream: clientStream, cancel: cancel}, nil
+		return &wrappedClientStream{
+			ClientStream:        clientStream,
+			cancel:              cancel,
+			cancelOnRecvSuccess: desc == nil || !desc.ServerStreams,
+		}, nil
 	}
 }
 
@@ -70,11 +74,19 @@ type wrappedClientStream struct {
 
 	cancel     context.CancelFunc
 	cancelOnce sync.Once
+
+	cancelOnRecvSuccess bool
 }
 
 func (w *wrappedClientStream) RecvMsg(m any) error {
 	err := w.ClientStream.RecvMsg(m)
 	if err != nil {
+		w.cancelContext()
+
+		return err
+	}
+
+	if w.cancelOnRecvSuccess {
 		w.cancelContext()
 	}
 
@@ -82,10 +94,7 @@ func (w *wrappedClientStream) RecvMsg(m any) error {
 }
 
 func (w *wrappedClientStream) CloseSend() error {
-	err := w.ClientStream.CloseSend()
-	w.cancelContext()
-
-	return err
+	return w.ClientStream.CloseSend()
 }
 
 func (w *wrappedClientStream) cancelContext() {
