@@ -41,6 +41,7 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 - **Descriptor API (`/api/descriptors`)**: runtime loading of compiled proto descriptors (`.pb`) with validated curl workflow: [docs](https://bavix.github.io/gripmock/guide/api/descriptors)
 - **Upstream Modes (Experimental)**: `proxy`, `replay`, `capture` with practical rollout guidance: [docs](https://bavix.github.io/gripmock/guide/modes)
 - **Embedded SDK (Experimental)**: in-process testing with stubs, verification, `sdk.By(fullMethod)` helpers, and context-aware remote checks: [docs](https://bavix.github.io/gripmock/guide/embedded-sdk)
+- **GitHub Actions (CI/CD)**: official workflow action to download, start, wait for readiness, and stop GripMock automatically: [docs](https://bavix.github.io/gripmock/guide/ci-cd/github-actions)
 
 ## 🧬 Project Evolution
 
@@ -165,6 +166,40 @@ docker run -p 4770:4770 -p 4771:4771 \
 
 - **Port 4770**: gRPC server
 - **Port 4771**: Web UI and REST API
+
+## 🤖 GitHub Actions (CI/CD)
+
+Use the official action [`bavix/gripmock-action`](https://github.com/bavix/gripmock-action) to run GripMock in CI pipelines.
+
+```yaml
+name: test
+
+on: [push, pull_request]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Start GripMock
+        uses: bavix/gripmock-action@v1
+        with:
+          source: proto/service.proto
+          stub: stubs
+
+      - name: Run tests
+        run: go test ./...
+```
+
+What the action does:
+
+- Downloads GripMock from GitHub Releases (`latest` or pinned `version`)
+- Starts GripMock in background and waits for readiness (`/api/health/readiness`)
+- Exposes addresses via outputs (`grpc-addr`, `http-addr`) for test steps
+- Stops GripMock automatically in the post step
+
+More examples and full inputs/outputs: [GitHub Actions guide](https://bavix.github.io/gripmock/guide/ci-cd/github-actions).
 
 ## 📖 Examples
 
