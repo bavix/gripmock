@@ -6,6 +6,8 @@
 
 # GripMock 🚀
 
+**Languages:** English | [简体中文](README.zh-CN.md)
+
 **The fastest and most reliable gRPC mock server** for testing and development.
 
 GripMock creates a mock server from your `.proto` files or compiled `.pb` descriptors, making gRPC testing simple and efficient. Perfect for end-to-end testing, development environments, and CI/CD pipelines.
