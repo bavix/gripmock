@@ -176,6 +176,13 @@ export default defineConfig({
         collapsed: false,
       },
       {
+        text: 'CI/CD',
+        items: [
+          { text: 'GitHub Actions', link: '/guide/ci-cd/github-actions' },
+        ],
+        collapsed: false,
+      },
+      {
         text: 'Utility',
         items: [
           { text: 'gRPC Testify', link: 'https://gripmock.github.io/grpctestify-rust/' },
