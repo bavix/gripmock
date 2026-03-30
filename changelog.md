@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.9.1 - 2026-03-30
+
+### What's Changed
+
+* Bump actions/configure-pages from 5 to 6 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/803
+* sdk improvements by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/804
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.9.0...v3.9.1
+
 ## v3.9.0 - 2026-03-29
 
 ### What's Changed
