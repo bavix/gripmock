@@ -1,0 +1,34 @@
+name: Schema Check
+
+on:
+  push:
+    branches:
+      - "master"
+    paths:
+      - "docs/public/schema/stub.json"
+      - ".github/workflows/schema-check.yml"
+  pull_request:
+    paths:
+      - "docs/public/schema/stub.json"
+      - ".github/workflows/schema-check.yml"
+
+concurrency:
+  group: schema-check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  schema-check:
+    name: "Schema Check"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - name: Install JSON Schema CLI
+        uses: sourcemeta/jsonschema@v14.17.0
+
+      - name: Check schema formatting
+        run: jsonschema fmt docs/public/schema/stub.json --check
+
+      - name: Validate schema metaschema
+        run: jsonschema metaschema docs/public/schema/stub.json

@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://bavix.github.io/gripmock/schema/stub.json",
   "title": "GripMock Stub Schema",
   "description": "Unified schema for GripMock stub definitions (supports both JSON and YAML formats)",
@@ -28,26 +28,26 @@
           "default": 0
         },
         "input": {
-          "$ref": "#/definitions/inputMatcher",
+          "$ref": "#/$defs/inputMatcher",
           "description": "Input matching rules for unary requests (mutually exclusive with inputs)"
         },
         "inputs": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/inputMatcher"
+            "$ref": "#/$defs/inputMatcher"
           },
           "description": "Inputs matching rules for client streaming requests (mutually exclusive with input)"
         },
         "headers": {
-          "$ref": "#/definitions/headerMatcher",
+          "$ref": "#/$defs/headerMatcher",
           "description": "Header matching rules"
         },
         "options": {
-          "$ref": "#/definitions/stubOptions",
+          "$ref": "#/$defs/stubOptions",
           "description": "Optional behavior settings (e.g. times limit)"
         },
         "output": {
-          "$ref": "#/definitions/output",
+          "$ref": "#/$defs/output",
           "description": "Response configuration"
         }
       },
@@ -80,26 +80,26 @@
             "default": 0
           },
           "input": {
-            "$ref": "#/definitions/inputMatcher",
+            "$ref": "#/$defs/inputMatcher",
             "description": "Input matching rules for unary requests (mutually exclusive with inputs)"
           },
           "inputs": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/inputMatcher"
+              "$ref": "#/$defs/inputMatcher"
             },
             "description": "Inputs matching rules for client streaming requests (mutually exclusive with input)"
           },
           "headers": {
-            "$ref": "#/definitions/headerMatcher",
+            "$ref": "#/$defs/headerMatcher",
             "description": "Header matching rules"
           },
           "options": {
-            "$ref": "#/definitions/stubOptions",
+            "$ref": "#/$defs/stubOptions",
             "description": "Optional behavior settings (e.g. times limit)"
           },
           "output": {
-            "$ref": "#/definitions/output",
+            "$ref": "#/$defs/output",
             "description": "Response configuration"
           }
         },
@@ -109,7 +109,7 @@
       "minItems": 1
     }
   ],
-  "definitions": {
+  "$defs": {
     "inputMatcher": {
       "type": "object",
       "properties": {
@@ -205,13 +205,13 @@
       "type": "object",
       "properties": {
         "data": {
-          "$ref": "#/definitions/outputData",
+          "$ref": "#/$defs/outputData",
           "description": "Response data for unary calls"
         },
         "stream": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/streamMessage"
+            "$ref": "#/$defs/streamMessage"
           },
           "description": "Array of messages for streaming responses"
         },
