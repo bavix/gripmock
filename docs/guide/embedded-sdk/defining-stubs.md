@@ -10,6 +10,22 @@
 
 The SDK provides helper functions to define stubs easily.
 
+## Stub Method Name Forms <VersionTag version="v3.9.1" />
+
+You can define target gRPC method in two ways:
+
+- `mock.Stub("package.Service", "Method")`
+- `mock.Stub(sdk.By("/package.Service/Method"))`
+
+Generated constants (for example `service.Service_Method_FullMethodName`) are preferred with `mock.Stub(sdk.By(...))` because they are less error-prone.
+
+```go
+mock.Stub(sdk.By(helloworld.Greeter_SayHello_FullMethodName)).
+    When(sdk.Equals("name", "Alex")).
+    Reply(sdk.Data("message", "Hi Alex")).
+    Commit()
+```
+
 ## Basic Matching
 
 ```go
@@ -19,7 +35,7 @@ func TestUserService_GetUser(t *testing.T) {
     require.NoError(t, err)
 
     // Define stubs in the Arrange phase
-    mock.Stub("UserService", "GetUser").
+    mock.Stub(sdk.By(UserService_GetUser_FullMethodName)).
         When(sdk.Equals("id", "user-123")).
         Reply(sdk.Data("name", "John Doe", "email", "john@example.com")).
         Commit()
@@ -45,7 +61,7 @@ func TestUserService_SearchUsers(t *testing.T) {
     require.NoError(t, err)
 
     // Exact match stub
-    mock.Stub("UserService", "SearchUsers").
+    mock.Stub(sdk.By(UserService_SearchUsers_FullMethodName)).
         When(sdk.Equals("name", "exact-match")).
         Reply(sdk.Data("results", []any{
             map[string]any{"id": "1", "name": "exact-match"},
@@ -53,7 +69,7 @@ func TestUserService_SearchUsers(t *testing.T) {
         Commit()
 
     // Partial match stub
-    mock.Stub("UserService", "SearchUsers").
+    mock.Stub(sdk.By(UserService_SearchUsers_FullMethodName)).
         When(sdk.Contains("name", "partial")).
         Reply(sdk.Data("results", []any{
             map[string]any{"id": "2", "name": "partial-result"},
@@ -61,7 +77,7 @@ func TestUserService_SearchUsers(t *testing.T) {
         Commit()
 
     // Regex match stub
-    mock.Stub("UserService", "SearchUsers").
+    mock.Stub(sdk.By(UserService_SearchUsers_FullMethodName)).
         When(sdk.Matches("email", `^[a-zA-Z0-9._%+-]+@example\.com$`)).
         Reply(sdk.Data("results", []any{
             map[string]any{"id": "3", "name": "regex-match"},
@@ -107,7 +123,7 @@ func TestGreeter_SayHello(t *testing.T) {
     
     // Define a stub with delay
     delayMs := 20
-    mock.Stub("helloworld.Greeter", "SayHello").
+    mock.Stub(sdk.By(Greeter_SayHello_FullMethodName)).
         When(sdk.Equals("name", "Bob")).
         Reply(sdk.Data("message", "Hello Bob")).
         Delay(time.Duration(delayMs) * time.Millisecond).
@@ -136,7 +152,7 @@ func TestGreeter_SayHello_DynamicTemplate(t *testing.T) {
     require.NoError(t, err)
     
     // Use dynamic template to return request data in response
-    mock.Stub("helloworld.Greeter", "SayHello").
+    mock.Stub(sdk.By(Greeter_SayHello_FullMethodName)).
         When(sdk.Matches("name", ".+")).
         Reply(sdk.Data("message", "Hi {{.Request.name}}")).
         Commit()
@@ -161,14 +177,14 @@ func TestAuthService_Login(t *testing.T) {
     require.NoError(t, err)
 
     // With headers matching
-    mock.Stub("AuthService", "Login").
+    mock.Stub(sdk.By(AuthService_Login_FullMethodName)).
         When(sdk.Equals("username", "test-user")).
         WhenHeaders(sdk.HeaderEquals("authorization", "Bearer valid-token")).
         Reply(sdk.Data("token", "jwt-token-here")).
         Commit()
 
     // With call limit (Times)
-    mock.Stub("AuthService", "Login").
+    mock.Stub(sdk.By(AuthService_Login_FullMethodName)).
         When(sdk.Equals("username", "limited-user")).
         Reply(sdk.Data("token", "limited-token")).
         Times(2). // Stub will only match 2 times

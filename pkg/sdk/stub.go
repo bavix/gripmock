@@ -1,7 +1,7 @@
 package sdk
 
 import (
-	"fmt"
+	"maps"
 	"time"
 
 	"github.com/google/uuid"
@@ -116,22 +116,18 @@ func (c *stubBuilderCore) ReplyHeaders(headers map[string]string) StubBuilder {
 	if c.data.output.Headers == nil {
 		c.data.output.Headers = make(map[string]string)
 	}
-	for k, v := range headers {
-		c.data.output.Headers[k] = v
-	}
+	maps.Copy(c.data.output.Headers, headers)
 	return c
 }
 
 func (c *stubBuilderCore) ReplyHeaderPairs(kv ...string) StubBuilder {
-	if len(kv)%2 != 0 {
-		panic(fmt.Sprintf("sdk.ReplyHeaderPairs: need pairs (key, value), got %d args", len(kv)))
-	}
+	headers, err := parseHeaderPairsErr(kv, "sdk.ReplyHeaderPairs")
+	panicIfErr(err)
+
 	if c.data.output.Headers == nil {
 		c.data.output.Headers = make(map[string]string)
 	}
-	for i := range len(kv) / 2 {
-		c.data.output.Headers[kv[i*2]] = kv[i*2+1]
-	}
+	maps.Copy(c.data.output.Headers, headers)
 	return c
 }
 
@@ -190,17 +186,9 @@ func Matches(key, pattern string) stuber.InputData {
 
 // parseKVPairs converts key-value pairs to map. Panics on invalid input.
 func parseKVPairs(kv []any, errPrefix string) map[string]any {
-	if len(kv)%2 != 0 {
-		panic(fmt.Sprintf("%s: need pairs (key, value), got %d args", errPrefix, len(kv)))
-	}
-	m := make(map[string]any, len(kv)/2)
-	for i := range len(kv) / 2 {
-		k, ok := kv[i*2].(string)
-		if !ok {
-			panic(fmt.Sprintf("%s: key at %d must be string, got %T", errPrefix, i*2, kv[i*2]))
-		}
-		m[k] = kv[i*2+1]
-	}
+	m, err := parseKVPairsErr(kv, errPrefix)
+	panicIfErr(err)
+
 	return m
 }
 

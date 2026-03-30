@@ -10,6 +10,15 @@
 
 Get started with GripMock Embedded SDK in your tests.
 
+## Choosing Stub Signature <VersionTag version="v3.9.1" />
+
+SDK supports two forms:
+
+- `mock.Stub(service, method)`
+- `mock.Stub(sdk.By(fullMethod))` where `fullMethod` is `/package.Service/Method`
+
+Prefer `mock.Stub(sdk.By(...))` with generated `..._FullMethodName` constants from `*_grpc.pb.go` because it reduces typo risk.
+
 ## Basic Example
 
 Here's a simple example of how to use the Embedded SDK:
@@ -28,7 +37,7 @@ func TestMyService_Call(t *testing.T) {
     require.NoError(t, err)
 
     // Define a stub
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "test-id")).
         Reply(sdk.Data("result", "success")).
         Commit()
@@ -65,7 +74,7 @@ func TestMyService_WithHelper(t *testing.T) {
     mock, client := runMyServiceMock(t)
     
     // Define a stub
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "test-id")).
         Reply(sdk.Data("result", "success")).
         Commit()
@@ -99,7 +108,7 @@ func TestGreeter_SayHello_WithDelay(t *testing.T) {
 
     // Define a stub with delay
     delayMs := 20
-    mock.Stub("helloworld.Greeter", "SayHello").
+    mock.Stub(sdk.By(Greeter_SayHello_FullMethodName)).
         When(sdk.Equals("name", "Bob")).
         Reply(sdk.Data("message", "Hello Bob")).
         Delay(time.Duration(delayMs) * time.Millisecond).

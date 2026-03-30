@@ -34,7 +34,7 @@ func TestMyService_WithSession(t *testing.T) {
     require.NoError(t, err)
 
     // Stubs defined in this session are isolated from other sessions
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "session-test")).
         Reply(sdk.Data("result", "session-isolated")).
         Commit()
@@ -114,7 +114,7 @@ func TestMyService_SessionVerification(t *testing.T) {
     )
     require.NoError(t, err)
 
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "verify-test")).
         Reply(sdk.Data("result", "verified")).
         Times(2). // Expected to be called exactly 2 times in this session
@@ -128,7 +128,7 @@ func TestMyService_SessionVerification(t *testing.T) {
 
     // ASSERT
     // Verification happens within the session context
-    mock.Verify().Method("MyService", "MyMethod").Called(t, 2)
+    mock.Verify().Method(sdk.By(MyService_MyMethod_FullMethodName)).Called(t, 2)
 }
 ```
 

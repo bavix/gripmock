@@ -39,7 +39,7 @@ func TestMyService_WithHelper(t *testing.T) {
     mock, client := runMyServiceMock(t)
     
     // Define stubs in the Arrange phase
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "test")).
         Reply(sdk.Data("result", "success")).
         Commit()
@@ -69,7 +69,7 @@ func TestMyService_Parallel(t *testing.T) {
     )
     require.NoError(t, err)
     
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "parallel")).
         Reply(sdk.Data("result", "parallel-success")).
         Commit()
@@ -97,7 +97,7 @@ func TestCleanupIsAutomatic(t *testing.T) {
         t.Fatalf("Failed to start GripMock: %v", err)
     }
 
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "manual")).
         Reply(sdk.Data("result", "manual-success")).
         Commit()
@@ -125,7 +125,7 @@ func TestMyService_WithVerification(t *testing.T) {
     mock, err := sdk.Run(t, sdk.WithFileDescriptor(service.File_service_proto))
     require.NoError(t, err)
     
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "test")).
         Reply(sdk.Data("result", "success")).
         Commit()
@@ -137,7 +137,7 @@ func TestMyService_WithVerification(t *testing.T) {
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "test"})
     
     // ASSERT - Verify the expected call was made exactly 2 times
-    mock.Verify().Method("MyService", "MyMethod").Called(t, 2)
+    mock.Verify().Method(sdk.By(MyService_MyMethod_FullMethodName)).Called(t, 2)
 }
 ```
 
@@ -152,13 +152,13 @@ func TestUserService_ComplexScenario(t *testing.T) {
     require.NoError(t, err)
     
     // Existing user stub
-    mock.Stub("UserService", "GetUser").
+    mock.Stub(sdk.By(UserService_GetUser_FullMethodName)).
         When(sdk.Equals("id", "existing-user")).
         Reply(sdk.Data("name", "John Doe", "email", "john@example.com")).
         Commit()
     
     // Missing user stub
-    mock.Stub("UserService", "GetUser").
+    mock.Stub(sdk.By(UserService_GetUser_FullMethodName)).
         When(sdk.Equals("id", "missing-user")).
         ReplyError(codes.NotFound, "User not found").
         Commit()
@@ -197,7 +197,7 @@ func TestMyService_WithSafeMock(t *testing.T) {
     // ARRANGE
     mock, client := runSafeMock(t)
     
-    mock.Stub("MyService", "MyMethod").
+    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
         When(sdk.Equals("id", "safe-test")).
         Reply(sdk.Data("result", "safe-success")).
         Commit()
@@ -222,13 +222,13 @@ func TestRetryLogic_WithTimes(t *testing.T) {
     require.NoError(t, err)
     
     // First 2 calls fail, 3rd succeeds (simulating retry logic)
-    mock.Stub("ExternalService", "Call").
+    mock.Stub(sdk.By(ExternalService_Call_FullMethodName)).
         When(sdk.Equals("attempt", "fail")).
         ReplyError(codes.Unavailable, "Service unavailable").
         Times(2). // Allow this stub to match exactly 2 times
         Commit()
         
-    mock.Stub("ExternalService", "Call").
+    mock.Stub(sdk.By(ExternalService_Call_FullMethodName)).
         When(sdk.Equals("attempt", "success")).
         Reply(sdk.Data("result", "success")).
         Commit()
@@ -264,7 +264,7 @@ func TestPaymentService_WithMinimalMocks(t *testing.T) {
     require.NoError(t, err)
     
     // Good: Only mock the service you're testing
-    mock.Stub("PaymentService", "Charge").
+    mock.Stub(sdk.By(PaymentService_Charge_FullMethodName)).
         When(sdk.Equals("amount", 100)).
         Reply(sdk.Data("transactionId", "tx-123")).
         Commit()
@@ -291,18 +291,18 @@ func TestOrderService_Comprehensive(t *testing.T) {
     require.NoError(t, err)
     
     // Setup multiple stubs with different behaviors
-    mock.Stub("OrderService", "CreateOrder").
+    mock.Stub(sdk.By(OrderService_CreateOrder_FullMethodName)).
         When(sdk.Equals("userId", "premium")).
         Reply(sdk.Data("orderId", "ORD-001", "status", "created")).
         Commit()
     
-    mock.Stub("OrderService", "GetOrder").
+    mock.Stub(sdk.By(OrderService_GetOrder_FullMethodName)).
         When(sdk.Equals("orderId", "ORD-001")).
         Reply(sdk.Data("status", "processing", "total", 99.99)).
         Times(2). // Expected to be called exactly 2 times
         Commit()
     
-    mock.Stub("OrderService", "CancelOrder").
+    mock.Stub(sdk.By(OrderService_CancelOrder_FullMethodName)).
         When(sdk.Equals("orderId", "ORD-001")).
         Reply(sdk.Data("status", "cancelled")).
         Commit()
@@ -334,9 +334,9 @@ func TestOrderService_Comprehensive(t *testing.T) {
     require.Equal(t, "cancelled", cancelResp.GetStatus())
     
     // Verify call counts
-    mock.Verify().Method("OrderService", "CreateOrder").Called(t, 1)
-    mock.Verify().Method("OrderService", "GetOrder").Called(t, 2) // Due to Times(2)
-    mock.Verify().Method("OrderService", "CancelOrder").Called(t, 1)
+    mock.Verify().Method(sdk.By(OrderService_CreateOrder_FullMethodName)).Called(t, 1)
+    mock.Verify().Method(sdk.By(OrderService_GetOrder_FullMethodName)).Called(t, 2) // Due to Times(2)
+    mock.Verify().Method(sdk.By(OrderService_CancelOrder_FullMethodName)).Called(t, 1)
 }
 ```
 

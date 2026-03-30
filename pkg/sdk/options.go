@@ -15,9 +15,17 @@ import (
 func (o *options) appendDescriptorFiles(files []*descriptorpb.FileDescriptorProto) {
 	seen := make(map[string]bool, len(o.descriptorFiles))
 	for _, f := range o.descriptorFiles {
+		if f == nil {
+			continue
+		}
+
 		seen[f.GetName()] = true
 	}
 	for _, f := range files {
+		if f == nil {
+			continue
+		}
+
 		if !seen[f.GetName()] {
 			seen[f.GetName()] = true
 			o.descriptorFiles = append(o.descriptorFiles, f)
@@ -83,12 +91,22 @@ func MockFrom(addr string) Option {
 }
 
 // WithRemote configures the mock to connect to an external gripmock process.
-// grpcAddr is the gRPC server address (e.g. "localhost:4770").
+// grpcAddr is of gRPC server address (e.g. "localhost:4770").
 // restURL is the REST base URL used for management operations (e.g. "http://localhost:4771").
 func WithRemote(grpcAddr string, restURL string) Option {
 	return func(o *options) {
 		o.remoteAddr = normalizeRemoteAddr(grpcAddr)
 		o.remoteRestURL = normalizeRemoteRestURL(restURL)
+	}
+}
+
+// Remote configures remote mode and derives the REST URL from grpcAddr.
+//
+// Deprecated: use WithRemote(grpcAddr, restURL) for explicit endpoints.
+func Remote(grpcAddr string) Option {
+	return func(o *options) {
+		o.remoteAddr = normalizeRemoteAddr(grpcAddr)
+		o.remoteRestURL = deriveRestURLFromGrpcAddr(o.remoteAddr)
 	}
 }
 

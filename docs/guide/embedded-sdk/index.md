@@ -57,6 +57,7 @@ The Embedded SDK allows you to:
 - **Start and manage GripMock instances** directly from your Go code
 - **Define stubs programmatically** using Go functions with type safety
 - **Access history and verification features** directly from your tests
+- **Use context-aware remote management calls** for history and verification in remote mode
 - **Run tests without external dependencies** like Docker or external processes
 - **Verify call counts and patterns** with built-in verification tools
 - **Support all gRPC features** including unary, streaming, headers, and error responses

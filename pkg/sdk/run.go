@@ -15,6 +15,10 @@ func Run(t TestingT, opts ...Option) (Mock, error) {
 
 	o := &options{healthyTimeout: defaultHealthyTimeout, sessionTTL: defaultSessionTTL}
 	for _, opt := range opts {
+		if opt == nil {
+			continue
+		}
+
 		opt(o)
 	}
 
@@ -50,7 +54,10 @@ func Run(t TestingT, opts ...Option) (Mock, error) {
 			t.Error(err)
 			t.Fail()
 		}
-		_ = mock.Close()
+		if err := mock.Close(); err != nil {
+			t.Error(err)
+			t.Fail()
+		}
 	})
 
 	return mock, nil

@@ -11,12 +11,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/metadata"
 	reflectionpb "google.golang.org/grpc/reflection/grpc_reflection_v1"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
+	grpcclient "github.com/bavix/gripmock/v3/internal/infra/grpcclient"
 )
 
 const (
@@ -81,6 +81,9 @@ func (c *Client) FetchDescriptorSet(ctx context.Context, source *protoset.Source
 func buildDialOptions(source *protoset.Source) []grpc.DialOption {
 	options := make([]grpc.DialOption, 0, dialOptionCapacity)
 
+	unaryInterceptors := []grpc.UnaryClientInterceptor{grpcclient.UnaryTimeoutInterceptor(source.ReflectTimeout)}
+	streamInterceptors := []grpc.StreamClientInterceptor{grpcclient.StreamTimeoutInterceptor(source.ReflectTimeout)}
+
 	if source.ReflectTLS {
 		tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12}
 		if source.ReflectServerName != "" {
@@ -94,40 +97,17 @@ func buildDialOptions(source *protoset.Source) []grpc.DialOption {
 		options = append(options, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
-	if source.ReflectBearer == "" {
-		return options
+	if source.ReflectBearer != "" {
+		unaryInterceptors = append(unaryInterceptors, grpcclient.UnaryBearerInterceptor(source.ReflectBearer))
+		streamInterceptors = append(streamInterceptors, grpcclient.StreamBearerInterceptor(source.ReflectBearer))
 	}
 
-	token := source.ReflectBearer
-
 	options = append(options,
-		grpc.WithUnaryInterceptor(func(
-			ctx context.Context,
-			method string,
-			req, reply any,
-			cc *grpc.ClientConn,
-			invoker grpc.UnaryInvoker,
-			opts ...grpc.CallOption,
-		) error {
-			return invoker(withBearer(ctx, token), method, req, reply, cc, opts...)
-		}),
-		grpc.WithStreamInterceptor(func(
-			ctx context.Context,
-			desc *grpc.StreamDesc,
-			cc *grpc.ClientConn,
-			method string,
-			streamer grpc.Streamer,
-			opts ...grpc.CallOption,
-		) (grpc.ClientStream, error) {
-			return streamer(withBearer(ctx, token), desc, cc, method, opts...)
-		}),
+		grpc.WithChainUnaryInterceptor(unaryInterceptors...),
+		grpc.WithChainStreamInterceptor(streamInterceptors...),
 	)
 
 	return options
-}
-
-func withBearer(ctx context.Context, token string) context.Context {
-	return metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
 }
 
 func fetchDescriptorSet(ctx context.Context, conn *grpc.ClientConn) (*descriptorpb.FileDescriptorSet, error) {
