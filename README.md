@@ -60,7 +60,7 @@ For architecture details and benchmark methodology, see: [Performance Comparison
 
 ## 🖥️ Web Interface
 
-![gripmock-ui](https://github.com/bavix/gripmock/assets/5111255/3d9ebb46-7810-4225-9a30-3e058fa5fe16)
+![gripmock-ui](https://raw.githubusercontent.com/bavix/.github/master/svgs/gripmock-ui.gif)
 
 Access the web dashboard at `http://localhost:4771/` to manage your stubs visually.
 
