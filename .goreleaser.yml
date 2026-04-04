@@ -63,8 +63,13 @@ brews:
     license: "MIT"
     url_template: "https://github.com/bavix/gripmock/releases/download/v{{ .Version }}/gripmock_{{ .Version }}_{{ .Os }}_{{ .Arch }}.tar.gz"
     commit_author:
-      name: github-actions
-      email: github-actions@users.noreply.github.com
+      name: Github bot
+      email: bot@babichev.net
+      signing:
+        enabled: true
+        key: "{{ .Env.GPG_FINGERPRINT }}"
+        program: gpg2
+        format: openpgp
     commit_msg_template: "Update GripMock to {{ .Version }}"
 
     # Deprecation warning mechanism
@@ -95,8 +100,13 @@ homebrew_casks:
       verified: github.com/bavix/gripmock
       template: "https://github.com/bavix/gripmock/releases/download/v{{ .Version }}/gripmock_{{ .Version }}_{{ .Os }}_{{ .Arch }}.tar.gz"
     commit_author:
-      name: github-actions
-      email: github-actions@users.noreply.github.com
+      name: Github bot
+      email: bot@babichev.net
+      signing:
+        enabled: true
+        key: "{{ .Env.GPG_FINGERPRINT }}"
+        program: gpg2
+        format: openpgp
     commit_msg_template: "Update GripMock to {{ .Version }}"
     # Optional: remove quarantine on macOS if the binary isn't signed/notarized
     hooks:
