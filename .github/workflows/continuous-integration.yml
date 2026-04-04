@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GRPCTESTIFY_VERSION: "1.4.6"
+  GRPCTESTIFY_VERSION: "1.4.10"
   GO_VERSION: "1.26"
 
 jobs:
@@ -76,26 +76,11 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Set up cache for dependencies
-        uses: actions/cache@v5
-        with:
-          path: grpctestify
-          key: deps-cache-${{ runner.os }}-grpctestify-rust-${{ env.GRPCTESTIFY_VERSION }}
-
       - name: Install grpctestify
-        run: |
-          pwd >> "$GITHUB_PATH"
-
-          if [ ! -f grpctestify ]; then
-            case "$RUNNER_ARCH" in
-              X64) grpctestify_asset="grpctestify-linux-amd64.tar.gz" ;;
-              ARM64) grpctestify_asset="grpctestify-linux-arm64.tar.gz" ;;
-              *) echo "Unsupported runner arch: $RUNNER_ARCH"; exit 1 ;;
-            esac
-
-            curl -sSL "https://github.com/gripmock/grpctestify-rust/releases/download/v${{ env.GRPCTESTIFY_VERSION }}/$grpctestify_asset" | tar -xz
-            chmod +x grpctestify
-          fi
+        uses: gripmock/grpctestify-action@v1
+        with:
+          install-only: true
+          version: ${{ env.GRPCTESTIFY_VERSION }}
 
       - name: Run BSR E2E suite
         run: |
@@ -247,43 +232,11 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Set up cache for dependencies
-        uses: actions/cache@v5
+      - name: Install grpctestify
+        uses: gripmock/grpctestify-action@v1
         with:
-          path: |
-            grpctestify
-            grpctestify.exe
-          key: deps-cache-${{ runner.os }}-grpctestify-rust-${{ env.GRPCTESTIFY_VERSION }}
-
-      - name: Install dependencies (Linux/macOS)
-        if: matrix.platform != 'windows'
-        run: |
-          pwd >> "$GITHUB_PATH"
-
-          if [ ! -f grpctestify ]; then
-            case "$RUNNER_OS/$RUNNER_ARCH" in
-              Linux/X64) grpctestify_asset="grpctestify-linux-amd64.tar.gz" ;;
-              Linux/ARM64) grpctestify_asset="grpctestify-linux-arm64.tar.gz" ;;
-              macOS/X64) grpctestify_asset="grpctestify-macos-amd64.tar.gz" ;;
-              macOS/ARM64) grpctestify_asset="grpctestify-macos-arm64.tar.gz" ;;
-              *) echo "Unsupported runner: $RUNNER_OS/$RUNNER_ARCH"; exit 1 ;;
-            esac
-            curl -sSL "https://github.com/gripmock/grpctestify-rust/releases/download/v${{ env.GRPCTESTIFY_VERSION }}/$grpctestify_asset" | tar -xz
-            chmod +x grpctestify
-          fi
-
-      - name: Install dependencies (Windows)
-        if: matrix.platform == 'windows'
-        shell: pwsh
-        run: |
-          if (-not (Test-Path "grpctestify.exe")) {
-            $grpctestifyZip = if ($env:RUNNER_ARCH -eq "ARM64") { "grpctestify-windows-arm64.zip" } else { "grpctestify-windows-amd64.zip" }
-            Invoke-WebRequest -Uri "https://github.com/gripmock/grpctestify-rust/releases/download/v${{ env.GRPCTESTIFY_VERSION }}/$grpctestifyZip" -OutFile "grpctestify.zip"
-            Expand-Archive -Path "grpctestify.zip" -DestinationPath "." -Force
-            Remove-Item "grpctestify.zip" -Force
-          }
-
-          Add-Content -Path $env:GITHUB_PATH -Value (Get-Location)
+          install-only: true
+          version: ${{ env.GRPCTESTIFY_VERSION }}
 
       - name: Run E2E suite (Linux/macOS)
         if: matrix.platform != 'windows'
@@ -313,7 +266,7 @@ jobs:
             "$bin" check --timeout=60s --silent
           fi
 
-          ./grpctestify examples/
+          grpctestify examples/
 
       - name: Run E2E suite (Windows)
         if: matrix.platform == 'windows'
@@ -345,7 +298,7 @@ jobs:
               & $bin check --timeout=60s --silent
             }
 
-            .\grpctestify.exe examples\
+            grpctestify examples\
           }
           finally {
             if ($null -ne $proc) {
@@ -422,26 +375,11 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Set up cache for dependencies
-        uses: actions/cache@v5
-        with:
-          path: grpctestify
-          key: deps-cache-${{ runner.os }}-grpctestify-rust-${{ env.GRPCTESTIFY_VERSION }}
-
       - name: Install grpctestify
-        run: |
-          pwd >> "$GITHUB_PATH"
-
-          if [ ! -f grpctestify ]; then
-            case "$RUNNER_ARCH" in
-              X64) grpctestify_asset="grpctestify-linux-amd64.tar.gz" ;;
-              ARM64) grpctestify_asset="grpctestify-linux-arm64.tar.gz" ;;
-              *) echo "Unsupported runner arch: $RUNNER_ARCH"; exit 1 ;;
-            esac
-
-            curl -sSL "https://github.com/gripmock/grpctestify-rust/releases/download/v${{ env.GRPCTESTIFY_VERSION }}/$grpctestify_asset" | tar -xz
-            chmod +x grpctestify
-          fi
+        uses: gripmock/grpctestify-action@v1
+        with:
+          install-only: true
+          version: ${{ env.GRPCTESTIFY_VERSION }}
 
       - name: Run E2E TLS suite
         run: |
@@ -473,7 +411,7 @@ jobs:
           export GRPCTESTIFY_TLS_CERT_FILE="${{ matrix.grpctestify_tls_cert_file }}"
           export GRPCTESTIFY_TLS_KEY_FILE="${{ matrix.grpctestify_tls_key_file }}"
 
-          ./grpctestify examples/
+          grpctestify examples/
 
   gctf-gates:
     name: "GCTF Gates"
@@ -481,26 +419,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Set up cache for dependencies
-        uses: actions/cache@v5
-        with:
-          path: grpctestify
-          key: deps-cache-${{ runner.os }}-grpctestify-rust-${{ env.GRPCTESTIFY_VERSION }}
-
       - name: Install grpctestify
-        run: |
-          pwd >> "$GITHUB_PATH"
-
-          if [ ! -f grpctestify ]; then
-            case "$RUNNER_ARCH" in
-              X64) grpctestify_asset="grpctestify-linux-amd64.tar.gz" ;;
-              ARM64) grpctestify_asset="grpctestify-linux-arm64.tar.gz" ;;
-              *) echo "Unsupported runner arch: $RUNNER_ARCH"; exit 1 ;;
-            esac
-
-            curl -sSL "https://github.com/gripmock/grpctestify-rust/releases/download/v${{ env.GRPCTESTIFY_VERSION }}/$grpctestify_asset" | tar -xz
-            chmod +x grpctestify
-          fi
+        uses: gripmock/grpctestify-action@v1
+        with:
+          install-only: true
+          version: ${{ env.GRPCTESTIFY_VERSION }}
 
       - name: Check GCTF formatting
         run: grpctestify fmt .

@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GRPCTESTIFY_VERSION: "1.4.6"
+  GRPCTESTIFY_VERSION: "1.4.10"
   GO_VERSION: "1.26"
   GREETER_GRPC_PORT: "4444"
   CALC_GRPC_PORT: "5555"
@@ -90,26 +90,11 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Set up cache for grpctestify
-        uses: actions/cache@v5
-        with:
-          path: grpctestify
-          key: deps-cache-${{ runner.os }}-grpctestify-rust-${{ env.GRPCTESTIFY_VERSION }}
-
       - name: Install grpctestify
-        run: |
-          pwd >> "$GITHUB_PATH"
-
-          if [ ! -f grpctestify ]; then
-            case "$RUNNER_ARCH" in
-              X64) grpctestify_asset="grpctestify-linux-amd64.tar.gz" ;;
-              ARM64) grpctestify_asset="grpctestify-linux-arm64.tar.gz" ;;
-              *) echo "Unsupported runner arch: $RUNNER_ARCH"; exit 1 ;;
-            esac
-
-            curl -sSL "https://github.com/gripmock/grpctestify-rust/releases/download/v${{ env.GRPCTESTIFY_VERSION }}/$grpctestify_asset" | tar -xz
-            chmod +x grpctestify
-          fi
+        uses: gripmock/grpctestify-action@v1
+        with:
+          install-only: true
+          version: ${{ env.GRPCTESTIFY_VERSION }}
 
       - name: Build gripmock binary
         run: |
@@ -127,7 +112,7 @@ jobs:
 
       - name: Warm up capture from upstream
         run: |
-          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" ./grpctestify examples
+          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" grpctestify examples
 
       - name: Stop upstream server
         run: |
@@ -138,11 +123,11 @@ jobs:
 
       - name: Replay full suite from captured stubs
         run: |
-          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" ./grpctestify examples
+          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" grpctestify examples
 
       - name: Replay header-sensitive greeter cases
         run: |
-          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" ./grpctestify -p 8 \
+          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" grpctestify -p 8 \
             examples/projects/greeter/case_say_hello_alex.gctf \
             examples/projects/greeter/case_say_hello_alex_headers.gctf
 
