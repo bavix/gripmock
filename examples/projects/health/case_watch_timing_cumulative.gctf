@@ -12,7 +12,7 @@ grpc.health.v1.Health/Watch
 }
 
 --- ASSERTS ---
-# First scope includes initial delay from stub.
+// First scope includes initial delay from stub.
 @scope_message_count() == 1
 @elapsed_ms() >= 10
 @total_elapsed_ms() >= 10
@@ -24,7 +24,7 @@ grpc.health.v1.Health/Watch
 }
 
 --- ASSERTS ---
-# Second scope validates cumulative timing growth.
+// Second scope validates cumulative timing growth.
 @scope_message_count() == 1
 @elapsed_ms() >= 0
 @total_elapsed_ms() >= 10
