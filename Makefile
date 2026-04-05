@@ -35,21 +35,36 @@ gen-rest:
 	gofmt -w internal/domain/rest/api.gen.go
 	goimports -w internal/domain/rest/api.gen.go
 
+PROTOBUF_REPO=/tmp/gm-protobuf-repo
+GOOGLEAPIS_REPO=/tmp/gm-googleapis-sdk
+
+PROTO_EXCLUDE_ARGS=\
+	--exclude 'google/protobuf/compiler/**' \
+	--exclude '**/*test*.proto' \
+	--exclude '**/*unittest*.proto' \
+	--exclude '**/*_lite*.proto' \
+	--exclude '**/map_*.proto' \
+	--exclude '**/sample_*.proto' \
+	--exclude '**/internal_*.proto' \
+	--exclude '**/late_loaded_*.proto' \
+	--exclude '**/only_one_enum_*.proto' \
+	--exclude '**/test_protos/**'
+
 gen-imports:
-	rm -rf /tmp/gm-protobuf-repo /tmp/gm-googleapis-sdk /tmp/gm-protobuf-sdk
-	git clone --depth=1 https://github.com/protocolbuffers/protobuf.git /tmp/gm-protobuf-repo
-	mv /tmp/gm-protobuf-repo/src/ /tmp/gm-protobuf-sdk
-	rm -rf /tmp/gm-protobuf-repo
-	git clone --depth=1 https://github.com/googleapis/googleapis.git /tmp/gm-googleapis-sdk
-	find /tmp/gm-protobuf-sdk -not -name "*.proto" -type f -delete
-	find /tmp/gm-googleapis-sdk -not -name "*.proto" -type f -delete
-	find /tmp/gm-protobuf-sdk -empty -type d -delete
-	find /tmp/gm-googleapis-sdk -empty -type d -delete
-	rm -rf /tmp/gm-protobuf-sdk/google/protobuf/compiler
-	mkdir -p internal/pbs 
-	protoc --proto_path=/tmp/gm-googleapis-sdk --descriptor_set_out=internal/pbs/googleapis.pb --include_imports $$(find /tmp/gm-googleapis-sdk -name '*.proto')
-	protoc --proto_path=/tmp/gm-protobuf-sdk --descriptor_set_out=internal/pbs/protobuf.pb --include_imports $$(find /tmp/gm-protobuf-sdk -name '*.proto')
-	rm -rf /tmp/gm-protobuf-sdk /tmp/gm-googleapis-sdk
+	rm -rf $(PROTOBUF_REPO) $(GOOGLEAPIS_REPO)
+	git clone --depth=1 https://github.com/protocolbuffers/protobuf.git $(PROTOBUF_REPO)
+	git clone --depth=1 https://github.com/googleapis/googleapis.git $(GOOGLEAPIS_REPO)
+	go run main.go proto export \
+		--root $(PROTOBUF_REPO)/src \
+		$(PROTO_EXCLUDE_ARGS) \
+		--out internal/pbs/protobuf.pbs
+	go run main.go proto export \
+		--root $(GOOGLEAPIS_REPO) \
+		--root $(PROTOBUF_REPO)/src \
+		$(PROTO_EXCLUDE_ARGS) \
+		--exclude 'preview/**' \
+		--out internal/pbs/googleapis.pbs
+	rm -rf $(PROTOBUF_REPO) $(GOOGLEAPIS_REPO)
 
 gen-sdk-examples:
 	rm -rf pkg/sdk/internal/examplefds/gen

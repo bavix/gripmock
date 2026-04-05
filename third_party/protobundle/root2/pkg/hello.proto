@@ -1,0 +1,7 @@
+syntax = "proto2";
+
+package pkg;
+
+message Hello {
+  optional string name = 1;
+}

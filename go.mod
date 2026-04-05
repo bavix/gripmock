@@ -5,6 +5,7 @@ go 1.26
 require (
 	github.com/bavix/features v1.0.4
 	github.com/bavix/gripmock-ui v1.2.0
+	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/bufbuild/protocompile v0.14.1
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -17,6 +18,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/golang-lru/v2 v2.0.7
+	github.com/klauspost/compress v1.18.5
 	github.com/modelcontextprotocol/go-sdk v1.4.1
 	github.com/oapi-codegen/runtime v1.3.1
 	github.com/rs/zerolog v1.35.0
