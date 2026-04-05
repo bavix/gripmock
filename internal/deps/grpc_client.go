@@ -13,10 +13,9 @@ import (
 
 func (b *Builder) grpcClientConn(useTLS bool, dsn string) (*grpc.ClientConn, error) {
 	transportCreds := insecure.NewCredentials()
-	tlsCfg := b.grpcTLSConfig()
 
 	if useTLS {
-		clientCfg, err := tlsCfg.BuildClientTLSConfig(dsn)
+		clientCfg, err := b.grpcTLSConfig().BuildClientTLSConfig(dsn)
 		if err != nil {
 			return nil, err
 		}

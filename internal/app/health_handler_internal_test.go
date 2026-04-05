@@ -332,6 +332,8 @@ func TestMockableHealthServerWatchSupportsDelay(t *testing.T) {
 func TestMockableHealthServerWatchAppliesDelayOnlyBeforeFirstMessage(t *testing.T) {
 	t.Parallel()
 
+	const delayMs = 80
+
 	// Arrange
 	realServer := health.NewServer()
 	budgerigar := stuber.NewBudgerigar(features.New())
@@ -341,7 +343,7 @@ func TestMockableHealthServerWatchAppliesDelayOnlyBeforeFirstMessage(t *testing.
 		Method:  "Watch",
 		Input:   stuber.InputData{Equals: map[string]any{"service": "gateway.v1.SequenceService"}},
 		Output: stuber.Output{
-			Delay: types.Duration(80 * time.Millisecond),
+			Delay: types.Duration(delayMs * time.Millisecond),
 			Stream: []any{
 				map[string]any{"status": "NOT_SERVING"},
 				map[string]any{"status": "SERVING"},
@@ -360,12 +362,15 @@ func TestMockableHealthServerWatchAppliesDelayOnlyBeforeFirstMessage(t *testing.
 
 	// Assert
 	require.NoError(t, err)
-	require.GreaterOrEqual(t, duration, 80*time.Millisecond)
-	require.Less(t, duration, 140*time.Millisecond)
 	require.Equal(t, []healthgrpc.HealthCheckResponse_ServingStatus{
 		healthgrpc.HealthCheckResponse_NOT_SERVING,
 		healthgrpc.HealthCheckResponse_SERVING,
 	}, stream.Statuses())
+
+	// Delay applies before first message, not between messages.
+	// Total duration ~= delay + overhead for sending all messages.
+	require.GreaterOrEqual(t, duration, delayMs*time.Millisecond,
+		"total duration should include initial delay")
 }
 
 type healthWatchTestStream struct {

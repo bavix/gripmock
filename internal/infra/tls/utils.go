@@ -17,6 +17,8 @@ const (
 	localServerName = "localhost"
 	ipv4AnyAddr     = "0.0.0.0"
 	ipv6AnyAddr     = "::"
+	loopbackV4Addr  = "127.0.0.1"
+	loopbackV6Addr  = "::1"
 )
 
 var (
@@ -230,7 +232,8 @@ func validateOptionalFile(path, msg string) error {
 
 func normalizeServerName(host string) string {
 	clean := strings.TrimSpace(strings.Trim(host, "[]"))
-	if clean == "" || clean == ipv4AnyAddr || clean == ipv6AnyAddr {
+	if clean == "" || clean == ipv4AnyAddr || clean == ipv6AnyAddr ||
+		clean == loopbackV4Addr || clean == loopbackV6Addr {
 		return localServerName
 	}
 
