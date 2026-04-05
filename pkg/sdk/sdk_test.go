@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -111,6 +112,124 @@ func TestRunDefaultHealthyTimeout(t *testing.T) {
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"), WithHealthCheckTimeout(0))
 	require.NotNil(t, mock.Conn())
+}
+
+func TestRunHealthCheckMockedViaSDK(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
+	mock.Stub(By(healthgrpc.Health_Check_FullMethodName)).
+		When(Equals("service", "examples.health.backend")).
+		Reply(Data("status", "NOT_SERVING")).
+		Commit()
+
+	client := healthgrpc.NewHealthClient(mock.Conn())
+
+	// Act
+	resp, err := client.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "examples.health.backend"})
+
+	// Assert
+	require.NoError(t, err)
+	require.Equal(t, healthgrpc.HealthCheckResponse_NOT_SERVING, resp.GetStatus())
+}
+
+func TestRunHealthCheckGripmockProtectedViaSDK(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
+	// Attempt to mock protected internal key.
+	// Expected runtime behavior: this stub is stored but ignored.
+	mock.Stub(By(healthgrpc.Health_Check_FullMethodName)).
+		When(Equals("service", "gripmock")).
+		Reply(Data("status", "NOT_SERVING")).
+		Commit()
+
+	client := healthgrpc.NewHealthClient(mock.Conn())
+
+	// Act
+	resp, err := client.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "gripmock"})
+
+	// Assert
+	require.NoError(t, err)
+	require.Equal(t, healthgrpc.HealthCheckResponse_SERVING, resp.GetStatus())
+}
+
+func TestRunHealthCheckUnknownServiceFallbackViaSDK(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
+	client := healthgrpc.NewHealthClient(mock.Conn())
+
+	// Act
+	resp, err := client.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "examples.health.unknown"})
+
+	// Assert
+	require.Nil(t, resp)
+	require.Error(t, err)
+	require.Equal(t, codes.NotFound, status.Code(err))
+	require.Contains(t, err.Error(), "unknown service")
+}
+
+func TestRunHealthWatchMockedStreamViaSDK(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
+	mock.Stub(By(healthgrpc.Health_Watch_FullMethodName)).
+		When(Equals("service", "examples.health.watch")).
+		ReplyStream(
+			Data("status", "NOT_SERVING"),
+			Data("status", "SERVING"),
+		).
+		Commit()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	client := healthgrpc.NewHealthClient(mock.Conn())
+	stream, err := client.Watch(ctx, &healthgrpc.HealthCheckRequest{Service: "examples.health.watch"})
+	require.NoError(t, err)
+
+	// Act
+	first, err := stream.Recv()
+	require.NoError(t, err)
+
+	second, err := stream.Recv()
+	require.NoError(t, err)
+
+	cancel()
+
+	// Assert
+	require.Equal(t, healthgrpc.HealthCheckResponse_NOT_SERVING, first.GetStatus())
+	require.Equal(t, healthgrpc.HealthCheckResponse_SERVING, second.GetStatus())
+}
+
+func TestRunHealthWatchGripmockProtectedViaSDK(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
+	mock.Stub(By(healthgrpc.Health_Watch_FullMethodName)).
+		When(Equals("service", "gripmock")).
+		ReplyStream(Data("status", "NOT_SERVING")).
+		Commit()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	client := healthgrpc.NewHealthClient(mock.Conn())
+	stream, err := client.Watch(ctx, &healthgrpc.HealthCheckRequest{Service: "gripmock"})
+	require.NoError(t, err)
+
+	// Act
+	first, err := stream.Recv()
+
+	// Assert
+	require.NoError(t, err)
+	require.Equal(t, healthgrpc.HealthCheckResponse_SERVING, first.GetStatus())
 }
 
 func TestRunContextFromT(t *testing.T) {

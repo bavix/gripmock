@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+- service: grpc.health.v1.Health
+  method: Check
+  input:
+    equals:
+      service: gripmock
+  output:
+    data:
+      status: NOT_SERVING
+
+- service: grpc.health.v1.Health
+  method: Check
+  input:
+    equals:
+      service: examples.health.backend
+  output:
+    data:
+      status: NOT_SERVING
+
+- service: grpc.health.v1.Health
+  method: Watch
+  input:
+    equals:
+      service: examples.health.watch
+  output:
+    delay: 10ms
+    stream:
+      - status: NOT_SERVING
+      - status: SERVING

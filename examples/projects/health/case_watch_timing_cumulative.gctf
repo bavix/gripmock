@@ -1,0 +1,31 @@
+--- ENDPOINT ---
+grpc.health.v1.Health/Watch
+
+--- REQUEST ---
+{
+  "service": "examples.health.watch"
+}
+
+--- RESPONSE with_asserts=true ---
+{
+  "status": "NOT_SERVING"
+}
+
+--- ASSERTS ---
+# First scope includes initial delay from stub.
+@scope_message_count() == 1
+@elapsed_ms() >= 10
+@total_elapsed_ms() >= 10
+@scope_index() == 1
+
+--- RESPONSE with_asserts=true ---
+{
+  "status": "SERVING"
+}
+
+--- ASSERTS ---
+# Second scope validates cumulative timing growth.
+@scope_message_count() == 1
+@elapsed_ms() >= 0
+@total_elapsed_ms() >= 10
+@scope_index() == 2

@@ -90,6 +90,7 @@ export default defineConfig({
           { text: 'Priority', link: '/guide/stubs/priority' },
           { text: 'Times Limit', link: '/guide/stubs/times-limit' },
           { text: 'Delay', link: '/guide/stubs/delay' },
+          { text: 'Health Service', link: '/guide/stubs/health' },
           { text: 'Output Stream', link: '/guide/stubs/output-stream' },
           { text: 'Server Streaming', link: '/guide/stubs/server-streaming' },
           { text: 'Client Streaming', link: '/guide/stubs/client-streaming' },

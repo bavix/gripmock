@@ -1,0 +1,12 @@
+--- ENDPOINT ---
+grpc.health.v1.Health/Check
+
+--- REQUEST ---
+{
+  "service": "examples.health.backend"
+}
+
+--- RESPONSE ---
+{
+  "status": "NOT_SERVING"
+}

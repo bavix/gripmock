@@ -387,19 +387,7 @@ func convertScalar(fd protoreflect.FieldDescriptor, value protoreflect.Value) an
 }
 
 func (m *grpcMocker) delay(ctx context.Context, delayDur types.Duration) error {
-	if delayDur == 0 {
-		return nil
-	}
-
-	timer := time.NewTimer(time.Duration(delayDur))
-	defer timer.Stop()
-
-	select {
-	case <-ctx.Done():
-		return status.FromContextError(ctx.Err()).Err()
-	case <-timer.C:
-		return nil
-	}
+	return delayResponse(ctx, delayDur)
 }
 
 //nolint:nestif,cyclop,funlen
@@ -1490,8 +1478,8 @@ func findMethodInGlobalFiles(serviceName, methodName string) protoreflect.Method
 
 func (s *GRPCServer) setupHealthCheck(server *grpc.Server, descResolver *protoregistry.Files) {
 	healthcheck := health.NewServer()
-	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_NOT_SERVING)
-	healthgrpc.RegisterHealthServer(server, healthcheck)
+	healthcheck.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_NOT_SERVING)
+	healthgrpc.RegisterHealthServer(server, newMockableHealthServer(healthcheck, s.budgerigar, descResolver))
 
 	provider := &dynamicServiceInfoProvider{base: server, registry: s.descriptors}
 
@@ -1734,7 +1722,7 @@ func (s *GRPCServer) startHealthCheckRoutine(ctx context.Context) {
 			return
 		default:
 			logger.Info().Msg("gRPC server is ready to accept requests")
-			s.healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_SERVING)
+			s.healthcheck.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_SERVING)
 		}
 	}()
 }
