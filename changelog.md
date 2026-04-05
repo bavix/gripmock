@@ -1,5 +1,26 @@
 # Changelog
 
+## v3.9.2 - 2026-04-05
+
+### What's Changed
+
+* chore(docs): corrected typos by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/805
+* zh-CN by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/806
+* bump(json-schema): bump json schema version by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/807
+* docs(ci): GitHub Actions by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/808
+* Bump bavix/.github/.github/workflows/go-semgrep.yml from 0.4.1 to 0.5.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/811
+* Bump github.com/go-playground/validator/v10 from 10.30.1 to 10.30.2 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/810
+* Bump bavix/.github/.github/workflows/changelog.yml from 0.4.1 to 0.5.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/809
+* Bump sourcemeta/jsonschema from 14.17.0 to 14.17.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/812
+* Bump google.golang.org/grpc from 1.79.3 to 1.80.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/813
+* Bump sourcemeta/jsonschema from 14.17.1 to 14.18.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/814
+* gpg key by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/815
+* move to grpctestify action by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/816
+* bump deps by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/817
+* proto export by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/818
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.9.1...v3.9.2
+
 ## v3.9.1 - 2026-03-30
 
 ### What's Changed
