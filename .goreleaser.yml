@@ -20,7 +20,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w -X github.com/bavix/gripmock/v3/internal/infra/build.Version={{.Version}}
+      - -s -w -X github.com/bavix/gripmock/v3/internal/infra/build.Version={{.Version}} -X github.com/bavix/gripmock/v3/internal/infra/build.Commit={{.ShortCommit}} -X github.com/bavix/gripmock/v3/internal/infra/build.Date={{.CommitDate}}
 
 archives:
   - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"

@@ -1,6 +1,8 @@
 FROM golang:1.26-alpine3.23 AS builder
 
 ARG version
+ARG commit
+ARG date
 
 COPY . /gripmock-src
 
@@ -8,7 +10,7 @@ WORKDIR /gripmock-src
 
 #hadolint ignore=DL3018
 RUN apk add --no-cache binutils \
-    && go build -o /usr/local/bin/gripmock -ldflags "-X 'github.com/bavix/gripmock/v3/internal/infra/build.Version=${version:-dev}' -s -w" . \
+    && go build -o /usr/local/bin/gripmock -ldflags "-X 'github.com/bavix/gripmock/v3/internal/infra/build.Version=${version:-dev}' -X 'github.com/bavix/gripmock/v3/internal/infra/build.Commit=${commit:-unknown}' -X 'github.com/bavix/gripmock/v3/internal/infra/build.Date=${date:-}' -s -w" . \
     && strip /usr/local/bin/gripmock \
     && apk del binutils \
     && rm -rf /root/.cache /go/pkg /tmp/* /var/cache/*

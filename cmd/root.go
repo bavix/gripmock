@@ -23,7 +23,7 @@ var (
 var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 	Use:     "gripmock",
 	Short:   "gRPC Mock Server",
-	Version: build.Version,
+	Version: build.Version + " (" + build.Commit + ") " + build.Date,
 	Args:    cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		builder := deps.NewBuilder(
@@ -39,6 +39,8 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 
 		zerolog.Ctx(ctx).Info().
 			Str("release", build.Version).
+			Str("commit", build.Commit).
+			Str("date", build.Date).
 			Int("pid", os.Getpid()).
 			Msg("Starting GripMock")
 
