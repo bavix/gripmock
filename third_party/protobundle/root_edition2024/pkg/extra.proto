@@ -1,0 +1,7 @@
+edition = "2024";
+
+package pkg;
+
+message Extra {
+  string value = 1;
+}

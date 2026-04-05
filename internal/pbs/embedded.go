@@ -5,15 +5,16 @@ import (
 
 	"github.com/bufbuild/protocompile"
 	"github.com/cockroachdb/errors"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
+
+	"github.com/bavix/gripmock/v3/internal/infra/protobundle"
 )
 
-//go:embed googleapis.pb
+//go:embed googleapis.pbs
 var googleapis []byte
 
-//go:embed protobuf.pb
+//go:embed protobuf.pbs
 var protobuf []byte
 
 type ThirdPartyResolver struct {
@@ -25,12 +26,10 @@ func NewResolver() (*ThirdPartyResolver, error) {
 		items: make([]*descriptorpb.FileDescriptorSet, 0, 2), //nolint:mnd
 	}
 
-	for _, pb := range [][]byte{googleapis, protobuf} {
-		fds := &descriptorpb.FileDescriptorSet{}
-
-		err := proto.Unmarshal(pb, fds)
+	for _, compressed := range [][]byte{googleapis, protobuf} {
+		fds, err := protobundle.Decode(compressed)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to unmarshal descriptor: %s", pb)
+			return nil, errors.Wrap(err, "failed to decode embedded descriptor")
 		}
 
 		resolver.items = append(resolver.items, fds)

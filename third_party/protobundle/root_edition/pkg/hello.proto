@@ -1,0 +1,7 @@
+edition = "2023";
+
+package pkg;
+
+message Hello {
+  string name = 1;
+}

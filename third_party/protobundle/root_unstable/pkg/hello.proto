@@ -1,0 +1,7 @@
+edition = "UNSTABLE";
+
+package pkg;
+
+message Hello {
+  string name = 1;
+}
