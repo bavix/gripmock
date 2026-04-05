@@ -4,11 +4,12 @@ import (
 	"context"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
 	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
-
-	"github.com/bavix/gripmock/v3/internal/domain/waiter"
 )
+
+var ErrServerNotReady = errors.New("server did not become ready")
 
 type Service struct {
 	client healthv1.HealthClient
@@ -22,33 +23,52 @@ func (s *Service) PingWithTimeout(
 	ctx context.Context,
 	timeout time.Duration,
 	service string,
-) (waiter.ServingStatus, error) {
+) (ServingStatus, error) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	return s.Ping(ctx, service)
 }
 
-func (s *Service) Ping(ctx context.Context, service string) (waiter.ServingStatus, error) {
+func (s *Service) Ping(ctx context.Context, service string) (ServingStatus, error) {
 	check, err := s.client.Check(
 		ctx,
 		&healthv1.HealthCheckRequest{Service: service},
 		grpc.WaitForReady(true),
 	)
 	if err != nil {
-		return waiter.Unknown, err //nolint:wrapcheck
+		return Unknown, err //nolint:wrapcheck
 	}
 
 	switch check.GetStatus() {
 	case healthv1.HealthCheckResponse_SERVING:
-		return waiter.Serving, nil
+		return Serving, nil
 	case healthv1.HealthCheckResponse_NOT_SERVING:
-		return waiter.NotServing, nil
+		return NotServing, nil
 	case healthv1.HealthCheckResponse_SERVICE_UNKNOWN:
-		return waiter.ServiceUnknown, nil
+		return ServiceUnknown, nil
 	case healthv1.HealthCheckResponse_UNKNOWN:
-		return waiter.Unknown, nil
+		return Unknown, nil
 	default:
-		return waiter.Unknown, nil
+		return Unknown, nil
 	}
+}
+
+func (s *Service) WaitForReady(ctx context.Context, timeout, interval time.Duration, service string) error {
+	deadline := time.Now().Add(timeout)
+
+	for time.Now().Before(deadline) {
+		code, err := s.Ping(ctx, service)
+		if err == nil && code == Serving {
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(interval):
+		}
+	}
+
+	return ErrServerNotReady
 }
