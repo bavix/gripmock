@@ -8,12 +8,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bavix/gripmock/v3/internal/deps"
-	"github.com/bavix/gripmock/v3/internal/domain/waiter"
 )
 
 var (
-	pingTimeout           time.Duration //nolint:gochecknoglobals
-	errServerIsNotRunning = errors.New("server is not running")
+	pingTimeout  time.Duration //nolint:gochecknoglobals
+	pingInterval time.Duration //nolint:gochecknoglobals
 )
 
 const serviceName = "gripmock"
@@ -33,29 +32,23 @@ var checkCmd = &cobra.Command{ //nolint:gochecknoglobals
 
 		ctx = builder.Logger(ctx)
 
-		pingService, err := builder.PingService()
+		svc, err := builder.PingService()
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		code, err := pingService.PingWithTimeout(ctx, pingTimeout, serviceName)
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		if code != waiter.Serving {
-			return errors.Wrapf(errServerIsNotRunning, "code: %d", code)
-		}
-
-		return nil
+		return svc.WaitForReady(ctx, pingTimeout, pingInterval, serviceName)
 	},
 }
 
 func init() { //nolint:gochecknoinits
 	rootCmd.AddCommand(checkCmd)
 
-	const defaultPingTimeout = time.Second * 5
+	const defaultPingTimeout = time.Second * 10
 
-	checkCmd.Flags().DurationVarP(&pingTimeout, "timeout", "t", defaultPingTimeout, "timeout")
+	const defaultPingInterval = time.Millisecond * 500
+
+	checkCmd.Flags().DurationVarP(&pingTimeout, "timeout", "t", defaultPingTimeout, "total timeout to wait for server readiness")
+	checkCmd.Flags().DurationVar(&pingInterval, "interval", defaultPingInterval, "interval between ping attempts")
 	checkCmd.Flags().BoolVar(&checkCmd.SilenceErrors, "silent", false, "silence errors")
 }
