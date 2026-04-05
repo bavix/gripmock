@@ -82,6 +82,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             version=${{ github.ref_name }}
+            commit=${{ github.sha }}
+            date=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
           outputs: type=image,name=builder-target,annotation-index.org.opencontainers.image.description=gRPC Mock Server Builder
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -97,6 +99,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           build-args: |
             version=${{ github.ref_name }}
+            commit=${{ github.sha }}
+            date=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
           outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=gRPC Mock Server
           cache-from: type=gha
           cache-to: type=gha,mode=max
