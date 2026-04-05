@@ -1283,7 +1283,10 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	server := s.createServer(ctx)
 	s.setupHealthCheck(server, nil)
 	s.registerServices(ctx, server, descriptors, nil)
-	s.startHealthCheckRoutine(ctx)
+
+	// Mark server as ready synchronously after all descriptors and stubs are loaded.
+	// This prevents race conditions where health checks arrive before the server is ready.
+	s.markServerReady(ctx)
 
 	return server, nil
 }
@@ -1312,7 +1315,9 @@ func BuildFromDescriptorSet(
 	server := s.createServer(ctx)
 	s.setupHealthCheck(server, reg)
 	s.registerServices(ctx, server, []*descriptorpb.FileDescriptorSet{fds}, reg)
-	s.startHealthCheckRoutine(ctx)
+
+	// Mark server as ready synchronously after all descriptors and stubs are loaded.
+	s.markServerReady(ctx)
 
 	return server, nil
 }
@@ -1704,27 +1709,11 @@ func (s *GRPCServer) createGrpcMocker(
 	}
 }
 
-func (s *GRPCServer) startHealthCheckRoutine(ctx context.Context) {
+func (s *GRPCServer) markServerReady(ctx context.Context) {
 	logger := zerolog.Ctx(ctx)
 
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				logger.Error().
-					Interface("panic", r).
-					Msg("Panic recovered in health check routine")
-			}
-		}()
-
-		// Stubs are already loaded in Build(), just mark server as ready
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			logger.Info().Msg("gRPC server is ready to accept requests")
-			s.healthcheck.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_SERVING)
-		}
-	}()
+	logger.Info().Msg("gRPC server is ready to accept requests")
+	s.healthcheck.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_SERVING)
 }
 
 func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.ServiceDescriptorProto) string {

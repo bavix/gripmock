@@ -106,9 +106,9 @@ func (s *mockableHealthServer) Watch(req *healthgrpc.HealthCheckRequest, stream 
 		}
 	}
 
-	<-stream.Context().Done()
-
-	return status.FromContextError(stream.Context().Err()).Err()
+	// For mocked Watch streams, return after all configured responses are sent.
+	// This prevents hanging when the client doesn't cancel the context promptly.
+	return nil
 }
 
 func (s *mockableHealthServer) shouldBypassMocks(service string) bool {

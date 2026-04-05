@@ -247,11 +247,15 @@ func TestMockableHealthServerWatchStreamsMockedResponses(t *testing.T) {
 		return stream.Count() == 2
 	}, time.Second, 10*time.Millisecond)
 
-	err := <-errCh
+	var err error
+	select {
+	case err = <-errCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for Watch handler to complete")
+	}
 
 	// Assert
-	require.Error(t, err)
-	require.Equal(t, codes.Canceled, status.Code(err))
+	require.NoError(t, err)
 	require.Equal(t, []healthgrpc.HealthCheckResponse_ServingStatus{
 		healthgrpc.HealthCheckResponse_NOT_SERVING,
 		healthgrpc.HealthCheckResponse_SERVING,
@@ -279,9 +283,15 @@ func TestMockableHealthServerWatchBypassesProtectedService(t *testing.T) {
 		return stream.Count() == 1
 	}, time.Second, 10*time.Millisecond)
 
-	err := <-errCh
+	var err error
+	select {
+	case err = <-errCh:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout waiting for Watch handler to complete")
+	}
 
 	// Assert
+	// Bypasses mocks and calls real Watch, which blocks on context cancellation
 	require.Error(t, err)
 	require.Equal(t, codes.Canceled, status.Code(err))
 	require.Equal(t, []healthgrpc.HealthCheckResponse_ServingStatus{
@@ -315,8 +325,7 @@ func TestMockableHealthServerWatchSupportsDelay(t *testing.T) {
 	err := handler.Watch(&healthgrpc.HealthCheckRequest{Service: "gateway.v1.GatewayService"}, stream)
 
 	// Assert
-	require.Error(t, err)
-	require.Equal(t, codes.Canceled, status.Code(err))
+	require.NoError(t, err)
 	require.GreaterOrEqual(t, time.Since(start), 25*time.Millisecond)
 }
 
@@ -350,8 +359,7 @@ func TestMockableHealthServerWatchAppliesDelayOnlyBeforeFirstMessage(t *testing.
 	duration := time.Since(start)
 
 	// Assert
-	require.Error(t, err)
-	require.Equal(t, codes.Canceled, status.Code(err))
+	require.NoError(t, err)
 	require.GreaterOrEqual(t, duration, 80*time.Millisecond)
 	require.Less(t, duration, 140*time.Millisecond)
 	require.Equal(t, []healthgrpc.HealthCheckResponse_ServingStatus{
