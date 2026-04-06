@@ -56,7 +56,7 @@ jobs:
 
       - name: Start + check capture target server
         run: |
-          GRPC_PORT="$TARGET_GRPC_PORT" HTTP_PORT="$TARGET_HTTP_PORT" "$RUNNER_TEMP/gripmock" grpc+capture://localhost:${SOURCE_GRPC_PORT} >"$RUNNER_TEMP/gripmock-target.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-target.pid"
+          GRPC_PORT="$TARGET_GRPC_PORT" HTTP_PORT="$TARGET_HTTP_PORT" "$RUNNER_TEMP/gripmock" "grpc+capture://localhost:${SOURCE_GRPC_PORT}?recordDelay=true" >"$RUNNER_TEMP/gripmock-target.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-target.pid"
 
           for _ in $(seq 1 60); do
             if GRPC_PORT="$TARGET_GRPC_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent; then
