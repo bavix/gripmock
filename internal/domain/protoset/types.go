@@ -26,4 +26,5 @@ type Source struct {
 	ReflectTimeout    time.Duration
 	ReflectInsecure   bool
 	ProxyMode         string
+	RecordDelay       bool
 }

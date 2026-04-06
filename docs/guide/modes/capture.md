@@ -31,6 +31,22 @@ Capture stores request and upstream result in stub form:
 - `grpc+capture://host:port`
 - `grpcs+capture://host:port`
 
+## Query parameters
+
+| Parameter | Default | Description |
+|---|---|---|
+| `timeout` | `5s` | Timeout for upstream requests. |
+| `bearer` | — | Bearer token to include in upstream requests. |
+| `serverName` | — | Override TLS server name (SNI). |
+| `insecureSkipVerify` | `false` | Skip upstream TLS certificate verification. |
+| `recordDelay` | `false` | Record response latency as `delay` in captured stubs. |
+
+Example with delay recording enabled:
+
+```bash
+GRPC_PORT=4770 HTTP_PORT=4771 gripmock "grpc+capture://orders.api.local:4770?recordDelay=true"
+```
+
 ## Order Service example
 
 Goal: quickly mock `OrderService` with minimal manual stub authoring.

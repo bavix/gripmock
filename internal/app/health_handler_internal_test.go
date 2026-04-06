@@ -28,9 +28,16 @@ func TestMockableHealthServerCheckBypassesProtectedServices(t *testing.T) {
 	// Arrange
 	realServer := health.NewServer()
 	realServer.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_SERVING)
-	realServer.SetServingStatus("", healthgrpc.HealthCheckResponse_NOT_SERVING)
 
-	handler := newMockableHealthServer(realServer, stuber.NewBudgerigar(features.New()), nil)
+	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar.PutMany(&stuber.Stub{
+		Service: HealthServiceFullName,
+		Method:  "Check",
+		Input:   stuber.InputData{Equals: map[string]any{"service": ""}},
+		Output:  stuber.Output{Data: map[string]any{"status": "NOT_SERVING"}},
+	})
+
+	handler := newMockableHealthServer(realServer, budgerigar, nil)
 
 	// Act
 	gripmockResp, gripmockErr := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: HealthServiceName})

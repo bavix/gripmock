@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
@@ -75,7 +76,7 @@ func (s *mockableHealthServer) Watch(req *healthgrpc.HealthCheckRequest, stream 
 	stub, ok := s.findStub(stream.Context(), "Watch", req.GetService())
 
 	if !ok {
-		return s.real.Watch(req, stream)
+		return s.watchFallback(req, stream)
 	}
 
 	st, err := statusFromHealthOutput(stub.Output, s.resolver)
@@ -111,6 +112,30 @@ func (s *mockableHealthServer) Watch(req *healthgrpc.HealthCheckRequest, stream 
 	return nil
 }
 
+func (s *mockableHealthServer) watchFallback(req *healthgrpc.HealthCheckRequest, stream healthgrpc.Health_WatchServer) error {
+	// Delegate to the real health server's Watch, but with a bounded context
+	// timeout so the stream doesn't hang indefinitely when no stubs are
+	// configured. This allows capture mode to work correctly while preventing
+	// the CI hang seen when grpctestify waits for the stream to complete.
+	ctx, cancel := context.WithTimeout(stream.Context(), watchFallbackTimeout)
+	defer cancel()
+
+	return s.real.Watch(req, &watchStreamWithContext{Health_WatchServer: stream, ctx: ctx})
+}
+
+const watchFallbackTimeout = 5 * time.Second
+
+// watchStreamWithContext wraps a Health_WatchServer to enforce a bounded context.
+type watchStreamWithContext struct {
+	healthgrpc.Health_WatchServer
+
+	ctx context.Context //nolint:containedctx
+}
+
+func (w *watchStreamWithContext) Context() context.Context {
+	return w.ctx
+}
+
 func (s *mockableHealthServer) shouldBypassMocks(service string) bool {
-	return service == "" || service == HealthServiceName
+	return service == HealthServiceName
 }

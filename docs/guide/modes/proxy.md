@@ -17,13 +17,14 @@ For unary and all streaming methods:
 - `grpc+proxy://host:port`
 - `grpcs+proxy://host:port`
 
-## Reflection query parameters
+## Query parameters
 
-Same as reflection source URLs:
-
-- `timeout` (default `5s`)
-- `bearer`
-- `serverName`
+| Parameter | Default | Description |
+|---|---|---|
+| `timeout` | `5s` | Timeout for upstream requests. |
+| `bearer` | — | Bearer token to include in upstream requests. |
+| `serverName` | — | Override TLS server name (SNI). |
+| `insecureSkipVerify` | `false` | Skip upstream TLS certificate verification. |
 
 Example:
 

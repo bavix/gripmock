@@ -31,6 +31,7 @@ func (h *ProxyHandler) CanHandle(raw string) bool {
 	return parseErr == nil
 }
 
+//nolint:cyclop
 func (h *ProxyHandler) Parse(raw string) (*Source, error) {
 	parsed, err := url.Parse(raw)
 	if err != nil {
@@ -66,6 +67,14 @@ func (h *ProxyHandler) Parse(raw string) (*Source, error) {
 		}
 	}
 
+	recordDelay := false
+	if rawRecordDelay := parsed.Query().Get("recordDelay"); rawRecordDelay != "" {
+		recordDelay, err = strconv.ParseBool(rawRecordDelay)
+		if err != nil {
+			return nil, errors.Wrap(err, "invalid recordDelay")
+		}
+	}
+
 	return &Source{
 		Type:              SourceReflect,
 		Raw:               raw,
@@ -76,6 +85,7 @@ func (h *ProxyHandler) Parse(raw string) (*Source, error) {
 		ReflectTimeout:    timeout,
 		ReflectInsecure:   insecure,
 		ProxyMode:         proxyMode,
+		RecordDelay:       recordDelay,
 	}, nil
 }
 

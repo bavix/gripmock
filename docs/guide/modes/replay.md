@@ -31,6 +31,16 @@ No heuristic shortcut is used for fallback decisions.
 - `grpc+replay://host:port`
 - `grpcs+replay://host:port`
 
+## Query parameters
+
+| Parameter | Default | Description |
+|---|---|---|
+| `timeout` | `5s` | Timeout for upstream requests. |
+| `bearer` | — | Bearer token to include in upstream requests. |
+| `serverName` | — | Override TLS server name (SNI). |
+| `insecureSkipVerify` | `false` | Skip upstream TLS certificate verification. |
+| `recordDelay` | `false` | Record response latency as `delay` in captured stubs (for upstream misses). |
+
 ## Example
 
 ```bash

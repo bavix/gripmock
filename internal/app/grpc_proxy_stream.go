@@ -3,6 +3,7 @@ package app
 import (
 	"io"
 	"sync"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
@@ -30,6 +31,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 	req *dynamicpb.Message,
 	capture bool,
 ) error {
+	startTime := time.Now()
 	proxyCtx, cancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
 	defer cancel()
 
@@ -56,6 +58,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 	responses := make([]map[string]any, 0, proxyMessagesInitCap)
 	captureCtx := m.newCaptureRequestContext(stream.Context())
 	requestData := convertToMap(req)
+	recordDelay := route.Source.RecordDelay
 
 	for {
 		resp := dynamicpb.NewMessage(m.outputDesc)
@@ -73,6 +76,8 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 					responseHeadersFromClientStream(clientStream),
 					err,
 					captureCtx.sessionID,
+					recordDelay,
+					time.Since(startTime),
 				)
 			}
 
@@ -98,6 +103,8 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 			responseHeadersFromClientStream(clientStream),
 			nil,
 			captureCtx.sessionID,
+			recordDelay,
+			time.Since(startTime),
 		)
 	}
 
@@ -132,6 +139,8 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 	requestsToForward []*dynamicpb.Message,
 	capture bool,
 ) error {
+	startTime := time.Now()
+
 	proxyCtx, cancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
 	defer cancel()
 
@@ -144,6 +153,7 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 
 	requests := make([]map[string]any, 0, proxyMessagesInitCap)
 	captureCtx := m.newCaptureRequestContext(stream.Context())
+	recordDelay := route.Source.RecordDelay
 
 	for _, req := range requestsToForward {
 		requests = append(requests, convertToMap(req))
@@ -173,6 +183,8 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 				responseHeadersFromClientStream(clientStream),
 				err,
 				captureCtx.sessionID,
+				recordDelay,
+				time.Since(startTime),
 			)
 		}
 
@@ -195,6 +207,8 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 			responseHeadersFromClientStream(clientStream),
 			nil,
 			captureCtx.sessionID,
+			recordDelay,
+			time.Since(startTime),
 		)
 	}
 
@@ -211,6 +225,8 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 	prefetchedRequests []*dynamicpb.Message,
 	capture bool,
 ) error {
+	startTime := time.Now()
+
 	proxyCtx, cancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
 	defer cancel()
 
@@ -241,7 +257,7 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 	if capture {
 		requests, responses := state.snapshot()
 
-		m.captureBidiResult(clientStream, captureCtx, requests, responses, firstErr, secondErr)
+		m.captureBidiResult(clientStream, captureCtx, requests, responses, firstErr, secondErr, route.Source.RecordDelay, time.Since(startTime))
 	}
 
 	if firstErr != nil {
@@ -337,6 +353,8 @@ func (m *grpcMocker) captureBidiResult(
 	responses []map[string]any,
 	firstErr error,
 	secondErr error,
+	recordDelay bool,
+	elapsed time.Duration,
 ) {
 	captureErr := selectCaptureError(firstErr, secondErr)
 	captureErr = sanitizeCapturedStreamError(captureErr, len(responses) > 0)
@@ -348,6 +366,8 @@ func (m *grpcMocker) captureBidiResult(
 		responseHeadersFromClientStream(clientStream),
 		captureErr,
 		captureCtx.sessionID,
+		recordDelay,
+		elapsed,
 	)
 }
 

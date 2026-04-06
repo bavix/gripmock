@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -26,8 +27,10 @@ func (m *grpcMocker) proxyUnary(
 		trailer metadata.MD
 	)
 
+	startTime := time.Now()
 	resp := dynamicpb.NewMessage(m.outputDesc)
 	err := route.Conn.Invoke(proxyCtx, m.fullMethod, req, resp, grpc.Header(&header), grpc.Trailer(&trailer))
+	elapsed := time.Since(startTime)
 
 	if len(header) > 0 {
 		_ = grpc.SetHeader(ctx, header)
@@ -43,7 +46,10 @@ func (m *grpcMocker) proxyUnary(
 
 	if err != nil {
 		if capture {
-			m.recordCapturedUnaryStub(requestData, captureCtx.headers, nil, responseHeaders, err, captureCtx.sessionID)
+			m.recordCapturedUnaryStub(
+				requestData, captureCtx.headers, nil, responseHeaders, err,
+				captureCtx.sessionID, route.Source.RecordDelay, elapsed,
+			)
 		}
 
 		return nil, err
@@ -51,7 +57,10 @@ func (m *grpcMocker) proxyUnary(
 
 	responseData := messageToMap(resp)
 	if capture {
-		m.recordCapturedUnaryStub(requestData, captureCtx.headers, responseData, responseHeaders, nil, captureCtx.sessionID)
+		m.recordCapturedUnaryStub(
+			requestData, captureCtx.headers, responseData, responseHeaders, nil,
+			captureCtx.sessionID, route.Source.RecordDelay, elapsed,
+		)
 	}
 
 	return resp, nil
