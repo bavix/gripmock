@@ -121,6 +121,14 @@ func (r *Registry) RouteByMethod(fullMethod string) *Route {
 	return nil
 }
 
+func (r *Registry) Routes() []*Route {
+	if r == nil {
+		return nil
+	}
+
+	return r.routes
+}
+
 func (r *Registry) Close() {
 	if r == nil {
 		return

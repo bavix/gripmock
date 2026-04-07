@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"github.com/bavix/gripmock/v3/internal/infra/proxycapture"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
@@ -26,110 +27,15 @@ func messageToMap(message proto.Message) map[string]any {
 	return proxycapture.MessageToMap(message)
 }
 
-func (m *grpcMocker) recordCapturedUnaryStub(
-	request map[string]any,
-	requestHeaders map[string]any,
-	response map[string]any,
-	responseHeaders map[string]string,
-	callErr error,
-	sessionID string,
+func (m *grpcMocker) recordCapturedStub(
+	build func() *stuber.Stub,
 	recordDelay bool,
 	elapsed time.Duration,
 ) {
-	stub := proxycapture.BuildUnaryStub(
-		m.fullServiceName,
-		m.methodName,
-		sessionID,
-		request,
-		requestHeaders,
-		response,
-		responseHeaders,
-		callErr,
-	)
-
-	if recordDelay && elapsed > 0 {
-		stub.Output.Delay = types.Duration(elapsed)
+	stub := build()
+	if stub == nil {
+		return
 	}
-
-	m.budgerigar.PutMany(stub)
-}
-
-func (m *grpcMocker) recordCapturedServerStreamStub(
-	request map[string]any,
-	requestHeaders map[string]any,
-	responses []map[string]any,
-	responseHeaders map[string]string,
-	callErr error,
-	sessionID string,
-	recordDelay bool,
-	elapsed time.Duration,
-) {
-	stub := proxycapture.BuildServerStreamStub(
-		m.fullServiceName,
-		m.methodName,
-		sessionID,
-		request,
-		requestHeaders,
-		responses,
-		responseHeaders,
-		callErr,
-	)
-
-	if recordDelay && elapsed > 0 {
-		stub.Output.Delay = types.Duration(elapsed)
-	}
-
-	m.budgerigar.PutMany(stub)
-}
-
-func (m *grpcMocker) recordCapturedClientStreamStub(
-	requests []map[string]any,
-	requestHeaders map[string]any,
-	response map[string]any,
-	responseHeaders map[string]string,
-	callErr error,
-	sessionID string,
-	recordDelay bool,
-	elapsed time.Duration,
-) {
-	stub := proxycapture.BuildClientStreamStub(
-		m.fullServiceName,
-		m.methodName,
-		sessionID,
-		requests,
-		requestHeaders,
-		response,
-		responseHeaders,
-		callErr,
-	)
-
-	if recordDelay && elapsed > 0 {
-		stub.Output.Delay = types.Duration(elapsed)
-	}
-
-	m.budgerigar.PutMany(stub)
-}
-
-func (m *grpcMocker) recordCapturedBidiStub(
-	requests []map[string]any,
-	requestHeaders map[string]any,
-	responses []map[string]any,
-	responseHeaders map[string]string,
-	callErr error,
-	sessionID string,
-	recordDelay bool,
-	elapsed time.Duration,
-) {
-	stub := proxycapture.BuildBidiStub(
-		m.fullServiceName,
-		m.methodName,
-		sessionID,
-		requests,
-		requestHeaders,
-		responses,
-		responseHeaders,
-		callErr,
-	)
 
 	if recordDelay && elapsed > 0 {
 		stub.Output.Delay = types.Duration(elapsed)

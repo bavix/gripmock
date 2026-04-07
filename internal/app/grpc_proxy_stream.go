@@ -11,7 +11,9 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/dynamicpb"
 
+	"github.com/bavix/gripmock/v3/internal/infra/proxycapture"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 func (m *grpcMocker) proxyServerStream(stream grpc.ServerStream, route *proxyroutes.Route, capture bool) error {
@@ -69,15 +71,15 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 
 		if err != nil {
 			if capture {
-				m.recordCapturedServerStreamStub(
-					requestData,
-					captureCtx.headers,
-					responses,
-					responseHeadersFromClientStream(clientStream),
-					err,
-					captureCtx.sessionID,
-					recordDelay,
-					time.Since(startTime),
+				m.recordCapturedStub(
+					func() *stuber.Stub {
+						return proxycapture.BuildServerStreamStub(
+							m.fullServiceName, m.methodName, captureCtx.sessionID,
+							requestData, captureCtx.headers, responses,
+							responseHeadersFromClientStream(clientStream), err,
+						)
+					},
+					recordDelay, time.Since(startTime),
 				)
 			}
 
@@ -96,15 +98,15 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 	}
 
 	if capture {
-		m.recordCapturedServerStreamStub(
-			requestData,
-			captureCtx.headers,
-			responses,
-			responseHeadersFromClientStream(clientStream),
-			nil,
-			captureCtx.sessionID,
-			recordDelay,
-			time.Since(startTime),
+		m.recordCapturedStub(
+			func() *stuber.Stub {
+				return proxycapture.BuildServerStreamStub(
+					m.fullServiceName, m.methodName, captureCtx.sessionID,
+					requestData, captureCtx.headers, responses,
+					responseHeadersFromClientStream(clientStream), nil,
+				)
+			},
+			recordDelay, time.Since(startTime),
 		)
 	}
 
@@ -176,15 +178,15 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 	resp := dynamicpb.NewMessage(m.outputDesc)
 	if err = clientStream.RecvMsg(resp); err != nil {
 		if capture {
-			m.recordCapturedClientStreamStub(
-				requests,
-				captureCtx.headers,
-				nil,
-				responseHeadersFromClientStream(clientStream),
-				err,
-				captureCtx.sessionID,
-				recordDelay,
-				time.Since(startTime),
+			m.recordCapturedStub(
+				func() *stuber.Stub {
+					return proxycapture.BuildClientStreamStub(
+						m.fullServiceName, m.methodName, captureCtx.sessionID,
+						requests, captureCtx.headers, nil,
+						responseHeadersFromClientStream(clientStream), err,
+					)
+				},
+				recordDelay, time.Since(startTime),
 			)
 		}
 
@@ -200,15 +202,15 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 	}
 
 	if capture {
-		m.recordCapturedClientStreamStub(
-			requests,
-			captureCtx.headers,
-			messageToMap(resp),
-			responseHeadersFromClientStream(clientStream),
-			nil,
-			captureCtx.sessionID,
-			recordDelay,
-			time.Since(startTime),
+		m.recordCapturedStub(
+			func() *stuber.Stub {
+				return proxycapture.BuildClientStreamStub(
+					m.fullServiceName, m.methodName, captureCtx.sessionID,
+					requests, captureCtx.headers, messageToMap(resp),
+					responseHeadersFromClientStream(clientStream), nil,
+				)
+			},
+			recordDelay, time.Since(startTime),
 		)
 	}
 
@@ -359,15 +361,15 @@ func (m *grpcMocker) captureBidiResult(
 	captureErr := selectCaptureError(firstErr, secondErr)
 	captureErr = sanitizeCapturedStreamError(captureErr, len(responses) > 0)
 
-	m.recordCapturedBidiStub(
-		requests,
-		captureCtx.headers,
-		responses,
-		responseHeadersFromClientStream(clientStream),
-		captureErr,
-		captureCtx.sessionID,
-		recordDelay,
-		elapsed,
+	m.recordCapturedStub(
+		func() *stuber.Stub {
+			return proxycapture.BuildBidiStub(
+				m.fullServiceName, m.methodName, captureCtx.sessionID,
+				requests, captureCtx.headers, responses,
+				responseHeadersFromClientStream(clientStream), captureErr,
+			)
+		},
+		recordDelay, elapsed,
 	)
 }
 

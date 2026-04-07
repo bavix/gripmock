@@ -9,7 +9,7 @@ import (
 )
 
 func (s *mockableHealthServer) findStub(ctx context.Context, method, service string) (*stuber.Stub, bool) {
-	if s.queryFinder == nil {
+	if s.storage == nil {
 		return nil, false
 	}
 
@@ -20,7 +20,7 @@ func (s *mockableHealthServer) findStub(ctx context.Context, method, service str
 		query.Session = sessionFromMetadata(md)
 	}
 
-	result, err := s.queryFinder.FindByQuery(query)
+	result, err := s.storage.FindByQuery(query)
 	if err != nil || result == nil || result.Found() == nil {
 		return nil, false
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -47,6 +48,118 @@ func TestStubNil(t *testing.T) {
 	s := stuber.NewBudgerigar(features.New())
 
 	require.Nil(t, s.FindByID(uuid.New()))
+}
+
+func TestInternalHealthStubsAreHiddenFromPublicCollections(t *testing.T) {
+	t.Parallel()
+
+	s := stuber.NewBudgerigar(features.New())
+
+	require.Empty(t, s.All())
+	require.Empty(t, s.Used())
+	require.Empty(t, s.Unused())
+
+	result, err := s.FindByQuery(stuber.Query{
+		Service: "grpc.health.v1.Health",
+		Method:  "Check",
+		Input:   []map[string]any{{"service": "gripmock"}},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.NotNil(t, result.Found())
+	require.Equal(t, map[string]any{"status": "NOT_SERVING"}, result.Found().Output.Data)
+
+	// Internal stub usage must not leak to public API views.
+	require.Empty(t, s.All())
+	require.Empty(t, s.Used())
+	require.Empty(t, s.Unused())
+}
+
+func TestFindByIDPrefersExternalWhenInternalIDCollides(t *testing.T) {
+	t.Parallel()
+
+	s := stuber.NewBudgerigar(features.New())
+
+	internalID := uuid.MustParse(stuber.InternalStubIDGripmockHealthCheck)
+	// Internal stubs must be hidden from direct user lookup.
+	require.Nil(t, s.FindByID(internalID))
+
+	userStub := &stuber.Stub{
+		ID:      internalID,
+		Service: "Greeter",
+		Method:  "SayHello",
+		Output:  stuber.Output{Data: map[string]any{"message": "user"}},
+	}
+
+	s.PutMany(userStub)
+
+	found := s.FindByID(internalID)
+	require.NotNil(t, found)
+	require.Equal(t, "Greeter", found.Service)
+	require.Equal(t, "SayHello", found.Method)
+	require.Equal(t, map[string]any{"message": "user"}, found.Output.Data)
+}
+
+func TestInternalHealthWatchStatusTransition(t *testing.T) {
+	t.Parallel()
+
+	s := stuber.NewBudgerigar(features.New())
+
+	query := stuber.Query{
+		Service: "grpc.health.v1.Health",
+		Method:  "Watch",
+		Input:   []map[string]any{{"service": "gripmock"}},
+	}
+
+	before, err := s.FindByQuery(query)
+	require.NoError(t, err)
+	require.NotNil(t, before)
+	require.NotNil(t, before.Found())
+
+	beforeMap, ok := before.Found().Output.Stream[0].(map[string]any)
+	require.True(t, ok)
+
+	beforeStatus := beforeMap["status"]
+	require.Equal(t, "NOT_SERVING", beforeStatus)
+
+	stuber.UpdateGripmockHealthStatus(s.InternalStorage(), healthgrpc.HealthCheckResponse_SERVING)
+
+	after, err := s.FindByQuery(query)
+	require.NoError(t, err)
+	require.NotNil(t, after)
+	require.NotNil(t, after.Found())
+
+	afterMap, ok := after.Found().Output.Stream[0].(map[string]any)
+	require.True(t, ok)
+
+	afterStatus := afterMap["status"]
+	require.Equal(t, "SERVING", afterStatus)
+}
+
+func TestInternalHealthCheckStatusTransition(t *testing.T) {
+	t.Parallel()
+
+	s := stuber.NewBudgerigar(features.New())
+
+	query := stuber.Query{
+		Service: "grpc.health.v1.Health",
+		Method:  "Check",
+		Input:   []map[string]any{{"service": "gripmock"}},
+	}
+
+	before, err := s.FindByQuery(query)
+	require.NoError(t, err)
+	require.NotNil(t, before)
+	require.NotNil(t, before.Found())
+	require.Equal(t, map[string]any{"status": "NOT_SERVING"}, before.Found().Output.Data)
+
+	stuber.UpdateGripmockHealthStatus(s.InternalStorage(), healthgrpc.HealthCheckResponse_SERVING)
+
+	after, err := s.FindByQuery(query)
+	require.NoError(t, err)
+	require.NotNil(t, after)
+	require.NotNil(t, after.Found())
+	require.Equal(t, map[string]any{"status": "SERVING"}, after.Found().Output.Data)
 }
 
 func TestFindBy(t *testing.T) {

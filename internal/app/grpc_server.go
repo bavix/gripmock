@@ -147,11 +147,11 @@ type GRPCServer struct {
 	address      string
 	params       *protoloc.Arguments
 	budgerigar   *stuber.Budgerigar
+	healthState  stuber.Aliveness
 	waiter       Extender
 	recorder     history.Recorder
 	descriptors  *descriptors.Registry
 	remoteClient protosetdom.RemoteClient
-	healthcheck  *health.Server
 	tlsConfig    *tls.Config
 	proxies      *proxyroutes.Registry
 }
@@ -1233,11 +1233,17 @@ func NewGRPCServer(
 		registry = descriptors.NewRegistry()
 	}
 
+	var healthState stuber.Aliveness
+	if budgerigar != nil {
+		healthState = budgerigar
+	}
+
 	return &GRPCServer{
 		network:      network,
 		address:      address,
 		params:       params,
 		budgerigar:   budgerigar,
+		healthState:  healthState,
 		waiter:       waiter,
 		recorder:     recorder,
 		descriptors:  registry,
@@ -1306,8 +1312,14 @@ func BuildFromDescriptorSet(
 		return nil, errors.Wrap(err, "failed to create files registry")
 	}
 
+	var healthState stuber.Aliveness
+	if budgerigar != nil {
+		healthState = budgerigar
+	}
+
 	s := &GRPCServer{
 		budgerigar:  budgerigar,
+		healthState: healthState,
 		waiter:      waiter,
 		recorder:    recorder,
 		descriptors: descriptors.NewRegistry(),
@@ -1482,9 +1494,8 @@ func findMethodInGlobalFiles(serviceName, methodName string) protoreflect.Method
 }
 
 func (s *GRPCServer) setupHealthCheck(server *grpc.Server, descResolver *protoregistry.Files) {
-	healthcheck := health.NewServer()
-	healthcheck.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_NOT_SERVING)
-	healthgrpc.RegisterHealthServer(server, newMockableHealthServer(healthcheck, s.budgerigar, descResolver))
+	healthServer := health.NewServer()
+	healthgrpc.RegisterHealthServer(server, newMockableHealthServer(healthServer, s.budgerigar, descResolver, s.proxies))
 
 	provider := &dynamicServiceInfoProvider{base: server, registry: s.descriptors}
 
@@ -1508,8 +1519,6 @@ func (s *GRPCServer) setupHealthCheck(server *grpc.Server, descResolver *protore
 		Services:           provider,
 		DescriptorResolver: resolver,
 	}))
-
-	s.healthcheck = healthcheck
 }
 
 type dynamicServiceInfoProvider struct {
@@ -1713,7 +1722,10 @@ func (s *GRPCServer) markServerReady(ctx context.Context) {
 	logger := zerolog.Ctx(ctx)
 
 	logger.Info().Msg("gRPC server is ready to accept requests")
-	s.healthcheck.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_SERVING)
+
+	if s.healthState != nil {
+		s.healthState.SetAlive()
+	}
 }
 
 func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.ServiceDescriptorProto) string {

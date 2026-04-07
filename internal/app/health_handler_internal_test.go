@@ -22,7 +22,7 @@ import (
 
 var errNilHealthResponse = stderrors.New("nil health response")
 
-func TestMockableHealthServerCheckBypassesProtectedServices(t *testing.T) {
+func TestMockableHealthServerCheckUsesStubForGripmockService(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
@@ -37,7 +37,7 @@ func TestMockableHealthServerCheckBypassesProtectedServices(t *testing.T) {
 		Output:  stuber.Output{Data: map[string]any{"status": "NOT_SERVING"}},
 	})
 
-	handler := newMockableHealthServer(realServer, budgerigar, nil)
+	handler := newMockableHealthServer(realServer, budgerigar, nil, nil)
 
 	// Act
 	gripmockResp, gripmockErr := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: HealthServiceName})
@@ -45,7 +45,7 @@ func TestMockableHealthServerCheckBypassesProtectedServices(t *testing.T) {
 
 	// Assert
 	require.NoError(t, gripmockErr)
-	require.Equal(t, healthgrpc.HealthCheckResponse_SERVING, gripmockResp.GetStatus())
+	require.Equal(t, healthgrpc.HealthCheckResponse_NOT_SERVING, gripmockResp.GetStatus())
 	require.NoError(t, globalErr)
 	require.Equal(t, healthgrpc.HealthCheckResponse_NOT_SERVING, globalResp.GetStatus())
 }
@@ -65,7 +65,7 @@ func TestMockableHealthServerCheckReturnsMockedStatus(t *testing.T) {
 		Output:  stuber.Output{Data: map[string]any{"status": "NOT_SERVING"}},
 	})
 
-	handler := newMockableHealthServer(realServer, budgerigar, nil)
+	handler := newMockableHealthServer(realServer, budgerigar, nil, nil)
 
 	// Act
 	resp, err := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "orders.v1.OrderService"})
@@ -81,7 +81,7 @@ func TestMockableHealthServerCheckFallbackToRealHealthServer(t *testing.T) {
 	// Arrange
 	realServer := health.NewServer()
 	realServer.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_SERVING)
-	handler := newMockableHealthServer(realServer, stuber.NewBudgerigar(features.New()), nil)
+	handler := newMockableHealthServer(realServer, stuber.NewBudgerigar(features.New()), nil, nil)
 
 	// Act
 	resp, err := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "inventory.v1.InventoryService"})
@@ -108,7 +108,7 @@ func TestMockableHealthServerCheckRespectsSessionMetadata(t *testing.T) {
 		Output:  stuber.Output{Data: map[string]any{"status": "NOT_SERVING"}},
 	})
 
-	handler := newMockableHealthServer(realServer, budgerigar, nil)
+	handler := newMockableHealthServer(realServer, budgerigar, nil, nil)
 
 	ctx := metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{"x-gripmock-session": "s-42"}))
 
@@ -135,7 +135,7 @@ func TestMockableHealthServerCheckReturnsOutputError(t *testing.T) {
 		Output:  stuber.Output{Code: &c, Error: "dependency unavailable"},
 	})
 
-	handler := newMockableHealthServer(realServer, budgerigar, nil)
+	handler := newMockableHealthServer(realServer, budgerigar, nil, nil)
 
 	// Act
 	resp, err := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "search.v1.SearchService"})
@@ -172,7 +172,7 @@ func TestMockableHealthServerCheckReturnsOutputErrorWithDetails(t *testing.T) {
 		},
 	})
 
-	handler := newMockableHealthServer(realServer, budgerigar, nil)
+	handler := newMockableHealthServer(realServer, budgerigar, nil, nil)
 
 	// Act
 	resp, err := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "profile.v1.ProfileService"})
@@ -212,7 +212,7 @@ func TestMockableHealthServerCheckReturnsErrorOnInvalidOutputDetails(t *testing.
 		},
 	})
 
-	handler := newMockableHealthServer(realServer, budgerigar, nil)
+	handler := newMockableHealthServer(realServer, budgerigar, nil, nil)
 
 	// Act
 	resp, err := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "profile.v1.ProfileService"})
@@ -240,7 +240,7 @@ func TestMockableHealthServerWatchStreamsMockedResponses(t *testing.T) {
 		}},
 	})
 
-	handler := newMockableHealthServer(realServer, budgerigar, nil)
+	handler := newMockableHealthServer(realServer, budgerigar, nil, nil)
 	stream := newHealthWatchTestStream(t.Context(), 2)
 
 	errCh := make(chan error, 1)
@@ -269,14 +269,14 @@ func TestMockableHealthServerWatchStreamsMockedResponses(t *testing.T) {
 	}, stream.Statuses())
 }
 
-func TestMockableHealthServerWatchBypassesProtectedService(t *testing.T) {
+func TestMockableHealthServerWatchUsesStubForGripmockService(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
 	realServer := health.NewServer()
 	realServer.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_SERVING)
 
-	handler := newMockableHealthServer(realServer, stuber.NewBudgerigar(features.New()), nil)
+	handler := newMockableHealthServer(realServer, stuber.NewBudgerigar(features.New()), nil, nil)
 	stream := newHealthWatchTestStream(t.Context(), 1)
 
 	errCh := make(chan error, 1)
@@ -298,11 +298,9 @@ func TestMockableHealthServerWatchBypassesProtectedService(t *testing.T) {
 	}
 
 	// Assert
-	// Bypasses mocks and calls real Watch, which blocks on context cancellation
-	require.Error(t, err)
-	require.Equal(t, codes.Canceled, status.Code(err))
+	require.NoError(t, err)
 	require.Equal(t, []healthgrpc.HealthCheckResponse_ServingStatus{
-		healthgrpc.HealthCheckResponse_SERVING,
+		healthgrpc.HealthCheckResponse_NOT_SERVING,
 	}, stream.Statuses())
 }
 
@@ -323,7 +321,7 @@ func TestMockableHealthServerWatchSupportsDelay(t *testing.T) {
 		},
 	})
 
-	handler := newMockableHealthServer(realServer, budgerigar, nil)
+	handler := newMockableHealthServer(realServer, budgerigar, nil, nil)
 	stream := newHealthWatchTestStream(t.Context(), 1)
 
 	start := time.Now()
@@ -358,7 +356,7 @@ func TestMockableHealthServerWatchAppliesDelayOnlyBeforeFirstMessage(t *testing.
 		},
 	})
 
-	handler := newMockableHealthServer(realServer, budgerigar, nil)
+	handler := newMockableHealthServer(realServer, budgerigar, nil, nil)
 	stream := newHealthWatchTestStream(t.Context(), 2)
 
 	start := time.Now()

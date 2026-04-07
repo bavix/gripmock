@@ -11,14 +11,18 @@ GripMock supports stubbing the standard gRPC health service:
 
 This allows you to test client behavior for dependency health transitions (for example `NOT_SERVING -> SERVING`).
 
-## Protected service
+## Protected service: gripmock
 
-The service key `gripmock` is reserved for GripMock internal readiness and **cannot be mocked**.
+The service key `gripmock` is reserved for GripMock internal readiness.
+
+- An internal stub is created automatically at server startup with `NOT_SERVING` status
+- When the server becomes ready, the status updates to `SERVING`
+- User stubs targeting `service: "gripmock"` are stored but always overridden by the internal stub
 
 ```go
 mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 
-// This stub is stored but intentionally ignored at runtime:
+// This stub is stored but always overridden by internal stub:
 mock.Stub("grpc.health.v1.Health", "Check").
     When(sdk.Equals("service", "gripmock")).
     Reply(sdk.Data("status", "NOT_SERVING")).
@@ -28,7 +32,7 @@ client := grpc_health_v1.NewHealthClient(mock.Conn())
 resp, err := client.Check(t.Context(), &grpc_health_v1.HealthCheckRequest{
     Service: "gripmock",
 })
-// Always returns SERVING (the real server status)
+// Returns SERVING (internal stub)
 require.NoError(t, err)
 require.Equal(t, grpc_health_v1.HealthCheckResponse_SERVING, resp.GetStatus())
 ```
@@ -53,9 +57,9 @@ func TestHealthCheckMockedViaSDK(t *testing.T) {
 }
 ```
 
-## Protected gripmock service
+## gripmock service behavior
 
-Requests for the `gripmock` service always bypass mocking and return the real server status:
+Requests for the `gripmock` service return the internal stub status:
 
 ```go
 func TestHealthCheckGripmockProtectedViaSDK(t *testing.T) {
@@ -72,14 +76,14 @@ func TestHealthCheckGripmockProtectedViaSDK(t *testing.T) {
         Service: "gripmock",
     })
     require.NoError(t, err)
-    // The stub is ignored — real server status is returned
+    // Internal stub overrides user stub — SERVING
     require.Equal(t, grpc_health_v1.HealthCheckResponse_SERVING, resp.GetStatus())
 }
 ```
 
 ## Unknown service fallback
 
-If no stub matches and the service is not `gripmock`, the request falls back to the default gRPC health server behavior (returns `NotFound`):
+If no stub matches and the service is not `gripmock`, the request returns `NotFound`:
 
 ```go
 func TestHealthCheckUnknownServiceFallbackViaSDK(t *testing.T) {

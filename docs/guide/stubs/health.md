@@ -7,22 +7,24 @@ GripMock supports stubbing the standard gRPC health service:
 
 This is useful when you want to test client behavior for dependency health transitions (for example `NOT_SERVING -> SERVING`).
 
-## Protected internal key
+## Protected service: gripmock
 
-The service key `gripmock` is reserved for GripMock internal readiness and cannot be mocked.
+The service key `gripmock` is reserved for GripMock internal readiness.
 
-- `service: "gripmock"` always returns the real server health.
-- Stubs targeting `gripmock` may be stored, but they are ignored at runtime.
+- Internal stub with `service: "gripmock"` is created automatically at server startup with `NOT_SERVING` status
+- When server becomes ready, status updates to `SERVING`
+- User stubs targeting `service: "gripmock"` are stored but always overridden by internal stub (priority)
+- Do not rely on mocking `gripmock` — it will not work as expected
 
 ## Behavior matrix
 
-| Request `service` | Stub exists | Result |
-|---|---|---|
-| `gripmock` | Yes/No | Real server health (stub ignored) |
-| Custom name | Yes | Mocked response |
-| Custom name | No | Default health behavior (`Check` returns `NotFound`) |
-| Empty `""` | Yes | Mocked response (like any custom name) |
-| Empty `""` | No | Default health behavior |
+| Request `service` | Internal stub | User stub | Result |
+|---|---|---|---|
+| `gripmock` | Yes (automatic) | Yes/No | Internal stub → SERVING |
+| Custom name | No | Yes | User stub response |
+| Custom name | No | No | Default behavior (`Check` returns `NotFound`) |
+| Empty `""` | No | Yes | Mocked response |
+| Empty `""` | No | No | Default behavior |
 
 ## Example: `Check`
 
@@ -46,8 +48,6 @@ Request:
   "service": "examples.health.backend"
 }
 ```
-
-For `service: "gripmock"`, any stub is intentionally ignored and the real runtime status is returned.
 
 Response:
 
