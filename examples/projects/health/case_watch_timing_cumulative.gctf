@@ -6,7 +6,7 @@ grpc.health.v1.Health/Watch
   "service": "examples.health.watch"
 }
 
---- RESPONSE with_asserts=true ---
+--- RESPONSE with_asserts ---
 {
   "status": "NOT_SERVING"
 }
@@ -18,7 +18,7 @@ grpc.health.v1.Health/Watch
 @total_elapsed_ms() >= 10
 @scope_index() == 1
 
---- RESPONSE with_asserts=true ---
+--- RESPONSE with_asserts ---
 {
   "status": "SERVING"
 }
