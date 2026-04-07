@@ -5,6 +5,9 @@ const (
 	// ServiceReflection is the name of the gRPC reflection service.
 	ServiceReflection = "grpc.reflection.v1.ServerReflection"
 
+	// HealthServiceFullName defines the full name of the gRPC health service.
+	HealthServiceFullName = "grpc.health.v1.Health"
+
 	// DefaultTimeout is the default timeout for operations.
 	DefaultTimeout = 30
 

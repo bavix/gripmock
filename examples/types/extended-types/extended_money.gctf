@@ -11,6 +11,6 @@ extended.MoneyService/GetBalance
   "balance": {
     "currencyCode": "USD",
     "units": "100",
-    "nanos": 500000000 # $100.50
+    "nanos": 500000000 // $100.50
   }
 }

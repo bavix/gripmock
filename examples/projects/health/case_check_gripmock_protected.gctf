@@ -1,0 +1,14 @@
+--- ENDPOINT ---
+grpc.health.v1.Health/Check
+
+--- REQUEST ---
+{
+  "service": "gripmock"
+}
+
+--- RESPONSE ---
+// Protected behavior: even if a stub tries gripmock -> NOT_SERVING,
+// runtime must ignore it and return real status.
+{
+  "status": "SERVING"
+}

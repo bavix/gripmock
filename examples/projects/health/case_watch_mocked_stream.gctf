@@ -1,0 +1,22 @@
+--- ENDPOINT ---
+grpc.health.v1.Health/Watch
+
+--- REQUEST ---
+{
+  "service": "examples.health.watch"
+}
+
+--- RESPONSE with_asserts ---
+{
+  "status": "NOT_SERVING"
+}
+{
+  "status": "SERVING"
+}
+
+--- ASSERTS ---
+// Watch delay in stubs.yaml is 10ms.
+// Delay applies before the first message in the scope.
+@scope_message_count() == 2
+@elapsed_ms() >= 10
+@total_elapsed_ms() >= 10

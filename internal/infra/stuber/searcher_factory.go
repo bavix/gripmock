@@ -25,11 +25,14 @@ func newSearcherWithOptions(options searcherOptions) *searcher {
 		lookupProvider = defaultSearcherLookupFactory()
 	}
 
+	storage := newStorageWithInternal()
+
 	s := &searcher{
-		storage:        newStorage(),
-		stubCallCount:  make(map[callCountKey]int),
-		lookupProvider: lookupProvider,
-		lookupCache:    make(map[string]*searcherLookup),
+		storage:         storage,
+		internalStorage: storage.Internal(),
+		stubCallCount:   make(map[callCountKey]int),
+		lookupProvider:  lookupProvider,
+		lookupCache:     make(map[string]*searcherLookup),
 	}
 
 	processStrategy := options.processStrategy

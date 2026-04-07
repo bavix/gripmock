@@ -1,10 +1,14 @@
 package app
 
 import (
+	"time"
+
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/bavix/gripmock/v3/internal/infra/proxycapture"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
 func requestHeadersFromMetadata(md metadata.MD) map[string]any {
@@ -23,82 +27,19 @@ func messageToMap(message proto.Message) map[string]any {
 	return proxycapture.MessageToMap(message)
 }
 
-func (m *grpcMocker) recordCapturedUnaryStub(
-	request map[string]any,
-	requestHeaders map[string]any,
-	response map[string]any,
-	responseHeaders map[string]string,
-	callErr error,
-	sessionID string,
+func (m *grpcMocker) recordCapturedStub(
+	build func() *stuber.Stub,
+	recordDelay bool,
+	elapsed time.Duration,
 ) {
-	m.budgerigar.PutMany(proxycapture.BuildUnaryStub(
-		m.fullServiceName,
-		m.methodName,
-		sessionID,
-		request,
-		requestHeaders,
-		response,
-		responseHeaders,
-		callErr,
-	))
-}
+	stub := build()
+	if stub == nil {
+		return
+	}
 
-func (m *grpcMocker) recordCapturedServerStreamStub(
-	request map[string]any,
-	requestHeaders map[string]any,
-	responses []map[string]any,
-	responseHeaders map[string]string,
-	callErr error,
-	sessionID string,
-) {
-	m.budgerigar.PutMany(proxycapture.BuildServerStreamStub(
-		m.fullServiceName,
-		m.methodName,
-		sessionID,
-		request,
-		requestHeaders,
-		responses,
-		responseHeaders,
-		callErr,
-	))
-}
+	if recordDelay && elapsed > 0 {
+		stub.Output.Delay = types.Duration(elapsed)
+	}
 
-func (m *grpcMocker) recordCapturedClientStreamStub(
-	requests []map[string]any,
-	requestHeaders map[string]any,
-	response map[string]any,
-	responseHeaders map[string]string,
-	callErr error,
-	sessionID string,
-) {
-	m.budgerigar.PutMany(proxycapture.BuildClientStreamStub(
-		m.fullServiceName,
-		m.methodName,
-		sessionID,
-		requests,
-		requestHeaders,
-		response,
-		responseHeaders,
-		callErr,
-	))
-}
-
-func (m *grpcMocker) recordCapturedBidiStub(
-	requests []map[string]any,
-	requestHeaders map[string]any,
-	responses []map[string]any,
-	responseHeaders map[string]string,
-	callErr error,
-	sessionID string,
-) {
-	m.budgerigar.PutMany(proxycapture.BuildBidiStub(
-		m.fullServiceName,
-		m.methodName,
-		sessionID,
-		requests,
-		requestHeaders,
-		responses,
-		responseHeaders,
-		callErr,
-	))
+	m.budgerigar.PutMany(stub)
 }

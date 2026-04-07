@@ -7,10 +7,10 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/goccy/go-json"
 	_ "google.golang.org/genproto/googleapis/rpc/errdetails"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/dynamicpb"
@@ -28,27 +28,21 @@ var (
 	errDetailUnmarshal    = errors.New("failed to unmarshal detail payload")
 )
 
-//nolint:nilnil
 func (m *grpcMocker) statusFromOutput(output stuber.Output) (*status.Status, error) {
-	if output.Error == "" && output.Code == nil {
-		return nil, nil
-	}
-
-	if output.Code != nil && *output.Code == codes.OK {
-		return nil, nil
-	}
-
-	code := codes.Aborted
-	if output.Code != nil {
-		code = *output.Code
-	}
-
-	st := status.New(code, output.Error)
-
-	return m.attachDetails(st, output.Details)
+	return statusFromOutputWithDetails(output, m.descriptorResolver)
 }
 
-func (m *grpcMocker) attachDetails(st *status.Status, details []map[string]any) (*status.Status, error) {
+//nolint:nilnil
+func statusFromOutputWithDetails(output stuber.Output, resolver protodesc.Resolver) (*status.Status, error) {
+	st := outputStatusBase(output)
+	if st == nil {
+		return nil, nil
+	}
+
+	return attachDetails(st, output.Details, resolver)
+}
+
+func attachDetails(st *status.Status, details []map[string]any, resolver protodesc.Resolver) (*status.Status, error) {
 	if len(details) == 0 {
 		return st, nil
 	}
@@ -56,7 +50,7 @@ func (m *grpcMocker) attachDetails(st *status.Status, details []map[string]any) 
 	anyDetails := make([]*anypb.Any, 0, len(details))
 
 	for i, detail := range details {
-		msg, err := m.detailMessage(detail)
+		msg, err := detailMessage(detail, resolver)
 		if err != nil {
 			return nil, fmt.Errorf("invalid output.details[%d]: %w", i, err)
 		}
@@ -76,7 +70,7 @@ func (m *grpcMocker) attachDetails(st *status.Status, details []map[string]any) 
 }
 
 //nolint:cyclop,ireturn
-func (m *grpcMocker) detailMessage(detail map[string]any) (proto.Message, error) {
+func detailMessage(detail map[string]any, resolver protodesc.Resolver) (proto.Message, error) {
 	typeURLRaw, ok := detail["type"]
 	if !ok {
 		return nil, errDetailTypeRequired
@@ -87,7 +81,7 @@ func (m *grpcMocker) detailMessage(detail map[string]any) (proto.Message, error)
 		return nil, errDetailTypeNonEmpty
 	}
 
-	desc, err := m.resolveMessageDescriptor(typeURL)
+	desc, err := resolveMessageDescriptor(typeURL, resolver)
 	if err != nil {
 		return nil, err
 	}
@@ -118,14 +112,14 @@ func (m *grpcMocker) detailMessage(detail map[string]any) (proto.Message, error)
 }
 
 //nolint:ireturn
-func (m *grpcMocker) resolveMessageDescriptor(typeURL string) (protoreflect.MessageDescriptor, error) {
+func resolveMessageDescriptor(typeURL string, resolver protodesc.Resolver) (protoreflect.MessageDescriptor, error) {
 	fullName := parseTypeURL(typeURL)
 	if fullName == "" {
 		return nil, fmt.Errorf("%w: %q", errInvalidDetailType, typeURL)
 	}
 
-	if m.descriptorResolver != nil {
-		desc, err := m.descriptorResolver.FindDescriptorByName(fullName)
+	if resolver != nil {
+		desc, err := resolver.FindDescriptorByName(fullName)
 		if err == nil {
 			if msgDesc, ok := desc.(protoreflect.MessageDescriptor); ok {
 				return msgDesc, nil

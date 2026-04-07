@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/bavix/features"
 )
@@ -11,6 +12,11 @@ import (
 // MethodTitle is a feature flag for using title casing in the method field
 // of a Query struct.
 const MethodTitle features.Flag = iota
+
+// Aliveness provides minimal lifecycle contract for internal health state.
+type Aliveness interface {
+	SetAlive()
+}
 
 // Budgerigar is the main struct for the stuber package. It contains a
 // searcher and toggles.
@@ -25,6 +31,19 @@ func NewBudgerigar(toggles features.Toggles) *Budgerigar {
 		searcher: newSearcher(),
 		toggles:  toggles,
 	}
+}
+
+// InternalStorage returns the internal storage interface for adding internal stubs.
+// Internal stubs are hidden from user-facing APIs and take precedence in matching.
+//
+//nolint:ireturn
+func (b *Budgerigar) InternalStorage() InternalStubStorage {
+	return b.searcher.internalStorage
+}
+
+// SetAlive marks internal gripmock health stubs as SERVING.
+func (b *Budgerigar) SetAlive() {
+	UpdateGripmockHealthStatus(b.searcher.internalStorage, healthgrpc.HealthCheckResponse_SERVING)
 }
 
 // PutMany inserts the given Stub values. Assigns UUIDs to stubs without IDs.

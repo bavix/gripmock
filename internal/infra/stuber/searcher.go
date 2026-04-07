@@ -37,7 +37,8 @@ type searcher struct {
 	mu              sync.RWMutex
 	lookupMu        sync.RWMutex
 	stubCallCount   map[callCountKey]int // count of matches per stub+session (for Times limit)
-	storage         *storage
+	storage         stubStorage
+	internalStorage InternalStubStorage
 	lookupProvider  searcherLookupProvider
 	lookupCache     map[string]*searcherLookup
 	processStrategy processStubsStrategy

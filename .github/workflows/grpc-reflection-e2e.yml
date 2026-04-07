@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GRPCTESTIFY_VERSION: "1.4.10"
+  GRPCTESTIFY_VERSION: "1.4.13"
   GO_VERSION: "1.26"
   GREETER_GRPC_PORT: "4444"
   CALC_GRPC_PORT: "5555"
@@ -107,7 +107,7 @@ jobs:
 
       - name: Start + check capture target server
         run: |
-          GRPC_PORT="$TARGET_GRPC_PORT" HTTP_PORT="$TARGET_HTTP_PORT" "$RUNNER_TEMP/gripmock" grpc+capture://localhost:${CAPTURE_SOURCE_GRPC_PORT} >"$RUNNER_TEMP/gripmock-capture-target.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-capture-target.pid"
+          GRPC_PORT="$TARGET_GRPC_PORT" HTTP_PORT="$TARGET_HTTP_PORT" "$RUNNER_TEMP/gripmock" "grpc+capture://localhost:${CAPTURE_SOURCE_GRPC_PORT}?recordDelay=true" >"$RUNNER_TEMP/gripmock-capture-target.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-capture-target.pid"
           GRPC_PORT="$TARGET_GRPC_PORT" "$RUNNER_TEMP/gripmock" check --timeout=60s --silent
 
       - name: Warm up capture from upstream

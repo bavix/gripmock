@@ -147,11 +147,11 @@ type GRPCServer struct {
 	address      string
 	params       *protoloc.Arguments
 	budgerigar   *stuber.Budgerigar
+	healthState  stuber.Aliveness
 	waiter       Extender
 	recorder     history.Recorder
 	descriptors  *descriptors.Registry
 	remoteClient protosetdom.RemoteClient
-	healthcheck  *health.Server
 	tlsConfig    *tls.Config
 	proxies      *proxyroutes.Registry
 }
@@ -387,19 +387,7 @@ func convertScalar(fd protoreflect.FieldDescriptor, value protoreflect.Value) an
 }
 
 func (m *grpcMocker) delay(ctx context.Context, delayDur types.Duration) error {
-	if delayDur == 0 {
-		return nil
-	}
-
-	timer := time.NewTimer(time.Duration(delayDur))
-	defer timer.Stop()
-
-	select {
-	case <-ctx.Done():
-		return status.FromContextError(ctx.Err()).Err()
-	case <-timer.C:
-		return nil
-	}
+	return delayResponse(ctx, delayDur)
 }
 
 //nolint:nestif,cyclop,funlen
@@ -1245,11 +1233,17 @@ func NewGRPCServer(
 		registry = descriptors.NewRegistry()
 	}
 
+	var healthState stuber.Aliveness
+	if budgerigar != nil {
+		healthState = budgerigar
+	}
+
 	return &GRPCServer{
 		network:      network,
 		address:      address,
 		params:       params,
 		budgerigar:   budgerigar,
+		healthState:  healthState,
 		waiter:       waiter,
 		recorder:     recorder,
 		descriptors:  registry,
@@ -1295,7 +1289,10 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	server := s.createServer(ctx)
 	s.setupHealthCheck(server, nil)
 	s.registerServices(ctx, server, descriptors, nil)
-	s.startHealthCheckRoutine(ctx)
+
+	// Mark server as ready synchronously after all descriptors and stubs are loaded.
+	// This prevents race conditions where health checks arrive before the server is ready.
+	s.markServerReady(ctx)
 
 	return server, nil
 }
@@ -1315,8 +1312,14 @@ func BuildFromDescriptorSet(
 		return nil, errors.Wrap(err, "failed to create files registry")
 	}
 
+	var healthState stuber.Aliveness
+	if budgerigar != nil {
+		healthState = budgerigar
+	}
+
 	s := &GRPCServer{
 		budgerigar:  budgerigar,
+		healthState: healthState,
 		waiter:      waiter,
 		recorder:    recorder,
 		descriptors: descriptors.NewRegistry(),
@@ -1324,7 +1327,9 @@ func BuildFromDescriptorSet(
 	server := s.createServer(ctx)
 	s.setupHealthCheck(server, reg)
 	s.registerServices(ctx, server, []*descriptorpb.FileDescriptorSet{fds}, reg)
-	s.startHealthCheckRoutine(ctx)
+
+	// Mark server as ready synchronously after all descriptors and stubs are loaded.
+	s.markServerReady(ctx)
 
 	return server, nil
 }
@@ -1489,9 +1494,8 @@ func findMethodInGlobalFiles(serviceName, methodName string) protoreflect.Method
 }
 
 func (s *GRPCServer) setupHealthCheck(server *grpc.Server, descResolver *protoregistry.Files) {
-	healthcheck := health.NewServer()
-	healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_NOT_SERVING)
-	healthgrpc.RegisterHealthServer(server, healthcheck)
+	healthServer := health.NewServer()
+	healthgrpc.RegisterHealthServer(server, newMockableHealthServer(healthServer, s.budgerigar, descResolver, s.proxies))
 
 	provider := &dynamicServiceInfoProvider{base: server, registry: s.descriptors}
 
@@ -1515,8 +1519,6 @@ func (s *GRPCServer) setupHealthCheck(server *grpc.Server, descResolver *protore
 		Services:           provider,
 		DescriptorResolver: resolver,
 	}))
-
-	s.healthcheck = healthcheck
 }
 
 type dynamicServiceInfoProvider struct {
@@ -1716,27 +1718,14 @@ func (s *GRPCServer) createGrpcMocker(
 	}
 }
 
-func (s *GRPCServer) startHealthCheckRoutine(ctx context.Context) {
+func (s *GRPCServer) markServerReady(ctx context.Context) {
 	logger := zerolog.Ctx(ctx)
 
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				logger.Error().
-					Interface("panic", r).
-					Msg("Panic recovered in health check routine")
-			}
-		}()
+	logger.Info().Msg("gRPC server is ready to accept requests")
 
-		// Stubs are already loaded in Build(), just mark server as ready
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			logger.Info().Msg("gRPC server is ready to accept requests")
-			s.healthcheck.SetServingStatus("gripmock", healthgrpc.HealthCheckResponse_SERVING)
-		}
-	}()
+	if s.healthState != nil {
+		s.healthState.SetAlive()
+	}
 }
 
 func getServiceName(file *descriptorpb.FileDescriptorProto, svc *descriptorpb.ServiceDescriptorProto) string {
