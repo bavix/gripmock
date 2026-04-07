@@ -1,5 +1,18 @@
 # Changelog
 
+## v3.9.3 - 2026-04-07
+
+### What's Changed
+
+* add date&commit to internal/infra/build by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/819
+* check fix by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/820
+* Added support for mocking health by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/821
+* Bump sourcemeta/jsonschema from 14.18.0 to 14.20.2 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/824
+* Bump vite from 7.3.1 to 7.3.2 in the npm_and_yarn group across 1 directory by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/823
+* chore(go): bump depends by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/825
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.9.2...v3.9.3
+
 ## v3.9.2 - 2026-04-05
 
 ### What's Changed
