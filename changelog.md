@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.9.4 - 2026-04-08
+
+### What's Changed
+
+* Bump github.com/modelcontextprotocol/go-sdk from 1.4.1 to 1.5.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/826
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.9.3...v3.9.4
+
 ## v3.9.3 - 2026-04-07
 
 ### What's Changed
