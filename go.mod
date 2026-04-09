@@ -20,7 +20,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/klauspost/compress v1.18.5
 	github.com/modelcontextprotocol/go-sdk v1.5.0
-	github.com/oapi-codegen/runtime v1.3.1
+	github.com/oapi-codegen/runtime v1.4.0
 	github.com/rs/zerolog v1.35.0
 	github.com/samber/lo v1.53.0
 	github.com/spf13/cast v1.10.0
