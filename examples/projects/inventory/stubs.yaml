@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# First 2 calls: return error (simulating transient failure)
+# Priority 10: higher priority, matches first
+- service: inventory.InventoryService
+  method: GetResourceDecorationByIPsStream
+  priority: 10
+  input:
+    equals:
+      k8s_cluster_id: "test-cluster"
+  output:
+    error: "simulated transient failure"
+    code: 14 # UNAVAILABLE
+  options:
+    times: 2
+
+# Third call onwards: return success
+# Priority 1: lower priority, used after first stub is exhausted
+- service: inventory.InventoryService
+  method: GetResourceDecorationByIPsStream
+  priority: 1
+  input:
+    equals:
+      k8s_cluster_id: "test-cluster"
+  output:
+    data:
+      ips_to_decorations:
+        "10.0.0.1":
+          decoration: "web-frontend"
+          environment: "production"

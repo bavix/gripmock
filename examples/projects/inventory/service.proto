@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package inventory;
+
+service InventoryService {
+  rpc GetResourceDecorationByIPsStream(GetResourceDecorationByIPsStreamRequest) returns (GetResourceDecorationByIPsStreamResponse);
+}
+
+message GetResourceDecorationByIPsStreamRequest {
+  string k8s_cluster_id = 1;
+}
+
+message GetResourceDecorationByIPsStreamResponse {
+  map<string, IPDecoration> ips_to_decorations = 1;
+}
+
+message IPDecoration {
+  string decoration  = 1;
+  string environment = 2;
+}

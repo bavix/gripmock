@@ -1,0 +1,54 @@
+// First call - returns error (simulated transient failure)
+
+--- ENDPOINT ---
+inventory.InventoryService/GetResourceDecorationByIPsStream
+
+--- REQUEST ---
+{
+  "k8s_cluster_id": "test-cluster"
+}
+
+--- ERROR ---
+{
+  "code": 14,
+  "message": "simulated transient failure"
+}
+// Second call - returns error (first stub exhausted)
+
+--- ENDPOINT ---
+inventory.InventoryService/GetResourceDecorationByIPsStream
+
+--- REQUEST ---
+{
+  "k8s_cluster_id": "test-cluster"
+}
+
+--- ERROR ---
+{
+  "code": 14,
+  "message": "simulated transient failure"
+}
+// Third call - returns success (fallback stub)
+
+--- ENDPOINT ---
+inventory.InventoryService/GetResourceDecorationByIPsStream
+
+--- REQUEST ---
+{
+  "k8s_cluster_id": "test-cluster"
+}
+
+--- RESPONSE partial with_asserts ---
+{
+  "ipsToDecorations": {
+    "10.0.0.1": {
+      "decoration": "web-frontend",
+      
+      //   "environment": "production"
+    }
+  }
+}
+
+--- ASSERTS ---
+.ipsToDecorations["10.0.0.1"].environment != "production1"
+.ipsToDecorations["10.0.0.1"].environment == "production"
