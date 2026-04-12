@@ -22,21 +22,21 @@ ecommerce.EcommerceService/CreateOrder
 
 --- RESPONSE ---
 {
-  "estimatedDelivery": "2024-01-20",
+  "estimated_delivery": "2024-01-20",
   "items": [
     {
-      "productId": "PROD_001",
+      "product_id": "PROD_001",
       "quantity": 2,
-      "unitPrice": 25.5
+      "unit_price": 25.5
     },
     {
-      "productId": "PROD_002",
+      "product_id": "PROD_002",
       "quantity": 1,
-      "unitPrice": 30
+      "unit_price": 30
     }
   ],
-  "orderId": "ORDER_123_1734038400",
+  "order_id": "ORDER_123_1734038400",
   "status": "processing",
-  "totalAmount": 51,
-  "userId": "USER_123"
+  "total_amount": 51,
+  "user_id": "USER_123"
 }

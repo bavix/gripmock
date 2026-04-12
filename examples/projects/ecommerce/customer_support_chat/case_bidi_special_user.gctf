@@ -13,10 +13,10 @@ ecommerce.EcommerceService/CustomerSupportChat
 --- RESPONSE ---
 {
   "content": "Special support for user 999, message 0: I have a special problem",
-  "messageId": "SPECIAL_0",
-  "senderType": "support",
+  "message_id": "SPECIAL_0",
+  "sender_type": "support",
   "timestamp": "2024-01-15T10:00:00Z",
-  "userId": "SUPPORT_SPECIAL"
+  "user_id": "SUPPORT_SPECIAL"
 }
 
 --- REQUEST ---
@@ -31,10 +31,10 @@ ecommerce.EcommerceService/CustomerSupportChat
 --- RESPONSE ---
 {
   "content": "Special support for user 999, message 1: This is urgent",
-  "messageId": "SPECIAL_1",
-  "senderType": "support",
+  "message_id": "SPECIAL_1",
+  "sender_type": "support",
   "timestamp": "2024-01-15T10:01:00Z",
-  "userId": "SUPPORT_SPECIAL"
+  "user_id": "SUPPORT_SPECIAL"
 }
 
 --- REQUEST ---
@@ -49,10 +49,10 @@ ecommerce.EcommerceService/CustomerSupportChat
 --- RESPONSE ---
 {
   "content": "Special support for user 999, message 2: Please escalate this",
-  "messageId": "SPECIAL_2",
-  "senderType": "support",
+  "message_id": "SPECIAL_2",
+  "sender_type": "support",
   "timestamp": "2024-01-15T10:02:00Z",
-  "userId": "SUPPORT_SPECIAL"
+  "user_id": "SUPPORT_SPECIAL"
 }
 
 --- REQUEST ---
@@ -67,8 +67,8 @@ ecommerce.EcommerceService/CustomerSupportChat
 --- RESPONSE ---
 {
   "content": "Special support for user 999, message 3: Thank you for special attention",
-  "messageId": "SPECIAL_3",
-  "senderType": "support",
+  "message_id": "SPECIAL_3",
+  "sender_type": "support",
   "timestamp": "2024-01-15T10:03:00Z",
-  "userId": "SUPPORT_SPECIAL"
+  "user_id": "SUPPORT_SPECIAL"
 }

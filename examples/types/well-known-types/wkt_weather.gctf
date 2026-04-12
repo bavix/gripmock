@@ -12,5 +12,5 @@ weather.WeatherService/GetCurrentForecast
     "month": 10,
     "year": 2023
   },
-  "temperatureC": 22.5
+  "temperature_c": 22.5
 }

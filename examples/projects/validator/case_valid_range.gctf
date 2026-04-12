@@ -11,5 +11,5 @@ validator.Validator/Validate
 
 --- RESPONSE ---
 {
-  "isValid": true
+  "is_valid": true
 }

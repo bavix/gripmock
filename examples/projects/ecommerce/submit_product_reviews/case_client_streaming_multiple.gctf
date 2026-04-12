@@ -30,8 +30,8 @@ ecommerce.EcommerceService/SubmitProductReviews
 
 --- RESPONSE ---
 {
-  "averageRating": 4,
-  "reviewsCount": 3,
+  "average_rating": 4,
+  "reviews_count": 3,
   "status": "batch_processed",
-  "submissionId": "BATCH_REVIEW_3_1755022760"
+  "submission_id": "BATCH_REVIEW_3_1755022760"
 }

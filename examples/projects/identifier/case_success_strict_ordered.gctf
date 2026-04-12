@@ -30,7 +30,7 @@ example.identifier.v1.IdentifierService/ProcessUUIDs
 
 --- RESPONSE ---
 {
-  "processId": "9223242625195229884",
-  "responseTimestamp": "1717046401",
-  "statusCode": "200"
+  "process_id": "9223242625195229884",
+  "response_timestamp": "1717046401",
+  "status_code": "200"
 }

@@ -21,8 +21,8 @@ ecommerce.EcommerceService/SubmitProductReviews
 
 --- RESPONSE ---
 {
-  "averageRating": 4,
-  "reviewsCount": 2,
+  "average_rating": 4,
+  "reviews_count": 2,
   "status": "processed",
-  "submissionId": "REVIEW_2_1734038400"
+  "submission_id": "REVIEW_2_1734038400"
 }

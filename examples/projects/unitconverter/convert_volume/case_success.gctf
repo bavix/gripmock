@@ -3,12 +3,12 @@ unitconverter.v1.UnitConversionService/ConvertVolume
 
 --- REQUEST ---
 {
-  "fromUnit": "GALLONS",
-  "toUnit": "LITERS",
+  "from_unit": "GALLONS",
+  "to_unit": "LITERS",
   "value": 1
 }
 
 --- RESPONSE ---
 {
-  "convertedValue": 3.78541
+  "converted_value": 3.78541
 }

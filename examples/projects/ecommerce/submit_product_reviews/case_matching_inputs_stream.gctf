@@ -30,8 +30,8 @@ ecommerce.EcommerceService/SubmitProductReviews
 
 --- RESPONSE ---
 {
-  "averageRating": 5,
-  "reviewsCount": 1,
+  "average_rating": 5,
+  "reviews_count": 1,
   "status": "processed",
-  "submissionId": "REVIEW_0_USER_USER_001"
+  "submission_id": "REVIEW_0_USER_USER_001"
 }

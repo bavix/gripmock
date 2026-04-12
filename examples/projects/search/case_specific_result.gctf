@@ -10,6 +10,6 @@ search.SearchService/Search
 {
   "description": "The only match for this query",
   "id": "10",
-  "relevanceScore": 1,
+  "relevance_score": 1,
   "title": "Specific Result"
 }

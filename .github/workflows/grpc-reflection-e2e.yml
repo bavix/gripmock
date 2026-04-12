@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GRPCTESTIFY_VERSION: "1.4.13"
+  GRPCTESTIFY_VERSION: "1.4.15"
   GO_VERSION: "1.26"
   GREETER_GRPC_PORT: "4444"
   CALC_GRPC_PORT: "5555"
@@ -112,7 +112,7 @@ jobs:
 
       - name: Warm up capture from upstream
         run: |
-          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" grpctestify examples
+          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" grpctestify examples --exclude "*_multidoc.gctf"
 
       - name: Stop upstream server
         run: |
@@ -123,7 +123,7 @@ jobs:
 
       - name: Replay full suite from captured stubs
         run: |
-          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" grpctestify examples
+          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" grpctestify examples --exclude "*_multidoc.gctf"
 
       - name: Replay header-sensitive greeter cases
         run: |

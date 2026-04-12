@@ -3,12 +3,12 @@ unitconverter.v1.UnitConversionService/ConvertTemperature
 
 --- REQUEST ---
 {
-  "fromUnit": "CELSIUS",
-  "toUnit": "FAHRENHEIT",
+  "from_unit": "CELSIUS",
+  "to_unit": "FAHRENHEIT",
   "value": 100
 }
 
 --- RESPONSE ---
 {
-  "convertedValue": 212
+  "converted_value": 212
 }

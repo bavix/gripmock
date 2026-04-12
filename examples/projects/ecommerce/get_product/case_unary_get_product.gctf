@@ -13,7 +13,7 @@ ecommerce.EcommerceService/GetProduct
   "description": "Dynamic product for user USER_456",
   "name": "Product PROD_123",
   "price": 99.99,
-  "productId": "PROD_123",
-  "stockQuantity": 50,
-  "userDiscount": 456
+  "product_id": "PROD_123",
+  "stock_quantity": 50,
+  "user_discount": 456
 }
