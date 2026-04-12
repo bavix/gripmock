@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.9.5 - 2026-04-12
+
+### What's Changed
+
+* Bump github.com/oapi-codegen/runtime from 1.3.1 to 1.4.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/828
+* Bump golang.org/x/text from 0.35.0 to 0.36.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/829
+* add project inventory by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/830
+* bump depends by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/831
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.9.4...v3.9.5
+
 ## v3.9.4 - 2026-04-08
 
 ### What's Changed
