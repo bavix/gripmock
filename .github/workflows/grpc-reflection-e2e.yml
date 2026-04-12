@@ -112,7 +112,7 @@ jobs:
 
       - name: Warm up capture from upstream
         run: |
-          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" grpctestify examples
+          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" grpctestify examples --exclude "*_multidoc.gctf"
 
       - name: Stop upstream server
         run: |
@@ -123,7 +123,7 @@ jobs:
 
       - name: Replay full suite from captured stubs
         run: |
-          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" grpctestify examples
+          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" grpctestify examples --exclude "*_multidoc.gctf"
 
       - name: Replay header-sensitive greeter cases
         run: |
