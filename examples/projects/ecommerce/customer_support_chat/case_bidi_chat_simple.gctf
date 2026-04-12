@@ -13,10 +13,10 @@ ecommerce.EcommerceService/CustomerSupportChat
 --- RESPONSE ---
 {
   "content": "Hello! I'm support agent for message 0. How can I help you with: Hello, I need help",
-  "messageId": "MSG_0_SUPPORT",
-  "senderType": "support",
+  "message_id": "MSG_0_SUPPORT",
+  "sender_type": "support",
   "timestamp": "2024-01-15T10:00:00Z",
-  "userId": "SUPPORT_001"
+  "user_id": "SUPPORT_001"
 }
 
 --- REQUEST ---
@@ -31,10 +31,10 @@ ecommerce.EcommerceService/CustomerSupportChat
 --- RESPONSE ---
 {
   "content": "Hello! I'm support agent for message 1. How can I help you with: I have a problem with my order",
-  "messageId": "MSG_1_SUPPORT",
-  "senderType": "support",
+  "message_id": "MSG_1_SUPPORT",
+  "sender_type": "support",
   "timestamp": "2024-01-15T10:01:00Z",
-  "userId": "SUPPORT_001"
+  "user_id": "SUPPORT_001"
 }
 
 --- REQUEST ---
@@ -49,10 +49,10 @@ ecommerce.EcommerceService/CustomerSupportChat
 --- RESPONSE ---
 {
   "content": "Hello! I'm support agent for message 2. How can I help you with: Can you check order status?",
-  "messageId": "MSG_2_SUPPORT",
-  "senderType": "support",
+  "message_id": "MSG_2_SUPPORT",
+  "sender_type": "support",
   "timestamp": "2024-01-15T10:02:00Z",
-  "userId": "SUPPORT_001"
+  "user_id": "SUPPORT_001"
 }
 
 --- REQUEST ---
@@ -67,8 +67,8 @@ ecommerce.EcommerceService/CustomerSupportChat
 --- RESPONSE ---
 {
   "content": "Hello! I'm support agent for message 3. How can I help you with: Thank you for your help",
-  "messageId": "MSG_3_SUPPORT",
-  "senderType": "support",
+  "message_id": "MSG_3_SUPPORT",
+  "sender_type": "support",
   "timestamp": "2024-01-15T10:03:00Z",
-  "userId": "SUPPORT_001"
+  "user_id": "SUPPORT_001"
 }

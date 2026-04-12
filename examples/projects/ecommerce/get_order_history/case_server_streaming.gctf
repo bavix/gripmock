@@ -9,27 +9,27 @@ ecommerce.EcommerceService/GetOrderHistory
 
 --- RESPONSE ---
 {
-  "itemCount": 3,
-  "orderDate": "2024-01-15",
-  "orderId": "ORDER_456_001",
+  "item_count": 3,
+  "order_date": "2024-01-15",
+  "order_id": "ORDER_456_001",
   "status": "delivered",
-  "totalAmount": 150
+  "total_amount": 150
 }
 
 --- RESPONSE ---
 {
-  "itemCount": 2,
-  "orderDate": "2024-01-10",
-  "orderId": "ORDER_456_002",
+  "item_count": 2,
+  "order_date": "2024-01-10",
+  "order_id": "ORDER_456_002",
   "status": "shipped",
-  "totalAmount": 75.5
+  "total_amount": 75.5
 }
 
 --- RESPONSE ---
 {
-  "itemCount": 4,
-  "orderDate": "2024-01-05",
-  "orderId": "ORDER_456_003",
+  "item_count": 4,
+  "order_date": "2024-01-05",
+  "order_id": "ORDER_456_003",
   "status": "processing",
-  "totalAmount": 200
+  "total_amount": 200
 }

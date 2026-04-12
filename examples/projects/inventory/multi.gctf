@@ -40,7 +40,7 @@ inventory.InventoryService/GetResourceDecorationByIPsStream
 
 --- RESPONSE partial with_asserts ---
 {
-  "ipsToDecorations": {
+  "ips_to_decorations": {
     "10.0.0.1": {
       "decoration": "web-frontend",
       
@@ -50,5 +50,5 @@ inventory.InventoryService/GetResourceDecorationByIPsStream
 }
 
 --- ASSERTS ---
-.ipsToDecorations["10.0.0.1"].environment != "production1"
-.ipsToDecorations["10.0.0.1"].environment == "production"
+.ips_to_decorations["10.0.0.1"].environment != "production1"
+.ips_to_decorations["10.0.0.1"].environment == "production"

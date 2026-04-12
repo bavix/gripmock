@@ -20,6 +20,6 @@ example.identifier.v1.IdentifierService/ProcessUUIDs
 
 --- RESPONSE ---
 {
-  "processId": "2",
-  "statusCode": "200"
+  "process_id": "2",
+  "status_code": "200"
 }

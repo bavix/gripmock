@@ -11,18 +11,18 @@ search.SearchService/Search
 {
   "description": "Learn the basics of gRPC framework",
   "id": "1",
-  "relevanceScore": 0.95,
+  "relevance_score": 0.95,
   "title": "Introduction to gRPC"
 }
 {
   "description": "Comparison of RPC architectures",
   "id": "2",
-  "relevanceScore": 0.87,
+  "relevance_score": 0.87,
   "title": "gRPC vs REST"
 }
 {
   "description": "Production-ready gRPC implementation",
   "id": "3",
-  "relevanceScore": 0.82,
+  "relevance_score": 0.82,
   "title": "gRPC Best Practices"
 }

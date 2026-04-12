@@ -3,12 +3,12 @@ unitconverter.v1.UnitConversionService/ConvertLength
 
 --- REQUEST ---
 {
-  "fromUnit": "FEET",
-  "toUnit": "METERS",
+  "from_unit": "FEET",
+  "to_unit": "METERS",
   "value": 3.28084
 }
 
 --- RESPONSE ---
 {
-  "convertedValue": 1
+  "converted_value": 1
 }
