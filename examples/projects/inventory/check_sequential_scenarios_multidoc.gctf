@@ -1,3 +1,6 @@
+--- META ---
+tags: [sequential]
+
 // First call - returns error (simulated transient failure)
 
 --- ENDPOINT ---
