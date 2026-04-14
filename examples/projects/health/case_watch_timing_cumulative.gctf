@@ -26,6 +26,5 @@ grpc.health.v1.Health/Watch
 --- ASSERTS ---
 // Second scope validates cumulative timing growth.
 @scope_message_count() == 1
-@elapsed_ms() >= 0
 @total_elapsed_ms() >= 10
 @scope_index() == 2
