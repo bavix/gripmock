@@ -36,7 +36,12 @@ export default defineConfig({
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     search: {
-      provider: 'local'
+      provider: 'algolia',
+      options: {
+        appId: '5F2WWL5685',
+        apiKey: '4076af8af95bb73d46bb8cffa776fed1',
+        indexName: 'gripmock',
+      }
     },
     editLink: {
       pattern: 'https://github.com/bavix/gripmock/edit/master/docs/:path'
