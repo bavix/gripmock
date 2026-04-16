@@ -50,7 +50,6 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/introduction/' },
       { text: 'Issues', link: 'https://github.com/bavix/gripmock/issues' },
-      { text: 'Discussions', link: 'https://github.com/bavix/gripmock/discussions' },
       { text: 'Donate', link: 'https://buymeacoffee.com/babichev' },
     ],
 
