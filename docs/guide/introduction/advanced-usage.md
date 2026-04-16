@@ -142,6 +142,32 @@ GripMock supports native TLS/mTLS via environment variables and also supports re
 
 For complete setup and examples, see [TLS and mTLS](/guide/introduction/tls).
 
+## OpenTelemetry and Metrics <VersionTag version="v3.10.0" />
+
+GripMock supports OpenTelemetry tracing and Prometheus-compatible metrics.
+
+### Metrics endpoint
+
+- `GET /metrics` is always available.
+- Includes Go runtime/process metrics (`go_*`, `process_*`) and GripMock metrics.
+
+### Tracing configuration (OTLP gRPC)
+
+Enable tracing with environment variables:
+
+```bash
+OTEL_ENABLED=true
+OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317
+OTEL_EXPORTER_OTLP_INSECURE=true
+```
+
+When enabled, GripMock instruments:
+
+- gRPC server requests (`otelgrpc`)
+- HTTP REST/MCP handlers (`otelhttp`)
+
+Tracing initialization is fail-safe: if collector is unavailable, GripMock continues running.
+
 ## Advanced Stub Configuration
 
 ### Parameterless Methods

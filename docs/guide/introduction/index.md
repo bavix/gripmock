@@ -49,6 +49,9 @@ The modern GripMock engine is fundamentally different:
 - **Embedded SDK (Experimental)** <VersionTag version="v3.7.0" />: Run GripMock directly inside Go tests with history and verification tools
 - **MCP API (Experimental)** <VersionTag version="v3.7.0" />: Integrate AI/agent tooling through a streamable HTTP MCP endpoint
 - **Upstream Modes (Experimental)** <VersionTag version="v3.9.0" />: Use `proxy`, `replay`, and `capture` modes for gradual migration from live upstream services to local mocks
+- **OpenTelemetry Tracing** <VersionTag version="v3.10.0" />: Export gRPC and HTTP traces via OTLP (`otelgrpc` + `otelhttp`) with safe startup timeout
+- **Prometheus Metrics (`/metrics`)** <VersionTag version="v3.10.0" />: Expose runtime metrics (`go_*`, `process_*`) and GripMock metrics for matching/stub activity
+- **Built-in Faker Templates** <VersionTag version="v3.10.0" />: Generate realistic dynamic values in templates via `faker.Person`, `faker.Geo`, `faker.Network`, etc.
 - **GitHub Actions (CI/CD)**: Use the official action to start, wait, and stop GripMock in CI workflows
 - **Health Service Stubbing** <VersionTag version="v3.9.3" />: Mock `grpc.health.v1.Health/Check` and `Watch` while keeping internal `gripmock` readiness protected
 - **Builder Image for Plugins** <VersionTag version="v3.7.1" />: Build plugins in `:<tag>-builder` and run with matching `:<tag>` for compatibility

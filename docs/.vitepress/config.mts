@@ -100,7 +100,8 @@ export default defineConfig({
           { text: 'Server Streaming', link: '/guide/stubs/server-streaming' },
           { text: 'Client Streaming', link: '/guide/stubs/client-streaming' },
           { text: 'Bidirectional Streaming', link: '/guide/stubs/bidirectional-streaming' },
-          { text: 'Dynamic Templates', link: '/guide/stubs/dynamic-templates' }
+          { text: 'Dynamic Templates', link: '/guide/stubs/dynamic-templates' },
+          { text: 'Faker Reference', link: '/guide/stubs/faker' }
         ],
         collapsed: false,
       },

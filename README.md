@@ -29,6 +29,9 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 - **Advanced Protobuf Type Support** - Handle well-known and extended protobuf types (`google.protobuf.*`, `google.type.*`)
 - **YAML/JSON + Schema** - Author stubs in either format with JSON Schema IDE validation
 - **Plugin Ecosystem** - Extend functions with Go plugins and matching builder image tags
+- **Built-in Faker Templates** - Generate realistic fake person/contact/geo/network data directly in templates (`faker.*`)
+- **OpenTelemetry Tracing** - OTLP tracing for gRPC and HTTP paths (`otelgrpc` + `otelhttp`)
+- **Prometheus Metrics (`/metrics`)** - Runtime/process metrics (`go_*`, `process_*`) plus GripMock metrics
 - **Operational APIs** - Health endpoints, descriptors API, stubs API, and web dashboard
 - **Embedded SDK (Experimental)** - Run GripMock inside Go tests/services with verification helpers
 - **MCP API (Experimental)** - Streamable MCP endpoint for agent and tool integrations
@@ -41,20 +44,19 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 - **Descriptor API (`/api/descriptors`)**: runtime loading of compiled proto descriptors (`.pb`) with validated curl workflow: [docs](https://bavix.github.io/gripmock/guide/api/descriptors)
 - **Upstream Modes (Experimental)**: `proxy`, `replay`, `capture` with practical rollout guidance: [docs](https://bavix.github.io/gripmock/guide/modes)
 - **Embedded SDK (Experimental)**: in-process testing with stubs, verification, `sdk.By(fullMethod)` helpers, and context-aware remote checks: [docs](https://bavix.github.io/gripmock/guide/embedded-sdk)
+- **Faker Reference**: built-in faker key-by-key catalog with examples: [docs](https://bavix.github.io/gripmock/guide/stubs/faker)
+- **OpenTelemetry + Metrics**: tracing env vars and `/metrics` behavior: [docs](https://bavix.github.io/gripmock/guide/introduction/advanced-usage)
 - **GitHub Actions (CI/CD)**: official workflow action to download, start, wait for readiness, and stop GripMock automatically: [docs](https://bavix.github.io/gripmock/guide/ci-cd/github-actions)
 
 ## 🧬 Project Evolution
 
 GripMock started as a fork of [tokopedia/gripmock](https://github.com/tokopedia/gripmock), and then evolved into an independent, fully rewritten project.
 
-Today the project focuses on a native in-process architecture and practical testing workflows:
+Today GripMock is an independent runtime focused on practical testing workflows:
 
-- Native runtime without runtime gRPC code generation
-- Flexible descriptor sources: `.proto`, compiled `.pb`, BSR modules, and gRPC reflection
-- Runtime operations: hot stub updates and descriptor loading via API
-- Complete gRPC coverage: unary, server/client streaming, and bidirectional streaming
-- Progressive upstream migration: reverse proxy, local-first replay, and capture-based stub bootstrap
-- Extensibility and integrations: plugins, Embedded SDK, and MCP API
+- Native in-process architecture (no runtime code generation)
+- Flexible descriptor sources and runtime operations (hot stubs + descriptors API)
+- Production-style testing features (streaming, templates, upstream modes, plugins, SDK, MCP)
 
 For architecture details and benchmark methodology, see: [Performance Comparison](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
 
@@ -166,6 +168,18 @@ docker run -p 4770:4770 -p 4771:4771 \
 
 - **Port 4770**: gRPC server
 - **Port 4771**: Web UI and REST API
+
+### Observability (v3.10.0)
+
+```bash
+OTEL_ENABLED=true \
+OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 \
+OTEL_EXPORTER_OTLP_INSECURE=true \
+gripmock --stub stubs/ service.proto
+```
+
+- `GET /metrics` is always available
+- Tracing export is enabled only when `OTEL_ENABLED=true`
 
 ## 🤖 GitHub Actions (CI/CD)
 
@@ -314,6 +328,7 @@ GripMock supports dynamic templates in the `output` section using Go's `text/tem
 - Bidirectional streaming: `{{.MessageIndex}}` gives the current message index (0-based)
 - Math helpers: `sum`, `avg`, `mul`, `min`, `max`, `add`, `sub`, `div`
 - Utility: `json`, `split`, `join`, `upper`, `lower`, `title`, `sprintf`, `int`, `int64`, `float`, `round`, `floor`, `ceil`
+- Built-in faker: `faker.Person.*`, `faker.Contact.*`, `faker.Geo.*`, `faker.Network.*`, `faker.Identity.*`
 
 Important rules:
 - Do not use dynamic templates inside `input.equals`, `input.contains`, or `input.matches` (matching must be static)
