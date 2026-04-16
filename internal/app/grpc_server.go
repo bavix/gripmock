@@ -19,6 +19,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/goccy/go-json"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -154,6 +155,7 @@ type GRPCServer struct {
 	remoteClient protosetdom.RemoteClient
 	tlsConfig    *tls.Config
 	proxies      *proxyroutes.Registry
+	otelEnabled  bool
 }
 
 type grpcMocker struct {
@@ -773,7 +775,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 	outputDataCopy := deepCopyMapAny(outputToUse.Data)
 
 	if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
-		zerolog.Ctx(ctx).Error().Err(err).Msg("failed to process dynamic templates")
+		zerolog.Ctx(ctx).Err(err).Msg("failed to process dynamic templates")
 
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
 	}
@@ -1227,6 +1229,7 @@ func NewGRPCServer(
 	descriptorRegistry *descriptors.Registry,
 	tlsConfig *tls.Config,
 	remoteClient protosetdom.RemoteClient,
+	otelEnabled bool,
 ) *GRPCServer {
 	registry := descriptorRegistry
 	if registry == nil {
@@ -1249,6 +1252,7 @@ func NewGRPCServer(
 		descriptors:  registry,
 		remoteClient: remoteClient,
 		tlsConfig:    tlsConfig,
+		otelEnabled:  otelEnabled,
 	}
 }
 
@@ -1362,6 +1366,10 @@ func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 			LogStreamInterceptor,
 		),
 		grpc.UnknownServiceHandler(s.handleUnknownService),
+	}
+
+	if s.otelEnabled {
+		opts = append(opts, grpc.StatsHandler(otelgrpc.NewServerHandler()))
 	}
 
 	if s.tlsConfig != nil {

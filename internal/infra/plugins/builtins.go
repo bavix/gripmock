@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/bavix/gripmock/v3/internal/infra/build"
+	infrafaker "github.com/bavix/gripmock/v3/internal/infra/faker"
 	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
@@ -75,6 +76,18 @@ func builtinGroups() []groupDef {
 		timeGroup(),
 		uuidGroup(),
 		encodingGroup(),
+		fakerGroup(),
+	}
+}
+
+func fakerGroup() groupDef {
+	return groupDef{
+		group:       "faker",
+		defaultDesc: "faker object",
+		funcs:       fakerFuncs(),
+		overrides: map[string]string{
+			"faker": "faker object exposing various data generators",
+		},
 	}
 }
 
@@ -215,6 +228,12 @@ func encodingGroup() groupDef {
 			"uuid2bytes":    "UUID to bytes",
 			"uuid2int64":    "UUID high bits as int64",
 		},
+	}
+}
+
+func fakerFuncs() map[string]any {
+	return map[string]any{
+		"faker": infrafaker.New,
 	}
 }
 
