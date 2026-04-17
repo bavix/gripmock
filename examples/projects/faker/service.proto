@@ -1,0 +1,28 @@
+edition = "2023";
+
+package example;
+
+service UserService {
+  rpc GetProfile (ProfileRequest) returns (ProfileResponse) {}
+}
+
+message ProfileRequest {
+  string id = 1;
+}
+
+message ProfileResponse {
+  string id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string email = 4;
+  string city = 5;
+  double lat = 6;
+  double lon = 7;
+  string ip = 8;
+  string user_agent = 9;
+  string company = 10;
+  string product = 11;
+  string bio = 12;
+  string created_at = 13;
+  string account_id = 14;
+}

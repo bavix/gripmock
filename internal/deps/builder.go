@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 
 	"github.com/bavix/gripmock/v3/internal/app"
 	"github.com/bavix/gripmock/v3/internal/config"
@@ -13,12 +15,14 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	protosetdom "github.com/bavix/gripmock/v3/internal/domain/protoset"
 	bufclient "github.com/bavix/gripmock/v3/internal/infra/bufclient"
+	"github.com/bavix/gripmock/v3/internal/infra/build"
 	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 	internalplugins "github.com/bavix/gripmock/v3/internal/infra/plugins"
 	reflectclient "github.com/bavix/gripmock/v3/internal/infra/reflectclient"
 	sourceclient "github.com/bavix/gripmock/v3/internal/infra/sourceclient"
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/internal/infra/telemetry"
 	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
@@ -27,6 +31,9 @@ type Option func(*Builder)
 type Builder struct {
 	config config.Config
 	ender  *lifecycle.Manager
+
+	promReg   *prometheus.Registry
+	otelInstr *telemetry.Instruments
 
 	budgerigar     *stuber.Budgerigar
 	budgerigarOnce sync.Once
@@ -60,10 +67,16 @@ type Builder struct {
 }
 
 func NewBuilder(opts ...Option) *Builder {
-	builder := &Builder{ender: lifecycle.New(nil)}
+	builder := &Builder{
+		ender:   lifecycle.New(nil),
+		promReg: prometheus.NewRegistry(),
+	}
 	for _, opt := range opts {
 		opt(builder)
 	}
+
+	builder.promReg.MustRegister(collectors.NewGoCollector())
+	builder.promReg.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 
 	return builder
 }
@@ -97,6 +110,22 @@ func (b *Builder) LoadPlugins(ctx context.Context) {
 		loader.Load(ctx, reg)
 		b.pluginRegistry = reg
 	})
+}
+
+// InitTelemetry initializes OpenTelemetry with fail-safe startup.
+func (b *Builder) InitTelemetry(ctx context.Context) {
+	b.otelInstr = telemetry.InitMetrics(ctx, build.Version, b.promReg)
+
+	if b.config.OtelEnabled {
+		cfg := telemetry.Config{
+			Enabled:  b.config.OtelEnabled,
+			Endpoint: b.config.OtelEndpoint,
+			Insecure: b.config.OtelInsecure,
+			Version:  build.Version,
+		}
+		shutdownFn := telemetry.InitTracing(ctx, cfg)
+		b.ender.Add(shutdownFn)
+	}
 }
 
 func (b *Builder) PluginInfos(ctx context.Context) []pkgplugins.PluginWithFuncs {

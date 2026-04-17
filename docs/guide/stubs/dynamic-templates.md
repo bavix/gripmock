@@ -109,6 +109,44 @@ output:
 
 See [Plugins](../plugins/) for more information on creating and using custom plugin functions.
 
+### Built-in Faker Object <VersionTag version="v3.10.0" />
+
+GripMock ships with a built-in `faker` object for realistic dynamic values.
+
+Available semantic groups include:
+
+- `faker.Person` (name, age, gender, ...)
+- `faker.Contact` (email, phone, username, url)
+- `faker.Geo` (country, city, latitude, longitude, ...)
+- `faker.Network` (ip, domain, user-agent, http status/method)
+- `faker.Company`, `faker.Commerce`, `faker.Text`, `faker.DateTime`, `faker.Identity`
+
+See full key-by-key reference in [Faker Reference](/guide/stubs/faker).
+
+Example:
+
+::: v-pre
+```yaml
+- service: example.UserService
+  method: GetProfile
+  input:
+    matches:
+      id: "\\d+"
+  output:
+    data:
+      id: "{{.Request.id}}"
+      first_name: "{{faker.Person.FirstName}}"
+      last_name: "{{faker.Person.LastName}}"
+      email: "{{faker.Contact.Email}}"
+      city: "{{faker.Geo.City}}"
+      lat: "{{faker.Geo.Latitude}}"
+      lon: "{{faker.Geo.Longitude}}"
+      ip: "{{faker.Network.IPv4}}"
+      user_agent: "{{faker.Network.UserAgent}}"
+      account_id: "{{faker.Identity.UUID}}"
+```
+:::
+
 ### State Management
 You can access and modify request state directly using `.State`:
 - <code v-pre>`{{.State.key}}`</code>: Get value from request state

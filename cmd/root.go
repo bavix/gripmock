@@ -35,6 +35,7 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 		defer cancel()
 
 		ctx = builder.Logger(ctx)
+		builder.InitTelemetry(ctx)
 		builder.LoadPlugins(ctx)
 
 		zerolog.Ctx(ctx).Info().

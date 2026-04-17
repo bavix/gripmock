@@ -50,7 +50,6 @@ export default defineConfig({
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/introduction/' },
       { text: 'Issues', link: 'https://github.com/bavix/gripmock/issues' },
-      { text: 'Discussions', link: 'https://github.com/bavix/gripmock/discussions' },
       { text: 'Donate', link: 'https://buymeacoffee.com/babichev' },
     ],
 
@@ -100,7 +99,8 @@ export default defineConfig({
           { text: 'Server Streaming', link: '/guide/stubs/server-streaming' },
           { text: 'Client Streaming', link: '/guide/stubs/client-streaming' },
           { text: 'Bidirectional Streaming', link: '/guide/stubs/bidirectional-streaming' },
-          { text: 'Dynamic Templates', link: '/guide/stubs/dynamic-templates' }
+          { text: 'Dynamic Templates', link: '/guide/stubs/dynamic-templates' },
+          { text: 'Faker Reference', link: '/guide/stubs/faker' }
         ],
         collapsed: false,
       },

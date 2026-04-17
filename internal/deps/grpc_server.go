@@ -60,6 +60,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		b.DescriptorRegistry(),
 		tlsCfg,
 		b.RemoteClient(),
+		b.config.OtelEnabled,
 	)
 
 	server, err := grpcServer.Build(ctx)

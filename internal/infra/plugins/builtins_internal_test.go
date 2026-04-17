@@ -1,12 +1,16 @@
 package plugins
 
 import (
+	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	infrafaker "github.com/bavix/gripmock/v3/internal/infra/faker"
 	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugintest"
 )
 
@@ -207,6 +211,74 @@ func TestMathFuncs(t *testing.T) {
 	require.InDelta(t, 10.0, addResult, 0.001)
 	require.InDelta(t, 2.0, subResult, 0.001)
 	require.InDelta(t, 12.0, mulResult, 0.001)
+}
+
+func TestFakerFuncs(t *testing.T) {
+	t.Parallel()
+
+	funcs := fakerFuncs()
+	require.Contains(t, funcs, "faker")
+
+	fakerFn, ok := funcs["faker"].(func() infrafaker.Generator)
+	require.True(t, ok)
+
+	g := fakerFn()
+
+	person := g.Person()
+	require.NotEmpty(t, person.FirstName())
+	require.NotEmpty(t, person.LastName())
+	require.NotEmpty(t, person.Name())
+
+	geo := g.Geo()
+	require.NotEmpty(t, geo.City())
+	require.NotZero(t, geo.Latitude())
+	require.NotZero(t, geo.Longitude())
+
+	network := g.Network()
+	require.NotEmpty(t, network.IPv4())
+	require.NotEmpty(t, network.UserAgent())
+
+	identity := g.Identity()
+	require.NotEmpty(t, identity.UUID())
+	require.NotEmpty(t, identity.SSN())
+	require.NotEmpty(t, identity.EIN())
+
+	contact := g.Contact()
+	require.NotEmpty(t, contact.Username())
+
+	company := g.Company()
+	require.NotEmpty(t, company.Company())
+	require.NotEmpty(t, company.JobTitle())
+
+	require.NotEmpty(t, g.Text().Word())
+	require.NotEmpty(t, g.Text().Sentence(5))
+	require.NotEmpty(t, g.Contact().Email())
+	require.NotEmpty(t, g.Contact().Phone())
+}
+
+func TestFakerTemplateUsage(t *testing.T) {
+	t.Parallel()
+
+	funcs := template.FuncMap(fakerFuncs())
+	tmpl, err := template.New("faker").Funcs(funcs).Parse(
+		`{{ $f := faker }}{{ $f.Person.FirstName }}|{{ $f.Geo.Latitude }}|{{ $f.Network.IPv4 }}|{{ $f.Identity.UUID }}`,
+	)
+	require.NoError(t, err)
+
+	var out bytes.Buffer
+
+	err = tmpl.Execute(&out, nil)
+	require.NoError(t, err)
+
+	parts := strings.Split(out.String(), "|")
+	require.Len(t, parts, 4)
+	require.NotEmpty(t, parts[0])
+	require.NotEmpty(t, parts[1])
+	require.NotEmpty(t, parts[2])
+	require.NotEmpty(t, parts[3])
+
+	_, err = uuid.Parse(parts[3])
+	require.NoError(t, err)
 }
 
 func TestTimeFuncs(t *testing.T) {

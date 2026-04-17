@@ -31,6 +31,9 @@ GripMock 可以根据你的 `.proto` 文件或编译后的 `.pb` 描述文件创
 - **高级 Protobuf 类型支持** - 支持 well-known 和 extended protobuf 类型（`google.protobuf.*`、`google.type.*`）
 - **YAML/JSON + Schema** - 支持两种 Stub 格式，并提供 JSON Schema IDE 校验
 - **插件生态** - 使用 Go 插件扩展函数，并可与 builder 镜像标签配套
+- **内置 Faker 模板** - 可在模板中直接生成真实风格的 person/contact/geo/network 测试数据（`faker.*`）
+- **OpenTelemetry 链路追踪** - 支持 gRPC 与 HTTP 路径的 OTLP 追踪（`otelgrpc` + `otelhttp`）
+- **Prometheus 指标（`/metrics`）** - 暴露运行时/进程指标（`go_*`、`process_*`）以及 GripMock 指标
 - **运维 API** - 健康检查端点、descriptors API、stubs API 以及 Web 控制台
 - **Embedded SDK（实验性）** - 在 Go 测试/服务中运行 GripMock，并提供验证助手
 - **MCP API（实验性）** - 提供可流式处理的 MCP 端点，用于 Agent 与工具集成
@@ -43,20 +46,19 @@ GripMock 可以根据你的 `.proto` 文件或编译后的 `.pb` 描述文件创
 - **Descriptor API（`/api/descriptors`）**：运行时加载编译后的 proto 描述文件（`.pb`），附带可验证的 curl 工作流：[文档](https://bavix.github.io/gripmock/guide/api/descriptors)
 - **Upstream Modes（实验性）**：`proxy`、`replay`、`capture`，包含实用的上线迁移指导：[文档](https://bavix.github.io/gripmock/guide/modes)
 - **Embedded SDK（实验性）**：进程内测试，支持 stubs、verification、`sdk.By(fullMethod)` 助手以及带上下文的远程校验：[文档](https://bavix.github.io/gripmock/guide/embedded-sdk)
+- **Faker 参考**：内置 faker 的逐键说明与示例：[文档](https://bavix.github.io/gripmock/guide/stubs/faker)
+- **OpenTelemetry + 指标**：追踪环境变量与 `/metrics` 说明：[文档](https://bavix.github.io/gripmock/guide/introduction/advanced-usage)
 - **GitHub Actions（CI/CD）**：官方工作流 Action，可自动下载安装、启动、等待就绪并停止 GripMock：[文档](https://bavix.github.io/gripmock/guide/ci-cd/github-actions)
 
 ## 🧬 项目演进
 
 GripMock 最初是 [tokopedia/gripmock](https://github.com/tokopedia/gripmock) 的一个 fork，随后演进为独立且完全重写的项目。
 
-当前项目聚焦于原生进程内架构与实用测试工作流：
+当前 GripMock 聚焦于实用测试工作流：
 
-- 原生运行时，无需在运行时生成 gRPC 代码
-- 灵活的描述来源：`.proto`、编译后的 `.pb`、BSR 模块和 gRPC reflection
-- 运行时操作：通过 API 热更新 stubs 与加载 descriptors
-- 完整 gRPC 覆盖：unary、服务端/客户端流和双向流
-- 渐进式上游迁移：反向代理、本地优先回放以及基于 capture 的 stub 启动
-- 可扩展与集成：plugins、Embedded SDK 和 MCP API
+- 原生进程内架构（无需运行时代码生成）
+- 灵活描述来源与运行时能力（热更新 stubs + descriptors API）
+- 面向生产场景测试能力（流式、模板、upstream modes、plugins、SDK、MCP）
 
 架构细节与基准方法见：[Performance Comparison](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
 
@@ -168,6 +170,18 @@ docker run -p 4770:4770 -p 4771:4771 \
 
 - **端口 4770**：gRPC 服务
 - **端口 4771**：Web UI 和 REST API
+
+### 可观测性（v3.10.0）
+
+```bash
+OTEL_ENABLED=true \
+OTEL_EXPORTER_OTLP_ENDPOINT=localhost:4317 \
+OTEL_EXPORTER_OTLP_INSECURE=true \
+gripmock --stub stubs/ service.proto
+```
+
+- `GET /metrics` 始终可用
+- 仅在 `OTEL_ENABLED=true` 时启用追踪导出
 
 ## 🤖 GitHub Actions（CI/CD）
 
@@ -316,6 +330,7 @@ GripMock 在 `output` 区域支持 Go `text/template` 语法的动态模板。
 - 双向流：`{{.MessageIndex}}` 给出当前消息索引（从 0 开始）
 - 数学辅助函数：`sum`、`avg`、`mul`、`min`、`max`、`add`、`sub`、`div`
 - 通用函数：`json`、`split`、`join`、`upper`、`lower`、`title`、`sprintf`、`int`、`int64`、`float`、`round`、`floor`、`ceil`
+- 内置 faker：`faker.Person.*`、`faker.Contact.*`、`faker.Geo.*`、`faker.Network.*`、`faker.Identity.*`
 
 重要规则：
 - 不要在 `input.equals`、`input.contains` 或 `input.matches` 中使用动态模板（匹配必须是静态的）

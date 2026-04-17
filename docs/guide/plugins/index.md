@@ -6,6 +6,12 @@ title: Plugins
 
 Extend template functions with Go plugins.
 
+::: info Built-in Faker <VersionTag version="v3.10.0" />
+You do not need an external plugin for common fake data generation.
+GripMock includes a built-in `faker` object (see [Dynamic Templates](/guide/stubs/dynamic-templates)).
+Use custom plugins only for domain-specific logic that is not covered by built-ins.
+:::
+
 ## Create
 
 ```go

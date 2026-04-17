@@ -9,12 +9,14 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/bavix/gripmock/v3/internal/app"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
 	"github.com/bavix/gripmock/v3/internal/infra/httputil"
 	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
+	"github.com/bavix/gripmock/v3/internal/infra/telemetry"
 	infraTLS "github.com/bavix/gripmock/v3/internal/infra/tls"
 )
 
@@ -106,6 +108,9 @@ func (b *Builder) RestServe(
 	router.Path("/api/mcp").Methods(http.MethodPost).Handler(
 		withMCPMiddlewares(apiServer.MCPHandler()),
 	)
+
+	router.Path("/metrics").Handler(telemetry.MetricsHandler(b.promReg))
+
 	router.PathPrefix("/").Handler(http.FileServerFS(ui)).Methods(http.MethodGet)
 
 	const (
@@ -115,6 +120,20 @@ func (b *Builder) RestServe(
 		idleTimeout       = 120 * time.Second
 		maxHeaderBytes    = 1 << 20
 	)
+
+	handler := handlers.CORS(
+		handlers.AllowedOrigins([]string{"*"}),
+		handlers.AllowedHeaders([]string{
+			"Accept", "Accept-Language", "Content-Type", "Content-Language", "Origin",
+			"X-GripMock-RequestInternal",
+			"X-Gripmock-Session",
+		}),
+		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPatch}),
+	)(router)
+
+	if b.config.OtelEnabled {
+		handler = otelhttp.NewHandler(handler, "gripmock-rest")
+	}
 
 	srv := &http.Server{
 		Addr:              b.config.HTTPAddr,
@@ -126,15 +145,7 @@ func (b *Builder) RestServe(
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},
-		Handler: handlers.CORS(
-			handlers.AllowedOrigins([]string{"*"}),
-			handlers.AllowedHeaders([]string{
-				"Accept", "Accept-Language", "Content-Type", "Content-Language", "Origin",
-				"X-GripMock-RequestInternal",
-				"X-Gripmock-Session",
-			}),
-			handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPatch}),
-		)(router),
+		Handler: handler,
 	}
 
 	b.ender.Add(srv.Shutdown)

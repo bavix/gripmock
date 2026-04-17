@@ -61,6 +61,11 @@ type Config struct {
 	HTTPTLSClientAuth bool   `env:"HTTP_TLS_CLIENT_AUTH" envDefault:"false"`
 	HTTPTLSCAFile     string `env:"HTTP_TLS_CA_FILE"`
 
+	// OpenTelemetry configuration.
+	OtelEnabled  bool   `env:"OTEL_ENABLED"                envDefault:"false"`
+	OtelEndpoint string `env:"OTEL_EXPORTER_OTLP_ENDPOINT" envDefault:"localhost:4317"`
+	OtelInsecure bool   `env:"OTEL_EXPORTER_OTLP_INSECURE" envDefault:"true"`
+
 	// Buf Schema Registry configuration.
 	BSR BSRConfig `envPrefix:"BSR_"`
 }
