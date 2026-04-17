@@ -40,6 +40,8 @@ func containsTemplateMarkers(data []byte) bool {
 
 // runtimeTemplatePattern matches templates that should be processed at runtime.
 // These contain request/metadata-bound values and per-call context.
+//
+//nolint:lll
 var runtimeTemplatePattern = regexp.MustCompile(
 	`\{\{[^}]*\.(Request|Headers|MessageIndex|Requests|State|RequestTime|Timestamp|StubID|RequestID|AttemptNumber|AttemptIndex|MaxAttempts|TotalAttempts)[^}]*\}\}`,
 )

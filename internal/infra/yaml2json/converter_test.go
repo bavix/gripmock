@@ -77,6 +77,7 @@ func TestConverterWithRegistryKeepsFakerForRuntime(t *testing.T) {
       account_id: "{{faker.Identity.UUID}}"
 `))
 
+	//nolint:lll
 	expected := `[{"output":{"data":{"id":"{{.Request.id}}","first_name":"{{faker.Person.FirstName}}","account_id":"{{faker.Identity.UUID}}"}}}]`
 
 	require.NoError(t, err)
