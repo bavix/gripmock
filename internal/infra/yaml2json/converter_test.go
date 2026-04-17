@@ -62,6 +62,27 @@ func TestConverterWithRegistry(t *testing.T) {
 	require.JSONEq(t, expected, string(bytes))
 }
 
+func TestConverterWithRegistryKeepsFakerForRuntime(t *testing.T) {
+	t.Parallel()
+
+	reg := plugins.NewRegistry()
+	plugins.RegisterBuiltins(reg)
+	convertor := yaml2json.New(reg)
+
+	bytes, err := convertor.Execute(t.Context(), "hello", []byte(`
+- output:
+    data:
+      id: "{{.Request.id}}"
+      first_name: "{{faker.Person.FirstName}}"
+      account_id: "{{faker.Identity.UUID}}"
+`))
+
+	expected := `[{"output":{"data":{"id":"{{.Request.id}}","first_name":"{{faker.Person.FirstName}}","account_id":"{{faker.Identity.UUID}}"}}}]`
+
+	require.NoError(t, err)
+	require.JSONEq(t, expected, string(bytes))
+}
+
 func TestConverterWIthRegistryArray(t *testing.T) {
 	t.Parallel()
 

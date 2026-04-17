@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+- service: example.UserService
+  method: GetProfile
+  input:
+    matches:
+      id: "\\d+"
+  output:
+    data:
+      id: "{{.Request.id}}"
+      first_name: "{{faker.Person.FirstName}}"
+      last_name: "{{faker.Person.LastName}}"
+      email: "{{faker.Contact.Email}}"
+      city: "{{faker.Geo.City}}"
+      lat: "{{faker.Geo.Latitude}}"
+      lon: "{{faker.Geo.Longitude}}"
+      ip: "{{faker.Network.IPv4}}"
+      user_agent: "{{faker.Network.UserAgent}}"
+      company: "{{faker.Company.Company}}"
+      product: "{{faker.Commerce.ProductName}}"
+      bio: "{{faker.Text.Paragraph 1}}"
+      created_at: "{{faker.DateTime.PastDate}}"
+      account_id: "{{faker.Identity.UUID}}"

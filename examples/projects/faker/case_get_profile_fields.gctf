@@ -1,0 +1,22 @@
+--- META ---
+tags: [faker]
+
+--- ENDPOINT ---
+example.UserService/GetProfile
+
+--- REQUEST ---
+{
+  "id": "12345"
+}
+
+--- RESPONSE partial with_asserts ---
+{
+  "id": "12345"
+}
+
+--- ASSERTS ---
+!@empty(.first_name)
+!@empty(.last_name)
+!@empty(.email)
+!@empty(.ip)
+!@empty(.account_id)

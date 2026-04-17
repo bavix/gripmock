@@ -780,8 +780,6 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
 	}
 
-	outputToUse.Data = outputDataCopy
-
 	if template.HasTemplatesInHeaders(outputToUse.Headers) {
 		headersCopy := deepCopyStringMap(outputToUse.Headers)
 		if err := m.templateEngine.ProcessHeaders(headersCopy, templateData); err != nil {
@@ -825,7 +823,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		return nil, err //nolint:wrapcheck
 	}
 
-	outputMsg, err := m.newOutputMessage(outputToUse.Data)
+	outputMsg, err := m.newOutputMessage(outputDataCopy)
 	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
@@ -836,7 +834,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 			Method:    m.methodName,
 			Session:   sess,
 			Request:   requestData,
-			Response:  outputToUse.Data,
+			Response:  outputDataCopy,
 			StubID:    found.ID.String(),
 			Timestamp: requestTime,
 		})

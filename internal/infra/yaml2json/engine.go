@@ -39,8 +39,14 @@ func containsTemplateMarkers(data []byte) bool {
 }
 
 // runtimeTemplatePattern matches templates that should be processed at runtime.
-// These contain .Request, .Headers, .MessageIndex, .Requests, .State.
-var runtimeTemplatePattern = regexp.MustCompile(`\{\{[^}]*\.(Request|Headers|MessageIndex|Requests|State)[^}]*\}\}`)
+// These contain request/metadata-bound values and per-call context.
+var runtimeTemplatePattern = regexp.MustCompile(
+	`\{\{[^}]*\.(Request|Headers|MessageIndex|Requests|State|RequestTime|Timestamp|StubID|RequestID|AttemptNumber|AttemptIndex|MaxAttempts|TotalAttempts)[^}]*\}\}`,
+)
+
+// chainedCallTemplatePattern matches chained call expressions like
+// {{foo.Bar.Baz}} which depend on runtime objects and must not be pre-executed.
+var chainedCallTemplatePattern = regexp.MustCompile(`\{\{\s*\(?\s*[A-Za-z_][A-Za-z0-9_]*\s*\)?\s*(?:\.[A-Za-z_][A-Za-z0-9_]*)+[^}]*\}\}`)
 
 // executeTemplates executes static template functions at load time and escapes runtime templates.
 func (e *engine) executeTemplates(ctx context.Context, name string, data []byte) []byte {
@@ -59,8 +65,8 @@ func (e *engine) executeTemplates(ctx context.Context, name string, data []byte)
 			continue
 		}
 
-		// Check if this line contains runtime templates
-		if runtimeTemplatePattern.MatchString(line) {
+		// Check if this line contains runtime-only templates.
+		if runtimeTemplatePattern.MatchString(line) || chainedCallTemplatePattern.MatchString(line) {
 			// Escape runtime templates for later processing
 			result = append(result, escapeTemplateInLine(line))
 		} else {

@@ -1,0 +1,39 @@
+--- META ---
+tags: [faker]
+
+// First call: id=12345
+
+--- ENDPOINT ---
+example.UserService/GetProfile
+
+--- REQUEST ---
+{
+  "id": "12345"
+}
+
+--- RESPONSE partial with_asserts ---
+{
+  "id": "12345"
+}
+
+--- ASSERTS ---
+!@empty(.account_id)
+
+--- EXTRACT ---
+
+--- ENDPOINT ---
+example.UserService/GetProfile
+
+--- REQUEST ---
+{
+  "id": "12346"
+}
+
+--- RESPONSE partial with_asserts ---
+{
+  "id": "12346"
+}
+
+--- ASSERTS ---
+!@empty(.account_id)
+.account_id != first_account_id
