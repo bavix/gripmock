@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.10.0 - 2026-04-17
+
+### What's Changed
+
+* bump grpctestify v1.5.0 by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/833
+* Bump actions/upload-pages-artifact from 4 to 5 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/832
+* algolia by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/834
+* feat: faker & opentelemetry by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/835
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.9.5...v3.10.0
+
 ## v3.9.5 - 2026-04-12
 
 ### What's Changed
