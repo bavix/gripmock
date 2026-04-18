@@ -178,32 +178,27 @@ func TestDiscoverUnsupportedEditionSkipped(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Both files are edition "2024", which exceeds DefaultMaxEdition (2023).
-	require.Empty(t, result.Files)
-	require.Len(t, result.UnsupportedEdition, 2)
+	require.Empty(t, result.UnsupportedEdition)
+	require.Len(t, result.Files, 2)
 }
 
-func TestDiscoverUnsupportedEditionMixedWithSupported(t *testing.T) {
+func TestDiscoverEdition2024MixedWithSupported(t *testing.T) {
 	t.Parallel()
 
-	// root1 has proto3 files, root_edition2024 has edition "2024" files.
 	root1 := filepath.Join(fixturesDir(t), "root1")
-	rootUnsupported := filepath.Join(fixturesDir(t), "root_edition2024")
+	root2024 := filepath.Join(fixturesDir(t), "root_edition2024")
 
 	result, err := protobundle.Discover(protobundle.DiscoverParams{
-		Roots: []string{root1, rootUnsupported},
+		Roots: []string{root1, root2024},
 	})
 	require.NoError(t, err)
 
-	// root1 proto3 files should be included.
+	require.Len(t, result.Files, 3)
 	require.Contains(t, result.Files, "pkg/hello.proto")
 	require.Contains(t, result.Files, "pkg/world.proto")
+	require.Contains(t, result.Files, "pkg/extra.proto")
 
-	// root_edition2024 files should be in UnsupportedEdition (extra.proto is unique, hello.proto conflicts).
-	// hello.proto from root1 (proto3) is already accepted; edition 2024 hello.proto is skipped by edition filter.
-	// extra.proto only exists in root_edition2024 and has edition 2024.
-	require.Contains(t, result.UnsupportedEdition, "pkg/extra.proto")
-	require.Len(t, result.Files, 2) // only root1 files
+	require.Empty(t, result.UnsupportedEdition)
 }
 
 func TestDiscoverCustomMaxEdition(t *testing.T) {
