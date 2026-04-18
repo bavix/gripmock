@@ -10,14 +10,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-// DefaultMaxEdition is the highest proto edition that protocompile v0.14.x can parse from source.
-//
-// FIXME: protobuf-go runtime already supports edition 2024:
-// https://github.com/protocolbuffers/protobuf-go/commit/d08858686330277e8505777b1d0e10c66ce7b15e
-// but protocompile has not yet declared support. Bump this when protocompile catches up.
-//
-//nolint:godox
-const DefaultMaxEdition = 2023
+const DefaultMaxEdition = 2024
 
 // DiscoverParams configures proto file discovery across roots.
 type DiscoverParams struct {
