@@ -1,4 +1,4 @@
-# Check
+# Check <VersionTag version="v3.10.1" />
 
 `gripmock check` verifies that a running GripMock server is healthy.
 

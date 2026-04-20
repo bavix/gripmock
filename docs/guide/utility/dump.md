@@ -1,4 +1,4 @@
-# Dump
+# Dump <VersionTag version="v3.10.1" />
 
 `gripmock dump` exports stubs from a running GripMock instance into files.
 
