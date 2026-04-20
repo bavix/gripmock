@@ -19,6 +19,14 @@ func (b *Builder) Budgerigar() *stuber.Budgerigar {
 	return b.budgerigar
 }
 
+// StubSource constants from domain.
+const (
+	StubSourceFile  = stuber.SourceFile
+	StubSourceRest  = stuber.SourceRest
+	StubSourceMCP   = stuber.SourceMCP
+	StubSourceProxy = stuber.SourceProxy
+)
+
 func (b *Builder) Extender(ctx context.Context) *storage.Extender {
 	b.extenderOnce.Do(func() {
 		b.LoadPlugins(ctx)

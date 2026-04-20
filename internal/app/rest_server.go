@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1566,6 +1567,7 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	sess := muxmiddleware.FromRequest(r)
 	for _, stub := range inputs {
 		stub.Session = sess
+		stub.Source = stuber.SourceRest
 
 		if err := h.validateStub(stub); err != nil {
 			h.validationError(r.Context(), w, err)
@@ -1756,9 +1758,30 @@ func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, r *http.Request) {
 	h.writeResponse(r.Context(), w, h.budgerigar.Unused())
 }
 
-// ListStubs returns all stubs.
-func (h *RestServer) ListStubs(w http.ResponseWriter, r *http.Request) {
-	h.writeResponse(r.Context(), w, h.budgerigar.All())
+// ListStubs returns all stubs, optionally filtered by source.
+func (h *RestServer) ListStubs(w http.ResponseWriter, r *http.Request, params rest.ListStubsParams) {
+	stubs, total := h.budgerigar.List(listOptionsFromParams(params))
+	w.Header().Set("X-Total-Count", strconv.Itoa(total))
+
+	h.writeResponse(r.Context(), w, stubs)
+}
+
+func listOptionsFromParams(params rest.ListStubsParams) stuber.ListOptions {
+	options := stuber.ListOptions{
+		Source:  stringFromPtr(params.Source),
+		Service: stringFromPtr(params.Service),
+		Method:  stringFromPtr(params.Method),
+		Sort:    stringFromPtr(params.Sort),
+		Limit:   intFromPtr(params.Limit),
+		Offset:  intFromPtr(params.Offset),
+	}
+
+	if params.Session != nil {
+		options.Session = *params.Session
+		options.SessionSet = true
+	}
+
+	return options
 }
 
 // PurgeStubs removes all stubs.
@@ -1899,6 +1922,14 @@ func nilIfEmpty(value string) *string {
 func stringFromPtr(value *string) string {
 	if value == nil {
 		return ""
+	}
+
+	return *value
+}
+
+func intFromPtr(value *int) int {
+	if value == nil {
+		return 0
 	}
 
 	return *value

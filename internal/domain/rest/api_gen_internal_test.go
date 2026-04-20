@@ -92,7 +92,7 @@ func (m *mockServer) PurgeStubs(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (m *mockServer) ListStubs(w http.ResponseWriter, _ *http.Request) {
+func (m *mockServer) ListStubs(w http.ResponseWriter, _ *http.Request, _ ListStubsParams) {
 	m.called["ListStubs"] = true
 
 	w.WriteHeader(http.StatusOK)

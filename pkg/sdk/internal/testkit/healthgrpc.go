@@ -1,7 +1,6 @@
 package testkit
 
 import (
-	"context"
 	"net"
 	"testing"
 
@@ -37,18 +36,4 @@ func StartHealthGRPC(t testing.TB) (addr string) {
 	})
 
 	return lis.Addr().String()
-}
-
-// WaitForTCP confirms a TCP endpoint is reachable.
-func WaitForTCP(ctx context.Context, network, addr string) bool {
-	return func() bool {
-		conn, err := (&net.Dialer{}).DialContext(ctx, network, addr)
-		if err != nil {
-			return false
-		}
-
-		_ = conn.Close()
-
-		return true
-	}()
 }

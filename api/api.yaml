@@ -310,8 +310,53 @@ paths:
       tags:
         - stubs
       summary: Getting a list of stubs
-      description: The list of stubs is required to view all added stubs
+      description: The list of stubs is required to view all added stubs. Use source query param to filter by source.
       operationId: listStubs
+      parameters:
+        - name: source
+          in: query
+          description: Filter by source (file, rest, mcp, proxy)
+          required: false
+          schema:
+            type: string
+        - name: service
+          in: query
+          description: Filter by service name (exact match)
+          required: false
+          schema:
+            type: string
+        - name: method
+          in: query
+          description: Filter by method name (exact match)
+          required: false
+          schema:
+            type: string
+        - name: session
+          in: query
+          description: Filter by session ID (empty means global stubs)
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          description: Maximum number of returned stubs
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+        - name: offset
+          in: query
+          description: Number of stubs to skip before returning results
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+        - name: sort
+          in: query
+          description: Sort order for result list
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           description: Successful operation
@@ -1227,6 +1272,11 @@ components:
           x-omitzero: false
         options:
           $ref: '#/components/schemas/StubOptions'
+          x-omitzero: true
+        source:
+          type: string
+          description: Source of the stub (file, rest, mcp, proxy)
+          readOnly: true
           x-omitzero: true
     StubOptions:
       type: object
