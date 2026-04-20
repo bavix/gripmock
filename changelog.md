@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.10.1 - 2026-04-20
+
+### What's Changed
+
+* feat: add command dump by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/837
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.10.0...v3.10.1
+
 ## v3.10.0 - 2026-04-17
 
 ### What's Changed
