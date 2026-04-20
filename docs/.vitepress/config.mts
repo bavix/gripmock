@@ -60,6 +60,7 @@ export default defineConfig({
           { text: 'Introduction', link: '/guide/introduction' },
           { text: 'Performance Comparison', link: '/guide/introduction/performance-comparison' },
           { text: 'Quick Usage', link: '/guide/introduction/quick-usage' },
+          { text: 'Environment Variables', link: '/guide/introduction/environment-variables' },
           { text: 'Advanced Usage', link: '/guide/introduction/advanced-usage' },
           { text: 'TLS and mTLS', link: '/guide/introduction/tls' },
         ],

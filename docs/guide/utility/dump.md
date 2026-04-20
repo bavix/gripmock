@@ -11,7 +11,7 @@ Use it to:
 ## Prerequisites
 
 1. GripMock is running.
-2. HTTP admin API is reachable (default `127.0.0.1:4771`).
+2. Admin API is reachable at the address from environment variables.
 
 ## Usage
 
@@ -19,7 +19,7 @@ Use it to:
 gripmock dump
 ```
 
-By default this writes YAML files to `./stubs_export`.
+By default writes YAML files to `./stubs_export`, connecting to `http://` + `HTTP_ADDR`.
 
 ## Options
 
@@ -27,6 +27,7 @@ By default this writes YAML files to `./stubs_export`.
 |---|---|---|---|
 | `--output` | `-o` | `stubs_export` | Output directory. |
 | `--format` | — | `yaml` | Output format: `yaml` or `json`. |
+| `--scheme` | — | `http` | URL scheme: `http` or `https`. |
 | `--source` | — | *(empty)* | Filter by source: `file`, `rest`, `mcp`, `proxy`. |
 
 ## Source behavior
@@ -39,13 +40,25 @@ By default this writes YAML files to `./stubs_export`.
 Export default set (all except `file`):
 
 ```bash
-gripmock dump --output ./stubs_export --format yaml
+gripmock dump --output ./stubs_export
 ```
 
 Export only proxy-captured stubs:
 
 ```bash
 gripmock dump --source proxy --output ./captured_stubs
+```
+
+Export from HTTPS endpoint:
+
+```bash
+gripmock dump --scheme https --output ./secure_stubs
+```
+
+Export from a custom address via environment:
+
+```bash
+HTTP_ADDR=10.0.0.5:4771 gripmock dump --output ./remote_stubs
 ```
 
 Export only API-created stubs in JSON:

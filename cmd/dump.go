@@ -23,18 +23,19 @@ func init() { //nolint:gochecknoinits
 
 	rootCmd.AddCommand(dumpCmd)
 
-	dumpCmd.Flags().StringP("output", "o", "stubs_export", "Output directory")
-	dumpCmd.Flags().String("source", "", "Filter by source (rest, mcp, proxy; default: all except file)")
 	dumpCmd.Flags().String("format", stuber.DumpFormatYAML, "Output format: yaml, json")
+	dumpCmd.Flags().StringP("output", "o", "stubs_export", "Output directory")
+	dumpCmd.Flags().String("scheme", "http", "URL scheme: http or https")
+	dumpCmd.Flags().String("source", "", "Filter by source (rest, mcp, proxy; default: all except file)")
 }
 
 func runDump(cmd *cobra.Command, _ []string) error {
 	cfg := config.Load()
 
-	host := "http://" + cfg.HTTPAddr
+	format, _ := cmd.Flags().GetString("format")
 	outDir, _ := cmd.Flags().GetString("output")
 	filterSrc, _ := cmd.Flags().GetString("source")
-	format, _ := cmd.Flags().GetString("format")
+	scheme, _ := cmd.Flags().GetString("scheme")
 
 	if err := stuber.ValidateDumpSource(filterSrc); err != nil {
 		return err
@@ -44,7 +45,13 @@ func runDump(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	stubs, err := fetchStubs(cmd.Context(), host, filterSrc)
+	if scheme != "http" && scheme != "https" {
+		return errors.Newf("unsupported scheme %q, use http or https", scheme)
+	}
+
+	endpoint := scheme + "://" + cfg.HTTPAddr
+
+	stubs, err := fetchStubs(cmd.Context(), endpoint, filterSrc)
 	if err != nil {
 		return errors.Wrap(err, "fetch")
 	}
@@ -66,8 +73,8 @@ func runDump(cmd *cobra.Command, _ []string) error {
 	return nil
 }
 
-func fetchStubs(ctx context.Context, host string, source string) ([]*stuber.Stub, error) {
-	endpoint := host + "/api/stubs"
+func fetchStubs(ctx context.Context, baseURL string, source string) ([]*stuber.Stub, error) {
+	endpoint := baseURL + "/api/stubs"
 	if source != "" {
 		endpoint += "?source=" + source
 	}
