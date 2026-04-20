@@ -47,8 +47,10 @@ type options struct {
 	healthyTimeout  time.Duration
 }
 
-const defaultHealthyTimeout = 10 * time.Second
-const defaultSessionTTL = 60 * time.Second
+const (
+	defaultHealthyTimeout = 10 * time.Second
+	defaultSessionTTL     = 60 * time.Second
+)
 
 // Option configures Run behavior.
 type Option func(*options)

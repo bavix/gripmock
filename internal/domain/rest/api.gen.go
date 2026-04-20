@@ -322,6 +322,9 @@ type Stub struct {
 	// Priority Priority of the stub. Higher priority stubs are matched first.
 	Priority int    `json:"priority,omitempty"`
 	Service  string `json:"service"`
+
+	// Source Source of the stub (file, rest, mcp, proxy)
+	Source *string `json:"source,omitempty,omitzero"`
 }
 
 // StubHeaders defines model for StubHeaders.
@@ -382,6 +385,30 @@ type VerifyRequest struct {
 	ExpectedCount int    `json:"expectedCount"`
 	Method        string `json:"method"`
 	Service       string `json:"service"`
+}
+
+// ListStubsParams defines parameters for ListStubs.
+type ListStubsParams struct {
+	// Source Filter by source (file, rest, mcp, proxy)
+	Source *string `form:"source,omitempty" json:"source,omitempty"`
+
+	// Service Filter by service name (exact match)
+	Service *string `form:"service,omitempty" json:"service,omitempty"`
+
+	// Method Filter by method name (exact match)
+	Method *string `form:"method,omitempty" json:"method,omitempty"`
+
+	// Session Filter by session ID (empty means global stubs)
+	Session *string `form:"session,omitempty" json:"session,omitempty"`
+
+	// Limit Maximum number of returned stubs
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Number of stubs to skip before returning results
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Sort Sort order for result list
+	Sort *string `form:"sort,omitempty" json:"sort,omitempty"`
 }
 
 // AddStubJSONBody defines parameters for AddStub.
@@ -519,7 +546,7 @@ type ServerInterface interface {
 	PurgeStubs(w http.ResponseWriter, r *http.Request)
 	// Getting a list of stubs
 	// (GET /stubs)
-	ListStubs(w http.ResponseWriter, r *http.Request)
+	ListStubs(w http.ResponseWriter, r *http.Request, params ListStubsParams)
 	// Add a new stub to the store
 	// (POST /stubs)
 	AddStub(w http.ResponseWriter, r *http.Request)
@@ -824,8 +851,69 @@ func (siw *ServerInterfaceWrapper) PurgeStubs(w http.ResponseWriter, r *http.Req
 // ListStubs operation middleware
 func (siw *ServerInterfaceWrapper) ListStubs(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListStubsParams
+
+	// ------------- Optional query parameter "source" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "source", r.URL.Query(), &params.Source, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "source", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "service" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "service", r.URL.Query(), &params.Service, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "service", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "method" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "method", r.URL.Query(), &params.Method, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "method", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "session" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "session", r.URL.Query(), &params.Session, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "session", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "sort", r.URL.Query(), &params.Sort, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListStubs(w, r)
+		siw.Handler.ListStubs(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {

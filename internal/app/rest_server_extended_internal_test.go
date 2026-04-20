@@ -221,7 +221,7 @@ func (s *RestServerExtendedTestSuite) TestFindStubByIDExtended() {
 	// Get stub ID by listing all stubs (since AddStub might return a message)
 	listReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs", nil)
 	listW := httptest.NewRecorder()
-	s.server.ListStubs(listW, listReq)
+	s.server.ListStubs(listW, listReq, rest.ListStubsParams{})
 	s.Require().Equal(http.StatusOK, listW.Code)
 
 	var allStubs []*stuber.Stub
@@ -467,7 +467,9 @@ func (s *RestServerExtendedTestSuite) TestStubListsNeverReturnNull() {
 	}{
 		{name: "used", path: "/api/stubs/used", handler: s.server.ListUsedStubs},
 		{name: "unused", path: "/api/stubs/unused", handler: s.server.ListUnusedStubs},
-		{name: "all", path: "/api/stubs", handler: s.server.ListStubs},
+		{name: "all", path: "/api/stubs", handler: func(w http.ResponseWriter, r *http.Request) {
+			s.server.ListStubs(w, r, rest.ListStubsParams{})
+		}},
 	}
 
 	for _, tt := range tests {
@@ -734,7 +736,7 @@ func (s *RestServerExtendedTestSuite) TestBatchOperations() {
 	// Get added stub IDs by listing all stubs
 	listReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs", nil)
 	listW := httptest.NewRecorder()
-	s.server.ListStubs(listW, listReq)
+	s.server.ListStubs(listW, listReq, rest.ListStubsParams{})
 	s.Require().Equal(http.StatusOK, listW.Code)
 
 	var allStubs []*stuber.Stub
@@ -782,7 +784,7 @@ func (s *RestServerExtendedTestSuite) TestStubPersistence() {
 	// Verify stub exists in listing
 	listReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs", nil)
 	listW := httptest.NewRecorder()
-	s.server.ListStubs(listW, listReq)
+	s.server.ListStubs(listW, listReq, rest.ListStubsParams{})
 	s.Require().Equal(http.StatusOK, listW.Code)
 
 	var listedStubs []*stuber.Stub

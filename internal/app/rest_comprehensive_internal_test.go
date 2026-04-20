@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bavix/features"
+	"github.com/bavix/gripmock/v3/internal/domain/rest"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -324,7 +325,7 @@ func (s *RestComprehensiveTestSuite) TestStubLifecycle() {
 		listReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs", nil)
 		listW := httptest.NewRecorder()
 
-		s.server.ListStubs(listW, listReq)
+		s.server.ListStubs(listW, listReq, rest.ListStubsParams{})
 		s.Equal(http.StatusOK, listW.Code, "Listing stubs should succeed")
 		s.NotEmpty(listW.Body.String(), "List response should not be empty")
 

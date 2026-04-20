@@ -7,6 +7,22 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
+const (
+	SourceFile  = "file"
+	SourceRest  = "rest"
+	SourceMCP   = "mcp"
+	SourceProxy = "proxy"
+)
+
+func IsKnownSource(source string) bool {
+	switch source {
+	case SourceFile, SourceRest, SourceMCP, SourceProxy:
+		return true
+	default:
+		return false
+	}
+}
+
 // StubOptions holds optional behavior settings for a stub.
 type StubOptions struct {
 	Times int `json:"times,omitempty" validate:"gte=0"` // Max number of matches; 0 = unlimited.
@@ -24,6 +40,7 @@ type Stub struct {
 	Input    InputData   `json:"input"             validate:"valid_input_config"`  // Unary input (mutually exclusive with Inputs).
 	Inputs   []InputData `json:"inputs,omitempty"  validate:"valid_input_config"`  // Client streaming inputs (mutually exclusive with Input).
 	Output   Output      `json:"output"            validate:"valid_output_config"` // The output data of the response.
+	Source   string      `json:"source,omitempty"`                                 // Stub source.
 }
 
 // EffectiveTimes returns the stub's max match count; 0 means unlimited.

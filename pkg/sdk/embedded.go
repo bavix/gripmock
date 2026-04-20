@@ -51,6 +51,7 @@ func (m *embeddedMock) History() HistoryReader { return m.recorder }
 func (m *embeddedMock) Verify() Verifier {
 	return &verifier{recorder: m.recorder, expectedTotal: &m.expectedTotal}
 }
+
 func (m *embeddedMock) Close() error {
 	if m.conn != nil {
 		_ = m.conn.Close()

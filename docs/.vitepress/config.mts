@@ -60,6 +60,7 @@ export default defineConfig({
           { text: 'Introduction', link: '/guide/introduction' },
           { text: 'Performance Comparison', link: '/guide/introduction/performance-comparison' },
           { text: 'Quick Usage', link: '/guide/introduction/quick-usage' },
+          { text: 'Environment Variables', link: '/guide/introduction/environment-variables' },
           { text: 'Advanced Usage', link: '/guide/introduction/advanced-usage' },
           { text: 'TLS and mTLS', link: '/guide/introduction/tls' },
         ],
@@ -190,8 +191,10 @@ export default defineConfig({
         collapsed: false,
       },
       {
-        text: 'Utility',
+        text: 'Tooling',
         items: [
+          { text: 'Check', link: '/guide/utility/check' },
+          { text: 'Dump', link: '/guide/utility/dump' },
           { text: 'gRPC Testify', link: 'https://gripmock.github.io/grpctestify-rust/' },
         ],
         collapsed: false,
@@ -203,17 +206,8 @@ export default defineConfig({
     ],
 
     footer: {
-      message: `
-        <p>Project licensed under the MIT License:</p>
-        <ul style="list-style: none; padding-left: 20px;">
-          <li>
-            📝 <a href="https://github.com/bavix/gripmock/blob/master/LICENSE">
-              MIT License</a> (developments by 
-              <a href="https://github.com/bavix">Bavix</a>)
-          </li>
-        </ul>
-      `,
-      copyright: 'Copyright © 2023-present <a href="https://github.com/rez1dent3">Maksim Babichev</a>'
-    }
+      message: 'Released under the <a href="https://github.com/bavix/gripmock/blob/master/LICENSE">MIT License</a> by <a href="https://github.com/bavix">Bavix</a> contributors.',
+      copyright: 'Copyright © 2023-present <a href="https://github.com/rez1dent3">Babichev Maksim</a>',
+    },
   }
 })

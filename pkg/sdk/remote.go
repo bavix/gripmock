@@ -51,6 +51,7 @@ func (m *remoteMock) Stub(service, method string) StubBuilder {
 
 	return m.stubBuilderCore(service, method)
 }
+
 func (m *remoteMock) Close() error {
 	if m.ttlTimer != nil {
 		m.ttlTimer.Stop()

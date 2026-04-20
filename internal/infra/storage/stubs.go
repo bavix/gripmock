@@ -237,12 +237,18 @@ func (s *Extender) handleFirstTimeLoad(filePath string, stubs []*stuber.Stub) {
 		if stub.ID == uuid.Nil {
 			stub.ID = uuid.New()
 		}
+
+		stub.Source = stuber.SourceFile
 	}
 
 	s.mapIDsByFile[filePath] = s.storage.PutMany(stubs...)
 }
 
 func (s *Extender) handleExistingFileUpdate(filePath string, stubs []*stuber.Stub, existingIDs uuid.UUIDs) {
+	for _, stub := range stubs {
+		stub.Source = stuber.SourceFile
+	}
+
 	currentIDs := s.extractCurrentIDs(stubs)
 	unusedIDs := lo.Without(existingIDs, currentIDs...)
 	newIDs := s.generateNewIDs(stubs, unusedIDs)

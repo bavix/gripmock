@@ -130,6 +130,7 @@ func (b *Builder) RestServe(
 		}),
 		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPatch}),
 	)(router)
+	handler = handlers.CompressHandler(handler)
 
 	if b.config.OtelEnabled {
 		handler = otelhttp.NewHandler(handler, "gripmock-rest")

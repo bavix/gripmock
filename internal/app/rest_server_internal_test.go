@@ -20,6 +20,7 @@ import (
 	mcpusecase "github.com/bavix/gripmock/v3/internal/app/usecase/mcp"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
+	"github.com/bavix/gripmock/v3/internal/domain/rest"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -286,7 +287,7 @@ func (s *RestServerTestSuite) TestListStubs() {
 
 	// List stubs
 	w := httptest.NewRecorder()
-	s.server.ListStubs(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil))
+	s.server.ListStubs(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil), rest.ListStubsParams{})
 
 	s.Equal(http.StatusOK, w.Code)
 
@@ -296,6 +297,44 @@ func (s *RestServerTestSuite) TestListStubs() {
 	err := json.Unmarshal(w.Body.Bytes(), &response)
 	s.Require().NoError(err)
 	s.Len(response, 1)
+}
+
+// TestListStubsParams tests filtering, sorting and pagination params.
+func (s *RestServerTestSuite) TestListStubsParams() {
+	s.budgerigar.PutMany(
+		&stuber.Stub{Service: "svc.A", Method: "Ping", Priority: 10, Source: "proxy", Input: stuber.InputData{}, Output: stuber.Output{}},
+		&stuber.Stub{Service: "svc.A", Method: "Pong", Priority: 5, Source: "rest", Input: stuber.InputData{}, Output: stuber.Output{}},
+		&stuber.Stub{Service: "svc.B", Method: "Ping", Priority: 1, Source: "file", Input: stuber.InputData{}, Output: stuber.Output{}},
+	)
+
+	w := httptest.NewRecorder()
+	limit := 1
+	offset := 0
+	sortBy := "priority_desc"
+	source := "proxy"
+	service := "svc.A"
+
+	s.server.ListStubs(
+		w,
+		httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil),
+		rest.ListStubsParams{
+			Source:  &source,
+			Service: &service,
+			Sort:    &sortBy,
+			Limit:   &limit,
+			Offset:  &offset,
+		},
+	)
+
+	s.Equal(http.StatusOK, w.Code)
+	s.Equal("1", w.Header().Get("X-Total-Count"))
+
+	var response []*stuber.Stub
+	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &response))
+	s.Require().Len(response, 1)
+	s.Equal("proxy", response[0].Source)
+	s.Equal("svc.A", response[0].Service)
+	s.Equal("Ping", response[0].Method)
 }
 
 // TestAddDescriptors tests POST /api/descriptors with binary FileDescriptorSet.
