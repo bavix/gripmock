@@ -70,7 +70,12 @@ func filterStubs(stubs iter.Seq[*Stub], options ListOptions) []*Stub {
 		})
 	}
 
-	return slices.Collect(seq)
+	filtered := slices.Collect(seq)
+	if filtered == nil {
+		return []*Stub{}
+	}
+
+	return filtered
 }
 
 func whereStubs(seq iter.Seq[*Stub], keep func(*Stub) bool) iter.Seq[*Stub] {
