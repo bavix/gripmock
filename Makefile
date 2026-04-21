@@ -38,31 +38,30 @@ gen-rest:
 PROTOBUF_REPO=/tmp/gm-protobuf-repo
 GOOGLEAPIS_REPO=/tmp/gm-googleapis-sdk
 
-PROTO_EXCLUDE_ARGS=\
+PROTOBUF_EXCLUDE_ARGS=\
 	--exclude 'google/protobuf/compiler/**' \
 	--exclude '**/*test*.proto' \
-	--exclude '**/*unittest*.proto' \
-	--exclude '**/*_lite*.proto' \
-	--exclude '**/map_*.proto' \
+	--exclude '**/test_protos/**' \
 	--exclude '**/sample_*.proto' \
 	--exclude '**/internal_*.proto' \
-	--exclude '**/late_loaded_*.proto' \
-	--exclude '**/only_one_enum_*.proto' \
-	--exclude '**/test_protos/**'
+	--exclude '**/late_loaded_*.proto'
+
+GOOGLEAPIS_EXCLUDE_ARGS=\
+	--exclude 'preview/**'
 
 gen-imports:
 	rm -rf $(PROTOBUF_REPO) $(GOOGLEAPIS_REPO)
+	touch internal/pbs/protobuf.pbs internal/pbs/googleapis.pbs
 	git clone --depth=1 https://github.com/protocolbuffers/protobuf.git $(PROTOBUF_REPO)
 	git clone --depth=1 https://github.com/googleapis/googleapis.git $(GOOGLEAPIS_REPO)
 	go run main.go proto export \
 		--root $(PROTOBUF_REPO)/src \
-		$(PROTO_EXCLUDE_ARGS) \
+		$(PROTOBUF_EXCLUDE_ARGS) \
 		--out internal/pbs/protobuf.pbs
 	go run main.go proto export \
 		--root $(GOOGLEAPIS_REPO) \
-		--root $(PROTOBUF_REPO)/src \
-		$(PROTO_EXCLUDE_ARGS) \
-		--exclude 'preview/**' \
+		--import-root $(PROTOBUF_REPO)/src \
+		$(GOOGLEAPIS_EXCLUDE_ARGS) \
 		--out internal/pbs/googleapis.pbs
 	rm -rf $(PROTOBUF_REPO) $(GOOGLEAPIS_REPO)
 
