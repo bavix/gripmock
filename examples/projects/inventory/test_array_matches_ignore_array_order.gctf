@@ -1,0 +1,25 @@
+--- META ---
+name: array matches ignoreArrayOrder
+summary: Test matches with ignoreArrayOrder for repeated field
+tags: [array, matching, matches, ignoreArrayOrder]
+owner: team/gripmock
+links:
+  - https://github.com/bavix/gripmock/issues/840
+
+--- ENDPOINT ---
+inventory.InventoryService/GetResourceDecorationByIPsStream
+
+--- REQUEST ---
+{
+  "k8s_cluster_id": "test-matches-ignore",
+  "ips": ["10.0.5.11"]
+}
+
+--- RESPONSE partial ---
+{
+  "ips_to_decorations": {
+    "10.0.5.11": {
+      "decoration": "matches-ok"
+    }
+  }
+}

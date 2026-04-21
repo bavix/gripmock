@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
 
-# First 2 calls: return error (simulating transient failure)
+# Issue #827: First 2 calls return error (simulating transient failure)
 # Priority 10: higher priority, matches first
 - service: inventory.InventoryService
   method: GetResourceDecorationByIPsStream

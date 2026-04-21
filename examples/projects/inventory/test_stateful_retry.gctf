@@ -1,5 +1,10 @@
 --- META ---
-tags: [sequential]
+name: sequential retry scenario
+summary: Test stateful stubs - first 2 calls return error, third returns success
+tags: [sequential, stateful, retry]
+owner: team/gripmock
+links:
+  - https://github.com/bavix/gripmock/issues/827
 
 // First call - returns error (simulated transient failure)
 
@@ -16,6 +21,7 @@ inventory.InventoryService/GetResourceDecorationByIPsStream
   "code": 14,
   "message": "simulated transient failure"
 }
+
 // Second call - returns error (first stub exhausted)
 
 --- ENDPOINT ---
@@ -31,6 +37,7 @@ inventory.InventoryService/GetResourceDecorationByIPsStream
   "code": 14,
   "message": "simulated transient failure"
 }
+
 // Third call - returns success (fallback stub)
 
 --- ENDPOINT ---

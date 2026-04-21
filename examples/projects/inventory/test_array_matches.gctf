@@ -1,0 +1,25 @@
+--- META ---
+name: array matches
+summary: Test regex matches matcher for repeated field
+tags: [array, matching, matches]
+owner: team/gripmock
+links:
+  - https://github.com/bavix/gripmock/issues/840
+
+--- ENDPOINT ---
+inventory.InventoryService/GetResourceDecorationByIPsStream
+
+--- REQUEST ---
+{
+  "k8s_cluster_id": "test-matches",
+  "ips": ["10.0.2.77"]
+}
+
+--- RESPONSE partial ---
+{
+  "ips_to_decorations": {
+    "10.0.2.77": {
+      "decoration": "api-backend"
+    }
+  }
+}
