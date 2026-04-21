@@ -1221,52 +1221,15 @@ func TestEmptyFieldVariations(t *testing.T) {
 }
 
 // TestStableSortingOptimized tests that results are stable across multiple runs with optimized sorting.
-//
-//nolint:funlen
 func TestStableSortingOptimized(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar()
 
 	// Create multiple stubs with same priority but different IDs
-	stub1 := &stuber.Stub{
-		ID:       uuid.New(),
-		Service:  "TestService",
-		Method:   "Test",
-		Priority: 1,
-		Input: stuber.InputData{
-			Equals: map[string]any{"field": "value"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Stub1"},
-		},
-	}
-
-	stub2 := &stuber.Stub{
-		ID:       uuid.New(),
-		Service:  "TestService",
-		Method:   "Test",
-		Priority: 1, // Same priority
-		Input: stuber.InputData{
-			Equals: map[string]any{"field": "value"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Stub2"},
-		},
-	}
-
-	stub3 := &stuber.Stub{
-		ID:       uuid.New(),
-		Service:  "TestService",
-		Method:   "Test",
-		Priority: 1, // Same priority
-		Input: stuber.InputData{
-			Equals: map[string]any{"field": "value"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Stub3"},
-		},
-	}
+	stub1 := newStableSortingStub("Stub1")
+	stub2 := newStableSortingStub("Stub2")
+	stub3 := newStableSortingStub("Stub3")
 
 	s.PutMany(stub1, stub2, stub3)
 
@@ -1487,6 +1450,21 @@ func TestBudgerigarTImesConcurrentNoRace(t *testing.T) {
 func newPairGreeterStubs() (*stuber.Stub, *stuber.Stub) {
 	return &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"},
 		&stuber.Stub{ID: uuid.New(), Service: "Greeter2", Method: "SayHello2"}
+}
+
+func newStableSortingStub(response string) *stuber.Stub {
+	return &stuber.Stub{
+		ID:       uuid.New(),
+		Service:  "TestService",
+		Method:   "Test",
+		Priority: 1,
+		Input: stuber.InputData{
+			Equals: map[string]any{"field": "value"},
+		},
+		Output: stuber.Output{
+			Data: map[string]any{"response": response},
+		},
+	}
 }
 
 func createTestStubs() (*stuber.Stub, *stuber.Stub) {
