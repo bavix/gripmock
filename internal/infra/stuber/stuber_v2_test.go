@@ -1601,291 +1601,134 @@ func createTestStubs() (*stuber.Stub, *stuber.Stub) {
 	return stub1, stub2
 }
 
-func TestEmptyQueryInput(t *testing.T) {
-	t.Parallel()
-	// Clear all caches before test
-	stuber.ClearAllCaches()
-
-	s := stuber.NewBudgerigar()
-
-	// Test case 1: Stub with Inputs (streaming) that can handle empty query
-	stub1 := &stuber.Stub{
+func newGreeterStreamingStub(message string, equals map[string]any, headers map[string]any) *stuber.Stub {
+	stub := &stuber.Stub{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
-		Inputs: []stuber.InputData{
-			{
-				Equals: map[string]any{},
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Streaming Empty"},
-		},
+		Inputs:  []stuber.InputData{{Equals: equals}},
+		Output:  stuber.Output{Data: map[string]any{"message": message}},
 	}
 
-	// Test case 2: Stub with Input (legacy) that can handle empty query
-	stub2 := &stuber.Stub{
+	if headers != nil {
+		stub.Headers = stuber.InputHeader{Contains: headers}
+	}
+
+	return stub
+}
+
+func newGreeterLegacyStub(message string, equals map[string]any, headers map[string]any) *stuber.Stub {
+	stub := &stuber.Stub{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello World"},
-		},
+		Input:   stuber.InputData{Equals: equals},
+		Output:  stuber.Output{Data: map[string]any{"message": message}},
 	}
 
-	// Test case 3: Stub with Input (legacy) that cannot handle empty query
-	stub3 := &stuber.Stub{
+	if headers != nil {
+		stub.Headers = stuber.InputHeader{Contains: headers}
+	}
+
+	return stub
+}
+
+func assertFindByEmptyQueryMessage(
+	t *testing.T,
+	s *stuber.Budgerigar,
+	headers map[string]any,
+	expected string,
+) {
+	t.Helper()
+
+	result, err := s.FindByQuery(stuber.Query{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{"name": "Bob"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello Bob"},
-		},
-	}
+		Headers: headers,
+		Input:   []map[string]any{},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result.Found())
+	require.Equal(t, expected, result.Found().Output.Data["message"])
+}
 
-	s.PutMany(stub1, stub2, stub3)
+func assertFindByEmptyQueryNoMatch(t *testing.T, s *stuber.Budgerigar) {
+	t.Helper()
 
-	// Test empty query - should match stub2 (can handle empty input)
-	query := stuber.Query{
+	result, err := s.FindByQuery(stuber.Query{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
 		Input:   []map[string]any{},
-	}
-
-	result, err := s.FindByQuery(query)
+	})
 	require.NoError(t, err)
-	require.NotNil(t, result.Found())
+	require.Nil(t, result.Found())
+	require.NotNil(t, result.Similar())
+}
 
-	foundStub := result.Found()
-	require.Equal(t, "Streaming Empty", foundStub.Output.Data["message"])
+func TestEmptyQueryInput(t *testing.T) {
+	t.Parallel()
+	stuber.ClearAllCaches()
+
+	s := stuber.NewBudgerigar()
+	s.PutMany(
+		newGreeterStreamingStub("Streaming Empty", map[string]any{}, nil),
+		newGreeterLegacyStub("Hello World", map[string]any{}, nil),
+		newGreeterLegacyStub("Hello Bob", map[string]any{"name": "Bob"}, nil),
+	)
+
+	assertFindByEmptyQueryMessage(t, s, nil, "Streaming Empty")
 }
 
 func TestEmptyQueryInputWithStreaming(t *testing.T) {
 	t.Parallel()
-	// Clear all caches before test
 	stuber.ClearAllCaches()
 
 	s := stuber.NewBudgerigar()
+	s.PutMany(
+		newGreeterStreamingStub("Streaming Hello", map[string]any{}, nil),
+		newGreeterLegacyStub("Legacy Hello", map[string]any{}, nil),
+	)
 
-	// Stub with Inputs (streaming) that can handle empty query
-	stub1 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Inputs: []stuber.InputData{
-			{
-				Equals: map[string]any{},
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Streaming Hello"},
-		},
-	}
-
-	// Stub with Input (legacy) that can handle empty query
-	stub2 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Legacy Hello"},
-		},
-	}
-
-	s.PutMany(stub1, stub2)
-
-	// Test empty query - should prioritize Inputs over Input
-	query := stuber.Query{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input:   []map[string]any{},
-	}
-
-	result, err := s.FindByQuery(query)
-	require.NoError(t, err)
-	require.NotNil(t, result.Found())
-
-	foundStub := result.Found()
-	require.Equal(t, "Streaming Hello", foundStub.Output.Data["message"])
+	assertFindByEmptyQueryMessage(t, s, nil, "Streaming Hello")
 }
 
 func TestEmptyQueryInputNoMatch(t *testing.T) {
 	t.Parallel()
-	// Clear all caches before test
 	stuber.ClearAllCaches()
 
 	s := stuber.NewBudgerigar()
+	s.PutMany(
+		newGreeterStreamingStub("Hello Bob", map[string]any{"name": "Bob"}, nil),
+		newGreeterLegacyStub("Hello Bob", map[string]any{"name": "Bob"}, nil),
+	)
 
-	// Stub with Inputs (streaming) that cannot handle empty query
-	stub1 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Inputs: []stuber.InputData{
-			{
-				Equals: map[string]any{"name": "Bob"},
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello Bob"},
-		},
-	}
-
-	// Stub with Input (legacy) that cannot handle empty query
-	stub2 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{"name": "Bob"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello Bob"},
-		},
-	}
-
-	s.PutMany(stub1, stub2)
-
-	// Test empty query - should not match any stub
-	query := stuber.Query{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input:   []map[string]any{},
-	}
-
-	result, err := s.FindByQuery(query)
-	require.NoError(t, err)
-	require.Nil(t, result.Found())
-	require.NotNil(t, result.Similar()) // Should find similar match
+	assertFindByEmptyQueryNoMatch(t, s)
 }
 
 func TestEmptyQueryInputWithHeaders(t *testing.T) {
 	t.Parallel()
-	// Clear all caches before test
 	stuber.ClearAllCaches()
 
 	s := stuber.NewBudgerigar()
+	headers := map[string]any{"x-user": "admin"}
+	s.PutMany(
+		newGreeterStreamingStub("Admin Hello", map[string]any{}, headers),
+		newGreeterLegacyStub("Admin Legacy Hello", map[string]any{}, headers),
+	)
 
-	// Stub with Inputs (streaming) that can handle empty query and has headers
-	stub1 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Headers: stuber.InputHeader{
-			Contains: map[string]any{
-				"x-user": "admin",
-			},
-		},
-		Inputs: []stuber.InputData{
-			{
-				Equals: map[string]any{},
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Admin Hello"},
-		},
-	}
-
-	// Stub with Input (legacy) that can handle empty query and has headers
-	stub2 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Headers: stuber.InputHeader{
-			Contains: map[string]any{
-				"x-user": "admin",
-			},
-		},
-		Input: stuber.InputData{
-			Equals: map[string]any{},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Admin Legacy Hello"},
-		},
-	}
-
-	s.PutMany(stub1, stub2)
-
-	// Test empty query with headers - should prioritize Inputs over Input
-	query := stuber.Query{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Headers: map[string]any{
-			"x-user": "admin",
-		},
-		Input: []map[string]any{},
-	}
-
-	result, err := s.FindByQuery(query)
-	require.NoError(t, err)
-	require.NotNil(t, result.Found())
-
-	foundStub := result.Found()
-	require.Equal(t, "Admin Hello", foundStub.Output.Data["message"])
+	assertFindByEmptyQueryMessage(t, s, headers, "Admin Hello")
 }
 
 func TestEmptyQueryInputMixedConditions(t *testing.T) {
 	t.Parallel()
-	// Clear all caches before test
 	stuber.ClearAllCaches()
 
 	s := stuber.NewBudgerigar()
+	s.PutMany(
+		newGreeterStreamingStub("Streaming Empty", map[string]any{}, nil),
+		newGreeterStreamingStub("Streaming Bob", map[string]any{"name": "Bob"}, nil),
+		newGreeterLegacyStub("Legacy Empty", map[string]any{}, nil),
+	)
 
-	// Stub with Inputs (streaming) that can handle empty query
-	stub1 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Inputs: []stuber.InputData{
-			{
-				Equals: map[string]any{},
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Streaming Empty"},
-		},
-	}
-
-	// Stub with Inputs (streaming) that cannot handle empty query
-	stub2 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Inputs: []stuber.InputData{
-			{
-				Equals: map[string]any{"name": "Bob"},
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Streaming Bob"},
-		},
-	}
-
-	// Stub with Input (legacy) that can handle empty query
-	stub3 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Legacy Empty"},
-		},
-	}
-
-	s.PutMany(stub1, stub2, stub3)
-
-	// Test empty query - should match stub1 (Inputs with empty equals)
-	query := stuber.Query{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input:   []map[string]any{},
-	}
-
-	result, err := s.FindByQuery(query)
-	require.NoError(t, err)
-	require.NotNil(t, result.Found())
-
-	foundStub := result.Found()
-	require.Equal(t, "Streaming Empty", foundStub.Output.Data["message"])
+	assertFindByEmptyQueryMessage(t, s, nil, "Streaming Empty")
 }
 
 // TestMethodTypes tests logic for all method types.
