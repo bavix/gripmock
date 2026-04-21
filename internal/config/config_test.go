@@ -69,19 +69,19 @@ func TestConfigDefaultValues(t *testing.T) {
 	t.Parallel()
 
 	expected := config.Config{
-		LogLevel:            "info",
-		GRPCNetwork:         "tcp",
-		GRPCHost:            "0.0.0.0",
-		GRPCPort:            "4770",
-		GRPCAddr:            "0.0.0.0:4770",
-		HTTPHost:            "0.0.0.0",
-		HTTPPort:            "4771",
-		HTTPAddr:            "0.0.0.0:4771",
-		StubWatcherEnabled:  true,
-		StubWatcherInterval: 1 * 1000000000, // 1s in nanoseconds
-		StubWatcherType:     "fsnotify",
-		HistoryEnabled:      true,
-		HistoryLimit:        config.ByteSize{Bytes: 64 * 1024 * 1024}, // 64M
+		LogLevel:               "info",
+		GRPCNetwork:            "tcp",
+		GRPCHost:               "0.0.0.0",
+		GRPCPort:               "4770",
+		GRPCAddr:               "0.0.0.0:4770",
+		HTTPHost:               "0.0.0.0",
+		HTTPPort:               "4771",
+		HTTPAddr:               "0.0.0.0:4771",
+		StubWatcherEnabled:     true,
+		StubWatcherInterval:    1 * 1000000000, // 1s in nanoseconds
+		StubWatcherType:        "fsnotify",
+		HistoryEnabled:         true,
+		HistoryLimit:           config.ByteSize{Bytes: 64 * 1024 * 1024}, // 64M
 		HistoryMessageMaxBytes: 262144,
 		HistoryRedactKeys:      nil, // env v11 returns nil for empty strings
 		TemplatePluginPaths:    nil,
