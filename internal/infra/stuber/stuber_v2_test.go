@@ -1601,12 +1601,22 @@ func createTestStubs() (*stuber.Stub, *stuber.Stub) {
 	return stub1, stub2
 }
 
-func newGreeterStreamingStub(message string, equals map[string]any, headers map[string]any) *stuber.Stub {
+func newGreeterStub(
+	message string,
+	equals map[string]any,
+	headers map[string]any,
+	stream bool,
+) *stuber.Stub {
 	stub := &stuber.Stub{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
-		Inputs:  []stuber.InputData{{Equals: equals}},
 		Output:  stuber.Output{Data: map[string]any{"message": message}},
+	}
+
+	if stream {
+		stub.Inputs = []stuber.InputData{{Equals: equals}}
+	} else {
+		stub.Input = stuber.InputData{Equals: equals}
 	}
 
 	if headers != nil {
@@ -1616,19 +1626,21 @@ func newGreeterStreamingStub(message string, equals map[string]any, headers map[
 	return stub
 }
 
+func newGreeterStreamingStub(message string, equals map[string]any, headers map[string]any) *stuber.Stub {
+	return newGreeterStub(message, equals, headers, true)
+}
+
 func newGreeterLegacyStub(message string, equals map[string]any, headers map[string]any) *stuber.Stub {
-	stub := &stuber.Stub{
+	return newGreeterStub(message, equals, headers, false)
+}
+
+func newGreeterUnarySayHello(name, message string) *stuber.Stub {
+	return &stuber.Stub{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
-		Input:   stuber.InputData{Equals: equals},
+		Input:   stuber.InputData{Equals: map[string]any{"name": name}},
 		Output:  stuber.Output{Data: map[string]any{"message": message}},
 	}
-
-	if headers != nil {
-		stub.Headers = stuber.InputHeader{Contains: headers}
-	}
-
-	return stub
 }
 
 func assertFindByEmptyQueryMessage(
@@ -1740,16 +1752,7 @@ func TestMethodTypes(t *testing.T) {
 	s := stuber.NewBudgerigar()
 
 	// Test case 1: Unary method (Input only)
-	unaryStub := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{"name": "Bob"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello Bob"},
-		},
-	}
+	unaryStub := newGreeterUnarySayHello("Bob", "Hello Bob")
 
 	// Test case 2: Client streaming method (Inputs only)
 	clientStreamStub := &stuber.Stub{
@@ -1879,16 +1882,7 @@ func TestMethodTypesPriority(t *testing.T) {
 
 	// Test case: Same service/method with different types
 	// 1. Unary stub (legacy)
-	unaryStub := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{"name": "Bob"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello Bob (Unary)"},
-		},
-	}
+	unaryStub := newGreeterUnarySayHello("Bob", "Hello Bob (Unary)")
 
 	// 2. Client streaming stub (newer)
 	clientStreamStub := &stuber.Stub{
@@ -1956,16 +1950,7 @@ func TestMethodTypesEmptyInput(t *testing.T) {
 	}
 
 	// Test case 3: Unary method that cannot handle empty input
-	unaryNonEmptyStub := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{"name": "Bob"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello Bob"},
-		},
-	}
+	unaryNonEmptyStub := newGreeterUnarySayHello("Bob", "Hello Bob")
 
 	s.PutMany(unaryEmptyStub, clientStreamEmptyStub, unaryNonEmptyStub)
 
