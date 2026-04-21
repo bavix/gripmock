@@ -8,6 +8,7 @@ service InventoryService {
 
 message GetResourceDecorationByIPsStreamRequest {
   string k8s_cluster_id = 1;
+  repeated string ips = 2;
 }
 
 message GetResourceDecorationByIPsStreamResponse {

@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+- service: inventory.InventoryService
+  method: GetResourceDecorationByIPsStream
+  input:
+    ignoreArrayOrder: true
+    matches:
+      k8s_cluster_id: "^test-matches-ignore$"
+      ips: ["^10\\.0\\.5\\.[0-9]+$", "^10\\.0\\.5\\.[0-9]+$"]
+  output:
+    data:
+      ips_to_decorations:
+        "10.0.5.11":
+          decoration: "matches-ok"
+          environment: "staging"
+        "10.0.5.22":
+          decoration: "matches-ok"
+          environment: "staging"

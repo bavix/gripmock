@@ -1,0 +1,33 @@
+--- META ---
+name: array equals ignoreArrayOrder
+summary: Test equals with ignoreArrayOrder for repeated field
+tags: [array, matching, equals, ignoreArrayOrder]
+owner: team/gripmock
+links:
+  - https://github.com/bavix/gripmock/issues/840
+
+--- ENDPOINT ---
+inventory.InventoryService/GetResourceDecorationByIPsStream
+
+--- REQUEST ---
+{
+  "ips": [
+    "10.0.3.2",
+    "10.0.3.1"
+  ],
+  "k8s_cluster_id": "test-equals-ignore"
+}
+
+--- RESPONSE ---
+{
+  "ips_to_decorations": {
+    "10.0.3.1": {
+      "decoration": "web-frontend",
+      "environment": "production"
+    },
+    "10.0.3.2": {
+      "decoration": "api-backend",
+      "environment": "staging"
+    }
+  }
+}

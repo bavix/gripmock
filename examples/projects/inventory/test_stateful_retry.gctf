@@ -1,5 +1,10 @@
 --- META ---
-tags: [sequential]
+name: sequential retry scenario
+summary: Test stateful stubs - first 2 calls return error, third returns success
+tags: [sequential, stateful, retry]
+owner: team/gripmock
+links:
+  - https://github.com/bavix/gripmock/issues/827
 
 // First call - returns error (simulated transient failure)
 

@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Issue #840: Array contains - matches if array CONTAINS the specified element
+- service: inventory.InventoryService
+  method: GetResourceDecorationByIPsStream
+  input:
+    contains:
+      k8s_cluster_id: "test-contains"
+      ips: ["10.0.1.1", "10.0.1.2"]
+  output:
+    data:
+      ips_to_decorations:
+        "10.0.1.1":
+          decoration: "web-frontend"
+          environment: "production"
+        "10.0.1.2":
+          decoration: "web-frontend"
+          environment: "production"

@@ -54,6 +54,28 @@ input:
 - Arrays require exact order (unless `ignoreArrayOrder: true`)
 - Nested objects are compared recursively
 
+**Array Example** — exact match with `repeated` field, order matters:
+
+```yaml
+service: inventory.InventoryService
+method: GetResourceDecorationByIPsStream
+input:
+  equals:
+    k8s_cluster_id: "scale-test-cluster"
+    ips: ["10.64.0.1", "10.64.0.2"]
+output:
+  data:
+    ips_to_decorations:
+      "10.64.0.1":
+        decoration: "web-frontend"
+        environment: "production"
+      "10.64.0.2":
+        decoration: "api-backend"
+        environment: "staging"
+```
+
+Request `{"ips": ["10.64.0.2", "10.64.0.1"], ...}` will **not** match — array order differs.
+
 ### 2. Partial Match (`contains`)
 
 Matches requests that **contain** the specified values. Great for flexible matching scenarios.
@@ -80,6 +102,28 @@ input:
 - Nested objects are matched recursively
 - Missing fields are ignored
 
+**Array Example** — `repeated` field contains specified elements:
+
+```yaml
+service: inventory.InventoryService
+method: GetResourceDecorationByIPsStream
+input:
+  contains:
+    k8s_cluster_id: "test-contains"
+    ips: ["10.0.1.1", "10.0.1.2"]
+output:
+  data:
+    ips_to_decorations:
+      "10.0.1.1":
+        decoration: "web-frontend"
+        environment: "production"
+      "10.0.1.2":
+        decoration: "web-frontend"
+        environment: "production"
+```
+
+Request `{"ips": ["10.0.1.1", "10.0.1.2", "10.0.1.3"], ...}` will also match — the response array **contains** both specified IPs.
+
 ### 3. Regex Match (`matches`)
 
 Uses **regular expressions** for advanced pattern matching. Most powerful but requires regex knowledge.
@@ -105,6 +149,28 @@ input:
 - Case-sensitive by default (use `(?i)` for case-insensitive)
 - Arrays are matched element-wise
 - Supports all standard regex features
+
+**Array Example** — regex matching on `repeated` field elements:
+
+```yaml
+service: inventory.InventoryService
+method: GetResourceDecorationByIPsStream
+input:
+  matches:
+    k8s_cluster_id: "^test-matches$"
+    ips: ["^10\\.0\\.2\\.[0-9]+$", "^10\\.0\\.2\\.[0-9]+$"]
+output:
+  data:
+    ips_to_decorations:
+      "10.0.2.77":
+        decoration: "api-backend"
+        environment: "staging"
+      "10.0.2.88":
+        decoration: "api-backend"
+        environment: "staging"
+```
+
+Request with `{"ips": ["10.0.2.77", "10.0.2.88"], "k8s_cluster_id": "test-matches"}` matches — each IP satisfies the regex pattern element-wise.
 
 **Important:** Matching expressions must be static. Do not use dynamic templates (<code v-pre>`{{ ... }}`</code>) inside `equals`, `contains`, or `matches`. Example of incorrect usage:
 
@@ -151,6 +217,31 @@ input:
 ```
 
 **Matches:** `["grpc", "mock", "test"]`, `["mock", "grpc", "test"]`, `["test", "grpc", "mock"]`
+
+Works with all three matchers:
+
+```yaml
+# equals + ignoreArrayOrder
+input:
+  ignoreArrayOrder: true
+  equals:
+    k8s_cluster_id: "test-equals-ignore"
+    ips: ["10.0.3.1", "10.0.3.2"]
+
+# contains + ignoreArrayOrder
+input:
+  ignoreArrayOrder: true
+  contains:
+    k8s_cluster_id: "test-contains-ignore"
+    ips: ["10.0.4.1", "10.0.4.2"]
+
+# matches + ignoreArrayOrder
+input:
+  ignoreArrayOrder: true
+  matches:
+    k8s_cluster_id: "^test-matches-ignore$"
+    ips: ["^10\\.0\\.5\\.[0-9]+$", "^10\\.0\\.5\\.[0-9]+$"]
+```
 
 ## Real-World Examples
 

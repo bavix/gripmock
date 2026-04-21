@@ -262,12 +262,17 @@
           ]
         },
         "matches": {
-          "description": "Regex match for field values",
-          "type": "object",
-          "additionalProperties": {
-            "description": "Regular expression pattern",
-            "type": "string"
-          }
+          "oneOf": [
+            {
+              "description": "Regex match for field values (leaf values are regular expression patterns)",
+              "type": "object",
+              "additionalProperties": true
+            },
+            {
+              "description": "Empty matches matcher (matches any input)",
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false

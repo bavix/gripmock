@@ -1,0 +1,36 @@
+--- META ---
+name: array exact match
+summary: Test exact array matching with equals - order matters
+tags: [array, matching]
+owner: team/gripmock
+links:
+  - https://github.com/bavix/gripmock/issues/840
+
+// Test: Exact array match - order matters: ips: ["10.64.0.1", "10.64.0.2"]
+// See Issue #840: https://github.com/bavix/gripmock/issues/840
+
+--- ENDPOINT ---
+inventory.InventoryService/GetResourceDecorationByIPsStream
+
+--- REQUEST ---
+{
+  "ips": [
+    "10.64.0.1",
+    "10.64.0.2"
+  ],
+  "k8s_cluster_id": "scale-test-cluster"
+}
+
+--- RESPONSE ---
+{
+  "ips_to_decorations": {
+    "10.64.0.1": {
+      "decoration": "web-frontend",
+      "environment": "production"
+    },
+    "10.64.0.2": {
+      "decoration": "api-backend",
+      "environment": "staging"
+    }
+  }
+}
