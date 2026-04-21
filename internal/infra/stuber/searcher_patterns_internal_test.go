@@ -69,33 +69,51 @@ func (l *instrumentedMethodLookup) LookupMethodAvailable(method string) iter.Seq
 	return l.searcher.filterNotExhaustedSeq(l.searcher.storage.findByMethodAvailable(method, l.session), l.session)
 }
 
-func TestPatternCompositionFallbackPath(t *testing.T) {
-	t.Parallel()
+type inspectTestEnv struct {
+	b       *Budgerigar
+	provider *instrumentedLookupProvider
+}
 
+func newInspectTestEnv() inspectTestEnv {
 	provider := &instrumentedLookupProvider{}
 	s := newSearcherWithOptions(searcherOptions{lookupProvider: provider})
 
+	return inspectTestEnv{
+		b:       &Budgerigar{searcher: s},
+		provider: provider,
+	}
+}
+
+func (e *inspectTestEnv) addCandidate(service, method string) *Stub {
 	candidate := &Stub{
 		ID:      uuid.New(),
-		Service: "other.service",
-		Method:  "Hello",
+		Service: service,
+		Method:  method,
 		Input:   InputData{Equals: map[string]any{"name": "Alex"}},
 		Output:  Output{Data: map[string]any{"ok": true}},
 	}
 
-	s.upsert(candidate)
+	e.b.searcher.upsert(candidate)
 
-	b := &Budgerigar{searcher: s}
-	report := b.InspectQuery(Query{
+	return candidate
+}
+
+func TestPatternCompositionFallbackPath(t *testing.T) {
+	t.Parallel()
+
+	env := newInspectTestEnv()
+	candidate := env.addCandidate("other.service", "Hello")
+
+	report := env.b.InspectQuery(Query{
 		Service: "missing.service",
 		Method:  "Hello",
 		Input:   []map[string]any{{"name": "Alex"}},
 	})
 
-	require.True(t, provider.built)
-	require.Positive(t, provider.serviceCalls)
-	require.Positive(t, provider.methodCalls)
-	require.Equal(t, 0, provider.idCalls)
+	require.True(t, env.provider.built)
+	require.Positive(t, env.provider.serviceCalls)
+	require.Positive(t, env.provider.methodCalls)
+	require.Equal(t, 0, env.provider.idCalls)
 	require.True(t, report.FallbackToMethod)
 	require.NotNil(t, report.MatchedStubID)
 	require.Equal(t, candidate.ID, *report.MatchedStubID)
@@ -104,29 +122,18 @@ func TestPatternCompositionFallbackPath(t *testing.T) {
 func TestPatternCompositionIDPath(t *testing.T) {
 	t.Parallel()
 
-	provider := &instrumentedLookupProvider{}
-	s := newSearcherWithOptions(searcherOptions{lookupProvider: provider})
+	env := newInspectTestEnv()
+	candidate := env.addCandidate("svc", "Hello")
 
-	candidate := &Stub{
-		ID:      uuid.New(),
-		Service: "svc",
-		Method:  "Hello",
-		Input:   InputData{Equals: map[string]any{"name": "Alex"}},
-		Output:  Output{Data: map[string]any{"ok": true}},
-	}
-
-	s.upsert(candidate)
-
-	b := &Budgerigar{searcher: s}
-	report := b.InspectQuery(Query{
+	report := env.b.InspectQuery(Query{
 		ID:      &candidate.ID,
 		Service: "svc",
 		Method:  "Hello",
 		Input:   []map[string]any{{"name": "Alex"}},
 	})
 
-	require.True(t, provider.built)
-	require.Positive(t, provider.idCalls)
+	require.True(t, env.provider.built)
+	require.Positive(t, env.provider.idCalls)
 	require.NotNil(t, report.MatchedStubID)
 	require.Equal(t, candidate.ID, *report.MatchedStubID)
 }

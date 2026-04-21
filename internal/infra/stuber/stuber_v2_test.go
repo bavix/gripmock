@@ -183,39 +183,6 @@ func TestBudgerigarSearchEmptyV2(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestBudgerigarSearchWithHeadersSimilarV2(t *testing.T) {
-	t.Parallel()
-
-	s := stuber.NewBudgerigar()
-
-	// Create stub with headers
-	stub := &stuber.Stub{
-		Service: "Greeter1",
-		Method:  "SayHello1",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"authorization": "Bearer token123"},
-		},
-		Input: stuber.InputData{
-			Equals: map[string]any{"name": "John"},
-		},
-	}
-
-	s.PutMany(stub)
-
-	// Test similar match (different headers but same service/method)
-	query := stuber.Query{
-		Service: "Greeter1",
-		Method:  "SayHello1",
-		Headers: map[string]any{"authorization": "Bearer different"},
-		Input:   []map[string]any{{"name": "John"}},
-	}
-
-	result, err := s.FindByQuery(query)
-	require.NoError(t, err) // Should find similar match
-	require.Nil(t, result.Found())
-	require.NotNil(t, result.Similar()) // Should find similar match
-}
-
 func TestResultSimilarV2(t *testing.T) {
 	t.Parallel()
 

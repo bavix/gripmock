@@ -212,18 +212,18 @@ func runInspectConsistencyCase(t *testing.T, tc inspectConsistencyCase) {
 func TestInspectTraceStagesEdgeCases(t *testing.T) {
 	t.Parallel()
 
-	t.Run("fallbackMethodStagePresent", func(t *testing.T) {
+	t.Run("fallbackMethodStagePresentAndNoServiceExclusion", func(t *testing.T) {
 		t.Parallel()
 
 		s := stuber.NewBudgerigar()
-		stub := &stuber.Stub{
+		candidate := &stuber.Stub{
 			ID:      uuid.New(),
 			Service: "other.service",
 			Method:  "Hello",
 			Input:   stuber.InputData{Equals: map[string]any{"name": "Alex"}},
 			Output:  stuber.Output{Data: map[string]any{"ok": true}},
 		}
-		s.PutMany(stub)
+		s.PutMany(candidate)
 
 		report := s.InspectQuery(stuber.Query{
 			Service: "missing.service",
@@ -245,6 +245,22 @@ func TestInspectTraceStagesEdgeCases(t *testing.T) {
 		}
 
 		require.True(t, hasFallbackStage)
+
+		for _, c := range report.Candidates {
+			if c.ID != candidate.ID {
+				continue
+			}
+
+			for _, reason := range c.ExcludedBy {
+				if reason == "service" {
+					t.Fatal("service should not be exclusion reason in fallback-to-method mode")
+				}
+			}
+
+			return
+		}
+
+		t.Fatal("fallback candidate not found")
 	})
 
 	t.Run("idLookupStagesPresent", func(t *testing.T) {
