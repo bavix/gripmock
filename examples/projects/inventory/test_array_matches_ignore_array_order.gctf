@@ -18,11 +18,16 @@ inventory.InventoryService/GetResourceDecorationByIPsStream
   "k8s_cluster_id": "test-matches-ignore"
 }
 
---- RESPONSE partial ---
+--- RESPONSE ---
 {
   "ips_to_decorations": {
     "10.0.5.11": {
-      "decoration": "matches-ok"
+      "decoration": "matches-ok",
+      "environment": "staging"
+    },
+    "10.0.5.22": {
+      "decoration": "matches-ok",
+      "environment": "staging"
     }
   }
 }

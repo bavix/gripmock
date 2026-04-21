@@ -18,11 +18,16 @@ inventory.InventoryService/GetResourceDecorationByIPsStream
   "k8s_cluster_id": "test-equals-ignore"
 }
 
---- RESPONSE partial ---
+--- RESPONSE ---
 {
   "ips_to_decorations": {
     "10.0.3.1": {
-      "decoration": "web-frontend"
+      "decoration": "web-frontend",
+      "environment": "production"
+    },
+    "10.0.3.2": {
+      "decoration": "api-backend",
+      "environment": "staging"
     }
   }
 }
