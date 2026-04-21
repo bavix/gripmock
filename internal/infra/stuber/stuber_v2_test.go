@@ -13,56 +13,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-// V2 equivalents of V1 tests
-
-func TestFindByNotFoundV2(t *testing.T) {
-	t.Parallel()
-
-	s := stuber.NewBudgerigar()
-
-	s.PutMany(&stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"})
-
-	tests := []struct {
-		service string
-		method  string
-		err     error
-	}{
-		{"hello", "SayHello1", stuber.ErrServiceNotFound},
-		{"Greeter", "SayHello1", stuber.ErrServiceNotFound},
-		{"Greeter1", "world", stuber.ErrMethodNotFound},
-		{"helloworld.Greeter1", "world", stuber.ErrMethodNotFound},
-		{"helloworld.v1.Greeter1", "world", stuber.ErrMethodNotFound},
-		{"Greeter1", "SayHello1", nil},
-		{"helloworld.Greeter1", "SayHello1", nil},
-		{"helloworld.v1.Greeter1", "SayHello1", nil},
-	}
-
-	for _, tt := range tests {
-		_, err := s.FindBy(tt.service, tt.method)
-		require.ErrorIs(t, err, tt.err)
-	}
-}
-
-func TestStubNilV2(t *testing.T) {
-	t.Parallel()
-
-	s := newBudgerigar()
-
-	require.Nil(t, s.FindByID(uuid.New()))
-}
-
-func TestFindByV2(t *testing.T) {
-	t.Parallel()
-
-	runFindByTests(t, newBudgerigar)
-}
-
-func TestFindBySortedV2(t *testing.T) {
-	t.Parallel()
-
-	runFindBySortedTests(t, newBudgerigar)
-}
-
 func TestPutManyFixIDV2(t *testing.T) {
 	t.Parallel()
 

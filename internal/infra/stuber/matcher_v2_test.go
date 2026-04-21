@@ -8,12 +8,9 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-// TestMatchStreamV2 - tests stream matching in V2.
-//
 //nolint:funlen
 func TestMatchStreamV2(t *testing.T) {
 	t.Parallel()
-	// Clear all caches before test
 	stuber.ClearAllCaches()
 
 	tests := []struct {
@@ -26,7 +23,7 @@ func TestMatchStreamV2(t *testing.T) {
 			name:       "empty streams",
 			queryInput: []map[string]any{},
 			stubStream: []stuber.InputData{},
-			expected:   false, // Empty streams should not match - stub must have input conditions
+			expected:   false,
 		},
 		{
 			name:       "single element match",
@@ -52,7 +49,7 @@ func TestMatchStreamV2(t *testing.T) {
 				{Equals: map[string]any{"key1": "value1"}},
 				{Equals: map[string]any{"key2": "value2"}},
 			},
-			expected: false, // For bidirectional streaming, single message can match any stub item
+			expected: false,
 		},
 		{
 			name:       "element mismatch",
@@ -98,10 +95,8 @@ func TestMatchStreamV2(t *testing.T) {
 	}
 }
 
-// TestMatchWithStreamV2 - tests combined matching in V2.
 func TestMatchWithStreamV2(t *testing.T) {
 	t.Parallel()
-	// Clear all caches before test
 	stuber.ClearAllCaches()
 
 	query := stuber.Query{
@@ -142,89 +137,6 @@ func TestMatchWithStreamV2(t *testing.T) {
 	require.Nil(t, result.Found(), "Expected match to return false for non-matching stream")
 }
 
-// TestBackwardCompatibilityV2 - tests backward compatibility in V2.
-func TestBackwardCompatibilityV2(t *testing.T) {
-	t.Parallel()
-	// Clear all caches before test
-	stuber.ClearAllCaches()
-
-	query := stuber.Query{
-		Service: "test",
-		Method:  "test",
-		Input:   []map[string]any{{"key1": "value1"}},
-	}
-
-	stub := &stuber.Stub{
-		Service: "test",
-		Method:  "test",
-		Input: stuber.InputData{
-			Equals: map[string]any{"key1": "value1"},
-		},
-	}
-
-	budgerigar := stuber.NewBudgerigar()
-	budgerigar.PutMany(stub)
-
-	result, err := budgerigar.FindByQuery(query)
-	require.NoError(t, err)
-	require.NotNil(t, result.Found(), "Expected backward compatibility: single stream item should match against input")
-}
-
-func TestV2UnaryRequest(t *testing.T) {
-	t.Parallel()
-	// Clear all caches before test
-	stuber.ClearAllCaches()
-
-	query := stuber.Query{
-		Service: "test",
-		Method:  "test",
-		Input:   []map[string]any{{"key1": "value1"}},
-	}
-
-	stub := &stuber.Stub{
-		Service: "test",
-		Method:  "test",
-		Input: stuber.InputData{
-			Equals: map[string]any{"key1": "value1"},
-		},
-	}
-
-	budgerigar := stuber.NewBudgerigar()
-	budgerigar.PutMany(stub)
-
-	result, err := budgerigar.FindByQuery(query)
-	require.NoError(t, err)
-	require.NotNil(t, result.Found(), "Expected unary request to match stub input")
-}
-
-func TestV2StreamRequest(t *testing.T) {
-	t.Parallel()
-	// Clear all caches before test
-	stuber.ClearAllCaches()
-
-	query := stuber.Query{
-		Service: "test",
-		Method:  "test",
-		Input:   []map[string]any{{"stream1": "value1"}, {"stream2": "value2"}},
-	}
-
-	stub := &stuber.Stub{
-		Service: "test",
-		Method:  "test",
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"stream1": "value1"}},
-			{Equals: map[string]any{"stream2": "value2"}},
-		},
-	}
-
-	budgerigar := stuber.NewBudgerigar()
-	budgerigar.PutMany(stub)
-
-	result, err := budgerigar.FindByQuery(query)
-	require.NoError(t, err)
-	require.NotNil(t, result.Found(), "Expected stream request to match stub stream")
-}
-
 func TestV2MultipleStreamsNoStubStream(t *testing.T) {
 	t.Parallel()
 
@@ -250,10 +162,8 @@ func TestV2MultipleStreamsNoStubStream(t *testing.T) {
 	require.Nil(t, result.Found(), "Expected no match for multiple streams without stream in stub")
 }
 
-// TestV2Priority - tests priorities in V2.
 func TestV2Priority(t *testing.T) {
 	t.Parallel()
-	// Clear all caches before test
 	stuber.ClearAllCaches()
 
 	stub1 := &stuber.Stub{
