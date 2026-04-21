@@ -21,7 +21,6 @@ inventory.InventoryService/GetResourceDecorationByIPsStream
   "code": 14,
   "message": "simulated transient failure"
 }
-
 // Second call - returns error (first stub exhausted)
 
 --- ENDPOINT ---
@@ -37,7 +36,6 @@ inventory.InventoryService/GetResourceDecorationByIPsStream
   "code": 14,
   "message": "simulated transient failure"
 }
-
 // Third call - returns success (fallback stub)
 
 --- ENDPOINT ---

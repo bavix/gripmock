@@ -8,13 +8,17 @@ links:
 
 // Test: Exact array match - order matters: ips: ["10.64.0.1", "10.64.0.2"]
 // See Issue #840: https://github.com/bavix/gripmock/issues/840
+
 --- ENDPOINT ---
 inventory.InventoryService/GetResourceDecorationByIPsStream
 
 --- REQUEST ---
 {
-  "k8s_cluster_id": "scale-test-cluster",
-  "ips": ["10.64.0.1", "10.64.0.2"]
+  "ips": [
+    "10.64.0.1",
+    "10.64.0.2"
+  ],
+  "k8s_cluster_id": "scale-test-cluster"
 }
 
 --- RESPONSE partial ---
