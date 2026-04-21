@@ -5,7 +5,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -81,7 +80,7 @@ func TestMatchStreamV2(t *testing.T) {
 				Inputs:  tt.stubStream,
 			}
 
-			budgerigar := stuber.NewBudgerigar(features.New())
+			budgerigar := stuber.NewBudgerigar()
 			budgerigar.PutMany(stub)
 
 			result, err := budgerigar.FindByQuery(query)
@@ -123,7 +122,7 @@ func TestMatchWithStreamV2(t *testing.T) {
 		},
 	}
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	budgerigar.PutMany(stub)
 
 	result, err := budgerigar.FindByQuery(query)
@@ -163,7 +162,7 @@ func TestBackwardCompatibilityV2(t *testing.T) {
 		},
 	}
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	budgerigar.PutMany(stub)
 
 	result, err := budgerigar.FindByQuery(query)
@@ -190,7 +189,7 @@ func TestV2UnaryRequest(t *testing.T) {
 		},
 	}
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	budgerigar.PutMany(stub)
 
 	result, err := budgerigar.FindByQuery(query)
@@ -218,7 +217,7 @@ func TestV2StreamRequest(t *testing.T) {
 		},
 	}
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	budgerigar.PutMany(stub)
 
 	result, err := budgerigar.FindByQuery(query)
@@ -243,7 +242,7 @@ func TestV2MultipleStreamsNoStubStream(t *testing.T) {
 		},
 	}
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	budgerigar.PutMany(stub)
 
 	result, err := budgerigar.FindByQuery(query)
@@ -281,7 +280,7 @@ func TestV2Priority(t *testing.T) {
 		},
 	}
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	budgerigar.PutMany(stub1, stub2)
 
 	query := stuber.Query{

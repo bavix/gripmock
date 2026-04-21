@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -23,7 +22,7 @@ type AdminPanelTestSuite struct {
 
 // SetupSuite initializes the test suite.
 func (s *AdminPanelTestSuite) SetupSuite() {
-	s.budgerigar = stuber.NewBudgerigar(features.New())
+	s.budgerigar = stuber.NewBudgerigar()
 	server, err := NewRestServer(s.T().Context(), s.budgerigar, nil, nil, nil, nil)
 	s.Require().NoError(err)
 	s.server = server

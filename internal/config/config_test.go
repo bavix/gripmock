@@ -11,7 +11,7 @@ import (
 func TestConfigOldEnvVarNames(t *testing.T) {
 	// Set environment variables
 	t.Setenv("LOG_LEVEL", "debug")
-	t.Setenv("STRICT_METHOD_TITLE", "true")
+
 	t.Setenv("GRPC_NETWORK", "tcp")
 	t.Setenv("GRPC_HOST", "127.0.0.1")
 	t.Setenv("GRPC_PORT", "8080")
@@ -27,7 +27,6 @@ func TestConfigOldEnvVarNames(t *testing.T) {
 
 	expected := config.Config{
 		LogLevel:               "debug",
-		StrictMethodTitle:      true,
 		GRPCNetwork:            "tcp",
 		GRPCHost:               "127.0.0.1",
 		GRPCPort:               "8080",
@@ -50,7 +49,6 @@ func TestConfigOldEnvVarNames(t *testing.T) {
 
 	// Assert values
 	require.Equal(t, expected.LogLevel, cfg.LogLevel)
-	require.Equal(t, expected.StrictMethodTitle, cfg.StrictMethodTitle)
 	require.Equal(t, expected.GRPCNetwork, cfg.GRPCNetwork)
 	require.Equal(t, expected.GRPCHost, cfg.GRPCHost)
 	require.Equal(t, expected.GRPCPort, cfg.GRPCPort)
@@ -71,20 +69,19 @@ func TestConfigDefaultValues(t *testing.T) {
 	t.Parallel()
 
 	expected := config.Config{
-		LogLevel:               "info",
-		StrictMethodTitle:      false,
-		GRPCNetwork:            "tcp",
-		GRPCHost:               "0.0.0.0",
-		GRPCPort:               "4770",
-		GRPCAddr:               "0.0.0.0:4770",
-		HTTPHost:               "0.0.0.0",
-		HTTPPort:               "4771",
-		HTTPAddr:               "0.0.0.0:4771",
-		StubWatcherEnabled:     true,
-		StubWatcherInterval:    1 * 1000000000, // 1s in nanoseconds
-		StubWatcherType:        "fsnotify",
-		HistoryEnabled:         true,
-		HistoryLimit:           config.ByteSize{Bytes: 64 * 1024 * 1024}, // 64M
+		LogLevel:            "info",
+		GRPCNetwork:         "tcp",
+		GRPCHost:            "0.0.0.0",
+		GRPCPort:            "4770",
+		GRPCAddr:            "0.0.0.0:4770",
+		HTTPHost:            "0.0.0.0",
+		HTTPPort:            "4771",
+		HTTPAddr:            "0.0.0.0:4771",
+		StubWatcherEnabled:  true,
+		StubWatcherInterval: 1 * 1000000000, // 1s in nanoseconds
+		StubWatcherType:     "fsnotify",
+		HistoryEnabled:      true,
+		HistoryLimit:        config.ByteSize{Bytes: 64 * 1024 * 1024}, // 64M
 		HistoryMessageMaxBytes: 262144,
 		HistoryRedactKeys:      nil, // env v11 returns nil for empty strings
 		TemplatePluginPaths:    nil,
@@ -95,7 +92,6 @@ func TestConfigDefaultValues(t *testing.T) {
 
 	// Assert values
 	require.Equal(t, expected.LogLevel, cfg.LogLevel)
-	require.Equal(t, expected.StrictMethodTitle, cfg.StrictMethodTitle)
 	require.Equal(t, expected.GRPCNetwork, cfg.GRPCNetwork)
 	require.Equal(t, expected.GRPCHost, cfg.GRPCHost)
 	require.Equal(t, expected.GRPCPort, cfg.GRPCPort)

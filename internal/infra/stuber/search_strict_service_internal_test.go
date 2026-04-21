@@ -5,13 +5,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/features"
 )
 
 func TestQueryStrictServicePreventsMethodFallback(t *testing.T) {
 	t.Parallel()
 
-	b := NewBudgerigar(features.New())
+	b := NewBudgerigar()
 	b.PutMany(&Stub{Service: "svc.v1.Echo", Method: "Get", Input: InputData{Equals: map[string]any{"id": "1"}}})
 
 	result, err := b.FindByQuery(Query{

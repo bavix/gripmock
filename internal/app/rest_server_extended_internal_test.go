@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
@@ -25,7 +24,7 @@ type RestServerExtendedTestSuite struct {
 
 // SetupSuite initializes the test suite.
 func (s *RestServerExtendedTestSuite) SetupSuite() {
-	s.budgerigar = stuber.NewBudgerigar(features.New())
+	s.budgerigar = stuber.NewBudgerigar()
 	extender := &mockExtender{}
 	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil, nil)
 	s.Require().NoError(err)

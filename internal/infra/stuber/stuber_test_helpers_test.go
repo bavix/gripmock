@@ -6,12 +6,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 func newBudgerigar() *stuber.Budgerigar {
-	return stuber.NewBudgerigar(features.New())
+	return stuber.NewBudgerigar()
 }
 
 func runFindByTests(t *testing.T, create func() *stuber.Budgerigar) {

@@ -13,7 +13,7 @@ import (
 
 func (b *Builder) Budgerigar() *stuber.Budgerigar {
 	b.budgerigarOnce.Do(func() {
-		b.budgerigar = stuber.NewBudgerigar(b.toggles())
+		b.budgerigar = stuber.NewBudgerigar()
 	})
 
 	return b.budgerigar

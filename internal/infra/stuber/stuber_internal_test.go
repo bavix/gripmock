@@ -10,14 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 func TestFindByNotFound(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	s.PutMany(&stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"})
 
@@ -45,7 +44,7 @@ func TestFindByNotFound(t *testing.T) {
 func TestStubNil(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	require.Nil(t, s.FindByID(uuid.New()))
 }
@@ -53,7 +52,7 @@ func TestStubNil(t *testing.T) {
 func TestInternalHealthStubsAreHiddenFromPublicCollections(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	require.Empty(t, s.All())
 	require.Empty(t, s.Used())
@@ -78,7 +77,7 @@ func TestInternalHealthStubsAreHiddenFromPublicCollections(t *testing.T) {
 func TestFindByIDPrefersExternalWhenInternalIDCollides(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	internalID := uuid.MustParse(stuber.InternalStubIDGripmockHealthCheck)
 	// Internal stubs must be hidden from direct user lookup.
@@ -103,7 +102,7 @@ func TestFindByIDPrefersExternalWhenInternalIDCollides(t *testing.T) {
 func TestInternalHealthWatchStatusTransition(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	query := stuber.Query{
 		Service: "grpc.health.v1.Health",
@@ -139,7 +138,7 @@ func TestInternalHealthWatchStatusTransition(t *testing.T) {
 func TestInternalHealthCheckStatusTransition(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	query := stuber.Query{
 		Service: "grpc.health.v1.Health",
@@ -177,7 +176,7 @@ func TestFindBySorted(t *testing.T) {
 func TestPutManyFixID(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	require.Empty(t, s.All())
 
@@ -196,7 +195,7 @@ func TestPutManyFixID(t *testing.T) {
 func TestUpdateMany(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	require.Empty(t, s.All())
 
@@ -214,7 +213,7 @@ func TestUpdateMany(t *testing.T) {
 func TestRelationship(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	s.PutMany(
 		&stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"},
@@ -229,7 +228,7 @@ func TestRelationship(t *testing.T) {
 func TestBudgerigarUnused(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
+	s := stuber.NewBudgerigar()
 
 	require.Empty(t, s.Unused())
 
@@ -283,7 +282,7 @@ func TestBudgerigarUnused(t *testing.T) {
 func TestBudgerigarSearchWithHeaders(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
+	s := stuber.NewBudgerigar()
 
 	require.Empty(t, s.Unused())
 
@@ -342,7 +341,7 @@ func TestBudgerigarSearchWithHeaders(t *testing.T) {
 func TestBudgerigarSearchWithPackageAndWithoutPackage(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
+	s := stuber.NewBudgerigar()
 
 	require.Empty(t, s.Unused())
 
@@ -438,7 +437,7 @@ func TestBudgerigarSearchWithPackageAndWithoutPackage(t *testing.T) {
 func TestBudgerigarSearchEmpty(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
+	s := stuber.NewBudgerigar()
 
 	require.Empty(t, s.Unused())
 
@@ -478,7 +477,7 @@ func TestBudgerigarSearchEmpty(t *testing.T) {
 func TestBudgerigarSearchWithHeadersSimilar(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
+	s := stuber.NewBudgerigar()
 
 	require.Empty(t, s.Unused())
 
@@ -537,7 +536,7 @@ func TestBudgerigarSearchWithHeadersSimilar(t *testing.T) {
 func TestResultMatchesRegexInt(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
+	s := stuber.NewBudgerigar()
 
 	require.Empty(t, s.Unused())
 
@@ -579,7 +578,7 @@ func TestResultMatchesRegexInt(t *testing.T) {
 func TestResultSimilar(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
+	s := stuber.NewBudgerigar()
 
 	s.PutMany(
 		&stuber.Stub{
@@ -609,7 +608,7 @@ func TestResultSimilar(t *testing.T) {
 func TestStuberMatchesEqualsFound(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
+	s := stuber.NewBudgerigar()
 	// "ignoreArrayOrder": true,
 	// "equals": { "id": "123", "tags": ["grpc", "mock"] },
 	// "matches": { "name": "^user_\\d+$" },
@@ -652,7 +651,7 @@ func TestStuberMatchesEqualsFound(t *testing.T) {
 func TestStuberEqualsIgnoreArrayOrder(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
+	s := stuber.NewBudgerigar()
 
 	s.PutMany(
 		&stuber.Stub{
@@ -699,7 +698,7 @@ func TestDelete(t *testing.T) {
 
 	id1, id2, id3 := uuid.New(), uuid.New(), uuid.New()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	s.PutMany(
 		&stuber.Stub{ID: id1, Service: "Greeter1", Method: "SayHello1"},
@@ -749,7 +748,7 @@ func TestDelete(t *testing.T) {
 func TestBudgerigarClear(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
+	s := stuber.NewBudgerigar()
 
 	s.PutMany(
 		&stuber.Stub{
@@ -778,7 +777,7 @@ func TestBudgerigarClear(t *testing.T) {
 func TestBudgerigarFindByQueryFoundWithPriority(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New(stuber.MethodTitle))
+	s := stuber.NewBudgerigar()
 
 	s.PutMany(
 		&stuber.Stub{
@@ -831,7 +830,7 @@ func TestBudgerigarFindByQueryFoundWithPriority(t *testing.T) {
 func TestBudgerigarUsed(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Initially no used stubs
 	require.Empty(t, s.Used())
@@ -860,7 +859,7 @@ func TestBudgerigarUsed(t *testing.T) {
 func TestBudgerigarFindByQueryWithID(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	stubID := uuid.New()
 	stub := &stuber.Stub{
@@ -896,7 +895,7 @@ func TestBudgerigarFindByQueryWithID(t *testing.T) {
 func TestBudgerigarFindByQueryInternalRequest(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	stub := &stuber.Stub{
 		ID:      uuid.New(),
@@ -922,7 +921,7 @@ func TestBudgerigarFindByQueryInternalRequest(t *testing.T) {
 func TestBudgerigarWithData(t *testing.T) {
 	t.Parallel()
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	stub := &stuber.Stub{
 		Service: "test-service",
@@ -984,7 +983,7 @@ func TestBudgerigarWithData(t *testing.T) {
 func TestBudgerigarBackwardCompatibility(t *testing.T) {
 	t.Parallel()
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	stub := &stuber.Stub{
 		Service: "test-service",

@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/bavix/features"
 	mcpusecase "github.com/bavix/gripmock/v3/internal/app/usecase/mcp"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
@@ -109,7 +108,7 @@ func commonAddStubCases() []addStubCase {
 
 // SetupSuite initializes the test suite.
 func (s *RestServerTestSuite) SetupSuite() {
-	s.budgerigar = stuber.NewBudgerigar(features.New())
+	s.budgerigar = stuber.NewBudgerigar()
 	extender := &mockExtender{}
 	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil, nil)
 	s.Require().NoError(err)
@@ -124,7 +123,7 @@ func (s *RestServerTestSuite) SetupTest() {
 // TestNewRestServer tests REST server creation.
 func (s *RestServerTestSuite) TestNewRestServer() {
 	ctx := s.T().Context()
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	extender := &mockExtender{}
 
 	server, err := NewRestServer(ctx, budgerigar, extender, nil, nil, nil)
@@ -1602,7 +1601,7 @@ func (s *RestServerTestSuite) newRestServerWithHistory(records ...history.CallRe
 }
 
 func (s *RestServerTestSuite) newRestServerWithStore(store history.Reader) *RestServer {
-	server, err := NewRestServer(s.T().Context(), stuber.NewBudgerigar(features.New()), &mockExtender{}, store, nil, nil)
+	server, err := NewRestServer(s.T().Context(), stuber.NewBudgerigar(), &mockExtender{}, store, nil, nil)
 	s.Require().NoError(err)
 
 	return server

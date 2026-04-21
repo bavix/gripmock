@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -28,7 +27,7 @@ func TestFieldValueEqualsJsonNumber(t *testing.T) {
 		},
 	}
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	budgerigar.PutMany(stub)
 
 	// Query with same json.Number value should match
@@ -110,7 +109,7 @@ func TestMatchData(t *testing.T) {
 				Input:   tt.stubInput,
 			}
 
-			budgerigar := stuber.NewBudgerigar(features.New())
+			budgerigar := stuber.NewBudgerigar()
 			budgerigar.PutMany(stub)
 
 			result, err := budgerigar.FindByQuery(query)
@@ -145,7 +144,7 @@ func TestMatchWithData(t *testing.T) {
 		},
 	}
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	budgerigar.PutMany(stub)
 
 	result, err := budgerigar.FindByQuery(query)
@@ -180,7 +179,7 @@ func TestBackwardCompatibility(t *testing.T) {
 		},
 	}
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	budgerigar.PutMany(stub)
 
 	result, err := budgerigar.FindByQuery(query)

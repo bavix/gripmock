@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -140,7 +139,7 @@ func TestInspectConsistencyWithFindByQuery(t *testing.T) {
 func runInspectConsistencyCase(t *testing.T, tc inspectConsistencyCase) {
 	t.Helper()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 	s.PutMany(tc.stubs...)
 
 	if tc.beforeInspect != nil {
@@ -216,7 +215,7 @@ func TestInspectTraceStagesEdgeCases(t *testing.T) {
 	t.Run("fallbackMethodStagePresent", func(t *testing.T) {
 		t.Parallel()
 
-		s := stuber.NewBudgerigar(features.New())
+		s := stuber.NewBudgerigar()
 		stub := &stuber.Stub{
 			ID:      uuid.New(),
 			Service: "other.service",
@@ -251,7 +250,7 @@ func TestInspectTraceStagesEdgeCases(t *testing.T) {
 	t.Run("idLookupStagesPresent", func(t *testing.T) {
 		t.Parallel()
 
-		s := stuber.NewBudgerigar(features.New())
+		s := stuber.NewBudgerigar()
 		stub := &stuber.Stub{
 			ID:      uuid.New(),
 			Service: "s.demo",
@@ -292,7 +291,7 @@ func TestInspectTraceStagesEdgeCases(t *testing.T) {
 	t.Run("idLookupDoesNotUseInputOrHeadersAsExclusion", func(t *testing.T) {
 		t.Parallel()
 
-		s := stuber.NewBudgerigar(features.New())
+		s := stuber.NewBudgerigar()
 		stub := &stuber.Stub{
 			ID:      uuid.New(),
 			Service: "s.demo",
@@ -350,7 +349,7 @@ func TestInspectTraceStagesEdgeCases(t *testing.T) {
 	t.Run("fallbackMethodDoesNotExcludeByService", func(t *testing.T) {
 		t.Parallel()
 
-		s := stuber.NewBudgerigar(features.New())
+		s := stuber.NewBudgerigar()
 		candidate := &stuber.Stub{
 			ID:      uuid.New(),
 			Service: "other.service",
@@ -389,7 +388,7 @@ func TestInspectTraceStagesEdgeCases(t *testing.T) {
 func TestInspectDoesNotConsumeTimes(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 	oneShot := &stuber.Stub{
 		ID:      uuid.New(),
 		Service: "s.demo",
@@ -541,7 +540,7 @@ func TestInspectCandidateEventFlagConsistency(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			s := stuber.NewBudgerigar(features.New())
+			s := stuber.NewBudgerigar()
 			s.PutMany(tc.stub)
 
 			report := s.InspectQuery(tc.query)

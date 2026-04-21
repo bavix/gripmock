@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -13,7 +12,7 @@ import (
 func BenchmarkV1vsV2_Found(b *testing.B) {
 	// V1 Test - Found case
 	b.Run("V1_Found", func(b *testing.B) {
-		budgerigar := stuber.NewBudgerigar(features.New())
+		budgerigar := stuber.NewBudgerigar()
 
 		// Add stub that will be found
 		stub := &stuber.Stub{
@@ -42,7 +41,7 @@ func BenchmarkV1vsV2_Found(b *testing.B) {
 
 	// V2 Test - Found case
 	b.Run("V2_Found", func(b *testing.B) {
-		budgerigar := stuber.NewBudgerigar(features.New())
+		budgerigar := stuber.NewBudgerigar()
 
 		// Add stub that will be found
 		stub := &stuber.Stub{
@@ -74,7 +73,7 @@ func BenchmarkV1vsV2_Found(b *testing.B) {
 func BenchmarkV1vsV2_NotFound(b *testing.B) {
 	// V1 Test - Not Found case
 	b.Run("V1_NotFound", func(b *testing.B) {
-		budgerigar := stuber.NewBudgerigar(features.New())
+		budgerigar := stuber.NewBudgerigar()
 
 		// Add some stubs but search for different one
 		for i := range 100 {
@@ -105,7 +104,7 @@ func BenchmarkV1vsV2_NotFound(b *testing.B) {
 
 	// V2 Test - Not Found case
 	b.Run("V2_NotFound", func(b *testing.B) {
-		budgerigar := stuber.NewBudgerigar(features.New())
+		budgerigar := stuber.NewBudgerigar()
 
 		// Add some stubs but search for different one
 		for i := range 100 {
@@ -139,7 +138,7 @@ func BenchmarkV1vsV2_NotFound(b *testing.B) {
 func BenchmarkV1vsV2_MultipleStubs(b *testing.B) {
 	// V1 Test - Multiple stubs
 	b.Run("V1_Multiple", func(b *testing.B) {
-		budgerigar := stuber.NewBudgerigar(features.New())
+		budgerigar := stuber.NewBudgerigar()
 
 		// Add multiple stubs with same service/method but different priorities
 		for i := range 10 {
@@ -171,7 +170,7 @@ func BenchmarkV1vsV2_MultipleStubs(b *testing.B) {
 
 	// V2 Test - Multiple stubs
 	b.Run("V2_Multiple", func(b *testing.B) {
-		budgerigar := stuber.NewBudgerigar(features.New())
+		budgerigar := stuber.NewBudgerigar()
 
 		// Add multiple stubs with same service/method but different priorities
 		for i := range 10 {
@@ -206,7 +205,7 @@ func BenchmarkV1vsV2_MultipleStubs(b *testing.B) {
 func BenchmarkV1vsV2_Stream(b *testing.B) {
 	// V1 Test - Stream
 	b.Run("V1_Stream", func(b *testing.B) {
-		budgerigar := stuber.NewBudgerigar(features.New())
+		budgerigar := stuber.NewBudgerigar()
 
 		stub := &stuber.Stub{
 			ID:      uuid.New(),
@@ -235,7 +234,7 @@ func BenchmarkV1vsV2_Stream(b *testing.B) {
 
 	// V2 Test - Stream
 	b.Run("V2_Stream", func(b *testing.B) {
-		budgerigar := stuber.NewBudgerigar(features.New())
+		budgerigar := stuber.NewBudgerigar()
 
 		stub := &stuber.Stub{
 			ID:      uuid.New(),

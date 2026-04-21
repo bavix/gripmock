@@ -6,8 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-
-	"github.com/bavix/features"
 )
 
 type instrumentedLookupProvider struct {
@@ -87,7 +85,7 @@ func TestPatternCompositionFallbackPath(t *testing.T) {
 
 	s.upsert(candidate)
 
-	b := &Budgerigar{searcher: s, toggles: features.New()}
+	b := &Budgerigar{searcher: s}
 	report := b.InspectQuery(Query{
 		Service: "missing.service",
 		Method:  "Hello",
@@ -119,7 +117,7 @@ func TestPatternCompositionIDPath(t *testing.T) {
 
 	s.upsert(candidate)
 
-	b := &Budgerigar{searcher: s, toggles: features.New()}
+	b := &Budgerigar{searcher: s}
 	report := b.InspectQuery(Query{
 		ID:      &candidate.ID,
 		Service: "svc",

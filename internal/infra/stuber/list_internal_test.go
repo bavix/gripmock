@@ -5,13 +5,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/features"
 )
 
 func TestBudgerigarListFilterSortPaginate(t *testing.T) {
 	t.Parallel()
 
-	b := NewBudgerigar(features.New())
+	b := NewBudgerigar()
 	b.PutMany(
 		&Stub{Service: "svc.A", Method: "Ping", Priority: 10, Source: "proxy", Input: InputData{}, Output: Output{}},
 		&Stub{Service: "svc.A", Method: "Pong", Priority: 5, Source: "rest", Input: InputData{}, Output: Output{}},
@@ -36,7 +35,7 @@ func TestBudgerigarListFilterSortPaginate(t *testing.T) {
 func TestBudgerigarListFilterByEmptySession(t *testing.T) {
 	t.Parallel()
 
-	b := NewBudgerigar(features.New())
+	b := NewBudgerigar()
 	b.PutMany(
 		&Stub{Service: "svc.A", Method: "Ping", Session: "", Input: InputData{}, Output: Output{}},
 		&Stub{Service: "svc.A", Method: "Ping", Session: "s1", Input: InputData{}, Output: Output{}},
@@ -52,7 +51,7 @@ func TestBudgerigarListFilterByEmptySession(t *testing.T) {
 func TestBudgerigarListFilters(t *testing.T) {
 	t.Parallel()
 
-	b := NewBudgerigar(features.New())
+	b := NewBudgerigar()
 	b.PutMany(
 		&Stub{Service: "svc.A", Method: "Ping", Source: "proxy", Session: "", Priority: 30, Input: InputData{}, Output: Output{}},
 		&Stub{Service: "svc.A", Method: "Ping", Source: "rest", Session: "s1", Priority: 20, Input: InputData{}, Output: Output{}},
@@ -181,7 +180,7 @@ func TestBudgerigarListPagination(t *testing.T) {
 }
 
 func newListSortPaginateFixture() *Budgerigar {
-	b := NewBudgerigar(features.New())
+	b := NewBudgerigar()
 	b.PutMany(
 		&Stub{Service: "svc.B", Method: "B", Priority: 3, Input: InputData{}, Output: Output{}},
 		&Stub{Service: "svc.A", Method: "C", Priority: 1, Input: InputData{}, Output: Output{}},

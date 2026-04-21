@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/suite"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -22,7 +21,7 @@ type RestValidationTestSuite struct {
 
 // SetupSuite initializes the test suite.
 func (s *RestValidationTestSuite) SetupSuite() {
-	s.budgerigar = stuber.NewBudgerigar(features.New())
+	s.budgerigar = stuber.NewBudgerigar()
 	extender := &mockExtender{}
 	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil, nil)
 	s.Require().NoError(err)

@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -19,7 +18,7 @@ import (
 func TestFindByNotFoundV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	s.PutMany(&stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"})
 
@@ -67,7 +66,7 @@ func TestFindBySortedV2(t *testing.T) {
 func TestPutManyFixIDV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Verify that PutMany assigns IDs to stubs that are created without them
 	stub1 := &stuber.Stub{Service: "Greeter1", Method: "SayHello1"}
@@ -89,7 +88,7 @@ func TestPutManyFixIDV2(t *testing.T) {
 func TestUpdateManyV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	stub1 := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
 	stub2 := &stuber.Stub{ID: uuid.New(), Service: "Greeter2", Method: "SayHello2"}
@@ -121,7 +120,7 @@ func TestUpdateManyV2(t *testing.T) {
 func TestRelationshipV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create two independent stubs to verify that multiple stubs can coexist and be retrieved separately
 	stub1 := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
@@ -138,7 +137,7 @@ func TestRelationshipV2(t *testing.T) {
 func TestBudgerigarUnusedV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stubs
 	stub1 := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
@@ -178,7 +177,7 @@ func TestBudgerigarSearchWithHeadersV2(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stub with headers
 	stub := &stuber.Stub{
@@ -223,7 +222,7 @@ func TestBudgerigarSearchWithHeadersV2(t *testing.T) {
 func TestBudgerigarSearchEmptyV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test search with empty service/method
 	_, err := s.FindBy("", "")
@@ -237,7 +236,7 @@ func TestBudgerigarSearchEmptyV2(t *testing.T) {
 func TestBudgerigarSearchWithHeadersSimilarV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stub with headers
 	stub := &stuber.Stub{
@@ -270,7 +269,7 @@ func TestBudgerigarSearchWithHeadersSimilarV2(t *testing.T) {
 func TestResultSimilarV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stub
 	stub := &stuber.Stub{
@@ -301,7 +300,7 @@ func TestStuberMatchesEqualsFoundV2(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stub with equals
 	stub := &stuber.Stub{
@@ -341,7 +340,7 @@ func TestStuberMatchesEqualsFoundV2(t *testing.T) {
 func TestDeleteV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stub
 	stub := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
@@ -362,7 +361,7 @@ func TestDeleteV2(t *testing.T) {
 func TestBudgerigarClearV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stubs
 	stub1 := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
@@ -385,7 +384,7 @@ func TestBudgerigarClearV2(t *testing.T) {
 func TestBudgerigarFindByQueryFoundWithPriorityV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stubs with different priorities
 	stub1 := &stuber.Stub{
@@ -436,7 +435,7 @@ func TestBudgerigarFindByQueryFoundWithPriorityV2(t *testing.T) {
 func TestDivideByZeroClientStreaming(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	code2 := codes.Unknown // code 2 in gRPC
 
@@ -498,7 +497,7 @@ func TestBudgerigarUsedV2(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stubs
 	stub1 := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
@@ -534,7 +533,7 @@ func TestBudgerigarUsedV2(t *testing.T) {
 func TestBudgerigarFindByQueryWithIDV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stub
 	stub := &stuber.Stub{
@@ -631,7 +630,7 @@ func TestV2QueryFunctions(t *testing.T) {
 func TestV2SearcherFunctions(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test find function (V1)
 	stub := &stuber.Stub{
@@ -669,7 +668,7 @@ func TestV2SearcherFunctions(t *testing.T) {
 func TestV2StorageFunctions(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test storage functions through searcher
 	stub1 := &stuber.Stub{ID: uuid.New(), Service: "test1", Method: "test1"}
@@ -701,7 +700,7 @@ func TestV2StorageFunctions(t *testing.T) {
 func TestV2MatcherFunctions(t *testing.T) {
 	t.Parallel()
 	// Test V2 matcher functions through the public API
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	stub := &stuber.Stub{
 		ID:      uuid.New(),
@@ -737,7 +736,7 @@ func TestV2MatcherFunctions(t *testing.T) {
 func TestBidiStreaming(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create bidirectional stubs for bidirectional streaming
 	// Each stub has Stream data for input matching
@@ -828,7 +827,7 @@ func TestBidiStreaming(t *testing.T) {
 func TestBidiStreamingFallback(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	s.PutMany(&stuber.Stub{
 		ID:      uuid.New(),
@@ -879,7 +878,7 @@ func TestBidiStreamingFallback(t *testing.T) {
 func TestBidiStreamingWithID(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	unaryStub := &stuber.Stub{
 		ID:      uuid.New(),
@@ -919,7 +918,7 @@ func TestBidiStreamingWithID(t *testing.T) {
 func TestBidiStreamingEmptyService(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	query := stuber.QueryBidi{
 		Service: "NonExistentService",
@@ -935,7 +934,7 @@ func TestBidiStreamingEmptyService(t *testing.T) {
 func TestBidiStreamingMethodNotFound(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	s.PutMany(&stuber.Stub{
 		ID:      uuid.New(),
@@ -960,7 +959,7 @@ func TestBidiStreamingMethodNotFound(t *testing.T) {
 func TestBidiStreamingWithIDMethodNotFound(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	stub := &stuber.Stub{
 		ID:      uuid.New(),
@@ -989,7 +988,7 @@ func TestBidiStreamingWithIDMethodNotFound(t *testing.T) {
 func TestBidiStreamingWithServerStream(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create a stub that can handle bidirectional streaming (unary input + server stream output)
 	bidiStub := &stuber.Stub{
@@ -1042,7 +1041,7 @@ func TestBidiStreamingWithServerStream(t *testing.T) {
 func TestBidiStreamingStatefulLogic(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create multiple stubs with different patterns
 	// All start with "hello" but diverge after that
@@ -1134,7 +1133,7 @@ func TestBidiStreamingStatefulLogic(t *testing.T) {
 func TestBidiStreamingStatefulLogicDifferentPattern(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create multiple stubs with different patterns
 	stub1 := &stuber.Stub{
@@ -1197,7 +1196,7 @@ func TestBidiStreamingStatefulLogicDifferentPattern(t *testing.T) {
 func TestBidiStreamingStatefulLogicNoMatch(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create a stub with a specific pattern
 	stub := &stuber.Stub{
@@ -1243,7 +1242,7 @@ func TestBidiStreamingStatefulLogicNoMatch(t *testing.T) {
 func TestBidiStreamingEdgeCases(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Add a stub for testing
 	stub := &stuber.Stub{
@@ -1414,7 +1413,7 @@ func runFieldVariationCase(t *testing.T, equals map[string]any, queries []map[st
 func TestComplexFieldVariations(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test stub with complex field names
 	stub := &stuber.Stub{
@@ -1461,7 +1460,7 @@ func TestComplexFieldVariations(t *testing.T) {
 func TestEmptyFieldVariations(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	stub := &stuber.Stub{
 		ID:      uuid.New(),
@@ -1499,7 +1498,7 @@ func TestEmptyFieldVariations(t *testing.T) {
 func TestStableSortingOptimized(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create multiple stubs with same priority but different IDs
 	stub1 := &stuber.Stub{
@@ -1574,7 +1573,7 @@ func TestPriorityHeadersOverEquals(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stubs
 	stub1, stub2 := createTestStubs()
@@ -1630,7 +1629,7 @@ func TestPriorityHeadersOverEquals(t *testing.T) {
 func TestBudgerigarFindByQuerySessionIsolation(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Global stub (Session empty) - visible to all
 	globalStub := &stuber.Stub{
@@ -1707,7 +1706,7 @@ func TestBudgerigarFindByQuerySessionIsolation(t *testing.T) {
 func TestBudgerigarTImesConcurrentNoRace(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 	s.PutMany(&stuber.Stub{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
@@ -1807,7 +1806,7 @@ func TestEmptyQueryInput(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test case 1: Stub with Inputs (streaming) that can handle empty query
 	stub1 := &stuber.Stub{
@@ -1869,7 +1868,7 @@ func TestEmptyQueryInputWithStreaming(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Stub with Inputs (streaming) that can handle empty query
 	stub1 := &stuber.Stub{
@@ -1919,7 +1918,7 @@ func TestEmptyQueryInputNoMatch(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Stub with Inputs (streaming) that cannot handle empty query
 	stub1 := &stuber.Stub{
@@ -1967,7 +1966,7 @@ func TestEmptyQueryInputWithHeaders(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Stub with Inputs (streaming) that can handle empty query and has headers
 	stub1 := &stuber.Stub{
@@ -2030,7 +2029,7 @@ func TestEmptyQueryInputMixedConditions(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Stub with Inputs (streaming) that can handle empty query
 	stub1 := &stuber.Stub{
@@ -2097,7 +2096,7 @@ func TestMethodTypes(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test case 1: Unary method (Input only)
 	unaryStub := &stuber.Stub{
@@ -2235,7 +2234,7 @@ func TestMethodTypesPriority(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test case: Same service/method with different types
 	// 1. Unary stub (legacy)
@@ -2287,7 +2286,7 @@ func TestMethodTypesEmptyInput(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test case 1: Client streaming method that can handle empty input (should be prioritized)
 	clientStreamEmptyStub := &stuber.Stub{

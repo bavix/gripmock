@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
@@ -29,7 +28,7 @@ func TestMockableHealthServerCheckUsesStubForGripmockService(t *testing.T) {
 	realServer := health.NewServer()
 	realServer.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_SERVING)
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	budgerigar.PutMany(&stuber.Stub{
 		Service: HealthServiceFullName,
 		Method:  "Check",
@@ -57,7 +56,7 @@ func TestMockableHealthServerCheckReturnsMockedStatus(t *testing.T) {
 	realServer := health.NewServer()
 	realServer.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_SERVING)
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	budgerigar.PutMany(&stuber.Stub{
 		Service: HealthServiceFullName,
 		Method:  "Check",
@@ -81,7 +80,7 @@ func TestMockableHealthServerCheckFallbackToRealHealthServer(t *testing.T) {
 	// Arrange
 	realServer := health.NewServer()
 	realServer.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_SERVING)
-	handler := newMockableHealthServer(realServer, stuber.NewBudgerigar(features.New()), nil, nil)
+	handler := newMockableHealthServer(realServer, stuber.NewBudgerigar(), nil, nil)
 
 	// Act
 	resp, err := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "inventory.v1.InventoryService"})
@@ -99,7 +98,7 @@ func TestMockableHealthServerCheckRespectsSessionMetadata(t *testing.T) {
 	realServer := health.NewServer()
 	realServer.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_SERVING)
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	budgerigar.PutMany(&stuber.Stub{
 		Service: HealthServiceFullName,
 		Method:  "Check",
@@ -125,7 +124,7 @@ func TestMockableHealthServerCheckReturnsOutputError(t *testing.T) {
 
 	// Arrange
 	realServer := health.NewServer()
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	c := codes.Unavailable
 
 	budgerigar.PutMany(&stuber.Stub{
@@ -152,7 +151,7 @@ func TestMockableHealthServerCheckReturnsOutputErrorWithDetails(t *testing.T) {
 
 	// Arrange
 	realServer := health.NewServer()
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	c := codes.InvalidArgument
 
 	budgerigar.PutMany(&stuber.Stub{
@@ -196,7 +195,7 @@ func TestMockableHealthServerCheckReturnsErrorOnInvalidOutputDetails(t *testing.
 
 	// Arrange
 	realServer := health.NewServer()
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	c := codes.InvalidArgument
 
 	budgerigar.PutMany(&stuber.Stub{
@@ -228,7 +227,7 @@ func TestMockableHealthServerWatchStreamsMockedResponses(t *testing.T) {
 
 	// Arrange
 	realServer := health.NewServer()
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	budgerigar.PutMany(&stuber.Stub{
 		Service: HealthServiceFullName,
@@ -276,7 +275,7 @@ func TestMockableHealthServerWatchUsesStubForGripmockService(t *testing.T) {
 	realServer := health.NewServer()
 	realServer.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_SERVING)
 
-	handler := newMockableHealthServer(realServer, stuber.NewBudgerigar(features.New()), nil, nil)
+	handler := newMockableHealthServer(realServer, stuber.NewBudgerigar(), nil, nil)
 	stream := newHealthWatchTestStream(t.Context(), 1)
 
 	errCh := make(chan error, 1)
@@ -309,7 +308,7 @@ func TestMockableHealthServerWatchSupportsDelay(t *testing.T) {
 
 	// Arrange
 	realServer := health.NewServer()
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	budgerigar.PutMany(&stuber.Stub{
 		Service: HealthServiceFullName,
@@ -341,7 +340,7 @@ func TestMockableHealthServerWatchAppliesDelayOnlyBeforeFirstMessage(t *testing.
 
 	// Arrange
 	realServer := health.NewServer()
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	budgerigar.PutMany(&stuber.Stub{
 		Service: HealthServiceFullName,

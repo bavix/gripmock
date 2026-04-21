@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
@@ -22,7 +21,7 @@ func TestRestAddStubSessionFromHeaderOnly(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	b := stuber.NewBudgerigar(features.New())
+	b := stuber.NewBudgerigar()
 	srv, err := NewRestServer(t.Context(), b, nopExtender{}, nil, nil, nil)
 	require.NoError(t, err)
 
@@ -50,7 +49,7 @@ func TestRestAddStubWithoutHeaderUsesGlobal(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	b := stuber.NewBudgerigar(features.New())
+	b := stuber.NewBudgerigar()
 	srv, err := NewRestServer(t.Context(), b, nopExtender{}, nil, nil, nil)
 	require.NoError(t, err)
 
