@@ -2,34 +2,20 @@ package stuber
 
 import (
 	"github.com/google/uuid"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
-
-	"github.com/bavix/features"
 )
 
-// MethodTitle is a feature flag for using title casing in the method field
-// of a Query struct.
-const MethodTitle features.Flag = iota
-
-// Aliveness provides minimal lifecycle contract for internal health state.
 type Aliveness interface {
 	SetAlive()
 }
 
-// Budgerigar is the main struct for the stuber package. It contains a
-// searcher and toggles.
 type Budgerigar struct {
 	searcher *searcher
-	toggles  features.Toggles
 }
 
-// NewBudgerigar creates a new Budgerigar with the given features.Toggles.
-func NewBudgerigar(toggles features.Toggles) *Budgerigar {
+func NewBudgerigar() *Budgerigar {
 	return &Budgerigar{
 		searcher: newSearcher(),
-		toggles:  toggles,
 	}
 }
 
@@ -105,21 +91,11 @@ func (b *Budgerigar) FindByID(id uuid.UUID) *Stub {
 
 // FindByQuery retrieves the Stub value associated with the given Query.
 func (b *Budgerigar) FindByQuery(query Query) (*Result, error) {
-	if b.toggles.Has(MethodTitle) {
-		query.Method = cases.
-			Title(language.English, cases.NoLower).
-			String(query.Method)
-	}
-
 	return b.searcher.find(query)
 }
 
 // FindByQueryBidi retrieves a BidiResult for bidirectional streaming.
 func (b *Budgerigar) FindByQueryBidi(query QueryBidi) (*BidiResult, error) {
-	if b.toggles.Has(MethodTitle) {
-		query.Method = cases.Title(language.English).String(query.Method)
-	}
-
 	return b.searcher.findBidi(query)
 }
 

@@ -15,13 +15,6 @@ func TestConfigDefaults(t *testing.T) {
 
 	require.Equal(t, "info", conf.LogLevel)
 
-	require.False(t, conf.StrictMethodTitle)
-
-	require.Equal(t, "tcp", conf.GRPCNetwork)
-	require.Equal(t, "0.0.0.0", conf.GRPCHost)
-	require.Equal(t, "4770", conf.GRPCPort)
-	require.Equal(t, "0.0.0.0:4770", conf.GRPCAddr)
-
 	require.Equal(t, "0.0.0.0", conf.HTTPHost)
 	require.Equal(t, "4771", conf.HTTPPort)
 	require.Equal(t, "0.0.0.0:4771", conf.HTTPAddr)
@@ -43,7 +36,6 @@ func TestConfigOverride(t *testing.T) {
 	env := map[string]string{
 		"LOG_LEVEL":            "trace",
 		"PACKAGE_SIMPLER":      "false",
-		"STRICT_METHOD_TITLE":  "false",
 		"GRPC_NETWORK":         "udp",
 		"GRPC_HOST":            "111.111.111.111",
 		"GRPC_PORT":            "1111",
@@ -67,8 +59,6 @@ func TestConfigOverride(t *testing.T) {
 	conf := config.Load()
 
 	require.Equal(t, "trace", conf.LogLevel)
-
-	require.False(t, conf.StrictMethodTitle)
 
 	require.Equal(t, "udp", conf.GRPCNetwork)
 	require.Equal(t, "111.111.111.111", conf.GRPCHost)

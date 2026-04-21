@@ -8,7 +8,6 @@ import (
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -22,7 +21,7 @@ func TestBuildFromDescriptorSetGreeter(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, fdsSlice)
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	waiter := NewInstantExtender()
 
 	server, err := BuildFromDescriptorSet(ctx, fdsSlice[0], budgerigar, waiter, nil)
@@ -40,7 +39,7 @@ func TestGRPCServerBuildWithoutStartupDescriptors(t *testing.T) {
 		"tcp",
 		":0",
 		nil,
-		stuber.NewBudgerigar(features.New()),
+		stuber.NewBudgerigar(),
 		NewInstantExtender(),
 		nil,
 		descriptors.NewRegistry(),
@@ -78,7 +77,7 @@ func TestGRPCServerFindMethodDescriptorFromDynamicRegistry(t *testing.T) {
 		"tcp",
 		":0",
 		nil,
-		stuber.NewBudgerigar(features.New()),
+		stuber.NewBudgerigar(),
 		NewInstantExtender(),
 		nil,
 		registry,

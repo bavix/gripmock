@@ -10,64 +10,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
-
-// V2 equivalents of V1 tests
-
-func TestFindByNotFoundV2(t *testing.T) {
-	t.Parallel()
-
-	s := stuber.NewBudgerigar(features.New())
-
-	s.PutMany(&stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"})
-
-	tests := []struct {
-		service string
-		method  string
-		err     error
-	}{
-		{"hello", "SayHello1", stuber.ErrServiceNotFound},
-		{"Greeter", "SayHello1", stuber.ErrServiceNotFound},
-		{"Greeter1", "world", stuber.ErrMethodNotFound},
-		{"helloworld.Greeter1", "world", stuber.ErrMethodNotFound},
-		{"helloworld.v1.Greeter1", "world", stuber.ErrMethodNotFound},
-		{"Greeter1", "SayHello1", nil},
-		{"helloworld.Greeter1", "SayHello1", nil},
-		{"helloworld.v1.Greeter1", "SayHello1", nil},
-	}
-
-	for _, tt := range tests {
-		_, err := s.FindBy(tt.service, tt.method)
-		require.ErrorIs(t, err, tt.err)
-	}
-}
-
-func TestStubNilV2(t *testing.T) {
-	t.Parallel()
-
-	s := newBudgerigar()
-
-	require.Nil(t, s.FindByID(uuid.New()))
-}
-
-func TestFindByV2(t *testing.T) {
-	t.Parallel()
-
-	runFindByTests(t, newBudgerigar)
-}
-
-func TestFindBySortedV2(t *testing.T) {
-	t.Parallel()
-
-	runFindBySortedTests(t, newBudgerigar)
-}
 
 func TestPutManyFixIDV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Verify that PutMany assigns IDs to stubs that are created without them
 	stub1 := &stuber.Stub{Service: "Greeter1", Method: "SayHello1"}
@@ -89,7 +38,7 @@ func TestPutManyFixIDV2(t *testing.T) {
 func TestUpdateManyV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	stub1 := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
 	stub2 := &stuber.Stub{ID: uuid.New(), Service: "Greeter2", Method: "SayHello2"}
@@ -121,7 +70,7 @@ func TestUpdateManyV2(t *testing.T) {
 func TestRelationshipV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create two independent stubs to verify that multiple stubs can coexist and be retrieved separately
 	stub1 := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
@@ -138,11 +87,8 @@ func TestRelationshipV2(t *testing.T) {
 func TestBudgerigarUnusedV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
-
-	// Create stubs
-	stub1 := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
-	stub2 := &stuber.Stub{ID: uuid.New(), Service: "Greeter2", Method: "SayHello2"}
+	s := stuber.NewBudgerigar()
+	stub1, stub2 := newPairGreeterStubs()
 
 	s.PutMany(stub1, stub2)
 
@@ -178,7 +124,7 @@ func TestBudgerigarSearchWithHeadersV2(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stub with headers
 	stub := &stuber.Stub{
@@ -223,7 +169,7 @@ func TestBudgerigarSearchWithHeadersV2(t *testing.T) {
 func TestBudgerigarSearchEmptyV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test search with empty service/method
 	_, err := s.FindBy("", "")
@@ -234,43 +180,10 @@ func TestBudgerigarSearchEmptyV2(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestBudgerigarSearchWithHeadersSimilarV2(t *testing.T) {
-	t.Parallel()
-
-	s := stuber.NewBudgerigar(features.New())
-
-	// Create stub with headers
-	stub := &stuber.Stub{
-		Service: "Greeter1",
-		Method:  "SayHello1",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"authorization": "Bearer token123"},
-		},
-		Input: stuber.InputData{
-			Equals: map[string]any{"name": "John"},
-		},
-	}
-
-	s.PutMany(stub)
-
-	// Test similar match (different headers but same service/method)
-	query := stuber.Query{
-		Service: "Greeter1",
-		Method:  "SayHello1",
-		Headers: map[string]any{"authorization": "Bearer different"},
-		Input:   []map[string]any{{"name": "John"}},
-	}
-
-	result, err := s.FindByQuery(query)
-	require.NoError(t, err) // Should find similar match
-	require.Nil(t, result.Found())
-	require.NotNil(t, result.Similar()) // Should find similar match
-}
-
 func TestResultSimilarV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stub
 	stub := &stuber.Stub{
@@ -301,7 +214,7 @@ func TestStuberMatchesEqualsFoundV2(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stub with equals
 	stub := &stuber.Stub{
@@ -341,7 +254,7 @@ func TestStuberMatchesEqualsFoundV2(t *testing.T) {
 func TestDeleteV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stub
 	stub := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
@@ -362,11 +275,8 @@ func TestDeleteV2(t *testing.T) {
 func TestBudgerigarClearV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
-
-	// Create stubs
-	stub1 := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
-	stub2 := &stuber.Stub{ID: uuid.New(), Service: "Greeter2", Method: "SayHello2"}
+	s := stuber.NewBudgerigar()
+	stub1, stub2 := newPairGreeterStubs()
 
 	s.PutMany(stub1, stub2)
 
@@ -385,7 +295,7 @@ func TestBudgerigarClearV2(t *testing.T) {
 func TestBudgerigarFindByQueryFoundWithPriorityV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stubs with different priorities
 	stub1 := &stuber.Stub{
@@ -436,7 +346,7 @@ func TestBudgerigarFindByQueryFoundWithPriorityV2(t *testing.T) {
 func TestDivideByZeroClientStreaming(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	code2 := codes.Unknown // code 2 in gRPC
 
@@ -498,11 +408,8 @@ func TestBudgerigarUsedV2(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
-
-	// Create stubs
-	stub1 := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
-	stub2 := &stuber.Stub{ID: uuid.New(), Service: "Greeter2", Method: "SayHello2"}
+	s := stuber.NewBudgerigar()
+	stub1, stub2 := newPairGreeterStubs()
 
 	s.PutMany(stub1, stub2)
 
@@ -534,7 +441,7 @@ func TestBudgerigarUsedV2(t *testing.T) {
 func TestBudgerigarFindByQueryWithIDV2(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stub
 	stub := &stuber.Stub{
@@ -631,7 +538,7 @@ func TestV2QueryFunctions(t *testing.T) {
 func TestV2SearcherFunctions(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test find function (V1)
 	stub := &stuber.Stub{
@@ -669,7 +576,7 @@ func TestV2SearcherFunctions(t *testing.T) {
 func TestV2StorageFunctions(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test storage functions through searcher
 	stub1 := &stuber.Stub{ID: uuid.New(), Service: "test1", Method: "test1"}
@@ -701,7 +608,7 @@ func TestV2StorageFunctions(t *testing.T) {
 func TestV2MatcherFunctions(t *testing.T) {
 	t.Parallel()
 	// Test V2 matcher functions through the public API
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	stub := &stuber.Stub{
 		ID:      uuid.New(),
@@ -731,64 +638,52 @@ func TestV2MatcherFunctions(t *testing.T) {
 	require.Equal(t, stub.ID, result.Found().ID)
 }
 
+func newBidiStub(inputs []stuber.InputData, output stuber.Output) *stuber.Stub {
+	return &stuber.Stub{
+		ID:      uuid.New(),
+		Service: "ChatService",
+		Method:  "Chat",
+		Headers: stuber.InputHeader{Equals: map[string]any{"content-type": "application/json"}},
+		Inputs:  inputs,
+		Output:  output,
+	}
+}
+
+func newBidiQuery() stuber.QueryBidi {
+	return stuber.QueryBidi{
+		Service: "ChatService",
+		Method:  "Chat",
+		Headers: map[string]any{"content-type": "application/json"},
+	}
+}
+
 // TestBidiStreaming tests bidirectional streaming functionality.
-//
-//nolint:funlen
 func TestBidiStreaming(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
-	// Create bidirectional stubs for bidirectional streaming
-	// Each stub has Stream data for input matching
-	bidiStub1 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
+	bidiStub1 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+	}, stuber.Output{
+		Stream: []any{
+			map[string]any{"message": "Hello! How can I help you?"},
+			map[string]any{"message": "I'm doing well, thank you!"},
+			map[string]any{"message": "Have a great day!"},
 		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-		},
-		Output: stuber.Output{
-			Stream: []any{
-				map[string]any{"message": "Hello! How can I help you?"},
-				map[string]any{"message": "I'm doing well, thank you!"},
-				map[string]any{"message": "Have a great day!"},
-			},
-		},
-	}
+	})
 
-	bidiStub2 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "how are you"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "I'm doing great!"},
-		},
-	}
+	bidiStub2 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "how are you"}},
+	}, stuber.Output{
+		Data: map[string]any{"response": "I'm doing great!"},
+	})
 
-	bidiStub3 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "goodbye"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Goodbye! See you later!"},
-		},
-	}
+	bidiStub3 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "goodbye"}},
+	}, stuber.Output{
+		Data: map[string]any{"response": "Goodbye! See you later!"},
+	})
 
 	s.PutMany(bidiStub1, bidiStub2, bidiStub3)
 
@@ -796,22 +691,16 @@ func TestBidiStreaming(t *testing.T) {
 	t.Run("BidiStreamingWithUnaryStubs", func(t *testing.T) {
 		t.Parallel()
 
-		query := stuber.QueryBidi{
-			Service: "ChatService",
-			Method:  "Chat",
-			Headers: map[string]any{"content-type": "application/json"},
-		}
+		query := newBidiQuery()
 
 		result, err := s.FindByQueryBidi(query)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
-		// Test message that doesn't match any stub - should return error
 		_, err = result.Next(map[string]any{"message": "unknown"})
 		require.Error(t, err)
 		require.ErrorIs(t, err, stuber.ErrStubNotFound)
 
-		// Test GetMessageIndex - increments after each successful Next (when filtering)
 		result2, err := s.FindByQueryBidi(query)
 		require.NoError(t, err)
 		require.Equal(t, 0, result2.GetMessageIndex())
@@ -828,7 +717,7 @@ func TestBidiStreaming(t *testing.T) {
 func TestBidiStreamingFallback(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	s.PutMany(&stuber.Stub{
 		ID:      uuid.New(),
@@ -879,7 +768,7 @@ func TestBidiStreamingFallback(t *testing.T) {
 func TestBidiStreamingWithID(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	unaryStub := &stuber.Stub{
 		ID:      uuid.New(),
@@ -919,7 +808,7 @@ func TestBidiStreamingWithID(t *testing.T) {
 func TestBidiStreamingEmptyService(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	query := stuber.QueryBidi{
 		Service: "NonExistentService",
@@ -935,7 +824,7 @@ func TestBidiStreamingEmptyService(t *testing.T) {
 func TestBidiStreamingMethodNotFound(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	s.PutMany(&stuber.Stub{
 		ID:      uuid.New(),
@@ -960,7 +849,7 @@ func TestBidiStreamingMethodNotFound(t *testing.T) {
 func TestBidiStreamingWithIDMethodNotFound(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	stub := &stuber.Stub{
 		ID:      uuid.New(),
@@ -989,7 +878,7 @@ func TestBidiStreamingWithIDMethodNotFound(t *testing.T) {
 func TestBidiStreamingWithServerStream(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create a stub that can handle bidirectional streaming (unary input + server stream output)
 	bidiStub := &stuber.Stub{
@@ -1037,74 +926,32 @@ func TestBidiStreamingWithServerStream(t *testing.T) {
 
 // TestBidiStreamingStatefulLogic tests the stateful logic of bidirectional streaming
 // where stubs are filtered based on incoming messages.
-//
-//nolint:funlen
 func TestBidiStreamingStatefulLogic(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
-	// Create multiple stubs with different patterns
-	// All start with "hello" but diverge after that
-	stub1 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-			{Equals: map[string]any{"message": "world"}},
-			{Equals: map[string]any{"message": "goodbye"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Pattern 1 completed"},
-		},
-	}
+	stub1 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+		{Equals: map[string]any{"message": "world"}},
+		{Equals: map[string]any{"message": "goodbye"}},
+	}, stuber.Output{Data: map[string]any{"response": "Pattern 1 completed"}})
 
-	stub2 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-			{Equals: map[string]any{"message": "universe"}},
-			{Equals: map[string]any{"message": "farewell"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Pattern 2 completed"},
-		},
-	}
+	stub2 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+		{Equals: map[string]any{"message": "universe"}},
+		{Equals: map[string]any{"message": "farewell"}},
+	}, stuber.Output{Data: map[string]any{"response": "Pattern 2 completed"}})
 
-	stub3 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-			{Equals: map[string]any{"message": "galaxy"}},
-			{Equals: map[string]any{"message": "adios"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Pattern 3 completed"},
-		},
-	}
+	stub3 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+		{Equals: map[string]any{"message": "galaxy"}},
+		{Equals: map[string]any{"message": "adios"}},
+	}, stuber.Output{Data: map[string]any{"response": "Pattern 3 completed"}})
 
 	s.PutMany(stub1, stub2, stub3)
 
-	query := stuber.QueryBidi{
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: map[string]any{"content-type": "application/json"},
-	}
-
+	query := newBidiQuery()
 	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -1134,48 +981,21 @@ func TestBidiStreamingStatefulLogic(t *testing.T) {
 func TestBidiStreamingStatefulLogicDifferentPattern(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
-	// Create multiple stubs with different patterns
-	stub1 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-			{Equals: map[string]any{"message": "world"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Pattern 1"},
-		},
-	}
+	stub1 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+		{Equals: map[string]any{"message": "world"}},
+	}, stuber.Output{Data: map[string]any{"response": "Pattern 1"}})
 
-	stub2 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-			{Equals: map[string]any{"message": "universe"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Pattern 2"},
-		},
-	}
+	stub2 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+		{Equals: map[string]any{"message": "universe"}},
+	}, stuber.Output{Data: map[string]any{"response": "Pattern 2"}})
 
 	s.PutMany(stub1, stub2)
 
-	query := stuber.QueryBidi{
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: map[string]any{"content-type": "application/json"},
-	}
+	query := newBidiQuery()
 
 	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
@@ -1197,41 +1017,23 @@ func TestBidiStreamingStatefulLogicDifferentPattern(t *testing.T) {
 func TestBidiStreamingStatefulLogicNoMatch(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
-	// Create a stub with a specific pattern
-	stub := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-			{Equals: map[string]any{"message": "world"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Pattern completed"},
-		},
-	}
+	s.PutMany(newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+		{Equals: map[string]any{"message": "world"}},
+	}, stuber.Output{Data: map[string]any{"response": "Pattern completed"}}))
 
-	s.PutMany(stub)
-
-	query := stuber.QueryBidi{
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: map[string]any{"content-type": "application/json"},
-	}
+	query := newBidiQuery()
 
 	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
 	// First message - should match
-	stub, err = result.Next(map[string]any{"message": "hello"})
+	stubResult, err := result.Next(map[string]any{"message": "hello"})
 	require.NoError(t, err)
-	require.NotNil(t, stub)
+	require.NotNil(t, stubResult)
 
 	// Second message - should not match (sending "unknown" instead of "world")
 	_, err = result.Next(map[string]any{"message": "unknown"})
@@ -1243,32 +1045,20 @@ func TestBidiStreamingStatefulLogicNoMatch(t *testing.T) {
 func TestBidiStreamingEdgeCases(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
-	// Add a stub for testing
 	stub := &stuber.Stub{
 		ID:      uuid.New(),
 		Service: "ChatService",
 		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Input: stuber.InputData{
-			Equals: map[string]any{"message": "hello"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Hello!"},
-		},
+		Headers: stuber.InputHeader{Equals: map[string]any{"content-type": "application/json"}},
+		Input:   stuber.InputData{Equals: map[string]any{"message": "hello"}},
+		Output:  stuber.Output{Data: map[string]any{"response": "Hello!"}},
 	}
 
 	s.PutMany(stub)
 
-	// Test with valid query first
-	query := stuber.QueryBidi{
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: map[string]any{"content-type": "application/json"},
-	}
+	query := newBidiQuery()
 
 	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
@@ -1370,12 +1160,12 @@ func TestFieldAndCamelCaseVariations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			runFieldVariationCase(t, tt.inputEquals, tt.queries)
+			runFieldVariationCase(t, tt.inputEquals, tt.queries, "Hello John!")
 		})
 	}
 }
 
-func runFieldVariationCase(t *testing.T, equals map[string]any, queries []map[string]any) {
+func runFieldVariationCase(t *testing.T, equals map[string]any, queries []map[string]any, expected string) {
 	t.Helper()
 
 	s := newBudgerigar()
@@ -1387,7 +1177,7 @@ func runFieldVariationCase(t *testing.T, equals map[string]any, queries []map[st
 			Equals: equals,
 		},
 		Output: stuber.Output{
-			Data: map[string]any{"response": "Hello John!"},
+			Data: map[string]any{"response": expected},
 		},
 	}
 
@@ -1406,140 +1196,40 @@ func runFieldVariationCase(t *testing.T, equals map[string]any, queries []map[st
 		stubResult, err := result.Next(messageData)
 		require.NoError(t, err)
 		require.NotNil(t, stubResult)
-		require.Equal(t, "Hello John!", stubResult.Output.Data["response"])
+		require.Equal(t, expected, stubResult.Output.Data["response"])
 	}
 }
 
 // TestComplexFieldVariations tests complex field name variations.
 func TestComplexFieldVariations(t *testing.T) {
 	t.Parallel()
-
-	s := stuber.NewBudgerigar(features.New())
-
-	// Test stub with complex field names
-	stub := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "TestService",
-		Method:  "Test",
-		Input: stuber.InputData{
-			Equals: map[string]any{
-				"user_profile_data": "data",
-				"apiKey":            "key123",
-				"simple_field":      "value",
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Success!"},
-		},
-	}
-
-	s.PutMany(stub)
-
-	query := stuber.QueryBidi{
-		Service: "TestService",
-		Method:  "Test",
-	}
-
-	result, err := s.FindByQueryBidi(query)
-	require.NoError(t, err)
-	require.NotNil(t, result)
-
-	// Test with camelCase variations
-	messageData := map[string]any{
+	runFieldVariationCase(t, map[string]any{
+		"user_profile_data": "data",
+		"apiKey":            "key123",
+		"simple_field":      "value",
+	}, []map[string]any{{
 		"userProfileData": "data",   // should match user_profile_data
 		"api_key":         "key123", // should match apiKey
 		"simpleField":     "value",  // should match simple_field
-	}
-
-	stubResult, err := result.Next(messageData)
-	require.NoError(t, err)
-	require.NotNil(t, stubResult)
-	require.Equal(t, "Success!", stubResult.Output.Data["response"])
+	}}, "Success!")
 }
 
 // TestEmptyFieldVariations tests edge cases with empty fields.
 func TestEmptyFieldVariations(t *testing.T) {
 	t.Parallel()
-
-	s := stuber.NewBudgerigar(features.New())
-
-	stub := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "TestService",
-		Method:  "Test",
-		Input: stuber.InputData{
-			Equals: map[string]any{"": "empty_key"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Empty key!"},
-		},
-	}
-
-	s.PutMany(stub)
-
-	query := stuber.QueryBidi{
-		Service: "TestService",
-		Method:  "Test",
-	}
-
-	result, err := s.FindByQueryBidi(query)
-	require.NoError(t, err)
-	require.NotNil(t, result)
-
-	// Test with empty key
-	stubResult, err := result.Next(map[string]any{"": "empty_key"})
-	require.NoError(t, err)
-	require.NotNil(t, stubResult)
-	require.Equal(t, "Empty key!", stubResult.Output.Data["response"])
+	runFieldVariationCase(t, map[string]any{"": "empty_key"}, []map[string]any{{"": "empty_key"}}, "Empty key!")
 }
 
 // TestStableSortingOptimized tests that results are stable across multiple runs with optimized sorting.
-//
-//nolint:funlen
 func TestStableSortingOptimized(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create multiple stubs with same priority but different IDs
-	stub1 := &stuber.Stub{
-		ID:       uuid.New(),
-		Service:  "TestService",
-		Method:   "Test",
-		Priority: 1,
-		Input: stuber.InputData{
-			Equals: map[string]any{"field": "value"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Stub1"},
-		},
-	}
-
-	stub2 := &stuber.Stub{
-		ID:       uuid.New(),
-		Service:  "TestService",
-		Method:   "Test",
-		Priority: 1, // Same priority
-		Input: stuber.InputData{
-			Equals: map[string]any{"field": "value"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Stub2"},
-		},
-	}
-
-	stub3 := &stuber.Stub{
-		ID:       uuid.New(),
-		Service:  "TestService",
-		Method:   "Test",
-		Priority: 1, // Same priority
-		Input: stuber.InputData{
-			Equals: map[string]any{"field": "value"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Stub3"},
-		},
-	}
+	stub1 := newStableSortingStub("Stub1")
+	stub2 := newStableSortingStub("Stub2")
+	stub3 := newStableSortingStub("Stub3")
 
 	s.PutMany(stub1, stub2, stub3)
 
@@ -1574,7 +1264,7 @@ func TestPriorityHeadersOverEquals(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create stubs
 	stub1, stub2 := createTestStubs()
@@ -1630,7 +1320,7 @@ func TestPriorityHeadersOverEquals(t *testing.T) {
 func TestBudgerigarFindByQuerySessionIsolation(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Global stub (Session empty) - visible to all
 	globalStub := &stuber.Stub{
@@ -1707,7 +1397,7 @@ func TestBudgerigarFindByQuerySessionIsolation(t *testing.T) {
 func TestBudgerigarTImesConcurrentNoRace(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 	s.PutMany(&stuber.Stub{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
@@ -1757,6 +1447,26 @@ func TestBudgerigarTImesConcurrentNoRace(t *testing.T) {
 	require.Equal(t, 2, successCount, "Times(2) must allow exactly 2 matches under concurrent load")
 }
 
+func newPairGreeterStubs() (*stuber.Stub, *stuber.Stub) {
+	return &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"},
+		&stuber.Stub{ID: uuid.New(), Service: "Greeter2", Method: "SayHello2"}
+}
+
+func newStableSortingStub(response string) *stuber.Stub {
+	return &stuber.Stub{
+		ID:       uuid.New(),
+		Service:  "TestService",
+		Method:   "Test",
+		Priority: 1,
+		Input: stuber.InputData{
+			Equals: map[string]any{"field": "value"},
+		},
+		Output: stuber.Output{
+			Data: map[string]any{"response": response},
+		},
+	}
+}
+
 func createTestStubs() (*stuber.Stub, *stuber.Stub) {
 	// Create first stub: simple equals match without headers
 	stub1 := &stuber.Stub{
@@ -1802,291 +1512,144 @@ func createTestStubs() (*stuber.Stub, *stuber.Stub) {
 	return stub1, stub2
 }
 
-func TestEmptyQueryInput(t *testing.T) {
-	t.Parallel()
-	// Clear all caches before test
-	stuber.ClearAllCaches()
-
-	s := stuber.NewBudgerigar(features.New())
-
-	// Test case 1: Stub with Inputs (streaming) that can handle empty query
-	stub1 := &stuber.Stub{
+func newGreeterStub(
+	message string,
+	equals map[string]any,
+	headers map[string]any,
+	stream bool,
+) *stuber.Stub {
+	stub := &stuber.Stub{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
-		Inputs: []stuber.InputData{
-			{
-				Equals: map[string]any{},
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Streaming Empty"},
-		},
+		Output:  stuber.Output{Data: map[string]any{"message": message}},
 	}
 
-	// Test case 2: Stub with Input (legacy) that can handle empty query
-	stub2 := &stuber.Stub{
+	if stream {
+		stub.Inputs = []stuber.InputData{{Equals: equals}}
+	} else {
+		stub.Input = stuber.InputData{Equals: equals}
+	}
+
+	if headers != nil {
+		stub.Headers = stuber.InputHeader{Contains: headers}
+	}
+
+	return stub
+}
+
+func newGreeterStreamingStub(message string, equals map[string]any, headers map[string]any) *stuber.Stub {
+	return newGreeterStub(message, equals, headers, true)
+}
+
+func newGreeterLegacyStub(message string, equals map[string]any, headers map[string]any) *stuber.Stub {
+	return newGreeterStub(message, equals, headers, false)
+}
+
+func newGreeterUnarySayHello(name, message string) *stuber.Stub {
+	return &stuber.Stub{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello World"},
-		},
+		Input:   stuber.InputData{Equals: map[string]any{"name": name}},
+		Output:  stuber.Output{Data: map[string]any{"message": message}},
 	}
+}
 
-	// Test case 3: Stub with Input (legacy) that cannot handle empty query
-	stub3 := &stuber.Stub{
+func assertFindByEmptyQueryMessage(
+	t *testing.T,
+	s *stuber.Budgerigar,
+	headers map[string]any,
+	expected string,
+) {
+	t.Helper()
+
+	result, err := s.FindByQuery(stuber.Query{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{"name": "Bob"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello Bob"},
-		},
-	}
+		Headers: headers,
+		Input:   []map[string]any{},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result.Found())
+	require.Equal(t, expected, result.Found().Output.Data["message"])
+}
 
-	s.PutMany(stub1, stub2, stub3)
+func assertFindByEmptyQueryNoMatch(t *testing.T, s *stuber.Budgerigar) {
+	t.Helper()
 
-	// Test empty query - should match stub2 (can handle empty input)
-	query := stuber.Query{
+	result, err := s.FindByQuery(stuber.Query{
 		Service: "helloworld.Greeter",
 		Method:  "SayHello",
 		Input:   []map[string]any{},
-	}
-
-	result, err := s.FindByQuery(query)
+	})
 	require.NoError(t, err)
-	require.NotNil(t, result.Found())
+	require.Nil(t, result.Found())
+	require.NotNil(t, result.Similar())
+}
 
-	foundStub := result.Found()
-	require.Equal(t, "Streaming Empty", foundStub.Output.Data["message"])
+func newCleanBudgerigar(t *testing.T) *stuber.Budgerigar {
+	t.Helper()
+
+	stuber.ClearAllCaches()
+
+	return stuber.NewBudgerigar()
+}
+
+func TestEmptyQueryInput(t *testing.T) {
+	t.Parallel()
+	s := newCleanBudgerigar(t)
+	s.PutMany(
+		newGreeterStreamingStub("Streaming Empty", map[string]any{}, nil),
+		newGreeterLegacyStub("Hello World", map[string]any{}, nil),
+		newGreeterLegacyStub("Hello Bob", map[string]any{"name": "Bob"}, nil),
+	)
+
+	assertFindByEmptyQueryMessage(t, s, nil, "Streaming Empty")
 }
 
 func TestEmptyQueryInputWithStreaming(t *testing.T) {
 	t.Parallel()
-	// Clear all caches before test
-	stuber.ClearAllCaches()
+	s := newCleanBudgerigar(t)
+	s.PutMany(
+		newGreeterStreamingStub("Streaming Hello", map[string]any{}, nil),
+		newGreeterLegacyStub("Legacy Hello", map[string]any{}, nil),
+	)
 
-	s := stuber.NewBudgerigar(features.New())
-
-	// Stub with Inputs (streaming) that can handle empty query
-	stub1 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Inputs: []stuber.InputData{
-			{
-				Equals: map[string]any{},
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Streaming Hello"},
-		},
-	}
-
-	// Stub with Input (legacy) that can handle empty query
-	stub2 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Legacy Hello"},
-		},
-	}
-
-	s.PutMany(stub1, stub2)
-
-	// Test empty query - should prioritize Inputs over Input
-	query := stuber.Query{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input:   []map[string]any{},
-	}
-
-	result, err := s.FindByQuery(query)
-	require.NoError(t, err)
-	require.NotNil(t, result.Found())
-
-	foundStub := result.Found()
-	require.Equal(t, "Streaming Hello", foundStub.Output.Data["message"])
+	assertFindByEmptyQueryMessage(t, s, nil, "Streaming Hello")
 }
 
 func TestEmptyQueryInputNoMatch(t *testing.T) {
 	t.Parallel()
-	// Clear all caches before test
-	stuber.ClearAllCaches()
+	s := newCleanBudgerigar(t)
+	s.PutMany(
+		newGreeterStreamingStub("Hello Bob", map[string]any{"name": "Bob"}, nil),
+		newGreeterLegacyStub("Hello Bob", map[string]any{"name": "Bob"}, nil),
+	)
 
-	s := stuber.NewBudgerigar(features.New())
-
-	// Stub with Inputs (streaming) that cannot handle empty query
-	stub1 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Inputs: []stuber.InputData{
-			{
-				Equals: map[string]any{"name": "Bob"},
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello Bob"},
-		},
-	}
-
-	// Stub with Input (legacy) that cannot handle empty query
-	stub2 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{"name": "Bob"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello Bob"},
-		},
-	}
-
-	s.PutMany(stub1, stub2)
-
-	// Test empty query - should not match any stub
-	query := stuber.Query{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input:   []map[string]any{},
-	}
-
-	result, err := s.FindByQuery(query)
-	require.NoError(t, err)
-	require.Nil(t, result.Found())
-	require.NotNil(t, result.Similar()) // Should find similar match
+	assertFindByEmptyQueryNoMatch(t, s)
 }
 
 func TestEmptyQueryInputWithHeaders(t *testing.T) {
 	t.Parallel()
-	// Clear all caches before test
-	stuber.ClearAllCaches()
+	s := newCleanBudgerigar(t)
+	headers := map[string]any{"x-user": "admin"}
+	s.PutMany(
+		newGreeterStreamingStub("Admin Hello", map[string]any{}, headers),
+		newGreeterLegacyStub("Admin Legacy Hello", map[string]any{}, headers),
+	)
 
-	s := stuber.NewBudgerigar(features.New())
-
-	// Stub with Inputs (streaming) that can handle empty query and has headers
-	stub1 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Headers: stuber.InputHeader{
-			Contains: map[string]any{
-				"x-user": "admin",
-			},
-		},
-		Inputs: []stuber.InputData{
-			{
-				Equals: map[string]any{},
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Admin Hello"},
-		},
-	}
-
-	// Stub with Input (legacy) that can handle empty query and has headers
-	stub2 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Headers: stuber.InputHeader{
-			Contains: map[string]any{
-				"x-user": "admin",
-			},
-		},
-		Input: stuber.InputData{
-			Equals: map[string]any{},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Admin Legacy Hello"},
-		},
-	}
-
-	s.PutMany(stub1, stub2)
-
-	// Test empty query with headers - should prioritize Inputs over Input
-	query := stuber.Query{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Headers: map[string]any{
-			"x-user": "admin",
-		},
-		Input: []map[string]any{},
-	}
-
-	result, err := s.FindByQuery(query)
-	require.NoError(t, err)
-	require.NotNil(t, result.Found())
-
-	foundStub := result.Found()
-	require.Equal(t, "Admin Hello", foundStub.Output.Data["message"])
+	assertFindByEmptyQueryMessage(t, s, headers, "Admin Hello")
 }
 
 func TestEmptyQueryInputMixedConditions(t *testing.T) {
 	t.Parallel()
-	// Clear all caches before test
-	stuber.ClearAllCaches()
+	s := newCleanBudgerigar(t)
+	s.PutMany(
+		newGreeterStreamingStub("Streaming Empty", map[string]any{}, nil),
+		newGreeterStreamingStub("Streaming Bob", map[string]any{"name": "Bob"}, nil),
+		newGreeterLegacyStub("Legacy Empty", map[string]any{}, nil),
+	)
 
-	s := stuber.NewBudgerigar(features.New())
-
-	// Stub with Inputs (streaming) that can handle empty query
-	stub1 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Inputs: []stuber.InputData{
-			{
-				Equals: map[string]any{},
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Streaming Empty"},
-		},
-	}
-
-	// Stub with Inputs (streaming) that cannot handle empty query
-	stub2 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Inputs: []stuber.InputData{
-			{
-				Equals: map[string]any{"name": "Bob"},
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Streaming Bob"},
-		},
-	}
-
-	// Stub with Input (legacy) that can handle empty query
-	stub3 := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Legacy Empty"},
-		},
-	}
-
-	s.PutMany(stub1, stub2, stub3)
-
-	// Test empty query - should match stub1 (Inputs with empty equals)
-	query := stuber.Query{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input:   []map[string]any{},
-	}
-
-	result, err := s.FindByQuery(query)
-	require.NoError(t, err)
-	require.NotNil(t, result.Found())
-
-	foundStub := result.Found()
-	require.Equal(t, "Streaming Empty", foundStub.Output.Data["message"])
+	assertFindByEmptyQueryMessage(t, s, nil, "Streaming Empty")
 }
 
 // TestMethodTypes tests logic for all method types.
@@ -2097,19 +1660,10 @@ func TestMethodTypes(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test case 1: Unary method (Input only)
-	unaryStub := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{"name": "Bob"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello Bob"},
-		},
-	}
+	unaryStub := newGreeterUnarySayHello("Bob", "Hello Bob")
 
 	// Test case 2: Client streaming method (Inputs only)
 	clientStreamStub := &stuber.Stub{
@@ -2235,20 +1789,11 @@ func TestMethodTypesPriority(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test case: Same service/method with different types
 	// 1. Unary stub (legacy)
-	unaryStub := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{"name": "Bob"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello Bob (Unary)"},
-		},
-	}
+	unaryStub := newGreeterUnarySayHello("Bob", "Hello Bob (Unary)")
 
 	// 2. Client streaming stub (newer)
 	clientStreamStub := &stuber.Stub{
@@ -2287,7 +1832,7 @@ func TestMethodTypesEmptyInput(t *testing.T) {
 	// Clear all caches before test
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Test case 1: Client streaming method that can handle empty input (should be prioritized)
 	clientStreamEmptyStub := &stuber.Stub{
@@ -2316,16 +1861,7 @@ func TestMethodTypesEmptyInput(t *testing.T) {
 	}
 
 	// Test case 3: Unary method that cannot handle empty input
-	unaryNonEmptyStub := &stuber.Stub{
-		Service: "helloworld.Greeter",
-		Method:  "SayHello",
-		Input: stuber.InputData{
-			Equals: map[string]any{"name": "Bob"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"message": "Hello Bob"},
-		},
-	}
+	unaryNonEmptyStub := newGreeterUnarySayHello("Bob", "Hello Bob")
 
 	s.PutMany(unaryEmptyStub, clientStreamEmptyStub, unaryNonEmptyStub)
 

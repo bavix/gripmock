@@ -15,7 +15,6 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -28,7 +27,7 @@ func TestReflectionIncludesDynamicService(t *testing.T) {
 	defer cancel()
 
 	registry := descriptors.NewRegistry()
-	grpcServer := NewGRPCServer("tcp", "127.0.0.1:0", nil, stuber.NewBudgerigar(features.New()), nil, nil, registry, nil, nil, false)
+	grpcServer := NewGRPCServer("tcp", "127.0.0.1:0", nil, stuber.NewBudgerigar(), nil, nil, registry, nil, nil, false)
 
 	server, err := grpcServer.Build(ctx)
 	require.NoError(t, err)

@@ -16,9 +16,6 @@ type Config struct {
 	// Application logging level.
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 
-	// Deprecated: Strict mode for checking the name of services and methods.
-	StrictMethodTitle bool `env:"STRICT_METHOD_TITLE" envDefault:"false"`
-
 	// GRPC server configuration.
 	GRPCNetwork string `env:"GRPC_NETWORK" envDefault:"tcp"`
 	GRPCHost    string `env:"GRPC_HOST"    envDefault:"0.0.0.0"`

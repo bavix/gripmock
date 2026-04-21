@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -48,7 +47,7 @@ func TestRestServerAddStubAllowsProtectedHealthServiceDefinitions(t *testing.T) 
 			// Arrange
 			server, err := NewRestServer(
 				t.Context(),
-				stuber.NewBudgerigar(features.New()),
+				stuber.NewBudgerigar(),
 				&mockExtender{},
 				nil,
 				nil,
@@ -76,7 +75,7 @@ func TestRestServerAddStubAllowsCustomHealthService(t *testing.T) {
 	// Arrange
 	server, err := NewRestServer(
 		t.Context(),
-		stuber.NewBudgerigar(features.New()),
+		stuber.NewBudgerigar(),
 		&mockExtender{},
 		nil,
 		nil,

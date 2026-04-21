@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -136,11 +135,10 @@ func TestInspectConsistencyWithFindByQuery(t *testing.T) {
 	})
 }
 
-//nolint:funlen
 func runInspectConsistencyCase(t *testing.T, tc inspectConsistencyCase) {
 	t.Helper()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 	s.PutMany(tc.stubs...)
 
 	if tc.beforeInspect != nil {
@@ -188,20 +186,7 @@ func runInspectConsistencyCase(t *testing.T, tc inspectConsistencyCase) {
 
 	require.Equal(t, 1, matchedCount)
 
-	stageNames := make(map[string]struct{}, len(report.Stages))
-	for _, stage := range report.Stages {
-		stageNames[stage.Name] = struct{}{}
-	}
-
-	_, hasSession := stageNames["session"]
-	_, hasTimes := stageNames["times"]
-	_, hasHeaders := stageNames["headers"]
-	_, hasInput := stageNames["input"]
-
-	require.True(t, hasSession)
-	require.True(t, hasTimes)
-	require.True(t, hasHeaders)
-	require.True(t, hasInput)
+	requireStagesPresent(t, &report, "session", "times", "headers", "input")
 
 	if findResult.Similar() != nil {
 		require.NotNil(t, report.SimilarStubID)
@@ -209,22 +194,36 @@ func runInspectConsistencyCase(t *testing.T, tc inspectConsistencyCase) {
 	}
 }
 
+func requireStagesPresent(t *testing.T, report *stuber.InspectReport, expected ...string) {
+	t.Helper()
+
+	stageNames := make(map[string]struct{}, len(report.Stages))
+	for _, stage := range report.Stages {
+		stageNames[stage.Name] = struct{}{}
+	}
+
+	for _, name := range expected {
+		_, ok := stageNames[name]
+		require.True(t, ok, "expected stage %q to be present", name)
+	}
+}
+
 //nolint:cyclop,gocognit,funlen
 func TestInspectTraceStagesEdgeCases(t *testing.T) {
 	t.Parallel()
 
-	t.Run("fallbackMethodStagePresent", func(t *testing.T) {
+	t.Run("fallbackMethodStagePresentAndNoServiceExclusion", func(t *testing.T) {
 		t.Parallel()
 
-		s := stuber.NewBudgerigar(features.New())
-		stub := &stuber.Stub{
+		s := stuber.NewBudgerigar()
+		candidate := &stuber.Stub{
 			ID:      uuid.New(),
 			Service: "other.service",
 			Method:  "Hello",
 			Input:   stuber.InputData{Equals: map[string]any{"name": "Alex"}},
 			Output:  stuber.Output{Data: map[string]any{"ok": true}},
 		}
-		s.PutMany(stub)
+		s.PutMany(candidate)
 
 		report := s.InspectQuery(stuber.Query{
 			Service: "missing.service",
@@ -246,12 +245,28 @@ func TestInspectTraceStagesEdgeCases(t *testing.T) {
 		}
 
 		require.True(t, hasFallbackStage)
+
+		for _, c := range report.Candidates {
+			if c.ID != candidate.ID {
+				continue
+			}
+
+			for _, reason := range c.ExcludedBy {
+				if reason == "service" {
+					t.Fatal("service should not be exclusion reason in fallback-to-method mode")
+				}
+			}
+
+			return
+		}
+
+		t.Fatal("fallback candidate not found")
 	})
 
 	t.Run("idLookupStagesPresent", func(t *testing.T) {
 		t.Parallel()
 
-		s := stuber.NewBudgerigar(features.New())
+		s := stuber.NewBudgerigar()
 		stub := &stuber.Stub{
 			ID:      uuid.New(),
 			Service: "s.demo",
@@ -271,28 +286,13 @@ func TestInspectTraceStagesEdgeCases(t *testing.T) {
 		require.NotNil(t, report.MatchedStubID)
 		require.Equal(t, stub.ID, *report.MatchedStubID)
 
-		stageNames := make(map[string]struct{}, len(report.Stages))
-		for _, stage := range report.Stages {
-			stageNames[stage.Name] = struct{}{}
-		}
-
-		_, hasID := stageNames["id"]
-		_, hasSession := stageNames["session"]
-		_, hasTimes := stageNames["times"]
-		_, hasHeaders := stageNames["headers"]
-		_, hasInput := stageNames["input"]
-
-		require.True(t, hasID)
-		require.True(t, hasSession)
-		require.True(t, hasTimes)
-		require.True(t, hasHeaders)
-		require.True(t, hasInput)
+		requireStagesPresent(t, &report, "id", "session", "times", "headers", "input")
 	})
 
 	t.Run("idLookupDoesNotUseInputOrHeadersAsExclusion", func(t *testing.T) {
 		t.Parallel()
 
-		s := stuber.NewBudgerigar(features.New())
+		s := stuber.NewBudgerigar()
 		stub := &stuber.Stub{
 			ID:      uuid.New(),
 			Service: "s.demo",
@@ -346,50 +346,12 @@ func TestInspectTraceStagesEdgeCases(t *testing.T) {
 
 		t.Fatal("target candidate not found in inspect report")
 	})
-
-	t.Run("fallbackMethodDoesNotExcludeByService", func(t *testing.T) {
-		t.Parallel()
-
-		s := stuber.NewBudgerigar(features.New())
-		candidate := &stuber.Stub{
-			ID:      uuid.New(),
-			Service: "other.service",
-			Method:  "Hello",
-			Input:   stuber.InputData{Equals: map[string]any{"name": "Alex"}},
-			Output:  stuber.Output{Data: map[string]any{"ok": true}},
-		}
-		s.PutMany(candidate)
-
-		report := s.InspectQuery(stuber.Query{
-			Service: "missing.service",
-			Method:  "Hello",
-			Input:   []map[string]any{{"name": "Alex"}},
-		})
-
-		require.True(t, report.FallbackToMethod)
-
-		for _, c := range report.Candidates {
-			if c.ID != candidate.ID {
-				continue
-			}
-
-			for _, reason := range c.ExcludedBy {
-				if reason == "service" {
-					t.Fatal("service should not be exclusion reason in fallback-to-method mode")
-				}
-			}
-
-			return
-		}
-
-		t.Fatal("fallback candidate not found")
-	})
 }
 
 func TestInspectDoesNotConsumeTimes(t *testing.T) {
 	t.Parallel()
 
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 	oneShot := &stuber.Stub{
 		ID:      uuid.New(),
 		Service: "s.demo",
@@ -541,7 +503,7 @@ func TestInspectCandidateEventFlagConsistency(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			s := stuber.NewBudgerigar(features.New())
+			s := stuber.NewBudgerigar()
 			s.PutMany(tc.stub)
 
 			report := s.InspectQuery(tc.query)

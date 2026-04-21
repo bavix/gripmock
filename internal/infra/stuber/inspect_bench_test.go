@@ -5,12 +5,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 func BenchmarkInspectQuery(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	for i := range 500 {
 		budgerigar.PutMany(&stuber.Stub{

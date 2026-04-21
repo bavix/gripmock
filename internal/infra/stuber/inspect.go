@@ -2,8 +2,6 @@ package stuber
 
 import (
 	"github.com/google/uuid"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/bavix/features"
 )
@@ -117,12 +115,6 @@ type InspectReport struct {
 }
 
 func (b *Budgerigar) InspectQuery(query Query) InspectReport {
-	if b.toggles.Has(MethodTitle) {
-		query.Method = cases.
-			Title(language.English, cases.NoLower).
-			String(query.Method)
-	}
-
 	return b.searcher.inspect(query)
 }
 

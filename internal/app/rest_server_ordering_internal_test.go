@@ -6,14 +6,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 func TestCollectAllServicesReturnsSortedServicesAndMethods(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewRestServer(t.Context(), stuber.NewBudgerigar(features.New()), &mockExtender{}, nil, nil, nil)
+	server, err := NewRestServer(t.Context(), stuber.NewBudgerigar(), &mockExtender{}, nil, nil, nil)
 	require.NoError(t, err)
 
 	services := server.collectAllServices()

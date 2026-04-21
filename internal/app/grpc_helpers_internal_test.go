@@ -10,7 +10,6 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
 	"github.com/bavix/gripmock/v3/pkg/plugintest"
@@ -24,7 +23,7 @@ func createTestMocker(t *testing.T) *grpcMocker {
 	templateEngine := template.New(t.Context(), testRegistry)
 
 	return &grpcMocker{
-		budgerigar:     stuber.NewBudgerigar(features.New()),
+		budgerigar:     stuber.NewBudgerigar(),
 		templateEngine: templateEngine,
 		inputDesc:      structDesc,
 		outputDesc:     structDesc,

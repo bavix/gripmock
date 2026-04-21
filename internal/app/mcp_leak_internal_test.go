@@ -11,7 +11,6 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -23,7 +22,7 @@ const (
 func TestMcpMessageNOGoroutineLeakOnNotifications(t *testing.T) {
 	t.Parallel()
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	server, err := NewRestServer(t.Context(), budgerigar, &mockExtender{}, nil, nil, nil)
 	require.NoError(t, err)
 

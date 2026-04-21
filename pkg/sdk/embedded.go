@@ -14,7 +14,6 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/descriptorpb"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/app"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
@@ -85,7 +84,7 @@ func runEmbedded(ctx context.Context, o *options) (Mock, error) {
 		timeout = defaultHealthyTimeout
 	}
 
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 	waiter := app.NewInstantExtender()
 	recorder := &InMemoryRecorder{}
 

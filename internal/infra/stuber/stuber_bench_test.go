@@ -5,13 +5,12 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 // BenchmarkPutMany measures the performance of inserting multiple Stub values.
 func BenchmarkPutMany(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	// Prepare a slice of Stub values to insert.
 	values := make([]*stuber.Stub, 500)
@@ -36,7 +35,7 @@ func BenchmarkPutMany(b *testing.B) {
 
 // BenchmarkUpdateMany measures the performance of updating multiple Stub values.
 func BenchmarkUpdateMany(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	// Insert initial values.
 	values := make([]*stuber.Stub, 500)
@@ -62,7 +61,7 @@ func BenchmarkUpdateMany(b *testing.B) {
 
 // BenchmarkDeleteByID measures the performance of deleting Stub values by ID.
 func BenchmarkDeleteByID(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	// Insert initial values and collect their IDs.
 	ids := make([]uuid.UUID, 500)
@@ -90,7 +89,7 @@ func BenchmarkDeleteByID(b *testing.B) {
 
 // BenchmarkFindByID measures the performance of finding a Stub value by ID.
 func BenchmarkFindByID(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	for range 500 {
 		budgerigar.PutMany(&stuber.Stub{
@@ -112,7 +111,7 @@ func BenchmarkFindByID(b *testing.B) {
 
 // BenchmarkFindByQuery measures the performance of finding a Stub value by Query.
 func BenchmarkFindByQuery(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	// Insert initial values.
 	for range 500 {
@@ -140,7 +139,7 @@ func BenchmarkFindByQuery(b *testing.B) {
 
 // BenchmarkFindBy measures the performance of finding Stub values by service and method.
 func BenchmarkFindBy(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	// Insert initial values.
 	for range 500 {
@@ -166,7 +165,7 @@ func BenchmarkFindBy(b *testing.B) {
 
 // BenchmarkAll measures the performance of retrieving all Stub values.
 func BenchmarkAll(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	// Insert initial values.
 	for range 500 {
@@ -189,7 +188,7 @@ func BenchmarkAll(b *testing.B) {
 
 // BenchmarkUsed measures the performance of retrieving used Stub values.
 func BenchmarkUsed(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	// Insert initial values.
 	for range 500 {
@@ -212,7 +211,7 @@ func BenchmarkUsed(b *testing.B) {
 
 // BenchmarkUnused measures the performance of retrieving unused Stub values.
 func BenchmarkUnused(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	// Insert initial values.
 	for range 500 {
@@ -235,7 +234,7 @@ func BenchmarkUnused(b *testing.B) {
 
 // BenchmarkFindByQueryStream measures the performance of finding stubs with stream data.
 func BenchmarkFindByQueryStream(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	stubs := make([]*stuber.Stub, 100)
 	for i := range 100 {
@@ -267,7 +266,7 @@ func BenchmarkFindByQueryStream(b *testing.B) {
 
 // BenchmarkFindByQueryStreamBackwardCompatibility measures the performance of backward compatibility.
 func BenchmarkFindByQueryStreamBackwardCompatibility(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	stubs := make([]*stuber.Stub, 100)
 	for i := range 100 {
@@ -298,7 +297,7 @@ func BenchmarkFindByQueryStreamBackwardCompatibility(b *testing.B) {
 
 // BenchmarkMatchStream measures the performance of stream matching through public API.
 func BenchmarkMatchStream(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	stub := &stuber.Stub{
 		Service: "test",
@@ -326,7 +325,7 @@ func BenchmarkMatchStream(b *testing.B) {
 
 // BenchmarkRankMatchStream measures the performance of stream ranking through public API.
 func BenchmarkRankMatchStream(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	stubs := make([]*stuber.Stub, 10)
 	for i := range 10 {
@@ -358,7 +357,7 @@ func BenchmarkRankMatchStream(b *testing.B) {
 
 // BenchmarkQueryV2Unary measures the performance of V2 unary requests.
 func BenchmarkQueryV2Unary(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	stub := &stuber.Stub{
 		Service: "test",
@@ -385,7 +384,7 @@ func BenchmarkQueryV2Unary(b *testing.B) {
 
 // BenchmarkQueryV2Stream measures the performance of V2 stream requests.
 func BenchmarkQueryV2Stream(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	stub := &stuber.Stub{
 		Service: "test",
@@ -413,7 +412,7 @@ func BenchmarkQueryV2Stream(b *testing.B) {
 
 // BenchmarkQueryV2Comparison compares V1 vs V2 performance.
 func BenchmarkQueryV2Comparison(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	stub := &stuber.Stub{
 		Service: "test",
@@ -449,7 +448,7 @@ func BenchmarkQueryV2Comparison(b *testing.B) {
 //
 //nolint:funlen
 func BenchmarkBidiStreaming(b *testing.B) {
-	s := stuber.NewBudgerigar(features.New())
+	s := stuber.NewBudgerigar()
 
 	// Create multiple stubs with different patterns
 	stub1 := &stuber.Stub{

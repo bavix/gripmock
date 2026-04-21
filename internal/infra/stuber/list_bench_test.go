@@ -4,12 +4,11 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/bavix/features"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 func BenchmarkListFilterSortPaginate(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	for i := range 10000 {
 		source := "rest"
@@ -50,7 +49,7 @@ func BenchmarkListFilterSortPaginate(b *testing.B) {
 }
 
 func BenchmarkListDefaultSortLargeSet(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	for i := range 20000 {
 		budgerigar.PutMany(&stuber.Stub{
@@ -76,7 +75,7 @@ func BenchmarkListDefaultSortLargeSet(b *testing.B) {
 }
 
 func BenchmarkAllImmutableCloneDeepPayload(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	for i := range 5000 {
 		budgerigar.PutMany(&stuber.Stub{
@@ -112,7 +111,7 @@ func BenchmarkAllImmutableCloneDeepPayload(b *testing.B) {
 }
 
 func BenchmarkAllImmutableCloneSimplePayload(b *testing.B) {
-	budgerigar := stuber.NewBudgerigar(features.New())
+	budgerigar := stuber.NewBudgerigar()
 
 	for i := range 20000 {
 		budgerigar.PutMany(&stuber.Stub{

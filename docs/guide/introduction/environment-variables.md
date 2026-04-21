@@ -7,7 +7,6 @@ GripMock reads configuration from environment variables on startup.
 | Variable | Default | Description |
 |---|---|---|
 | `LOG_LEVEL` | `info` | Log level (`trace`, `debug`, `info`, `warn`, `error`). |
-| `STRICT_METHOD_TITLE` | `false` | Deprecated strict method-title behavior. |
 
 ## gRPC server
 
