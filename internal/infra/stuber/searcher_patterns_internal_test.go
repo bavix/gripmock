@@ -70,7 +70,7 @@ func (l *instrumentedMethodLookup) LookupMethodAvailable(method string) iter.Seq
 }
 
 type inspectTestEnv struct {
-	b       *Budgerigar
+	b        *Budgerigar
 	provider *instrumentedLookupProvider
 }
 
@@ -79,7 +79,7 @@ func newInspectTestEnv() inspectTestEnv {
 	s := newSearcherWithOptions(searcherOptions{lookupProvider: provider})
 
 	return inspectTestEnv{
-		b:       &Budgerigar{searcher: s},
+		b:        &Budgerigar{searcher: s},
 		provider: provider,
 	}
 }

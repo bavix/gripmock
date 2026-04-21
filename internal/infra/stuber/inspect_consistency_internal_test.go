@@ -135,7 +135,6 @@ func TestInspectConsistencyWithFindByQuery(t *testing.T) {
 	})
 }
 
-//nolint:funlen
 func runInspectConsistencyCase(t *testing.T, tc inspectConsistencyCase) {
 	t.Helper()
 
@@ -187,24 +186,25 @@ func runInspectConsistencyCase(t *testing.T, tc inspectConsistencyCase) {
 
 	require.Equal(t, 1, matchedCount)
 
+	requireStagesPresent(t, &report, "session", "times", "headers", "input")
+
+	if findResult.Similar() != nil {
+		require.NotNil(t, report.SimilarStubID)
+		require.Equal(t, findResult.Similar().ID, *report.SimilarStubID)
+	}
+}
+
+func requireStagesPresent(t *testing.T, report *stuber.InspectReport, expected ...string) {
+	t.Helper()
+
 	stageNames := make(map[string]struct{}, len(report.Stages))
 	for _, stage := range report.Stages {
 		stageNames[stage.Name] = struct{}{}
 	}
 
-	_, hasSession := stageNames["session"]
-	_, hasTimes := stageNames["times"]
-	_, hasHeaders := stageNames["headers"]
-	_, hasInput := stageNames["input"]
-
-	require.True(t, hasSession)
-	require.True(t, hasTimes)
-	require.True(t, hasHeaders)
-	require.True(t, hasInput)
-
-	if findResult.Similar() != nil {
-		require.NotNil(t, report.SimilarStubID)
-		require.Equal(t, findResult.Similar().ID, *report.SimilarStubID)
+	for _, name := range expected {
+		_, ok := stageNames[name]
+		require.True(t, ok, "expected stage %q to be present", name)
 	}
 }
 
@@ -286,22 +286,7 @@ func TestInspectTraceStagesEdgeCases(t *testing.T) {
 		require.NotNil(t, report.MatchedStubID)
 		require.Equal(t, stub.ID, *report.MatchedStubID)
 
-		stageNames := make(map[string]struct{}, len(report.Stages))
-		for _, stage := range report.Stages {
-			stageNames[stage.Name] = struct{}{}
-		}
-
-		_, hasID := stageNames["id"]
-		_, hasSession := stageNames["session"]
-		_, hasTimes := stageNames["times"]
-		_, hasHeaders := stageNames["headers"]
-		_, hasInput := stageNames["input"]
-
-		require.True(t, hasID)
-		require.True(t, hasSession)
-		require.True(t, hasTimes)
-		require.True(t, hasHeaders)
-		require.True(t, hasInput)
+		requireStagesPresent(t, &report, "id", "session", "times", "headers", "input")
 	})
 
 	t.Run("idLookupDoesNotUseInputOrHeadersAsExclusion", func(t *testing.T) {

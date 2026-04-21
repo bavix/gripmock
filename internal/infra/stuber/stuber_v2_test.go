@@ -647,64 +647,52 @@ func TestV2MatcherFunctions(t *testing.T) {
 	require.Equal(t, stub.ID, result.Found().ID)
 }
 
+func newBidiStub(inputs []stuber.InputData, output stuber.Output) *stuber.Stub {
+	return &stuber.Stub{
+		ID:      uuid.New(),
+		Service: "ChatService",
+		Method:  "Chat",
+		Headers: stuber.InputHeader{Equals: map[string]any{"content-type": "application/json"}},
+		Inputs:  inputs,
+		Output:  output,
+	}
+}
+
+func newBidiQuery() stuber.QueryBidi {
+	return stuber.QueryBidi{
+		Service: "ChatService",
+		Method:  "Chat",
+		Headers: map[string]any{"content-type": "application/json"},
+	}
+}
+
 // TestBidiStreaming tests bidirectional streaming functionality.
-//
-//nolint:funlen
 func TestBidiStreaming(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar()
 
-	// Create bidirectional stubs for bidirectional streaming
-	// Each stub has Stream data for input matching
-	bidiStub1 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
+	bidiStub1 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+	}, stuber.Output{
+		Stream: []any{
+			map[string]any{"message": "Hello! How can I help you?"},
+			map[string]any{"message": "I'm doing well, thank you!"},
+			map[string]any{"message": "Have a great day!"},
 		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-		},
-		Output: stuber.Output{
-			Stream: []any{
-				map[string]any{"message": "Hello! How can I help you?"},
-				map[string]any{"message": "I'm doing well, thank you!"},
-				map[string]any{"message": "Have a great day!"},
-			},
-		},
-	}
+	})
 
-	bidiStub2 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "how are you"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "I'm doing great!"},
-		},
-	}
+	bidiStub2 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "how are you"}},
+	}, stuber.Output{
+		Data: map[string]any{"response": "I'm doing great!"},
+	})
 
-	bidiStub3 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "goodbye"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Goodbye! See you later!"},
-		},
-	}
+	bidiStub3 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "goodbye"}},
+	}, stuber.Output{
+		Data: map[string]any{"response": "Goodbye! See you later!"},
+	})
 
 	s.PutMany(bidiStub1, bidiStub2, bidiStub3)
 
@@ -712,22 +700,16 @@ func TestBidiStreaming(t *testing.T) {
 	t.Run("BidiStreamingWithUnaryStubs", func(t *testing.T) {
 		t.Parallel()
 
-		query := stuber.QueryBidi{
-			Service: "ChatService",
-			Method:  "Chat",
-			Headers: map[string]any{"content-type": "application/json"},
-		}
+		query := newBidiQuery()
 
 		result, err := s.FindByQueryBidi(query)
 		require.NoError(t, err)
 		require.NotNil(t, result)
 
-		// Test message that doesn't match any stub - should return error
 		_, err = result.Next(map[string]any{"message": "unknown"})
 		require.Error(t, err)
 		require.ErrorIs(t, err, stuber.ErrStubNotFound)
 
-		// Test GetMessageIndex - increments after each successful Next (when filtering)
 		result2, err := s.FindByQueryBidi(query)
 		require.NoError(t, err)
 		require.Equal(t, 0, result2.GetMessageIndex())
@@ -953,74 +935,32 @@ func TestBidiStreamingWithServerStream(t *testing.T) {
 
 // TestBidiStreamingStatefulLogic tests the stateful logic of bidirectional streaming
 // where stubs are filtered based on incoming messages.
-//
-//nolint:funlen
 func TestBidiStreamingStatefulLogic(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar()
 
-	// Create multiple stubs with different patterns
-	// All start with "hello" but diverge after that
-	stub1 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-			{Equals: map[string]any{"message": "world"}},
-			{Equals: map[string]any{"message": "goodbye"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Pattern 1 completed"},
-		},
-	}
+	stub1 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+		{Equals: map[string]any{"message": "world"}},
+		{Equals: map[string]any{"message": "goodbye"}},
+	}, stuber.Output{Data: map[string]any{"response": "Pattern 1 completed"}})
 
-	stub2 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-			{Equals: map[string]any{"message": "universe"}},
-			{Equals: map[string]any{"message": "farewell"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Pattern 2 completed"},
-		},
-	}
+	stub2 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+		{Equals: map[string]any{"message": "universe"}},
+		{Equals: map[string]any{"message": "farewell"}},
+	}, stuber.Output{Data: map[string]any{"response": "Pattern 2 completed"}})
 
-	stub3 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-			{Equals: map[string]any{"message": "galaxy"}},
-			{Equals: map[string]any{"message": "adios"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Pattern 3 completed"},
-		},
-	}
+	stub3 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+		{Equals: map[string]any{"message": "galaxy"}},
+		{Equals: map[string]any{"message": "adios"}},
+	}, stuber.Output{Data: map[string]any{"response": "Pattern 3 completed"}})
 
 	s.PutMany(stub1, stub2, stub3)
 
-	query := stuber.QueryBidi{
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: map[string]any{"content-type": "application/json"},
-	}
-
+	query := newBidiQuery()
 	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
@@ -1052,46 +992,19 @@ func TestBidiStreamingStatefulLogicDifferentPattern(t *testing.T) {
 
 	s := stuber.NewBudgerigar()
 
-	// Create multiple stubs with different patterns
-	stub1 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-			{Equals: map[string]any{"message": "world"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Pattern 1"},
-		},
-	}
+	stub1 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+		{Equals: map[string]any{"message": "world"}},
+	}, stuber.Output{Data: map[string]any{"response": "Pattern 1"}})
 
-	stub2 := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-			{Equals: map[string]any{"message": "universe"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Pattern 2"},
-		},
-	}
+	stub2 := newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+		{Equals: map[string]any{"message": "universe"}},
+	}, stuber.Output{Data: map[string]any{"response": "Pattern 2"}})
 
 	s.PutMany(stub1, stub2)
 
-	query := stuber.QueryBidi{
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: map[string]any{"content-type": "application/json"},
-	}
+	query := newBidiQuery()
 
 	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
@@ -1115,39 +1028,21 @@ func TestBidiStreamingStatefulLogicNoMatch(t *testing.T) {
 
 	s := stuber.NewBudgerigar()
 
-	// Create a stub with a specific pattern
-	stub := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Inputs: []stuber.InputData{
-			{Equals: map[string]any{"message": "hello"}},
-			{Equals: map[string]any{"message": "world"}},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Pattern completed"},
-		},
-	}
+	s.PutMany(newBidiStub([]stuber.InputData{
+		{Equals: map[string]any{"message": "hello"}},
+		{Equals: map[string]any{"message": "world"}},
+	}, stuber.Output{Data: map[string]any{"response": "Pattern completed"}}))
 
-	s.PutMany(stub)
-
-	query := stuber.QueryBidi{
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: map[string]any{"content-type": "application/json"},
-	}
+	query := newBidiQuery()
 
 	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
 	// First message - should match
-	stub, err = result.Next(map[string]any{"message": "hello"})
+	stubResult, err := result.Next(map[string]any{"message": "hello"})
 	require.NoError(t, err)
-	require.NotNil(t, stub)
+	require.NotNil(t, stubResult)
 
 	// Second message - should not match (sending "unknown" instead of "world")
 	_, err = result.Next(map[string]any{"message": "unknown"})
@@ -1161,30 +1056,18 @@ func TestBidiStreamingEdgeCases(t *testing.T) {
 
 	s := stuber.NewBudgerigar()
 
-	// Add a stub for testing
 	stub := &stuber.Stub{
 		ID:      uuid.New(),
 		Service: "ChatService",
 		Method:  "Chat",
-		Headers: stuber.InputHeader{
-			Equals: map[string]any{"content-type": "application/json"},
-		},
-		Input: stuber.InputData{
-			Equals: map[string]any{"message": "hello"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Hello!"},
-		},
+		Headers: stuber.InputHeader{Equals: map[string]any{"content-type": "application/json"}},
+		Input:   stuber.InputData{Equals: map[string]any{"message": "hello"}},
+		Output:  stuber.Output{Data: map[string]any{"response": "Hello!"}},
 	}
 
 	s.PutMany(stub)
 
-	// Test with valid query first
-	query := stuber.QueryBidi{
-		Service: "ChatService",
-		Method:  "Chat",
-		Headers: map[string]any{"content-type": "application/json"},
-	}
+	query := newBidiQuery()
 
 	result, err := s.FindByQueryBidi(query)
 	require.NoError(t, err)
