@@ -6,10 +6,13 @@
     ignoreArrayOrder: true
     contains:
       k8s_cluster_id: "test-contains-ignore"
-      ips: ["10.0.4.1"]
+      ips: ["10.0.4.1", "10.0.4.2"]
   output:
     data:
       ips_to_decorations:
         "10.0.4.1":
+          decoration: "contains-ok"
+          environment: "production"
+        "10.0.4.2":
           decoration: "contains-ok"
           environment: "production"

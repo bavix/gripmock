@@ -12,7 +12,8 @@ inventory.InventoryService/GetResourceDecorationByIPsStream
 --- REQUEST ---
 {
   "ips": [
-    "10.0.5.11"
+    "10.0.5.11",
+    "10.0.5.22"
   ],
   "k8s_cluster_id": "test-matches-ignore"
 }
