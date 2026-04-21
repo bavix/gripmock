@@ -1663,11 +1663,17 @@ func assertFindByEmptyQueryNoMatch(t *testing.T, s *stuber.Budgerigar) {
 	require.NotNil(t, result.Similar())
 }
 
-func TestEmptyQueryInput(t *testing.T) {
-	t.Parallel()
+func newCleanBudgerigar(t *testing.T) *stuber.Budgerigar {
+	t.Helper()
+
 	stuber.ClearAllCaches()
 
-	s := stuber.NewBudgerigar()
+	return stuber.NewBudgerigar()
+}
+
+func TestEmptyQueryInput(t *testing.T) {
+	t.Parallel()
+	s := newCleanBudgerigar(t)
 	s.PutMany(
 		newGreeterStreamingStub("Streaming Empty", map[string]any{}, nil),
 		newGreeterLegacyStub("Hello World", map[string]any{}, nil),
@@ -1679,9 +1685,7 @@ func TestEmptyQueryInput(t *testing.T) {
 
 func TestEmptyQueryInputWithStreaming(t *testing.T) {
 	t.Parallel()
-	stuber.ClearAllCaches()
-
-	s := stuber.NewBudgerigar()
+	s := newCleanBudgerigar(t)
 	s.PutMany(
 		newGreeterStreamingStub("Streaming Hello", map[string]any{}, nil),
 		newGreeterLegacyStub("Legacy Hello", map[string]any{}, nil),
@@ -1692,9 +1696,7 @@ func TestEmptyQueryInputWithStreaming(t *testing.T) {
 
 func TestEmptyQueryInputNoMatch(t *testing.T) {
 	t.Parallel()
-	stuber.ClearAllCaches()
-
-	s := stuber.NewBudgerigar()
+	s := newCleanBudgerigar(t)
 	s.PutMany(
 		newGreeterStreamingStub("Hello Bob", map[string]any{"name": "Bob"}, nil),
 		newGreeterLegacyStub("Hello Bob", map[string]any{"name": "Bob"}, nil),
@@ -1705,9 +1707,7 @@ func TestEmptyQueryInputNoMatch(t *testing.T) {
 
 func TestEmptyQueryInputWithHeaders(t *testing.T) {
 	t.Parallel()
-	stuber.ClearAllCaches()
-
-	s := stuber.NewBudgerigar()
+	s := newCleanBudgerigar(t)
 	headers := map[string]any{"x-user": "admin"}
 	s.PutMany(
 		newGreeterStreamingStub("Admin Hello", map[string]any{}, headers),
@@ -1719,9 +1719,7 @@ func TestEmptyQueryInputWithHeaders(t *testing.T) {
 
 func TestEmptyQueryInputMixedConditions(t *testing.T) {
 	t.Parallel()
-	stuber.ClearAllCaches()
-
-	s := stuber.NewBudgerigar()
+	s := newCleanBudgerigar(t)
 	s.PutMany(
 		newGreeterStreamingStub("Streaming Empty", map[string]any{}, nil),
 		newGreeterStreamingStub("Streaming Bob", map[string]any{"name": "Bob"}, nil),
