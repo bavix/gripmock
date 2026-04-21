@@ -88,10 +88,7 @@ func TestBudgerigarUnusedV2(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar()
-
-	// Create stubs
-	stub1 := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
-	stub2 := &stuber.Stub{ID: uuid.New(), Service: "Greeter2", Method: "SayHello2"}
+	stub1, stub2 := newPairGreeterStubs()
 
 	s.PutMany(stub1, stub2)
 
@@ -279,10 +276,7 @@ func TestBudgerigarClearV2(t *testing.T) {
 	t.Parallel()
 
 	s := stuber.NewBudgerigar()
-
-	// Create stubs
-	stub1 := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
-	stub2 := &stuber.Stub{ID: uuid.New(), Service: "Greeter2", Method: "SayHello2"}
+	stub1, stub2 := newPairGreeterStubs()
 
 	s.PutMany(stub1, stub2)
 
@@ -415,10 +409,7 @@ func TestBudgerigarUsedV2(t *testing.T) {
 	stuber.ClearAllCaches()
 
 	s := stuber.NewBudgerigar()
-
-	// Create stubs
-	stub1 := &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"}
-	stub2 := &stuber.Stub{ID: uuid.New(), Service: "Greeter2", Method: "SayHello2"}
+	stub1, stub2 := newPairGreeterStubs()
 
 	s.PutMany(stub1, stub2)
 
@@ -1169,12 +1160,12 @@ func TestFieldAndCamelCaseVariations(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			runFieldVariationCase(t, tt.inputEquals, tt.queries)
+			runFieldVariationCase(t, tt.inputEquals, tt.queries, "Hello John!")
 		})
 	}
 }
 
-func runFieldVariationCase(t *testing.T, equals map[string]any, queries []map[string]any) {
+func runFieldVariationCase(t *testing.T, equals map[string]any, queries []map[string]any, expected string) {
 	t.Helper()
 
 	s := newBudgerigar()
@@ -1186,7 +1177,7 @@ func runFieldVariationCase(t *testing.T, equals map[string]any, queries []map[st
 			Equals: equals,
 		},
 		Output: stuber.Output{
-			Data: map[string]any{"response": "Hello John!"},
+			Data: map[string]any{"response": expected},
 		},
 	}
 
@@ -1205,91 +1196,28 @@ func runFieldVariationCase(t *testing.T, equals map[string]any, queries []map[st
 		stubResult, err := result.Next(messageData)
 		require.NoError(t, err)
 		require.NotNil(t, stubResult)
-		require.Equal(t, "Hello John!", stubResult.Output.Data["response"])
+		require.Equal(t, expected, stubResult.Output.Data["response"])
 	}
 }
 
 // TestComplexFieldVariations tests complex field name variations.
 func TestComplexFieldVariations(t *testing.T) {
 	t.Parallel()
-
-	s := stuber.NewBudgerigar()
-
-	// Test stub with complex field names
-	stub := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "TestService",
-		Method:  "Test",
-		Input: stuber.InputData{
-			Equals: map[string]any{
-				"user_profile_data": "data",
-				"apiKey":            "key123",
-				"simple_field":      "value",
-			},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Success!"},
-		},
-	}
-
-	s.PutMany(stub)
-
-	query := stuber.QueryBidi{
-		Service: "TestService",
-		Method:  "Test",
-	}
-
-	result, err := s.FindByQueryBidi(query)
-	require.NoError(t, err)
-	require.NotNil(t, result)
-
-	// Test with camelCase variations
-	messageData := map[string]any{
+	runFieldVariationCase(t, map[string]any{
+		"user_profile_data": "data",
+		"apiKey":            "key123",
+		"simple_field":      "value",
+	}, []map[string]any{{
 		"userProfileData": "data",   // should match user_profile_data
 		"api_key":         "key123", // should match apiKey
 		"simpleField":     "value",  // should match simple_field
-	}
-
-	stubResult, err := result.Next(messageData)
-	require.NoError(t, err)
-	require.NotNil(t, stubResult)
-	require.Equal(t, "Success!", stubResult.Output.Data["response"])
+	}}, "Success!")
 }
 
 // TestEmptyFieldVariations tests edge cases with empty fields.
 func TestEmptyFieldVariations(t *testing.T) {
 	t.Parallel()
-
-	s := stuber.NewBudgerigar()
-
-	stub := &stuber.Stub{
-		ID:      uuid.New(),
-		Service: "TestService",
-		Method:  "Test",
-		Input: stuber.InputData{
-			Equals: map[string]any{"": "empty_key"},
-		},
-		Output: stuber.Output{
-			Data: map[string]any{"response": "Empty key!"},
-		},
-	}
-
-	s.PutMany(stub)
-
-	query := stuber.QueryBidi{
-		Service: "TestService",
-		Method:  "Test",
-	}
-
-	result, err := s.FindByQueryBidi(query)
-	require.NoError(t, err)
-	require.NotNil(t, result)
-
-	// Test with empty key
-	stubResult, err := result.Next(map[string]any{"": "empty_key"})
-	require.NoError(t, err)
-	require.NotNil(t, stubResult)
-	require.Equal(t, "Empty key!", stubResult.Output.Data["response"])
+	runFieldVariationCase(t, map[string]any{"": "empty_key"}, []map[string]any{{"": "empty_key"}}, "Empty key!")
 }
 
 // TestStableSortingOptimized tests that results are stable across multiple runs with optimized sorting.
@@ -1554,6 +1482,11 @@ func TestBudgerigarTImesConcurrentNoRace(t *testing.T) {
 	}
 
 	require.Equal(t, 2, successCount, "Times(2) must allow exactly 2 matches under concurrent load")
+}
+
+func newPairGreeterStubs() (*stuber.Stub, *stuber.Stub) {
+	return &stuber.Stub{ID: uuid.New(), Service: "Greeter1", Method: "SayHello1"},
+		&stuber.Stub{ID: uuid.New(), Service: "Greeter2", Method: "SayHello2"}
 }
 
 func createTestStubs() (*stuber.Stub, *stuber.Stub) {
