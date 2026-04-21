@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.10.2 - 2026-04-21
+
+### What's Changed
+
+* fix: check VersionTag by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/838
+* add examples by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/841
+* chore(deps): bump github.com/rs/zerolog from 1.35.0 to 1.35.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/839
+* added support for edition 2024 by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/836
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.10.1...v3.10.2
+
 ## v3.10.1 - 2026-04-20
 
 ### What's Changed
