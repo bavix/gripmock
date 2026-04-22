@@ -1,0 +1,66 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Effects: CreateTask (critical) -> upserts GetTask stub
+
+- service: tasktracker.TaskService
+  method: CreateTask
+  priority: 10
+  input:
+    equals:
+      priority: "critical"
+  output:
+    data:
+      task_id: "crit-created"
+      ok: true
+  effects:
+    - action: upsert
+      stub:
+        id: "11111111-1111-1111-1111-111111111111"
+        service: tasktracker.TaskService
+        method: GetTask
+        priority: 50
+        input:
+          equals:
+            task_id: "critical-alert"
+        output:
+          data:
+            task_id: "critical-alert"
+            title: "CRITICAL: Immediate attention required!"
+            status: "alert"
+            priority: "critical"
+            ok: true
+
+- service: tasktracker.TaskService
+  method: CreateTask
+  priority: 10
+  input:
+    equals:
+      priority: "high"
+  output:
+    data:
+      task_id: "high-created"
+      ok: true
+
+- service: tasktracker.TaskService
+  method: CreateTask
+  priority: 10
+  input:
+    equals:
+      priority: "normal"
+  output:
+    data:
+      task_id: "normal-created"
+      ok: true
+
+- service: tasktracker.TaskService
+  method: GetTask
+  input:
+    equals:
+      task_id: "fallback"
+  output:
+    data:
+      task_id: "fallback"
+      title: "fallback-task"
+      status: "not_found"
+      priority: ""
+      ok: false

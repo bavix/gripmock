@@ -186,3 +186,75 @@ func TestBackwardCompatibility(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result.Found(), "Expected backward compatibility: input should match against stub")
 }
+
+func TestAnyOfInputMatching(t *testing.T) {
+	t.Parallel()
+
+	stub := &stuber.Stub{
+		Service: "test",
+		Method:  "test",
+		Input: stuber.InputData{
+			Equals: map[string]any{"role": "vip"},
+			AnyOf: []stuber.AnyOfElement{
+				{Equals: map[string]any{"name": "Alice"}},
+				{Matches: map[string]any{"name": "^admin_"}},
+			},
+		},
+	}
+
+	budgerigar := stuber.NewBudgerigar()
+	budgerigar.PutMany(stub)
+
+	matchedAlice, err := budgerigar.FindByQuery(stuber.Query{
+		Service: "test",
+		Method:  "test",
+		Input:   []map[string]any{{"role": "vip", "name": "Alice"}},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, matchedAlice.Found())
+
+	matchedAdmin, err := budgerigar.FindByQuery(stuber.Query{
+		Service: "test",
+		Method:  "test",
+		Input:   []map[string]any{{"role": "vip", "name": "admin_john"}},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, matchedAdmin.Found())
+
+	notMatchedRole, err := budgerigar.FindByQuery(stuber.Query{
+		Service: "test",
+		Method:  "test",
+		Input:   []map[string]any{{"role": "user", "name": "Alice"}},
+	})
+	require.NoError(t, err)
+	require.Nil(t, notMatchedRole.Found())
+}
+
+func TestAnyOfIgnoreArrayOrderScopedPerAlternative(t *testing.T) {
+	t.Parallel()
+
+	stub := &stuber.Stub{
+		Service: "test",
+		Method:  "test",
+		Input: stuber.InputData{
+			IgnoreArrayOrder: false,
+			AnyOf: []stuber.AnyOfElement{
+				{
+					IgnoreArrayOrder: true,
+					Equals:           map[string]any{"items": []any{"a", "b"}},
+				},
+			},
+		},
+	}
+
+	budgerigar := stuber.NewBudgerigar()
+	budgerigar.PutMany(stub)
+
+	result, err := budgerigar.FindByQuery(stuber.Query{
+		Service: "test",
+		Method:  "test",
+		Input:   []map[string]any{{"items": []any{"b", "a"}}},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "anyOf alternative must use its own ignoreArrayOrder")
+}

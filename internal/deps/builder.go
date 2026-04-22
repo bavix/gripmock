@@ -162,7 +162,12 @@ func (b *Builder) HistoryStore() *history.MemoryStore {
 // StubValidator returns the shared stub validator (created once per Builder).
 func (b *Builder) StubValidator() *validator.Validate {
 	b.stubValidatorOnce.Do(func() {
-		b.stubValidator = app.NewStubValidator()
+		var err error
+
+		b.stubValidator, err = app.NewStubValidator()
+		if err != nil {
+			panic("stub validator init: " + err.Error())
+		}
 	})
 
 	return b.stubValidator

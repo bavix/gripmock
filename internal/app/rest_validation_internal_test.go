@@ -160,6 +160,17 @@ func (s *RestValidationTestSuite) TestAddStubValidationErrors() {
 			expectedError:  "must have either 'input' or 'inputs', but not both",
 		},
 		{
+			name: "input with empty anyOf element",
+			jsonData: `[{ 
+				"service": "TestService",
+				"method": "TestMethod",
+				"input": {"anyOf": [{}]},
+				"output": {"data": {"result": "success"}}
+			}]`,
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "must have either 'input' or 'inputs', but not both",
+		},
+		{
 			name: "output with empty data and error",
 			jsonData: `[{
 				"service": "TestService",
@@ -169,6 +180,42 @@ func (s *RestValidationTestSuite) TestAddStubValidationErrors() {
 			}]`,
 			expectedStatus: http.StatusBadRequest,
 			expectedError:  "must have either 'data' or 'stream', but not both",
+		},
+		{
+			name: "invalid effect action",
+			jsonData: `[{
+				"service": "TestService",
+				"method": "TestMethod",
+				"input": {"contains": {"key": "value"}},
+				"effects": [{"action": "unknown"}],
+				"output": {"data": {"result": "success"}}
+			}]`,
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "Invalid effects configuration",
+		},
+		{
+			name: "delete effect without id",
+			jsonData: `[{
+				"service": "TestService",
+				"method": "TestMethod",
+				"input": {"contains": {"key": "value"}},
+				"effects": [{"action": "delete"}],
+				"output": {"data": {"result": "success"}}
+			}]`,
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "Invalid effects configuration",
+		},
+		{
+			name: "upsert effect without stub",
+			jsonData: `[{
+				"service": "TestService",
+				"method": "TestMethod",
+				"input": {"contains": {"key": "value"}},
+				"effects": [{"action": "upsert"}],
+				"output": {"data": {"result": "success"}}
+			}]`,
+			expectedStatus: http.StatusBadRequest,
+			expectedError:  "Invalid effects configuration",
 		},
 	}
 
@@ -219,6 +266,39 @@ func (s *RestValidationTestSuite) TestAddStubValidConfigurations() {
 				"service": "test.Service",
 				"method": "TestMethod",
 				"input": {"matches": {"key": "pattern.*"}},
+				"output": {"data": {"result": "success"}}
+			}]`,
+		},
+		{
+			name: "valid unary stub with anyOf matcher",
+			jsonData: `[{ 
+				"service": "test.Service",
+				"method": "TestMethod",
+				"input": {
+					"equals": {"role": "vip"},
+					"anyOf": [
+						{"equals": {"name": "Alice"}},
+						{"matches": {"name": "^admin_"}}
+					]
+				},
+				"output": {"data": {"result": "success"}}
+			}]`,
+		},
+		{
+			name: "valid unary stub with upsert effect",
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestMethod",
+				"input": {"contains": {"key": "value"}},
+				"effects": [{
+					"action": "upsert",
+					"stub": {
+						"service": "test.Service",
+						"method": "GeneratedMethod",
+						"input": {"equals": {"id": "1"}},
+						"output": {"data": {"generated": true}}
+					}
+				}],
 				"output": {"data": {"result": "success"}}
 			}]`,
 		},

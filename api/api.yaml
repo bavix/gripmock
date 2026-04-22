@@ -1273,6 +1273,12 @@ components:
         options:
           $ref: '#/components/schemas/StubOptions'
           x-omitzero: true
+        effects:
+          type: array
+          description: Side effects applied after successful stub match
+          items:
+            $ref: '#/components/schemas/StubEffect'
+          x-go-type-skip-optional-pointer: true
         source:
           type: string
           description: Source of the stub (file, rest, mcp, proxy)
@@ -1288,7 +1294,49 @@ components:
           minimum: 0
           default: 0
           x-go-type-skip-optional-pointer: true
+    StubEffect:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          enum: [upsert, delete]
+        id:
+          type: string
+          description: Stub UUID for delete action
+          x-go-type-skip-optional-pointer: true
+        stub:
+          type: object
+          additionalProperties: true
+          description: Stub payload for upsert action
+          x-go-type-skip-optional-pointer: true
     StubInput:
+      type: object
+      properties:
+        ignoreArrayOrder:
+          type: boolean
+          default: false
+          x-go-type-skip-optional-pointer: true
+        equals:
+          type: object
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+        contains:
+          type: object
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+        matches:
+          type: object
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+        anyOf:
+          type: array
+          description: Alternative input matchers (OR logic)
+          items:
+            $ref: '#/components/schemas/StubInputAnyOfElement'
+          x-go-type-skip-optional-pointer: true
+    StubInputAnyOfElement:
       type: object
       properties:
         ignoreArrayOrder:
@@ -1310,6 +1358,30 @@ components:
     StubHeaders:
       type: object
       x-go-type-skip-optional-pointer: true
+      properties:
+        equals:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        contains:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        matches:
+          type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+        anyOf:
+          type: array
+          description: Alternative header matchers (OR logic)
+          items:
+            $ref: '#/components/schemas/StubHeadersAnyOfElement'
+          x-go-type-skip-optional-pointer: true
+    StubHeadersAnyOfElement:
+      type: object
       properties:
         equals:
           type: object

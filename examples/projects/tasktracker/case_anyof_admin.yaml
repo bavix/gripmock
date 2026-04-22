@@ -1,0 +1,38 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# anyOf: GetTask with OR conditions in headers
+
+- service: tasktracker.TaskService
+  method: GetTask
+  priority: 20
+  headers:
+    equals:
+      x-env: "production"
+    anyOf:
+      - equals:
+          x-role: "admin"
+      - matches:
+          x-user: "^root"
+  input:
+    equals:
+      task_id: "admin-task"
+  output:
+    data:
+      task_id: "admin-task"
+      title: "Admin Protected Task"
+      status: "active"
+      priority: "critical"
+      ok: true
+
+- service: tasktracker.TaskService
+  method: GetTask
+  input:
+    equals:
+      task_id: "admin-task"
+  output:
+    data:
+      task_id: "admin-task"
+      title: "Admin Task (no header)"
+      status: "restricted"
+      priority: "low"
+      ok: false

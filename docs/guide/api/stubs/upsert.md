@@ -112,6 +112,12 @@ curl -X POST -d '[
 - **Batch Support**: Send an array of stubs in a single request.  
 - **Validation**: Invalid stubs (e.g., missing `service`/`method`) return `400 Bad Request`.  
 
+## New Matching and Effects Fields <VersionTag version="v3.11.0" />
+
+- `input.anyOf` and `headers.anyOf` are supported for OR-style alternatives.
+- `effects` is supported for runtime transitions (`upsert`, `delete`).
+- Effects inherit session automatically from matched parent stub.
+
 ## Related Endpoints
 - `GET /api/stubs`: List all stubs.  
 - `DELETE /api/stubs`: Delete all stubs.  

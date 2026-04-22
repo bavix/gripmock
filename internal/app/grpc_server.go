@@ -17,7 +17,9 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-json"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
@@ -156,6 +158,7 @@ type GRPCServer struct {
 	tlsConfig    *tls.Config
 	proxies      *proxyroutes.Registry
 	otelEnabled  bool
+	validator    *validator.Validate
 }
 
 type grpcMocker struct {
@@ -165,6 +168,7 @@ type grpcMocker struct {
 	recorder           history.Recorder
 	descriptorResolver protodesc.Resolver
 	proxies            *proxyroutes.Registry
+	validator          *validator.Validate
 
 	inputDesc  protoreflect.MessageDescriptor
 	outputDesc protoreflect.MessageDescriptor
@@ -458,6 +462,8 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
 		return errors.Wrap(err, "failed to set headers")
 	}
+
+	m.applyEffects(stream.Context(), found, templateData)
 
 	if found.Output.Stream != nil {
 		if len(found.Output.Stream) > 0 {
@@ -807,6 +813,8 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		sess = sessionFromMetadata(md)
 	}
 
+	m.applyEffects(ctx, found, templateData)
+
 	if err := m.handleOutputError(ctx, nil, outputToUse); err != nil {
 		if m.recorder != nil {
 			m.recorder.Record(history.CallRecord{
@@ -882,6 +890,180 @@ func (m *grpcMocker) handleOutputError(_ context.Context, _ grpc.ServerStream, o
 	return nil
 }
 
+func (m *grpcMocker) applyEffects(
+	ctx context.Context,
+	matched *stuber.Stub,
+	templateData template.Data,
+) {
+	if len(matched.Effects) == 0 {
+		return
+	}
+
+	prepared := make([]effectOperation, 0, len(matched.Effects))
+
+	for i, effect := range matched.Effects {
+		op, err := m.prepareEffect(effect, templateData, matched.Session)
+		if err != nil {
+			zerolog.Ctx(ctx).Err(err).
+				Str("stub_id", matched.ID.String()).
+				Int("effect_index", i).
+				Str("effect_action", effect.Action).
+				Msg("failed to prepare effect; skip all effects for request")
+
+			return
+		}
+
+		prepared = append(prepared, op)
+	}
+
+	for i, op := range prepared {
+		if err := m.applyEffectOperation(op); err != nil {
+			zerolog.Ctx(ctx).Err(err).
+				Str("stub_id", matched.ID.String()).
+				Int("effect_index", i).
+				Str("effect_action", op.action).
+				Msg("failed to apply prepared effect")
+		}
+	}
+}
+
+type effectOperation struct {
+	action        string
+	upsertStub    *stuber.Stub
+	deleteID      uuid.UUID
+	parentSession string
+}
+
+func (m *grpcMocker) prepareEffect(
+	effect stuber.Effect,
+	templateData template.Data,
+	parentSession string,
+) (effectOperation, error) {
+	switch effect.Action {
+	case stuber.EffectActionUpsert:
+		upsert, err := m.prepareUpsertEffect(effect, templateData, parentSession)
+		if err != nil {
+			return effectOperation{}, err
+		}
+
+		return effectOperation{action: effect.Action, upsertStub: upsert, parentSession: parentSession}, nil
+	case stuber.EffectActionDelete:
+		deleteID, err := m.prepareDeleteEffect(effect, templateData)
+		if err != nil {
+			return effectOperation{}, err
+		}
+
+		return effectOperation{action: effect.Action, deleteID: deleteID, parentSession: parentSession}, nil
+	default:
+		return effectOperation{}, errors.New("unknown effect action")
+	}
+}
+
+func (m *grpcMocker) prepareUpsertEffect(
+	effect stuber.Effect,
+	templateData template.Data,
+	parentSession string,
+) (*stuber.Stub, error) {
+	if len(effect.Stub) == 0 {
+		return nil, errors.New("upsert effect requires stub payload")
+	}
+
+	payload := deepCopyMapAny(effect.Stub)
+	if err := m.templateEngine.ProcessMap(payload, templateData); err != nil {
+		return nil, errors.Wrap(err, "failed to process effect upsert templates")
+	}
+
+	stub, err := decodeEffectStub(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	if stub.ID == uuid.Nil {
+		stub.ID = uuid.New()
+	}
+
+	stub.Session = parentSession
+	stub.Source = stuber.SourceRest
+
+	if err := m.validator.Struct(stub); err != nil {
+		return nil, errors.Wrap(err, "invalid generated upsert effect stub")
+	}
+
+	return stub, nil
+}
+
+func (m *grpcMocker) prepareDeleteEffect(
+	effect stuber.Effect,
+	templateData template.Data,
+) (uuid.UUID, error) {
+	idString := effect.ID
+	if idString == "" {
+		return uuid.Nil, errors.New("delete effect requires id")
+	}
+
+	if template.IsTemplateString(idString) {
+		renderedID, err := m.templateEngine.Render(idString, templateData)
+		if err != nil {
+			return uuid.Nil, errors.Wrap(err, "failed to process effect delete id template")
+		}
+
+		idString = renderedID
+	}
+
+	id, err := uuid.Parse(idString)
+	if err != nil {
+		return uuid.Nil, errors.Wrap(err, "invalid effect delete id")
+	}
+
+	return id, nil
+}
+
+func (m *grpcMocker) applyEffectOperation(op effectOperation) error {
+	switch op.action {
+	case stuber.EffectActionUpsert:
+		if op.upsertStub == nil {
+			return errors.New("prepared upsert effect has nil stub")
+		}
+
+		m.budgerigar.PutMany(op.upsertStub)
+
+		return nil
+	case stuber.EffectActionDelete:
+		existing := m.budgerigar.FindByID(op.deleteID)
+		if existing == nil || !effectCanDeleteStub(existing, op.parentSession) {
+			return nil
+		}
+
+		m.budgerigar.DeleteByID(op.deleteID)
+
+		return nil
+	default:
+		return errors.New("unknown prepared effect action")
+	}
+}
+
+func effectCanDeleteStub(stub *stuber.Stub, targetSession string) bool {
+	if targetSession == "" {
+		return stub.Session == ""
+	}
+
+	return stub.Session == targetSession
+}
+
+func decodeEffectStub(payload map[string]any) (*stuber.Stub, error) {
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal effect stub payload")
+	}
+
+	generated := &stuber.Stub{}
+	if err := json.Unmarshal(body, generated); err != nil {
+		return nil, errors.Wrap(err, "failed to decode effect stub payload")
+	}
+
+	return generated, nil
+}
+
 func (m *grpcMocker) tryV2API(messages []map[string]any, md metadata.MD) (*stuber.Result, error) {
 	query := stuber.Query{
 		Service:       m.fullServiceName,
@@ -896,31 +1078,6 @@ func (m *grpcMocker) tryV2API(messages []map[string]any, md metadata.MD) (*stube
 	}
 
 	return m.budgerigar.FindByQuery(query)
-}
-
-func (m *grpcMocker) tryV1APIFallback(messages []map[string]any, md metadata.MD) (*stuber.Result, error) {
-	for i := len(messages) - 1; i >= 0; i-- {
-		message := messages[i]
-
-		query := stuber.Query{
-			Service:       m.fullServiceName,
-			Method:        m.methodName,
-			StrictService: m.strictServiceMatch,
-			Input:         []map[string]any{message},
-		}
-
-		if len(md) > 0 {
-			query.Headers = processHeaders(md)
-			query.Session = sessionFromMetadata(md)
-		}
-
-		result, foundErr := m.budgerigar.FindByQuery(query)
-		if foundErr == nil && result != nil && result.Found() != nil {
-			return result, nil
-		}
-	}
-
-	return nil, status.Errorf(codes.NotFound, "failed to find response for client stream")
 }
 
 func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
@@ -972,10 +1129,6 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 	md, _ := metadata.FromIncomingContext(stream.Context())
 
 	result, foundErr := m.tryV2API(messages, md)
-
-	if foundErr != nil || result == nil || result.Found() == nil {
-		result, foundErr = m.tryV1APIFallback(messages, md)
-	}
 
 	if foundErr != nil || result == nil || result.Found() == nil {
 		// Use error formatter to include "Closest Match" details
@@ -1055,6 +1208,8 @@ func (m *grpcMocker) sendClientStreamResponse(
 	if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
 		return errors.Wrap(err, "failed to process dynamic templates")
 	}
+
+	m.applyEffects(stream.Context(), found, templateData)
 
 	outputMsg, err := m.newOutputMessage(outputDataCopy)
 	if err != nil {
@@ -1156,6 +1311,8 @@ func (m *grpcMocker) processBidiStreamMessage(
 		return err
 	}
 
+	m.applyEffects(stream.Context(), stub, templateData)
+
 	if bidiResult.GetMessageIndex() == 0 {
 		if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
 			return errors.Wrap(err, "failed to set headers")
@@ -1228,10 +1385,16 @@ func NewGRPCServer(
 	tlsConfig *tls.Config,
 	remoteClient protosetdom.RemoteClient,
 	otelEnabled bool,
+	stubValidator *validator.Validate,
 ) *GRPCServer {
 	registry := descriptorRegistry
 	if registry == nil {
 		registry = descriptors.NewRegistry()
+	}
+
+	v := stubValidator
+	if v == nil {
+		v = mustNewStubValidator()
 	}
 
 	var healthState stuber.Aliveness
@@ -1251,6 +1414,7 @@ func NewGRPCServer(
 		remoteClient: remoteClient,
 		tlsConfig:    tlsConfig,
 		otelEnabled:  otelEnabled,
+		validator:    v,
 	}
 }
 
@@ -1403,6 +1567,7 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 		recorder:           s.recorder,
 		descriptorResolver: &dynamicDescriptorResolver{static: protoregistry.GlobalFiles, dynamic: s.descriptors},
 		proxies:            s.proxies,
+		validator:          s.validator,
 		inputDesc:          methodDesc.Input(),
 		outputDesc:         methodDesc.Output(),
 		fullServiceName:    serviceName,
@@ -1708,6 +1873,7 @@ func (s *GRPCServer) createGrpcMocker(
 		recorder:           s.recorder,
 		descriptorResolver: resolver,
 		proxies:            s.proxies,
+		validator:          s.validator,
 
 		inputDesc:  inputDesc,
 		outputDesc: outputDesc,

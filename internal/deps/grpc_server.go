@@ -61,6 +61,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		tlsCfg,
 		b.RemoteClient(),
 		b.config.OtelEnabled,
+		b.StubValidator(),
 	)
 
 	server, err := grpcServer.Build(ctx)

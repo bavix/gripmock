@@ -95,12 +95,11 @@ export default defineConfig({
           { text: 'Priority', link: '/guide/stubs/priority' },
           { text: 'Times Limit', link: '/guide/stubs/times-limit' },
           { text: 'Delay', link: '/guide/stubs/delay' },
+          { text: 'Output', link: '/guide/stubs/output-stream' },
+          { text: 'Streaming', link: '/guide/stubs/streaming' },
           { text: 'Health Service', link: '/guide/stubs/health' },
-          { text: 'Output Stream', link: '/guide/stubs/output-stream' },
-          { text: 'Server Streaming', link: '/guide/stubs/server-streaming' },
-          { text: 'Client Streaming', link: '/guide/stubs/client-streaming' },
-          { text: 'Bidirectional Streaming', link: '/guide/stubs/bidirectional-streaming' },
           { text: 'Dynamic Templates', link: '/guide/stubs/dynamic-templates' },
+          { text: 'Effects', link: '/guide/stubs/effects' },
           { text: 'Faker Reference', link: '/guide/stubs/faker' }
         ],
         collapsed: false,
@@ -108,6 +107,8 @@ export default defineConfig({
       {
         text: 'Matcher',
         items: [
+          { text: 'Overview', link: '/guide/matcher/' },
+          { text: 'Matching Logic', link: '/guide/matcher/logic' },
           { text: 'Input', link: '/guide/matcher/input' },
           { text: 'Headers', link: '/guide/matcher/headers' },
         ],

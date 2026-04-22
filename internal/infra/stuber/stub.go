@@ -40,7 +40,20 @@ type Stub struct {
 	Input    InputData   `json:"input"             validate:"valid_input_config"`  // Unary input (mutually exclusive with Inputs).
 	Inputs   []InputData `json:"inputs,omitempty"  validate:"valid_input_config"`  // Client streaming inputs (mutually exclusive with Input).
 	Output   Output      `json:"output"            validate:"valid_output_config"` // The output data of the response.
+	Effects  []Effect    `json:"effects,omitempty" validate:"valid_effects"`       // Side effects applied after a successful match.
 	Source   string      `json:"source,omitempty"`                                 // Stub source.
+}
+
+const (
+	EffectActionUpsert = "upsert"
+	EffectActionDelete = "delete"
+)
+
+// Effect represents a side effect executed after stub match.
+type Effect struct {
+	Action string         `json:"action"`
+	ID     string         `json:"id,omitempty"`
+	Stub   map[string]any `json:"stub,omitempty"`
 }
 
 // EffectiveTimes returns the stub's max match count; 0 means unlimited.
@@ -95,6 +108,16 @@ type InputData struct {
 	Equals           map[string]any `json:"equals"`                     // The data to match exactly.
 	Contains         map[string]any `json:"contains"`                   // The data to match partially.
 	Matches          map[string]any `json:"matches"`                    // The data to match using regular expressions.
+	AnyOf            []AnyOfElement `json:"anyOf,omitempty"`            // Alternative matchers (OR logic).
+}
+
+// AnyOfElement is a flat alternative matcher inside InputData.
+// Unlike InputData, it cannot nest further AnyOf — depth is limited to 1.
+type AnyOfElement struct {
+	IgnoreArrayOrder bool           `json:"ignoreArrayOrder,omitempty"`
+	Equals           map[string]any `json:"equals"`
+	Contains         map[string]any `json:"contains"`
+	Matches          map[string]any `json:"matches"`
 }
 
 // GetEquals returns the data to match exactly.
@@ -114,9 +137,17 @@ func (i InputData) GetMatches() map[string]any {
 
 // InputHeader represents the headers of a gRPC request.
 type InputHeader struct {
-	Equals   map[string]any `json:"equals"`   // The headers to match exactly.
-	Contains map[string]any `json:"contains"` // The headers to match partially.
-	Matches  map[string]any `json:"matches"`  // The headers to match using regular expressions.
+	Equals   map[string]any       `json:"equals"`          // The headers to match exactly.
+	Contains map[string]any       `json:"contains"`        // The headers to match partially.
+	Matches  map[string]any       `json:"matches"`         // The headers to match using regular expressions.
+	AnyOf    []AnyOfHeaderElement `json:"anyOf,omitempty"` // Alternative matchers (OR logic).
+}
+
+// AnyOfHeaderElement is a flat alternative matcher inside InputHeader.
+type AnyOfHeaderElement struct {
+	Equals   map[string]any `json:"equals"`
+	Contains map[string]any `json:"contains"`
+	Matches  map[string]any `json:"matches"`
 }
 
 // GetEquals returns the headers to match exactly.
@@ -136,7 +167,13 @@ func (i InputHeader) GetMatches() map[string]any {
 
 // Len returns the total number of headers to match.
 func (i InputHeader) Len() int {
-	return len(i.Equals) + len(i.Matches) + len(i.Contains)
+	n := len(i.Equals) + len(i.Matches) + len(i.Contains)
+
+	for _, alt := range i.AnyOf {
+		n += len(alt.Equals) + len(alt.Matches) + len(alt.Contains)
+	}
+
+	return n
 }
 
 // Output represents the output data of a gRPC response.

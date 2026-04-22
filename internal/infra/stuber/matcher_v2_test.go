@@ -137,7 +137,7 @@ func TestMatchWithStreamV2(t *testing.T) {
 	require.Nil(t, result.Found(), "Expected match to return false for non-matching stream")
 }
 
-func TestV2MultipleStreamsNoStubStream(t *testing.T) {
+func TestV2MultipleStreamsSingleInputUsesLastElement(t *testing.T) {
 	t.Parallel()
 
 	query := stuber.Query{
@@ -150,7 +150,7 @@ func TestV2MultipleStreamsNoStubStream(t *testing.T) {
 		Service: "test",
 		Method:  "test",
 		Input: stuber.InputData{
-			Equals: map[string]any{"key1": "value1"},
+			Equals: map[string]any{"key2": "value2"},
 		},
 	}
 
@@ -159,7 +159,7 @@ func TestV2MultipleStreamsNoStubStream(t *testing.T) {
 
 	result, err := budgerigar.FindByQuery(query)
 	require.NoError(t, err)
-	require.Nil(t, result.Found(), "Expected no match for multiple streams without stream in stub")
+	require.NotNil(t, result.Found(), "Expected match against last stream element for single-Input stub")
 }
 
 func TestV2Priority(t *testing.T) {

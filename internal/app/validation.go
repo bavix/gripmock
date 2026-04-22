@@ -2,41 +2,37 @@ package app
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/go-playground/validator/v10"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-var (
-	stubValidator     *validator.Validate //nolint:gochecknoglobals
-	stubValidatorOnce sync.Once           //nolint:gochecknoglobals
-)
-
-// NewStubValidator creates a validator with stub-specific custom validations registered.
-func NewStubValidator() *validator.Validate {
+func NewStubValidator() (*validator.Validate, error) {
 	v := validator.New()
-	if err := v.RegisterValidation("valid_input_config", validateInputConfiguration); err != nil {
-		panic("register valid_input_config: " + err.Error())
+
+	for name, fn := range map[string]validator.Func{
+		"valid_input_config":  validateInputConfiguration,
+		"valid_output_config": validateOutputConfiguration,
+		"valid_effects":       validateEffectsConfiguration,
+	} {
+		if err := v.RegisterValidation(name, fn); err != nil {
+			return nil, fmt.Errorf("register validation %q: %w", name, err)
+		}
 	}
 
-	if err := v.RegisterValidation("valid_output_config", validateOutputConfiguration); err != nil {
-		panic("register valid_output_config: " + err.Error())
+	return v, nil
+}
+
+func mustNewStubValidator() *validator.Validate {
+	v, err := NewStubValidator()
+	if err != nil {
+		panic("stub validator init: " + err.Error())
 	}
 
 	return v
 }
 
-func defaultStubValidator() *validator.Validate {
-	stubValidatorOnce.Do(func() {
-		stubValidator = NewStubValidator()
-	})
-
-	return stubValidator
-}
-
-// ValidationError represents a validation error with field information.
 type ValidationError struct {
 	Field   string
 	Tag     string
@@ -48,7 +44,6 @@ func (e ValidationError) Error() string {
 	return e.Message
 }
 
-// validateInputConfiguration validates that either input or inputs is provided, but not both.
 func validateInputConfiguration(fl validator.FieldLevel) bool {
 	v := stubFromFieldLevel(fl)
 	if v == nil {
@@ -58,11 +53,9 @@ func validateInputConfiguration(fl validator.FieldLevel) bool {
 	hasInput := hasValidInputData(v.Input)
 	hasInputs := len(v.Inputs) > 0
 
-	// Must have exactly one type of input configuration
 	return hasInput != hasInputs
 }
 
-// validateOutputConfiguration validates that either data or stream is provided, but not both.
 func validateOutputConfiguration(fl validator.FieldLevel) bool {
 	v := stubFromFieldLevel(fl)
 	if v == nil {
@@ -72,12 +65,34 @@ func validateOutputConfiguration(fl validator.FieldLevel) bool {
 	hasDataOutput := v.Output.Error != "" || v.Output.Data != nil || v.Output.Code != nil || len(v.Output.Details) > 0
 	hasStreamOutput := len(v.Output.Stream) > 0
 
-	// Must have exactly one type of output configuration
 	return hasDataOutput != hasStreamOutput
 }
 
+func validateEffectsConfiguration(fl validator.FieldLevel) bool {
+	v := stubFromFieldLevel(fl)
+	if v == nil {
+		return false
+	}
+
+	for _, effect := range v.Effects {
+		switch effect.Action {
+		case stuber.EffectActionUpsert:
+			if len(effect.Stub) == 0 {
+				return false
+			}
+		case stuber.EffectActionDelete:
+			if effect.ID == "" {
+				return false
+			}
+		default:
+			return false
+		}
+	}
+
+	return true
+}
+
 func stubFromFieldLevel(fl validator.FieldLevel) *stuber.Stub {
-	// Top() returns the root struct being validated (*Stub when calling Struct(stub))
 	if v, ok := fl.Top().Interface().(*stuber.Stub); ok {
 		return v
 	}
@@ -85,43 +100,44 @@ func stubFromFieldLevel(fl validator.FieldLevel) *stuber.Stub {
 	return nil
 }
 
-// Helper functions.
 func hasValidInputData(input stuber.InputData) bool {
-	return input.Contains != nil || input.Equals != nil || input.Matches != nil
+	if input.Contains != nil || input.Equals != nil || input.Matches != nil {
+		return true
+	}
+
+	for _, alt := range input.AnyOf {
+		if alt.Contains != nil || alt.Equals != nil || alt.Matches != nil {
+			return true
+		}
+	}
+
+	return false
 }
 
-// getValidationMessage returns a user-friendly validation error message.
-func getValidationMessage(fieldError validator.FieldError) string {
-	switch fieldError.Tag() {
+func getValidationMessage(fe validator.FieldError) string {
+	switch fe.Tag() {
 	case "required":
-		return getRequiredFieldMessage(fieldError.Field())
+		return requiredFieldMessage(fe.Field())
 	case "valid_input_config":
 		return "Invalid input configuration: must have either 'input' or 'inputs', but not both"
 	case "valid_output_config":
 		return "Invalid output configuration: must have either 'data' or 'stream', but not both"
+	case "valid_effects":
+		return "Invalid effects configuration: upsert requires 'stub', delete requires 'id'"
 	case "gte":
 		return "Options.Times must be >= 0 (0 = unlimited matches)"
-	case "valid_unary_stub":
-		return "Unary stub must have valid input and output"
-	case "valid_client_stream_stub":
-		return "Client streaming stub must have inputs"
-	case "valid_server_stream_stub":
-		return "Server streaming stub must have input and stream output"
-	case "valid_bidirectional_stub":
-		return "Bidirectional streaming stub must have inputs and stream output"
 	default:
-		return fmt.Sprintf("Validation failed for field %s with tag %s", fieldError.Field(), fieldError.Tag())
+		return fmt.Sprintf("Validation failed for field %s with tag %s", fe.Field(), fe.Tag())
 	}
 }
 
-// getRequiredFieldMessage returns the appropriate error message for required field validation.
-func getRequiredFieldMessage(fieldName string) string {
-	switch fieldName {
+func requiredFieldMessage(field string) string {
+	switch field {
 	case "Service":
 		return ErrServiceIsMissing.Error()
 	case "Method":
 		return ErrMethodIsMissing.Error()
 	default:
-		return fieldName + " is required"
+		return field + " is required"
 	}
 }

@@ -1,0 +1,39 @@
+--- META ---
+name: effects upsert - critical task creates alert
+summary: CreateTask with priority=critical should upsert GetTask stub for critical-alert
+tags: [effects, upsert]
+
+--- ENDPOINT ---
+tasktracker.TaskService/CreateTask
+
+--- REQUEST ---
+{
+  "title": "Fix critical bug",
+  "assignee": "dev1",
+  "priority": "critical"
+}
+
+--- RESPONSE ---
+{
+  "task_id": "crit-created",
+  "ok": true
+}
+
+// Verify the effect-created stub exists
+
+--- ENDPOINT ---
+tasktracker.TaskService/GetTask
+
+--- REQUEST ---
+{
+  "task_id": "critical-alert"
+}
+
+--- RESPONSE ---
+{
+  "task_id": "critical-alert",
+  "title": "CRITICAL: Immediate attention required!",
+  "status": "alert",
+  "priority": "critical",
+  "ok": true
+}

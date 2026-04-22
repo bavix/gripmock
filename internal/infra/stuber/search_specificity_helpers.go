@@ -26,53 +26,39 @@ func (s *searcher) calcSpecificity(stub *Stub, query Query) int {
 }
 
 // calcSpecificityUnary calculates specificity for unary case.
-// Counts the number of fields that exist in both stub and query.
-// Supports all field types: Equals, Contains, and Matches.
-// Supports field name variations (camelCase vs snake_case).
-// Excludes fields with default/empty values from specificity calculation.
-//
-// Parameters:
-// - stubInput: The stub's input data
-// - queryData: The query's input data
-//
-// Returns:
-// - int: The number of matching fields (excluding default values).
 func (s *searcher) calcSpecificityUnary(stubInput InputData, queryData map[string]any) int {
-	specificity := 0
-
-	// Helper function to check if field exists with variations and has non-default value
 	fieldExistsWithNonDefaultValue := func(stubKey string) bool {
-		// Try to find the field in query with variations
 		queryValue, found := findValueWithVariations(queryData, stubKey)
 		if !found {
 			return false
 		}
-		// Check if query value is non-default
+
 		return !protoconv.IsDefaultValue(queryValue)
 	}
 
-	// Count equals fields
-	for key := range stubInput.Equals {
-		if fieldExistsWithNonDefaultValue(key) {
-			specificity++
-		}
-	}
+	specificity := countMatcherKeys(stubInput.Equals, fieldExistsWithNonDefaultValue)
+	specificity += countMatcherKeys(stubInput.Contains, fieldExistsWithNonDefaultValue)
+	specificity += countMatcherKeys(stubInput.Matches, fieldExistsWithNonDefaultValue)
 
-	// Count contains fields
-	for key := range stubInput.Contains {
-		if fieldExistsWithNonDefaultValue(key) {
-			specificity++
-		}
-	}
-
-	// Count matches fields
-	for key := range stubInput.Matches {
-		if fieldExistsWithNonDefaultValue(key) {
-			specificity++
-		}
+	for _, alt := range stubInput.AnyOf {
+		specificity += countMatcherKeys(alt.Equals, fieldExistsWithNonDefaultValue)
+		specificity += countMatcherKeys(alt.Contains, fieldExistsWithNonDefaultValue)
+		specificity += countMatcherKeys(alt.Matches, fieldExistsWithNonDefaultValue)
 	}
 
 	return specificity
+}
+
+func countMatcherKeys(m map[string]any, predicate func(string) bool) int {
+	n := 0
+
+	for key := range m {
+		if predicate(key) {
+			n++
+		}
+	}
+
+	return n
 }
 
 // calcSpecificityStream calculates specificity for stream case.

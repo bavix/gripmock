@@ -63,7 +63,7 @@ var _ rest.ServerInterface = &RestServer{}
 
 // NewRestServer creates a new REST server instance with the specified dependencies.
 // If historyReader is nil, /api/history and /api/verify return empty/error.
-// If stubValidator is nil, a shared default validator is used.
+// If stubValidator is nil, a new default validator is created automatically.
 func NewRestServer(
 	ctx context.Context,
 	budgerigar *stuber.Budgerigar,
@@ -74,7 +74,12 @@ func NewRestServer(
 ) (*RestServer, error) {
 	v := stubValidator
 	if v == nil {
-		v = defaultStubValidator()
+		var err error
+
+		v, err = NewStubValidator()
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to create stub validator")
+		}
 	}
 
 	r := registry

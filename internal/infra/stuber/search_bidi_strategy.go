@@ -47,9 +47,26 @@ func matchInputData(inputData InputData, messageData map[string]any) bool {
 		return true
 	}
 
-	return matchInputEquals(inputData.Equals, messageData) &&
-		matchInputContains(inputData.Contains, messageData) &&
-		matchInputRegex(inputData.Matches, messageData)
+	if !matchInputEquals(inputData.Equals, messageData) ||
+		!matchInputContains(inputData.Contains, messageData) ||
+		!matchInputRegex(inputData.Matches, messageData) {
+		return false
+	}
+
+	if len(inputData.AnyOf) == 0 {
+		return true
+	}
+
+	for i := range inputData.AnyOf {
+		alt := &inputData.AnyOf[i]
+		if matchInputEquals(alt.Equals, messageData) &&
+			matchInputContains(alt.Contains, messageData) &&
+			matchInputRegex(alt.Matches, messageData) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func rankInputData(inputData InputData, messageData map[string]any) float64 {
@@ -57,9 +74,29 @@ func rankInputData(inputData InputData, messageData map[string]any) float64 {
 		return 1.0
 	}
 
-	return rankInputEquals(inputData.Equals, messageData) +
+	base := rankInputEquals(inputData.Equals, messageData) +
 		rankInputContains(inputData.Contains, messageData) +
 		rankInputRegex(inputData.Matches, messageData)
+
+	if len(inputData.AnyOf) == 0 {
+		return base
+	}
+
+	bestAlt := 0.0
+
+	for i := range inputData.AnyOf {
+		alt := &inputData.AnyOf[i]
+
+		r := rankInputEquals(alt.Equals, messageData) +
+			rankInputContains(alt.Contains, messageData) +
+			rankInputRegex(alt.Matches, messageData)
+
+		if r > bestAlt {
+			bestAlt = r
+		}
+	}
+
+	return base + bestAlt
 }
 
 func matchInputEquals(expected map[string]any, messageData map[string]any) bool {
@@ -215,5 +252,5 @@ func keyStyleFlags(s string) (bool, bool) {
 }
 
 func isInputMatcherEmpty(inputData InputData) bool {
-	return len(inputData.Equals) == 0 && len(inputData.Contains) == 0 && len(inputData.Matches) == 0
+	return len(inputData.Equals) == 0 && len(inputData.Contains) == 0 && len(inputData.Matches) == 0 && len(inputData.AnyOf) == 0
 }
