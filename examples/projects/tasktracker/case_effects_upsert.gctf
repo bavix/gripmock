@@ -8,9 +8,9 @@ tasktracker.TaskService/CreateTask
 
 --- REQUEST ---
 {
-  "title": "Fix critical bug",
   "assignee": "dev1",
-  "priority": "critical"
+  "priority": "critical",
+  "title": "Fix critical bug"
 }
 
 --- RESPONSE ---
@@ -18,7 +18,6 @@ tasktracker.TaskService/CreateTask
   "task_id": "crit-created",
   "ok": true
 }
-
 // Verify the effect-created stub exists
 
 --- ENDPOINT ---
@@ -31,9 +30,9 @@ tasktracker.TaskService/GetTask
 
 --- RESPONSE ---
 {
-  "task_id": "critical-alert",
-  "title": "CRITICAL: Immediate attention required!",
-  "status": "alert",
+  "ok": true,
   "priority": "critical",
-  "ok": true
+  "status": "alert",
+  "task_id": "critical-alert",
+  "title": "CRITICAL: Immediate attention required!"
 }

@@ -17,9 +17,9 @@ x-role: admin
 
 --- RESPONSE ---
 {
-  "task_id": "admin-task",
-  "title": "Admin Protected Task",
-  "status": "active",
+  "ok": true,
   "priority": "critical",
-  "ok": true
+  "status": "active",
+  "task_id": "admin-task",
+  "title": "Admin Protected Task"
 }

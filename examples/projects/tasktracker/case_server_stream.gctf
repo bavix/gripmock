@@ -13,24 +13,24 @@ tasktracker.TaskService/StreamTasks
 
 --- RESPONSE ---
 {
-  "task_id": "stream-1",
-  "title": "First Task",
+  "priority": "low",
   "status": "pending",
-  "priority": "low"
+  "task_id": "stream-1",
+  "title": "First Task"
 }
 
 --- RESPONSE ---
 {
-  "task_id": "stream-2",
-  "title": "Second Task",
+  "priority": "medium",
   "status": "in_progress",
-  "priority": "medium"
+  "task_id": "stream-2",
+  "title": "Second Task"
 }
 
 --- RESPONSE ---
 {
-  "task_id": "stream-3",
-  "title": "Third Task",
+  "priority": "high",
   "status": "done",
-  "priority": "high"
+  "task_id": "stream-3",
+  "title": "Third Task"
 }

@@ -250,66 +250,53 @@
   "$defs": {
     "effect": {
       "type": "object",
-      "required": [
-        "action"
-      ],
-      "properties": {
-        "action": {
-          "type": "string",
-          "minLength": 1,
-          "enum": [
-            "upsert",
-            "delete"
-          ]
-        },
-        "id": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Target stub ID for delete action. Can be static UUID or template-rendered string."
-        },
-        "stub": {
-          "type": "object",
-          "minProperties": 1,
-          "description": "Stub payload for upsert action (validated after template rendering)",
-          "additionalProperties": true
-        }
-      },
       "allOf": [
         {
           "if": {
+            "required": [ "action" ],
             "properties": {
               "action": {
                 "const": "upsert"
               }
-            },
-            "required": [
-              "action"
-            ]
+            }
           },
           "then": {
-            "required": [
-              "stub"
-            ]
+            "required": [ "stub" ]
           }
         },
         {
           "if": {
+            "required": [ "action" ],
             "properties": {
               "action": {
                 "const": "delete"
               }
-            },
-            "required": [
-              "action"
-            ]
+            }
           },
           "then": {
-            "required": [
-              "id"
-            ]
+            "required": [ "id" ]
           }
         }
       ],
+      "required": [ "action" ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [ "upsert", "delete" ],
+          "minLength": 1
+        },
+        "id": {
+          "description": "Target stub ID for delete action. Can be static UUID or template-rendered string.",
+          "type": "string",
+          "minLength": 1
+        },
+        "stub": {
+          "description": "Stub payload for upsert action (validated after template rendering)",
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": true
+        }
+      },
       "additionalProperties": false
     },
     "inputMatcher": {

@@ -13,9 +13,9 @@ tasktracker.TaskService/GetTask
 
 --- RESPONSE ---
 {
-  "task_id": "fallback",
-  "title": "fallback-task",
-  "status": "not_found",
+  "ok": false,
   "priority": "",
-  "ok": false
+  "status": "not_found",
+  "task_id": "fallback",
+  "title": "fallback-task"
 }
