@@ -14,7 +14,7 @@ Reference for all output fields in stub configuration.
 | `delay` | duration | Response delay |
 | `details` | array | Error details (gRPC status details) |
 
-## `data` — Success Response
+## `data` — Success Response <VersionTag version="v1.13.0" />
 
 ```yaml
 output:
@@ -23,7 +23,7 @@ output:
     status: "success"
 ```
 
-## `stream` — Server Streaming
+## `stream` — Server Streaming <VersionTag version="v3.3.0" />
 
 ```yaml
 output:
@@ -34,7 +34,7 @@ output:
 
 See [Streaming](./streaming) for full streaming guide.
 
-## `error` + `code` — Error Response
+## `error` + `code` — Error Response <VersionTag version="v2.0.0" />
 
 ```yaml
 output:
@@ -56,7 +56,7 @@ output:
 | 13 | INTERNAL | Server error |
 | 14 | UNAVAILABLE | Service unavailable |
 
-## `headers` — Response Metadata
+## `headers` — Response Metadata <VersionTag version="v2.1.0" />
 
 ```yaml
 output:
@@ -67,7 +67,7 @@ output:
     result: "ok"
 ```
 
-## `delay` — Response Delay
+## `delay` — Response Delay <VersionTag version="v3.2.16" />
 
 ```yaml
 output:

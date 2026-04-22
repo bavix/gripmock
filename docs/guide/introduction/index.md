@@ -34,19 +34,20 @@ The modern GripMock engine is fundamentally different:
 
 - **Quick Start**: Use your `.proto` files to start a mock server instantly
 - **YAML & JSON**: Define test responses in the format you prefer
-- **Header & Input Matching**: Fine-grained request matching with `equals`, `contains`, `matches`, `anyOf`
+- **Header & Input Matching**: Fine-grained request matching with `equals`, `contains`, `matches`, `anyOf` <VersionTag version="v3.11.0" />
 - **Streaming**: Server, client, and bidirectional streaming support
 - **Error Simulation**: Test error handling with codes and details
-- **Dynamic Templates**: Generate realistic data with `faker.*`, `{{uuid}}`, etc.
-- **Effects**: Stateful stubs with automatic upsert/delete after match
-- **Health Checks**: Built-in health endpoints + mockable health service
-- **TLS/mTLS**: Native TLS support for secure gRPC
-- **Plugins**: Extend template functions with Go plugins
-- **Embedded SDK**: Run GripMock inside Go tests
-- **MCP API**: AI/agent tooling integration
-- **Upstream Modes**: `proxy`, `replay`, `capture` for gradual migration
-- **OpenTelemetry**: Export traces via OTLP
-- **Prometheus**: Metrics at `/metrics`
+- **Dynamic Templates**: Generate realistic data with `faker.*`, `{{uuid}}`, etc. <VersionTag version="v3.10.0" />
+- **Effects**: Stateful stubs with automatic upsert/delete after match <VersionTag version="v3.11.0" />
+- **Health Checks**: Built-in health endpoints + mockable health service <VersionTag version="v3.9.3" />
+- **TLS/mTLS**: Native TLS support for secure gRPC <VersionTag version="v3.8.1" />
+- **Plugins**: Extend template functions with Go plugins <VersionTag version="v3.5.0" />
+- **Match Limit (`options.times`)**: Limit how many times a stub can be matched <VersionTag version="v3.7.0" />
+- **Embedded SDK**: Run GripMock inside Go tests <VersionTag version="v3.7.0" />
+- **MCP API**: AI/agent tooling integration <VersionTag version="v3.7.0" />
+- **Upstream Modes**: `proxy`, `replay`, `capture` for gradual migration <VersionTag version="v3.9.0" />
+- **OpenTelemetry**: Export traces via OTLP <VersionTag version="v3.10.0" />
+- **Prometheus**: Metrics at `/metrics` <VersionTag version="v3.10.0" />
 - **Docker**: Lightweight container for CI/CD
 - **GitHub Actions**: Official action for CI workflows
 

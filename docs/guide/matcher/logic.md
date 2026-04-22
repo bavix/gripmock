@@ -2,7 +2,7 @@
 title: Matching Logic
 ---
 
-# Matching Logic <VersionTag version="v3.11.0" />
+# Matching Logic
 
 GripMock uses a declarative matching model built on three strategies and one composition operator. This page defines the formal semantics that apply identically to [Input](./input) and [Header](./headers) matching.
 
@@ -38,7 +38,7 @@ input:
 
 Matches only when `role` is exactly `"admin"` **and** `name` contains `"jo"` **and** `email` matches the regex — all three must hold.
 
-## Disjunction (`anyOf`)
+## Disjunction (`anyOf`) <VersionTag version="v3.11.0" />
 
 `anyOf` adds an OR layer on top of the base conjunction:
 
