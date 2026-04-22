@@ -34,6 +34,14 @@ func (s *searcher) fastMatchV2(query Query, stub *Stub) bool {
 		return s.fastMatchInput(query.Input[0], stub.Input)
 	}
 
+	// Multi-message stream against a single-Input stub (legacy client-stream style).
+	// Try each message newest-first; return true on first match.
+	for i := len(query.Input) - 1; i >= 0; i-- {
+		if s.fastMatchInput(query.Input[i], stub.Input) {
+			return true
+		}
+	}
+
 	return false
 }
 
@@ -67,7 +75,23 @@ func (s *searcher) fastRankV2(query Query, stub *Stub) float64 {
 		return headersRank + s.fastRankInput(query.Input[0], stub.Input)
 	}
 
-	return headersRank
+	// Multi-message stream against a single-Input stub: best score across messages.
+	// Weight by position so that a match on a later message scores higher than an
+	// earlier one, making the stub that matches the last message win.
+	n := len(query.Input)
+	best := 0.0
+
+	for i := n - 1; i >= 0; i-- {
+		r := s.fastRankInput(query.Input[i], stub.Input)
+		if r > 0 {
+			weighted := r * (float64(i+1) / float64(n))
+			if weighted > best {
+				best = weighted
+			}
+		}
+	}
+
+	return headersRank + best
 }
 
 // fastMatchInput is an ultra-optimized version of matchInput.
@@ -76,25 +100,28 @@ func (s *searcher) fastRankV2(query Query, stub *Stub) float64 {
 func (s *searcher) fastMatchInput(queryData map[string]any, stubInput InputData) bool {
 	// Fast path: empty query
 	if len(queryData) == 0 {
-		return len(stubInput.Equals) == 0 && len(stubInput.Contains) == 0 && len(stubInput.Matches) == 0
+		return len(stubInput.Equals) == 0 && len(stubInput.Contains) == 0 && len(stubInput.Matches) == 0 && len(stubInput.AnyOf) == 0
 	}
 
-	// Ultra-fast path: equals only (most common case)
-	if len(stubInput.Equals) > 0 && len(stubInput.Contains) == 0 && len(stubInput.Matches) == 0 {
-		return equals(stubInput.Equals, queryData, stubInput.IgnoreArrayOrder)
+	// Skip single-condition fast paths when AnyOf is present — fall through to full matchInput.
+	if len(stubInput.AnyOf) == 0 {
+		// Ultra-fast path: equals only (most common case)
+		if len(stubInput.Equals) > 0 && len(stubInput.Contains) == 0 && len(stubInput.Matches) == 0 {
+			return equals(stubInput.Equals, queryData, stubInput.IgnoreArrayOrder)
+		}
+
+		// Fast path: contains only
+		if len(stubInput.Contains) > 0 && len(stubInput.Equals) == 0 && len(stubInput.Matches) == 0 {
+			return contains(stubInput.Contains, queryData, stubInput.IgnoreArrayOrder)
+		}
+
+		// Fast path: matches only
+		if len(stubInput.Matches) > 0 && len(stubInput.Equals) == 0 && len(stubInput.Contains) == 0 {
+			return matches(stubInput.Matches, queryData, stubInput.IgnoreArrayOrder)
+		}
 	}
 
-	// Fast path: contains only
-	if len(stubInput.Contains) > 0 && len(stubInput.Equals) == 0 && len(stubInput.Matches) == 0 {
-		return contains(stubInput.Contains, queryData, stubInput.IgnoreArrayOrder)
-	}
-
-	// Fast path: matches only
-	if len(stubInput.Matches) > 0 && len(stubInput.Equals) == 0 && len(stubInput.Contains) == 0 {
-		return matches(stubInput.Matches, queryData, stubInput.IgnoreArrayOrder)
-	}
-
-	// Full matching (rare case)
+	// Full matching (handles AnyOf and combined conditions)
 	return matchInput(queryData, stubInput)
 }
 
@@ -134,6 +161,17 @@ func (s *searcher) fastMatchStream(queryStream []map[string]any, stubStream []In
 		return s.fastMatchInput(queryStream[0], stubStream[0])
 	}
 
+	// Broadcast fast path: single pattern, multiple messages — each must match.
+	if len(stubStream) == 1 && len(queryStream) > 1 {
+		for i := range queryStream {
+			if !s.fastMatchInput(queryStream[i], stubStream[0]) {
+				return false
+			}
+		}
+
+		return true
+	}
+
 	// Use original implementation for complex cases
 	return matchStreamElements(queryStream, stubStream)
 }
@@ -163,6 +201,19 @@ func (s *searcher) fastRankInput(queryData map[string]any, stubInput InputData) 
 	return rankInput(queryData, stubInput)
 }
 
+// fastRankStreamBroadcast ranks a multi-message stream against a single stub pattern.
+func (s *searcher) fastRankStreamBroadcast(queryStream []map[string]any, pattern InputData) float64 {
+	n := len(queryStream)
+
+	var total float64
+
+	for _, msg := range queryStream {
+		total += s.fastRankInput(msg, pattern)
+	}
+
+	return total / float64(n)
+}
+
 // fastRankStream is an ultra-optimized version of rankStreamElements.
 func (s *searcher) fastRankStream(queryStream []map[string]any, stubStream []InputData) float64 {
 	// Fast path: empty query stream
@@ -180,6 +231,11 @@ func (s *searcher) fastRankStream(queryStream []map[string]any, stubStream []Inp
 	// Fast path: single element
 	if len(queryStream) == 1 && len(stubStream) == 1 {
 		return s.fastRankInput(queryStream[0], stubStream[0])
+	}
+
+	// Broadcast fast path: single pattern, multiple messages — average rank.
+	if len(stubStream) == 1 && len(queryStream) > 1 {
+		return s.fastRankStreamBroadcast(queryStream, stubStream[0])
 	}
 
 	// Use original implementation for complex cases

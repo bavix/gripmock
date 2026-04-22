@@ -204,3 +204,77 @@ func TestV2Priority(t *testing.T) {
 	require.NotNil(t, result.Found(), "Expected to find exact match")
 	require.Equal(t, "stub2", result.Found().Output.Data["result"], "Expected to match higher priority stub")
 }
+
+// TestBroadcastInputsMatchesAllMessages verifies that a stub with a single inputs[0] pattern
+// matches a client-streaming query with multiple messages (broadcast semantics).
+// This reproduces the PROD_789 / case_client_streaming_simple scenario.
+func TestBroadcastInputsMatchesAllMessages(t *testing.T) {
+	t.Parallel()
+	stuber.ClearAllCaches()
+
+	stub := &stuber.Stub{
+		Service: "ecommerce.EcommerceService",
+		Method:  "SubmitProductReviews",
+		Inputs: []stuber.InputData{
+			{Equals: map[string]any{"product_id": "PROD_789"}},
+		},
+		Output: stuber.Output{
+			Data: map[string]any{"status": "processed"},
+		},
+	}
+
+	budgerigar := stuber.NewBudgerigar()
+	budgerigar.PutMany(stub)
+
+	// Two messages — exactly what grpctestify sends (no trailing empty; {} in gripmock
+	// logs is an EOF artifact from the logging interceptor, not a real message).
+	query := stuber.Query{
+		Service: "ecommerce.EcommerceService",
+		Method:  "SubmitProductReviews",
+		Input: []map[string]any{
+			{"product_id": "PROD_789", "rating": 5, "user_id": "USER_001"},
+			{"product_id": "PROD_789", "rating": 4, "user_id": "USER_002"},
+		},
+	}
+
+	result, err := budgerigar.FindByQuery(query)
+	require.NoError(t, err)
+	require.NotNil(t, result.Found(), "Broadcast: single inputs pattern must match all messages")
+	require.Equal(t, "processed", result.Found().Output.Data["status"])
+}
+
+// TestBroadcastInputsRejectsMismatch verifies that broadcast fails when any message
+// does not match the single pattern.
+func TestBroadcastInputsRejectsMismatch(t *testing.T) {
+	t.Parallel()
+	stuber.ClearAllCaches()
+
+	stub := &stuber.Stub{
+		Service: "ecommerce.EcommerceService",
+		Method:  "SubmitProductReviews",
+		Inputs: []stuber.InputData{
+			{Equals: map[string]any{"product_id": "PROD_789"}},
+		},
+		Output: stuber.Output{
+			Data: map[string]any{"status": "processed"},
+		},
+	}
+
+	budgerigar := stuber.NewBudgerigar()
+	budgerigar.PutMany(stub)
+
+	// Second message has wrong product_id
+	query := stuber.Query{
+		Service: "ecommerce.EcommerceService",
+		Method:  "SubmitProductReviews",
+		Input: []map[string]any{
+			{"product_id": "PROD_789", "rating": 5},
+			{"product_id": "PROD_WRONG", "rating": 4},
+		},
+	}
+
+	result, err := budgerigar.FindByQuery(query)
+	if err == nil {
+		require.Nil(t, result.Found(), "Broadcast must fail if any message mismatches the pattern")
+	}
+}
