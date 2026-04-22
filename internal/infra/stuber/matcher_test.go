@@ -9,46 +9,43 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
+// findInFreshBudgerigar creates a new Budgerigar, registers stubs, and queries it.
+func findInFreshBudgerigar(t *testing.T, query stuber.Query, stubs ...*stuber.Stub) *stuber.Result {
+	t.Helper()
+
+	b := stuber.NewBudgerigar()
+	b.PutMany(stubs...)
+
+	result, err := b.FindByQuery(query)
+	require.NoError(t, err)
+
+	return result
+}
+
 func TestFieldValueEqualsJsonNumber(t *testing.T) {
 	t.Parallel()
 
-	// Test that json.Number comparison works for large integers
-	// This is critical for UUID high/low matching where precision matters
-	num1 := json.Number("-773977811204288029")
-	num2 := json.Number("-773977811204288029")
-	num3 := json.Number("-773977811204288000") // Different value (precision loss)
+	// Precision: same json.Number must match, different must not.
+	num := json.Number("-773977811204288029")
+	numSame := json.Number("-773977811204288029")
+	numDiff := json.Number("-773977811204288000")
 
-	// Create stub with json.Number
 	stub := &stuber.Stub{
 		Service: "test",
 		Method:  "test",
-		Input: stuber.InputData{
-			Equals: map[string]any{"id": num1},
-		},
+		Input:   stuber.InputData{Equals: map[string]any{"id": num}},
 	}
 
-	budgerigar := stuber.NewBudgerigar()
-	budgerigar.PutMany(stub)
+	b := stuber.NewBudgerigar()
+	b.PutMany(stub)
 
-	// Query with same json.Number value should match
-	query1 := stuber.Query{
-		Service: "test",
-		Method:  "test",
-		Input:   []map[string]any{{"id": num2}},
-	}
-	result1, err1 := budgerigar.FindByQuery(query1)
-	require.NoError(t, err1)
-	require.NotNil(t, result1.Found(), "same json.Number values should match")
+	r1, err := b.FindByQuery(stuber.Query{Service: "test", Method: "test", Input: []map[string]any{{"id": numSame}}})
+	require.NoError(t, err)
+	require.NotNil(t, r1.Found(), "same json.Number values should match")
 
-	// Query with different json.Number value should not match
-	query2 := stuber.Query{
-		Service: "test",
-		Method:  "test",
-		Input:   []map[string]any{{"id": num3}},
-	}
-	result2, err2 := budgerigar.FindByQuery(query2)
-	require.NoError(t, err2)
-	require.Nil(t, result2.Found(), "different json.Number values should not match")
+	r2, err := b.FindByQuery(stuber.Query{Service: "test", Method: "test", Input: []map[string]any{{"id": numDiff}}})
+	require.NoError(t, err)
+	require.Nil(t, r2.Found(), "different json.Number values should not match")
 }
 
 //nolint:funlen
@@ -96,23 +93,14 @@ func TestMatchData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			// Test through public API
-			query := stuber.Query{
-				Service: "test",
-				Method:  "test",
-				Input:   []map[string]any{tt.queryData},
-			}
 
-			stub := &stuber.Stub{
-				Service: "test",
-				Method:  "test",
-				Input:   tt.stubInput,
-			}
+			query := stuber.Query{Service: "test", Method: "test", Input: []map[string]any{tt.queryData}}
+			stub := &stuber.Stub{Service: "test", Method: "test", Input: tt.stubInput}
 
-			budgerigar := stuber.NewBudgerigar()
-			budgerigar.PutMany(stub)
+			b := stuber.NewBudgerigar()
+			b.PutMany(stub)
 
-			result, err := budgerigar.FindByQuery(query)
+			result, err := b.FindByQuery(query)
 			if err != nil {
 				if tt.expected {
 					require.NoError(t, err, "Expected match but got error")
@@ -121,70 +109,189 @@ func TestMatchData(t *testing.T) {
 				return
 			}
 
-			matched := result.Found() != nil
-			require.Equal(t, tt.expected, matched, "matchData()")
+			require.Equal(t, tt.expected, result.Found() != nil, "matchData()")
 		})
 	}
 }
 
-func TestMatchWithData(t *testing.T) {
+//nolint:funlen
+func TestMatchStreamV2(t *testing.T) {
 	t.Parallel()
+	stuber.ClearAllCaches()
 
-	query := stuber.Query{
-		Service: "test",
-		Method:  "test",
-		Input:   []map[string]any{{"name": "John", "age": 30}},
-	}
-
-	stub := &stuber.Stub{
-		Service: "test",
-		Method:  "test",
-		Input: stuber.InputData{
-			Equals: map[string]any{"name": "John", "age": 30},
+	tests := []struct {
+		name       string
+		queryInput []map[string]any
+		stubStream []stuber.InputData
+		expected   bool
+	}{
+		{
+			name:       "empty streams",
+			queryInput: []map[string]any{},
+			stubStream: []stuber.InputData{},
+			expected:   false,
+		},
+		{
+			name:       "single element match",
+			queryInput: []map[string]any{{"key1": "value1"}},
+			stubStream: []stuber.InputData{{Equals: map[string]any{"key1": "value1"}}},
+			expected:   true,
+		},
+		{
+			name:       "multiple elements match",
+			queryInput: []map[string]any{{"key1": "value1"}, {"key2": "value2"}},
+			stubStream: []stuber.InputData{
+				{Equals: map[string]any{"key1": "value1"}},
+				{Equals: map[string]any{"key2": "value2"}},
+			},
+			expected: true,
+		},
+		{
+			name:       "length mismatch",
+			queryInput: []map[string]any{{"key1": "value1"}},
+			stubStream: []stuber.InputData{
+				{Equals: map[string]any{"key1": "value1"}},
+				{Equals: map[string]any{"key2": "value2"}},
+			},
+			expected: false,
+		},
+		{
+			name:       "element mismatch",
+			queryInput: []map[string]any{{"key1": "value1"}},
+			stubStream: []stuber.InputData{{Equals: map[string]any{"key1": "different"}}},
+			expected:   false,
 		},
 	}
 
-	budgerigar := stuber.NewBudgerigar()
-	budgerigar.PutMany(stub)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	result, err := budgerigar.FindByQuery(query)
-	require.NoError(t, err)
-	require.NotNil(t, result.Found(), "Expected match to return true for matching query and stub with data")
+			query := stuber.Query{Service: "test", Method: "test", Input: tt.queryInput}
+			stub := &stuber.Stub{Service: "test", Method: "test", Inputs: tt.stubStream}
 
-	nonMatchingQuery := stuber.Query{
-		Service: "test",
-		Method:  "test",
-		Input:   []map[string]any{{"name": "John", "age": 25}}, // Different age
+			b := stuber.NewBudgerigar()
+			b.PutMany(stub)
+
+			result, err := b.FindByQuery(query)
+			if err != nil {
+				if tt.expected {
+					require.NoError(t, err, "Expected match but got error")
+				}
+
+				return
+			}
+
+			require.Equal(t, tt.expected, result.Found() != nil, "matchStreamV2()")
+		})
 	}
-
-	result, err = budgerigar.FindByQuery(nonMatchingQuery)
-	require.NoError(t, err)
-	require.Nil(t, result.Found(), "Expected match to return false for non-matching data")
 }
 
-func TestBackwardCompatibility(t *testing.T) {
+func TestV2MultipleStreamsSingleInputUsesLastElement(t *testing.T) {
 	t.Parallel()
-
-	query := stuber.Query{
-		Service: "test",
-		Method:  "test",
-		Input:   []map[string]any{{"key1": "value1"}},
-	}
 
 	stub := &stuber.Stub{
 		Service: "test",
 		Method:  "test",
-		Input: stuber.InputData{
-			Equals: map[string]any{"key1": "value1"},
-		},
+		Input:   stuber.InputData{Equals: map[string]any{"key2": "value2"}},
 	}
 
-	budgerigar := stuber.NewBudgerigar()
-	budgerigar.PutMany(stub)
+	result := findInFreshBudgerigar(t,
+		stuber.Query{
+			Service: "test",
+			Method:  "test",
+			Input:   []map[string]any{{"key1": "value1"}, {"key2": "value2"}},
+		},
+		stub,
+	)
+	require.NotNil(t, result.Found(), "Expected match against last stream element for single-Input stub")
+}
 
-	result, err := budgerigar.FindByQuery(query)
-	require.NoError(t, err)
-	require.NotNil(t, result.Found(), "Expected backward compatibility: input should match against stub")
+func TestV2Priority(t *testing.T) {
+	t.Parallel()
+	stuber.ClearAllCaches()
+
+	stub1 := &stuber.Stub{
+		Service:  "test",
+		Method:   "test",
+		Priority: 1,
+		Input:    stuber.InputData{Equals: map[string]any{"key1": "value1"}},
+		Output:   stuber.Output{Data: map[string]any{"result": "stub1"}},
+	}
+	stub2 := &stuber.Stub{
+		Service:  "test",
+		Method:   "test",
+		Priority: 2,
+		Input:    stuber.InputData{Equals: map[string]any{"key1": "value1"}},
+		Output:   stuber.Output{Data: map[string]any{"result": "stub2"}},
+	}
+
+	result := findInFreshBudgerigar(t,
+		stuber.Query{Service: "test", Method: "test", Input: []map[string]any{{"key1": "value1"}}},
+		stub1, stub2,
+	)
+	require.NotNil(t, result.Found())
+	require.Equal(t, "stub2", result.Found().Output.Data["result"], "Expected to match higher priority stub")
+}
+
+// TestBroadcastInputsMatchesAllMessages verifies that a stub with a single inputs[0] pattern
+// matches a client-streaming query with multiple messages (broadcast semantics).
+// This reproduces the PROD_789 / case_client_streaming_simple scenario.
+func TestBroadcastInputsMatchesAllMessages(t *testing.T) {
+	t.Parallel()
+	stuber.ClearAllCaches()
+
+	stub := &stuber.Stub{
+		Service: "ecommerce.EcommerceService",
+		Method:  "SubmitProductReviews",
+		Inputs:  []stuber.InputData{{Equals: map[string]any{"product_id": "PROD_789"}}},
+		Output:  stuber.Output{Data: map[string]any{"status": "processed"}},
+	}
+
+	// Two messages — no trailing empty {}; the {} in gripmock logs is an EOF
+	// artifact from the logging interceptor, not a real message.
+	result := findInFreshBudgerigar(t,
+		stuber.Query{
+			Service: "ecommerce.EcommerceService",
+			Method:  "SubmitProductReviews",
+			Input: []map[string]any{
+				{"product_id": "PROD_789", "rating": 5, "user_id": "USER_001"},
+				{"product_id": "PROD_789", "rating": 4, "user_id": "USER_002"},
+			},
+		},
+		stub,
+	)
+	require.NotNil(t, result.Found(), "Broadcast: single inputs pattern must match all messages")
+	require.Equal(t, "processed", result.Found().Output.Data["status"])
+}
+
+// TestBroadcastInputsRejectsMismatch verifies that broadcast fails when any message
+// does not match the single pattern.
+func TestBroadcastInputsRejectsMismatch(t *testing.T) {
+	t.Parallel()
+	stuber.ClearAllCaches()
+
+	stub := &stuber.Stub{
+		Service: "ecommerce.EcommerceService",
+		Method:  "SubmitProductReviews",
+		Inputs:  []stuber.InputData{{Equals: map[string]any{"product_id": "PROD_789"}}},
+		Output:  stuber.Output{Data: map[string]any{"status": "processed"}},
+	}
+
+	b := stuber.NewBudgerigar()
+	b.PutMany(stub)
+
+	result, err := b.FindByQuery(stuber.Query{
+		Service: "ecommerce.EcommerceService",
+		Method:  "SubmitProductReviews",
+		Input: []map[string]any{
+			{"product_id": "PROD_789", "rating": 5},
+			{"product_id": "PROD_WRONG", "rating": 4},
+		},
+	})
+	if err == nil {
+		require.Nil(t, result.Found(), "Broadcast must fail if any message mismatches the pattern")
+	}
 }
 
 func TestAnyOfInputMatching(t *testing.T) {
@@ -202,32 +309,32 @@ func TestAnyOfInputMatching(t *testing.T) {
 		},
 	}
 
-	budgerigar := stuber.NewBudgerigar()
-	budgerigar.PutMany(stub)
+	b := stuber.NewBudgerigar()
+	b.PutMany(stub)
 
-	matchedAlice, err := budgerigar.FindByQuery(stuber.Query{
-		Service: "test",
-		Method:  "test",
-		Input:   []map[string]any{{"role": "vip", "name": "Alice"}},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, matchedAlice.Found())
+	cases := []struct {
+		name    string
+		input   map[string]any
+		wantHit bool
+	}{
+		{"alice+vip matches", map[string]any{"role": "vip", "name": "Alice"}, true},
+		{"admin+vip matches", map[string]any{"role": "vip", "name": "admin_john"}, true},
+		{"alice+user no match", map[string]any{"role": "user", "name": "Alice"}, false},
+	}
 
-	matchedAdmin, err := budgerigar.FindByQuery(stuber.Query{
-		Service: "test",
-		Method:  "test",
-		Input:   []map[string]any{{"role": "vip", "name": "admin_john"}},
-	})
-	require.NoError(t, err)
-	require.NotNil(t, matchedAdmin.Found())
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	notMatchedRole, err := budgerigar.FindByQuery(stuber.Query{
-		Service: "test",
-		Method:  "test",
-		Input:   []map[string]any{{"role": "user", "name": "Alice"}},
-	})
-	require.NoError(t, err)
-	require.Nil(t, notMatchedRole.Found())
+			result, err := b.FindByQuery(stuber.Query{
+				Service: "test",
+				Method:  "test",
+				Input:   []map[string]any{tc.input},
+			})
+			require.NoError(t, err)
+			require.Equal(t, tc.wantHit, result.Found() != nil)
+		})
+	}
 }
 
 func TestAnyOfIgnoreArrayOrderScopedPerAlternative(t *testing.T) {
@@ -247,14 +354,9 @@ func TestAnyOfIgnoreArrayOrderScopedPerAlternative(t *testing.T) {
 		},
 	}
 
-	budgerigar := stuber.NewBudgerigar()
-	budgerigar.PutMany(stub)
-
-	result, err := budgerigar.FindByQuery(stuber.Query{
-		Service: "test",
-		Method:  "test",
-		Input:   []map[string]any{{"items": []any{"b", "a"}}},
-	})
-	require.NoError(t, err)
+	result := findInFreshBudgerigar(t,
+		stuber.Query{Service: "test", Method: "test", Input: []map[string]any{{"items": []any{"b", "a"}}}},
+		stub,
+	)
 	require.NotNil(t, result.Found(), "anyOf alternative must use its own ignoreArrayOrder")
 }
