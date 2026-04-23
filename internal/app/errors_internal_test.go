@@ -108,8 +108,8 @@ func TestErrorFormatterFormatStubNotFoundError(t *testing.T) {
 	require.Error(t, err)
 
 	errorMsg := err.Error()
-	require.Contains(t, errorMsg, "Can't find stub")
+	require.Contains(t, errorMsg, "No matching stub found")
 	require.Contains(t, errorMsg, "Service: test.Service")
 	require.Contains(t, errorMsg, "Method: TestMethod")
-	require.Contains(t, errorMsg, "Input")
+	require.Contains(t, errorMsg, "Request input")
 }

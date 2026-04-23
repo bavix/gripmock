@@ -1,0 +1,62 @@
+{{- define "renderMap" -}}
+{{- $label := index . "label" -}}
+{{- $value := index . "value" -}}
+{{- if hasMap $value -}}
+{{$label}}:
+{{toJSON $value}}
+{{- end -}}
+{{- end -}}
+
+{{- define "renderAnyOfInput" -}}
+{{- $prefix := index . "prefix" -}}
+{{- $anyOf := index . "anyOf" -}}
+{{- if firstAnyOfInput $anyOf -}}
+{{- $sel := firstAnyOfInput $anyOf}}
+{{$prefix}}.anyOf: selected [0], hidden: {{hiddenAnyOf (len $anyOf)}}
+{{template "renderMap" (dict "label" (printf "%s.anyOf[0].equals" $prefix) "value" $sel.Equals)}}
+{{- template "renderMap" (dict "label" (printf "%s.anyOf[0].contains" $prefix) "value" $sel.Contains)}}
+{{- template "renderMap" (dict "label" (printf "%s.anyOf[0].matches" $prefix) "value" $sel.Matches)}}
+{{- end -}}
+{{- end -}}
+
+{{- define "renderAnyOfHeader" -}}
+{{- $prefix := index . "prefix" -}}
+{{- $anyOf := index . "anyOf" -}}
+{{- if firstAnyOfHeader $anyOf -}}
+{{- $sel := firstAnyOfHeader $anyOf}}
+{{$prefix}}.anyOf: selected [0], hidden: {{hiddenAnyOf (len $anyOf)}}
+{{template "renderMap" (dict "label" (printf "%s.anyOf[0].equals" $prefix) "value" $sel.Equals)}}
+{{- template "renderMap" (dict "label" (printf "%s.anyOf[0].contains" $prefix) "value" $sel.Contains)}}
+{{- template "renderMap" (dict "label" (printf "%s.anyOf[0].matches" $prefix) "value" $sel.Matches)}}
+{{- end -}}
+{{- end -}}
+
+{{- /*gotype: github.com/bavix/gripmock/v3/internal/infra/errors.similarData*/ -}}
+Closest match:
+priority: {{.Priority}}
+{{- if gt .Options.Times 0}}
+times: {{.Options.Times}}
+{{- end}}
+{{- if hasHeaderData .Headers}}
+headers:
+{{template "renderMap" (dict "label" "headers.equals" "value" .Headers.Equals)}}
+{{- template "renderMap" (dict "label" "headers.contains" "value" .Headers.Contains)}}
+{{- template "renderMap" (dict "label" "headers.matches" "value" .Headers.Matches)}}
+{{- template "renderAnyOfHeader" (dict "prefix" "headers" "anyOf" .Headers.AnyOf)}}
+{{- end}}
+{{- if .IsClientStream}}
+input rules (stream):
+{{- range $i, $rule := .Inputs}}{{if hasInputData $rule}}
+inputs[{{$i}}]:
+{{template "renderMap" (dict "label" (printf "inputs[%d].equals" $i) "value" $rule.Equals)}}
+{{- template "renderMap" (dict "label" (printf "inputs[%d].contains" $i) "value" $rule.Contains)}}
+{{- template "renderMap" (dict "label" (printf "inputs[%d].matches" $i) "value" $rule.Matches)}}
+{{- template "renderAnyOfInput" (dict "prefix" (printf "inputs[%d]" $i) "anyOf" $rule.AnyOf)}}
+{{- end}}{{end}}
+{{- else if hasInputData .Input}}
+input rules:
+{{template "renderMap" (dict "label" "input.equals" "value" .Input.Equals)}}
+{{- template "renderMap" (dict "label" "input.contains" "value" .Input.Contains)}}
+{{- template "renderMap" (dict "label" "input.matches" "value" .Input.Matches)}}
+{{- template "renderAnyOfInput" (dict "prefix" "input" "anyOf" .Input.AnyOf)}}
+{{- end -}}

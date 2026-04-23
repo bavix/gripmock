@@ -1,13 +1,84 @@
 package errors
 
 import (
+	"bytes"
+	_ "embed"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
+	"text/template"
 
-	"github.com/bavix/gripmock/v3/internal/infra/protoconv"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
+
+//go:embed error.tmpl
+var errorTemplate string
+
+var tmpl = template.Must(template.New("stub_not_found").Funcs(templateFuncs).Parse(errorTemplate)) //nolint:gochecknoglobals
+
+var templateFuncs = template.FuncMap{ //nolint:gochecknoglobals
+	"toJSON": func(v any) string {
+		sanitized, ok := sanitizeValue(v)
+		if !ok {
+			return "{}"
+		}
+
+		b, err := json.MarshalIndent(sanitized, "", "\t")
+		if err != nil {
+			return "{}"
+		}
+
+		return string(b)
+	},
+	"hasMap": func(m map[string]any) bool {
+		return len(filterFuncs(m)) > 0
+	},
+	"hasInputData": func(d stuber.InputData) bool {
+		return len(filterFuncs(d.Equals)) > 0 ||
+			len(filterFuncs(d.Contains)) > 0 ||
+			len(filterFuncs(d.Matches)) > 0 ||
+			len(d.AnyOf) > 0
+	},
+	"hasHeaderData": func(h stuber.InputHeader) bool {
+		return h.Len() > 0
+	},
+	"firstAnyOfInput": func(anyOf []stuber.AnyOfElement) *stuber.AnyOfElement {
+		if len(anyOf) == 0 {
+			return nil
+		}
+
+		return &anyOf[0]
+	},
+	"firstAnyOfHeader": func(anyOf []stuber.AnyOfHeaderElement) *stuber.AnyOfHeaderElement {
+		if len(anyOf) == 0 {
+			return nil
+		}
+
+		return &anyOf[0]
+	},
+	"hiddenAnyOf": func(total int) int {
+		if total <= 1 {
+			return 0
+		}
+
+		return total - 1
+	},
+	"dict": func(values ...any) map[string]any {
+		result := make(map[string]any)
+
+		for i := 0; i+1 < len(values); i += 2 {
+			key, ok := values[i].(string)
+			if !ok {
+				continue
+			}
+
+			result[key] = values[i+1]
+		}
+
+		return result
+	},
+}
 
 // Result interface for testing - allows mocking stuber.Result.
 type Result interface {
@@ -26,117 +97,153 @@ func NewStubNotFoundFormatter() *StubNotFoundFormatter {
 // Format formats error messages for stub not found scenarios.
 // Supports both unary (single Input element) and streaming (multiple Input elements).
 func (f *StubNotFoundFormatter) Format(expect stuber.Query, result Result) error {
-	template := fmt.Sprintf("Can't find stub \n\nService: %s \n\nMethod: %s \n\n", expect.Service, expect.Method)
+	blocks := make([]string, 0, 5) //nolint:mnd
 
-	template += f.formatInputSection(expect.Input)
+	// Block 1: title
+	blocks = append(blocks, "No matching stub found")
 
-	if result.Similar() == nil {
-		return fmt.Errorf("%s", template) //nolint:err113
-	}
+	// Block 2: service + method
+	blocks = append(blocks, fmt.Sprintf("Service: %s\nMethod: %s", expect.Service, expect.Method))
 
-	template += f.formatClosestMatches(result)
-
-	return fmt.Errorf("%s", template) //nolint:err113
-}
-
-// formatInputSection formats the input section of the error message.
-func (f *StubNotFoundFormatter) formatInputSection(input []map[string]any) string {
-	switch {
-	case len(input) > 1:
-		return f.formatStreamInput(input)
-	case len(input) == 1:
-		return f.formatSingleInput(input[0])
-	default:
-		return "Input: (empty)\n\n"
-	}
-}
-
-// formatStreamInput formats multiple input messages.
-func (f *StubNotFoundFormatter) formatStreamInput(input []map[string]any) string {
-	template := "Inputs:\n\n"
-
-	var templateSb78 strings.Builder
-
-	for i, inputMsg := range input {
-		inputString, err := json.MarshalIndent(inputMsg, "", "\t")
+	// Block 3 (optional): request headers
+	if len(filterFuncs(expect.Headers)) > 0 {
+		b, err := json.MarshalIndent(filterFuncs(expect.Headers), "", "\t")
 		if err != nil {
-			_, _ = fmt.Fprintf(&templateSb78, "[%d] Error marshaling input: %v\n", i, err)
-
-			continue
+			b = []byte("{}")
 		}
 
-		_, _ = fmt.Fprintf(&templateSb78, "[%d]\n%s\n\n", i, inputString)
+		blocks = append(blocks, "Request headers:\n"+string(b))
 	}
 
-	template += templateSb78.String()
+	// Block 4: request input
+	blocks = append(blocks, buildInputBlock(expect.Input))
 
-	return template
-}
-
-// formatSingleInput formats a single input message.
-// Excludes fields with default/empty values for cleaner output.
-func (f *StubNotFoundFormatter) formatSingleInput(input map[string]any) string {
-	template := "Input:\n\n"
-
-	// Filter out default values using shared utility with ExcludeDefaults option
-	filteredInput := protoconv.ConvertMap(input, protoconv.ExcludeDefaults)
-
-	inputString, err := json.MarshalIndent(filteredInput, "", "\t")
-	if err != nil {
-		return template + fmt.Sprintf("Error marshaling input: %v\n\n", err)
-	}
-
-	return template + string(inputString) + "\n\n"
-}
-
-// formatClosestMatches formats the closest matches section.
-func (f *StubNotFoundFormatter) formatClosestMatches(result Result) string {
-	addClosestMatch := func(key string, match map[string]any) string {
-		if len(match) > 0 {
-			matchString, err := json.MarshalIndent(match, "", "\t")
-			if err != nil {
-				return fmt.Sprintf("\n\nClosest Match \n\n%s: Error marshaling match: %v\nRaw match: %+v", key, err, match)
-			}
-
-			return fmt.Sprintf("\n\nClosest Match \n\n%s:%s", key, matchString)
-		}
-
-		return ""
-	}
-
-	// Check if similar stub has inputs (client streaming)
+	// Block 5: similar stub or "not found"
 	similar := result.Similar()
-	if similar != nil && similar.IsClientStream() {
-		return f.formatStreamClosestMatches(similar, addClosestMatch)
+
+	if similar == nil {
+		blocks = append(blocks, "No similar stubs found.")
+	} else {
+		var buf bytes.Buffer
+
+		_ = tmpl.Execute(&buf, similar)
+		blocks = append(blocks, strings.TrimRight(buf.String(), "\n"))
 	}
 
-	// Fallback to regular input matching
-	var template string
-
-	template += addClosestMatch("equals", result.Similar().Input.Equals)
-	template += addClosestMatch("contains", result.Similar().Input.Contains)
-	template += addClosestMatch("matches", result.Similar().Input.Matches)
-
-	return template
+	return fmt.Errorf("%s", strings.Join(blocks, "\n\n")) //nolint:err113
 }
 
-// formatStreamClosestMatches formats closest matches for client streaming inputs.
-func (f *StubNotFoundFormatter) formatStreamClosestMatches(stub *stuber.Stub, addClosestMatch func(string, map[string]any) string) string {
-	var template string
-
-	var templateSb139 strings.Builder
-
-	for i, inputMsg := range stub.Inputs {
-		// Convert InputData to map representation
-		inputData := map[string]any{
-			"equals":   inputMsg.Equals,
-			"contains": inputMsg.Contains,
-			"matches":  inputMsg.Matches,
-		}
-		templateSb139.WriteString(addClosestMatch(fmt.Sprintf("inputs[%d]", i), inputData))
+func buildInputBlock(input []map[string]any) string {
+	if len(input) == 0 {
+		return "Request input:\n(empty)"
 	}
 
-	template += templateSb139.String()
+	if len(input) == 1 {
+		b, err := json.MarshalIndent(filterFuncs(input[0]), "", "\t")
+		if err != nil {
+			b = []byte("{}")
+		}
 
-	return template
+		return "Request input:\n" + string(b)
+	}
+
+	var sb strings.Builder
+
+	sb.WriteString("Request input (stream):")
+
+	for i, item := range input {
+		b, err := json.MarshalIndent(filterFuncs(item), "", "\t")
+		if err != nil {
+			b = []byte("{}")
+		}
+
+		fmt.Fprintf(&sb, "\n[%d]\n%s", i, string(b))
+	}
+
+	return sb.String()
+}
+
+func filterFuncs(m map[string]any) map[string]any {
+	if m == nil {
+		return nil
+	}
+
+	r := make(map[string]any, len(m))
+	for k, v := range m {
+		sanitized, ok := sanitizeValue(v)
+		if ok {
+			r[k] = sanitized
+		}
+	}
+
+	return r
+}
+
+func sanitizeValue(v any) (any, bool) {
+	if v == nil {
+		return nil, true
+	}
+
+	rv := reflect.ValueOf(v)
+	if !rv.IsValid() {
+		return nil, true
+	}
+
+	return sanitizeReflectValue(rv)
+}
+
+func sanitizeReflectValue(rv reflect.Value) (any, bool) {
+	switch rv.Kind() {
+	case reflect.Func, reflect.Chan, reflect.UnsafePointer, reflect.Complex64, reflect.Complex128:
+		return nil, false
+	case reflect.Map:
+		return sanitizeMap(rv)
+	case reflect.Slice, reflect.Array:
+		return sanitizeSlice(rv)
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr,
+		reflect.Float32, reflect.Float64, reflect.Interface, reflect.Pointer,
+		reflect.String, reflect.Struct, reflect.Invalid:
+		return sanitizePrimitive(rv)
+	default:
+		return sanitizePrimitive(rv)
+	}
+}
+
+func sanitizeMap(rv reflect.Value) (any, bool) {
+	if rv.Type().Key().Kind() != reflect.String {
+		return nil, false
+	}
+
+	result := make(map[string]any, rv.Len())
+
+	for _, key := range rv.MapKeys() {
+		value, ok := sanitizeValue(rv.MapIndex(key).Interface())
+		if ok {
+			result[key.String()] = value
+		}
+	}
+
+	return result, true
+}
+
+func sanitizeSlice(rv reflect.Value) (any, bool) {
+	result := make([]any, 0, rv.Len())
+
+	for i := range rv.Len() {
+		value, ok := sanitizeValue(rv.Index(i).Interface())
+		if ok {
+			result = append(result, value)
+		}
+	}
+
+	return result, true
+}
+
+func sanitizePrimitive(rv reflect.Value) (any, bool) {
+	if _, err := json.Marshal(rv.Interface()); err != nil {
+		return nil, false
+	}
+
+	return rv.Interface(), true
 }
