@@ -15,7 +15,11 @@ import (
 //go:embed error.tmpl
 var errorTemplate string
 
-var tmpl = template.Must(template.New("stub_not_found").Funcs(templateFuncs).Parse(normalizeLineEndings(errorTemplate))) //nolint:gochecknoglobals
+//nolint:gochecknoglobals
+var tmpl = template.Must(
+	template.New("stub_not_found").
+		Funcs(templateFuncs).
+		Parse(normalizeLineEndings(errorTemplate)))
 
 var templateFuncs = template.FuncMap{ //nolint:gochecknoglobals
 	"toJSON": func(v any) string {
