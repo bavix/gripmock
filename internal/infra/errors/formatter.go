@@ -15,7 +15,7 @@ import (
 //go:embed error.tmpl
 var errorTemplate string
 
-var tmpl = template.Must(template.New("stub_not_found").Funcs(templateFuncs).Parse(errorTemplate)) //nolint:gochecknoglobals
+var tmpl = template.Must(template.New("stub_not_found").Funcs(templateFuncs).Parse(normalizeLineEndings(errorTemplate))) //nolint:gochecknoglobals
 
 var templateFuncs = template.FuncMap{ //nolint:gochecknoglobals
 	"toJSON": func(v any) string {
@@ -246,4 +246,8 @@ func sanitizePrimitive(rv reflect.Value) (any, bool) {
 	}
 
 	return rv.Interface(), true
+}
+
+func normalizeLineEndings(s string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\r", "\n")
 }
