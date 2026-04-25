@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package tasktracker;
+
+service TaskService {
+  rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
+  rpc CompleteTask(CompleteTaskRequest) returns (CompleteTaskResponse);
+  rpc StreamTasks(StreamTasksRequest) returns (stream Task);
+  rpc SubmitTaskUpdates(stream TaskUpdate) returns (TaskSummaryResponse);
+  rpc Chat(stream TaskMessage) returns (stream TaskMessage);
+}
+
+message CreateTaskRequest {
+  string title = 1;
+  string assignee = 2;
+  string priority = 3;
+}
+
+message CreateTaskResponse {
+  string task_id = 1;
+  bool ok = 2;
+}
+
+message GetTaskRequest {
+  string task_id = 1;
+}
+
+message GetTaskResponse {
+  string task_id = 1;
+  string title = 2;
+  string status = 3;
+  string priority = 4;
+  bool ok = 5;
+}
+
+message CompleteTaskRequest {
+  string task_id = 1;
+}
+
+message CompleteTaskResponse {
+  bool ok = 1;
+}
+
+message Task {
+  string task_id = 1;
+  string title = 2;
+  string status = 3;
+  string priority = 4;
+}
+
+message StreamTasksRequest {
+  string status = 1;
+  string priority = 2;
+}
+
+message TaskUpdate {
+  string task_id = 1;
+  string status = 2;
+}
+
+message TaskSummaryResponse {
+  int32 processed = 1;
+  string status = 2;
+}
+
+message TaskMessage {
+  string task_id = 1;
+  string message = 2;
+  string sender = 3;
+}

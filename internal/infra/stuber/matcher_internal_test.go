@@ -323,6 +323,45 @@ func TestEqualsEdgeCases(t *testing.T) {
 	require.False(t, equals(mixed1, mixed3, false))
 }
 
+func TestMatchHeadersAnyOf(t *testing.T) {
+	t.Parallel()
+
+	query := Query{
+		Headers: map[string]any{
+			"authorization": "Bearer token123",
+		},
+	}
+
+	stub := &Stub{
+		Headers: InputHeader{
+			AnyOf: []AnyOfHeaderElement{
+				{Equals: map[string]any{"x-user": "alice"}},
+				{Equals: map[string]any{"authorization": "Bearer token123"}},
+			},
+		},
+	}
+
+	require.True(t, match(query, stub))
+}
+
+func TestMatchHeadersAnyOfRequiresBaseAndAlternative(t *testing.T) {
+	t.Parallel()
+
+	stub := &Stub{
+		Headers: InputHeader{
+			Equals: map[string]any{"x-env": "prod"},
+			AnyOf: []AnyOfHeaderElement{
+				{Equals: map[string]any{"x-user": "alice"}},
+				{Matches: map[string]any{"authorization": "^Bearer admin_"}},
+			},
+		},
+	}
+
+	require.True(t, match(Query{Headers: map[string]any{"x-env": "prod", "x-user": "alice"}}, stub))
+	require.False(t, match(Query{Headers: map[string]any{"x-env": "dev", "x-user": "alice"}}, stub))
+	require.False(t, match(Query{Headers: map[string]any{"x-env": "prod", "x-user": "bob"}}, stub))
+}
+
 func TestToFloat64(t *testing.T) {
 	t.Parallel()
 

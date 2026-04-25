@@ -110,6 +110,23 @@ input:
     tags: ["tag1", "tag2", "tag3"]  # Order doesn't matter
 ```
 
+### `anyOf` Alternatives <VersionTag version="v3.11.0" />
+
+```yaml
+input:
+  equals:
+    role: "vip"
+  anyOf:
+    - equals:
+        name: "Alice"
+    - matches:
+        name: "^admin_"
+```
+
+This matcher is evaluated as:
+
+`(role == vip) AND (name == Alice OR name matches ^admin_)`
+
 ## Header Matching Examples
 
 ### Exact Header Match
@@ -306,6 +323,49 @@ output:
       transactionId: "tx-123"
   options:
     times: 5
+```
+
+## Effects Examples <VersionTag version="v3.11.0" />
+
+### Upsert Transition
+
+```yaml
+- service: AuthService
+  method: Register
+  input:
+    equals:
+      email: "john@example.com"
+  output:
+    data:
+      ok: true
+  effects:
+    - action: upsert
+      stub:
+        id: "4ee3a94f-4ad7-4a8f-a31c-f7cf3ca1ad6a"
+        service: AuthService
+        method: Login
+        input:
+          equals:
+            email: "john@example.com"
+        output:
+          data:
+            token: "token-john"
+```
+
+### Delete Transition
+
+```yaml
+- service: AuthService
+  method: Logout
+  input:
+    equals:
+      email: "john@example.com"
+  output:
+    data:
+      ok: true
+  effects:
+    - action: delete
+      id: "4ee3a94f-4ad7-4a8f-a31c-f7cf3ca1ad6a"
 ```
 
 ## Complex Examples

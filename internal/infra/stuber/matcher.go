@@ -56,16 +56,50 @@ func match(query Query, stub *Stub) bool {
 
 // matchHeaders checks if query headers match stub headers.
 func matchHeaders(queryHeaders map[string]any, stubHeaders InputHeader) bool {
-	return equals(stubHeaders.Equals, queryHeaders, false) &&
-		contains(stubHeaders.Contains, queryHeaders, false) &&
-		matches(stubHeaders.Matches, queryHeaders, false)
+	if !equals(stubHeaders.Equals, queryHeaders, false) ||
+		!contains(stubHeaders.Contains, queryHeaders, false) ||
+		!matches(stubHeaders.Matches, queryHeaders, false) {
+		return false
+	}
+
+	if len(stubHeaders.AnyOf) == 0 {
+		return true
+	}
+
+	for i := range stubHeaders.AnyOf {
+		alt := &stubHeaders.AnyOf[i]
+		if equals(alt.Equals, queryHeaders, false) &&
+			contains(alt.Contains, queryHeaders, false) &&
+			matches(alt.Matches, queryHeaders, false) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // matchInput checks if query data matches stub input.
 func matchInput(queryData map[string]any, stubInput InputData) bool {
-	return equals(stubInput.Equals, queryData, stubInput.IgnoreArrayOrder) &&
-		contains(stubInput.Contains, queryData, stubInput.IgnoreArrayOrder) &&
-		matches(stubInput.Matches, queryData, stubInput.IgnoreArrayOrder)
+	if !equals(stubInput.Equals, queryData, stubInput.IgnoreArrayOrder) ||
+		!contains(stubInput.Contains, queryData, stubInput.IgnoreArrayOrder) ||
+		!matches(stubInput.Matches, queryData, stubInput.IgnoreArrayOrder) {
+		return false
+	}
+
+	if len(stubInput.AnyOf) == 0 {
+		return true
+	}
+
+	for i := range stubInput.AnyOf {
+		alt := &stubInput.AnyOf[i]
+		if equals(alt.Equals, queryData, alt.IgnoreArrayOrder) &&
+			contains(alt.Contains, queryData, alt.IgnoreArrayOrder) &&
+			matches(alt.Matches, queryData, alt.IgnoreArrayOrder) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // rankHeaders ranks query headers against stub headers.
@@ -74,16 +108,54 @@ func rankHeaders(queryHeaders map[string]any, stubHeaders InputHeader) float64 {
 		return 0
 	}
 
-	return deeply.RankMatch(stubHeaders.Equals, queryHeaders) +
+	base := deeply.RankMatch(stubHeaders.Equals, queryHeaders) +
 		deeply.RankMatch(stubHeaders.Contains, queryHeaders) +
 		deeply.RankMatch(stubHeaders.Matches, queryHeaders)
+
+	if len(stubHeaders.AnyOf) == 0 {
+		return base
+	}
+
+	best := 0.0
+
+	for i := range stubHeaders.AnyOf {
+		alt := &stubHeaders.AnyOf[i]
+
+		r := deeply.RankMatch(alt.Equals, queryHeaders) +
+			deeply.RankMatch(alt.Contains, queryHeaders) +
+			deeply.RankMatch(alt.Matches, queryHeaders)
+		if r > best {
+			best = r
+		}
+	}
+
+	return base + best
 }
 
 // rankInput ranks query data against stub input.
 func rankInput(queryData map[string]any, stubInput InputData) float64 {
-	return deeply.RankMatch(stubInput.Equals, queryData) +
+	base := deeply.RankMatch(stubInput.Equals, queryData) +
 		deeply.RankMatch(stubInput.Contains, queryData) +
 		deeply.RankMatch(stubInput.Matches, queryData)
+
+	if len(stubInput.AnyOf) == 0 {
+		return base
+	}
+
+	best := 0.0
+
+	for i := range stubInput.AnyOf {
+		alt := &stubInput.AnyOf[i]
+
+		r := deeply.RankMatch(alt.Equals, queryData) +
+			deeply.RankMatch(alt.Contains, queryData) +
+			deeply.RankMatch(alt.Matches, queryData)
+		if r > best {
+			best = r
+		}
+	}
+
+	return base + best
 }
 
 // equals compares two values for deep equality.
@@ -246,30 +318,34 @@ func streamItemMatches(stubItem InputData, queryItem map[string]any) bool {
 
 // matchStreamElements checks if the query stream matches the stub stream.
 func matchStreamElements(queryStream []map[string]any, stubStream []InputData) bool {
-	// For client streaming, grpctestify sends an extra empty message at the end
-	// We need to handle this case by checking if the last message is empty
-	effectiveQueryLength := len(queryStream)
-	if effectiveQueryLength > 0 {
-		lastMessage := queryStream[effectiveQueryLength-1]
-		if len(lastMessage) == 0 {
-			effectiveQueryLength--
-		}
-	}
-
-	if effectiveQueryLength != len(stubStream) {
-		return false
-	}
-
-	// For client streaming, allow partial matching for ranking purposes
-	// Length mismatch is handled in ranking function
+	n := len(queryStream)
 
 	// STRICT: If query stream is empty but stub expects data, no match
-	if effectiveQueryLength == 0 && len(stubStream) > 0 {
+	if n == 0 && len(stubStream) > 0 {
 		return false
 	}
 
-	for i := range effectiveQueryLength {
-		if !streamItemMatches(stubStream[i], queryStream[i]) {
+	// Broadcast mode: stub has a single pattern — every message must match it.
+	// This covers the case where a stub uses inputs:[{pattern}] to match any
+	// number of streaming messages (e.g. PROD_789 stub with 2-message stream).
+	if len(stubStream) == 1 && n > 1 {
+		pattern := stubStream[0]
+
+		for _, msg := range queryStream {
+			if !streamItemMatches(pattern, msg) {
+				return false
+			}
+		}
+
+		return true
+	}
+
+	if n != len(stubStream) {
+		return false
+	}
+
+	for i, msg := range queryStream {
+		if !streamItemMatches(stubStream[i], msg) {
 			return false
 		}
 	}
@@ -279,21 +355,32 @@ func matchStreamElements(queryStream []map[string]any, stubStream []InputData) b
 
 // rankStreamElements ranks the match between query stream and stub stream.
 func rankStreamElements(queryStream []map[string]any, stubStream []InputData) float64 {
-	effectiveQueryLength := getEffectiveQueryLength(queryStream)
-	if effectiveQueryLength != len(stubStream) {
+	n := len(queryStream)
+
+	if n == 0 && len(stubStream) > 0 {
 		return 0
 	}
 
-	if effectiveQueryLength == 0 && len(stubStream) > 0 {
+	// Broadcast mode: single pattern matched against all messages.
+	if len(stubStream) == 1 && n > 1 {
+		totalRank, perfectMatches := computeStreamElementRanksBroadcast(queryStream, stubStream[0])
+		avgRank := totalRank / float64(n)
+		perfectMatchBonus := float64(perfectMatches) * 1000.0      //nolint:mnd
+		specificityBonus := countStreamMatchers(stubStream) * 50.0 //nolint:mnd
+
+		return avgRank + perfectMatchBonus + specificityBonus
+	}
+
+	if n != len(stubStream) {
 		return 0
 	}
 
-	totalRank, perfectMatches := computeStreamElementRanks(queryStream, stubStream, effectiveQueryLength)
-	lengthBonus := float64(effectiveQueryLength) * 10.0   //nolint:mnd
+	totalRank, perfectMatches := computeStreamElementRanks(queryStream, stubStream)
+	lengthBonus := float64(n) * 10.0                      //nolint:mnd
 	perfectMatchBonus := float64(perfectMatches) * 1000.0 //nolint:mnd
 
 	completeMatchBonus := 0.0
-	if perfectMatches == effectiveQueryLength && effectiveQueryLength > 0 {
+	if perfectMatches == n && n > 0 {
 		completeMatchBonus = 10000.0
 	}
 
@@ -302,26 +389,42 @@ func rankStreamElements(queryStream []map[string]any, stubStream []InputData) fl
 	return totalRank + lengthBonus + perfectMatchBonus + completeMatchBonus + specificityBonus
 }
 
-func getEffectiveQueryLength(queryStream []map[string]any) int {
-	n := len(queryStream)
-	if n > 0 && len(queryStream[n-1]) == 0 {
-		return n - 1
-	}
-
-	return n
-}
-
-func computeStreamElementRanks(
+func computeStreamElementRanksBroadcast(
 	queryStream []map[string]any,
-	stubStream []InputData,
-	effectiveQueryLength int,
+	stubPattern InputData,
 ) (float64, int) {
 	var totalRank float64
 
 	var perfectMatches int
 
-	for i := range effectiveQueryLength {
-		queryItem := queryStream[i]
+	for _, queryItem := range queryStream {
+		equalsRank := 0.0
+		if len(stubPattern.Equals) > 0 && equals(stubPattern.Equals, queryItem, stubPattern.IgnoreArrayOrder) {
+			equalsRank = 1.0
+		}
+
+		containsRank := deeply.RankMatch(stubPattern.Contains, queryItem)
+		matchesRank := deeply.RankMatch(stubPattern.Matches, queryItem)
+		elementRank := equalsRank*100.0 + containsRank*0.1 + matchesRank*0.1 //nolint:mnd
+		totalRank += elementRank
+
+		if equalsRank > 0.99 { //nolint:mnd
+			perfectMatches++
+		}
+	}
+
+	return totalRank, perfectMatches
+}
+
+func computeStreamElementRanks(
+	queryStream []map[string]any,
+	stubStream []InputData,
+) (float64, int) {
+	var totalRank float64
+
+	var perfectMatches int
+
+	for i, queryItem := range queryStream {
 		stubItem := stubStream[i]
 
 		equalsRank := 0.0

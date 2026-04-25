@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Server streaming: StreamTasks
+
+- service: tasktracker.TaskService
+  method: StreamTasks
+  priority: 10
+  input:
+    equals:
+      status: "all"
+  output:
+    stream:
+      - task_id: "stream-1"
+        title: "First Task"
+        status: "pending"
+        priority: "low"
+      - task_id: "stream-2"
+        title: "Second Task"
+        status: "in_progress"
+        priority: "medium"
+      - task_id: "stream-3"
+        title: "Third Task"
+        status: "done"
+        priority: "high"

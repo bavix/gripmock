@@ -267,7 +267,7 @@ func TestHandleServerStreamNotFound(t *testing.T) {
 
 	err := mocker.handleServerStream(stream)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "Can't find stub")
+	require.Contains(t, err.Error(), "No matching stub found")
 }
 
 func TestHandleServerStreamEmptyStream(t *testing.T) {

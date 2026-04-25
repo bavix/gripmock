@@ -1,0 +1,48 @@
+--- META ---
+name: effects + times=1 - complete task self-destructs
+summary: CompleteTask fires once, upserts GetTask to "completed", deletes itself; second call returns NOT_FOUND
+tags: [effects, delete, times]
+
+--- ENDPOINT ---
+tasktracker.TaskService/CompleteTask
+
+--- REQUEST ---
+{
+  "task_id": "task-42"
+}
+
+--- RESPONSE ---
+{
+  "ok": true
+}
+
+--- ENDPOINT ---
+tasktracker.TaskService/GetTask
+
+--- REQUEST ---
+{
+  "task_id": "task-42"
+}
+
+--- RESPONSE ---
+{
+  "ok": true,
+  "priority": "high",
+  "status": "completed",
+  "task_id": "task-42",
+  "title": "Fix login bug"
+}
+
+--- ENDPOINT ---
+tasktracker.TaskService/CompleteTask
+
+--- REQUEST ---
+{
+  "task_id": "task-42"
+}
+
+--- ERROR ---
+{
+  "code": 5,
+  "message": "No matching stub found\n\nService: tasktracker.TaskService\nMethod: CompleteTask\n\nRequest input:\n{\n\t\"task_id\": \"task-42\"\n}\n\nNo similar stubs found."
+}

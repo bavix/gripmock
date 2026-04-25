@@ -1,402 +1,114 @@
-# Output Stream Configuration <VersionTag version="v1.13.0" />
+# Output Configuration <VersionTag version="v1.13.0" />
 
-Output stream configuration defines how GripMock responds to gRPC requests, supporting various response types including data, errors, headers, and streaming.
+Reference for all output fields in stub configuration.
 
-## Overview
+## Fields
 
-The `output` section in stub configuration controls:
-- Response data structure
-- Error conditions and codes
-- HTTP/gRPC headers
-- Streaming behavior
-- Response timing (delays)
-- Bidirectional streaming responses
+| Field | Type | Description |
+|---|---|---|
+| `data` | object | Response payload for successful requests |
+| `stream` | array | Server streaming messages |
+| `error` | string | Error message |
+| `code` | int | gRPC status code |
+| `headers` | object | Response metadata |
+| `delay` | duration | Response delay |
+| `details` | array | Error details (gRPC status details) |
 
-## Basic Output Structure
+## `data` — Success Response <VersionTag version="v1.13.0" />
 
-### Standard Response
 ```yaml
 output:
   data:
     message: "Hello World"
     status: "success"
-    timestamp: "2024-01-01T12:00:00.000Z"
 ```
 
-### Error Response
-```yaml
-output:
-  error: "Resource not found"
-  code: 5  # NOT_FOUND
-```
-
-### Response with Headers
-```yaml
-output:
-  headers:
-    "x-request-id": "req-123"
-    "x-cache-control": "no-cache"
-  data:
-    message: "Response with headers"
-```
-
-## Output Fields
-
-### `data` <VersionTag version="v1.13.0" />
-Contains the response payload for successful requests.
-
-```yaml
-output:
-  data:
-    userId: 12345
-    name: "John Doe"
-    email: "john@example.com"
-    active: true
-```
-
-### `stream` <VersionTag version="v3.3.0" />
-Defines server-side streaming responses (array of messages).
+## `stream` — Server Streaming <VersionTag version="v3.3.0" />
 
 ```yaml
 output:
   stream:
-    - message: "First message"
-      timestamp: "2024-01-01T12:00:00.000Z"
-    - message: "Second message"
-      timestamp: "2024-01-01T12:00:01.000Z"
-    - message: "Third message"
-      timestamp: "2024-01-01T12:00:02.000Z"
+    - message: "First"
+    - message: "Second"
 ```
 
-**Note**: Each stream element contains the message data directly, without a `data` wrapper.
+See [Streaming](./streaming) for full streaming guide.
 
-### `error` <VersionTag version="v2.0.0" />
-Error message for error responses.
+## `error` + `code` — Error Response <VersionTag version="v2.0.0" />
 
 ```yaml
 output:
-  error: "User not found"
+  error: "Not found"
+  code: 5  # NOT_FOUND
 ```
 
-### `code` <VersionTag version="v2.0.0" />
-gRPC status code for error responses.
+### gRPC Status Codes
 
-```yaml
-output:
-  error: "Permission denied"
-  code: 7  # PERMISSION_DENIED
-```
+| Code | Name | Description |
+|---|---|---|
+| 0 | OK | Success |
+| 1 | CANCELED | Cancelled |
+| 3 | INVALID_ARGUMENT | Invalid input |
+| 4 | DEADLINE_EXCEEDED | Timeout |
+| 5 | NOT_FOUND | Resource missing |
+| 7 | PERMISSION_DENIED | Access denied |
+| 8 | RESOURCE_EXHAUSTED | Quota exceeded |
+| 13 | INTERNAL | Server error |
+| 14 | UNAVAILABLE | Service unavailable |
 
-### `headers` <VersionTag version="v2.1.0" />
-HTTP/gRPC headers to include in the response.
+## `headers` — Response Metadata <VersionTag version="v2.1.0" />
 
 ```yaml
 output:
   headers:
     "x-request-id": "req-123"
-    "x-user-id": "user-456"
     "x-cache-control": "no-cache"
-    "x-rate-limit-remaining": "100"
+  data:
+    result: "ok"
 ```
 
-### `delay` <VersionTag version="v3.2.16" />
-Artificial delay before sending the response.
+## `delay` — Response Delay <VersionTag version="v3.2.16" />
 
 ```yaml
 output:
   delay: 100ms
   data:
-    message: "Delayed response"
+    message: "Delayed"
 ```
 
-## Streaming Response Types
+Formats: `100ms`, `1s`, `500ms`, `2.5s`
 
-### Server Streaming <VersionTag version="v3.3.0" />
-For methods that return multiple responses over time:
-
-```yaml
-- service: DataService
-  method: StreamData
-  input:
-    equals:
-      request_id: "req_001"
-      chunk_count: 5
-  output:
-    stream:
-      - chunk_id: "chunk_001"
-        sequence: 1
-        content: "First chunk"
-        timestamp: "2024-01-01T12:00:00.000Z"
-      - chunk_id: "chunk_002"
-        sequence: 2
-        content: "Second chunk"
-        timestamp: "2024-01-01T12:00:01.000Z"
-      - chunk_id: "chunk_003"
-        sequence: 3
-        content: "Third chunk"
-        timestamp: "2024-01-01T12:00:02.000Z"
-```
-
-### Bidirectional Streaming <VersionTag version="v3.4.0" />
-For bidirectional streaming, responses are selected based on incoming messages:
-
-```yaml
-- service: ChatService
-  method: Chat
-  stream:
-    - equals:
-        user_id: "alice"
-        content: "Hello"
-        type: "MESSAGE_TYPE_TEXT"
-    - equals:
-        user_id: "alice"
-        content: "How are you?"
-        type: "MESSAGE_TYPE_TEXT"
-  output:
-    stream:
-      - user_id: "bob"
-        content: "Hello Alice!"
-        type: "MESSAGE_TYPE_TEXT"
-        timestamp: "2024-01-01T12:00:00.000Z"
-      - user_id: "bob"
-        content: "I'm doing great!"
-        type: "MESSAGE_TYPE_TEXT"
-        timestamp: "2024-01-01T12:00:01.000Z"
-```
-
-**Bidirectional Streaming Behavior:**
-- Each incoming message is matched against the `inputs` patterns
-- Responses are selected from the `output.stream` array based on message index
-- If no exact match is found, the best matching stub is selected based on ranking
-- Stub ranking considers exact matches, partial matches, and specificity
-
-### Client Streaming Response <VersionTag version="v3.4.0" />
-For client streaming methods, a single response is returned after all messages:
-
-```yaml
-- service: UploadService
-  method: UploadFile
-  stream:
-    - equals:
-        chunk_id: "chunk_001"
-        sequence: 1
-        total_chunks: 3
-    - equals:
-        chunk_id: "chunk_001"
-        sequence: 2
-        total_chunks: 3
-    - equals:
-        chunk_id: "chunk_001"
-        sequence: 3
-        total_chunks: 3
-  output:
-    data:
-      upload_id: "upload_001"
-      success: true
-      total_chunks: 3
-      total_size: "1500"
-      status: "completed"
-      completed_at: "2024-01-15T10:05:00Z"
-```
-
-## Advanced Output Features
-
-### Conditional Responses
-Use different outputs based on input conditions:
-
-```yaml
-- service: UserService
-  method: GetUser
-  input:
-    equals:
-      user_id: "12345"
-  output:
-    data:
-      name: "John Doe"
-      email: "john@example.com"
-      status: "active"
-
-- service: UserService
-  method: GetUser
-  input:
-    equals:
-      user_id: "99999"
-  output:
-    error: "User not found"
-    code: 5  # NOT_FOUND
-```
-
-### Response with Metadata
-Include additional metadata in responses:
-
-```yaml
-output:
-  headers:
-    "x-response-time": "150ms"
-    "x-cache-hit": "true"
-  data:
-    result: "success"
-    metadata:
-      processed_at: "2024-01-01T12:00:00.000Z"
-      version: "1.0.0"
-      source: "mock"
-```
-
-### Error with Details <VersionTag version="v3.8.0" />
-Provide detailed error information:
+## `details` — Error Details <VersionTag version="v3.8.0" />
 
 ```yaml
 output:
   error: "Validation failed"
-  code: 3  # INVALID_ARGUMENT
+  code: 3
   details:
     - type: "type.googleapis.com/google.rpc.ErrorInfo"
       reason: "API_DISABLED"
       domain: "example.service.local"
       metadata:
         service: "example.service.local"
-        consumer: "projects/123"
-    - type: "type.googleapis.com/google.rpc.BadRequest"
-      field_violations:
-        - field: "email"
-          description: "Invalid email format"
 ```
 
-`output.details` is encoded into gRPC status details (`google.protobuf.Any`).
+Encoded as `google.protobuf.Any` in gRPC status details.
 
-## API Version Compatibility
+## Stream + Error
 
-### V1 API (Legacy)
 ```yaml
-- service: ChatService
-  method: SendMessage
-  input:
-    equals:
-      user: Alice
-      text: "Hello"
-  output:
-    data:
-      success: true
-      message: "1 messages processed"
-```
-
-### V2 API (Streaming) <VersionTag version="v3.3.0" />
-```yaml
-- service: ChatService
-  method: SendMessage
-  stream:
-    - equals:
-        user: Alice
-        text: "Hello"
-  output:
-    data:
-      success: true
-      message: "1 messages processed"
-```
-
-**Automatic Detection:**
-- GripMock automatically detects V1 vs V2 format based on presence of `stream` field
-- V1 stubs use `input` for matching
-- V2 stubs use `stream` for matching
-- Both formats are supported simultaneously for backward compatibility
-
-## Error Ordering with Streams
-
-When both `output.stream` and `output.error`/`output.code` are specified for a server-streaming method:
-
-- If `output.stream` contains messages, GripMock will send all stream messages first and then finish the RPC with the specified gRPC status error
-- If `output.stream` is empty, the error is returned immediately without sending messages
-
-This mirrors real-world scenarios where a stream may emit data before failing.
-
-## Performance Considerations
-
-### Stub Ranking
-GripMock uses sophisticated ranking algorithms to select the best matching stub:
-
-1. **Exact Matches**: Highest priority for perfect matches
-2. **Partial Matches**: Ranked based on field overlap
-3. **Specificity**: More specific stubs rank higher
-4. **Priority**: Explicit priority values override ranking
-5. **Length Matching**: For streaming, length compatibility is considered
-
-### Memory Efficiency
-- Stubs are loaded once and cached in memory
-- Streaming responses are generated on-demand
-- Bidirectional streaming maintains minimal state per connection
-
-## Best Practices
-
-### 1. Use Consistent Data Structure
-```yaml
-# Good: Consistent structure
 output:
   stream:
-    - message: "First"
-      timestamp: "2024-01-01T12:00:00.000Z"
-    - message: "Second"
-      timestamp: "2024-01-01T12:00:01.000Z"
-
-# Avoid: Inconsistent structure
-output:
-  stream:
-    - message: "First"
-    - message: "Second"
-      timestamp: "2024-01-01T12:00:01.000Z"
+    - message: "Starting"
+    - message: "Done"
+  error: "Completed with warnings"
+  code: 2  # UNKNOWN
 ```
 
-### 2. Provide Meaningful Error Messages
-```yaml
-# Good: Descriptive error
-output:
-  error: "User with ID '12345' not found in database"
-  code: 5
+All stream messages are sent before the error terminates the RPC.
 
-# Avoid: Generic error
-output:
-  error: "Not found"
-  code: 5
-```
+## Related
 
-### 3. Use Appropriate Delays
-```yaml
-# Good: Reasonable delay for testing
-output:
-  delay: 100ms
-  data:
-    message: "Response"
-
-# Avoid: Excessive delays
-output:
-  delay: 30s
-  data:
-    message: "Response"
-```
-
-### 4. Leverage Priority for Complex Scenarios
-```yaml
-# High priority for specific cases
-- service: UserService
-  method: GetUser
-  priority: 100
-  input:
-    equals:
-      user_id: "12345"
-      exact_match: true
-  output:
-    data:
-      name: "John Doe"
-      exact: true
-
-# Lower priority fallback
-- service: UserService
-  method: GetUser
-  priority: 50
-  input:
-    equals:
-      user_id: "12345"
-  output:
-    data:
-      name: "John Doe"
-      fallback: true
-``` 
+- [Streaming](./streaming) — streaming patterns
+- [Delay](./delay) — response delays
+- [Error Details](./error-details) — more error examples

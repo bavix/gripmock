@@ -3,297 +3,176 @@ package errors_test
 import (
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bavix/gripmock/v3/internal/infra/errors"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-//nolint:funlen
-func TestStubNotFoundFormatterFormat(t *testing.T) {
-	t.Parallel()
-
-	formatter := errors.NewStubNotFoundFormatter()
-
-	t.Run("without similar results", func(t *testing.T) {
-		t.Parallel()
-
-		query := stuber.Query{
-			Service: "test.Service",
-			Method:  "TestMethod",
-			Input:   []map[string]any{{"key": "value"}},
-		}
-
-		result := &stuber.Result{}
-
-		err := formatter.Format(query, result)
-		require.Error(t, err)
-
-		errorMsg := err.Error()
-		require.Contains(t, errorMsg, "Can't find stub")
-		require.Contains(t, errorMsg, "Service: test.Service")
-		require.Contains(t, errorMsg, "Method: TestMethod")
-		require.Contains(t, errorMsg, "Input")
-		require.Contains(t, errorMsg, `"key": "value"`)
-	})
-
-	t.Run("with similar results", func(t *testing.T) {
-		t.Parallel()
-
-		query := stuber.Query{
-			Service: "test.Service",
-			Method:  "TestMethod",
-			Input:   []map[string]any{{"key": "value"}},
-		}
-
-		// Create a mock result that has similar stub
-		result := &mockResult{
-			similar: &stuber.Stub{
-				Input: stuber.InputData{
-					Equals:   map[string]any{"key": "similar_value"},
-					Contains: map[string]any{"other": "data"},
-					Matches:  map[string]any{"pattern": ".*"},
-				},
-			},
-		}
-
-		err := formatter.Format(query, result)
-		require.Error(t, err)
-
-		errorMsg := err.Error()
-		require.Contains(t, errorMsg, "Can't find stub")
-		require.Contains(t, errorMsg, "Closest Match")
-		require.Contains(t, errorMsg, "equals")
-		require.Contains(t, errorMsg, "similar_value")
-		require.Contains(t, errorMsg, "contains")
-		require.Contains(t, errorMsg, "matches")
-	})
-
-	t.Run("with invalid JSON data", func(t *testing.T) {
-		t.Parallel()
-
-		query := stuber.Query{
-			Service: "test.Service",
-			Method:  "TestMethod",
-			Input:   []map[string]any{{"func": func() {}}}, // Invalid JSON
-		}
-
-		result := &stuber.Result{}
-
-		err := formatter.Format(query, result)
-		require.Error(t, err)
-
-		errorMsg := err.Error()
-		require.Contains(t, errorMsg, "Error marshaling input")
-	})
-}
-
-//nolint:funlen
-func TestStubNotFoundFormatterFormatStreaming(t *testing.T) {
-	t.Parallel()
-
-	formatter := errors.NewStubNotFoundFormatter()
-
-	t.Run("single input", func(t *testing.T) {
-		t.Parallel()
-
-		query := stuber.Query{
-			Service: "test.Service",
-			Method:  "TestMethod",
-			Input: []map[string]any{
-				{"key": "value"},
-			},
-		}
-
-		result := &stuber.Result{}
-
-		err := formatter.Format(query, result)
-		require.Error(t, err)
-
-		errorMsg := err.Error()
-		require.Contains(t, errorMsg, "Can't find stub")
-		require.Contains(t, errorMsg, "Service: test.Service")
-		require.Contains(t, errorMsg, "Method: TestMethod")
-		require.Contains(t, errorMsg, "Input:")
-		require.Contains(t, errorMsg, `"key": "value"`)
-	})
-
-	t.Run("multiple inputs (streaming)", func(t *testing.T) {
-		t.Parallel()
-
-		query := stuber.Query{
-			Service: "test.Service",
-			Method:  "TestMethod",
-			Input: []map[string]any{
-				{"key1": "value1"},
-				{"key2": "value2"},
-			},
-		}
-
-		result := &stuber.Result{}
-
-		err := formatter.Format(query, result)
-		require.Error(t, err)
-
-		errorMsg := err.Error()
-		require.Contains(t, errorMsg, "Inputs:")
-		require.Contains(t, errorMsg, "[0]")
-		require.Contains(t, errorMsg, "[1]")
-		require.Contains(t, errorMsg, "key1")
-		require.Contains(t, errorMsg, "key2")
-	})
-
-	t.Run("empty input", func(t *testing.T) {
-		t.Parallel()
-
-		query := stuber.Query{
-			Service: "test.Service",
-			Method:  "TestMethod",
-			Input:   []map[string]any{},
-		}
-
-		result := &stuber.Result{}
-
-		err := formatter.Format(query, result)
-		require.Error(t, err)
-
-		errorMsg := err.Error()
-		require.Contains(t, errorMsg, "Input: (empty)")
-	})
-
-	t.Run("with client streaming similar results", func(t *testing.T) {
-		t.Parallel()
-
-		query := stuber.Query{
-			Service: "test.Service",
-			Method:  "TestMethod",
-			Input: []map[string]any{
-				{"key": "value"},
-			},
-		}
-
-		stub := &stuber.Stub{
-			Inputs: []stuber.InputData{
-				{
-					Equals:   map[string]any{"key": "similar1"},
-					Contains: map[string]any{"other1": "data1"},
-				},
-				{
-					Equals:   map[string]any{"key": "similar2"},
-					Contains: map[string]any{"other2": "data2"},
-				},
-			},
-		}
-
-		result := &mockResult{
-			similar: stub,
-		}
-
-		err := formatter.Format(query, result)
-		require.Error(t, err)
-
-		errorMsg := err.Error()
-		require.Contains(t, errorMsg, "Closest Match")
-		require.Contains(t, errorMsg, "inputs[0]")
-		require.Contains(t, errorMsg, "inputs[1]")
-		require.Contains(t, errorMsg, "similar1")
-		require.Contains(t, errorMsg, "similar2")
-	})
-
-	t.Run("with invalid JSON in streaming input", func(t *testing.T) {
-		t.Parallel()
-
-		query := stuber.Query{
-			Service: "test.Service",
-			Method:  "TestMethod",
-			Input: []map[string]any{
-				{"valid": "data"},
-				{"func": func() {}}, // Invalid JSON
-			},
-		}
-
-		result := &stuber.Result{}
-
-		err := formatter.Format(query, result)
-		require.Error(t, err)
-
-		errorMsg := err.Error()
-		require.Contains(t, errorMsg, "Error marshaling input")
-	})
-}
-
-func TestStubNotFoundFormatterFormatClosestMatches(t *testing.T) {
-	t.Parallel()
-
-	formatter := errors.NewStubNotFoundFormatter()
-
-	t.Run("with invalid JSON in matches", func(t *testing.T) {
-		t.Parallel()
-
-		stub := &stuber.Stub{
-			Input: stuber.InputData{
-				Equals: map[string]any{"func": func() {}}, // Invalid JSON
-			},
-		}
-
-		result := &mockResult{
-			similar: stub,
-		}
-
-		query := stuber.Query{
-			Service: "test.Service",
-			Method:  "TestMethod",
-			Input:   []map[string]any{{"key": "value"}},
-		}
-
-		err := formatter.Format(query, result)
-		require.Error(t, err)
-
-		errorMsg := err.Error()
-		require.Contains(t, errorMsg, "Error marshaling match")
-		require.Contains(t, errorMsg, "Raw match:")
-	})
-
-	t.Run("empty matches", func(t *testing.T) {
-		t.Parallel()
-
-		stub := &stuber.Stub{
-			Input: stuber.InputData{
-				Equals:   map[string]any{},
-				Contains: map[string]any{},
-				Matches:  map[string]any{},
-			},
-		}
-
-		result := &mockResult{
-			similar: stub,
-		}
-
-		query := stuber.Query{
-			Service: "test.Service",
-			Method:  "TestMethod",
-			Input:   []map[string]any{{"key": "value"}},
-		}
-
-		err := formatter.Format(query, result)
-		require.Error(t, err)
-
-		errorMsg := err.Error()
-		require.NotContains(t, errorMsg, "Closest Match")
-	})
-}
-
-// Mock implementations for testing
-
 type mockResult struct {
 	found   *stuber.Stub
 	similar *stuber.Stub
 }
 
-func (m *mockResult) Found() *stuber.Stub {
-	return m.found
+func (m *mockResult) Found() *stuber.Stub   { return m.found }
+func (m *mockResult) Similar() *stuber.Stub { return m.similar }
+
+func formatError(t *testing.T, q stuber.Query, r errors.Result) string {
+	t.Helper()
+
+	err := errors.NewStubNotFoundFormatter().Format(q, r)
+	require.Error(t, err)
+
+	return err.Error()
 }
 
-func (m *mockResult) Similar() *stuber.Stub {
-	return m.similar
+func TestFormatter_NoSimilar(t *testing.T) {
+	t.Parallel()
+
+	msg := formatError(t, stuber.Query{
+		Service: "svc.Test",
+		Method:  "Do",
+		Input:   []map[string]any{{"key": "value"}},
+	}, &stuber.Result{})
+
+	require.Contains(t, msg, "No matching stub found")
+	require.Contains(t, msg, "Service: svc.Test")
+	require.Contains(t, msg, "Method: Do")
+	require.Contains(t, msg, "Request input:")
+	require.Contains(t, msg, `"key": "value"`)
+	require.Contains(t, msg, "No similar stubs found.")
+}
+
+func TestFormatter_EmptyInput(t *testing.T) {
+	t.Parallel()
+
+	msg := formatError(t, stuber.Query{Service: "svc", Method: "m", Input: []map[string]any{}}, &stuber.Result{})
+	require.Contains(t, msg, "Request input:")
+	require.Contains(t, msg, "(empty)")
+}
+
+func TestFormatter_StreamInput(t *testing.T) {
+	t.Parallel()
+
+	msg := formatError(t, stuber.Query{
+		Service: "svc",
+		Method:  "m",
+		Input: []map[string]any{
+			{"a": 1},
+			{"b": 2},
+		},
+	}, &stuber.Result{})
+
+	require.Contains(t, msg, "Request input (stream):")
+	require.Contains(t, msg, "[0]")
+	require.Contains(t, msg, "[1]")
+}
+
+func TestFormatter_RequestHeaders(t *testing.T) {
+	t.Parallel()
+
+	msg := formatError(t, stuber.Query{
+		Service: "svc",
+		Method:  "m",
+		Headers: map[string]any{"x-trace-id": "abc"},
+	}, &stuber.Result{})
+
+	require.Contains(t, msg, "Request headers:")
+	require.Contains(t, msg, `"x-trace-id": "abc"`)
+}
+
+func TestFormatter_SimilarUnary_WithAnyOf(t *testing.T) {
+	t.Parallel()
+
+	msg := formatError(t, stuber.Query{Service: "svc", Method: "m", Input: []map[string]any{{"k": "v"}}}, &mockResult{
+		similar: &stuber.Stub{
+			ID:       uuid.New(),
+			Priority: 7,
+			Options:  stuber.StubOptions{Times: 2},
+			Input: stuber.InputData{
+				Equals: map[string]any{"k": "expected"},
+				AnyOf: []stuber.AnyOfElement{
+					{Contains: map[string]any{"status": "open"}},
+					{Contains: map[string]any{"status": "closed"}},
+				},
+			},
+			Output: stuber.Output{Data: map[string]any{"ignored": true}},
+		},
+	})
+
+	require.Contains(t, msg, "Closest match:")
+	require.Contains(t, msg, "priority: 7")
+	require.Contains(t, msg, "times: 2")
+	require.Contains(t, msg, "input rules:")
+	require.Contains(t, msg, "input.equals:")
+	require.Contains(t, msg, "input.anyOf: selected [0], hidden: 1")
+	require.Contains(t, msg, "input.anyOf[0].contains:")
+	require.NotContains(t, msg, "input.anyOf[1]")
+	require.NotContains(t, msg, "id:")
+	require.NotContains(t, msg, "output:")
+}
+
+func TestFormatter_SimilarHeaders_WithAnyOf(t *testing.T) {
+	t.Parallel()
+
+	msg := formatError(t, stuber.Query{Service: "svc", Method: "m"}, &mockResult{
+		similar: &stuber.Stub{
+			Priority: 3,
+			Headers: stuber.InputHeader{
+				Equals: map[string]any{"x-env": "prod"},
+				AnyOf: []stuber.AnyOfHeaderElement{
+					{Matches: map[string]any{"x-user": "^admin-.*"}},
+					{Matches: map[string]any{"x-user": "^dev-.*"}},
+				},
+			},
+		},
+	})
+
+	require.Contains(t, msg, "headers:")
+	require.Contains(t, msg, "headers.equals:")
+	require.Contains(t, msg, "headers.anyOf: selected [0], hidden: 1")
+	require.Contains(t, msg, "headers.anyOf[0].matches:")
+	require.NotContains(t, msg, "headers.anyOf[1]")
+}
+
+func TestFormatter_SimilarClientStream(t *testing.T) {
+	t.Parallel()
+
+	msg := formatError(t, stuber.Query{
+		Service: "svc",
+		Method:  "m",
+		Input:   []map[string]any{{"step": 1}, {"step": 2}},
+	}, &mockResult{
+		similar: &stuber.Stub{
+			Priority: 5,
+			Inputs: []stuber.InputData{
+				{Equals: map[string]any{"step": 1}},
+				{AnyOf: []stuber.AnyOfElement{{Matches: map[string]any{"step": "^2$"}}}},
+			},
+		},
+	})
+
+	require.Contains(t, msg, "input rules (stream):")
+	require.Contains(t, msg, "inputs[0].equals:")
+	require.Contains(t, msg, "inputs[1].anyOf: selected [0], hidden: 0")
+	require.Contains(t, msg, "inputs[1].anyOf[0].matches:")
+}
+
+func TestFormatter_FiltersNonSerializable(t *testing.T) {
+	t.Parallel()
+
+	msg := formatError(t, stuber.Query{
+		Service: "svc",
+		Method:  "m",
+		Input: []map[string]any{{
+			"ok":   "value",
+			"bad":  func() {},
+			"list": []any{"a", func() {}},
+		}},
+	}, &stuber.Result{})
+
+	require.Contains(t, msg, `"ok": "value"`)
+	require.Contains(t, msg, `"list": [`)
+	require.NotContains(t, msg, `"bad"`)
 }

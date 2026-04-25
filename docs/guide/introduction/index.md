@@ -33,44 +33,34 @@ The modern GripMock engine is fundamentally different:
 ## Key Features
 
 - **Quick Start**: Use your `.proto` files to start a mock server instantly
-- **YAML & JSON**: Define your test responses in the format you prefer
-- **Health Monitoring**: Built-in health checks for production deployment
-- **Header Testing**: Test different authentication tokens and headers
-- **Error Simulation**: Test how your app handles real-world errors
-- **File Upload Testing**: Test chunked file uploads and batch processing
-- **Real-time Chat**: Test bidirectional streaming for chat applications
-- **Web Interface**: Manage your test scenarios through a friendly web UI
-- **Docker Ready**: Lightweight container perfect for CI/CD pipelines
-- **TLS and mTLS** <VersionTag version="v3.8.1" />: Native TLS support for gRPC/HTTP plus reverse-proxy termination patterns
-- **20-35% Faster**: Latest improvements make your tests run quicker
-- **Zero Breaking Changes**: All your existing tests continue to work
-- **Extensible Plugins** <VersionTag version="v3.5.0" />: Extend functionality with custom template functions
-- **Match Limit (`options.times`)** <VersionTag version="v3.7.0" />: Limit how many times a stub can be matched before fallback logic applies
-- **Embedded SDK (Experimental)** <VersionTag version="v3.7.0" />: Run GripMock directly inside Go tests with history and verification tools
-- **MCP API (Experimental)** <VersionTag version="v3.7.0" />: Integrate AI/agent tooling through a streamable HTTP MCP endpoint
-- **Upstream Modes (Experimental)** <VersionTag version="v3.9.0" />: Use `proxy`, `replay`, and `capture` modes for gradual migration from live upstream services to local mocks
-- **OpenTelemetry Tracing** <VersionTag version="v3.10.0" />: Export gRPC and HTTP traces via OTLP (`otelgrpc` + `otelhttp`) with safe startup timeout
-- **Prometheus Metrics (`/metrics`)** <VersionTag version="v3.10.0" />: Expose runtime metrics (`go_*`, `process_*`) and GripMock metrics for matching/stub activity
-- **Built-in Faker Templates** <VersionTag version="v3.10.0" />: Generate realistic dynamic values in templates via `faker.Person`, `faker.Geo`, `faker.Network`, etc.
-- **GitHub Actions (CI/CD)**: Use the official action to start, wait, and stop GripMock in CI workflows
-- **Health Service Stubbing** <VersionTag version="v3.9.3" />: Mock `grpc.health.v1.Health/Check` and `Watch` while keeping internal `gripmock` readiness protected
-- **Builder Image for Plugins** <VersionTag version="v3.7.1" />: Build plugins in `:<tag>-builder` and run with matching `:<tag>` for compatibility
+- **YAML & JSON**: Define test responses in the format you prefer
+- **Header & Input Matching**: Fine-grained request matching with `equals`, `contains`, `matches`, `anyOf` <VersionTag version="v3.11.0" />
+- **Streaming**: Server, client, and bidirectional streaming support
+- **Error Simulation**: Test error handling with codes and details
+- **Dynamic Templates**: Generate realistic data with `faker.*`, `{{uuid}}`, etc. <VersionTag version="v3.10.0" />
+- **Effects**: Stateful stubs with automatic upsert/delete after match <VersionTag version="v3.11.0" />
+- **Health Checks**: Built-in health endpoints + mockable health service <VersionTag version="v3.9.3" />
+- **TLS/mTLS**: Native TLS support for secure gRPC <VersionTag version="v3.8.1" />
+- **Plugins**: Extend template functions with Go plugins <VersionTag version="v3.5.0" />
+- **Match Limit (`options.times`)**: Limit how many times a stub can be matched <VersionTag version="v3.7.0" />
+- **Embedded SDK**: Run GripMock inside Go tests <VersionTag version="v3.7.0" />
+- **MCP API**: AI/agent tooling integration <VersionTag version="v3.7.0" />
+- **Upstream Modes**: `proxy`, `replay`, `capture` for gradual migration <VersionTag version="v3.9.0" />
+- **OpenTelemetry**: Export traces via OTLP <VersionTag version="v3.10.0" />
+- **Prometheus**: Metrics at `/metrics` <VersionTag version="v3.10.0" />
+- **Docker**: Lightweight container for CI/CD
+- **GitHub Actions**: Official action for CI workflows
 
 ## Streaming Support
 
-GripMock supports all types of gRPC communication:
+GripMock supports all gRPC streaming patterns:
 
-### Simple Requests (1:1)
-Traditional request-response - you send one message, get one response back.
+- **Request-Response** — single request, single response
+- **Server Streaming** — single request, multiple responses
+- **Client Streaming** — multiple messages, single response
+- **Bidirectional** — continuous two-way messaging
 
-### Data Feeds (1:N) <VersionTag version="v3.3.0" />
-Send one request, receive multiple responses over time - perfect for real-time data.
-
-### File Uploads (N:1) <VersionTag version="v3.4.0" />
-Send multiple messages (like file chunks), receive one summary response.
-
-### Real-time Chat (N:N) <VersionTag version="v3.4.0" />
-Send and receive messages continuously - ideal for chat apps and live collaboration.
+See [Streaming](../stubs/streaming) for details.
 
 ## Web Interface <VersionTag version="v3.0.0" />
 
@@ -83,7 +73,6 @@ Access it at `http://localhost:4771/` when you start GripMock.
 
 ## Experimental Features
 
-- **MCP API** <VersionTag version="v3.7.0" />: Exposed at `POST /api/mcp` (MCP protocol `2025-11-25`) for agent-oriented workflows
 - **Embedded SDK** <VersionTag version="v3.7.0" />: Programmatic GripMock usage in Go tests with built-in verification helpers
 - **Upstream Modes** <VersionTag version="v3.9.0" />: Reflection-based `proxy`/`replay`/`capture` modes for reverse proxy, local-first fallback, and automatic stub recording
 

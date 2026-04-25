@@ -18,7 +18,7 @@ hero:
 features:
   - title: "Runtime `.pb` Descriptor Loading ⚡"
     details: "Start mocks from compiled protobuf descriptors (`.pb`) instantly, without managing proto source trees."
-  - title: "MCP API (Experimental) 🤖"
+  - title: "MCP API 🤖"
     details: "Expose Model Context Protocol endpoints for AI agents and tool-driven automation workflows."
   - title: "No-Restart Stub Updates ♻️"
     details: "Create, update, and remove stubs at runtime through API or UI with zero process restarts."

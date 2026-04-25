@@ -1,21 +1,18 @@
 # Input Matching Rules <VersionTag version="v2.0.0" />
 
-GripMock provides powerful input matching capabilities to control stub responses. Use **equals**, **contains**, and **matches** rules to create precise request matching patterns that work with the `data` field in gRPC requests.
+GripMock provides powerful input matching capabilities to control stub responses. Use **equals**, **contains**, **matches**, and **anyOf** rules to create precise request matching patterns that work with the `data` field in gRPC requests.
 
-## Overview
-
-Input matching is the core mechanism that determines which stub responds to your gRPC requests. GripMock supports three matching strategies, each with different use cases:
-
-- **`equals`** - Exact value matching
-- **`contains`** - Partial value matching  
-- **`matches`** - Regular expression matching
+For the formal composition rules (AND/OR logic, `anyOf` semantics, `ignoreArrayOrder` scoping), see [Matching Logic](./logic).
 
 ## Basic Syntax
 
 ```json
 {
   "input": {
-    "ignoreArrayOrder": false,  // Optional: Disable array order checks
+    "ignoreArrayOrder": false,
+    "anyOf": [
+      { "equals": {"field": "value"} }
+    ],
     "equals|contains|matches": {
       "field": "value"
     }
@@ -42,11 +39,11 @@ input:
 ```
 
 **When to use:**
-- ✅ Exact value validation
-- ✅ Required field checking
-- ✅ Numeric comparisons
-- ✅ Boolean flags
-- ✅ Nested object matching
+- Exact value validation
+- Required field checking
+- Numeric comparisons
+- Boolean flags
+- Nested object matching
 
 **Behavior:**
 - All fields must match exactly
@@ -74,7 +71,7 @@ output:
         environment: "staging"
 ```
 
-Request `{"ips": ["10.64.0.2", "10.64.0.1"], ...}` will **not** match — array order differs.
+Request `{"ips": ["10.0.3.2", "10.0.3.1"], ...}` will **not** match — array order differs.
 
 ### 2. Partial Match (`contains`)
 
@@ -84,17 +81,16 @@ Matches requests that **contain** the specified values. Great for flexible match
 ```yaml
 input:
   contains:
-    name: "grip"        # Matches "gripmock", "gripster", etc.
-    tags: ["grpc"]      # Matches if array contains "grpc"
+    name: "grip"
+    tags: ["grpc"]
     details:
-      category: "test"  # Matches nested fields
+      category: "test"
 ```
 
 **When to use:**
-- ✅ Partial string matching
-- ✅ Array element checking
-- ✅ Optional field validation
-- ✅ Flexible matching requirements
+- Partial string matching
+- Array element checking
+- Optional field validation
 
 **Behavior:**
 - String values are checked for substring inclusion
@@ -126,7 +122,7 @@ Request `{"ips": ["10.0.1.1", "10.0.1.2", "10.0.1.3"], ...}` will also match —
 
 ### 3. Regex Match (`matches`)
 
-Uses **regular expressions** for advanced pattern matching. Most powerful but requires regex knowledge.
+Uses **regular expressions** for advanced pattern matching.
 
 **Example:**
 ```yaml
@@ -134,15 +130,14 @@ input:
   matches:
     email: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
     phone: "^\\+?[1-9]\\d{1,14}$"
-    name: "^[A-Z][a-z]+$"  # Starts with capital letter
-    version: "v\\d+\\.\\d+\\.\\d+"  # v1.2.3 format
+    name: "^[A-Z][a-z]+$"
 ```
 
 **When to use:**
-- ✅ Email validation
-- ✅ Phone number formats
-- ✅ Version string patterns
-- ✅ Complex string patterns
+- Email validation
+- Phone number formats
+- Version string patterns
+- Complex string patterns
 
 **Behavior:**
 - Uses Go's regex engine
@@ -170,15 +165,13 @@ output:
         environment: "staging"
 ```
 
-Request with `{"ips": ["10.0.2.77", "10.0.2.88"], "k8s_cluster_id": "test-matches"}` matches — each IP satisfies the regex pattern element-wise.
-
-**Important:** Matching expressions must be static. Do not use dynamic templates (<code v-pre>`{{ ... }}`</code>) inside `equals`, `contains`, or `matches`. Example of incorrect usage:
+**Important:** Matching expressions must be static. Do not use dynamic templates (<code v-pre>`{{ ... }}`</code>) inside `equals`, `contains`, or `matches`.
 
 ::: v-pre
 ```yaml
 input:
   matches:
-    value: "{{someDynamic}}"   # ❌ not allowed
+    value: "{{someDynamic}}"   # NOT allowed
 ```
 :::
 
@@ -187,7 +180,7 @@ Use static regex strings instead:
 ```yaml
 input:
   matches:
-    value: "^\\d+(\\.\\d+)?$"  # ✅ allowed
+    value: "^\\d+(\\.\\d+)?$"  # OK
 ```
 
 ## Array Handling
@@ -202,7 +195,7 @@ input:
     tags: ["grpc", "mock", "test"]
 ```
 
-**Matches:** `["grpc", "mock", "test"]`  
+**Matches:** `["grpc", "mock", "test"]`
 **Doesn't match:** `["mock", "grpc", "test"]`
 
 ### Order-Agnostic Matching
@@ -221,27 +214,26 @@ input:
 Works with all three matchers:
 
 ```yaml
-# equals + ignoreArrayOrder
 input:
   ignoreArrayOrder: true
   equals:
     k8s_cluster_id: "test-equals-ignore"
     ips: ["10.0.3.1", "10.0.3.2"]
 
-# contains + ignoreArrayOrder
 input:
   ignoreArrayOrder: true
   contains:
     k8s_cluster_id: "test-contains-ignore"
     ips: ["10.0.4.1", "10.0.4.2"]
 
-# matches + ignoreArrayOrder
 input:
   ignoreArrayOrder: true
   matches:
     k8s_cluster_id: "^test-matches-ignore$"
     ips: ["^10\\.0\\.5\\.[0-9]+$", "^10\\.0\\.5\\.[0-9]+$"]
 ```
+
+`ignoreArrayOrder` is scoped per-block — see [Matching Logic](./logic#ignorearrayorder) for scoping details.
 
 ## Real-World Examples
 
@@ -272,7 +264,7 @@ input:
     category: "electronics"
     tags: ["wireless", "bluetooth"]
   matches:
-    price_range: "^\\d+-\\d+$"  # e.g., "100-500"
+    price_range: "^\\d+-\\d+$"
 output:
   data:
     products:
@@ -304,8 +296,6 @@ output:
 ## Advanced Patterns
 
 ### Combining Multiple Rules
-
-You can combine different matching strategies for complex scenarios:
 
 ```yaml
 input:
@@ -345,83 +335,7 @@ input:
         quantity: 1
 ```
 
-## Performance Considerations
-
-### Best Practices
-
-1. **Use `equals` for exact matches** - Fastest matching strategy
-2. **Use `contains` for partial matches** - Good balance of flexibility and performance
-3. **Use `matches` sparingly** - Regex matching is slower
-4. **Limit nested depth** - Deep nesting can impact performance
-5. **Use `ignoreArrayOrder` only when needed** - Adds processing overhead
-
-### Optimization Tips
-
-```yaml
-# ✅ Good - Simple and fast
-input:
-  equals:
-    user_id: "123"
-    action: "create"
-
-# ⚠️ Avoid - Complex regex for simple cases
-input:
-  matches:
-    user_id: "^123$"  # Use equals instead
-
-# ✅ Good - Specific matching
-input:
-  contains:
-    tags: ["important"]
-
-# ⚠️ Avoid - Too broad matching
-input:
-  contains:
-    tags: ["a"]  # Too generic
-```
-
-## Testing Your Matches
-
-### Using the Search API
-
-Test your input matching with the search endpoint:
-
-```bash
-curl -X POST http://localhost:4771/api/stubs/search \
-  -H "Content-Type: application/json" \
-  -d '{
-    "service": "Greeter",
-    "method": "SayHello",
-    "data": {
-      "name": "gripmock",
-      "age": 25,
-      "tags": ["grpc", "mock"]
-    }
-  }'
-```
-
-### Using gRPC Testify
-
-```yaml
---- ENDPOINT ---
-Greeter/SayHello
-
---- REQUEST ---
-{
-  "name": "gripmock",
-  "age": 25,
-  "tags": ["grpc", "mock"]
-}
-
---- RESPONSE ---
-{
-  "message": "Hello GripMock!"
-}
-```
-
 ## Troubleshooting
-
-### Common Issues
 
 **No matches found:**
 - Check field names (case-sensitive)
@@ -433,14 +347,9 @@ Greeter/SayHello
 - Check for partial matches with `contains`
 - Verify nested object structure
 
-**Performance problems:**
-- Simplify complex regex patterns
-- Reduce nested object depth
-- Use `equals` instead of `matches` when possible
-
 ## Related Documentation
 
-- [Header Matching](./headers.md) - Match request headers
-- [Stub Priority](../stubs/priority.md) - Control stub selection order
-- [JSON Schema](../schema/) - Complete schema reference
-- [Examples](../schema/examples.md) - More input matching examples  
+- [Matching Logic](./logic) — formal AND/OR composition rules
+- [Header Matching](./headers) — match request headers
+- [Stub Priority](../stubs/priority) — control stub selection order
+- [Examples](../schema/examples) — more input matching examples

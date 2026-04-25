@@ -48,7 +48,24 @@ func countStubFields(stub *Stub) int {
 
 	for _, input := range stub.Inputs {
 		count += len(input.Equals) + len(input.Contains) + len(input.Matches)
+		count += countAnyOfFields(input.AnyOf)
+	}
+
+	count += countAnyOfFields(stub.Input.AnyOf)
+
+	for _, alt := range stub.Headers.AnyOf {
+		count += len(alt.Equals) + len(alt.Contains) + len(alt.Matches)
 	}
 
 	return count
+}
+
+func countAnyOfFields(anyOf []AnyOfElement) int {
+	var n int
+
+	for _, alt := range anyOf {
+		n += len(alt.Equals) + len(alt.Contains) + len(alt.Matches)
+	}
+
+	return n
 }

@@ -1,0 +1,12 @@
+- service: tasktracker.TaskService
+  method: GetTask
+  input:
+    equals:
+      task_id: "fallback"
+  output:
+    data:
+      task_id: "fallback"
+      title: "fallback-task"
+      status: "not_found"
+      priority: ""
+      ok: false

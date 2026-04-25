@@ -1,0 +1,21 @@
+--- META ---
+name: fallback stub - no match returns fallback
+summary: GetTask with unknown task_id should return fallback stub
+tags: [fallback, priority]
+
+--- ENDPOINT ---
+tasktracker.TaskService/GetTask
+
+--- REQUEST ---
+{
+  "task_id": "fallback"
+}
+
+--- RESPONSE ---
+{
+  "ok": false,
+  "priority": "",
+  "status": "not_found",
+  "task_id": "fallback",
+  "title": "fallback-task"
+}

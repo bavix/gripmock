@@ -1,0 +1,36 @@
+--- META ---
+name: server streaming - stream all tasks
+summary: StreamTasks with status=all returns multiple tasks
+tags: [streaming, server-streaming]
+
+--- ENDPOINT ---
+tasktracker.TaskService/StreamTasks
+
+--- REQUEST ---
+{
+  "status": "all"
+}
+
+--- RESPONSE ---
+{
+  "priority": "low",
+  "status": "pending",
+  "task_id": "stream-1",
+  "title": "First Task"
+}
+
+--- RESPONSE ---
+{
+  "priority": "medium",
+  "status": "in_progress",
+  "task_id": "stream-2",
+  "title": "Second Task"
+}
+
+--- RESPONSE ---
+{
+  "priority": "high",
+  "status": "done",
+  "task_id": "stream-3",
+  "title": "Third Task"
+}

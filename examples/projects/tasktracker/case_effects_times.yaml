@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Effects + options.times=1: CompleteTask fires once, then self-destructs.
+#
+# Flow:
+#   1. CompleteTask("task-42")  → ok:true
+#      effect[0]: upsert GetTask stub → status "completed"
+#      effect[1]: delete this stub (id below) so it can't match again
+#   2. GetTask("task-42")       → status "completed"  (injected by effect)
+#   3. CompleteTask("task-42")  → NOT_FOUND (stub was deleted by effect)
+
+- id: "aaaaaaaa-0001-0001-0001-000000000001"
+  service: tasktracker.TaskService
+  method: CompleteTask
+  options:
+    times: 1
+  input:
+    equals:
+      task_id: "task-42"
+  output:
+    data:
+      ok: true
+  effects:
+    - action: upsert
+      stub:
+        id: "aaaaaaaa-0002-0002-0002-000000000002"
+        service: tasktracker.TaskService
+        method: GetTask
+        priority: 50
+        input:
+          equals:
+            task_id: "task-42"
+        output:
+          data:
+            task_id: "task-42"
+            title: "Fix login bug"
+            status: "completed"
+            priority: "high"
+            ok: true
+    - action: delete
+      id: "aaaaaaaa-0001-0001-0001-000000000001"

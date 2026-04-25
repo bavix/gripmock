@@ -1,0 +1,25 @@
+--- META ---
+name: anyOf header matching - admin role
+summary: GetTask with x-env=production and x-role=admin should match anyOf
+tags: [anyOf, headers]
+
+--- ENDPOINT ---
+tasktracker.TaskService/GetTask
+
+--- REQUEST ---
+{
+  "task_id": "admin-task"
+}
+
+--- REQUEST_HEADERS ---
+x-env: production
+x-role: admin
+
+--- RESPONSE ---
+{
+  "ok": true,
+  "priority": "critical",
+  "status": "active",
+  "task_id": "admin-task",
+  "title": "Admin Protected Task"
+}
