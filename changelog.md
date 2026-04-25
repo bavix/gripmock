@@ -1,5 +1,17 @@
 # Changelog
 
+## v3.11.0 - 2026-04-25
+
+### What's Changed
+
+* remove deprecated env STRICT_METHOD_TITLE by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/842
+* chore(deps): bump sourcemeta/jsonschema from 14.20.2 to 15.0.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/844
+* chore(deps): bump postcss from 8.5.8 to 8.5.10 in the npm_and_yarn group across 1 directory by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/845
+* feat: effects by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/843
+* fix docs by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/846
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.10.2...v3.11.0
+
 ## v3.10.2 - 2026-04-21
 
 ### What's Changed
