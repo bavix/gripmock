@@ -111,4 +111,3 @@ All stream messages are sent before the error terminates the RPC.
 
 - [Streaming](./streaming) — streaming patterns
 - [Delay](./delay) — response delays
-- [Error Details](./error-details) — more error examples
