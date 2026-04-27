@@ -1373,13 +1373,11 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 		}
 
 		if err != nil {
-			if status.Code(err) == codes.NotFound {
-				m.recordBidiStream(recordingStream, bidiResult, requestTime, err.Error())
+			m.recordBidiStream(recordingStream, bidiResult, requestTime, err.Error())
 
+			if status.Code(err) == codes.NotFound {
 				return &bidiStreamFallbackError{err: err, requests: []*dynamicpb.Message{inputMsg}}
 			}
-
-			m.recordBidiStream(recordingStream, bidiResult, requestTime, err.Error())
 
 			return err //nolint:wrapcheck
 		}
