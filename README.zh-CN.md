@@ -22,7 +22,7 @@ GripMock 可以根据你的 `.proto` 文件或编译后的 `.pb` 描述文件创
 - **描述来源** - 可从 `.proto`、编译后的 `.pb`、BSR 模块或 gRPC reflection 加载 API
 - **动态 `.pb` 服务加载** - 可通过 API 在运行时加载编译后的 protobuf 描述文件，无需重启
 - **热 Stub 管理** - 通过 API/UI 创建、更新和删除 Stub，无需重启服务
-- **灵活匹配** - `equals`、`contains`、`matches`、headers、priority 和 match limits
+- **灵活匹配** - `equals`、`contains`、`matches`、`glob`、headers、priority 和 match limits
 - **数组感知匹配** - 可选的数组顺序忽略能力，减少脆弱的测试断言
 - **动态模板** - 基于请求体、headers 与流上下文构建响应
 - **完整 gRPC 覆盖** - Unary、服务端流、客户端流与双向流
@@ -354,7 +354,7 @@ output:
 
 ## 🔍 输入匹配
 
-GripMock 提供三种强大的匹配策略：
+GripMock 提供四种强大的匹配策略：
 
 ### 1. 精确匹配（`equals`）
 ```yaml
@@ -378,6 +378,14 @@ input:
   matches:
     email: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
     phone: "^\\+?[1-9]\\d{1,14}$"
+```
+
+### 4. Glob 匹配（`glob`）
+```yaml
+input:
+  glob:
+    filename: "*.txt"
+    path: "/usr/local/*"
 ```
 
 ## 🛠️ API

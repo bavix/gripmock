@@ -1,0 +1,14 @@
+--- ENDPOINT ---
+glob.FileService/GetFile
+
+--- REQUEST ---
+{
+  "filename": "test_x",
+  "path": "/"
+}
+
+--- RESPONSE ---
+{
+  "content": "Single char wildcard",
+  "size": "128"
+}

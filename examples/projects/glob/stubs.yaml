@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: glob.FileService
+  method: GetFile
+  input:
+    glob:
+      filename: "report_*.pdf"
+  output:
+    data:
+      content: "PDF report content"
+      size: "1024"
+
+- service: glob.FileService
+  method: GetFile
+  input:
+    glob:
+      filename: "*.json"
+  output:
+    data:
+      content: "JSON file content"
+      size: "512"
+
+- service: glob.FileService
+  method: GetFile
+  input:
+    glob:
+      filename: "data[12].csv"
+  output:
+    data:
+      content: "Data file 1 or 2"
+      size: "256"
+
+- service: glob.FileService
+  method: GetFile
+  input:
+    glob:
+      filename: "test_?"
+  output:
+    data:
+      content: "Single char wildcard"
+      size: "128"

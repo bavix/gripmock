@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package types;
+
+service TypeService {
+  rpc GetAllTypes(AllTypesRequest) returns (AllTypesResponse);
+  rpc GetInts(IntRequest) returns (IntResponse);
+  rpc GetUints(UintRequest) returns (UintResponse);
+  rpc GetFloats(FloatRequest) returns (FloatResponse);
+  rpc GetLargeNumbers(LargeNumberRequest) returns (LargeNumberResponse);
+}
+
+message AllTypesRequest {
+  string name = 1;
+}
+
+message AllTypesResponse {
+  string string_field = 1;
+  int32 int32_field = 2;
+  int64 int64_field = 3;
+  uint32 uint32_field = 4;
+  uint64 uint64_field = 5;
+  float float_field = 6;
+  double double_field = 7;
+  bool bool_field = 8;
+}
+
+message IntRequest {
+  string name = 1;
+}
+
+message IntResponse {
+  int32 int32_zero = 1;
+  int32 int32_pos = 2;
+  int32 int32_neg = 3;
+  int64 int64_zero = 4;
+  int64 int64_pos = 5;
+  int64 int64_neg = 6;
+  int64 int64_large = 7;
+  int64 int64_max = 8;
+  int64 int64_min = 9;
+}
+
+message UintRequest {
+  string name = 1;
+}
+
+message UintResponse {
+  uint32 uint32_zero = 1;
+  uint32 uint32_pos = 2;
+  uint64 uint64_zero = 3;
+  uint64 uint64_pos = 4;
+  uint64 uint64_large = 5;
+  uint64 uint64_max = 6;
+}
+
+message FloatRequest {
+  string name = 1;
+}
+
+message FloatResponse {
+  float float_zero = 1;
+  float float_pos = 2;
+  float float_neg = 3;
+  float float_pi = 4;
+  float float_large = 5;
+  double double_zero = 6;
+  double double_pos = 7;
+  double double_neg = 8;
+  double double_pi = 9;
+  double double_large = 10;
+}
+
+message LargeNumberRequest {
+  string name = 1;
+}
+
+message LargeNumberResponse {
+  int64 large_int64 = 1;
+  uint64 large_uint64 = 2;
+  int64 very_large_int64 = 3;
+  uint64 very_large_uint64 = 4;
+}

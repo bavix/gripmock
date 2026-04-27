@@ -1,6 +1,6 @@
 # Input Matching Rules <VersionTag version="v2.0.0" />
 
-GripMock provides powerful input matching capabilities to control stub responses. Use **equals**, **contains**, **matches**, and **anyOf** rules to create precise request matching patterns that work with the `data` field in gRPC requests.
+GripMock provides powerful input matching capabilities to control stub responses. Use **equals**, **contains**, **matches**, **glob**, and **anyOf** rules to create precise request matching patterns that work with the `data` field in gRPC requests.
 
 For the formal composition rules (AND/OR logic, `anyOf` semantics, `ignoreArrayOrder` scoping), see [Matching Logic](./logic).
 
@@ -13,7 +13,7 @@ For the formal composition rules (AND/OR logic, `anyOf` semantics, `ignoreArrayO
     "anyOf": [
       { "equals": {"field": "value"} }
     ],
-    "equals|contains|matches": {
+    "equals|contains|matches|glob": {
       "field": "value"
     }
   }
@@ -182,6 +182,92 @@ input:
   matches:
     value: "^\\d+(\\.\\d+)?$"  # OK
 ```
+
+### 4. Glob Match (`glob`)
+
+Uses **shell-style glob patterns** for simple but powerful pattern matching. Based on Go's `path.Match`.
+
+**Example:**
+```yaml
+input:
+  glob:
+    name: "user_*"
+    filename: "*.json"
+    path: "/api/v1/*"
+```
+
+**Pattern Syntax:**
+| Pattern | Meaning | Example Match |
+|---------|---------|---------------|
+| `*` | Match any characters (except path separator) | `user_123`, `test` |
+| `?` | Match exactly one character | `user_1`, `file_a` |
+| `[abc]` | Match character class | `file_a`, `file_b` |
+| `[!abc]` | Negate character class | `file_x`, `file_z` |
+
+::: tip Tip
+`?` matches **exactly one** character. To match "value" use `??lue` or `val*`, not `val?ue`.
+:::
+
+**When to use:**
+- Simple wildcards
+- File path patterns
+- API version matching
+- Quick pattern testing
+
+**Behavior:**
+- Uses Go's `path.Match` function
+- Case-sensitive
+- `*` matches any sequence of non-separator characters
+- `?` matches any single character
+
+**Comparison: glob vs regex**
+
+| Feature | `glob` | `matches` (regex) |
+|---------|--------|-------------------|
+| Pattern `*` | Match any characters (non-separator) | Match any characters (including `/`) |
+| Pattern `?` | Match single character | Match single character |
+| Pattern `[abc]` | Match character class | Match character class |
+| Complexity | Simple wildcards | Full regex power |
+| Use case | File paths, prefixes, suffixes | Email validation, complex formats |
+
+**When to use glob:**
+- File name patterns: `*.pdf`, `report_*.xlsx`
+- API paths: `/api/v1/*/users`, `/static/*`
+- Simple prefixes/suffixes: `user_*`, `*.tmp`
+
+**When to use regex (`matches`):**
+- Email/URL validation with exact format rules
+- Complex patterns with alternation, anchors, quantifiers
+- Patterns requiring specific character classes (`\d`, `\w`)
+
+**Equivalents:**
+
+| glob | regex equivalent |
+|------|------------------|
+| `users/*` | `users/.*` |
+| `api/v1/*/items` | `api/v1/.*/items` |
+| `file?.txt` | `file.{txt}` |
+| `data[12].json` | `data[12].json` |
+
+::: tip Note
+`glob` uses Go's `path.Match` — `*` does NOT match path separators (`/`). For patterns that need to cross slashes, use `matches` (regex) with `.*`.
+:::
+
+**Real-World Example:**
+```yaml
+service: FileService
+method: GetFile
+input:
+  glob:
+    filename: "report_*.pdf"
+    path: "/reports/2024/*"
+output:
+  data:
+    content: "Binary file content..."
+    size: 1024
+```
+
+**Important:** Like `matches`, glob patterns must be static (no dynamic templates).
 
 ## Array Handling
 

@@ -339,6 +339,19 @@
             }
           ]
         },
+        "glob": {
+          "oneOf": [
+            {
+              "description": "Glob pattern match for field values (uses path.Match)",
+              "type": "object",
+              "additionalProperties": true
+            },
+            {
+              "description": "Empty glob matcher (matches any input)",
+              "type": "null"
+            }
+          ]
+        },
         "anyOf": {
           "description": "Alternative matchers (OR logic). Each item is evaluated as equals AND contains AND matches.",
           "type": "array",
@@ -389,6 +402,19 @@
               "type": "null"
             }
           ]
+        },
+        "glob": {
+          "oneOf": [
+            {
+              "description": "Glob pattern match for field values (uses path.Match)",
+              "type": "object",
+              "additionalProperties": true
+            },
+            {
+              "description": "Empty glob matcher (matches any input)",
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -433,6 +459,14 @@
             "type": "string"
           }
         },
+        "glob": {
+          "description": "Glob pattern match for header values",
+          "type": "object",
+          "additionalProperties": {
+            "description": "Glob pattern (uses path.Match)",
+            "type": "string"
+          }
+        },
         "anyOf": {
           "description": "Alternative header matchers (OR logic). Each item is evaluated as equals AND contains AND matches.",
           "type": "array",
@@ -468,6 +502,14 @@
           "type": "object",
           "additionalProperties": {
             "description": "Regular expression pattern",
+            "type": "string"
+          }
+        },
+        "glob": {
+          "description": "Glob pattern match for header values",
+          "type": "object",
+          "additionalProperties": {
+            "description": "Glob pattern (uses path.Match)",
             "type": "string"
           }
         }

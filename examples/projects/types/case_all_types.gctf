@@ -1,0 +1,19 @@
+--- ENDPOINT ---
+types.TypeService/GetAllTypes
+
+--- REQUEST ---
+{
+  "name": "test"
+}
+
+--- RESPONSE ---
+{
+  "bool_field": true,
+  "double_field": 3.14159,
+  "float_field": 3.14,
+  "int32_field": 42,
+  "int64_field": "42",
+  "string_field": "hello world",
+  "uint32_field": 42,
+  "uint64_field": "42"
+}

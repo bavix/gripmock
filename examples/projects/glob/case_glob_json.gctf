@@ -1,0 +1,14 @@
+--- ENDPOINT ---
+glob.FileService/GetFile
+
+--- REQUEST ---
+{
+  "filename": "config.json",
+  "path": "/reports/annual"
+}
+
+--- RESPONSE ---
+{
+  "content": "JSON file content",
+  "size": "512"
+}

@@ -108,6 +108,7 @@ type InputData struct {
 	Equals           map[string]any `json:"equals"`                     // The data to match exactly.
 	Contains         map[string]any `json:"contains"`                   // The data to match partially.
 	Matches          map[string]any `json:"matches"`                    // The data to match using regular expressions.
+	Glob             map[string]any `json:"glob,omitempty"`             // The data to match using glob patterns.
 	AnyOf            []AnyOfElement `json:"anyOf,omitempty"`            // Alternative matchers (OR logic).
 }
 
@@ -118,6 +119,7 @@ type AnyOfElement struct {
 	Equals           map[string]any `json:"equals"`
 	Contains         map[string]any `json:"contains"`
 	Matches          map[string]any `json:"matches"`
+	Glob             map[string]any `json:"glob,omitempty"`
 }
 
 // GetEquals returns the data to match exactly.
@@ -135,11 +137,17 @@ func (i InputData) GetMatches() map[string]any {
 	return i.Matches
 }
 
+// GetGlob returns the data to match using glob patterns.
+func (i InputData) GetGlob() map[string]any {
+	return i.Glob
+}
+
 // InputHeader represents the headers of a gRPC request.
 type InputHeader struct {
 	Equals   map[string]any       `json:"equals"`          // The headers to match exactly.
 	Contains map[string]any       `json:"contains"`        // The headers to match partially.
 	Matches  map[string]any       `json:"matches"`         // The headers to match using regular expressions.
+	Glob     map[string]any       `json:"glob,omitempty"`  // The headers to match using glob patterns.
 	AnyOf    []AnyOfHeaderElement `json:"anyOf,omitempty"` // Alternative matchers (OR logic).
 }
 
@@ -148,6 +156,7 @@ type AnyOfHeaderElement struct {
 	Equals   map[string]any `json:"equals"`
 	Contains map[string]any `json:"contains"`
 	Matches  map[string]any `json:"matches"`
+	Glob     map[string]any `json:"glob,omitempty"`
 }
 
 // GetEquals returns the headers to match exactly.
@@ -165,12 +174,17 @@ func (i InputHeader) GetMatches() map[string]any {
 	return i.Matches
 }
 
+// GetGlob returns the headers to match using glob patterns.
+func (i InputHeader) GetGlob() map[string]any {
+	return i.Glob
+}
+
 // Len returns the total number of headers to match.
 func (i InputHeader) Len() int {
-	n := len(i.Equals) + len(i.Matches) + len(i.Contains)
+	n := len(i.Equals) + len(i.Matches) + len(i.Contains) + len(i.Glob)
 
 	for _, alt := range i.AnyOf {
-		n += len(alt.Equals) + len(alt.Matches) + len(alt.Contains)
+		n += len(alt.Equals) + len(alt.Matches) + len(alt.Contains) + len(alt.Glob)
 	}
 
 	return n
