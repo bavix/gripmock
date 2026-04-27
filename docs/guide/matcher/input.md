@@ -183,7 +183,7 @@ input:
     value: "^\\d+(\\.\\d+)?$"  # OK
 ```
 
-### 4. Glob Match (`glob`)
+### 4. Glob Match (`glob`) <VersionTag version="v3.12.0" />
 
 Uses **shell-style glob patterns** for simple but powerful pattern matching. Based on Go's `path.Match`.
 
