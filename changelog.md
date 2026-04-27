@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.11.1 - 2026-04-27
+
+### What's Changed
+
+* chore: add support client/server/bidi streaming to history api by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/848
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.11.0...v3.11.1
+
 ## v3.11.0 - 2026-04-25
 
 ### What's Changed
