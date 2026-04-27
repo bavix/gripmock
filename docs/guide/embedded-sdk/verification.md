@@ -99,11 +99,13 @@ func TestMyService_History(t *testing.T) {
     // ASSERT - Check history
     calls := mock.History().FilterByMethod("MyService", "MyMethod")
     require.Len(t, calls, 2)
-    
+    require.Len(t, calls[0].Requests, 1)
+    require.Len(t, calls[1].Requests, 1)
+
     // Check the request data
-    require.Equal(t, "tracked", calls[0].Request["id"])
-    require.Equal(t, "tracked", calls[1].Request["id"])
-    
+    require.Equal(t, "tracked", calls[0].Requests[0]["id"])
+    require.Equal(t, "tracked", calls[1].Requests[0]["id"])
+
     // Verify individual calls
     mock.Verify().Method(sdk.By(MyService_MyMethod_FullMethodName)).Called(t, 2)
 }
@@ -167,7 +169,7 @@ func TestMyService_NeverCalled(t *testing.T) {
 
     // ASSERT - Verify the unused method was never called
     mock.Verify().Method(sdk.By(MyService_UnusedMethod_FullMethodName)).Never(t)
-    
+
     // Also verify the used method was called once
     mock.Verify().Method(sdk.By(MyService_UsedMethod_FullMethodName)).Called(t, 1)
 }
@@ -193,13 +195,11 @@ func TestMyService_TimesVerification(t *testing.T) {
 
     client := NewMyServiceClient(mock.Conn())
 
-    // ACT - Make 2 calls (the exact number specified in Times)
+    // ACT - Make exactly 2 calls as specified in Times(2)
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "limited"})
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "limited"})
-    
-    // ASSERT - When t is passed to Run, verification happens automatically at test cleanup
-    // If the actual call count doesn't match the Times value, the test will fail
-    // The test will pass because we made exactly 2 calls as specified in Times(2)
+
+    // ASSERT - Automatic verification at test cleanup via Times(2)
 }
 ```
 
@@ -247,8 +247,7 @@ func TestOrderService_ComplexVerification(t *testing.T) {
     _, err = client.CancelOrder(t.Context(), &CancelOrderRequest{OrderId: "ORD-001"})
     require.NoError(t, err)
 
-    // ASSERT - Verification happens automatically due to Times() and passing t to Run()
-    // All verifications will pass because we made the exact number of calls specified
+    // ASSERT - Automatic verification via Times()
     require.Equal(t, "ORD-001", createResp.GetOrderId())
 }
 ```
@@ -281,21 +280,26 @@ func TestPaymentService_HistoryAnalysis(t *testing.T) {
     // ASSERT
     // Check total calls
     mock.Verify().Total(t, 3)
-    
+
     // Check specific method calls
     mock.Verify().Method(sdk.By(PaymentService_ProcessPayment_FullMethodName)).Called(t, 3)
-    
+
     // Analyze history
     allCalls := mock.History().All()
     require.Len(t, allCalls, 3)
-    
+
+    for _, call := range allCalls {
+        require.Len(t, call.Requests, 1)
+        require.Len(t, call.Responses, 1)
+    }
+
     // Verify specific call details
-    require.Equal(t, float64(100), allCalls[0].Request["amount"])
-    require.Equal(t, "TXN-100", allCalls[0].Response["transactionId"])
-    require.Equal(t, float64(200), allCalls[1].Request["amount"])
-    require.Equal(t, "TXN-200", allCalls[1].Response["transactionId"])
-    require.Equal(t, float64(100), allCalls[2].Request["amount"])
-    require.Equal(t, "TXN-100", allCalls[2].Response["transactionId"])
+    require.Equal(t, float64(100), allCalls[0].Requests[0]["amount"])
+    require.Equal(t, "TXN-100", allCalls[0].Responses[0]["transactionId"])
+    require.Equal(t, float64(200), allCalls[1].Requests[0]["amount"])
+    require.Equal(t, "TXN-200", allCalls[1].Responses[0]["transactionId"])
+    require.Equal(t, float64(100), allCalls[2].Requests[0]["amount"])
+    require.Equal(t, "TXN-100", allCalls[2].Responses[0]["transactionId"])
 }
 ```
 

@@ -7,18 +7,23 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // CallRecord represents a single gRPC call made to the mock.
 type CallRecord struct {
-	Service   string         `json:"service,omitempty"`
-	Method    string         `json:"method,omitempty"`
-	Session   string         `json:"session,omitempty"` // Session ID (empty = global).
-	Request   map[string]any `json:"request,omitempty"`
-	Response  map[string]any `json:"response,omitempty"`
-	Error     string         `json:"error,omitempty"`
-	StubID    string         `json:"stubId,omitempty"`
-	Timestamp time.Time      `json:"timestamp"`
+	StubID    uuid.UUID        `json:"stubId,omitempty"`
+	Service   string           `json:"service,omitempty"`
+	Method    string           `json:"method,omitempty"`
+	Session   string           `json:"session,omitempty"`   // Session ID (empty = global).
+	Request   map[string]any   `json:"request,omitempty"`   // Deprecated: use Requests.
+	Requests  []map[string]any `json:"requests,omitempty"`  // For streaming calls with multiple messages.
+	Response  map[string]any   `json:"response,omitempty"`  // Deprecated: use Responses.
+	Responses []map[string]any `json:"responses,omitempty"` // For streaming calls with multiple messages.
+	Code      uint32           `json:"code,omitempty"`      // gRPC status code (e.g., codes.OK, codes.NotFound).
+	Error     string           `json:"error,omitempty"`
+	Timestamp time.Time        `json:"timestamp"`
 }
 
 // Recorder records gRPC calls for inspection and verification.

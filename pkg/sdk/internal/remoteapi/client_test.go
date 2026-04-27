@@ -138,7 +138,7 @@ func TestClientFetchHistory(t *testing.T) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "A", r.Header.Get("X-Gripmock-Session"))
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte("[{\"service\":\"svc\",\"method\":\"M\",\"request\":{\"x\":1},\"response\":{\"ok\":true},\"stubId\":\"id-1\",\"timestamp\":\"" + now + "\"}]"))
+		_, _ = w.Write([]byte("[{\"service\":\"svc\",\"method\":\"M\",\"request\":{\"x\":1},\"response\":{\"ok\":true},\"stubId\":\"550e8400-e29b-41d4-a716-446655440000\",\"timestamp\":\"" + now + "\"}]"))
 	})
 
 	c := newTestClient(ts, "A")
@@ -151,7 +151,7 @@ func TestClientFetchHistory(t *testing.T) {
 	require.Len(t, history, 1)
 	require.Equal(t, "svc", history[0].Service)
 	require.Equal(t, "M", history[0].Method)
-	require.Equal(t, "id-1", history[0].StubID)
+	require.Equal(t, "550e8400-e29b-41d4-a716-446655440000", history[0].StubID.String())
 	require.Equal(t, float64(1), history[0].Request["x"])
 }
 

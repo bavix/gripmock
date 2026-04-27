@@ -10,9 +10,9 @@ import (
 	"time"
 
 	gptypes "github.com/bavix/gripmock/v3/internal/infra/types"
+	uuid "github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/oapi-codegen/runtime"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 	codes "google.golang.org/grpc/codes"
 )
 
@@ -61,6 +61,24 @@ func (e ProtoFieldSchemaCardinality) Valid() bool {
 	}
 }
 
+// Defines values for StubEffectAction.
+const (
+	Delete StubEffectAction = "delete"
+	Upsert StubEffectAction = "upsert"
+)
+
+// Valid indicates whether the value is a known member of the StubEffectAction enum.
+func (e StubEffectAction) Valid() bool {
+	switch e {
+	case Delete:
+		return true
+	case Upsert:
+		return true
+	default:
+		return false
+	}
+}
+
 // AddDescriptorsResponse defines model for AddDescriptorsResponse.
 type AddDescriptorsResponse struct {
 	Message string `json:"message"`
@@ -72,13 +90,32 @@ type AddDescriptorsResponse struct {
 
 // CallRecord defines model for CallRecord.
 type CallRecord struct {
-	Error     *string         `json:"error,omitempty"`
-	Method    *string         `json:"method,omitempty"`
-	Request   *map[string]any `json:"request,omitempty"`
-	Response  *map[string]any `json:"response,omitempty"`
-	Service   *string         `json:"service,omitempty"`
-	StubId    *string         `json:"stubId,omitempty"`
-	Timestamp *time.Time      `json:"timestamp,omitempty"`
+	// Code gRPC status code (e.g., 0 for OK, 5 for NotFound)
+	Code   *int    `json:"code,omitempty"`
+	Error  *string `json:"error,omitempty"`
+	Method *string `json:"method,omitempty"`
+
+	// Request Deprecated: use requests for streaming calls
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	Request *map[string]any `json:"request,omitempty"`
+
+	// Requests Request messages for streaming calls (client stream, bidi stream)
+	Requests *[]map[string]any `json:"requests,omitempty"`
+
+	// Response Deprecated: use responses for streaming calls
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	Response *map[string]any `json:"response,omitempty"`
+
+	// Responses Response messages for streaming calls (server stream, bidi stream)
+	Responses *[]map[string]any `json:"responses,omitempty"`
+	Service   *string           `json:"service,omitempty"`
+
+	// Session Session ID (empty = global)
+	Session *string `json:"session,omitempty"`
+
+	// StubId Stub identifier
+	StubId    *uuid.UUID `json:"stubId,omitempty"`
+	Timestamp *time.Time `json:"timestamp,omitempty"`
 }
 
 // Dashboard defines model for Dashboard.
@@ -145,7 +182,7 @@ type DescriptorServiceIDs struct {
 type HistoryList = []CallRecord
 
 // ID defines model for ID.
-type ID = openapi_types.UUID
+type ID = uuid.UUID
 
 // InspectCandidate defines model for InspectCandidate.
 type InspectCandidate struct {
@@ -307,9 +344,11 @@ type Sessions struct {
 
 // Stub defines model for Stub.
 type Stub struct {
-	Headers StubHeaders `json:"headers,omitempty"`
-	Id      *ID         `json:"id,omitempty"`
-	Input   StubInput   `json:"input"`
+	// Effects Side effects applied after successful stub match
+	Effects []StubEffect `json:"effects,omitempty"`
+	Headers StubHeaders  `json:"headers,omitempty"`
+	Id      *ID          `json:"id,omitempty"`
+	Input   StubInput    `json:"input"`
 
 	// Inputs Inputs to match against. If multiple inputs are provided, the stub will be matched if any of the inputs match.
 	Inputs []StubInput `json:"inputs,omitempty"`
@@ -327,8 +366,31 @@ type Stub struct {
 	Source *string `json:"source,omitempty,omitzero"`
 }
 
+// StubEffect defines model for StubEffect.
+type StubEffect struct {
+	Action StubEffectAction `json:"action"`
+
+	// Id Stub UUID for delete action
+	Id string `json:"id,omitempty"`
+
+	// Stub Stub payload for upsert action
+	Stub map[string]any `json:"stub,omitempty"`
+}
+
+// StubEffectAction defines model for StubEffect.Action.
+type StubEffectAction string
+
 // StubHeaders defines model for StubHeaders.
 type StubHeaders struct {
+	// AnyOf Alternative header matchers (OR logic)
+	AnyOf    []StubHeadersAnyOfElement `json:"anyOf,omitempty"`
+	Contains map[string]string         `json:"contains,omitempty"`
+	Equals   map[string]string         `json:"equals,omitempty"`
+	Matches  map[string]string         `json:"matches,omitempty"`
+}
+
+// StubHeadersAnyOfElement defines model for StubHeadersAnyOfElement.
+type StubHeadersAnyOfElement struct {
 	Contains map[string]string `json:"contains,omitempty"`
 	Equals   map[string]string `json:"equals,omitempty"`
 	Matches  map[string]string `json:"matches,omitempty"`
@@ -336,6 +398,16 @@ type StubHeaders struct {
 
 // StubInput defines model for StubInput.
 type StubInput struct {
+	// AnyOf Alternative input matchers (OR logic)
+	AnyOf            []StubInputAnyOfElement `json:"anyOf,omitempty"`
+	Contains         map[string]any          `json:"contains,omitempty"`
+	Equals           map[string]any          `json:"equals,omitempty"`
+	IgnoreArrayOrder bool                    `json:"ignoreArrayOrder,omitempty"`
+	Matches          map[string]any          `json:"matches,omitempty"`
+}
+
+// StubInputAnyOfElement defines model for StubInputAnyOfElement.
+type StubInputAnyOfElement struct {
 	Contains         map[string]any `json:"contains,omitempty"`
 	Equals           map[string]any `json:"equals,omitempty"`
 	IgnoreArrayOrder bool           `json:"ignoreArrayOrder,omitempty"`

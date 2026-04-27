@@ -66,7 +66,7 @@ func TestExmpEmbeddedChatStreaming(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "ack", bidiMsg.GetText())
 
-	mock.Verify().Total(t, 0)
+	mock.Verify().Total(t, 3)
 }
 
 func TestExmpEmbeddedMultiverseUnaryAndStreams(t *testing.T) {

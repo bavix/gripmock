@@ -801,6 +801,10 @@ components:
     ID:
       type: string
       format: uuid
+      x-go-type: uuid.UUID
+      x-go-type-import:
+        name: uuid
+        path: github.com/google/uuid
       example: 51c50050-ec27-4dae-a583-a32ca71a1dd5
       x-omitzero: false
     ListID:
@@ -876,19 +880,47 @@ components:
           type: string
         method:
           type: string
-        request:
-          type: object
-          additionalProperties: true
-        response:
-          type: object
-          additionalProperties: true
-        error:
+        session:
           type: string
+          description: Session ID (empty = global)
         stubId:
           type: string
+          format: uuid
+          x-go-type: uuid.UUID
+          x-go-type-import:
+            name: uuid
+            path: github.com/google/uuid
+          description: Stub identifier
         timestamp:
           type: string
           format: date-time
+        request:
+          type: object
+          additionalProperties: true
+          description: "Deprecated: use requests for streaming calls"
+          deprecated: true
+        requests:
+          type: array
+          description: Request messages for streaming calls (client stream, bidi stream)
+          items:
+            type: object
+            additionalProperties: true
+        response:
+          type: object
+          additionalProperties: true
+          description: "Deprecated: use responses for streaming calls"
+          deprecated: true
+        responses:
+          type: array
+          description: Response messages for streaming calls (server stream, bidi stream)
+          items:
+            type: object
+            additionalProperties: true
+        code:
+          type: integer
+          description: gRPC status code (e.g., 0 for OK, 5 for NotFound)
+        error:
+          type: string
     HistoryList:
       type: array
       items:

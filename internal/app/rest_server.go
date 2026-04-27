@@ -1493,18 +1493,33 @@ func historyCallRecordToRest(c history.CallRecord) rest.CallRecord {
 	r := rest.CallRecord{
 		Service: new(c.Service),
 		Method:  new(c.Method),
-		StubId:  new(c.StubID),
 	}
-	if c.Request != nil {
+
+	if c.StubID != uuid.Nil {
+		r.StubId = &c.StubID
+	}
+
+	if len(c.Requests) > 0 {
+		r.Requests = &c.Requests
+		r.Request = &c.Requests[0]
+	} else if c.Request != nil {
 		r.Request = &c.Request
 	}
 
-	if c.Response != nil {
+	if len(c.Responses) > 0 {
+		r.Responses = &c.Responses
+		r.Response = &c.Responses[0]
+	} else if c.Response != nil {
 		r.Response = &c.Response
 	}
 
 	if c.Error != "" {
 		r.Error = &c.Error
+	}
+
+	if c.Code != 0 {
+		code := int(c.Code)
+		r.Code = &code
 	}
 
 	if !c.Timestamp.IsZero() {
