@@ -216,9 +216,9 @@ func (c Client) FetchHistory() ([]HistoryCall, error) {
 		Service   *string             `json:"service"`
 		Method    *string             `json:"method"`
 		Request   *map[string]any     `json:"request"`
-		Requests  *[]map[string]any    `json:"requests"`
+		Requests  *[]map[string]any   `json:"requests"`
 		Response  *map[string]any     `json:"response"`
-		Responses *[]map[string]any    `json:"responses"`
+		Responses *[]map[string]any   `json:"responses"`
 		Code      *uint32             `json:"code"`
 		Error     *string             `json:"error"`
 		StubID    *openapi_types.UUID `json:"stubId"`
