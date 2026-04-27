@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: types.TypeService
+  method: GetAllTypes
+  input:
+    equals:
+      name: "test"
+  output:
+    data:
+      string_field: "hello world"
+      int32_field: 42
+      int64_field: 42
+      uint32_field: 42
+      uint64_field: 42
+      float_field: 3.14
+      double_field: 3.14159
+      bool_field: true
+
+- service: types.TypeService
+  method: GetInts
+  input:
+    equals:
+      name: "ints"
+  output:
+    data:
+      int32_zero: 0
+      int32_pos: 2147483647
+      int32_neg: -2147483648
+      int64_zero: 0
+      int64_pos: 9223372036854775807
+      int64_neg: -9223372036854775808
+      int64_large: 9007199254740992
+      int64_max: 9223372036854775807
+      int64_min: -9223372036854775808
+
+- service: types.TypeService
+  method: GetUints
+  input:
+    equals:
+      name: "uints"
+  output:
+    data:
+      uint32_zero: 0
+      uint32_pos: 4294967295
+      uint64_zero: 0
+      uint64_pos: 18446744073709551615
+      uint64_large: 9007199254740992
+      uint64_max: 18446744073709551615
+
+- service: types.TypeService
+  method: GetFloats
+  input:
+    equals:
+      name: "floats"
+  output:
+    data:
+      float_zero: 0
+      float_pos: 3.4028235e+38
+      float_neg: -3.4028235e+38
+      float_pi: 3.14
+      float_large: 1e+37
+      double_zero: 0
+      double_pos: 1.7976931348623157e+308
+      double_neg: -1.7976931348623157e+308
+      double_pi: 3.14159265358979
+      double_large: 1e+307
+
+- service: types.TypeService
+  method: GetLargeNumbers
+  input:
+    equals:
+      name: "large"
+  output:
+    data:
+      large_int64: 9223372036854775807
+      large_uint64: 18446744073709551615
+      very_large_int64: 9223372036854775807
+      very_large_uint64: 18446744073709551615

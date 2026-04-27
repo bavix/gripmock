@@ -12,6 +12,7 @@ import (
 	"maps"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -778,8 +779,10 @@ func (m *grpcMocker) newOutputMessage(data map[string]any) (*dynamicpb.Message, 
 		jsonBufferPool.Put(pooled)
 	}()
 
+	convertedData := convertMapNumericToStringNumber(data)
+
 	enc := json.NewEncoder(pooled)
-	if err := enc.Encode(data); err != nil {
+	if err := enc.Encode(convertedData); err != nil {
 		return nil, fmt.Errorf("failed to marshal map to JSON: %w", err)
 	}
 
@@ -791,6 +794,89 @@ func (m *grpcMocker) newOutputMessage(data map[string]any) (*dynamicpb.Message, 
 	}
 
 	return msg, nil
+}
+
+func convertMapNumericToStringNumber(data map[string]any) map[string]any {
+	result := make(map[string]any, len(data))
+	for k, v := range data {
+		result[k] = convertMapValue(v)
+	}
+
+	return result
+}
+
+func convertMapValue(v any) any {
+	switch val := v.(type) {
+	case map[string]any:
+		return convertMapNumericToStringNumber(val)
+	case []any:
+		return convertMapArray(val)
+	case float64:
+		return convertFloat64(val)
+	case float32:
+		return convertFloat64(float64(val))
+	case int, int8, int16, int32, int64:
+		return json.Number(strconv.FormatInt(toInt64(val), 10))
+	case uint, uint8, uint16, uint32, uint64:
+		return json.Number(strconv.FormatUint(toUint64(val), 10))
+	default:
+		return v
+	}
+}
+
+func convertFloat64(f float64) json.Number {
+	if isSafeInteger(f) {
+		return json.Number(strconv.FormatInt(int64(f), 10))
+	}
+
+	return json.Number(strconv.FormatFloat(f, 'g', -1, 64))
+}
+
+func toInt64(v any) int64 {
+	switch val := v.(type) {
+	case int:
+		return int64(val)
+	case int8:
+		return int64(val)
+	case int16:
+		return int64(val)
+	case int32:
+		return int64(val)
+	case int64:
+		return val
+	default:
+		return 0
+	}
+}
+
+func toUint64(v any) uint64 {
+	switch val := v.(type) {
+	case uint:
+		return uint64(val)
+	case uint8:
+		return uint64(val)
+	case uint16:
+		return uint64(val)
+	case uint32:
+		return uint64(val)
+	case uint64:
+		return val
+	default:
+		return 0
+	}
+}
+
+func isSafeInteger(f float64) bool {
+	return f == float64(int64(f))
+}
+
+func convertMapArray(arr []any) []any {
+	result := make([]any, len(arr))
+	for i, v := range arr {
+		result[i] = convertMapValue(v)
+	}
+
+	return result
 }
 
 func (m *grpcMocker) unaryHandler() grpc.MethodHandler {

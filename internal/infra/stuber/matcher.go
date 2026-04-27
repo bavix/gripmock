@@ -2,7 +2,9 @@ package stuber
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
+	"path"
 	"reflect"
 	"regexp"
 
@@ -55,10 +57,13 @@ func match(query Query, stub *Stub) bool {
 }
 
 // matchHeaders checks if query headers match stub headers.
+//
+//nolint:cyclop
 func matchHeaders(queryHeaders map[string]any, stubHeaders InputHeader) bool {
 	if !equals(stubHeaders.Equals, queryHeaders, false) ||
 		!contains(stubHeaders.Contains, queryHeaders, false) ||
-		!matches(stubHeaders.Matches, queryHeaders, false) {
+		!matches(stubHeaders.Matches, queryHeaders, false) ||
+		!globMatch(stubHeaders.Glob, queryHeaders) {
 		return false
 	}
 
@@ -70,7 +75,8 @@ func matchHeaders(queryHeaders map[string]any, stubHeaders InputHeader) bool {
 		alt := &stubHeaders.AnyOf[i]
 		if equals(alt.Equals, queryHeaders, false) &&
 			contains(alt.Contains, queryHeaders, false) &&
-			matches(alt.Matches, queryHeaders, false) {
+			matches(alt.Matches, queryHeaders, false) &&
+			globMatch(alt.Glob, queryHeaders) {
 			return true
 		}
 	}
@@ -79,10 +85,13 @@ func matchHeaders(queryHeaders map[string]any, stubHeaders InputHeader) bool {
 }
 
 // matchInput checks if query data matches stub input.
+//
+//nolint:cyclop
 func matchInput(queryData map[string]any, stubInput InputData) bool {
 	if !equals(stubInput.Equals, queryData, stubInput.IgnoreArrayOrder) ||
 		!contains(stubInput.Contains, queryData, stubInput.IgnoreArrayOrder) ||
-		!matches(stubInput.Matches, queryData, stubInput.IgnoreArrayOrder) {
+		!matches(stubInput.Matches, queryData, stubInput.IgnoreArrayOrder) ||
+		!globMatch(stubInput.Glob, queryData) {
 		return false
 	}
 
@@ -94,7 +103,8 @@ func matchInput(queryData map[string]any, stubInput InputData) bool {
 		alt := &stubInput.AnyOf[i]
 		if equals(alt.Equals, queryData, alt.IgnoreArrayOrder) &&
 			contains(alt.Contains, queryData, alt.IgnoreArrayOrder) &&
-			matches(alt.Matches, queryData, alt.IgnoreArrayOrder) {
+			matches(alt.Matches, queryData, alt.IgnoreArrayOrder) &&
+			globMatch(alt.Glob, queryData) {
 			return true
 		}
 	}
@@ -110,7 +120,8 @@ func rankHeaders(queryHeaders map[string]any, stubHeaders InputHeader) float64 {
 
 	base := deeply.RankMatch(stubHeaders.Equals, queryHeaders) +
 		deeply.RankMatch(stubHeaders.Contains, queryHeaders) +
-		deeply.RankMatch(stubHeaders.Matches, queryHeaders)
+		deeply.RankMatch(stubHeaders.Matches, queryHeaders) +
+		rankGlob(stubHeaders.Glob, queryHeaders)
 
 	if len(stubHeaders.AnyOf) == 0 {
 		return base
@@ -123,7 +134,8 @@ func rankHeaders(queryHeaders map[string]any, stubHeaders InputHeader) float64 {
 
 		r := deeply.RankMatch(alt.Equals, queryHeaders) +
 			deeply.RankMatch(alt.Contains, queryHeaders) +
-			deeply.RankMatch(alt.Matches, queryHeaders)
+			deeply.RankMatch(alt.Matches, queryHeaders) +
+			rankGlob(alt.Glob, queryHeaders)
 		if r > best {
 			best = r
 		}
@@ -136,7 +148,8 @@ func rankHeaders(queryHeaders map[string]any, stubHeaders InputHeader) float64 {
 func rankInput(queryData map[string]any, stubInput InputData) float64 {
 	base := deeply.RankMatch(stubInput.Equals, queryData) +
 		deeply.RankMatch(stubInput.Contains, queryData) +
-		deeply.RankMatch(stubInput.Matches, queryData)
+		deeply.RankMatch(stubInput.Matches, queryData) +
+		rankGlob(stubInput.Glob, queryData)
 
 	if len(stubInput.AnyOf) == 0 {
 		return base
@@ -149,7 +162,8 @@ func rankInput(queryData map[string]any, stubInput InputData) float64 {
 
 		r := deeply.RankMatch(alt.Equals, queryData) +
 			deeply.RankMatch(alt.Contains, queryData) +
-			deeply.RankMatch(alt.Matches, queryData)
+			deeply.RankMatch(alt.Matches, queryData) +
+			rankGlob(alt.Glob, queryData)
 		if r > best {
 			best = r
 		}
@@ -305,15 +319,126 @@ func matches(expected map[string]any, actual any, _ bool) bool {
 	return deeply.MatchesIgnoreArrayOrder(expected, actual)
 }
 
+// globMatch checks if the expected map matches the actual value using glob patterns.
+//
+// It returns true if all glob patterns match, otherwise false.
+// Supports nested map traversal for matching at any depth.
+func globMatch(expected map[string]any, actual any) bool {
+	if len(expected) == 0 {
+		return true
+	}
+
+	actualMap, ok := actual.(map[string]any)
+	if !ok {
+		return false
+	}
+
+	for key, pattern := range expected {
+		actualValue, exists := actualMap[key]
+		if !exists {
+			return false
+		}
+
+		if err := matchGlobValue(pattern, actualValue); err != nil {
+			return false
+		}
+	}
+
+	return true
+}
+
+// matchGlobValue matches a pattern against a value, supporting nested maps.
+func matchGlobValue(pattern, actual any) error {
+	patternStr, isStringPattern := pattern.(string)
+	actualStr, isStringActual := actual.(string)
+
+	if isStringPattern && isStringActual {
+		matched, err := path.Match(patternStr, actualStr)
+		if err != nil || !matched {
+			return errFail
+		}
+
+		return nil
+	}
+
+	patternMap, isPatternMap := pattern.(map[string]any)
+	actualMap, isActualMap := actual.(map[string]any)
+
+	if isPatternMap && isActualMap {
+		for key, pat := range patternMap {
+			act, exists := actualMap[key]
+			if !exists {
+				return errFail
+			}
+
+			if err := matchGlobValue(pat, act); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	return errFail
+}
+
+var errFail = errors.New("glob match failed")
+
+// rankGlob calculates rank for glob pattern matching.
+func rankGlob(expected map[string]any, actual any) float64 {
+	if len(expected) == 0 {
+		return 0
+	}
+
+	return rankGlobValue(expected, actual)
+}
+
+func rankGlobValue(pattern, actual any) float64 {
+	patternStr, isStringPattern := pattern.(string)
+	actualStr, isStringActual := actual.(string)
+
+	if isStringPattern && isStringActual {
+		matched, err := path.Match(patternStr, actualStr)
+		if err == nil && matched {
+			return 1.0
+		}
+
+		return 0
+	}
+
+	patternMap, isPatternMap := pattern.(map[string]any)
+	actualMap, isActualMap := actual.(map[string]any)
+
+	if isPatternMap && isActualMap {
+		var rank float64
+
+		for key, pat := range patternMap {
+			act, exists := actualMap[key]
+			if !exists {
+				continue
+			}
+
+			rank += rankGlobValue(pat, act)
+		}
+
+		return rank
+	}
+
+	return 0
+}
+
 // streamItemMatches checks if a single query item matches the stub item matchers.
+//
+//nolint:cyclop
 func streamItemMatches(stubItem InputData, queryItem map[string]any) bool {
-	if len(stubItem.Equals) == 0 && len(stubItem.Contains) == 0 && len(stubItem.Matches) == 0 {
+	if len(stubItem.Equals) == 0 && len(stubItem.Contains) == 0 && len(stubItem.Matches) == 0 && len(stubItem.Glob) == 0 {
 		return false
 	}
 
 	return (len(stubItem.Equals) == 0 || equals(stubItem.Equals, queryItem, stubItem.IgnoreArrayOrder)) &&
 		(len(stubItem.Contains) == 0 || contains(stubItem.Contains, queryItem, stubItem.IgnoreArrayOrder)) &&
-		(len(stubItem.Matches) == 0 || matches(stubItem.Matches, queryItem, stubItem.IgnoreArrayOrder))
+		(len(stubItem.Matches) == 0 || matches(stubItem.Matches, queryItem, stubItem.IgnoreArrayOrder)) &&
+		(len(stubItem.Glob) == 0 || globMatch(stubItem.Glob, queryItem))
 }
 
 // matchStreamElements checks if the query stream matches the stub stream.

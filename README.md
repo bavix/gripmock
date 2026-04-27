@@ -20,7 +20,7 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 - **Descriptor Sources** - Load API from `.proto`, compiled `.pb`, BSR modules, or gRPC reflection
 - **Dynamic `.pb` Service Loading** - Load compiled protobuf descriptors at runtime via API without restarts
 - **Hot Stub Management** - Create, update, and remove stubs via API/UI without server restarts
-- **Flexible Matching** - `equals`, `contains`, `matches`, headers, priority, and match limits
+- **Flexible Matching** - `equals`, `contains`, `matches`, `glob`, headers, priority, and match limits
 - **Array-Aware Matching** - Optional array-order flexibility to reduce brittle test assertions
 - **Dynamic Templates** - Build responses from request payload, headers, and stream context
 - **Complete gRPC Coverage** - Unary, server streaming, client streaming, and bidirectional streaming
@@ -352,7 +352,7 @@ output:
 
 ## 🔍 Input Matching
 
-GripMock supports three powerful matching strategies:
+GripMock supports four powerful matching strategies:
 
 ### 1. Exact Match (`equals`)
 ```yaml
@@ -376,6 +376,14 @@ input:
   matches:
     email: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
     phone: "^\\+?[1-9]\\d{1,14}$"
+```
+
+### 4. Glob Match (`glob`)
+```yaml
+input:
+  glob:
+    filename: "*.txt"
+    path: "/usr/local/*"
 ```
 
 ## 🛠️ API

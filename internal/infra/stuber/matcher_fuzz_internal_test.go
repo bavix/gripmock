@@ -74,6 +74,29 @@ func FuzzMatches(f *testing.F) {
 	})
 }
 
+// FuzzGlob tests the glob function against random JSON inputs
+// to ensure it doesn't panic on malformed patterns or deep structures.
+func FuzzGlob(f *testing.F) {
+	f.Add([]byte(`{"a": "*.txt"}`), []byte(`{"a": "file.txt"}`))
+	f.Add([]byte(`{"a": "["}`), []byte(`{"a": "b"}`)) // bad glob pattern
+	f.Add([]byte(`bad json`), []byte(`bad json`))
+	f.Add([]byte(`{"a": {"b": "*.txt"}}`), []byte(`{"a": {"b": "file.txt"}}`))
+
+	f.Fuzz(func(t *testing.T, expectedBytes, actualBytes []byte) {
+		var expected map[string]any
+		if err := json.Unmarshal(expectedBytes, &expected); err != nil {
+			return // Skip invalid JSON
+		}
+
+		var actual any
+		if err := json.Unmarshal(actualBytes, &actual); err != nil {
+			return // Skip invalid JSON
+		}
+
+		_ = globMatch(expected, actual)
+	})
+}
+
 // FuzzRankMatch tests the deeply.RankMatch function which is used heavily
 // by matcher.go.
 func FuzzRankMatch(f *testing.F) {

@@ -94,6 +94,31 @@ func TestMatchStreamElements(t *testing.T) {
 	stubStream = []InputData{{Matches: map[string]any{"key": "val.*"}}}
 	require.True(t, matchStreamElements(queryStream, stubStream))
 
+	// Test glob matcher
+	queryStream = []map[string]any{{"key": "value123"}}
+	stubStream = []InputData{{Glob: map[string]any{"key": "val*"}}}
+	require.True(t, matchStreamElements(queryStream, stubStream))
+
+	// Test glob matcher with exact match
+	queryStream = []map[string]any{{"key": "value"}}
+	stubStream = []InputData{{Glob: map[string]any{"key": "value"}}}
+	require.True(t, matchStreamElements(queryStream, stubStream))
+
+	// Test glob matcher mismatch
+	queryStream = []map[string]any{{"key": "value123"}}
+	stubStream = []InputData{{Glob: map[string]any{"key": "other*"}}}
+	require.False(t, matchStreamElements(queryStream, stubStream))
+
+	// Test glob matcher with nested structure
+	queryStream = []map[string]any{{"key": map[string]any{"nested": "value123"}}}
+	stubStream = []InputData{{Glob: map[string]any{"key": map[string]any{"nested": "val*"}}}}
+	require.True(t, matchStreamElements(queryStream, stubStream))
+
+	// Test glob matcher with ? pattern - ? matches exactly one character
+	queryStream = []map[string]any{{"key": "value"}}
+	stubStream = []InputData{{Glob: map[string]any{"key": "??lue"}}}
+	require.True(t, matchStreamElements(queryStream, stubStream))
+
 	// Test no matchers defined
 	queryStream = []map[string]any{{"key": "value"}}
 	stubStream = []InputData{{}} // no matchers
