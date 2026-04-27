@@ -81,10 +81,15 @@ const (
 	keepaliveMinTime     = 10 * time.Second
 	maxConcurrentStreams = 100
 	maxLoggingStreamMsgs = 32
+	maxHistoryStreamMsgs = 100
 	minStreamWorkers     = 4
 )
 
-const jsonBufferInitialCap = 4096
+const (
+	jsonBufferInitialCap            = 4096
+	bidiRecordingStreamInitCap      = 16
+	bidiRecordingStreamResponsesCap = 16
+)
 
 var (
 	//nolint:gochecknoglobals
@@ -107,6 +112,97 @@ func sessionFromMetadata(md metadata.MD) string {
 	}
 
 	return ""
+}
+
+func sessionFromContext(ctx context.Context) string {
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		return sessionFromMetadata(md)
+	}
+
+	return ""
+}
+
+type bidiRecordingStream struct {
+	grpc.ServerStream
+
+	requests  []map[string]any
+	responses []map[string]any
+	stubID    uuid.UUID
+	maxItems  int
+}
+
+func (s *bidiRecordingStream) RecvMsg(m any) error {
+	err := s.ServerStream.RecvMsg(m)
+	if err != nil {
+		return err
+	}
+
+	if msgMap := protoToMap(m); msgMap != nil && len(s.requests) < s.maxItems {
+		s.requests = append(s.requests, msgMap)
+	}
+
+	return nil
+}
+
+func (s *bidiRecordingStream) SendMsg(m any) error {
+	err := s.ServerStream.SendMsg(m)
+	if err != nil {
+		return err
+	}
+
+	if msgMap := protoToMap(m); msgMap != nil && len(s.responses) < s.maxItems {
+		s.responses = append(s.responses, msgMap)
+	}
+
+	return nil
+}
+
+func (s *bidiRecordingStream) getRequests() []map[string]any { return s.requests }
+
+func (s *bidiRecordingStream) getResponses() []map[string]any { return s.responses }
+
+func (s *bidiRecordingStream) setStubID(id uuid.UUID) { s.stubID = id }
+
+func (s *bidiRecordingStream) getStubID() uuid.UUID { return s.stubID }
+
+func (m *grpcMocker) recordCall(
+	ctx context.Context,
+	stubID uuid.UUID,
+	code uint32,
+	timestamp time.Time,
+	requests []map[string]any,
+	responses []map[string]any,
+	errMsg string,
+) {
+	if m.recorder == nil || len(requests) == 0 {
+		return
+	}
+
+	if responses == nil {
+		responses = []map[string]any{}
+	}
+
+	rec := history.CallRecord{
+		Service:   m.fullServiceName,
+		Method:    m.methodName,
+		Session:   sessionFromContext(ctx),
+		Requests:  requests,
+		Responses: responses,
+		Error:     errMsg,
+		Code:      code,
+		StubID:    stubID,
+		Timestamp: timestamp,
+	}
+
+	if len(requests) > 0 {
+		rec.Request = requests[0]
+	}
+
+	if len(responses) > 0 {
+		rec.Response = responses[0]
+	}
+
+	m.recorder.Record(rec)
 }
 
 // processHeaders converts metadata to headers map, excluding specified headers.
@@ -475,6 +571,15 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 				return err
 			}
 
+			streamResponses := make([]map[string]any, len(found.Output.Stream))
+			for i, item := range found.Output.Stream {
+				if m, ok := item.(map[string]any); ok {
+					streamResponses[i] = m
+				}
+			}
+
+			m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime, []map[string]any{requestData}, streamResponses, "")
+
 			return nil
 		}
 
@@ -482,10 +587,35 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 			return err
 		}
 
+		m.recordCall(
+			stream.Context(),
+			found.ID,
+			uint32(codes.OK),
+			requestTime,
+			[]map[string]any{requestData},
+			[]map[string]any{outputToUse.Data},
+			"",
+		)
+
 		return nil
 	}
 
-	return m.handleNonArrayStreamData(stream, found)
+	err = m.handleNonArrayStreamData(stream, found)
+	if err != nil {
+		return err
+	}
+
+	m.recordCall(
+		stream.Context(),
+		found.ID,
+		uint32(codes.OK),
+		requestTime,
+		[]map[string]any{requestData},
+		[]map[string]any{outputToUse.Data},
+		"",
+	)
+
+	return nil
 }
 
 func (m *grpcMocker) ensureServerStreamResult(
@@ -808,25 +938,12 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		return nil, err //nolint:wrapcheck
 	}
 
-	var sess string
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		sess = sessionFromMetadata(md)
-	}
-
 	m.applyEffects(ctx, found, templateData)
 
 	if err := m.handleOutputError(ctx, nil, outputToUse); err != nil {
-		if m.recorder != nil {
-			m.recorder.Record(history.CallRecord{
-				Service:   m.fullServiceName,
-				Method:    m.methodName,
-				Session:   sess,
-				Request:   requestData,
-				Error:     outputToUse.Error,
-				StubID:    found.ID.String(),
-				Timestamp: requestTime,
-			})
-		}
+		code := status.Code(err)
+		m.recordCall(ctx, found.ID, uint32(code), requestTime, []map[string]any{requestData}, nil, err.Error())
+		outputToUse.Error = err.Error()
 
 		return nil, err //nolint:wrapcheck
 	}
@@ -836,17 +953,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		return nil, err //nolint:wrapcheck
 	}
 
-	if m.recorder != nil {
-		m.recorder.Record(history.CallRecord{
-			Service:   m.fullServiceName,
-			Method:    m.methodName,
-			Session:   sess,
-			Request:   requestData,
-			Response:  outputDataCopy,
-			StubID:    found.ID.String(),
-			Timestamp: requestTime,
-		})
-	}
+	m.recordCall(ctx, found.ID, uint32(codes.OK), requestTime, []map[string]any{requestData}, []map[string]any{outputDataCopy}, "")
 
 	return outputMsg, nil
 }
@@ -1216,7 +1323,12 @@ func (m *grpcMocker) sendClientStreamResponse(
 		return errors.Wrap(err, "failed to convert response to dynamic message")
 	}
 
-	return stream.SendMsg(outputMsg)
+	err = stream.SendMsg(outputMsg)
+	if err == nil {
+		m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime, messages, []map[string]any{outputDataCopy}, "")
+	}
+
+	return err
 }
 
 func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
@@ -1224,10 +1336,8 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 
 	bidiResult, err := m.budgerigar.FindByQueryBidi(queryBidi)
 	if err != nil {
-		// Use error formatter to include "Closest Match" details
 		errorFormatter := NewErrorFormatter()
 
-		// Build query for error formatting
 		query := stuber.Query{
 			Service: m.fullServiceName,
 			Method:  m.methodName,
@@ -1238,35 +1348,51 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			query.Session = sessionFromMetadata(md)
 		}
 
-		// Create empty result for error formatting
 		result := &stuber.Result{}
 
 		return status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundError(query, result).Error())
 	}
 
+	recordingStream := &bidiRecordingStream{
+		ServerStream: stream,
+		requests:     make([]map[string]any, 0, bidiRecordingStreamInitCap),
+		responses:    make([]map[string]any, 0, bidiRecordingStreamResponsesCap),
+		maxItems:     maxHistoryStreamMsgs,
+	}
+
+	requestTime := time.Now()
+
 	for {
 		inputMsg := dynamicpb.NewMessage(m.inputDesc)
 
-		err := receiveStreamMessage(stream, inputMsg)
+		err := receiveStreamMessage(recordingStream, inputMsg)
 		if errors.Is(err, io.EOF) {
+			m.recordBidiStream(recordingStream, bidiResult, requestTime, "")
+
 			return nil
 		}
 
 		if err != nil {
 			if status.Code(err) == codes.NotFound {
+				m.recordBidiStream(recordingStream, bidiResult, requestTime, err.Error())
+
 				return &bidiStreamFallbackError{err: err, requests: []*dynamicpb.Message{inputMsg}}
 			}
+
+			m.recordBidiStream(recordingStream, bidiResult, requestTime, err.Error())
 
 			return err //nolint:wrapcheck
 		}
 
-		if err := m.processBidiStreamMessage(stream, bidiResult, inputMsg); err != nil {
+		if err := m.processBidiStreamMessageImpl(recordingStream, bidiResult, inputMsg); err != nil {
+			m.recordBidiStream(recordingStream, bidiResult, requestTime, err.Error())
+
 			return err
 		}
 	}
 }
 
-func (m *grpcMocker) processBidiStreamMessage(
+func (m *grpcMocker) processBidiStreamMessageImpl(
 	stream grpc.ServerStream,
 	bidiResult *stuber.BidiResult,
 	inputMsg *dynamicpb.Message,
@@ -1287,6 +1413,16 @@ func (m *grpcMocker) processBidiStreamMessage(
 		return err
 	}
 
+	return m.processBidiStreamSendResponse(stream, bidiResult, stub, inputMsg, requestTime)
+}
+
+func (m *grpcMocker) processBidiStreamSendResponse(
+	stream grpc.ServerStream,
+	bidiResult *stuber.BidiResult,
+	stub *stuber.Stub,
+	inputMsg *dynamicpb.Message,
+	requestTime time.Time,
+) error {
 	requestData := convertToMap(inputMsg)
 
 	headers := make(map[string]any)
@@ -1294,7 +1430,7 @@ func (m *grpcMocker) processBidiStreamMessage(
 		headers = processHeaders(md)
 	}
 
-	templateData := template.Data{
+	td := template.Data{
 		Request:      requestData,
 		Headers:      headers,
 		MessageIndex: bidiResult.GetMessageIndex(),
@@ -1306,12 +1442,12 @@ func (m *grpcMocker) processBidiStreamMessage(
 		RequestID:    stub.ID.String(),
 	}
 
-	outputToUse, err := m.prepareBidiOutput(stub, templateData)
+	outputToUse, err := m.prepareBidiOutput(stub, td)
 	if err != nil {
 		return err
 	}
 
-	m.applyEffects(stream.Context(), stub, templateData)
+	m.applyEffects(stream.Context(), stub, td)
 
 	if bidiResult.GetMessageIndex() == 0 {
 		if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
@@ -1323,7 +1459,52 @@ func (m *grpcMocker) processBidiStreamMessage(
 		return err
 	}
 
+	if recStream, ok := stream.(*bidiRecordingStream); ok {
+		recStream.setStubID(stub.ID)
+	}
+
 	return m.sendBidiResponses(stream, outputToUse, stub, bidiResult.GetMessageIndex(), requestTime)
+}
+
+func (m *grpcMocker) recordBidiStream(
+	stream *bidiRecordingStream,
+	_ *stuber.BidiResult,
+	requestTime time.Time,
+	errMsg string,
+) {
+	if m.recorder == nil {
+		return
+	}
+
+	code := uint32(codes.OK)
+	if errMsg != "" {
+		code = uint32(codes.Unknown)
+	}
+
+	requests := stream.getRequests()
+	responses := stream.getResponses()
+
+	rec := history.CallRecord{
+		Service:   m.fullServiceName,
+		Method:    m.methodName,
+		Session:   sessionFromContext(stream.Context()),
+		Requests:  requests,
+		Responses: responses,
+		Code:      code,
+		Error:     errMsg,
+		StubID:    stream.getStubID(),
+		Timestamp: requestTime,
+	}
+
+	if len(requests) > 0 {
+		rec.Request = requests[0]
+	}
+
+	if len(responses) > 0 {
+		rec.Response = responses[0]
+	}
+
+	m.recorder.Record(rec)
 }
 
 func (m *grpcMocker) prepareBidiOutput(stub *stuber.Stub, templateData template.Data) (stuber.Output, error) {
@@ -2039,6 +2220,20 @@ func protoToJSON(msg any) []byte {
 	}
 
 	return data
+}
+
+func protoToMap(msg any) map[string]any {
+	data := protoToJSON(msg)
+	if data == nil {
+		return nil
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil
+	}
+
+	return result
 }
 
 func isNilInterface(v any) bool {

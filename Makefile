@@ -11,7 +11,7 @@ build:
 test:
 	go test -tags mock -race -cover ./...
 
-lint:
+lint: lint-clean
 	$(GOLANGCI_LINT) run --color always
 
 lint-fix:

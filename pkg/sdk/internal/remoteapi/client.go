@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 
@@ -27,9 +28,12 @@ type HistoryCall struct {
 	Service   string
 	Method    string
 	Request   map[string]any
+	Requests  []map[string]any
 	Response  map[string]any
+	Responses []map[string]any
 	Error     string
-	StubID    string
+	Code      uint32
+	StubID    uuid.UUID
 	Timestamp time.Time
 }
 
@@ -209,13 +213,16 @@ func (c Client) FetchHistory() ([]HistoryCall, error) {
 	}
 
 	var list []struct {
-		Service   *string         `json:"service"`
-		Method    *string         `json:"method"`
-		Request   *map[string]any `json:"request"`
-		Response  *map[string]any `json:"response"`
-		Error     *string         `json:"error"`
-		StubID    *string         `json:"stubId"`
-		Timestamp *time.Time      `json:"timestamp"`
+		Service   *string             `json:"service"`
+		Method    *string             `json:"method"`
+		Request   *map[string]any     `json:"request"`
+		Requests  *[]map[string]any    `json:"requests"`
+		Response  *map[string]any     `json:"response"`
+		Responses *[]map[string]any    `json:"responses"`
+		Code      *uint32             `json:"code"`
+		Error     *string             `json:"error"`
+		StubID    *openapi_types.UUID `json:"stubId"`
+		Timestamp *time.Time          `json:"timestamp"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
 		return nil, fmt.Errorf("sdk: failed to decode history: %w", err)
@@ -227,9 +234,12 @@ func (c Client) FetchHistory() ([]HistoryCall, error) {
 			Service:   ptrOrZero(call.Service),
 			Method:    ptrOrZero(call.Method),
 			Request:   ptrOrZero(call.Request),
+			Requests:  ptrOrZero(call.Requests),
 			Response:  ptrOrZero(call.Response),
+			Responses: ptrOrZero(call.Responses),
+			Code:      ptrOrZero(call.Code),
 			Error:     ptrOrZero(call.Error),
-			StubID:    ptrOrZero(call.StubID),
+			StubID:    uuid.UUID(ptrOrZero(call.StubID)),
 			Timestamp: ptrOrZero(call.Timestamp),
 		}
 	}

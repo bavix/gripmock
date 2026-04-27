@@ -133,7 +133,7 @@ func TestRemoteHistoryAndVerifier(t *testing.T) {
 		case "/api/history":
 			require.Equal(t, "A", r.Header.Get("X-Gripmock-Session"))
 			w.Header().Set("Content-Type", "application/json")
-			_, _ = w.Write([]byte("[{\"service\":\"svc\",\"method\":\"M\",\"request\":{\"x\":1},\"response\":{\"y\":2},\"error\":\"\",\"stubId\":\"id\",\"timestamp\":\"" + now + "\"}]"))
+			_, _ = w.Write([]byte("[{\"service\":\"svc\",\"method\":\"M\",\"request\":{\"x\":1},\"response\":{\"y\":2},\"error\":\"\",\"stubId\":\"550e8400-e29b-41d4-a716-446655440000\",\"timestamp\":\"" + now + "\"}]"))
 		case "/api/verify":
 			var req map[string]any
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
