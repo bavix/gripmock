@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/dynamicpb"
 
+	"github.com/bavix/gripmock/v3/internal/infra/protoconv"
 	"github.com/bavix/gripmock/v3/internal/infra/proxycapture"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -60,12 +61,12 @@ func (m *grpcMocker) recordUnaryStub(
 	elapsed time.Duration,
 ) {
 	captureCtx := m.newCaptureRequestContext(ctx)
-	requestData := convertToMap(req)
+	requestData := protoconv.ConvertToMap(req)
 	responseHeaders := responseHeadersFromMetadata(header, trailer)
 
 	var responseData map[string]any
 	if resp != nil {
-		responseData = messageToMap(resp)
+		responseData = protoconv.ConvertToMap(resp)
 	}
 
 	m.recordCapturedStub(

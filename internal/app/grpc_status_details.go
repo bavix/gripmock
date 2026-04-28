@@ -5,17 +5,15 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
-	"github.com/goccy/go-json"
 	_ "google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
-	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	"github.com/bavix/gripmock/v3/internal/infra/protoconv"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -69,7 +67,7 @@ func attachDetails(st *status.Status, details []map[string]any, resolver protode
 	return status.FromProto(stProto), nil
 }
 
-//nolint:cyclop,ireturn
+//nolint:ireturn
 func detailMessage(detail map[string]any, resolver protodesc.Resolver) (proto.Message, error) {
 	typeURLRaw, ok := detail["type"]
 	if !ok {
@@ -86,26 +84,14 @@ func detailMessage(detail map[string]any, resolver protodesc.Resolver) (proto.Me
 		return nil, err
 	}
 
-	payload := deepCopyMapAny(detail)
-	delete(payload, "type")
-
-	data, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal detail payload: %w", err)
-	}
-
-	msg := dynamicpb.NewMessage(desc)
-	if err := protojson.Unmarshal(data, msg); err == nil {
+	msg, err := protoconv.MapToProto(desc, detail)
+	if err == nil {
 		return msg, nil
 	}
 
-	if value, hasValue := payload["value"]; hasValue && len(payload) == 1 {
-		valueData, marshalErr := json.Marshal(value)
-		if marshalErr == nil {
-			if fallbackErr := protojson.Unmarshal(valueData, msg); fallbackErr == nil {
-				return msg, nil
-			}
-		}
+	msgFallback, fallbackErr := protoconv.MapToProtoJSON(desc, detail)
+	if fallbackErr == nil {
+		return msgFallback, nil
 	}
 
 	return nil, fmt.Errorf("%w to %s", errDetailUnmarshal, desc.FullName())

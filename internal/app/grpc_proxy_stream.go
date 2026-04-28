@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/dynamicpb"
 
+	"github.com/bavix/gripmock/v3/internal/infra/protoconv"
 	"github.com/bavix/gripmock/v3/internal/infra/proxycapture"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -59,7 +60,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 
 	responses := make([]map[string]any, 0, proxyMessagesInitCap)
 	captureCtx := m.newCaptureRequestContext(stream.Context())
-	requestData := convertToMap(req)
+	requestData := protoconv.ConvertToMap(req)
 	recordDelay := route.Source.RecordDelay
 
 	for {
@@ -86,7 +87,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 			return err
 		}
 
-		responses = append(responses, messageToMap(resp))
+		responses = append(responses, protoconv.ConvertToMap(resp))
 
 		if err = stream.SendMsg(resp); err != nil {
 			return err
@@ -158,7 +159,7 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 	recordDelay := route.Source.RecordDelay
 
 	for _, req := range requestsToForward {
-		requests = append(requests, convertToMap(req))
+		requests = append(requests, protoconv.ConvertToMap(req))
 
 		if err = clientStream.SendMsg(req); err != nil {
 			return err
@@ -206,7 +207,7 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 			func() *stuber.Stub {
 				return proxycapture.BuildClientStreamStub(
 					m.fullServiceName, m.methodName, captureCtx.sessionID,
-					requests, captureCtx.headers, messageToMap(resp),
+					requests, captureCtx.headers, protoconv.ConvertToMap(resp),
 					responseHeadersFromClientStream(clientStream), nil,
 				)
 			},
@@ -281,7 +282,7 @@ func (m *grpcMocker) forwardBidiRequests(
 	errCh chan<- error,
 ) {
 	for _, prefetched := range prefetchedRequests {
-		state.appendRequest(convertToMap(prefetched))
+		state.appendRequest(protoconv.ConvertToMap(prefetched))
 
 		if err := clientStream.SendMsg(prefetched); err != nil {
 			errCh <- err
@@ -306,7 +307,7 @@ func (m *grpcMocker) forwardBidiRequests(
 			return
 		}
 
-		state.appendRequest(convertToMap(req))
+		state.appendRequest(protoconv.ConvertToMap(req))
 
 		if err = clientStream.SendMsg(req); err != nil {
 			errCh <- err
@@ -338,7 +339,7 @@ func (m *grpcMocker) forwardBidiResponses(
 			return
 		}
 
-		state.appendResponse(messageToMap(resp))
+		state.appendResponse(protoconv.ConvertToMap(resp))
 
 		if err = stream.SendMsg(resp); err != nil {
 			errCh <- err

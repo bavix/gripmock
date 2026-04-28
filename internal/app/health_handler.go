@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/reflect/protodesc"
 
+	"github.com/bavix/gripmock/v3/internal/infra/protoconv"
 	"github.com/bavix/gripmock/v3/internal/infra/proxycapture"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -196,7 +197,7 @@ func (s *mockableHealthServer) proxyCheck(
 
 	respHeaders := responseHeadersFromMetadata(header, trailer)
 	s.captureProxyHealthStub(
-		ctx, req, healthMethodCheck, proxycapture.MessageToMap(resp),
+		ctx, req, healthMethodCheck, protoconv.ConvertToMap(resp),
 		nil, err, respHeaders, route, elapsed,
 	)
 
@@ -248,7 +249,7 @@ func (s *mockableHealthServer) proxyWatch(
 			return recvErr
 		}
 
-		responses = append(responses, proxycapture.MessageToMap(resp))
+		responses = append(responses, protoconv.ConvertToMap(resp))
 
 		if sendErr := stream.Send(resp); sendErr != nil {
 			return sendErr

@@ -1,38 +1,15 @@
 package proxycapture
 
 import (
-	"bytes"
-	"encoding/json"
 	"strings"
 
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/bavix/gripmock/v3/internal/infra/protoconv"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
-
-func MessageToMap(message proto.Message) map[string]any {
-	if message == nil {
-		return nil
-	}
-
-	encoded, err := protojson.Marshal(message)
-	if err != nil {
-		return nil
-	}
-
-	decoder := json.NewDecoder(bytes.NewReader(encoded))
-	decoder.UseNumber()
-
-	out := make(map[string]any)
-	if err = decoder.Decode(&out); err != nil {
-		return nil
-	}
-
-	return out
-}
 
 func ResponseHeaders(head metadata.MD, tail metadata.MD) map[string]string {
 	if len(head) == 0 && len(tail) == 0 {
@@ -220,7 +197,7 @@ func statusDetailsToMaps(callErr error) []map[string]any {
 			continue
 		}
 
-		mapped := MessageToMap(msg)
+		mapped := protoconv.ConvertToMap(msg)
 		if mapped == nil {
 			continue
 		}

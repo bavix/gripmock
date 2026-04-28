@@ -2,19 +2,15 @@ package app
 
 //nolint:revive
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/base64"
 	stderrors "errors"
 	"fmt"
 	"io"
 	"maps"
 	"reflect"
 	"runtime"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -49,6 +45,7 @@ import (
 	protoloc "github.com/bavix/gripmock/v3/internal/domain/proto"
 	protosetdom "github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/grpccontext"
+	"github.com/bavix/gripmock/v3/internal/infra/protoconv"
 	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/session"
@@ -87,21 +84,12 @@ const (
 )
 
 const (
-	jsonBufferInitialCap            = 4096
 	bidiRecordingStreamInitCap      = 16
 	bidiRecordingStreamResponsesCap = 16
 )
 
-var (
-	//nolint:gochecknoglobals
-	runtimeNumStreamWorkers = max(runtime.NumCPU(), minStreamWorkers)
-	//nolint:gochecknoglobals
-	jsonBufferPool = sync.Pool{
-		New: func() any {
-			return bytes.NewBuffer(make([]byte, 0, jsonBufferInitialCap))
-		},
-	}
-)
+//nolint:gochecknoglobals
+var runtimeNumStreamWorkers = max(runtime.NumCPU(), minStreamWorkers)
 
 func sessionFromMetadata(md metadata.MD) string {
 	for _, v := range md.Get(sessionHeaderKey) {
@@ -343,7 +331,7 @@ func (m *grpcMocker) newQuery(ctx context.Context, msg *dynamicpb.Message) stube
 		Service:       m.fullServiceName,
 		Method:        m.methodName,
 		StrictService: m.strictServiceMatch,
-		Input:         []map[string]any{convertToMap(msg)},
+		Input:         []map[string]any{protoconv.ConvertToMap(msg)},
 	}
 
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -369,124 +357,6 @@ func (m *grpcMocker) newQueryBidi(ctx context.Context) stuber.QueryBidi {
 	}
 
 	return query
-}
-
-func convertToMap(msg proto.Message) map[string]any {
-	if msg == nil {
-		return nil
-	}
-
-	message := msg.ProtoReflect()
-	desc := message.Descriptor()
-	result := make(map[string]any, desc.Fields().Len())
-
-	// Iterate over descriptor fields, not message.Range: Range only visits populated fields.
-	// In proto3, scalars with default values (e.g. 0.0) are not "populated", so Range skips them.
-	// We need all fields including defaults for stub matching.
-	for i := range desc.Fields().Len() {
-		fd := desc.Fields().Get(i)
-
-		if fd.Cardinality() == protoreflect.Repeated && !message.Has(fd) {
-			continue
-		}
-
-		fieldName := string(fd.Name())
-		result[fieldName] = convertValue(fd, message.Get(fd))
-	}
-
-	return result
-}
-
-func convertValue(fd protoreflect.FieldDescriptor, value protoreflect.Value) any {
-	switch {
-	case fd.IsList():
-		return convertList(fd, value.List())
-	case fd.IsMap():
-		return convertMap(fd, value.Map())
-	default:
-		return convertScalar(fd, value)
-	}
-}
-
-func convertList(fd protoreflect.FieldDescriptor, list protoreflect.List) []any {
-	result := make([]any, list.Len())
-	elemType := fd.Message()
-
-	for i := range list.Len() {
-		elem := list.Get(i)
-
-		if elemType != nil {
-			result[i] = convertToMap(elem.Message().Interface())
-		} else {
-			result[i] = convertScalar(fd, elem)
-		}
-	}
-
-	return result
-}
-
-func convertMap(fd protoreflect.FieldDescriptor, m protoreflect.Map) map[string]any {
-	result := make(map[string]any)
-	keyType := fd.MapKey()
-	valType := fd.MapValue().Message()
-
-	m.Range(func(key protoreflect.MapKey, val protoreflect.Value) bool {
-		convertedKey, ok := convertScalar(keyType, key.Value()).(string)
-		if !ok {
-			return true
-		}
-
-		if valType != nil {
-			result[convertedKey] = convertToMap(val.Message().Interface())
-		} else {
-			result[convertedKey] = convertScalar(fd.MapValue(), val)
-		}
-
-		return true
-	})
-
-	return result
-}
-
-//nolint:cyclop
-func convertScalar(fd protoreflect.FieldDescriptor, value protoreflect.Value) any {
-	const nullValue = "google.protobuf.NullValue"
-
-	switch fd.Kind() {
-	case protoreflect.BoolKind:
-		return value.Bool()
-	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
-		return json.Number(value.String())
-	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind:
-		return json.Number(value.String())
-	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
-		return json.Number(value.String())
-	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
-		return json.Number(value.String())
-	case protoreflect.FloatKind:
-		return float64(value.Float())
-	case protoreflect.DoubleKind:
-		return value.Float()
-	case protoreflect.StringKind:
-		return value.String()
-	case protoreflect.BytesKind:
-		return base64.StdEncoding.EncodeToString(value.Bytes())
-	case protoreflect.EnumKind:
-		if fd.Enum().FullName() == nullValue {
-			return nil
-		}
-
-		desc := fd.Enum().Values().ByNumber(value.Enum())
-		if desc != nil {
-			return string(desc.Name())
-		}
-
-		return ""
-	case protoreflect.MessageKind, protoreflect.GroupKind:
-		return convertToMap(value.Message().Interface())
-	default:
-		return nil
-	}
 }
 
 func (m *grpcMocker) delay(ctx context.Context, delayDur types.Duration) error {
@@ -528,7 +398,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	}
 
 	outputToUse := found.Output
-	requestData := convertToMap(inputMsg)
+	requestData := protoconv.ConvertToMap(inputMsg)
 
 	headers := make(map[string]any)
 	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
@@ -665,7 +535,7 @@ func (m *grpcMocker) handleArrayStreamData(
 		}
 
 		outputDataCopy := deepCopyMapAny(outputData)
-		requestData := convertToMap(inputMsg)
+		requestData := protoconv.ConvertToMap(inputMsg)
 
 		headers := make(map[string]any)
 		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
@@ -724,7 +594,7 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 		inputMsg := dynamicpb.NewMessage(m.inputDesc)
 		if err := stream.RecvMsg(inputMsg); err == nil {
 			requestTime := time.Now()
-			requestData := convertToMap(inputMsg)
+			requestData := protoconv.ConvertToMap(inputMsg)
 
 			headers := make(map[string]any)
 			if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
@@ -767,116 +637,12 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 }
 
 func (m *grpcMocker) newOutputMessage(data map[string]any) (*dynamicpb.Message, error) {
-	pooled, _ := jsonBufferPool.Get().(*bytes.Buffer)
-	if pooled == nil {
-		pooled = bytes.NewBuffer(make([]byte, 0, jsonBufferInitialCap))
-	}
-
-	pooled.Reset()
-
-	defer func() {
-		pooled.Reset()
-		jsonBufferPool.Put(pooled)
-	}()
-
-	convertedData := convertMapNumericToStringNumber(data)
-
-	enc := json.NewEncoder(pooled)
-	if err := enc.Encode(convertedData); err != nil {
-		return nil, fmt.Errorf("failed to marshal map to JSON: %w", err)
-	}
-
-	msg := dynamicpb.NewMessage(m.outputDesc)
-
-	err := protojson.Unmarshal(pooled.Bytes(), msg)
+	msg, err := protoconv.MapToProto(m.outputDesc, data)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal JSON into dynamic message: %w", err)
+		return nil, fmt.Errorf("failed to convert response to dynamic message: %w", err)
 	}
 
 	return msg, nil
-}
-
-func convertMapNumericToStringNumber(data map[string]any) map[string]any {
-	result := make(map[string]any, len(data))
-	for k, v := range data {
-		result[k] = convertMapValue(v)
-	}
-
-	return result
-}
-
-func convertMapValue(v any) any {
-	switch val := v.(type) {
-	case map[string]any:
-		return convertMapNumericToStringNumber(val)
-	case []any:
-		return convertMapArray(val)
-	case float64:
-		return convertFloat64(val)
-	case float32:
-		return convertFloat64(float64(val))
-	case int, int8, int16, int32, int64:
-		return json.Number(strconv.FormatInt(toInt64(val), 10))
-	case uint, uint8, uint16, uint32, uint64:
-		return json.Number(strconv.FormatUint(toUint64(val), 10))
-	default:
-		return v
-	}
-}
-
-func convertFloat64(f float64) json.Number {
-	if isSafeInteger(f) {
-		return json.Number(strconv.FormatInt(int64(f), 10))
-	}
-
-	return json.Number(strconv.FormatFloat(f, 'g', -1, 64))
-}
-
-func toInt64(v any) int64 {
-	switch val := v.(type) {
-	case int:
-		return int64(val)
-	case int8:
-		return int64(val)
-	case int16:
-		return int64(val)
-	case int32:
-		return int64(val)
-	case int64:
-		return val
-	default:
-		return 0
-	}
-}
-
-func toUint64(v any) uint64 {
-	switch val := v.(type) {
-	case uint:
-		return uint64(val)
-	case uint8:
-		return uint64(val)
-	case uint16:
-		return uint64(val)
-	case uint32:
-		return uint64(val)
-	case uint64:
-		return val
-	default:
-		return 0
-	}
-}
-
-func isSafeInteger(f float64) bool {
-	return f == float64(int64(f))
-}
-
-func convertMapArray(arr []any) []any {
-	result := make([]any, len(arr))
-	for i, v := range arr {
-		result[i] = convertMapValue(v)
-	}
-
-	return result
 }
 
 func (m *grpcMocker) unaryHandler() grpc.MethodHandler {
@@ -975,7 +741,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 	}
 
 	outputToUse := found.Output
-	requestData := convertToMap(req)
+	requestData := protoconv.ConvertToMap(req)
 
 	headers := make(map[string]any)
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
@@ -1311,7 +1077,7 @@ func (m *grpcMocker) collectClientMessages(stream grpc.ServerStream) ([]map[stri
 			return nil, nil, err //nolint:wrapcheck
 		}
 
-		messages = append(messages, convertToMap(inputMsg))
+		messages = append(messages, protoconv.ConvertToMap(inputMsg))
 		originalMessages = append(originalMessages, proto.CloneOf(inputMsg))
 	}
 
@@ -1483,7 +1249,7 @@ func (m *grpcMocker) processBidiStreamMessageImpl(
 ) error {
 	requestTime := time.Now()
 
-	stub, err := bidiResult.Next(convertToMap(inputMsg))
+	stub, err := bidiResult.Next(protoconv.ConvertToMap(inputMsg))
 	if err != nil {
 		wrappedErr := errors.Wrap(err, "failed to process bidirectional message")
 		if errors.Is(err, stuber.ErrStubNotFound) {
@@ -1507,7 +1273,7 @@ func (m *grpcMocker) processBidiStreamSendResponse(
 	inputMsg *dynamicpb.Message,
 	requestTime time.Time,
 ) error {
-	requestData := convertToMap(inputMsg)
+	requestData := protoconv.ConvertToMap(inputMsg)
 
 	headers := make(map[string]any)
 	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
@@ -2219,12 +1985,14 @@ func LogUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInf
 		event.Interface("grpc.metadata", md)
 	}
 
-	if content := protoToJSON(req); content != nil {
-		event.RawJSON("grpc.request.content", content)
-	}
+	if zerolog.GlobalLevel() <= level {
+		if content := protoToJSON(req); content != nil {
+			event.RawJSON("grpc.request.content", content)
+		}
 
-	if content := protoToJSON(resp); content != nil {
-		event.RawJSON("grpc.response.content", content)
+		if content := protoToJSON(resp); content != nil {
+			event.RawJSON("grpc.response.content", content)
+		}
 	}
 
 	event.Msg("gRPC call completed")
@@ -2292,13 +2060,7 @@ func protoToJSON(msg any) []byte {
 		return nil
 	}
 
-	marshaller := protojson.MarshalOptions{
-		EmitUnpopulated: false,
-		UseProtoNames:   true,
-		Indent:          "",
-	}
-
-	data, err := marshaller.Marshal(message)
+	data, err := protoToJSONMarshaller.Marshal(message)
 	if err != nil {
 		return nil
 	}
@@ -2306,18 +2068,23 @@ func protoToJSON(msg any) []byte {
 	return data
 }
 
+//nolint:gochecknoglobals
+var protoToJSONMarshaller = protojson.MarshalOptions{
+	EmitUnpopulated: false,
+	UseProtoNames:   true,
+}
+
 func protoToMap(msg any) map[string]any {
-	data := protoToJSON(msg)
-	if data == nil {
+	if msg == nil || isNilInterface(msg) {
 		return nil
 	}
 
-	var result map[string]any
-	if err := json.Unmarshal(data, &result); err != nil {
+	message, ok := msg.(proto.Message)
+	if !ok || message == nil {
 		return nil
 	}
 
-	return result
+	return protoconv.ConvertToMap(message)
 }
 
 func isNilInterface(v any) bool {

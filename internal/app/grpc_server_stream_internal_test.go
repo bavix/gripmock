@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	"github.com/bavix/gripmock/v3/internal/infra/protoconv"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
@@ -553,7 +554,7 @@ func TestConvertToMapProto3DefaultValues(t *testing.T) {
 		t.Parallel()
 		// Empty DoubleValue: value field not set, defaults to 0.0. Range() would skip it.
 		msg := &wrapperspb.DoubleValue{}
-		result := convertToMap(msg)
+		result := protoconv.ConvertToMap(msg)
 		require.NotNil(t, result)
 		require.Contains(t, result, "value")
 		require.InDelta(t, 0.0, result["value"], 1e-9)
@@ -565,7 +566,7 @@ func TestConvertToMapProto3DefaultValues(t *testing.T) {
 		// dynamicpb.NewMessage creates empty message; Get(fd) returns default.
 		desc := (&wrapperspb.DoubleValue{}).ProtoReflect().Descriptor()
 		msg := dynamicpb.NewMessage(desc)
-		result := convertToMap(msg)
+		result := protoconv.ConvertToMap(msg)
 		require.NotNil(t, result)
 		require.Contains(t, result, "value")
 		require.InDelta(t, 0.0, result["value"], 1e-9)

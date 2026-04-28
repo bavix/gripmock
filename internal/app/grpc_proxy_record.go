@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/bavix/gripmock/v3/internal/infra/proxycapture"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -21,10 +20,6 @@ func requestHeadersFromMetadata(md metadata.MD) map[string]any {
 
 func responseHeadersFromMetadata(head metadata.MD, tail metadata.MD) map[string]string {
 	return proxycapture.ResponseHeaders(head, tail)
-}
-
-func messageToMap(message proto.Message) map[string]any {
-	return proxycapture.MessageToMap(message)
 }
 
 func (m *grpcMocker) recordCapturedStub(

@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/dynamicpb"
 
+	"github.com/bavix/gripmock/v3/internal/infra/protoconv"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
@@ -184,12 +185,12 @@ func TestHandleArrayStreamDataWithTemplates(t *testing.T) {
 	require.Len(t, stream.sentMessages, 2)
 
 	// Verify template processing by converting messages back to maps
-	msg1Map := convertToMap(stream.sentMessages[0])
+	msg1Map := protoconv.ConvertToMap(stream.sentMessages[0])
 	require.NotNil(t, msg1Map)
 	// Check if value was processed (may be in different structure depending on descriptor)
 	require.NotNil(t, msg1Map)
 
-	msg2Map := convertToMap(stream.sentMessages[1])
+	msg2Map := protoconv.ConvertToMap(stream.sentMessages[1])
 	require.NotNil(t, msg2Map)
 	require.NotNil(t, msg2Map)
 }
@@ -309,7 +310,7 @@ func TestHandleArrayStreamDataMessageIndexInTemplates(t *testing.T) {
 
 	// Verify all messages were sent (template processing is tested in template package)
 	for _, msg := range stream.sentMessages {
-		msgMap := convertToMap(msg)
+		msgMap := protoconv.ConvertToMap(msg)
 		require.NotNil(t, msgMap)
 	}
 }
@@ -342,7 +343,7 @@ func TestHandleArrayStreamDataWithHeaders(t *testing.T) {
 	require.Len(t, stream.sentMessages, 1)
 
 	// Verify message was sent (template processing with headers is tested in template package)
-	msgMap := convertToMap(stream.sentMessages[0])
+	msgMap := protoconv.ConvertToMap(stream.sentMessages[0])
 	require.NotNil(t, msgMap)
 }
 
