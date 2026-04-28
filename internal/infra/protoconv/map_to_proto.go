@@ -426,17 +426,3 @@ func uintKindValue(fd protoreflect.FieldDescriptor, n uint64) protoreflect.Value
 		return protoreflect.ValueOfUint64(n)
 	}
 }
-
-func MapToProtoJSON(desc protoreflect.MessageDescriptor, data map[string]any) (*dynamicpb.Message, error) {
-	b, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
-
-	msg := dynamicpb.NewMessage(desc)
-	if err := protojson.Unmarshal(b, msg); err != nil {
-		return nil, err
-	}
-
-	return msg, nil
-}

@@ -89,11 +89,6 @@ func detailMessage(detail map[string]any, resolver protodesc.Resolver) (proto.Me
 		return msg, nil
 	}
 
-	msgFallback, fallbackErr := protoconv.MapToProtoJSON(desc, detail)
-	if fallbackErr == nil {
-		return msgFallback, nil
-	}
-
 	return nil, fmt.Errorf("%w to %s", errDetailUnmarshal, desc.FullName())
 }
 
