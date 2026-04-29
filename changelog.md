@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.12.0 - 2026-04-28
+
+### What's Changed
+
+* add support glob by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/849
+* chore(deps): bump sourcemeta/jsonschema from 15.0.0 to 15.2.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/850
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.11.1...v3.12.0
+
 ## v3.11.1 - 2026-04-27
 
 ### What's Changed
