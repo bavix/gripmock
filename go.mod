@@ -8,7 +8,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/brianvoe/gofakeit/v7 v7.14.1
 	github.com/bufbuild/protocompile v0.14.2-0.20260414195949-1188a46c0129
-	github.com/caarlos0/env/v11 v11.4.0
+	github.com/caarlos0/env/v11 v11.4.1
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/cockroachdb/errors v1.13.0
 	github.com/fsnotify/fsnotify v1.10.1
