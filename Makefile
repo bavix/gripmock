@@ -6,7 +6,7 @@ version=latest
 GOLANGCI_LINT=go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.11.4
 
 build:
-	docker buildx build --load -t bavix/gripmock:${version} .
+	docker buildx build --load -t andreykurennoy/gripmock:${version} .
 
 test:
 	go test -tags mock -race -cover ./...

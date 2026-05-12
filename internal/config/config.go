@@ -27,6 +27,11 @@ type Config struct {
 	HTTPPort string `env:"HTTP_PORT" envDefault:"4771"`
 	HTTPAddr string `env:",expand"   envDefault:"$HTTP_HOST:$HTTP_PORT"`
 
+	// ConnectRPC server configuration.
+	ConnectHost string `env:"CONNECT_HOST" envDefault:"0.0.0.0"`
+	ConnectPort string `env:"CONNECT_PORT" envDefault:"4772"`
+	ConnectAddr string `env:",expand"      envDefault:"$CONNECT_HOST:$CONNECT_PORT"`
+
 	// Files configuration.
 	StubWatcherEnabled  bool          `env:"STUB_WATCHER_ENABLED"  envDefault:"true"`
 	StubWatcherInterval time.Duration `env:"STUB_WATCHER_INTERVAL" envDefault:"1s"`
