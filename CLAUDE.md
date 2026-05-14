@@ -92,8 +92,19 @@ The stub matcher (`FindByQuery`) supports: `equals`, `contains`, `matches` (rege
 - **Content-Type**: `application/proto` (binary) or `application/json`
 - **Gzip**: transparent decompression via `Content-Encoding: gzip`
 - **Session**: `X-Gripmock-Session` header (same key as gRPC metadata)
-- **Streaming**: returns `501 Unimplemented` — not implemented
-- **Error format**: `{"code": "not_found", "message": "..."}` + appropriate HTTP status
+- **Streaming**: supported via Connect streaming protocol (`application/connect+proto/json`)
+  - **Server streaming**: read one framed request → find stub → send `output.stream` items as
+    data frames → send end-stream `{}`
+  - **Client streaming**: read all framed requests until EOF → find stub with all inputs →
+    send one framed response + end-stream
+  - **Bidirectional**: uses `FindByQueryBidi`/`BidiResult.Next()` per request frame; works
+    sequentially (read one request → send response(s) → repeat); requires HTTP/2 for true
+    full-duplex but works sequentially over HTTP/1.1 too
+  - Streaming errors: HTTP 200 + end-stream frame with `{"error":{"code":"…","message":"…"}}`
+  - Descriptor required for streaming (no descriptor-less fallback)
+  - Frame format: 5-byte header `[flags:1][length:4 big-endian]`; flag `0x01` = gzip compressed,
+    flag `0x02` = end-stream; per-frame gzip decompression is transparently handled
+- **Unary error format**: `{"code": "not_found", "message": "..."}` + appropriate HTTP status
 - Shares `budgerigar`, `descriptors.Registry`, history recorder with gRPC server
 - Reuses `jsonBufferPool`, `convertToMap`, `deepCopyMapAny`, `outputStatusBase`,
   `findMethodInGlobalFiles`, `template.Engine`, `delayResponse` from same `app` package
