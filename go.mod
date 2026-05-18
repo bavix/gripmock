@@ -6,7 +6,7 @@ require (
 	github.com/bavix/features v1.0.4
 	github.com/bavix/gripmock-ui v1.2.0
 	github.com/bmatcuk/doublestar/v4 v4.10.0
-	github.com/brianvoe/gofakeit/v7 v7.14.1
+	github.com/brianvoe/gofakeit/v7 v7.15.0
 	github.com/bufbuild/protocompile v0.14.2-0.20260414195949-1188a46c0129
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/charmbracelet/lipgloss v1.1.0
