@@ -323,7 +323,7 @@ func Build(
 			return nil, errors.Wrapf(err, "failed to parse source: %s", path)
 		}
 
-		if source.Type == SourceBufBuild || source.Type == SourceReflect {
+		if source.Type == SourceBufBuild || source.Type == SourceReflect || source.Type == SourceProxy {
 			continue
 		}
 

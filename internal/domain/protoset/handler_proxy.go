@@ -76,7 +76,7 @@ func (h *ProxyHandler) Parse(raw string) (*Source, error) {
 	}
 
 	return &Source{
-		Type:              SourceReflect,
+		Type:              SourceProxy,
 		Raw:               raw,
 		ReflectAddress:    parsed.Host,
 		ReflectTLS:        tlsEnabled,
@@ -89,16 +89,8 @@ func (h *ProxyHandler) Parse(raw string) (*Source, error) {
 	}, nil
 }
 
-func (h *ProxyHandler) Process(ctx context.Context, source *Source, processor SourceProcessor) error {
-	reflectProcessor, ok := processor.(interface {
-		ProcessReflect(ctx context.Context, source *Source) error
-	})
-
-	if !ok {
-		return nil
-	}
-
-	return reflectProcessor.ProcessReflect(ctx, source)
+func (h *ProxyHandler) Process(_ context.Context, _ *Source, _ SourceProcessor) error {
+	return nil
 }
 
 func parseProxyScheme(scheme string) (string, bool, error) {

@@ -11,6 +11,7 @@ const (
 	SourceProto
 	SourceDescriptor
 	SourceDirectory
+	SourceProxy
 )
 
 type Source struct {

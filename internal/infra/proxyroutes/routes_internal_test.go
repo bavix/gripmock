@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/descriptorpb"
 
@@ -11,10 +12,18 @@ import (
 )
 
 type fakeRemoteClient struct {
-	sets map[string]*descriptorpb.FileDescriptorSet
+	sets    map[string]*descriptorpb.FileDescriptorSet
+	calls   int
+	failAll bool
 }
 
-func (f fakeRemoteClient) FetchDescriptorSet(_ context.Context, source *protosetdom.Source) (*descriptorpb.FileDescriptorSet, error) {
+func (f *fakeRemoteClient) FetchDescriptorSet(_ context.Context, source *protosetdom.Source) (*descriptorpb.FileDescriptorSet, error) {
+	f.calls++
+
+	if f.failAll {
+		return nil, errors.New("reflection unavailable")
+	}
+
 	return f.sets[source.ReflectAddress], nil
 }
 
@@ -36,7 +45,7 @@ func TestRegistryRouteByMethodNoFallback(t *testing.T) {
 func TestNewFirstSourceWinsPerService(t *testing.T) {
 	t.Parallel()
 
-	client := fakeRemoteClient{sets: map[string]*descriptorpb.FileDescriptorSet{
+	client := &fakeRemoteClient{sets: map[string]*descriptorpb.FileDescriptorSet{
 		"proxy:123": buildDescriptorSet(map[string][]string{
 			"greeter":  {"Ping"},
 			"greeter1": {"Ping"},
@@ -55,7 +64,7 @@ func TestNewFirstSourceWinsPerService(t *testing.T) {
 		"grpc+proxy://proxy:123",
 		"grpc+replay://proxy1:321",
 		"grpc+capture://proxy2:444",
-	}, client)
+	}, client, nil)
 	require.NoError(t, err)
 	t.Cleanup(r.Close)
 
@@ -64,6 +73,53 @@ func TestNewFirstSourceWinsPerService(t *testing.T) {
 	require.Equal(t, ModeReplay, r.RouteByMethod("/greeter2/Ping").Mode)
 	require.Equal(t, ModeCapture, r.RouteByMethod("/greeter3/Ping").Mode)
 	require.Nil(t, r.RouteByMethod("/unknown/Method"))
+}
+
+func TestNewSkipsReflectionWhenLocalDescriptorsPresent(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeRemoteClient{failAll: true}
+
+	local := []*descriptorpb.FileDescriptorSet{
+		buildDescriptorSet(map[string][]string{
+			"orders.OrderService": {"Create", "Get"},
+		}),
+	}
+
+	r, err := New(
+		context.Background(),
+		[]string{"grpc+capture://orders.internal:443"},
+		client,
+		local,
+	)
+	require.NoError(t, err)
+	t.Cleanup(r.Close)
+
+	require.Equal(t, 0, client.calls)
+	require.Equal(t, ModeCapture, r.RouteByMethod("/orders.OrderService/Create").Mode)
+	require.Equal(t, ModeCapture, r.RouteByMethod("/orders.OrderService/Get").Mode)
+}
+
+func TestNewUsesReflectionWhenLocalDescriptorsAbsent(t *testing.T) {
+	t.Parallel()
+
+	client := &fakeRemoteClient{sets: map[string]*descriptorpb.FileDescriptorSet{
+		"orders.internal:443": buildDescriptorSet(map[string][]string{
+			"orders.OrderService": {"Create"},
+		}),
+	}}
+
+	r, err := New(
+		context.Background(),
+		[]string{"grpc+capture://orders.internal:443"},
+		client,
+		nil,
+	)
+	require.NoError(t, err)
+	t.Cleanup(r.Close)
+
+	require.Equal(t, 1, client.calls)
+	require.Equal(t, ModeCapture, r.RouteByMethod("/orders.OrderService/Create").Mode)
 }
 
 func buildDescriptorSet(services map[string][]string) *descriptorpb.FileDescriptorSet {

@@ -37,8 +37,41 @@ type Registry struct {
 	index  map[string]*Route
 }
 
-//nolint:cyclop,funlen
-func New(ctx context.Context, paths []string, remoteClient protosetdom.RemoteClient) (*Registry, error) {
+func New(
+	ctx context.Context,
+	paths []string,
+	remoteClient protosetdom.RemoteClient,
+	localDescriptors []*descriptorpb.FileDescriptorSet,
+) (*Registry, error) {
+	sources, err := parseProxySources(paths)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(sources) == 0 {
+		return &Registry{}, nil
+	}
+
+	localServices := collectServiceMethodsAll(localDescriptors)
+
+	routes := make([]*Route, 0, len(sources))
+	index := make(map[string]*Route)
+	assignedServices := make(map[string]struct{})
+
+	for _, source := range sources {
+		route, serviceMethods, err := buildRoute(ctx, source, remoteClient, localServices)
+		if err != nil {
+			return nil, err
+		}
+
+		bindServices(route, serviceMethods, index, assignedServices)
+		routes = append(routes, route)
+	}
+
+	return &Registry{routes: routes, index: index}, nil
+}
+
+func parseProxySources(paths []string) ([]*protosetdom.Source, error) {
 	sources := make([]*protosetdom.Source, 0, len(paths))
 
 	for _, path := range paths {
@@ -54,59 +87,79 @@ func New(ctx context.Context, paths []string, remoteClient protosetdom.RemoteCli
 		sources = append(sources, source)
 	}
 
-	if len(sources) == 0 {
-		return &Registry{}, nil
+	return sources, nil
+}
+
+func buildRoute(
+	ctx context.Context,
+	source *protosetdom.Source,
+	remoteClient protosetdom.RemoteClient,
+	localServices map[string][]string,
+) (*Route, map[string][]string, error) {
+	serviceMethods, err := resolveServiceMethods(ctx, source, remoteClient, localServices)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	conn, err := grpc.NewClient("passthrough:///"+source.ReflectAddress, grpcclient.DialOptions(
+		source.ReflectTimeout,
+		source.ReflectTLS,
+		source.ReflectServerName,
+		source.ReflectBearer,
+		source.ReflectInsecure,
+	)...)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to connect proxy upstream: %s", source.ReflectAddress)
+	}
+
+	return &Route{
+		Mode:   mapMode(source.ProxyMode),
+		Source: source,
+		Conn:   conn,
+	}, serviceMethods, nil
+}
+
+func bindServices(
+	route *Route,
+	serviceMethods map[string][]string,
+	index map[string]*Route,
+	assignedServices map[string]struct{},
+) {
+	for service, methods := range serviceMethods {
+		if _, exists := assignedServices[service]; exists {
+			continue
+		}
+
+		assignedServices[service] = struct{}{}
+
+		for _, method := range methods {
+			if _, exists := index[method]; !exists {
+				index[method] = route
+			}
+		}
+	}
+}
+
+func resolveServiceMethods(
+	ctx context.Context,
+	source *protosetdom.Source,
+	remoteClient protosetdom.RemoteClient,
+	localServices map[string][]string,
+) (map[string][]string, error) {
+	if len(localServices) > 0 {
+		return localServices, nil
 	}
 
 	if remoteClient == nil {
 		return nil, errRemoteClientNil
 	}
 
-	routes := make([]*Route, 0, len(sources))
-	index := make(map[string]*Route)
-	assignedServices := make(map[string]struct{})
-
-	for _, source := range sources {
-		fds, err := remoteClient.FetchDescriptorSet(ctx, source)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to fetch proxy descriptors: %s", source.Raw)
-		}
-
-		conn, err := grpc.NewClient("passthrough:///"+source.ReflectAddress, grpcclient.DialOptions(
-			source.ReflectTimeout,
-			source.ReflectTLS,
-			source.ReflectServerName,
-			source.ReflectBearer,
-			source.ReflectInsecure,
-		)...)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to connect proxy upstream: %s", source.ReflectAddress)
-		}
-
-		route := &Route{
-			Mode:   mapMode(source.ProxyMode),
-			Source: source,
-			Conn:   conn,
-		}
-
-		for service, methods := range collectServiceMethods(fds) {
-			if _, exists := assignedServices[service]; exists {
-				continue
-			}
-
-			assignedServices[service] = struct{}{}
-
-			for _, method := range methods {
-				if _, exists := index[method]; !exists {
-					index[method] = route
-				}
-			}
-		}
-
-		routes = append(routes, route)
+	fds, err := remoteClient.FetchDescriptorSet(ctx, source)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to fetch proxy descriptors: %s", source.Raw)
 	}
 
-	return &Registry{routes: routes, index: index}, nil
+	return collectServiceMethods(fds), nil
 }
 
 func (r *Registry) RouteByMethod(fullMethod string) *Route {
@@ -175,6 +228,22 @@ func mapMode(mode string) Mode {
 	default:
 		return ModeProxy
 	}
+}
+
+func collectServiceMethodsAll(fdsList []*descriptorpb.FileDescriptorSet) map[string][]string {
+	if len(fdsList) == 0 {
+		return nil
+	}
+
+	merged := make(map[string][]string)
+
+	for _, fds := range fdsList {
+		for service, methods := range collectServiceMethods(fds) {
+			merged[service] = append(merged[service], methods...)
+		}
+	}
+
+	return merged
 }
 
 func collectServiceMethods(fds *descriptorpb.FileDescriptorSet) map[string][]string {

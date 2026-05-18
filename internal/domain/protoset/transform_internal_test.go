@@ -539,3 +539,22 @@ func TestConstants(t *testing.T) {
 	require.Equal(t, ".pb", ProtobufSetExt)
 	require.Equal(t, ".protoset", ProtoSetExt)
 }
+
+func TestBuildDoesNotFetchDescriptorsForProxySources(t *testing.T) {
+	t.Parallel()
+
+	calls := 0
+	client := &mockRemoteClient{fn: func(_ *Source) *descriptorpb.FileDescriptorSet {
+		calls++
+
+		return &descriptorpb.FileDescriptorSet{}
+	}}
+
+	_, err := Build(t.Context(), nil, []string{
+		"grpc+capture://upstream.example:443",
+		"grpcs+replay://other.example:8443",
+		"grpc+proxy://third.example:50051",
+	}, client)
+	require.NoError(t, err)
+	require.Equal(t, 0, calls)
+}

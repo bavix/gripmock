@@ -1694,7 +1694,12 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 		protoPaths = s.params.ProtoPath()
 	}
 
-	s.proxies, err = proxyroutes.New(ctx, protoPaths, s.remoteClient)
+	descriptors, err := protosetdom.Build(ctx, imports, protoPaths, s.remoteClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build descriptors")
+	}
+
+	s.proxies, err = proxyroutes.New(ctx, protoPaths, s.remoteClient, descriptors)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to initialize proxy routes")
 	}
@@ -1704,11 +1709,6 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 			<-ctx.Done()
 			s.proxies.Close()
 		}()
-	}
-
-	descriptors, err := protosetdom.Build(ctx, imports, protoPaths, s.remoteClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build descriptors")
 	}
 
 	// Wait for stubs to load before registering services

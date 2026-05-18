@@ -23,6 +23,16 @@ For a typical Order Service rollout, modes let you move in predictable stages:
 - Reflection source (`grpc://`, `grpcs://`) => how descriptors are loaded.
 - Upstream mode (`+proxy`, `+replay`, `+capture`) => how runtime requests are resolved.
 
+## Upstreams without gRPC reflection <VersionTag version="v3.13.0" />
+
+If the upstream does **not** expose `grpc.reflection.v1.ServerReflection`, pass the schema yourself via any local descriptor source (`.proto`, `.protoset`, `.pb`, directory, or BSR module). When GripMock sees a local source alongside an upstream URL, it uses the local descriptors and never asks the upstream for its schema.
+
+```bash
+gripmock -i ./proto ./proto/orders.proto grpc+capture://orders.api.internal:8443
+```
+
+The URL still declares the upstream (`host:port`, mode, TLS, auth, timeout). Service-to-upstream binding is derived from the local descriptor pool. No additional flag or query parameter is required.
+
 ## URL schemes
 
 - `grpc+proxy://host:port`

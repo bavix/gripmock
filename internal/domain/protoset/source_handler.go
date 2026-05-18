@@ -39,6 +39,8 @@ func ProcessSource(ctx context.Context, source *Source, processor SourceProcesso
 	switch source.Type {
 	case SourceUnknown:
 		return nil
+	case SourceProxy:
+		return nil
 	case SourceBufBuild:
 		handler = &BufBuildHandler{}
 	case SourceReflect:
