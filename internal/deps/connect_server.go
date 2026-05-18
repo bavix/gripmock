@@ -8,6 +8,8 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 
 	"github.com/bavix/gripmock/v3/internal/app"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
@@ -29,17 +31,15 @@ func (b *Builder) ConnectServe(ctx context.Context) error {
 	const (
 		readHeaderTimeout = 10 * time.Second
 		readTimeout       = 30 * time.Second
-		writeTimeout      = 30 * time.Second
 		idleTimeout       = 120 * time.Second
 		maxHeaderBytes    = 1 << 20
 	)
 
 	srv := &http.Server{
 		Addr:              b.config.ConnectAddr,
-		Handler:           handler,
+		Handler:           h2c.NewHandler(handler, &http2.Server{}),
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
-		WriteTimeout:      writeTimeout,
 		IdleTimeout:       idleTimeout,
 		MaxHeaderBytes:    maxHeaderBytes,
 		BaseContext: func(_ net.Listener) context.Context {
