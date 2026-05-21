@@ -23,15 +23,47 @@ For a typical Order Service rollout, modes let you move in predictable stages:
 - Reflection source (`grpc://`, `grpcs://`) => how descriptors are loaded.
 - Upstream mode (`+proxy`, `+replay`, `+capture`) => how runtime requests are resolved.
 
-## Upstreams without gRPC reflection <VersionTag version="v3.13.0" />
+## Upstreams with gRPC reflection <VersionTag version="v3.9.0" />
 
-If the upstream does **not** expose `grpc.reflection.v1.ServerReflection`, pass the schema yourself via any local descriptor source (`.proto`, `.protoset`, `.pb`, directory, or BSR module). When GripMock sees a local source alongside an upstream URL, it uses the local descriptors and never asks the upstream for its schema.
+When the upstream **does** expose `grpc.reflection.v1.ServerReflection`, you can start GripMock with just the URL:
 
 ```bash
-gripmock -i ./proto ./proto/orders.proto grpc+capture://orders.api.internal:8443
+gripmock grpc+capture://orders.api.internal:8443
 ```
 
-The URL still declares the upstream (`host:port`, mode, TLS, auth, timeout). Service-to-upstream binding is derived from the local descriptor pool. No additional flag or query parameter is required.
+GripMock automatically:
+
+1. Fetches service descriptors from the upstream via gRPC reflection
+2. Registers services locally for proxying
+3. Exposes them through its own gRPC reflection endpoint
+
+This enables tools like `grpcurl` to discover services through GripMock without needing local `.proto` files:
+
+```bash
+# Discover services via GripMock's reflection
+grpcurl localhost:4770 list
+
+# Call proxied service
+grpcurl -d '{"order_id":"123"}' localhost:4770 orders.OrderService.GetOrder
+```
+
+## Upstreams without gRPC reflection <VersionTag version="v3.13.0" />
+
+If the upstream does **not** expose `grpc.reflection.v1.ServerReflection`, pass local descriptor sources via the `-S` flag:
+
+```bash
+gripmock -S ./proto/orders.proto grpc+capture://orders.api.internal:8443
+```
+
+The `-S` flag accepts `.proto`, `.protoset`, `.pb` files, directories, or BSR module references. When GripMock sees a local source alongside an upstream URL, it uses the local descriptors and never asks the upstream for its schema.
+
+Service-to-upstream binding is derived from the local descriptor pool. No additional query parameter is required.
+
+Example with imports:
+
+```bash
+gripmock -i ./proto -S ./proto/orders.proto grpc+capture://orders.api.internal:8443
+```
 
 ## URL schemes
 

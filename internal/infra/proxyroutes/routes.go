@@ -35,6 +35,13 @@ type Route struct {
 type Registry struct {
 	routes []*Route
 	index  map[string]*Route
+	files  []*descriptorpb.FileDescriptorSet
+}
+
+// ProxyDescriptorBinding maps a proxy URL to its local descriptor sets.
+type ProxyDescriptorBinding struct {
+	ProxyURL    string
+	Descriptors []*descriptorpb.FileDescriptorSet
 }
 
 func New(
@@ -57,18 +64,68 @@ func New(
 	routes := make([]*Route, 0, len(sources))
 	index := make(map[string]*Route)
 	assignedServices := make(map[string]struct{})
+	files := make([]*descriptorpb.FileDescriptorSet, 0, len(sources))
 
 	for _, source := range sources {
-		route, serviceMethods, err := buildRoute(ctx, source, remoteClient, localServices)
+		route, fds, serviceMethods, err := buildRoute(ctx, source, remoteClient, localServices)
 		if err != nil {
 			return nil, err
 		}
 
 		bindServices(route, serviceMethods, index, assignedServices)
 		routes = append(routes, route)
+
+		if fds != nil {
+			files = append(files, fds)
+		}
 	}
 
-	return &Registry{routes: routes, index: index}, nil
+	return &Registry{routes: routes, index: index, files: files}, nil
+}
+
+// NewWithPerProxyDescriptors creates a registry with per-proxy descriptor bindings.
+// Each proxy URL can have its own set of local descriptors.
+// If a proxy has no local descriptors, it falls back to reflection.
+func NewWithPerProxyDescriptors(
+	ctx context.Context,
+	bindings []ProxyDescriptorBinding,
+	remoteClient protosetdom.RemoteClient,
+) (*Registry, error) {
+	if len(bindings) == 0 {
+		return &Registry{}, nil
+	}
+
+	routes := make([]*Route, 0, len(bindings))
+	index := make(map[string]*Route)
+	assignedServices := make(map[string]struct{})
+	files := make([]*descriptorpb.FileDescriptorSet, 0, len(bindings))
+
+	for _, binding := range bindings {
+		source, err := protosetdom.ParseSource(binding.ProxyURL)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to parse proxy source: %s", binding.ProxyURL)
+		}
+
+		if source.ProxyMode == "" {
+			continue
+		}
+
+		localServices := collectServiceMethodsAll(binding.Descriptors)
+
+		route, fds, serviceMethods, err := buildRoute(ctx, source, remoteClient, localServices)
+		if err != nil {
+			return nil, err
+		}
+
+		bindServices(route, serviceMethods, index, assignedServices)
+		routes = append(routes, route)
+
+		if fds != nil {
+			files = append(files, fds)
+		}
+	}
+
+	return &Registry{routes: routes, index: index, files: files}, nil
 }
 
 func parseProxySources(paths []string) ([]*protosetdom.Source, error) {
@@ -95,10 +152,10 @@ func buildRoute(
 	source *protosetdom.Source,
 	remoteClient protosetdom.RemoteClient,
 	localServices map[string][]string,
-) (*Route, map[string][]string, error) {
-	serviceMethods, err := resolveServiceMethods(ctx, source, remoteClient, localServices)
+) (*Route, *descriptorpb.FileDescriptorSet, map[string][]string, error) {
+	fds, serviceMethods, err := resolveServiceMethods(ctx, source, remoteClient, localServices)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	conn, err := grpc.NewClient("passthrough:///"+source.ReflectAddress, grpcclient.DialOptions(
@@ -109,14 +166,14 @@ func buildRoute(
 		source.ReflectInsecure,
 	)...)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to connect proxy upstream: %s", source.ReflectAddress)
+		return nil, nil, nil, errors.Wrapf(err, "failed to connect proxy upstream: %s", source.ReflectAddress)
 	}
 
 	return &Route{
 		Mode:   mapMode(source.ProxyMode),
 		Source: source,
 		Conn:   conn,
-	}, serviceMethods, nil
+	}, fds, serviceMethods, nil
 }
 
 func bindServices(
@@ -145,21 +202,21 @@ func resolveServiceMethods(
 	source *protosetdom.Source,
 	remoteClient protosetdom.RemoteClient,
 	localServices map[string][]string,
-) (map[string][]string, error) {
+) (*descriptorpb.FileDescriptorSet, map[string][]string, error) {
 	if len(localServices) > 0 {
-		return localServices, nil
+		return nil, localServices, nil
 	}
 
 	if remoteClient == nil {
-		return nil, errRemoteClientNil
+		return nil, nil, errRemoteClientNil
 	}
 
 	fds, err := remoteClient.FetchDescriptorSet(ctx, source)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to fetch proxy descriptors: %s", source.Raw)
+		return nil, nil, errors.Wrapf(err, "failed to fetch proxy descriptors: %s", source.Raw)
 	}
 
-	return collectServiceMethods(fds), nil
+	return fds, collectServiceMethods(fds), nil
 }
 
 func (r *Registry) RouteByMethod(fullMethod string) *Route {
@@ -180,6 +237,14 @@ func (r *Registry) Routes() []*Route {
 	}
 
 	return r.routes
+}
+
+func (r *Registry) Files() []*descriptorpb.FileDescriptorSet {
+	if r == nil {
+		return nil
+	}
+
+	return r.files
 }
 
 func (r *Registry) Close() {

@@ -18,6 +18,7 @@ var (
 	stubFlag    string   //nolint:gochecknoglobals
 	importsFlag []string //nolint:gochecknoglobals
 	pluginsFlag []string //nolint:gochecknoglobals
+	sourceFlag  []string //nolint:gochecknoglobals
 )
 
 var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
@@ -62,7 +63,11 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 
 		defer builder.Shutdown(context.WithoutCancel(ctx))
 
-		return builder.GRPCServe(ctx, proto.New(args, importsFlag))
+		// Parse arguments with per-proxy source bindings
+		// This uses raw os.Args to detect -S flag positioning relative to proxy URLs
+		params := proto.ParseArgumentsWithBindings(args, importsFlag)
+
+		return builder.GRPCServe(ctx, params)
 	},
 }
 
@@ -126,6 +131,13 @@ func init() { //nolint:gochecknoinits
 		"plugins",
 		[]string{},
 		"Template plugin paths (.so)")
+
+	rootCmd.PersistentFlags().StringSliceVarP(
+		&sourceFlag,
+		"source",
+		"S",
+		[]string{},
+		"Local descriptor sources for proxy modes (.proto, .protoset, .pb, directory)")
 }
 
 // Execute runs the root command with the given context.

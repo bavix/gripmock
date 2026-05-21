@@ -1683,25 +1683,65 @@ func NewGRPCServer(
 	}
 }
 
+//nolint:gocognit,nestif,cyclop,funlen // Build method is inherently complex due to multiple configuration paths
 func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	var err error
 
 	imports := []string{}
 	protoPaths := []string{}
+	sources := []string{}
 
 	if s.params != nil {
 		imports = s.params.Imports()
 		protoPaths = s.params.ProtoPath()
+		sources = s.params.Sources()
 	}
 
-	descriptors, err := protosetdom.Build(ctx, imports, protoPaths, s.remoteClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build descriptors")
-	}
+	// Handle per-proxy bindings if configured
+	if s.params != nil && s.params.HasProxyBindings() {
+		// Build descriptors for each proxy binding separately
+		bindings := s.params.ProxyBindings()
+		proxyBindings := make([]proxyroutes.ProxyDescriptorBinding, 0, len(bindings))
 
-	s.proxies, err = proxyroutes.New(ctx, protoPaths, s.remoteClient, descriptors)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize proxy routes")
+		for _, binding := range bindings {
+			// Build descriptors for this specific proxy's sources
+			var descriptors []*descriptorpb.FileDescriptorSet
+			if len(binding.Sources) > 0 {
+				descriptors, err = protosetdom.Build(ctx, imports, binding.Sources, s.remoteClient)
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to build descriptors for proxy %s", binding.ProxyURL)
+				}
+			}
+
+			proxyBindings = append(proxyBindings, proxyroutes.ProxyDescriptorBinding{
+				ProxyURL:    binding.ProxyURL,
+				Descriptors: descriptors,
+			})
+		}
+
+		s.proxies, err = proxyroutes.NewWithPerProxyDescriptors(ctx, proxyBindings, s.remoteClient)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to initialize proxy routes")
+		}
+	} else {
+		// Legacy mode: global descriptors for all proxies
+		allPaths := make([]string, 0, len(protoPaths)+len(sources))
+		allPaths = append(allPaths, protoPaths...)
+		allPaths = append(allPaths, sources...)
+
+		var descriptors []*descriptorpb.FileDescriptorSet
+
+		if len(allPaths) > 0 {
+			descriptors, err = protosetdom.Build(ctx, imports, allPaths, s.remoteClient)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to build descriptors")
+			}
+		}
+
+		s.proxies, err = proxyroutes.New(ctx, allPaths, s.remoteClient, descriptors)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to initialize proxy routes")
+		}
 	}
 
 	if s.proxies != nil {
@@ -1709,6 +1749,34 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 			<-ctx.Done()
 			s.proxies.Close()
 		}()
+
+		// Merge proxy descriptors with local descriptors for reflection support
+		proxyFiles := s.proxies.Files()
+		if len(proxyFiles) > 0 {
+			// Register proxy descriptors in GlobalFiles so they can be resolved
+			for i, fds := range proxyFiles {
+				source := fmt.Sprintf("proxy-descriptor-set-%d", i)
+				if err := protosetdom.RegisterDescriptorSetFiles(ctx, source, fds); err != nil {
+					return nil, errors.Wrapf(err, "failed to register proxy descriptor set: %d", i)
+				}
+			}
+		}
+	}
+
+	// Build descriptors for non-proxy proto paths
+	var descriptors []*descriptorpb.FileDescriptorSet
+	if len(protoPaths) > 0 {
+		descriptors, err = protosetdom.Build(ctx, imports, protoPaths, s.remoteClient)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to build descriptors")
+		}
+	}
+
+	if s.proxies != nil {
+		proxyFiles := s.proxies.Files()
+		if len(proxyFiles) > 0 {
+			descriptors = append(descriptors, proxyFiles...)
+		}
 	}
 
 	// Wait for stubs to load before registering services

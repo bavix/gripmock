@@ -109,7 +109,7 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 			return nil, errors.Wrapf(err, "failed to unmarshal descriptor: %s", descriptor)
 		}
 
-		err = registerDescriptorSetFiles(ctx, descriptor, fds)
+		err = RegisterDescriptorSetFiles(ctx, descriptor, fds)
 		if err != nil {
 			return nil, err
 		}
@@ -119,7 +119,7 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 
 	for i, fds := range configure.DescriptorSets() {
 		source := "remote-descriptor-set"
-		if err := registerDescriptorSetFiles(ctx, source, fds); err != nil {
+		if err := RegisterDescriptorSetFiles(ctx, source, fds); err != nil {
 			return nil, errors.Wrapf(err, "failed to register in-memory descriptor set: %d", i)
 		}
 
@@ -139,7 +139,7 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 }
 
 //nolint:funlen,wsl_v5
-func registerDescriptorSetFiles(
+func RegisterDescriptorSetFiles(
 	ctx context.Context,
 	descriptorPath string,
 	fds *descriptorpb.FileDescriptorSet,

@@ -31,7 +31,7 @@ No heuristic shortcut is used for fallback decisions.
 - `grpc+replay://host:port`
 - `grpcs+replay://host:port`
 
-If the upstream does not expose gRPC reflection, pair this URL with a local descriptor source — see [Upstreams without gRPC reflection](/guide/modes/#upstreams-without-grpc-reflection-v3-13-0).
+For descriptor loading options, see [Upstreams with gRPC reflection](/guide/modes/#upstreams-with-grpc-reflection-v3-13-0) (when upstream supports reflection) or [Upstreams without gRPC reflection](/guide/modes/#upstreams-without-grpc-reflection-v3-13-0) (when local descriptors are needed).
 
 ## Query parameters
 
