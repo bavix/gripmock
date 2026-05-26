@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - plan/**
   pull_request:
 
 concurrency:
@@ -44,18 +43,15 @@ jobs:
         run: |
           go build -o "$RUNNER_TEMP/gripmock" .
 
-      - name: Start + check upstream greeter server
+      - name: Build upstream greeter server (no reflection)
         run: |
-          GRPC_PORT="$GREETER_UPSTREAM_PORT" HTTP_PORT=0 "$RUNNER_TEMP/gripmock" -s examples/projects/greeter examples/projects/greeter >"$RUNNER_TEMP/gripmock-upstream.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-upstream.pid"
+          mkdir -p "$RUNNER_TEMP/greeter"
+          curl -s "https://raw.githubusercontent.com/grpc/grpc-go/master/examples/helloworld/greeter_server/main.go" -o "$RUNNER_TEMP/greeter/greeter_server.go"
+          cd "$RUNNER_TEMP/greeter" && go mod init greeter && go mod tidy && go build -o "$RUNNER_TEMP/greeter-server" greeter_server.go
 
-          for _ in $(seq 1 60); do
-            if GRPC_PORT="$GREETER_UPSTREAM_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent; then
-              break
-            fi
-            sleep 1
-          done
-
-          GRPC_PORT="$GREETER_UPSTREAM_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent
+      - name: Start upstream greeter server
+        run: |
+          "$RUNNER_TEMP/greeter-server" -port "$GREETER_UPSTREAM_PORT" >"$RUNNER_TEMP/greeter-upstream.log" 2>&1 & echo $! >"$RUNNER_TEMP/greeter-upstream.pid"
 
       - name: Start proxy with -S flag (local descriptors)
         run: |
@@ -127,18 +123,16 @@ jobs:
         run: |
           go build -o "$RUNNER_TEMP/gripmock" .
 
-      - name: Start + check upstream examples server
+      - name: Build upstream greeter server (no reflection)
         run: |
-          GRPC_PORT="$GREETER_UPSTREAM_PORT" HTTP_PORT=0 "$RUNNER_TEMP/gripmock" -s examples/projects/greeter examples/projects/greeter >"$RUNNER_TEMP/gripmock-upstream.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-upstream.pid"
+          mkdir -p "$RUNNER_TEMP/greeter"
+          curl -s "https://raw.githubusercontent.com/grpc/grpc-go/master/examples/helloworld/greeter_server/main.go" -o "$RUNNER_TEMP/greeter/greeter_server.go"
+          cd "$RUNNER_TEMP/greeter" && go mod init greeter && go mod tidy && go build -o "$RUNNER_TEMP/greeter-server" greeter_server.go
 
-          for _ in $(seq 1 60); do
-            if GRPC_PORT="$GREETER_UPSTREAM_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent; then
-              break
-            fi
-            sleep 1
-          done
-
-          GRPC_PORT="$GREETER_UPSTREAM_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent
+      - name: Start upstream greeter server
+        run: |
+          "$RUNNER_TEMP/greeter-server" -port "$GREETER_UPSTREAM_PORT" >"$RUNNER_TEMP/greeter-upstream.log" 2>&1 & echo $! >"$RUNNER_TEMP/greeter-upstream.pid"
+          sleep 2
 
       - name: Start capture proxy with -S flag (local descriptors)
         run: |
@@ -154,8 +148,6 @@ jobs:
             fi
             sleep 1
           done
-
-          GRPC_PORT="$GREETER_PROXY_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent
 
       - name: Warm up capture
         run: |

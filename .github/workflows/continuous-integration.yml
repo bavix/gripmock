@@ -197,7 +197,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
-          version: "~> v2"
+          version: "~> 2.15.0"
           install-only: true
 
       - name: Validate GoReleaser config
