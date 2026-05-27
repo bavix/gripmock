@@ -1683,7 +1683,7 @@ func NewGRPCServer(
 	}
 }
 
-//nolint:gocognit,nestif,funlen,cyclop
+//nolint:funlen,nestif,cyclop
 func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	var err error
 
