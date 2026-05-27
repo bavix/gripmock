@@ -1,5 +1,27 @@
 # Changelog
 
+## v3.13.0 - 2026-05-27
+
+### What's Changed
+
+* chore(deps): bump github.com/fsnotify/fsnotify from 1.9.0 to 1.10.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/852
+* chore(deps): bump github.com/klauspost/compress from 1.18.5 to 1.18.6 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/853
+* chore(deps): bump github.com/modelcontextprotocol/go-sdk from 1.5.0 to 1.6.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/854
+* chore(deps): bump google.golang.org/grpc from 1.80.0 to 1.81.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/857
+* chore(deps): bump github.com/fsnotify/fsnotify from 1.10.0 to 1.10.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/856
+* chore(deps): bump github.com/caarlos0/env/v11 from 11.4.0 to 11.4.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/855
+* chore(deps): bump sourcemeta/jsonschema from 15.2.0 to 15.4.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/858
+* chore(deps): bump sourcemeta/jsonschema from 15.4.0 to 15.6.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/861
+* fix: local proto proxy by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/869
+* feat(proxy): support local descriptor sources for proxy/capture/replay by [@serejke](https://github.com/serejke) in https://github.com/bavix/gripmock/pull/866
+* chore(deps): bump sourcemeta/jsonschema from 15.6.1 to 15.6.3 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/868
+
+### New Contributors
+
+* [@serejke](https://github.com/serejke) made their first contribution in https://github.com/bavix/gripmock/pull/866
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.12.0...v3.13.0
+
 ## v3.12.0 - 2026-04-28
 
 ### What's Changed
