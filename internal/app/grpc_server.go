@@ -1683,7 +1683,7 @@ func NewGRPCServer(
 	}
 }
 
-//nolint:nestif,cyclop
+//nolint:cyclop
 func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	var err error
 
@@ -2447,7 +2447,7 @@ func isNilInterface(v any) bool {
 	rv := reflect.ValueOf(v)
 	//nolint:exhaustive
 	switch rv.Kind() {
-	case reflect.Ptr, reflect.Interface, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func:
+	case reflect.Pointer, reflect.Interface, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func:
 		return rv.IsNil()
 	default:
 		return false

@@ -6,6 +6,7 @@ run:
 linters:
   default: all
   disable:
+    - gomodguard # deprecated, replated gomodguard_v2
     - wsl  # deprecated, replaced by wsl_v5
     - exhaustruct  # too strict for this project - requires all struct fields
     - revive  # too strict for this project - requires comments on all exported items
@@ -13,6 +14,7 @@ linters:
     - noinlineerr  # too strict for this project - requires separate error assignment
     - wrapcheck  # too strict for this project - requires wrapping all errors
     - gomoddirectives  # allow local replace for pkg/plugins
+    - goconst # too strict for this project - requires big refactoring
   exclusions: # remove it later
     paths:
       - "^pkg/.*"

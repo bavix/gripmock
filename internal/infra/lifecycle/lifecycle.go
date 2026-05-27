@@ -2,6 +2,7 @@ package lifecycle
 
 import (
 	"context"
+	"slices"
 	"sync"
 )
 
@@ -48,8 +49,8 @@ func (m *Manager) Do(ctx context.Context) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	for i := len(m.fns) - 1; i >= 0; i-- {
-		if err := m.fns[i](ctx); err != nil && m.logger != nil {
+	for _, v := range slices.Backward(m.fns) {
+		if err := v(ctx); err != nil && m.logger != nil {
 			m.logger.Err(err)
 		}
 	}

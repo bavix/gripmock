@@ -54,7 +54,7 @@ func (t TLSConfig) BuildTLSConfig() (*tls.Config, error) {
 		return nil, err
 	}
 
-	tlsConfig := &tls.Config{ //nolint:gosec // TLS 1.2 is intentionally supported
+	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 		MinVersion:   minVersion,
 	}
@@ -82,7 +82,7 @@ func (t TLSConfig) BuildClientTLSConfig(target string) (*tls.Config, error) {
 		return nil, err
 	}
 
-	tlsConfig := &tls.Config{MinVersion: minVersion} //nolint:gosec // TLS 1.2 is intentionally supported
+	tlsConfig := &tls.Config{MinVersion: minVersion}
 	certFile := strings.TrimSpace(t.CertFile)
 	keyFile := strings.TrimSpace(t.KeyFile)
 

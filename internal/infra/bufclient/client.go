@@ -94,7 +94,6 @@ func (c *Client) doRequest(req *http.Request) ([]byte, error) {
 		timeout = defaultTimeout
 	}
 
-	//nolint:gosec
 	resp, err := (&http.Client{Timeout: timeout}).Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to execute BSR request")

@@ -1,5 +1,7 @@
 package stuber
 
+import "slices"
+
 // fastMatchV2 is an ultra-optimized version of matchV2.
 //
 //nolint:cyclop
@@ -36,8 +38,8 @@ func (s *searcher) fastMatchV2(query Query, stub *Stub) bool {
 
 	// Multi-message stream against a single-Input stub (legacy client-stream style).
 	// Try each message newest-first; return true on first match.
-	for i := len(query.Input) - 1; i >= 0; i-- {
-		if s.fastMatchInput(query.Input[i], stub.Input) {
+	for _, v := range slices.Backward(query.Input) {
+		if s.fastMatchInput(v, stub.Input) {
 			return true
 		}
 	}
