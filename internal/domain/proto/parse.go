@@ -22,7 +22,7 @@ import (
 //
 //	grpc+proxy://up1:4111 -S a.proto grpc+proxy://up2:4222
 //	  → up1:4111 uses reflection, up2:4222 gets [a.proto]
-func ParseArgumentsWithBindings(args []string, imports []string, cmdSources []string) *Arguments {
+func ParseArgumentsWithBindings(args []string, imports []string, cmdSources []string) *Arguments { //nolint:cyclop
 	var protoPath []string
 
 	var pendingSources []string
@@ -32,7 +32,6 @@ func ParseArgumentsWithBindings(args []string, imports []string, cmdSources []st
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 
-		// Check for -S or --source flag
 		if arg == "-S" || arg == "--source" {
 			if i+1 < len(args) {
 				i++
@@ -42,7 +41,6 @@ func ParseArgumentsWithBindings(args []string, imports []string, cmdSources []st
 			continue
 		}
 
-		// Check for -S=value or --source=value format
 		if value, ok := strings.CutPrefix(arg, "-S="); ok {
 			pendingSources = append(pendingSources, value)
 
@@ -55,24 +53,19 @@ func ParseArgumentsWithBindings(args []string, imports []string, cmdSources []st
 			continue
 		}
 
-		// Check if this is a proxy URL using the canonical parser
 		if IsProxyURL(arg) {
-			// Bind pending sources to this proxy URL
 			bindings = append(bindings, ProxySourceBinding{
 				ProxyURL: arg,
-				Sources:  append([]string{}, pendingSources...), // copy slice
+				Sources:  append([]string{}, pendingSources...),
 			})
-			// Clear pending sources for next proxy
 			pendingSources = nil
 
 			continue
 		}
 
-		// Regular positional argument (proto file/directory)
 		protoPath = append(protoPath, arg)
 	}
 
-	// If there are no bindings, use all sources globally
 	if len(bindings) == 0 {
 		allSources := make([]string, 0, len(pendingSources)+len(cmdSources))
 		allSources = append(allSources, cmdSources...)
@@ -81,8 +74,6 @@ func ParseArgumentsWithBindings(args []string, imports []string, cmdSources []st
 		return New(protoPath, imports, allSources)
 	}
 
-	// Handle case where Cobra processed -S flags before positional args
-	// These should be prepended to the first binding's sources
 	if len(cmdSources) > 0 && len(bindings) > 0 && len(bindings[0].Sources) == 0 {
 		bindings[0].Sources = append(cmdSources, bindings[0].Sources...)
 	}

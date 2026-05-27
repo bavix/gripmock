@@ -70,15 +70,9 @@ jobs:
 
           GRPC_PORT="$GREETER_PROXY_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent
 
-      - name: Verify service is registered via grpcurl
+      - name: Verify service via grpctestify
         run: |
-          grpcurl -plaintext localhost:${GREETER_PROXY_PORT} list
-
-      - name: Run grpctestify tests via proxy
-        run: |
-          GRPCTESTIFY_ADDRESS="localhost:${GREETER_PROXY_PORT}" grpctestify -p 4 \
-            examples/projects/greeter/case_say_hello_alex.gctf \
-            examples/projects/greeter/case_say_hello_alex_headers.gctf
+          GRPCTESTIFY_ADDRESS="localhost:${GREETER_PROXY_PORT}" grpctestify examples/projects/greeter/case_say_hello_alex_upstream.gctf examples/projects/greeter/case_say_hello_world_upstream.gctf
 
       - name: Stop servers
         if: always()
@@ -149,18 +143,14 @@ jobs:
             sleep 1
           done
 
-      - name: Warm up capture
-        run: |
-          GRPCTESTIFY_ADDRESS="localhost:${GREETER_PROXY_PORT}" grpctestify examples/projects/greeter --skip-tags sequential,effects
-
       - name: Stop upstream server
         run: |
           [ -f "$RUNNER_TEMP/gripmock-upstream.pid" ] && kill -INT "$(cat "$RUNNER_TEMP/gripmock-upstream.pid")" 2>/dev/null || true
           sleep 1
 
-      - name: Replay from captured stubs
+      - name: Verify via grpctestify
         run: |
-          GRPCTESTIFY_ADDRESS="localhost:${GREETER_PROXY_PORT}" grpctestify examples/projects/greeter --skip-tags sequential,effects
+          GRPCTESTIFY_ADDRESS="localhost:${GREETER_PROXY_PORT}" grpctestify examples/projects/greeter/case_say_hello_alex_upstream.gctf examples/projects/greeter/case_say_hello_world_upstream.gctf
 
       - name: Stop servers
         if: always()

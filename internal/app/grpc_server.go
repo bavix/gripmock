@@ -1683,13 +1683,14 @@ func NewGRPCServer(
 	}
 }
 
-//nolint:gocognit,nestif,cyclop,funlen // Build method is inherently complex due to multiple configuration paths
+//nolint:gocognit,nestif,funlen
 func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	var err error
 
 	imports := []string{}
 	protoPaths := []string{}
 	sources := []string{}
+
 	var descriptors []*descriptorpb.FileDescriptorSet
 
 	if s.params != nil {
@@ -1703,6 +1704,7 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	} else {
 		descriptors, s.proxies, err = s.buildProxiesFromSources(ctx, imports, protoPaths, sources)
 	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -1717,6 +1719,7 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to build descriptors")
 		}
+
 		descriptors = append(descriptors, nonProxyDescriptors...)
 	}
 
@@ -1757,11 +1760,13 @@ func (s *GRPCServer) buildProxiesWithBindings(ctx context.Context, imports []str
 			Msg("processing proxy binding")
 
 		var bindingDescriptors []*descriptorpb.FileDescriptorSet
+
 		if len(binding.Sources) > 0 {
 			bindingDescriptors, err = protosetdom.Build(ctx, imports, binding.Sources, s.remoteClient)
 			if err != nil {
 				return nil, nil, errors.Wrapf(err, "failed to build descriptors for proxy %s", binding.ProxyURL)
 			}
+
 			logger.Info().
 				Str("proxy", binding.ProxyURL).
 				Int("num_descriptors", len(bindingDescriptors)).
@@ -1786,6 +1791,7 @@ func (s *GRPCServer) buildProxiesWithBindings(ctx context.Context, imports []str
 	proxyFiles := proxies.Files()
 	if len(proxyFiles) > 0 {
 		descriptors := make([]*descriptorpb.FileDescriptorSet, 0, len(proxyFiles))
+
 		return append(descriptors, proxyFiles...), proxies, nil
 	}
 
@@ -1802,8 +1808,10 @@ func (s *GRPCServer) buildProxiesFromSources(ctx context.Context, imports []stri
 	allPaths = append(allPaths, sources...)
 
 	var descriptors []*descriptorpb.FileDescriptorSet
+
 	if len(allPaths) > 0 {
 		var err error
+
 		descriptors, err = protosetdom.Build(ctx, imports, allPaths, s.remoteClient)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "failed to build descriptors")
