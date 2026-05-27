@@ -31,15 +31,17 @@ Capture stores request and upstream result in stub form:
 - `grpc+capture://host:port`
 - `grpcs+capture://host:port`
 
+For descriptor loading options, see [Upstreams with gRPC reflection](/guide/modes/#upstreams-with-grpc-reflection-v3-13-0) (when upstream supports reflection) or [Upstreams without gRPC reflection](/guide/modes/#upstreams-without-grpc-reflection-v3-13-0) (when local descriptors are needed).
+
 ## Query parameters
 
-| Parameter | Default | Description |
-|---|---|---|
-| `timeout` | `5s` | Timeout for upstream requests. |
-| `bearer` | — | Bearer token to include in upstream requests. |
-| `serverName` | — | Override TLS server name (SNI). |
-| `insecureSkipVerify` | `false` | Skip upstream TLS certificate verification. |
-| `recordDelay` | `false` | Record response latency as `delay` in captured stubs. |
+| Parameter            | Default | Description                                           |
+| -------------------- | ------- | ----------------------------------------------------- |
+| `timeout`            | `5s`    | Timeout for upstream requests.                        |
+| `bearer`             | —       | Bearer token to include in upstream requests.         |
+| `serverName`         | —       | Override TLS server name (SNI).                       |
+| `insecureSkipVerify` | `false` | Skip upstream TLS certificate verification.           |
+| `recordDelay`        | `false` | Record response latency as `delay` in captured stubs. |
 
 Example with delay recording enabled:
 

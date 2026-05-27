@@ -29,7 +29,7 @@ func TestProxyHandlerParse(t *testing.T) {
 
 	src, err := h.Parse("grpcs+capture://api.company.local:443?serverName=api.company.local&bearer=token&timeout=7s&insecureSkipVerify=true")
 	require.NoError(t, err)
-	require.Equal(t, SourceReflect, src.Type)
+	require.Equal(t, SourceProxy, src.Type)
 	require.Equal(t, "capture", src.ProxyMode)
 	require.Equal(t, "api.company.local:443", src.ReflectAddress)
 	require.True(t, src.ReflectTLS)

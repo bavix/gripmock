@@ -1,0 +1,171 @@
+name: gRPC Proxy Local Sources E2E
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+concurrency:
+  group: grpc-proxy-local-sources-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.26"
+  GRPCTESTIFY_VERSION: "1.6.1"
+  GREETER_PROXY_PORT: "4770"
+  GREETER_HTTP_PORT: "4771"
+  GREETER_UPSTREAM_PORT: "4111"
+
+jobs:
+  proxy-local-sources-no-reflection:
+    name: "Proxy with Local Sources (no upstream reflection)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install grpctestify
+        uses: gripmock/grpctestify-action@v1
+        with:
+          install-only: true
+          version: ${{ env.GRPCTESTIFY_VERSION }}
+
+      - name: Install grpcurl
+        run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+
+      - name: Build gripmock binary
+        run: |
+          go build -o "$RUNNER_TEMP/gripmock" .
+
+      - name: Build upstream greeter server (no reflection)
+        run: |
+          mkdir -p "$RUNNER_TEMP/greeter"
+          curl -s "https://raw.githubusercontent.com/grpc/grpc-go/master/examples/helloworld/greeter_server/main.go" -o "$RUNNER_TEMP/greeter/greeter_server.go"
+          cd "$RUNNER_TEMP/greeter" && go mod init greeter && go mod tidy && go build -o "$RUNNER_TEMP/greeter-server" greeter_server.go
+
+      - name: Start upstream greeter server
+        run: |
+          "$RUNNER_TEMP/greeter-server" -port "$GREETER_UPSTREAM_PORT" >"$RUNNER_TEMP/greeter-upstream.log" 2>&1 & echo $! >"$RUNNER_TEMP/greeter-upstream.pid"
+
+      - name: Start proxy with -S flag (local descriptors)
+        run: |
+          GRPC_PORT="$GREETER_PROXY_PORT" HTTP_PORT="$GREETER_HTTP_PORT" \
+            "$RUNNER_TEMP/gripmock" \
+            -S examples/projects/greeter/service.proto \
+            grpc+proxy://localhost:${GREETER_UPSTREAM_PORT} \
+            >"$RUNNER_TEMP/gripmock-proxy.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-proxy.pid"
+
+          for _ in $(seq 1 60); do
+            if GRPC_PORT="$GREETER_PROXY_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent; then
+              break
+            fi
+            sleep 1
+          done
+
+          GRPC_PORT="$GREETER_PROXY_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent
+
+      - name: Verify service via grpctestify
+        run: |
+          GRPCTESTIFY_ADDRESS="localhost:${GREETER_PROXY_PORT}" grpctestify examples/projects/greeter/case_say_hello_alex_upstream.gctf examples/projects/greeter/case_say_hello_world_upstream.gctf
+
+      - name: Stop servers
+        if: always()
+        run: |
+          for pid_file in "$RUNNER_TEMP/gripmock-proxy.pid" "$RUNNER_TEMP/gripmock-upstream.pid"; do
+            [ -f "$pid_file" ] && kill -INT "$(cat "$pid_file")" 2>/dev/null || true
+          done
+          sleep 1
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          for f in "$RUNNER_TEMP/gripmock-upstream.log" "$RUNNER_TEMP/gripmock-proxy.log"; do
+            if [ -f "$f" ]; then
+              echo "----- $f -----"
+              cat "$f"
+            fi
+          done
+
+  proxy-capture-local-sources-no-reflection:
+    name: "Capture with Local Sources (no upstream reflection)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install grpctestify
+        uses: gripmock/grpctestify-action@v1
+        with:
+          install-only: true
+          version: ${{ env.GRPCTESTIFY_VERSION }}
+
+      - name: Install grpcurl
+        run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+
+      - name: Build gripmock binary
+        run: |
+          go build -o "$RUNNER_TEMP/gripmock" .
+
+      - name: Build upstream greeter server (no reflection)
+        run: |
+          mkdir -p "$RUNNER_TEMP/greeter"
+          curl -s "https://raw.githubusercontent.com/grpc/grpc-go/master/examples/helloworld/greeter_server/main.go" -o "$RUNNER_TEMP/greeter/greeter_server.go"
+          cd "$RUNNER_TEMP/greeter" && go mod init greeter && go mod tidy && go build -o "$RUNNER_TEMP/greeter-server" greeter_server.go
+
+      - name: Start upstream greeter server
+        run: |
+          "$RUNNER_TEMP/greeter-server" -port "$GREETER_UPSTREAM_PORT" >"$RUNNER_TEMP/greeter-upstream.log" 2>&1 & echo $! >"$RUNNER_TEMP/greeter-upstream.pid"
+          sleep 2
+
+      - name: Start capture proxy with -S flag (local descriptors)
+        run: |
+          GRPC_PORT="$GREETER_PROXY_PORT" HTTP_PORT="$GREETER_HTTP_PORT" \
+            "$RUNNER_TEMP/gripmock" \
+            -S examples/projects/greeter/service.proto \
+            grpc+capture://localhost:${GREETER_UPSTREAM_PORT} \
+            >"$RUNNER_TEMP/gripmock-capture.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-capture.pid"
+
+          for _ in $(seq 1 60); do
+            if GRPC_PORT="$GREETER_PROXY_PORT" "$RUNNER_TEMP/gripmock" check --timeout=1s --silent; then
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Stop upstream server
+        run: |
+          [ -f "$RUNNER_TEMP/gripmock-upstream.pid" ] && kill -INT "$(cat "$RUNNER_TEMP/gripmock-upstream.pid")" 2>/dev/null || true
+          sleep 1
+
+      - name: Verify via grpctestify
+        run: |
+          GRPCTESTIFY_ADDRESS="localhost:${GREETER_PROXY_PORT}" grpctestify examples/projects/greeter/case_say_hello_alex_upstream.gctf examples/projects/greeter/case_say_hello_world_upstream.gctf
+
+      - name: Stop servers
+        if: always()
+        run: |
+          for pid_file in "$RUNNER_TEMP/gripmock-capture.pid" "$RUNNER_TEMP/gripmock-upstream.pid"; do
+            [ -f "$pid_file" ] && kill -INT "$(cat "$pid_file")" 2>/dev/null || true
+          done
+          sleep 1
+
+      - name: Dump logs on failure
+        if: failure()
+        run: |
+          for f in "$RUNNER_TEMP/gripmock-upstream.log" "$RUNNER_TEMP/gripmock-capture.log"; do
+            if [ -f "$f" ]; then
+              echo "----- $f -----"
+              cat "$f"
+            fi
+          done

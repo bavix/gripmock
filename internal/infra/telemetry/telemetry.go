@@ -29,19 +29,11 @@ type Config struct {
 // InitMetrics sets up Prometheus metrics via OTel MeterProvider.
 // Always initializes regardless of OTEL_ENABLED.
 func InitMetrics(ctx context.Context, version string, reg prometheus.Registerer) *Instruments {
-	res, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceName("gripmock"),
-			semconv.ServiceVersion(version),
-		),
+	res := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceName("gripmock"),
+		semconv.ServiceVersion(version),
 	)
-	if err != nil {
-		zerolog.Ctx(ctx).Err(err).Msg("failed to create OTEL resource for metrics")
-
-		return nil
-	}
 
 	promExporter, err := promexporter.New(
 		promexporter.WithRegisterer(reg),

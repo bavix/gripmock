@@ -37,7 +37,7 @@ func (r *Router) FetchDescriptorSet(ctx context.Context, source *protoset.Source
 		}
 
 		return r.bsrClient.FetchDescriptorSet(ctx, source.Module, source.Version)
-	case protoset.SourceReflect:
+	case protoset.SourceReflect, protoset.SourceProxy:
 		if r.reflectClient == nil {
 			return nil, errReflectClientNotConfigured
 		}

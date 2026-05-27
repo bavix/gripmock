@@ -76,6 +76,9 @@ func TestParseSource(t *testing.T) {
 				require.Equal(t, tt.wantVer, src.Version)
 			case SourceReflect:
 				require.NotEmpty(t, src.ReflectAddress)
+			case SourceProxy:
+				require.NotEmpty(t, src.ReflectAddress)
+				require.NotEmpty(t, src.ProxyMode)
 			case SourceProto, SourceDescriptor:
 				require.Equal(t, tt.wantPath, src.Path)
 			case SourceDirectory, SourceUnknown:
@@ -107,6 +110,8 @@ func makeParseSourceCases() []parseSourceCase {
 	cases = append(cases,
 		parseSourceCase{name: "grpc reflection source", raw: "grpc://localhost:50051", wantType: SourceReflect},
 		parseSourceCase{name: "grpcs reflection source", raw: "grpcs://api.company.local:443", wantType: SourceReflect},
+		parseSourceCase{name: "grpc+capture proxy source", raw: "grpc+capture://localhost:50051", wantType: SourceProxy},
+		parseSourceCase{name: "grpcs+replay proxy source", raw: "grpcs+replay://api.company.local:443", wantType: SourceProxy},
 		fileCase(".proto file", "service.proto", SourceProto),
 		fileCase(".pb file", "service.pb", SourceDescriptor),
 		fileCase(".protoset file", "service.protoset", SourceDescriptor),

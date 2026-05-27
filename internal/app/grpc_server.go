@@ -1683,36 +1683,53 @@ func NewGRPCServer(
 	}
 }
 
+//nolint:cyclop
 func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	var err error
 
 	imports := []string{}
 	protoPaths := []string{}
+	sources := []string{}
+
+	var descriptors []*descriptorpb.FileDescriptorSet
 
 	if s.params != nil {
 		imports = s.params.Imports()
 		protoPaths = s.params.ProtoPath()
+		sources = s.params.Sources()
 	}
 
-	s.proxies, err = proxyroutes.New(ctx, protoPaths, s.remoteClient)
+	if s.params != nil && s.params.HasProxyBindings() {
+		descriptors, s.proxies, err = s.buildProxiesWithBindings(ctx, imports)
+	} else {
+		descriptors, s.proxies, err = s.buildProxiesFromSources(ctx, imports, protoPaths, sources)
+	}
+
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to initialize proxy routes")
+		return nil, err
 	}
 
 	if s.proxies != nil {
-		go func() {
-			<-ctx.Done()
-			s.proxies.Close()
-		}()
+		s.startProxyCleanup(ctx)
+		s.registerProxyDescriptors(ctx)
 	}
 
-	descriptors, err := protosetdom.Build(ctx, imports, protoPaths, s.remoteClient)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to build descriptors")
+	if len(protoPaths) > 0 {
+		nonProxyDescriptors, err := protosetdom.Build(ctx, imports, protoPaths, s.remoteClient)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to build descriptors")
+		}
+
+		descriptors = append(descriptors, nonProxyDescriptors...)
 	}
 
-	// Wait for stubs to load before registering services
-	// This ensures stubs are available when gRPC server starts accepting requests
+	if s.proxies != nil {
+		proxyFiles := s.proxies.Files()
+		if len(proxyFiles) > 0 {
+			descriptors = append(descriptors, proxyFiles...)
+		}
+	}
+
 	if s.waiter != nil {
 		s.waiter.Wait(ctx)
 	}
@@ -1720,12 +1737,114 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	server := s.createServer(ctx)
 	s.setupHealthCheck(server, nil)
 	s.registerServices(ctx, server, descriptors, nil)
-
-	// Mark server as ready synchronously after all descriptors and stubs are loaded.
-	// This prevents race conditions where health checks arrive before the server is ready.
 	s.markServerReady(ctx)
 
 	return server, nil
+}
+
+func (s *GRPCServer) buildProxiesWithBindings(ctx context.Context, imports []string) (
+	[]*descriptorpb.FileDescriptorSet,
+	*proxyroutes.Registry,
+	error,
+) {
+	var err error
+
+	bindings := s.params.ProxyBindings()
+	proxyBindings := make([]proxyroutes.ProxyDescriptorBinding, 0, len(bindings))
+	logger := zerolog.Ctx(ctx)
+
+	for _, binding := range bindings {
+		logger.Info().
+			Str("proxy", binding.ProxyURL).
+			Strs("sources", binding.Sources).
+			Msg("processing proxy binding")
+
+		var bindingDescriptors []*descriptorpb.FileDescriptorSet
+
+		if len(binding.Sources) > 0 {
+			bindingDescriptors, err = protosetdom.Build(ctx, imports, binding.Sources, s.remoteClient)
+			if err != nil {
+				return nil, nil, errors.Wrapf(err, "failed to build descriptors for proxy %s", binding.ProxyURL)
+			}
+
+			logger.Info().
+				Str("proxy", binding.ProxyURL).
+				Int("num_descriptors", len(bindingDescriptors)).
+				Msg("built descriptors for proxy")
+		} else {
+			logger.Info().
+				Str("proxy", binding.ProxyURL).
+				Msg("no sources for proxy, will use reflection")
+		}
+
+		proxyBindings = append(proxyBindings, proxyroutes.ProxyDescriptorBinding{
+			ProxyURL:    binding.ProxyURL,
+			Descriptors: bindingDescriptors,
+		})
+	}
+
+	proxies, err := proxyroutes.NewWithPerProxyDescriptors(ctx, proxyBindings, s.remoteClient)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to initialize proxy routes")
+	}
+
+	proxyFiles := proxies.Files()
+	if len(proxyFiles) > 0 {
+		descriptors := make([]*descriptorpb.FileDescriptorSet, 0, len(proxyFiles))
+
+		return append(descriptors, proxyFiles...), proxies, nil
+	}
+
+	return nil, proxies, nil
+}
+
+func (s *GRPCServer) buildProxiesFromSources(ctx context.Context, imports []string, protoPaths []string, sources []string) (
+	[]*descriptorpb.FileDescriptorSet,
+	*proxyroutes.Registry,
+	error,
+) {
+	allPaths := make([]string, 0, len(protoPaths)+len(sources))
+	allPaths = append(allPaths, protoPaths...)
+	allPaths = append(allPaths, sources...)
+
+	var descriptors []*descriptorpb.FileDescriptorSet
+
+	if len(allPaths) > 0 {
+		var err error
+
+		descriptors, err = protosetdom.Build(ctx, imports, allPaths, s.remoteClient)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "failed to build descriptors")
+		}
+	}
+
+	proxies, err := proxyroutes.New(ctx, allPaths, s.remoteClient, descriptors)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to initialize proxy routes")
+	}
+
+	return descriptors, proxies, nil
+}
+
+func (s *GRPCServer) startProxyCleanup(ctx context.Context) {
+	go func() {
+		<-ctx.Done()
+		s.proxies.Close()
+	}()
+}
+
+func (s *GRPCServer) registerProxyDescriptors(ctx context.Context) {
+	proxyFiles := s.proxies.Files()
+	if len(proxyFiles) == 0 {
+		return
+	}
+
+	for i, fds := range proxyFiles {
+		source := fmt.Sprintf("proxy-descriptor-set-%d", i)
+		if err := protosetdom.RegisterDescriptorSetFiles(ctx, source, fds); err != nil {
+			zerolog.Ctx(ctx).Err(err).Int("index", i).Msg("failed to register proxy descriptor set")
+		}
+	}
 }
 
 // BuildFromDescriptorSet creates a gRPC server from a pre-built FileDescriptorSet.
@@ -2328,7 +2447,7 @@ func isNilInterface(v any) bool {
 	rv := reflect.ValueOf(v)
 	//nolint:exhaustive
 	switch rv.Kind() {
-	case reflect.Ptr, reflect.Interface, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func:
+	case reflect.Pointer, reflect.Interface, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func:
 		return rv.IsNil()
 	default:
 		return false

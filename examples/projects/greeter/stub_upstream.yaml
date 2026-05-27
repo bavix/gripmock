@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Stub matching upstream grpc-go greeter server behavior
+- service: helloworld.Greeter
+  method: SayHello
+  priority: 9999
+  input:
+    equals:
+      name: "UpstreamAlex"
+  output:
+    data:
+      message: "Hello UpstreamAlex"
+
+- service: helloworld.Greeter
+  method: SayHello
+  priority: 9999
+  input:
+    equals:
+      name: "UpstreamWorld"
+  output:
+    data:
+      message: "Hello UpstreamWorld"
