@@ -3,6 +3,7 @@
 # Stub matching upstream grpc-go greeter server behavior
 - service: helloworld.Greeter
   method: SayHello
+  priority: 9999
   input:
     equals:
       name: "UpstreamAlex"
@@ -12,6 +13,7 @@
 
 - service: helloworld.Greeter
   method: SayHello
+  priority: 9999
   input:
     equals:
       name: "UpstreamWorld"
