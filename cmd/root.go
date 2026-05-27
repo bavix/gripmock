@@ -65,7 +65,12 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 
 		// Parse arguments with per-proxy source bindings
 		// This uses raw os.Args to detect -S flag positioning relative to proxy URLs
-		params := proto.ParseArgumentsWithBindings(args, importsFlag)
+		params := proto.ParseArgumentsWithBindings(args, importsFlag, sourceFlag)
+
+		zerolog.Ctx(ctx).Info().
+			Strs("args", args).
+			Strs("sourceFlag", sourceFlag).
+			Msg("Starting GRPCServe")
 
 		return builder.GRPCServe(ctx, params)
 	},

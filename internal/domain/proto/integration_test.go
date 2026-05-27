@@ -19,7 +19,7 @@ func TestIntegration_PerProxyBindingFlow(t *testing.T) {
 	t.Run("three proxies with different configurations", testThreeProxies)
 	t.Run("source flag formats", testSourceFlagFormats)
 	t.Run("proxy with query parameters", testProxyWithQueryParams)
-	t.Run("no proxies defaults to legacy mode", testNoProxiesLegacyMode)
+	t.Run("no proxies uses all sources", testNoProxiesUsesAllSources)
 	t.Run("empty sources list", testEmptySourcesList)
 }
 
@@ -33,7 +33,7 @@ func testFirstProxyWithSources(t *testing.T) {
 		"grpc+proxy://upstream2:4222",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, []string{"./imports"})
+	result := proto.ParseArgumentsWithBindings(args, []string{"./imports"}, nil)
 
 	require.True(t, result.HasProxyBindings())
 	require.Equal(t, []string{"./imports"}, result.Imports())
@@ -58,7 +58,7 @@ func testDifferentSourcesPerProxy(t *testing.T) {
 		"grpcs+capture://upstream2:4222",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil)
+	result := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, result.HasProxyBindings())
 
@@ -84,7 +84,7 @@ func testMixedProtoAndProxy(t *testing.T) {
 		"grpc+replay://upstream2:4222",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil)
+	result := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.Equal(t, []string{"common.proto", "types.proto"}, result.ProtoPath())
 	require.True(t, result.HasProxyBindings())
@@ -111,7 +111,7 @@ func testThreeProxies(t *testing.T) {
 		"grpc+replay://upstream3:4333",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil)
+	result := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, result.HasProxyBindings())
 
@@ -139,7 +139,7 @@ func testSourceFlagFormats(t *testing.T) {
 		"grpc+proxy://upstream:4111",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil)
+	result := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, result.HasProxyBindings())
 
@@ -156,7 +156,7 @@ func testProxyWithQueryParams(t *testing.T) {
 		"grpc+proxy://upstream:4111?timeout=30s&insecureSkipVerify=true",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil)
+	result := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, result.HasProxyBindings())
 
@@ -166,7 +166,7 @@ func testProxyWithQueryParams(t *testing.T) {
 	require.Equal(t, []string{"service.proto"}, bindings[0].Sources)
 }
 
-func testNoProxiesLegacyMode(t *testing.T) {
+func testNoProxiesUsesAllSources(t *testing.T) {
 	t.Parallel()
 
 	args := []string{
@@ -175,7 +175,7 @@ func testNoProxiesLegacyMode(t *testing.T) {
 		"grpc://upstream:4111", // No +mode suffix
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil)
+	result := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.False(t, result.HasProxyBindings())
 	require.Nil(t, result.ProxyBindings())
@@ -192,7 +192,7 @@ func testEmptySourcesList(t *testing.T) {
 		"grpc+proxy://upstream3:4333",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil)
+	result := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, result.HasProxyBindings())
 
@@ -224,7 +224,7 @@ func testMicroservicesScenario(t *testing.T) {
 		"grpc+proxy://payment-service:50052",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, []string{"./examples"})
+	result := proto.ParseArgumentsWithBindings(args, []string{"./examples"}, nil)
 
 	require.Equal(t, []string{"examples/local_service.proto"}, result.ProtoPath())
 	require.True(t, result.HasProxyBindings())
@@ -247,7 +247,7 @@ func testCaptureScenario(t *testing.T) {
 		"grpc+capture://staging-server:443?recordDelay=true",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil)
+	result := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, result.HasProxyBindings())
 
@@ -268,7 +268,7 @@ func testMixedEnvironment(t *testing.T) {
 		"grpc+replay://localhost:50052",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil)
+	result := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.Equal(t, []string{"local/greeter.proto"}, result.ProtoPath())
 

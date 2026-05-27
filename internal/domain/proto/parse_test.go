@@ -12,7 +12,7 @@ func TestParseArgumentsWithBindings_SingleProxyWithSources(t *testing.T) {
 	t.Parallel()
 
 	args := []string{"-S", "a.proto", "-S", "b.proto", "grpc+proxy://up1:4111"}
-	params := proto.ParseArgumentsWithBindings(args, nil)
+	params := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, params.HasProxyBindings())
 	require.Len(t, params.ProxyBindings(), 1)
@@ -29,7 +29,7 @@ func TestParseArgumentsWithBindings_MultipleProxiesWithDistinctSources(t *testin
 		"-S", "b.proto",
 		"grpc+capture://up2:4222",
 	}
-	params := proto.ParseArgumentsWithBindings(args, nil)
+	params := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, params.HasProxyBindings())
 	require.Len(t, params.ProxyBindings(), 2)
@@ -49,7 +49,7 @@ func TestParseArgumentsWithBindings_MultipleSourcesForFirstProxy(t *testing.T) {
 		"grpc+proxy://up1:4111",
 		"grpc+proxy://up2:4222",
 	}
-	params := proto.ParseArgumentsWithBindings(args, nil)
+	params := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, params.HasProxyBindings())
 	require.Len(t, params.ProxyBindings(), 2)
@@ -65,7 +65,7 @@ func TestParseArgumentsWithBindings_ProxyWithoutSources(t *testing.T) {
 	t.Parallel()
 
 	args := []string{"grpc+proxy://up1:4111", "-S", "a.proto", "grpc+proxy://up2:4222"}
-	params := proto.ParseArgumentsWithBindings(args, nil)
+	params := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, params.HasProxyBindings())
 	require.Len(t, params.ProxyBindings(), 2)
@@ -85,7 +85,7 @@ func TestParseArgumentsWithBindings_AllProxyModes(t *testing.T) {
 		"-S", "b.proto", "grpcs+capture://up2:4222",
 		"-S", "c.proto", "grpc+replay://up3:4333",
 	}
-	params := proto.ParseArgumentsWithBindings(args, nil)
+	params := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, params.HasProxyBindings())
 	require.Len(t, params.ProxyBindings(), 3)
@@ -99,7 +99,7 @@ func TestParseArgumentsWithBindings_SourceEqualsSyntax(t *testing.T) {
 	t.Parallel()
 
 	args := []string{"-S=a.proto", "--source=b.proto", "grpc+proxy://up1:4111"}
-	params := proto.ParseArgumentsWithBindings(args, nil)
+	params := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, params.HasProxyBindings())
 	require.Len(t, params.ProxyBindings(), 1)
@@ -115,7 +115,7 @@ func TestParseArgumentsWithBindings_MixedProtoPathsAndProxies(t *testing.T) {
 		"grpc+proxy://up1:4111",
 		"examples/orders",
 	}
-	params := proto.ParseArgumentsWithBindings(args, nil)
+	params := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, params.HasProxyBindings())
 	require.Equal(t, []string{"examples/greeter.proto", "examples/orders"}, params.ProtoPath())
@@ -123,11 +123,11 @@ func TestParseArgumentsWithBindings_MixedProtoPathsAndProxies(t *testing.T) {
 	require.Equal(t, []string{"local.proto"}, params.ProxyBindings()[0].Sources)
 }
 
-func TestParseArgumentsWithBindings_NoProxiesLegacyMode(t *testing.T) {
+func TestParseArgumentsWithBindings_NoProxiesAllSources(t *testing.T) {
 	t.Parallel()
 
 	args := []string{"-S", "a.proto", "-S", "b.proto", "examples/greeter.proto"}
-	params := proto.ParseArgumentsWithBindings(args, nil)
+	params := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.False(t, params.HasProxyBindings())
 	require.Equal(t, []string{"a.proto", "b.proto"}, params.Sources())
@@ -137,7 +137,7 @@ func TestParseArgumentsWithBindings_NoProxiesLegacyMode(t *testing.T) {
 func TestParseArgumentsWithBindings_EmptyArgs(t *testing.T) {
 	t.Parallel()
 
-	params := proto.ParseArgumentsWithBindings([]string{}, nil)
+	params := proto.ParseArgumentsWithBindings([]string{}, nil, nil)
 
 	require.False(t, params.HasProxyBindings())
 	require.Empty(t, params.ProtoPath())
@@ -149,7 +149,7 @@ func TestParseArgumentsWithBindings_WithImports(t *testing.T) {
 
 	args := []string{"-S", "a.proto", "grpc+proxy://up1:4111"}
 	imports := []string{"./proto", "./vendor"}
-	params := proto.ParseArgumentsWithBindings(args, imports)
+	params := proto.ParseArgumentsWithBindings(args, imports, nil)
 
 	require.Equal(t, imports, params.Imports())
 }
@@ -161,7 +161,7 @@ func TestParseArgumentsWithBindings_SecureGRPC(t *testing.T) {
 		"-S", "a.proto", "grpcs+proxy://up1:4111",
 		"-S", "b.proto", "grpcs+capture://up2:4222",
 	}
-	params := proto.ParseArgumentsWithBindings(args, nil)
+	params := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	require.True(t, params.HasProxyBindings())
 	require.Len(t, params.ProxyBindings(), 2)

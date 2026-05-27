@@ -9,6 +9,9 @@ import (
 // ParseArgumentsWithBindings parses raw command-line arguments to extract per-proxy source bindings.
 // It detects -S flags before proxy URLs and binds them to that specific proxy.
 //
+// The cmdSources parameter contains -S flags collected by Cobra's flag system.
+// When no per-proxy bindings are found, all sources (cmdSources + positional) are used globally.
+//
 // Examples:
 //
 //	-S a.proto -S b.proto grpc+proxy://up1:4111 grpc+proxy://up2:4222
@@ -19,7 +22,7 @@ import (
 //
 //	grpc+proxy://up1:4111 -S a.proto grpc+proxy://up2:4222
 //	  → up1:4111 uses reflection, up2:4222 gets [a.proto]
-func ParseArgumentsWithBindings(args []string, imports []string) *Arguments {
+func ParseArgumentsWithBindings(args []string, imports []string, cmdSources []string) *Arguments {
 	var protoPath []string
 
 	var pendingSources []string
@@ -69,10 +72,19 @@ func ParseArgumentsWithBindings(args []string, imports []string) *Arguments {
 		protoPath = append(protoPath, arg)
 	}
 
-	// If there are no bindings, fall back to legacy behavior
+	// If there are no bindings, use all sources globally
 	if len(bindings) == 0 {
-		// Collect all -S flags globally (legacy mode)
-		return New(protoPath, imports, pendingSources)
+		allSources := make([]string, 0, len(pendingSources)+len(cmdSources))
+		allSources = append(allSources, cmdSources...)
+		allSources = append(allSources, pendingSources...)
+
+		return New(protoPath, imports, allSources)
+	}
+
+	// Handle case where Cobra processed -S flags before positional args
+	// These should be prepended to the first binding's sources
+	if len(cmdSources) > 0 && len(bindings) > 0 && len(bindings[0].Sources) == 0 {
+		bindings[0].Sources = append(cmdSources, bindings[0].Sources...)
 	}
 
 	return NewWithBindings(protoPath, imports, bindings)

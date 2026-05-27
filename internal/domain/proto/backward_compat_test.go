@@ -8,9 +8,9 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/proto"
 )
 
-// TestBackwardCompatibility_LegacyMode verifies that legacy mode (without per-proxy bindings)
+// TestBackwardCompatibility_DefaultMode verifies that default mode (without per-proxy bindings)
 // still works as before the per-proxy binding feature was added.
-func TestBackwardCompatibility_LegacyMode(t *testing.T) {
+func TestBackwardCompatibility_DefaultMode(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -54,7 +54,7 @@ func TestBackwardCompatibility_LegacyMode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result := proto.ParseArgumentsWithBindings(tt.args, tt.imports)
+			result := proto.ParseArgumentsWithBindings(tt.args, tt.imports, nil)
 
 			require.False(t, result.HasProxyBindings(), "legacy mode should not have proxy bindings")
 			require.Nil(t, result.ProxyBindings())
@@ -72,7 +72,7 @@ func TestBackwardCompatibility_OldProxyBehavior(t *testing.T) {
 
 	// Old behavior: -S flags before proxy were global
 	args := []string{"-S", "service.proto", "grpc+proxy://upstream:4111"}
-	result := proto.ParseArgumentsWithBindings(args, nil)
+	result := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	// This should now be treated as per-proxy binding
 	require.True(t, result.HasProxyBindings())
@@ -88,7 +88,7 @@ func TestBackwardCompatibility_MultipleProxiesOldWay(t *testing.T) {
 
 	// Old way (that didn't work correctly): all -S flags were global
 	args := []string{"-S", "a.proto", "-S", "b.proto", "grpc+proxy://up1:4111", "grpc+proxy://up2:4222"}
-	result := proto.ParseArgumentsWithBindings(args, nil)
+	result := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	// New behavior: -S flags before first proxy are bound to first proxy
 	require.True(t, result.HasProxyBindings())
@@ -109,7 +109,7 @@ func TestBackwardCompatibility_MixedProtoAndProxy(t *testing.T) {
 	t.Parallel()
 
 	args := []string{"common.proto", "-S", "service.proto", "grpc+proxy://upstream:4111"}
-	result := proto.ParseArgumentsWithBindings(args, nil)
+	result := proto.ParseArgumentsWithBindings(args, nil, nil)
 
 	// common.proto goes to protoPath (for local mock server)
 	require.Equal(t, []string{"common.proto"}, result.ProtoPath())
@@ -139,7 +139,7 @@ func TestBackwardCompatibility_NoProxyURLs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			result := proto.ParseArgumentsWithBindings(tt.args, nil)
+			result := proto.ParseArgumentsWithBindings(tt.args, nil, nil)
 
 			require.False(t, result.HasProxyBindings(), "should use legacy mode")
 			require.Nil(t, result.ProxyBindings())
@@ -151,7 +151,7 @@ func TestBackwardCompatibility_NoProxyURLs(t *testing.T) {
 func TestBackwardCompatibility_EmptyArgs(t *testing.T) {
 	t.Parallel()
 
-	result := proto.ParseArgumentsWithBindings([]string{}, nil)
+	result := proto.ParseArgumentsWithBindings([]string{}, nil, nil)
 
 	require.NotNil(t, result)
 	require.False(t, result.HasProxyBindings())
@@ -180,7 +180,7 @@ func TestBackwardCompatibility_AllThreeProxyModes(t *testing.T) {
 		t.Run(tt.mode, func(t *testing.T) {
 			t.Parallel()
 
-			result := proto.ParseArgumentsWithBindings([]string{tt.url}, nil)
+			result := proto.ParseArgumentsWithBindings([]string{tt.url}, nil, nil)
 
 			require.True(t, result.HasProxyBindings())
 			require.Len(t, result.ProxyBindings(), 1)

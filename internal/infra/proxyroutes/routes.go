@@ -112,6 +112,10 @@ func NewWithPerProxyDescriptors(
 
 		localServices := collectServiceMethodsAll(binding.Descriptors)
 
+		if len(binding.Descriptors) > 0 {
+			files = append(files, binding.Descriptors...)
+		}
+
 		route, fds, serviceMethods, err := buildRoute(ctx, source, remoteClient, localServices)
 		if err != nil {
 			return nil, err
