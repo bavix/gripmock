@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.13.1 - 2026-06-03
+
+### What's Changed
+
+* fix: mcp for cursor by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/876
+* chore(deps): bump github.com/go-playground/validator/v10 from 10.30.2 to 10.30.3 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/874
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.13.0...v3.13.1
+
 ## v3.13.0 - 2026-05-27
 
 ### What's Changed
