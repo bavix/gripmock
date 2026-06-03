@@ -152,10 +152,10 @@ func TestToStreamOutputWithDelays_VariousDurations(t *testing.T) {
 
 	require.Len(t, result, 4)
 
-	require.Equal(t, "1ns", result[0].(map[string]any)["delay"])
-	require.Equal(t, "1µs", result[1].(map[string]any)["delay"])
-	require.Equal(t, "1ms", result[2].(map[string]any)["delay"])
-	require.Equal(t, "1s", result[3].(map[string]any)["delay"])
+	require.Equal(t, "1ns", result[0].(map[string]any)["delay"]) //nolint:forcetypeassert
+	require.Equal(t, "1µs", result[1].(map[string]any)["delay"]) //nolint:forcetypeassert
+	require.Equal(t, "1ms", result[2].(map[string]any)["delay"]) //nolint:forcetypeassert
+	require.Equal(t, "1s", result[3].(map[string]any)["delay"])  //nolint:forcetypeassert
 }
 
 func TestBuildServerStreamStub(t *testing.T) {

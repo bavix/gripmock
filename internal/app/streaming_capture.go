@@ -23,24 +23,28 @@ func NewStreamCaptureState() *StreamCaptureState {
 func (s *StreamCaptureState) AppendRequest(req map[string]any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.requests = append(s.requests, req)
 }
 
 func (s *StreamCaptureState) AppendResponse(resp map[string]any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.responses = append(s.responses, resp)
 }
 
 func (s *StreamCaptureState) AppendDelay(delay time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.delays = append(s.delays, delay)
 }
 
 func (s *StreamCaptureState) Snapshot() ([]map[string]any, []map[string]any, []time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	return append([]map[string]any(nil), s.requests...),
 		append([]map[string]any(nil), s.responses...),
 		append([]time.Duration(nil), s.delays...)

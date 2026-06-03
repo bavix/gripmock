@@ -645,7 +645,7 @@ func (m *grpcMocker) ensureServerStreamResult(
 	return nil, status.Error(codes.NotFound, m.errorFormatter.FormatStubNotFoundError(query, result).Error())
 }
 
-//nolint:funlen
+//nolint:funlen,cyclop
 func (m *grpcMocker) handleArrayStreamData(
 	stream grpc.ServerStream,
 	found *stuber.Stub,

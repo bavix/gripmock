@@ -7,15 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/go-playground/validator/v10"
+	"github.com/goccy/go-json"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"github.com/goccy/go-json"
-	"github.com/go-playground/validator/v10"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -30,12 +30,12 @@ import (
 )
 
 type ConnectRPCGateway struct {
-	budgerigar      *stuber.Budgerigar
-	descriptors     *descriptors.Registry
-	recorder        history.Recorder
-	proxies         *proxyroutes.Registry
-	validator       *validator.Validate
-	errorFormatter  *ErrorFormatter
+	budgerigar     *stuber.Budgerigar
+	descriptors    *descriptors.Registry
+	recorder       history.Recorder
+	proxies        *proxyroutes.Registry
+	validator      *validator.Validate
+	errorFormatter *ErrorFormatter
 }
 
 func NewConnectRPCGateway(
@@ -61,9 +61,11 @@ func NewConnectRPCGateway(
 	}
 }
 
+//nolint:funlen
 func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+
 		return
 	}
 
@@ -84,9 +86,12 @@ func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if g.descriptors == nil && g.budgerigar != nil {
 			g.handleWithoutDescriptor(w, r, service, method)
+
 			return
 		}
+
 		g.writeError(w, codes.NotFound, "method not found")
+
 		return
 	}
 
@@ -94,9 +99,9 @@ func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		budgerigar:     g.budgerigar,
 		templateEngine: template.New(r.Context(), nil),
 		errorFormatter: g.errorFormatter,
-		recorder:      g.recorder,
+		recorder:       g.recorder,
 		descriptorResolver: &dynamicDescriptorResolver{
-			static: protoregistry.GlobalFiles,
+			static:  protoregistry.GlobalFiles,
 			dynamic: g.descriptors,
 		},
 		proxies:            g.proxies,
@@ -119,7 +124,7 @@ func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if mocker.serverStream || mocker.clientStream {
-		if err := mocker.streamHandler(nil, adapter); err != nil {
+		if err := mocker.streamHandler(adapter.ctx, adapter); err != nil { //nolint:contextcheck
 			st, _ := status.FromError(err)
 			adapter.writeError(st.Code(), st.Message())
 		}
@@ -128,6 +133,7 @@ func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+//nolint:nlreturn
 func (g *ConnectRPCGateway) handleUnary(mocker *grpcMocker, a *httpStreamAdapter) {
 	body, err := io.ReadAll(a.req.Body)
 	if err != nil {
@@ -152,12 +158,14 @@ func (g *ConnectRPCGateway) handleUnary(mocker *grpcMocker, a *httpStreamAdapter
 	if err != nil {
 		st, _ := status.FromError(err)
 		a.writeError(st.Code(), st.Message())
+
 		return
 	}
 
 	_ = a.SendMsg(resp)
 }
 
+//nolint:ireturn
 func (g *ConnectRPCGateway) findMethodDescriptor(serviceName, methodName string) (protoreflect.MethodDescriptor, error) {
 	if method := findMethodInGlobalFiles(serviceName, methodName); method != nil {
 		return method, nil
@@ -185,9 +193,11 @@ func (g *ConnectRPCGateway) findMethodDescriptor(serviceName, methodName string)
 				}
 
 				found = m
+
 				return false
 			}
 		}
+
 		return true
 	})
 
@@ -198,6 +208,7 @@ func (g *ConnectRPCGateway) findMethodDescriptor(serviceName, methodName string)
 	return found, nil
 }
 
+//nolint:funlen
 func (g *ConnectRPCGateway) handleWithoutDescriptor(w http.ResponseWriter, r *http.Request, serviceName, methodName string) {
 	_, _ = io.Copy(io.Discard, r.Body)
 
@@ -219,7 +230,7 @@ func (g *ConnectRPCGateway) handleWithoutDescriptor(w http.ResponseWriter, r *ht
 		}
 
 		notFoundMsg := g.errorFormatter.FormatStubNotFoundError(query, result).Error()
-		g.record(r, serviceName, methodName, query.Session, uuid.Nil, uint32(codes.NotFound),
+		g.record(serviceName, methodName, query.Session, uuid.Nil, uint32(codes.NotFound),
 			requestTime, []map[string]any{emptyInput}, nil, notFoundMsg)
 		g.writeError(w, codes.NotFound, notFoundMsg)
 
@@ -230,7 +241,7 @@ func (g *ConnectRPCGateway) handleWithoutDescriptor(w http.ResponseWriter, r *ht
 
 	if err := delayResponse(r.Context(), found.Output.Delay); err != nil {
 		st, _ := status.FromError(err)
-		g.record(r, serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
+		g.record(serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
 			requestTime, []map[string]any{emptyInput}, nil, st.Message())
 		g.writeError(w, st.Code(), st.Message())
 
@@ -240,7 +251,7 @@ func (g *ConnectRPCGateway) handleWithoutDescriptor(w http.ResponseWriter, r *ht
 	outputToUse := found.Output
 
 	if st := outputStatusBase(outputToUse); st != nil {
-		g.record(r, serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
+		g.record(serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
 			requestTime, []map[string]any{emptyInput}, nil, st.Message())
 		g.writeError(w, st.Code(), st.Message())
 
@@ -268,12 +279,11 @@ func (g *ConnectRPCGateway) handleWithoutDescriptor(w http.ResponseWriter, r *ht
 		w.WriteHeader(http.StatusOK)
 	}
 
-	g.record(r, serviceName, methodName, query.Session, found.ID, uint32(codes.OK),
+	g.record(serviceName, methodName, query.Session, found.ID, uint32(codes.OK),
 		requestTime, []map[string]any{emptyInput}, []map[string]any{{}}, "")
 }
 
 func (g *ConnectRPCGateway) record(
-	r *http.Request,
 	service, method, session string,
 	stubID uuid.UUID,
 	code uint32,
@@ -313,6 +323,7 @@ func (g *ConnectRPCGateway) writeError(w http.ResponseWriter, code codes.Code, m
 		"code":    ErrorCodeToString(code),
 		"message": msg,
 	})
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(ErrorCodeToHTTPStatus(code))
 	_, _ = w.Write(body)
@@ -323,11 +334,12 @@ func isJSONContentType(ct string) bool {
 }
 
 type httpStreamAdapter struct {
-	ctx context.Context
 	req *http.Request
 	w   http.ResponseWriter
 
 	sentHeader bool
+
+	ctx context.Context //nolint:containedctx
 }
 
 func (a *httpStreamAdapter) Context() context.Context {
@@ -338,16 +350,19 @@ func (a *httpStreamAdapter) SetHeader(md metadata.MD) error {
 	if a.sentHeader {
 		return nil
 	}
+
 	for k, v := range md {
 		for _, val := range v {
 			a.w.Header().Add(k, val)
 		}
 	}
+
 	return nil
 }
 
 func (a *httpStreamAdapter) SendHeader(md metadata.MD) error {
 	a.sentHeader = true
+
 	return a.SetHeader(md)
 }
 
@@ -367,15 +382,17 @@ func (a *httpStreamAdapter) SendMsg(m any) error {
 	}
 
 	ct := a.req.Header.Get("Content-Type")
-	var data []byte
-	var err error
-	if isJSONContentType(ct) {
-		data, err = protojson.Marshal(msg)
-	} else {
-		data, err = proto.Marshal(msg)
-	}
+
+	data, err := protojson.Marshal(msg)
 	if err != nil {
 		return err
+	}
+
+	if !isJSONContentType(ct) {
+		data, err = proto.Marshal(msg)
+		if err != nil {
+			return err
+		}
 	}
 
 	_, err = a.w.Write(data)
@@ -391,17 +408,21 @@ func (a *httpStreamAdapter) SendMsg(m any) error {
 }
 
 func (a *httpStreamAdapter) RecvMsg(m any) error {
-	buf := make([]byte, 4096)
+	buf := make([]byte, 4096) //nolint:mnd
+
 	var body []byte
 
 	for {
 		n, err := a.req.Body.Read(buf)
+
 		if n > 0 {
 			body = append(body, buf[:n]...)
 		}
+
 		if err == io.EOF {
 			break
 		}
+
 		if err != nil {
 			return err
 		}
@@ -416,6 +437,7 @@ func (a *httpStreamAdapter) RecvMsg(m any) error {
 	if isJSONContentType(ct) {
 		return protojson.Unmarshal(body, msg)
 	}
+
 	return proto.Unmarshal(body, msg)
 }
 
@@ -424,6 +446,7 @@ func (a *httpStreamAdapter) writeError(code codes.Code, msg string) {
 		"code":    ErrorCodeToString(code),
 		"message": msg,
 	})
+
 	a.w.Header().Set("Content-Type", "application/json")
 	a.w.WriteHeader(ErrorCodeToHTTPStatus(code))
 	_, _ = a.w.Write(body)

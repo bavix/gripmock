@@ -1,4 +1,4 @@
-package app
+package app_test
 
 import (
 	"testing"
@@ -106,15 +106,15 @@ func TestRecordCapturedStubWithDelays_WithDelays(t *testing.T) {
 	resultStub := m.budgerigar.stubs[0]
 	require.Len(t, resultStub.Output.Stream, 3)
 
-	entry0 := resultStub.Output.Stream[0].(map[string]any)
+	entry0 := resultStub.Output.Stream[0].(map[string]any) //nolint:forcetypeassert
 	require.Equal(t, "100ms", entry0["delay"])
 	require.Equal(t, map[string]any{"result": "first"}, entry0["data"])
 
-	entry1 := resultStub.Output.Stream[1].(map[string]any)
+	entry1 := resultStub.Output.Stream[1].(map[string]any) //nolint:forcetypeassert
 	require.Equal(t, "200ms", entry1["delay"])
 	require.Equal(t, map[string]any{"result": "second"}, entry1["data"])
 
-	entry2 := resultStub.Output.Stream[2].(map[string]any)
+	entry2 := resultStub.Output.Stream[2].(map[string]any) //nolint:forcetypeassert
 	require.Equal(t, "300ms", entry2["delay"])
 	require.Equal(t, map[string]any{"result": "third"}, entry2["data"])
 }
@@ -145,7 +145,7 @@ func TestRecordCapturedStubWithDelays_RecordDelayFalse(t *testing.T) {
 	require.Len(t, m.budgerigar.stubs, 1)
 
 	resultStub := m.budgerigar.stubs[0]
-	entry0 := resultStub.Output.Stream[0].(map[string]any)
+	entry0 := resultStub.Output.Stream[0].(map[string]any) //nolint:forcetypeassert
 	require.NotContains(t, entry0, "delay")
 }
 
@@ -178,13 +178,13 @@ func TestRecordCapturedStubWithDelays_PartialDelays(t *testing.T) {
 
 	resultStub := m.budgerigar.stubs[0]
 
-	entry0 := resultStub.Output.Stream[0].(map[string]any)
+	entry0 := resultStub.Output.Stream[0].(map[string]any) //nolint:forcetypeassert
 	require.Equal(t, "100ms", entry0["delay"])
 
-	entry1 := resultStub.Output.Stream[1].(map[string]any)
+	entry1 := resultStub.Output.Stream[1].(map[string]any) //nolint:forcetypeassert
 	require.NotContains(t, entry1, "delay")
 
-	entry2 := resultStub.Output.Stream[2].(map[string]any)
+	entry2 := resultStub.Output.Stream[2].(map[string]any) //nolint:forcetypeassert
 	require.NotContains(t, entry2, "delay")
 }
 
@@ -215,7 +215,8 @@ func TestRecordCapturedStubWithDelays_ZeroDelaysIgnored(t *testing.T) {
 	require.Len(t, m.budgerigar.stubs, 1)
 
 	resultStub := m.budgerigar.stubs[0]
-	entry0 := resultStub.Output.Stream[0].(map[string]any)
+
+	entry0 := resultStub.Output.Stream[0].(map[string]any) //nolint:forcetypeassert
 	require.NotContains(t, entry0, "delay")
 }
 
@@ -251,7 +252,8 @@ func TestRecordCapturedStubWithDelays_NilStreamItem(t *testing.T) {
 	require.Len(t, m.budgerigar.stubs, 1)
 
 	resultStub := m.budgerigar.stubs[0]
-	entry1 := resultStub.Output.Stream[1].(map[string]any)
+
+	entry1 := resultStub.Output.Stream[1].(map[string]any) //nolint:forcetypeassert
 	require.Equal(t, "200ms", entry1["delay"])
 }
 
@@ -292,6 +294,6 @@ func TestRecordCapturedStubWithDelays_NonMapStreamItem(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, "100ms", entry0["delay"])
 
-	entry1 := resultStub.Output.Stream[1].(map[string]any)
+	entry1 := resultStub.Output.Stream[1].(map[string]any) //nolint:forcetypeassert
 	require.Equal(t, "200ms", entry1["delay"])
 }

@@ -2,7 +2,7 @@ package app
 
 const (
 	HealthServiceFullName = "grpc.health.v1.Health"
-	HealthServiceName      = "gripmock"
+	HealthServiceName     = "gripmock"
 )
 
 const (
@@ -12,6 +12,7 @@ const (
 	LogFieldComponent   = "grpc.component"
 )
 
+//nolint:gochecknoglobals
 var ExcludedHeaders = []string{
 	":authority",
 	"content-type",

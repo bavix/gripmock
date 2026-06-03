@@ -58,6 +58,7 @@ func TestExtractStreamDelay(t *testing.T) {
 	}
 }
 
+//nolint:funlen
 func TestExtractStreamDelayFromString(t *testing.T) {
 	t.Parallel()
 

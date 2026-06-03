@@ -34,6 +34,7 @@ func (e *FallbackError) GRPCStatus() *status.Status {
 	if e.streamType == StreamTypeBidi {
 		return status.New(codes.NotFound, e.err.Error())
 	}
+
 	return status.Convert(e.err)
 }
 

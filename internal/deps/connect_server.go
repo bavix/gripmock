@@ -16,6 +16,7 @@ import (
 	infraTLS "github.com/bavix/gripmock/v3/internal/infra/tls"
 )
 
+//nolint:funlen
 func (b *Builder) ConnectServe(ctx context.Context) error {
 	var recorder history.Recorder
 	if store := b.HistoryStore(); store != nil {

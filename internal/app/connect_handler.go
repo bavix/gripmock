@@ -5,15 +5,16 @@ import (
 	"strings"
 )
 
+//nolint:gochecknoglobals
 var connectExcludedHeaders = map[string]struct{}{
 	"accept":                   {},
-	"accept-encoding":           {},
+	"accept-encoding":          {},
 	"content-encoding":         {},
 	"content-length":           {},
 	"content-type":             {},
 	"connect-protocol-version": {},
 	"connect-timeout-ms":       {},
-	"user-agent":              {},
+	"user-agent":               {},
 }
 
 type connectMethodNotFoundError struct {

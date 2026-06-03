@@ -16,7 +16,7 @@ func TestConnectRPCGateway_MethodNotAllowed(t *testing.T) {
 
 	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/TestService/TestMethod", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/TestService/TestMethod", nil)
 
 	gateway.ServeHTTP(w, r)
 
@@ -28,7 +28,7 @@ func TestConnectRPCGateway_MethodNotFound(t *testing.T) {
 
 	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPost, "/UnknownService/UnknownMethod", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/UnknownService/UnknownMethod", nil)
 
 	gateway.ServeHTTP(w, r)
 
@@ -40,7 +40,7 @@ func TestConnectRPCGateway_StubNotFoundWithoutDescriptor(t *testing.T) {
 
 	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPost, "/UnknownService/UnknownMethod", bytes.NewReader([]byte(`{}`)))
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/UnknownService/UnknownMethod", bytes.NewReader([]byte(`{}`)))
 	r.Header.Set("Content-Type", "application/json")
 
 	gateway.ServeHTTP(w, r)
@@ -54,7 +54,7 @@ func TestConnectRPCGateway_InvalidJSON(t *testing.T) {
 
 	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPost, "/TestService/TestMethod", bytes.NewReader([]byte("invalid json")))
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/TestService/TestMethod", bytes.NewReader([]byte("invalid json")))
 	r.Header.Set("Content-Type", "application/json")
 
 	gateway.ServeHTTP(w, r)
@@ -74,6 +74,7 @@ func TestConnectRPCGateway_WriteError(t *testing.T) {
 	require.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
 	var resp map[string]string
+
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 	require.Equal(t, "unimplemented", resp["code"])
@@ -97,6 +98,7 @@ func TestConnectRPCGateway_IsJSONContentType(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.ct, func(t *testing.T) {
 			t.Parallel()
+
 			got := isJSONContentType(tc.ct)
 			require.Equal(t, tc.yes, got)
 		})
@@ -115,9 +117,9 @@ func TestHttpStreamAdapter_SendMsg_NonProtoMessage(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	adapter := &httpStreamAdapter{
-		ctx:    nil,
-		req:    nil,
-		w:      rec,
+		ctx:        nil,
+		req:        nil,
+		w:          rec,
 		sentHeader: false,
 	}
 
@@ -129,7 +131,7 @@ func TestHttpStreamAdapter_SendMsg_NonProtoMessage(t *testing.T) {
 func TestHttpStreamAdapter_RecvMsg_EmptyBody(t *testing.T) {
 	t.Parallel()
 
-	req := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader([]byte{}))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewReader([]byte{}))
 	adapter := &httpStreamAdapter{
 		ctx: req.Context(),
 		req: req,

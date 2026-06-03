@@ -96,6 +96,7 @@ func extractStreamData(item any) (map[string]any, bool) {
 	return itemMap, true
 }
 
+//nolint:cyclop,exhaustive
 func ErrorCodeToString(code codes.Code) string {
 	switch code {
 	case codes.Canceled:
@@ -135,6 +136,7 @@ func ErrorCodeToString(code codes.Code) string {
 	}
 }
 
+//nolint:cyclop,exhaustive
 func ErrorCodeToHTTPStatus(code codes.Code) int {
 	switch code {
 	case codes.Canceled:
