@@ -27,6 +27,11 @@ type Config struct {
 	HTTPPort string `env:"HTTP_PORT" envDefault:"4771"`
 	HTTPAddr string `env:",expand"   envDefault:"$HTTP_HOST:$HTTP_PORT"`
 
+	// ConnectRPC server configuration.
+	ConnectHost string `env:"CONNECT_HOST" envDefault:"0.0.0.0"`
+	ConnectPort string `env:"CONNECT_PORT" envDefault:"4769"`
+	ConnectAddr string `env:",expand"      envDefault:"$CONNECT_HOST:$CONNECT_PORT"`
+
 	// Files configuration.
 	StubWatcherEnabled  bool          `env:"STUB_WATCHER_ENABLED"  envDefault:"true"`
 	StubWatcherInterval time.Duration `env:"STUB_WATCHER_INTERVAL" envDefault:"1s"`
@@ -57,6 +62,12 @@ type Config struct {
 	HTTPTLSKeyFile    string `env:"HTTP_TLS_KEY_FILE"`
 	HTTPTLSClientAuth bool   `env:"HTTP_TLS_CLIENT_AUTH" envDefault:"false"`
 	HTTPTLSCAFile     string `env:"HTTP_TLS_CA_FILE"`
+
+	// ConnectTLS configuration.
+	ConnectTLSCertFile   string `env:"CONNECT_TLS_CERT_FILE"`
+	ConnectTLSKeyFile    string `env:"CONNECT_TLS_KEY_FILE"`
+	ConnectTLSClientAuth bool   `env:"CONNECT_TLS_CLIENT_AUTH" envDefault:"false"`
+	ConnectTLSCAFile     string `env:"CONNECT_TLS_CA_FILE"`
 
 	// OpenTelemetry configuration.
 	OtelEnabled  bool   `env:"OTEL_ENABLED"                envDefault:"false"`

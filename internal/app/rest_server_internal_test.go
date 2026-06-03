@@ -110,7 +110,7 @@ func commonAddStubCases() []addStubCase {
 func (s *RestServerTestSuite) SetupSuite() {
 	s.budgerigar = stuber.NewBudgerigar()
 	extender := &mockExtender{}
-	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil, nil)
+	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil, nil, nil)
 	s.Require().NoError(err)
 	s.server = server
 }
@@ -126,7 +126,7 @@ func (s *RestServerTestSuite) TestNewRestServer() {
 	budgerigar := stuber.NewBudgerigar()
 	extender := &mockExtender{}
 
-	server, err := NewRestServer(ctx, budgerigar, extender, nil, nil, nil)
+	server, err := NewRestServer(ctx, budgerigar, extender, nil, nil, nil, nil)
 	s.Require().NoError(err)
 	s.Require().NotNil(server)
 }
@@ -1601,7 +1601,7 @@ func (s *RestServerTestSuite) newRestServerWithHistory(records ...history.CallRe
 }
 
 func (s *RestServerTestSuite) newRestServerWithStore(store history.Reader) *RestServer {
-	server, err := NewRestServer(s.T().Context(), stuber.NewBudgerigar(), &mockExtender{}, store, nil, nil)
+	server, err := NewRestServer(s.T().Context(), stuber.NewBudgerigar(), &mockExtender{}, store, nil, nil, nil)
 	s.Require().NoError(err)
 
 	return server

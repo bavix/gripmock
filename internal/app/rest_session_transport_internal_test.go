@@ -22,7 +22,7 @@ func TestRestAddStubSessionFromHeaderOnly(t *testing.T) {
 
 	// Arrange
 	b := stuber.NewBudgerigar()
-	srv, err := NewRestServer(t.Context(), b, nopExtender{}, nil, nil, nil)
+	srv, err := NewRestServer(t.Context(), b, nopExtender{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	body := []byte(`[
@@ -50,7 +50,7 @@ func TestRestAddStubWithoutHeaderUsesGlobal(t *testing.T) {
 
 	// Arrange
 	b := stuber.NewBudgerigar()
-	srv, err := NewRestServer(t.Context(), b, nopExtender{}, nil, nil, nil)
+	srv, err := NewRestServer(t.Context(), b, nopExtender{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	body := []byte(`[

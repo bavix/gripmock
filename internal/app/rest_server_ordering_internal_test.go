@@ -12,7 +12,7 @@ import (
 func TestCollectAllServicesReturnsSortedServicesAndMethods(t *testing.T) {
 	t.Parallel()
 
-	server, err := NewRestServer(t.Context(), stuber.NewBudgerigar(), &mockExtender{}, nil, nil, nil)
+	server, err := NewRestServer(t.Context(), stuber.NewBudgerigar(), &mockExtender{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	services := server.collectAllServices()

@@ -83,6 +83,7 @@ func (b *Builder) RestServe(
 		historyReader,
 		b.StubValidator(),
 		b.DescriptorRegistry(),
+		b.ErrorFormatter(),
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create rest server")

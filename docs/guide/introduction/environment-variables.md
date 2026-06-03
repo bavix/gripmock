@@ -25,6 +25,16 @@ GripMock reads configuration from environment variables on startup.
 | `HTTP_PORT` | `4771` | HTTP bind port. |
 | `HTTP_ADDR` | `$HTTP_HOST:$HTTP_PORT` | Full HTTP bind address. |
 
+## ConnectRPC server <VersionTag version="3.14.0" />
+
+| Variable | Default | Description |
+|---|---|---|
+| `CONNECT_HOST` | `0.0.0.0` | ConnectRPC bind host. |
+| `CONNECT_PORT` | `4769` | ConnectRPC bind port. |
+| `CONNECT_ADDR` | `$CONNECT_HOST:$CONNECT_PORT` | Full ConnectRPC bind address. |
+
+ConnectRPC server provides unary RPC support over HTTP/1.1 and HTTP/2 (with or without TLS). It shares the same stub storage and descriptor registry as gRPC and REST servers.
+
 ## Stub watcher
 
 | Variable | Default | Description |
@@ -73,6 +83,15 @@ GripMock reads configuration from environment variables on startup.
 | `HTTP_TLS_KEY_FILE` | *(empty)* | HTTP server TLS private key file. |
 | `HTTP_TLS_CLIENT_AUTH` | `false` | Require client certs for HTTP (mTLS). |
 | `HTTP_TLS_CA_FILE` | *(empty)* | CA file for validating HTTP client certs. |
+
+## ConnectTLS <VersionTag version="3.14.0" />
+
+| Variable | Default | Description |
+|---|---|---|
+| `CONNECT_TLS_CERT_FILE` | *(empty)* | ConnectRPC server TLS certificate file. |
+| `CONNECT_TLS_KEY_FILE` | *(empty)* | ConnectRPC server TLS private key file. |
+| `CONNECT_TLS_CLIENT_AUTH` | `false` | Require client certs for ConnectRPC (mTLS). |
+| `CONNECT_TLS_CA_FILE` | *(empty)* | CA file for validating ConnectRPC client certs. |
 
 ## OpenTelemetry
 

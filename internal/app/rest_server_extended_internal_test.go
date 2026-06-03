@@ -26,7 +26,7 @@ type RestServerExtendedTestSuite struct {
 func (s *RestServerExtendedTestSuite) SetupSuite() {
 	s.budgerigar = stuber.NewBudgerigar()
 	extender := &mockExtender{}
-	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil, nil)
+	server, err := NewRestServer(s.T().Context(), s.budgerigar, extender, nil, nil, nil, nil)
 	s.Require().NoError(err)
 	s.server = server
 }

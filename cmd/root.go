@@ -61,6 +61,21 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 			}
 		}()
 
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					zerolog.Ctx(ctx).
+						Fatal().
+						Interface("panic", r).
+						Msg("Fatal panic in ConnectRPC server goroutine - terminating server")
+				}
+			}()
+
+			if err := builder.ConnectServe(ctx); err != nil {
+				zerolog.Ctx(ctx).Fatal().Err(err).Msg("Fatal error in ConnectRPC server - terminating server")
+			}
+		}()
+
 		defer builder.Shutdown(context.WithoutCancel(ctx))
 
 		// Parse arguments with per-proxy source bindings

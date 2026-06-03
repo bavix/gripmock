@@ -246,19 +246,20 @@ func receiveStreamMessage(stream grpc.ServerStream, msg *dynamicpb.Message) erro
 const serviceReflection = "grpc.reflection.v1.ServerReflection"
 
 type GRPCServer struct {
-	network      string
-	address      string
-	params       *protoloc.Arguments
-	budgerigar   *stuber.Budgerigar
-	healthState  stuber.Aliveness
-	waiter       Extender
-	recorder     history.Recorder
-	descriptors  *descriptors.Registry
-	remoteClient protosetdom.RemoteClient
-	tlsConfig    *tls.Config
-	proxies      *proxyroutes.Registry
-	otelEnabled  bool
-	validator    *validator.Validate
+	network        string
+	address        string
+	params         *protoloc.Arguments
+	budgerigar     *stuber.Budgerigar
+	healthState    stuber.Aliveness
+	waiter         Extender
+	recorder       history.Recorder
+	descriptors    *descriptors.Registry
+	remoteClient   protosetdom.RemoteClient
+	tlsConfig      *tls.Config
+	proxies        *proxyroutes.Registry
+	otelEnabled    bool
+	validator      *validator.Validate
+	errorFormatter *ErrorFormatter
 }
 
 type grpcMocker struct {
@@ -321,16 +322,20 @@ func (m *grpcMocker) streamHandler(srv any, stream grpc.ServerStream) error {
 			return err
 		}
 
-		if fallbackErr, ok := stderrors.AsType[*serverStreamFallbackError](err); ok {
+		var fallbackErr *FallbackError
+		if !stderrors.As(err, &fallbackErr) {
+			return m.proxyStream(stream, route, behavior.captureMiss())
+		}
+
+		switch fallbackErr.streamType {
+		case StreamTypeServer:
 			return m.proxyServerStreamWithRequest(stream, route, fallbackErr.request, behavior.captureMiss())
-		}
-
-		if fallbackErr, ok := stderrors.AsType[*clientStreamFallbackError](err); ok {
+		case StreamTypeClient:
 			return m.proxyClientStreamWithRequests(stream, route, fallbackErr.requests, behavior.captureMiss())
-		}
-
-		if fallbackErr, ok := stderrors.AsType[*bidiStreamFallbackError](err); ok {
+		case StreamTypeBidi:
 			return m.proxyBidiStreamWithRequests(stream, route, fallbackErr.requests, behavior.captureMiss())
+		case StreamTypeUnary:
+			return m.proxyStream(stream, route, behavior.captureMiss())
 		}
 
 		return m.proxyStream(stream, route, behavior.captureMiss())
@@ -518,7 +523,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	result, err = m.ensureServerStreamResult(query, result, err)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			return &serverStreamFallbackError{err: err, request: inputMsg}
+			return newServerStreamFallbackError(err, inputMsg)
 		}
 
 		return err
@@ -656,17 +661,18 @@ func (m *grpcMocker) handleArrayStreamData(
 		default:
 		}
 
-		outputData, ok := streamData.(map[string]any)
-		if !ok {
-			return status.Errorf(
-				codes.Internal,
-				"invalid data format in stream array at index %d: got %T, expected map[string]any",
-				i, streamData,
-			)
+		delay := found.Output.Delay
+		if perEventDelay, ok, _ := extractStreamDelay(streamData); ok {
+			delay = perEventDelay
 		}
 
-		if err := m.delay(stream.Context(), found.Output.Delay); err != nil {
+		if err := m.delay(stream.Context(), delay); err != nil {
 			return err
+		}
+
+		outputData, ok := extractStreamData(streamData)
+		if !ok {
+			return status.Errorf(codes.Internal, "invalid data format in stream array at index %d", i)
 		}
 
 		outputDataCopy := deepCopyMapAny(outputData)
@@ -938,7 +944,8 @@ func (m *grpcMocker) handleUnaryWithProxy(ctx context.Context, req *dynamicpb.Me
 
 	resp, err := m.handleUnary(ctx, req)
 
-	if _, ok := stderrors.AsType[*unaryStubMissError](err); !ok {
+	var fallbackErr *FallbackError
+	if !stderrors.As(err, &fallbackErr) || fallbackErr.streamType != StreamTypeUnary {
 		return resp, err
 	}
 
@@ -975,14 +982,12 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 
 	// Handle both error and nil result cases with unified error formatting
 	if err != nil || (result != nil && result.Found() == nil) {
-		errorFormatter := NewErrorFormatter()
-
 		// Create empty result if we don't have one (error case)
 		if result == nil {
 			result = &stuber.Result{}
 		}
 
-		return nil, &unaryStubMissError{err: status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundError(query, result).Error())}
+		return nil, newUnaryFallbackError(status.Error(codes.NotFound, m.errorFormatter.FormatStubNotFoundError(query, result).Error()))
 	}
 
 	found := result.Found()
@@ -1305,7 +1310,7 @@ func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 	found, err := m.tryFindStub(stream, messages)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
-			return &clientStreamFallbackError{err: err, requests: originalMessages}
+			return newClientStreamFallbackError(err, originalMessages)
 		}
 
 		return err
@@ -1345,9 +1350,6 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 	result, foundErr := m.tryV2API(messages, md)
 
 	if foundErr != nil || result == nil || result.Found() == nil {
-		// Use error formatter to include "Closest Match" details
-		errorFormatter := NewErrorFormatter()
-
 		// Build query for error formatting
 		query := stuber.Query{
 			Service:       m.fullServiceName,
@@ -1365,7 +1367,7 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 			result = &stuber.Result{}
 		}
 
-		errMsg := errorFormatter.FormatStubNotFoundError(query, result).Error()
+		errMsg := m.errorFormatter.FormatStubNotFoundError(query, result).Error()
 
 		return nil, status.Error(codes.NotFound, errMsg)
 	}
@@ -1447,8 +1449,6 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 
 	bidiResult, err := m.budgerigar.FindByQueryBidi(queryBidi)
 	if err != nil {
-		errorFormatter := NewErrorFormatter()
-
 		query := stuber.Query{
 			Service: m.fullServiceName,
 			Method:  m.methodName,
@@ -1461,7 +1461,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 
 		result := &stuber.Result{}
 
-		return status.Error(codes.NotFound, errorFormatter.FormatStubNotFoundError(query, result).Error())
+		return status.Error(codes.NotFound, m.errorFormatter.FormatStubNotFoundError(query, result).Error())
 	}
 
 	recordingStream := &bidiRecordingStream{
@@ -1487,7 +1487,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			m.recordBidiStream(recordingStream, bidiResult, requestTime, err.Error())
 
 			if status.Code(err) == codes.NotFound {
-				return &bidiStreamFallbackError{err: err, requests: []*dynamicpb.Message{inputMsg}}
+				return newBidiStreamFallbackError(err, []*dynamicpb.Message{inputMsg})
 			}
 
 			return err //nolint:wrapcheck
@@ -1512,7 +1512,7 @@ func (m *grpcMocker) processBidiStreamMessageImpl(
 	if err != nil {
 		wrappedErr := errors.Wrap(err, "failed to process bidirectional message")
 		if errors.Is(err, stuber.ErrStubNotFound) {
-			return &bidiStreamFallbackError{err: wrappedErr, requests: []*dynamicpb.Message{inputMsg}}
+			return newBidiStreamFallbackError(wrappedErr, []*dynamicpb.Message{inputMsg})
 		}
 
 		return wrappedErr
@@ -1681,6 +1681,7 @@ func NewGRPCServer(
 	remoteClient protosetdom.RemoteClient,
 	otelEnabled bool,
 	stubValidator *validator.Validate,
+	errorFormatter *ErrorFormatter,
 ) *GRPCServer {
 	registry := descriptorRegistry
 	if registry == nil {
@@ -1692,24 +1693,30 @@ func NewGRPCServer(
 		v = mustNewStubValidator()
 	}
 
+	e := errorFormatter
+	if e == nil {
+		e = NewErrorFormatter()
+	}
+
 	var healthState stuber.Aliveness
 	if budgerigar != nil {
 		healthState = budgerigar
 	}
 
 	return &GRPCServer{
-		network:      network,
-		address:      address,
-		params:       params,
-		budgerigar:   budgerigar,
-		healthState:  healthState,
-		waiter:       waiter,
-		recorder:     recorder,
-		descriptors:  registry,
-		remoteClient: remoteClient,
-		tlsConfig:    tlsConfig,
-		otelEnabled:  otelEnabled,
-		validator:    v,
+		network:        network,
+		address:        address,
+		params:         params,
+		budgerigar:     budgerigar,
+		healthState:    healthState,
+		waiter:         waiter,
+		recorder:       recorder,
+		descriptors:    registry,
+		remoteClient:   remoteClient,
+		tlsConfig:      tlsConfig,
+		otelEnabled:    otelEnabled,
+		validator:      v,
+		errorFormatter: e,
 	}
 }
 
@@ -1977,7 +1984,7 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 	mocker := &grpcMocker{
 		budgerigar:         s.budgerigar,
 		templateEngine:     templateEngine,
-		errorFormatter:     NewErrorFormatter(),
+		errorFormatter:     s.errorFormatter,
 		recorder:           s.recorder,
 		descriptorResolver: &dynamicDescriptorResolver{static: protoregistry.GlobalFiles, dynamic: s.descriptors},
 		proxies:            s.proxies,
@@ -2283,7 +2290,7 @@ func (s *GRPCServer) createGrpcMocker(
 	return &grpcMocker{
 		budgerigar:         s.budgerigar,
 		templateEngine:     templateEngine,
-		errorFormatter:     NewErrorFormatter(),
+		errorFormatter:     s.errorFormatter,
 		recorder:           s.recorder,
 		descriptorResolver: resolver,
 		proxies:            s.proxies,
