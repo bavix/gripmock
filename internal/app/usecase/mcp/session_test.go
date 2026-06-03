@@ -14,7 +14,7 @@ func TestToolUsesSession(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	tools := []string{"history.list", "history.errors", "debug.call"}
+	tools := []string{"history_list", "history_errors", "debug_call"}
 
 	for _, tool := range tools {
 		// Act
@@ -29,7 +29,7 @@ func TestToolUsesSessionFalseForOtherTools(t *testing.T) {
 	t.Parallel()
 
 	// Act
-	usesSession := mcpusecase.ToolUsesSession("services.list")
+	usesSession := mcpusecase.ToolUsesSession("services_list")
 
 	// Assert
 	require.False(t, usesSession)
@@ -43,7 +43,7 @@ func TestApplyTransportSessionInjectsHeaderSession(t *testing.T) {
 	req.Header.Set("X-Gripmock-Session", "A")
 
 	// Act
-	args := mcpusecase.ApplyTransportSession(req, "history.list", map[string]any{"service": "svc"})
+	args := mcpusecase.ApplyTransportSession(req, "history_list", map[string]any{"service": "svc"})
 
 	// Assert
 	require.Equal(t, "A", args["session"])
@@ -57,7 +57,7 @@ func TestApplyTransportSessionDoesNotOverrideExplicitSession(t *testing.T) {
 	req.Header.Set("X-Gripmock-Session", "A")
 
 	// Act
-	args := mcpusecase.ApplyTransportSession(req, "history.list", map[string]any{"session": "B"})
+	args := mcpusecase.ApplyTransportSession(req, "history_list", map[string]any{"session": "B"})
 
 	// Assert
 	require.Equal(t, "B", args["session"])
@@ -71,7 +71,7 @@ func TestApplyTransportSessionSkipsUnsupportedTool(t *testing.T) {
 	req.Header.Set("X-Gripmock-Session", "A")
 
 	// Act
-	args := mcpusecase.ApplyTransportSession(req, "services.list", map[string]any{"x": 1})
+	args := mcpusecase.ApplyTransportSession(req, "services_list", map[string]any{"x": 1})
 
 	// Assert
 	_, hasSession := args["session"]

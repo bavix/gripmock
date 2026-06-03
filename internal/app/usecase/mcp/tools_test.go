@@ -79,7 +79,7 @@ func TestListToolsDebugCallRequiresService(t *testing.T) {
 		return
 	}
 
-	t.Fatal("debug.call tool not found")
+	t.Fatal("debug_call tool not found")
 }
 
 func TestListRuntimeToolsContainsStubAndInspectTools(t *testing.T) {
