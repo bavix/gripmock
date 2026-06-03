@@ -16,7 +16,7 @@ func (s *RestServerTestSuite) TestMCPStubsUpsertAllowsProtectedHealthServiceDefi
 	}
 
 	// Act
-	response := s.mcpToolCall(s.server, 1001, "stubs.upsert", payload)
+	response := s.mcpToolCall(s.server, 1001, "stubs_upsert", payload)
 
 	// Assert
 	structured := s.mcpStructuredContent(response)

@@ -2,7 +2,7 @@ package app
 
 func (s *RestServerTestSuite) TestMCPStubsLifecycle() {
 	// Arrange
-	upsert := s.mcpToolCall(s.server, 1, "stubs.upsert", map[string]any{
+	upsert := s.mcpToolCall(s.server, 1, "stubs_upsert", map[string]any{
 		"stubs": map[string]any{
 			"service": "unitconverter.v1.UnitConversionService",
 			"method":  "ConvertWeight",
@@ -20,18 +20,18 @@ func (s *RestServerTestSuite) TestMCPStubsLifecycle() {
 	s.Require().True(ok)
 
 	// Act
-	listed := s.mcpToolCall(s.server, 2, "stubs.list", map[string]any{"service": "unitconverter.v1.UnitConversionService"})
+	listed := s.mcpToolCall(s.server, 2, "stubs_list", map[string]any{"service": "unitconverter.v1.UnitConversionService"})
 	listedJSON := s.mcpStructuredContent(listed)
 	stubs, ok := listedJSON["stubs"].([]any)
 	s.Require().True(ok)
 
-	got := s.mcpToolCall(s.server, 3, "stubs.get", map[string]any{"id": id})
+	got := s.mcpToolCall(s.server, 3, "stubs_get", map[string]any{"id": id})
 	gotJSON := s.mcpStructuredContent(got)
 
-	deleted := s.mcpToolCall(s.server, 4, "stubs.delete", map[string]any{"id": id})
+	deleted := s.mcpToolCall(s.server, 4, "stubs_delete", map[string]any{"id": id})
 	deletedJSON := s.mcpStructuredContent(deleted)
 
-	gotAfterDelete := s.mcpToolCall(s.server, 5, "stubs.get", map[string]any{"id": id})
+	gotAfterDelete := s.mcpToolCall(s.server, 5, "stubs_get", map[string]any{"id": id})
 	gotAfterDeleteJSON := s.mcpStructuredContent(gotAfterDelete)
 
 	// Assert
@@ -43,7 +43,7 @@ func (s *RestServerTestSuite) TestMCPStubsLifecycle() {
 
 func (s *RestServerTestSuite) TestMCPStubsBatchDeleteAndPurge() {
 	// Arrange
-	first := s.mcpToolCall(s.server, 1, "stubs.upsert", map[string]any{
+	first := s.mcpToolCall(s.server, 1, "stubs_upsert", map[string]any{
 		"stubs": map[string]any{
 			"service": "svc",
 			"method":  "M1",
@@ -56,7 +56,7 @@ func (s *RestServerTestSuite) TestMCPStubsBatchDeleteAndPurge() {
 	s.Require().True(ok)
 	s.Require().Len(firstIDs, 1)
 
-	second := s.mcpToolCall(s.server, 2, "stubs.upsert", map[string]any{
+	second := s.mcpToolCall(s.server, 2, "stubs_upsert", map[string]any{
 		"stubs": map[string]any{
 			"service": "svc",
 			"method":  "M2",
@@ -70,15 +70,15 @@ func (s *RestServerTestSuite) TestMCPStubsBatchDeleteAndPurge() {
 	s.Require().Len(secondIDs, 1)
 
 	// Act
-	batch := s.mcpToolCall(s.server, 3, "stubs.batchDelete", map[string]any{
+	batch := s.mcpToolCall(s.server, 3, "stubs_batch_delete", map[string]any{
 		"ids": []any{firstIDs[0], "00000000-0000-0000-0000-000000000099"},
 	})
 	batchJSON := s.mcpStructuredContent(batch)
 
-	purge := s.mcpToolCall(s.server, 4, "stubs.purge", map[string]any{})
+	purge := s.mcpToolCall(s.server, 4, "stubs_purge", map[string]any{})
 	purgeJSON := s.mcpStructuredContent(purge)
 
-	listAfter := s.mcpToolCall(s.server, 5, "stubs.list", map[string]any{})
+	listAfter := s.mcpToolCall(s.server, 5, "stubs_list", map[string]any{})
 	listAfterJSON := s.mcpStructuredContent(listAfter)
 	deletedIDs, ok := batchJSON["deletedIds"].([]any)
 	s.Require().True(ok)
@@ -99,7 +99,7 @@ func (s *RestServerTestSuite) TestMCPStubsBatchDeleteAndPurge() {
 
 func (s *RestServerTestSuite) TestMCPStubsSearch() {
 	// Arrange
-	s.mcpToolCall(s.server, 1, "stubs.upsert", map[string]any{
+	s.mcpToolCall(s.server, 1, "stubs_upsert", map[string]any{
 		"stubs": map[string]any{
 			"service": "svc",
 			"method":  "Say",
@@ -109,14 +109,14 @@ func (s *RestServerTestSuite) TestMCPStubsSearch() {
 	})
 
 	// Act
-	found := s.mcpToolCall(s.server, 2, "stubs.search", map[string]any{
+	found := s.mcpToolCall(s.server, 2, "stubs_search", map[string]any{
 		"service": "svc",
 		"method":  "Say",
 		"payload": map[string]any{"name": "john"},
 	})
 	foundJSON := s.mcpStructuredContent(found)
 
-	notFound := s.mcpToolCall(s.server, 3, "stubs.search", map[string]any{
+	notFound := s.mcpToolCall(s.server, 3, "stubs_search", map[string]any{
 		"service": "svc",
 		"method":  "Say",
 		"payload": map[string]any{"name": "alice"},
@@ -141,7 +141,7 @@ func (s *RestServerTestSuite) TestMCPInfoIncludesTools() {
 
 func (s *RestServerTestSuite) TestMCPSchemaStub() {
 	// Act
-	response := s.mcpToolCall(s.server, 20, "schema.stub", map[string]any{})
+	response := s.mcpToolCall(s.server, 20, "schema_stub", map[string]any{})
 	structured := s.mcpStructuredContent(response)
 
 	// Assert

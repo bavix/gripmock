@@ -444,12 +444,12 @@ func (s *RestServerTestSuite) TestMcpMessageDescriptorsLifecycle() {
 	})
 	s.Contains(initResp, "result")
 
-	addResp := s.mcpToolCall(s.server, 2, "descriptors.add", map[string]any{
+	addResp := s.mcpToolCall(s.server, 2, "descriptors_add", map[string]any{
 		"descriptorSetBase64": base64.StdEncoding.EncodeToString(body),
 	})
 	s.NotContains(addResp, "error")
 
-	listResp := s.mcpToolCall(s.server, 3, "descriptors.list", map[string]any{})
+	listResp := s.mcpToolCall(s.server, 3, "descriptors_list", map[string]any{})
 
 	structured := s.mcpStructuredContent(listResp)
 	_, ok := structured["serviceIDs"]
@@ -487,7 +487,7 @@ func (s *RestServerTestSuite) TestMcpMessageHistoryTools() {
 		history.CallRecord{Service: "svc", Method: "B", Error: "kaboom"},
 	)
 
-	listResp := s.mcpToolCall(server, 1, "history.list", map[string]any{
+	listResp := s.mcpToolCall(server, 1, "history_list", map[string]any{
 		"service": "svc",
 		"method":  "B",
 		"limit":   1,
@@ -498,7 +498,7 @@ func (s *RestServerTestSuite) TestMcpMessageHistoryTools() {
 	s.Require().True(ok)
 	s.Len(records, 1)
 
-	errorResp := s.mcpToolCall(server, 2, "history.errors", map[string]any{"limit": 1})
+	errorResp := s.mcpToolCall(server, 2, "history_errors", map[string]any{"limit": 1})
 
 	errorJSON := s.mcpStructuredContent(errorResp)
 	errorRecords, ok := errorJSON["records"].([]any)
@@ -527,7 +527,7 @@ func (s *RestServerTestSuite) TestMcpToolsListIncludesExpandedSurface() {
 		names[name] = struct{}{}
 	}
 
-	for _, required := range []string{"health.liveness", "dashboard.full", "services.get", "verify.calls", "stubs.inspect"} {
+	for _, required := range []string{"health_liveness", "dashboard_full", "services_get", "verify_calls", "stubs_inspect"} {
 		_, ok = names[required]
 		s.True(ok)
 	}
@@ -539,7 +539,7 @@ func (s *RestServerTestSuite) TestMcpVerifyCallsTool() {
 		history.CallRecord{Service: "svc", Method: "M", Session: "A"},
 	)
 
-	okResponse := s.mcpToolCallWithRequest(server, 1, "verify.calls", map[string]any{
+	okResponse := s.mcpToolCallWithRequest(server, 1, "verify_calls", map[string]any{
 		"service":       "svc",
 		"method":        "M",
 		"expectedCount": 2,
@@ -552,7 +552,7 @@ func (s *RestServerTestSuite) TestMcpVerifyCallsTool() {
 	s.Require().True(ok)
 	s.True(verified)
 
-	badResponse := s.mcpToolCall(server, 2, "verify.calls", map[string]any{
+	badResponse := s.mcpToolCall(server, 2, "verify_calls", map[string]any{
 		"service":       "svc",
 		"method":        "M",
 		"expectedCount": 1,
@@ -565,7 +565,7 @@ func (s *RestServerTestSuite) TestMcpVerifyCallsTool() {
 }
 
 func (s *RestServerTestSuite) TestMcpServicesGetTool() {
-	listResponse := s.mcpToolCall(s.server, 1, "services.list", map[string]any{})
+	listResponse := s.mcpToolCall(s.server, 1, "services_list", map[string]any{})
 	listJSON := s.mcpStructuredContent(listResponse)
 
 	services, ok := listJSON["services"].([]any)
@@ -579,7 +579,7 @@ func (s *RestServerTestSuite) TestMcpServicesGetTool() {
 	s.Require().True(ok)
 	s.Require().NotEmpty(serviceID)
 
-	getResponse := s.mcpToolCall(s.server, 2, "services.get", map[string]any{"serviceID": serviceID})
+	getResponse := s.mcpToolCall(s.server, 2, "services_get", map[string]any{"serviceID": serviceID})
 	getJSON := s.mcpStructuredContent(getResponse)
 
 	service, ok := getJSON["service"].(map[string]any)
@@ -588,7 +588,7 @@ func (s *RestServerTestSuite) TestMcpServicesGetTool() {
 }
 
 func (s *RestServerTestSuite) TestMcpGripmockInfoTool() {
-	response := s.mcpToolCall(s.server, 1, "gripmock.info", map[string]any{})
+	response := s.mcpToolCall(s.server, 1, "gripmock_info", map[string]any{})
 	payload := s.mcpStructuredContent(response)
 
 	_, ok := payload["appName"].(string)
@@ -607,7 +607,7 @@ func (s *RestServerTestSuite) TestMcpGripmockInfoTool() {
 }
 
 func (s *RestServerTestSuite) TestMcpHealthStatusTool() {
-	response := s.mcpToolCall(s.server, 1, "health.status", map[string]any{})
+	response := s.mcpToolCall(s.server, 1, "health_status", map[string]any{})
 	payload := s.mcpStructuredContent(response)
 
 	liveness, ok := payload["liveness"].(string)
@@ -622,7 +622,7 @@ func (s *RestServerTestSuite) TestMcpHealthStatusTool() {
 }
 
 func (s *RestServerTestSuite) TestMcpReflectInfoTool() {
-	response := s.mcpToolCall(s.server, 1, "reflect.info", map[string]any{})
+	response := s.mcpToolCall(s.server, 1, "reflect_info", map[string]any{})
 	payload := s.mcpStructuredContent(response)
 
 	_, ok := payload["runtimeDescriptorFiles"].(float64)
@@ -639,7 +639,7 @@ func (s *RestServerTestSuite) TestMcpReflectInfoTool() {
 }
 
 func (s *RestServerTestSuite) TestMcpReflectSourcesTool() {
-	response := s.mcpToolCall(s.server, 1, "reflect.sources", map[string]any{"kind": "all", "offset": 0, "limit": 10})
+	response := s.mcpToolCall(s.server, 1, "reflect_sources", map[string]any{"kind": "all", "offset": 0, "limit": 10})
 	payload := s.mcpStructuredContent(response)
 
 	kind, ok := payload["kind"].(string)
@@ -668,7 +668,7 @@ func (s *RestServerTestSuite) TestMcpReflectSourcesTool() {
 }
 
 func (s *RestServerTestSuite) TestMcpReflectSourcesInvalidKind() {
-	response := s.mcpToolCall(s.server, 1, "reflect.sources", map[string]any{"kind": "unexpected"})
+	response := s.mcpToolCall(s.server, 1, "reflect_sources", map[string]any{"kind": "unexpected"})
 
 	errorPayload, ok := response["error"].(map[string]any)
 	s.Require().True(ok)
@@ -679,11 +679,11 @@ func (s *RestServerTestSuite) TestMcpReflectSourcesInvalidKind() {
 }
 
 func (s *RestServerTestSuite) TestMcpReflectSourcesPagination() {
-	_ = s.mcpToolCall(s.server, 1, "descriptors.add", map[string]any{
+	_ = s.mcpToolCall(s.server, 1, "descriptors_add", map[string]any{
 		"descriptorSetBase64": base64.StdEncoding.EncodeToString(s.greeterDescriptorSetBytes()),
 	})
 
-	response := s.mcpToolCall(s.server, 2, "reflect.sources", map[string]any{"kind": "dynamic", "offset": 0, "limit": 1})
+	response := s.mcpToolCall(s.server, 2, "reflect_sources", map[string]any{"kind": "dynamic", "offset": 0, "limit": 1})
 	payload := s.mcpStructuredContent(response)
 
 	total, ok := payload["total"].(float64)
@@ -726,12 +726,12 @@ func (s *RestServerTestSuite) TestMcpSmokeFlow() {
 	s.Require().True(ok)
 	s.NotEmpty(tools)
 
-	addDescriptorsResponse := s.mcpToolCall(server, 3, "descriptors.add", map[string]any{
+	addDescriptorsResponse := s.mcpToolCall(server, 3, "descriptors_add", map[string]any{
 		"descriptorSetBase64": base64.StdEncoding.EncodeToString(s.greeterDescriptorSetBytes()),
 	})
 	s.NotContains(addDescriptorsResponse, "error")
 
-	upsertResponse := s.mcpToolCall(server, 4, "stubs.upsert", map[string]any{
+	upsertResponse := s.mcpToolCall(server, 4, "stubs_upsert", map[string]any{
 		"stubs": map[string]any{
 			"service": "svc",
 			"method":  "M",
@@ -741,13 +741,13 @@ func (s *RestServerTestSuite) TestMcpSmokeFlow() {
 	})
 	s.NotContains(upsertResponse, "error")
 
-	historyResponse := s.mcpToolCall(server, 5, "history.list", map[string]any{"service": "svc", "method": "M", "limit": 10})
+	historyResponse := s.mcpToolCall(server, 5, "history_list", map[string]any{"service": "svc", "method": "M", "limit": 10})
 	historyPayload := s.mcpStructuredContent(historyResponse)
 	records, ok := historyPayload["records"].([]any)
 	s.Require().True(ok)
 	s.NotEmpty(records)
 
-	verifyResponse := s.mcpToolCall(server, 6, "verify.calls", map[string]any{"service": "svc", "method": "M", "expectedCount": 1})
+	verifyResponse := s.mcpToolCall(server, 6, "verify_calls", map[string]any{"service": "svc", "method": "M", "expectedCount": 1})
 	verifyPayload := s.mcpStructuredContent(verifyResponse)
 	verified, ok := verifyPayload["verified"].(bool)
 	s.Require().True(ok)
@@ -768,7 +768,7 @@ func (s *RestServerTestSuite) TestMcpDebugCallTool() {
 
 	s.addStubJSON(server, stubData)
 
-	response := s.mcpToolCall(server, 1, "debug.call", map[string]any{
+	response := s.mcpToolCall(server, 1, "debug_call", map[string]any{
 		"service": "svc.Greeter",
 		"method":  "SayHello",
 		"limit":   5,
@@ -786,7 +786,7 @@ func (s *RestServerTestSuite) TestMcpDebugCallTool() {
 }
 
 func (s *RestServerTestSuite) TestMcpToolCallReturnsStructuredContent() {
-	response := s.mcpToolCall(s.server, 1, "descriptors.list", map[string]any{})
+	response := s.mcpToolCall(s.server, 1, "descriptors_list", map[string]any{})
 
 	result, ok := response["result"].(map[string]any)
 	s.Require().True(ok)
@@ -808,12 +808,12 @@ func (s *RestServerTestSuite) TestMcpToolCallReturnsStructuredContent() {
 }
 
 func (s *RestServerTestSuite) TestMcpToolCallInvalidParamsCode() {
-	response := s.mcpToolCall(s.server, 1, "history.list", map[string]any{"limit": -1})
+	response := s.mcpToolCall(s.server, 1, "history_list", map[string]any{"limit": -1})
 	s.InDelta(float64(-32602), s.mcpErrorCode(response), 0.0)
 }
 
 func (s *RestServerTestSuite) TestMcpToolCallUnknownToolCode() {
-	response := s.mcpToolCall(s.server, 1, "unknown.tool", map[string]any{})
+	response := s.mcpToolCall(s.server, 1, "unknown_tool", map[string]any{})
 	s.InDelta(float64(-32602), s.mcpErrorCode(response), 0.0)
 }
 
@@ -866,7 +866,7 @@ func (s *RestServerTestSuite) TestMcpHistoryList_SessionScoping() {
 			server := s.newRestServerWithSessionHistory()
 
 			// Act
-			response := s.mcpToolCallWithRequest(server, 1, "history.list", tt.arguments, tt.prepareRequest)
+			response := s.mcpToolCallWithRequest(server, 1, "history_list", tt.arguments, tt.prepareRequest)
 
 			// Assert
 			structured := s.mcpStructuredContent(response)
@@ -909,11 +909,11 @@ func (s *RestServerTestSuite) TestMcpDebugCall_SessionScoping() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			// Arrange
-			server := s.newRestServerWithHistory()
+			server := s.newRestServerWithHistory(history.CallRecord{Service: "svc.Greeter", Method: "SayHello", Error: "not matched"})
 			s.addDebugScopeStubs(server)
 
 			// Act
-			response := s.mcpToolCallWithRequest(server, 1, "debug.call", tt.arguments, tt.prepareRequest)
+			response := s.mcpToolCallWithRequest(server, 1, "debug_call", tt.arguments, tt.prepareRequest)
 
 			// Assert
 			structured := s.mcpStructuredContent(response)

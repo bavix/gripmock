@@ -21,16 +21,16 @@ The header session is injected by middleware into MCP tool execution context.
 
 Use `tools/list` to discover runtime tool metadata. Current tool surface:
 
-- health: `health.liveness`, `health.readiness`, `health.status`
-- dashboard: `dashboard.full`, `dashboard.overview`, `dashboard.info`
-- sessions: `sessions.list`
-- gripmock: `gripmock.info`
-- reflection: `reflect.info`, `reflect.sources`
-- descriptors: `descriptors.add`, `descriptors.list`
-- services: `services.list`, `services.get`, `services.methods`, `services.method`, `services.delete`
-- history/verify/debug: `history.list`, `history.errors`, `verify.calls`, `debug.call`
-- stubs: `stubs.upsert`, `stubs.list`, `stubs.get`, `stubs.delete`, `stubs.batchDelete`, `stubs.purge`, `stubs.search`, `stubs.inspect`, `stubs.used`, `stubs.unused`
-- schema: `schema.stub`
+- health: `health_liveness`, `health_readiness`, `health_status`
+- dashboard: `dashboard_full`, `dashboard_overview`, `dashboard_info`
+- sessions: `sessions_list`
+- gripmock: `gripmock_info`
+- reflection: `reflect_info`, `reflect_sources`
+- descriptors: `descriptors_add`, `descriptors_list`
+- services: `services_list`, `services_get`, `services_methods`, `services_method`, `services_delete`
+- history/verify/debug: `history_list`, `history_errors`, `verify_calls`, `debug_call`
+- stubs: `stubs_upsert`, `stubs_list`, `stubs_get`, `stubs_delete`, `stubs_batch_delete`, `stubs_purge`, `stubs_search`, `stubs_inspect`, `stubs_used`, `stubs_unused`
+- schema: `schema_stub`
 
 ## JSON-RPC examples
 
@@ -63,7 +63,7 @@ List tools:
 }
 ```
 
-Call tool (`stubs.upsert`):
+Call tool (`stubs_upsert`):
 
 ```json
 {
@@ -71,7 +71,7 @@ Call tool (`stubs.upsert`):
   "id": 10,
   "method": "tools/call",
   "params": {
-    "name": "stubs.upsert",
+    "name": "stubs_upsert",
     "arguments": {
       "stubs": {
         "service": "unitconverter.v1.UnitConversionService",
@@ -94,7 +94,7 @@ Call tool (`stubs.upsert`):
 }
 ```
 
-Call tool (`stubs.inspect`):
+Call tool (`stubs_inspect`):
 
 ```json
 {
@@ -102,7 +102,7 @@ Call tool (`stubs.inspect`):
   "id": 11,
   "method": "tools/call",
   "params": {
-    "name": "stubs.inspect",
+    "name": "stubs_inspect",
     "arguments": {
       "service": "unitconverter.v1.UnitConversionService",
       "method": "ConvertWeight",
@@ -118,7 +118,7 @@ Call tool (`stubs.inspect`):
 }
 ```
 
-Call tool (`reflect.sources`) with filtering/pagination:
+Call tool (`reflect_sources`) with filtering/pagination:
 
 ```json
 {
@@ -126,7 +126,7 @@ Call tool (`reflect.sources`) with filtering/pagination:
   "id": 12,
   "method": "tools/call",
   "params": {
-    "name": "reflect.sources",
+    "name": "reflect_sources",
     "arguments": {
       "kind": "dynamic",
       "offset": 0,
