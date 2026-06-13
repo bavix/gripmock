@@ -439,6 +439,95 @@ curl http://localhost:8080/v1/weather/current
 }
 ```
 
+## 7. Methods that Return a WKT Directly <VersionTag version="v3.10.0" />
+
+When a method returns a well-known type **at the top level** (e.g. `rpc GetNow(...) returns (google.protobuf.Timestamp);`),
+the stub `data` mirrors the canonical protojson encoding of that WKT — a scalar, not the proto-wire "object" form. The
+same encoder that turns `Timestamp{seconds:..., nanos:...}` into an RFC3339 string also accepts the string back; gripmock
+relies on that round-trip rather than reimplementing it.
+
+### Syntax
+
+```proto
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+service DirectService {
+  rpc GetNow(google.protobuf.Empty)        returns (google.protobuf.Timestamp)    {}
+  rpc GetTimeout(google.protobuf.Empty)    returns (google.protobuf.Duration)     {}
+  rpc GetCount(google.protobuf.Empty)      returns (google.protobuf.Int32Value)   {}
+  rpc GetConfig(google.protobuf.Empty)     returns (google.protobuf.Struct)       {}
+}
+```
+
+### Key Rules
+
+- `google.protobuf.Timestamp` → **RFC3339 string** (e.g. `"2024-01-01T12:00:00Z"`)
+- `google.protobuf.Duration`  → **duration string** (e.g. `"1.5s"`, `"330s"`)
+- `google.protobuf.StringValue` → **string**
+- `google.protobuf.{Int32,Int64,UInt32,UInt64,SInt32,SInt64,Fixed32,Fixed64,SFixed32,SFixed64,Float,Double}Value` → **number**
+- `google.protobuf.BoolValue`  → **boolean**
+- `google.protobuf.BytesValue` → **base64 string**
+- `google.protobuf.Struct`     → **object** (a plain JSON object)
+- `google.protobuf.Empty`      → **`{}`**
+
+### Example: Direct WKT Returns
+
+**Stub Configuration (`wkt_direct.yaml`):**
+```yaml
+- service: DirectService
+  method: GetNow
+  input:
+    equals: {}
+  output:
+    data: "2024-01-01T12:00:00Z"
+
+- service: DirectService
+  method: GetTimeout
+  input:
+    equals: {}
+  output:
+    data: "1.5s"
+
+- service: DirectService
+  method: GetCount
+  input:
+    equals: {}
+  output:
+    data: 42
+
+- service: DirectService
+  method: GetConfig
+  input:
+    equals: {}
+  output:
+    data:
+      region: "us-east-1"
+      retries: 3
+```
+
+**Test Commands:**
+```sh
+grpcurl -plaintext localhost:4770 wkt.DirectService/GetNow
+grpcurl -plaintext localhost:4770 wkt.DirectService/GetTimeout
+grpcurl -plaintext localhost:4770 wkt.DirectService/GetCount
+grpcurl -plaintext localhost:4770 wkt.DirectService/GetConfig
+```
+
+**Output:**
+```json
+"2024-01-01T12:00:00Z"
+"1.500s"
+42
+{ "region": "us-east-1", "retries": 3 }
+```
+
+See the [`wkt_direct`](https://github.com/bavix/gripmock/tree/master/examples/types/well-known-types) example for a full
+working setup.
+
 ## Best Practices
 1. **Timestamp/Duration**:
    - Always use UTC for `Timestamp`.
@@ -463,6 +552,9 @@ curl http://localhost:8080/v1/weather/current
 - **Wrapper Defaults**: `null` vs. `0`/`""` distinctions must be documented.
 - **Date Validity**: Invalid dates like `2023-02-30` will cause errors
 - **Time Zone Assumptions**: Always document expected timezone context
+- **Direct WKT Return**: When a method returns a WKT, the stub `data` must be the **canonical protojson** form
+  (RFC3339 string for `Timestamp`, `"1.5s"` for `Duration`, a plain object for `Struct`) — never the proto-wire
+  `seconds`/`nanos` shape.
 
 ## Further Reading
 - [Well-Known Types Reference](https://protobuf.dev/reference/protobuf/google.protobuf/)

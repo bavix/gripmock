@@ -67,7 +67,7 @@ func TestBuilderCleanupExpiredSessionsDoesNotDeleteGlobalSession(t *testing.T) {
 	all := b.Budgerigar().All()
 	require.Len(t, all, 1)
 	require.Empty(t, all[0].Session)
-	require.Equal(t, "GLOBAL", all[0].Output.Data["message"])
+	require.Equal(t, "GLOBAL", all[0].Output.Data.(map[string]any)["message"])
 
 	records := b.HistoryStore().All()
 	require.Len(t, records, 1)

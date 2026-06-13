@@ -75,7 +75,12 @@ func (s *mockableHealthServer) Check(
 		return nil, st.Err()
 	}
 
-	healthStatus, err := healthStatusFromMap(stub.Output.Data)
+	data, ok := stub.Output.Data.(map[string]any)
+	if !ok {
+		return nil, status.Error(codes.Internal, "health stub output.data must be an object")
+	}
+
+	healthStatus, err := healthStatusFromMap(data)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +231,7 @@ func (s *mockableHealthServer) proxyWatch(
 		}
 	}
 
-	responses := make([]map[string]any, 0, proxyMessagesInitCap)
+	responses := make([]any, 0, proxyMessagesInitCap)
 
 	for {
 		resp, recvErr := clientStream.Recv()
@@ -260,8 +265,8 @@ func (s *mockableHealthServer) captureProxyHealthStub(
 	ctx context.Context,
 	req *healthgrpc.HealthCheckRequest,
 	method string,
-	response map[string]any,
-	responses []map[string]any,
+	response any,
+	responses []any,
 	callErr error,
 	responseHeaders map[string]string,
 	route *proxyroutes.Route,
@@ -289,8 +294,8 @@ func (s *mockableHealthServer) buildHealthStub(
 	method string,
 	md metadata.MD,
 	req *healthgrpc.HealthCheckRequest,
-	response map[string]any,
-	responses []map[string]any,
+	response any,
+	responses []any,
 	responseHeaders map[string]string,
 	callErr error,
 ) *stuber.Stub {

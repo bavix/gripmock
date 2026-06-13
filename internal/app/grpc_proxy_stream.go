@@ -57,7 +57,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 		}
 	}
 
-	responses := make([]map[string]any, 0, proxyMessagesInitCap)
+	responses := make([]any, 0, proxyMessagesInitCap)
 	captureCtx := m.newCaptureRequestContext(stream.Context())
 	requestData := convertToMap(req)
 	recordDelay := route.Source.RecordDelay
@@ -86,7 +86,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 			return err
 		}
 
-		responses = append(responses, messageToMap(resp))
+		responses = append(responses, messageToAny(resp))
 
 		if err = stream.SendMsg(resp); err != nil {
 			return err
@@ -206,7 +206,7 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 			func() *stuber.Stub {
 				return proxycapture.BuildClientStreamStub(
 					m.fullServiceName, m.methodName, captureCtx.sessionID,
-					requests, captureCtx.headers, messageToMap(resp),
+					requests, captureCtx.headers, messageToAny(resp),
 					responseHeadersFromClientStream(clientStream), nil,
 				)
 			},
@@ -338,7 +338,7 @@ func (m *grpcMocker) forwardBidiResponses(
 			return
 		}
 
-		state.appendResponse(messageToMap(resp))
+		state.appendResponse(messageToAny(resp))
 
 		if err = stream.SendMsg(resp); err != nil {
 			errCh <- err
@@ -352,7 +352,7 @@ func (m *grpcMocker) captureBidiResult(
 	clientStream grpc.ClientStream,
 	captureCtx captureRequestContext,
 	requests []map[string]any,
-	responses []map[string]any,
+	responses []any,
 	firstErr error,
 	secondErr error,
 	recordDelay bool,
@@ -400,13 +400,13 @@ func sanitizeCapturedStreamError(err error, hasResponses bool) error {
 type bidiCaptureState struct {
 	mu        sync.Mutex
 	requests  []map[string]any
-	responses []map[string]any
+	responses []any
 }
 
 func newBidiCaptureState() *bidiCaptureState {
 	return &bidiCaptureState{
 		requests:  make([]map[string]any, 0, proxyMessagesInitCap),
-		responses: make([]map[string]any, 0, proxyMessagesInitCap),
+		responses: make([]any, 0, proxyMessagesInitCap),
 	}
 }
 
@@ -417,19 +417,19 @@ func (s *bidiCaptureState) appendRequest(req map[string]any) {
 	s.requests = append(s.requests, req)
 }
 
-func (s *bidiCaptureState) appendResponse(resp map[string]any) {
+func (s *bidiCaptureState) appendResponse(resp any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.responses = append(s.responses, resp)
 }
 
-func (s *bidiCaptureState) snapshot() ([]map[string]any, []map[string]any) {
+func (s *bidiCaptureState) snapshot() ([]map[string]any, []any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	requests := append([]map[string]any(nil), s.requests...)
-	responses := append([]map[string]any(nil), s.responses...)
+	responses := append([]any(nil), s.responses...)
 
 	return requests, responses
 }

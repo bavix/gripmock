@@ -193,9 +193,9 @@ func (i InputHeader) Len() int {
 // Output represents the output data of a gRPC response.
 type Output struct {
 	Headers map[string]string `json:"headers"`          // The headers of the response.
-	Data    map[string]any    `json:"data,omitempty"`   // The data of the response.
+	Data    any               `json:"data,omitempty"`   // The data of the response. Map for regular messages, scalar for WKT top-level.
 	Stream  []any             `json:"stream,omitempty"` // The stream data for server-side streaming.
-	// Each element represents a message to be sent.
+	// Each element represents a message to be sent. Each entry may be a map (regular message) or scalar (WKT top-level).
 	Error   string           `json:"error"`             // The error message of the response.
 	Code    *codes.Code      `json:"code,omitempty"`    // The status code of the response.
 	Details []map[string]any `json:"details,omitempty"` // gRPC error details (google.protobuf.Any payloads).

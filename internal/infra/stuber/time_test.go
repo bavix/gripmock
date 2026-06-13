@@ -55,7 +55,7 @@ func TestDelaySerializationWithDeterministicTime(t *testing.T) {
 
 	// Verify the timestamp is deterministic
 	expectedTimestamp := "2024-01-15T10:30:00Z"
-	require.Equal(t, expectedTimestamp, output.Data["timestamp"])
+	require.Equal(t, expectedTimestamp, output.Data.(map[string]any)["timestamp"]) //nolint:forcetypeassert
 
 	// Verify delay is correct
 	require.Equal(t, types.Duration(200*time.Millisecond), output.Delay)

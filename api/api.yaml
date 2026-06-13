@@ -1434,14 +1434,10 @@ components:
       type: object
       properties:
         data:
-          type: object
-          additionalProperties: true
           x-go-type-skip-optional-pointer: true
         stream:
           type: array
-          items:
-            type: object
-            additionalProperties: true
+          items: {}
           x-go-type-skip-optional-pointer: true
         headers:
           type: object

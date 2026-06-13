@@ -338,7 +338,7 @@ func TestBudgerigarFindByQueryFoundWithPriorityV2(t *testing.T) {
 	require.NotNil(t, result.Found())
 
 	// Should match the higher priority stub
-	require.Equal(t, "Hello from stub2", result.Found().Output.Data["message"])
+	require.Equal(t, "Hello from stub2", result.Found().Output.Data.(map[string]any)["message"]) //nolint:forcetypeassert
 }
 
 // TestDivideByZeroClientStreaming mimics case_divide_by_zero.gctf:
@@ -756,12 +756,12 @@ func TestBidiStreamingFallback(t *testing.T) {
 	stub, err := result.Next(map[string]any{"user": "Charlie", "text": "Hi everyone!"})
 	require.NoError(t, err)
 	require.NotNil(t, stub)
-	require.Equal(t, "Hello Charlie!", stub.Output.Data["text"])
+	require.Equal(t, "Hello Charlie!", stub.Output.Data.(map[string]any)["text"]) //nolint:forcetypeassert
 
 	stub, err = result.Next(map[string]any{"user": "Charlie", "text": "Anyone there?"})
 	require.NoError(t, err)
 	require.NotNil(t, stub)
-	require.Equal(t, "We're here!", stub.Output.Data["text"])
+	require.Equal(t, "We're here!", stub.Output.Data.(map[string]any)["text"]) //nolint:forcetypeassert
 }
 
 // TestBidiStreamingWithID tests bidirectional streaming with ID-based queries.
@@ -974,7 +974,7 @@ func TestBidiStreamingStatefulLogic(t *testing.T) {
 	require.Equal(t, stub1.ID, stub.ID)
 
 	// Test that we get the expected response
-	require.Equal(t, "Pattern 1 completed", stub.Output.Data["response"])
+	require.Equal(t, "Pattern 1 completed", stub.Output.Data.(map[string]any)["response"]) //nolint:forcetypeassert
 }
 
 // TestBidiStreamingStatefulLogicDifferentPattern tests with a different pattern.
@@ -1010,7 +1010,7 @@ func TestBidiStreamingStatefulLogicDifferentPattern(t *testing.T) {
 	stub, err = result.Next(map[string]any{"message": "universe"})
 	require.NoError(t, err)
 	require.Equal(t, stub2.ID, stub.ID)
-	require.Equal(t, "Pattern 2", stub.Output.Data["response"])
+	require.Equal(t, "Pattern 2", stub.Output.Data.(map[string]any)["response"]) //nolint:forcetypeassert
 }
 
 // TestBidiStreamingStatefulLogicNoMatch tests when no stubs match the pattern.
@@ -1078,7 +1078,7 @@ func TestBidiStreamingEdgeCases(t *testing.T) {
 	stubResult, err := result.Next(map[string]any{"message": "hello"})
 	require.NoError(t, err)
 	require.NotNil(t, stubResult)
-	require.Equal(t, "Hello!", stubResult.Output.Data["response"])
+	require.Equal(t, "Hello!", stubResult.Output.Data.(map[string]any)["response"]) //nolint:forcetypeassert
 }
 
 // TestBidiNestedStructures triggers deepEqualMap and deepEqualSlice via nested Equals.
@@ -1119,12 +1119,12 @@ func TestBidiNestedStructures(t *testing.T) {
 	// Match nested map
 	st, err := result.Next(map[string]any{"payload": map[string]any{"nested": 1.0, "key": "v"}})
 	require.NoError(t, err)
-	require.Equal(t, "map", st.Output.Data["ok"])
+	require.Equal(t, "map", st.Output.Data.(map[string]any)["ok"]) //nolint:forcetypeassert
 
 	// Match slice
 	st2, err := result.Next(map[string]any{"ids": []any{1.0, 2.0, 3.0}})
 	require.NoError(t, err)
-	require.Equal(t, "slice", st2.Output.Data["ok"])
+	require.Equal(t, "slice", st2.Output.Data.(map[string]any)["ok"]) //nolint:forcetypeassert
 
 	// Mismatch nested map
 	_, err = result.Next(map[string]any{"payload": map[string]any{"nested": 2.0}})
@@ -1196,7 +1196,7 @@ func runFieldVariationCase(t *testing.T, equals map[string]any, queries []map[st
 		stubResult, err := result.Next(messageData)
 		require.NoError(t, err)
 		require.NotNil(t, stubResult)
-		require.Equal(t, expected, stubResult.Output.Data["response"])
+		require.Equal(t, expected, stubResult.Output.Data.(map[string]any)["response"]) //nolint:forcetypeassert
 	}
 }
 
@@ -1289,7 +1289,7 @@ func TestPriorityHeadersOverEquals(t *testing.T) {
 
 	// Should match stub2 (with headers) instead of stub1 (without headers)
 	foundStub := result.Found()
-	require.Equal(t, "You aren't Bob. You are Ivan.", foundStub.Output.Data["message"])
+	require.Equal(t, "You aren't Bob. You are Ivan.", foundStub.Output.Data.(map[string]any)["message"]) //nolint:forcetypeassert
 	require.Equal(t, "Ivanov", foundStub.Output.Headers["x-last-name"])
 	require.Equal(t, "Ivan", foundStub.Output.Headers["x-first-name"])
 	require.Empty(t, foundStub.Output.Error)
@@ -1355,7 +1355,7 @@ func TestBudgerigarFindByQuerySessionIsolation(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
-	require.Equal(t, "global", result.Found().Output.Data["v"])
+	require.Equal(t, "global", result.Found().Output.Data.(map[string]any)["v"]) //nolint:forcetypeassert
 
 	// Query without session, matching session-A input: no exact match (session stubs hidden)
 	result, err = s.FindByQuery(stuber.Query{
@@ -1372,7 +1372,7 @@ func TestBudgerigarFindByQuerySessionIsolation(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
-	require.Equal(t, "session-a", result.Found().Output.Data["v"])
+	require.Equal(t, "session-a", result.Found().Output.Data.(map[string]any)["v"]) //nolint:forcetypeassert
 
 	// Query with Session A can also match global
 	result, err = s.FindByQuery(stuber.Query{
@@ -1381,7 +1381,7 @@ func TestBudgerigarFindByQuerySessionIsolation(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
-	require.Equal(t, "global", result.Found().Output.Data["v"])
+	require.Equal(t, "global", result.Found().Output.Data.(map[string]any)["v"]) //nolint:forcetypeassert
 
 	// Query with Session B: matches session-B stub, not A
 	result, err = s.FindByQuery(stuber.Query{
@@ -1390,7 +1390,7 @@ func TestBudgerigarFindByQuerySessionIsolation(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
-	require.Equal(t, "session-b", result.Found().Output.Data["v"])
+	require.Equal(t, "session-b", result.Found().Output.Data.(map[string]any)["v"]) //nolint:forcetypeassert
 }
 
 // TestBudgerigar_Times_ConcurrentNoRace verifies Times limit under concurrent load without race.
@@ -1570,7 +1570,7 @@ func assertFindByEmptyQueryMessage(
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
-	require.Equal(t, expected, result.Found().Output.Data["message"])
+	require.Equal(t, expected, result.Found().Output.Data.(map[string]any)["message"]) //nolint:forcetypeassert
 }
 
 func assertFindByEmptyQueryNoMatch(t *testing.T, s *stuber.Budgerigar) {
@@ -1728,7 +1728,7 @@ func TestMethodTypes(t *testing.T) {
 		result, err := s.FindByQuery(query)
 		require.NoError(t, err)
 		require.NotNil(t, result.Found())
-		require.Equal(t, "Hello Bob", result.Found().Output.Data["message"])
+		require.Equal(t, "Hello Bob", result.Found().Output.Data.(map[string]any)["message"]) //nolint:forcetypeassert
 	})
 
 	// Test 2: Client streaming method
@@ -1747,7 +1747,7 @@ func TestMethodTypes(t *testing.T) {
 		result, err := s.FindByQuery(query)
 		require.NoError(t, err)
 		require.NotNil(t, result.Found())
-		require.Equal(t, "Hello Stream", result.Found().Output.Data["message"])
+		require.Equal(t, "Hello Stream", result.Found().Output.Data.(map[string]any)["message"]) //nolint:forcetypeassert
 	})
 
 	// Test 3: Server streaming method
@@ -1823,7 +1823,7 @@ func TestMethodTypesPriority(t *testing.T) {
 	require.NotNil(t, result.Found())
 
 	foundStub := result.Found()
-	require.Equal(t, "Hello Bob (ClientStream)", foundStub.Output.Data["message"])
+	require.Equal(t, "Hello Bob (ClientStream)", foundStub.Output.Data.(map[string]any)["message"]) //nolint:forcetypeassert
 }
 
 // TestMethodTypesEmptyInput проверяет обработку пустых запросов для всех типов методов.
@@ -1875,5 +1875,5 @@ func TestMethodTypesEmptyInput(t *testing.T) {
 	result, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
-	require.Equal(t, "Hello World (ClientStream)", result.Found().Output.Data["message"])
+	require.Equal(t, "Hello World (ClientStream)", result.Found().Output.Data.(map[string]any)["message"]) //nolint:forcetypeassert
 }

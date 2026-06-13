@@ -172,15 +172,18 @@ func (m *grpcMocker) recordCall(
 	code uint32,
 	timestamp time.Time,
 	requests []map[string]any,
-	responses []map[string]any,
+	responses []any,
 	errMsg string,
 ) {
 	if m.recorder == nil || len(requests) == 0 {
 		return
 	}
 
-	if responses == nil {
-		responses = []map[string]any{}
+	recordedResponses := make([]map[string]any, 0, len(responses))
+	for _, r := range responses {
+		if m, ok := r.(map[string]any); ok {
+			recordedResponses = append(recordedResponses, m)
+		}
 	}
 
 	rec := history.CallRecord{
@@ -188,7 +191,7 @@ func (m *grpcMocker) recordCall(
 		Method:    m.methodName,
 		Session:   sessionFromContext(ctx),
 		Requests:  requests,
-		Responses: responses,
+		Responses: recordedResponses,
 		Error:     errMsg,
 		Code:      code,
 		StubID:    stubID,
@@ -199,8 +202,8 @@ func (m *grpcMocker) recordCall(
 		rec.Request = requests[0]
 	}
 
-	if len(responses) > 0 {
-		rec.Response = responses[0]
+	if len(recordedResponses) > 0 {
+		rec.Response = recordedResponses[0]
 	}
 
 	m.recorder.Record(rec)
@@ -493,7 +496,7 @@ func (m *grpcMocker) delay(ctx context.Context, delayDur types.Duration) error {
 	return delayResponse(ctx, delayDur)
 }
 
-//nolint:nestif,cyclop,funlen
+//nolint:nestif,cyclop,funlen,gocognit
 func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	inputMsg := dynamicpb.NewMessage(m.inputDesc)
 
@@ -572,10 +575,12 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 				return err
 			}
 
-			streamResponses := make([]map[string]any, len(found.Output.Stream))
-			for i, item := range found.Output.Stream {
-				if m, ok := item.(map[string]any); ok {
-					streamResponses[i] = m
+			streamResponses := make([]any, 0, len(found.Output.Stream))
+			for _, item := range found.Output.Stream {
+				if itemMap, ok := item.(map[string]any); ok {
+					streamResponses = append(streamResponses, itemMap)
+				} else {
+					streamResponses = append(streamResponses, item)
 				}
 			}
 
@@ -594,7 +599,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 			uint32(codes.OK),
 			requestTime,
 			[]map[string]any{requestData},
-			[]map[string]any{outputToUse.Data},
+			[]any{outputToUse.Data},
 			"",
 		)
 
@@ -612,7 +617,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		uint32(codes.OK),
 		requestTime,
 		[]map[string]any{requestData},
-		[]map[string]any{outputToUse.Data},
+		[]any{outputToUse.Data},
 		"",
 	)
 
@@ -719,7 +724,7 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 			return err
 		}
 
-		outputDataCopy := deepCopyMapAny(found.Output.Data)
+		outputDataCopy := deepCopyAny(found.Output.Data)
 
 		inputMsg := dynamicpb.NewMessage(m.inputDesc)
 		if err := stream.RecvMsg(inputMsg); err == nil {
@@ -742,8 +747,12 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 				StubID:       found.ID.String(),
 				RequestID:    found.ID.String(),
 			}
-			if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
-				return errors.Wrap(err, "failed to process dynamic templates")
+			if dataMap, ok := outputDataCopy.(map[string]any); ok {
+				if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
+					return errors.Wrap(err, "failed to process dynamic templates")
+				}
+
+				outputDataCopy = dataMap
 			}
 		}
 
@@ -766,7 +775,13 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 	}
 }
 
-func (m *grpcMocker) newOutputMessage(data map[string]any) (*dynamicpb.Message, error) {
+// newOutputMessage converts stub data (a map, scalar, or nil) into a dynamicpb.Message
+// for the response descriptor. Map payloads have numeric values converted to
+// json.Number so int64 fields survive the JSON round trip; scalar payloads (e.g. a
+// well-known type whose JSON encoding is a primitive: string for Timestamp, number
+// for wrappers, object for Struct) are JSON-marshaled as-is and fed to protojson,
+// which natively understands the canonical JSON form for every WKT.
+func (m *grpcMocker) newOutputMessage(data any) (*dynamicpb.Message, error) {
 	pooled, _ := jsonBufferPool.Get().(*bytes.Buffer)
 	if pooled == nil {
 		pooled = bytes.NewBuffer(make([]byte, 0, jsonBufferInitialCap))
@@ -779,17 +794,19 @@ func (m *grpcMocker) newOutputMessage(data map[string]any) (*dynamicpb.Message, 
 		jsonBufferPool.Put(pooled)
 	}()
 
-	convertedData := convertMapNumericToStringNumber(data)
+	payload := data
+	if dataMap, ok := data.(map[string]any); ok {
+		payload = convertMapNumericToStringNumber(dataMap)
+	}
 
 	enc := json.NewEncoder(pooled)
-	if err := enc.Encode(convertedData); err != nil {
-		return nil, fmt.Errorf("failed to marshal map to JSON: %w", err)
+	if err := enc.Encode(payload); err != nil {
+		return nil, fmt.Errorf("failed to marshal output to JSON: %w", err)
 	}
 
 	msg := dynamicpb.NewMessage(m.outputDesc)
 
-	err := protojson.Unmarshal(pooled.Bytes(), msg)
-	if err != nil {
+	if err := protojson.Unmarshal(pooled.Bytes(), msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON into dynamic message: %w", err)
 	}
 
@@ -994,12 +1011,16 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		RequestID:    found.ID.String(),
 	}
 
-	outputDataCopy := deepCopyMapAny(outputToUse.Data)
+	outputDataCopy := deepCopyAny(outputToUse.Data)
 
-	if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
-		zerolog.Ctx(ctx).Err(err).Msg("failed to process dynamic templates")
+	if dataMap, ok := outputDataCopy.(map[string]any); ok {
+		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
+			zerolog.Ctx(ctx).Err(err).Msg("failed to process dynamic templates")
 
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
+			return nil, status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
+		}
+
+		outputDataCopy = dataMap
 	}
 
 	if template.HasTemplatesInHeaders(outputToUse.Headers) {
@@ -1039,7 +1060,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		return nil, err //nolint:wrapcheck
 	}
 
-	m.recordCall(ctx, found.ID, uint32(codes.OK), requestTime, []map[string]any{requestData}, []map[string]any{outputDataCopy}, "")
+	m.recordCall(ctx, found.ID, uint32(codes.OK), requestTime, []map[string]any{requestData}, []any{outputDataCopy}, "")
 
 	return outputMsg, nil
 }
@@ -1375,7 +1396,7 @@ func (m *grpcMocker) sendClientStreamResponse(
 		return errors.Wrap(err, "failed to set headers")
 	}
 
-	outputDataCopy := deepCopyMapAny(found.Output.Data)
+	outputDataCopy := deepCopyAny(found.Output.Data)
 
 	headers := make(map[string]any)
 	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
@@ -1398,8 +1419,12 @@ func (m *grpcMocker) sendClientStreamResponse(
 		StubID:       found.ID.String(),
 		RequestID:    found.ID.String(),
 	}
-	if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
-		return errors.Wrap(err, "failed to process dynamic templates")
+	if dataMap, ok := outputDataCopy.(map[string]any); ok {
+		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
+			return errors.Wrap(err, "failed to process dynamic templates")
+		}
+
+		outputDataCopy = dataMap
 	}
 
 	m.applyEffects(stream.Context(), found, templateData)
@@ -1411,7 +1436,7 @@ func (m *grpcMocker) sendClientStreamResponse(
 
 	err = stream.SendMsg(outputMsg)
 	if err == nil {
-		m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime, messages, []map[string]any{outputDataCopy}, "")
+		m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime, messages, []any{outputDataCopy}, "")
 	}
 
 	return err
@@ -1591,10 +1616,15 @@ func (m *grpcMocker) recordBidiStream(
 	m.recorder.Record(rec)
 }
 
+//nolint:cyclop
 func (m *grpcMocker) prepareBidiOutput(stub *stuber.Stub, templateData template.Data) (stuber.Output, error) {
-	outputDataCopy := deepCopyMapAny(stub.Output.Data)
-	if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
-		return stuber.Output{}, errors.Wrap(err, "failed to process dynamic templates")
+	outputDataCopy := deepCopyAny(stub.Output.Data)
+	if dataMap, ok := outputDataCopy.(map[string]any); ok {
+		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
+			return stuber.Output{}, errors.Wrap(err, "failed to process dynamic templates")
+		}
+
+		outputDataCopy = dataMap
 	}
 
 	headersCopy := deepCopyStringMap(stub.Output.Headers)
@@ -2523,7 +2553,7 @@ func (m *grpcMocker) sendBidiResponses(
 		return m.sendStreamResponses(stream, output, stub, messageIndex, requestTime)
 	}
 
-	outputDataCopy := deepCopyMapAny(output.Data)
+	outputDataCopy := deepCopyAny(output.Data)
 
 	headers := make(map[string]any)
 	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
@@ -2541,8 +2571,12 @@ func (m *grpcMocker) sendBidiResponses(
 		StubID:       stub.ID.String(),
 		RequestID:    stub.ID.String(),
 	}
-	if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
-		return errors.Wrap(err, "failed to process dynamic templates")
+	if dataMap, ok := outputDataCopy.(map[string]any); ok {
+		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
+			return errors.Wrap(err, "failed to process dynamic templates")
+		}
+
+		outputDataCopy = dataMap
 	}
 
 	outputMsg, err := m.newOutputMessage(outputDataCopy)
@@ -2630,6 +2664,15 @@ func (m *grpcMocker) sendStreamResponses(
 	for _, streamElement := range output.Stream {
 		if streamData, ok := streamElement.(map[string]any); ok {
 			outputMsg, err := m.newOutputMessage(streamData)
+			if err != nil {
+				return errors.Wrap(err, "failed to convert response to dynamic message")
+			}
+
+			if err := sendStreamMessage(stream, outputMsg); err != nil {
+				return err //nolint:wrapcheck
+			}
+		} else {
+			outputMsg, err := m.newOutputMessage(streamElement)
 			if err != nil {
 				return errors.Wrap(err, "failed to convert response to dynamic message")
 			}

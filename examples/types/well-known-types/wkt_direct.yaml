@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+# Methods that return a well-known type directly (top level). The stub data
+# mirrors the canonical protojson form for each WKT.
+- id: "dddddddd-0001-0001-0001-000000000001"
+  service: DirectService
+  method: GetNow
+  input:
+    equals: {}
+  output:
+    data: "2024-01-01T12:00:00Z"
+- id: "dddddddd-0002-0002-0002-000000000002"
+  service: DirectService
+  method: GetTimeout
+  input:
+    equals: {}
+  output:
+    data: "1.5s"
+- id: "dddddddd-0003-0003-0003-000000000003"
+  service: DirectService
+  method: GetCount
+  input:
+    equals: {}
+  output:
+    data: 42
+- id: "dddddddd-0004-0004-0004-000000000004"
+  service: DirectService
+  method: GetConfig
+  input:
+    equals: {}
+  output:
+    data:
+      region: "us-east-1"
+      retries: 3

@@ -1,0 +1,39 @@
+--- META ---
+name: direct WKT return types
+summary: Verify gripmock correctly stubs gRPC methods that return well-known types directly (Timestamp, Duration, Int32Value, Struct)
+tags: [wkt, direct]
+links:
+  - https://github.com/bavix/gripmock/issues/882
+
+--- ENDPOINT ---
+wkt.DirectService/GetNow
+
+--- REQUEST ---
+
+--- ASSERTS ---
+. == "2024-01-01T12:00:00Z"
+
+--- ENDPOINT ---
+wkt.DirectService/GetTimeout
+
+--- REQUEST ---
+
+--- ASSERTS ---
+. == "1.500s"
+
+--- ENDPOINT ---
+wkt.DirectService/GetCount
+
+--- REQUEST ---
+
+--- ASSERTS ---
+. == 42
+
+--- ENDPOINT ---
+wkt.DirectService/GetConfig
+
+--- REQUEST ---
+
+--- ASSERTS ---
+.region == "us-east-1"
+.retries == 3.0

@@ -63,9 +63,9 @@ func (m *grpcMocker) recordUnaryStub(
 	requestData := convertToMap(req)
 	responseHeaders := responseHeadersFromMetadata(header, trailer)
 
-	var responseData map[string]any
+	var responseData any
 	if resp != nil {
-		responseData = messageToMap(resp)
+		responseData = messageToAny(resp)
 	}
 
 	m.recordCapturedStub(
