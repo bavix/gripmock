@@ -439,7 +439,7 @@ curl http://localhost:8080/v1/weather/current
 }
 ```
 
-## 7. Methods that Return a WKT Directly <VersionTag version="v3.10.0" />
+## 7. Methods that Return a WKT Directly <VersionTag version="v3.14.0" />
 
 When a method returns a well-known type **at the top level** (e.g. `rpc GetNow(...) returns (google.protobuf.Timestamp);`),
 the stub `data` mirrors the canonical protojson encoding of that WKT — a scalar, not the proto-wire "object" form. The
