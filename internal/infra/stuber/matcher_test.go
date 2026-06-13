@@ -231,7 +231,8 @@ func TestV2Priority(t *testing.T) {
 		stub1, stub2,
 	)
 	require.NotNil(t, result.Found())
-	require.Equal(t, "stub2", result.Found().Output.Data["result"], "Expected to match higher priority stub")
+	data := result.Found().Output.Data.(map[string]any)["result"] //nolint:forcetypeassert
+	require.Equal(t, "stub2", data, "Expected to match higher priority stub")
 }
 
 // TestBroadcastInputsMatchesAllMessages verifies that a stub with a single inputs[0] pattern
@@ -262,7 +263,7 @@ func TestBroadcastInputsMatchesAllMessages(t *testing.T) {
 		stub,
 	)
 	require.NotNil(t, result.Found(), "Broadcast: single inputs pattern must match all messages")
-	require.Equal(t, "processed", result.Found().Output.Data["status"])
+	require.Equal(t, "processed", result.Found().Output.Data.(map[string]any)["status"]) //nolint:forcetypeassert
 }
 
 // TestBroadcastInputsRejectsMismatch verifies that broadcast fails when any message

@@ -40,7 +40,12 @@ func healthResponsesFromOutput(output stuber.Output) ([]*healthgrpc.HealthCheckR
 		return responses, nil
 	}
 
-	healthStatus, err := healthStatusFromMap(output.Data)
+	data, ok := output.Data.(map[string]any)
+	if !ok {
+		return nil, status.Error(codes.Internal, "health stub output.data must be an object")
+	}
+
+	healthStatus, err := healthStatusFromMap(data)
 	if err != nil {
 		return nil, err
 	}

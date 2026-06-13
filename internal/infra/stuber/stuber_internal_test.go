@@ -417,7 +417,7 @@ func TestBudgerigarSearchWithPackageAndWithoutPackage(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, r)
 		require.NotNil(t, r.Found())
-		require.Equal(t, c.message, r.Found().Output.Data["message"])
+		require.Equal(t, c.message, r.Found().Output.Data.(map[string]any)["message"]) //nolint:forcetypeassert
 		require.Nil(t, r.Similar())
 	}
 
@@ -824,7 +824,7 @@ func TestBudgerigarFindByQueryFoundWithPriority(t *testing.T) {
 	require.NotNil(t, r.Found())
 	require.Nil(t, r.Similar())
 
-	require.Equal(t, "success", r.Found().Output.Data["result"])
+	require.Equal(t, "success", r.Found().Output.Data.(map[string]any)["result"]) //nolint:forcetypeassert
 }
 
 func TestBudgerigarUsed(t *testing.T) {
@@ -880,7 +880,7 @@ func TestBudgerigarFindByQueryWithID(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
 	require.Equal(t, stubID, result.Found().ID)
-	require.Equal(t, "success", result.Found().Output.Data["result"])
+	require.Equal(t, "success", result.Found().Output.Data.(map[string]any)["result"]) //nolint:forcetypeassert
 
 	// Test finding by non-existent ID
 	nonExistentID := uuid.New()

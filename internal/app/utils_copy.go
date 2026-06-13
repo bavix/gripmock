@@ -9,17 +9,21 @@ func deepCopyMapAny(src map[string]any) map[string]any {
 
 	dst := make(map[string]any, len(src))
 	for k, v := range src {
-		switch vv := v.(type) {
-		case map[string]any:
-			dst[k] = deepCopyMapAny(vv)
-		case []any:
-			dst[k] = deepCopySliceAny(vv)
-		default:
-			dst[k] = v
-		}
+		dst[k] = deepCopyAny(v)
 	}
 
 	return dst
+}
+
+func deepCopyAny(src any) any {
+	switch v := src.(type) {
+	case map[string]any:
+		return deepCopyMapAny(v)
+	case []any:
+		return deepCopySliceAny(v)
+	default:
+		return v
+	}
 }
 
 func deepCopySliceAny(src []any) []any {

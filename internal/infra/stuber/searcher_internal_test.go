@@ -79,7 +79,7 @@ func TestSearchIgnoreArrayOrderAndFields(t *testing.T) {
 	res, err := s.find(query)
 	require.NoError(t, err)
 	require.NotNil(t, res.Found())
-	processID, ok := res.Found().Output.Data["process_id"].(int)
+	processID, ok := res.Found().Output.Data.(map[string]any)["process_id"].(int)
 	require.True(t, ok)
 	require.Equal(t, 2, processID)
 
@@ -99,7 +99,7 @@ func TestSearchIgnoreArrayOrderAndFields(t *testing.T) {
 	res2, err2 := s.find(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
-	processID2, ok2 := res2.Found().Output.Data["process_id"].(int)
+	processID2, ok2 := res2.Found().Output.Data.(map[string]any)["process_id"].(int)
 	require.True(t, ok2)
 	require.Equal(t, 1, processID2)
 }
@@ -172,7 +172,8 @@ func TestSearchIgnoreArrayOrderUserScenario(t *testing.T) {
 	res1, err1 := s.find(query1)
 	require.NoError(t, err1)
 	require.NotNil(t, res1.Found())
-	require.Equal(t, "2", res1.Found().Output.Data["processId"])
+	data1 := res1.Found().Output.Data.(map[string]any) //nolint:forcetypeassert
+	require.Equal(t, "2", data1["processId"])
 
 	// Test case 2: Request with different order and NO request_timestamp
 	query2 := Query{
@@ -190,7 +191,8 @@ func TestSearchIgnoreArrayOrderUserScenario(t *testing.T) {
 	res2, err2 := s.find(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
-	require.Equal(t, "1", res2.Found().Output.Data["processId"])
+	dataX := res2.Found().Output.Data.(map[string]any) //nolint:forcetypeassert
+	require.Equal(t, "1", dataX["processId"])
 
 	// Test case 3: Request with different order and request_timestamp (same as case 1)
 	query3 := Query{
@@ -208,7 +210,8 @@ func TestSearchIgnoreArrayOrderUserScenario(t *testing.T) {
 	res3, err3 := s.find(query3)
 	require.NoError(t, err3)
 	require.NotNil(t, res3.Found())
-	require.Equal(t, "1", res3.Found().Output.Data["processId"])
+	data3 := res3.Found().Output.Data.(map[string]any) //nolint:forcetypeassert
+	require.Equal(t, "1", data3["processId"])
 }
 
 //nolint:funlen
@@ -277,7 +280,8 @@ func TestSearchIgnoreArrayOrderV1API(t *testing.T) {
 	res, err := s.find(query)
 	require.NoError(t, err)
 	require.NotNil(t, res.Found())
-	require.Equal(t, "2", res.Found().Output.Data["processId"])
+	dataA := res.Found().Output.Data.(map[string]any) //nolint:forcetypeassert
+	require.Equal(t, "2", dataA["processId"])
 
 	// Test without request_timestamp
 	query2 := Query{
@@ -295,7 +299,8 @@ func TestSearchIgnoreArrayOrderV1API(t *testing.T) {
 	res2, err2 := s.find(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
-	require.Equal(t, "1", res2.Found().Output.Data["processId"])
+	dataX := res2.Found().Output.Data.(map[string]any) //nolint:forcetypeassert
+	require.Equal(t, "1", dataX["processId"])
 }
 
 //nolint:funlen
@@ -350,7 +355,7 @@ func TestSearchSpecificityAllCases(t *testing.T) {
 	res1, err1 := s.find(query1)
 	require.NoError(t, err1)
 	require.NotNil(t, res1.Found())
-	require.Equal(t, "stub1", res1.Found().Output.Data["result"])
+	require.Equal(t, "stub1", res1.Found().Output.Data.(map[string]any)["result"]) //nolint:forcetypeassert
 
 	// Query with field1, field2, and field3 - should match stub2 (higher specificity)
 	query2 := Query{
@@ -365,7 +370,7 @@ func TestSearchSpecificityAllCases(t *testing.T) {
 	res2, err2 := s.find(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
-	require.Equal(t, "stub2", res2.Found().Output.Data["result"])
+	require.Equal(t, "stub2", res2.Found().Output.Data.(map[string]any)["result"]) //nolint:forcetypeassert
 }
 
 //nolint:funlen
@@ -433,7 +438,7 @@ func TestSearchSpecificityStreamCase(t *testing.T) {
 	res1, err1 := s.find(query1)
 	require.NoError(t, err1)
 	require.NotNil(t, res1.Found())
-	require.Equal(t, "stub1", res1.Found().Output.Data["result"])
+	require.Equal(t, "stub1", res1.Found().Output.Data.(map[string]any)["result"]) //nolint:forcetypeassert
 
 	// Stream query with additional fields - should match stub2 (higher specificity)
 	query2 := Query{
@@ -447,7 +452,7 @@ func TestSearchSpecificityStreamCase(t *testing.T) {
 	res2, err2 := s.find(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
-	require.Equal(t, "stub2", res2.Found().Output.Data["result"])
+	require.Equal(t, "stub2", res2.Found().Output.Data.(map[string]any)["result"]) //nolint:forcetypeassert
 }
 
 //nolint:funlen
@@ -508,7 +513,7 @@ func TestSearchSpecificityWithContainsAndMatches(t *testing.T) {
 	res1, err1 := s.find(query1)
 	require.NoError(t, err1)
 	require.NotNil(t, res1.Found())
-	require.Equal(t, "stub1", res1.Found().Output.Data["result"])
+	require.Equal(t, "stub1", res1.Found().Output.Data.(map[string]any)["result"]) //nolint:forcetypeassert
 
 	// Query with equals, contains, and matches - should match stub2 (higher specificity)
 	query2 := Query{
@@ -523,7 +528,7 @@ func TestSearchSpecificityWithContainsAndMatches(t *testing.T) {
 	res2, err2 := s.find(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
-	require.Equal(t, "stub2", res2.Found().Output.Data["result"])
+	require.Equal(t, "stub2", res2.Found().Output.Data.(map[string]any)["result"]) //nolint:forcetypeassert
 }
 
 func TestSearchSpecificityWithIgnoreArrayOrder(t *testing.T) {
@@ -576,7 +581,7 @@ func TestSearchSpecificityWithIgnoreArrayOrder(t *testing.T) {
 	res1, err1 := s.find(query1)
 	require.NoError(t, err1)
 	require.NotNil(t, res1.Found())
-	require.Equal(t, "stub1", res1.Found().Output.Data["result"])
+	require.Equal(t, "stub1", res1.Found().Output.Data.(map[string]any)["result"]) //nolint:forcetypeassert
 
 	// Query with array and additional field - should match stub2 (higher specificity)
 	query2 := Query{
@@ -590,7 +595,7 @@ func TestSearchSpecificityWithIgnoreArrayOrder(t *testing.T) {
 	res2, err2 := s.find(query2)
 	require.NoError(t, err2)
 	require.NotNil(t, res2.Found())
-	require.Equal(t, "stub2", res2.Found().Output.Data["result"])
+	require.Equal(t, "stub2", res2.Found().Output.Data.(map[string]any)["result"]) //nolint:forcetypeassert
 }
 
 func TestProcessStubsParallel(t *testing.T) {
@@ -627,7 +632,7 @@ func TestProcessStubsParallel(t *testing.T) {
 	result, err := searcher.processStubs(query, stubs)
 	require.NoError(t, err)
 	require.NotNil(t, result.Found())
-	require.Equal(t, "stub50", result.Found().Output.Data["result"])
+	require.Equal(t, "stub50", result.Found().Output.Data.(map[string]any)["result"]) //nolint:forcetypeassert
 }
 
 // TestPickMostSimilar triggers pickMostSimilar when no exact match but 100+ stubs exist.
@@ -720,7 +725,7 @@ func TestProcessStubsModes(t *testing.T) {
 			result, err := searcher.processStubs(query, stubs)
 			require.NoError(t, err)
 			require.NotNil(t, result.Found())
-			require.Equal(t, tt.expected, result.Found().Output.Data["result"])
+			require.Equal(t, tt.expected, result.Found().Output.Data.(map[string]any)["result"]) //nolint:forcetypeassert
 		})
 	}
 }
@@ -767,7 +772,9 @@ func TestProcessStubsParallelVsSequential(t *testing.T) {
 
 	// Results should be identical
 	require.Equal(t, resultSequential.Found().ID, resultParallel.Found().ID)
-	require.Equal(t, resultSequential.Found().Output.Data["result"], resultParallel.Found().Output.Data["result"])
+	seqRes := resultSequential.Found().Output.Data.(map[string]any)["result"] //nolint:forcetypeassert
+	parRes := resultParallel.Found().Output.Data.(map[string]any)["result"]   //nolint:forcetypeassert
+	require.Equal(t, seqRes, parRes)
 }
 
 // Benchmark parallel vs sequential processing.

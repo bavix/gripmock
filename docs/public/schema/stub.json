@@ -517,14 +517,54 @@
       "additionalProperties": false
     },
     "outputData": {
-      "description": "Response data matching protobuf message structure",
-      "type": "object",
-      "additionalProperties": true
+      "description": "Response data for unary calls. Usually an object matching the proto message structure, but can be a scalar (string/number/bool) when the method returns a well-known type directly (e.g. google.protobuf.Timestamp → RFC3339 string, Int32Value → number, Struct → object).",
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": true
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": true
+        }
+      ]
     },
     "streamMessage": {
-      "description": "Single message in a stream response",
-      "type": "object",
-      "additionalProperties": true
+      "description": "Single message in a stream response. Usually an object matching the proto message structure; can be a scalar for methods that return a well-known type directly per message.",
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": true
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": true
+        }
+      ]
     },
     "output": {
       "type": "object",

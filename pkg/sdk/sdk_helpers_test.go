@@ -55,8 +55,8 @@ func TestHelpersData(t *testing.T) {
 	t.Parallel()
 	out := Data("msg", "hello", "n", 42)
 	require.NotNil(t, out.Data)
-	require.Equal(t, "hello", out.Data["msg"])
-	require.Equal(t, 42, out.Data["n"])
+	require.Equal(t, "hello", out.Data.(map[string]any)["msg"])
+	require.Equal(t, 42, out.Data.(map[string]any)["n"])
 }
 
 func TestHelpersDataPanicOddArgs(t *testing.T) {
@@ -127,8 +127,8 @@ func TestHelpersMergeOutput(t *testing.T) {
 			"value": "merge detail",
 		}),
 	)
-	require.Equal(t, "Hi", out.Data["message"])
-	require.Equal(t, 200, out.Data["code"])
+	require.Equal(t, "Hi", out.Data.(map[string]any)["message"])
+	require.Equal(t, 200, out.Data.(map[string]any)["code"])
 	require.Equal(t, "value", out.Headers["x-custom"])
 	require.NotZero(t, out.Delay)
 	require.Equal(t, "validation failed", out.Error)

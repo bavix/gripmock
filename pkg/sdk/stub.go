@@ -335,8 +335,16 @@ func StreamItem(kv ...any) stuber.Output {
 func MergeOutput(outputs ...stuber.Output) stuber.Output {
 	out := stuber.Output{}
 	for _, o := range outputs {
-		if len(o.Data) > 0 {
-			out.Data = lo.Assign(out.Data, o.Data)
+		if o.Data != nil {
+			if outMap, ok := out.Data.(map[string]any); ok {
+				if addMap, ok := o.Data.(map[string]any); ok {
+					out.Data = lo.Assign(outMap, addMap)
+				} else {
+					out.Data = o.Data
+				}
+			} else if out.Data == nil {
+				out.Data = o.Data
+			}
 		}
 
 		if len(o.Headers) > 0 {

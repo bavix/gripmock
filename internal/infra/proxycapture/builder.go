@@ -34,6 +34,31 @@ func MessageToMap(message proto.Message) map[string]any {
 	return out
 }
 
+// MessageToAny is like MessageToMap but preserves the JSON value's outermost
+// shape. For well-known types whose JSON encoding is a primitive (e.g. a
+// google.protobuf.Timestamp becomes an RFC3339 string) the returned value is
+// that scalar wrapped in any; for regular messages it is a map[string]any.
+func MessageToAny(message proto.Message) any {
+	if message == nil {
+		return nil
+	}
+
+	encoded, err := protojson.Marshal(message)
+	if err != nil {
+		return nil
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(encoded))
+	decoder.UseNumber()
+
+	var out any
+	if err = decoder.Decode(&out); err != nil {
+		return nil
+	}
+
+	return out
+}
+
 func ResponseHeaders(head metadata.MD, tail metadata.MD) map[string]string {
 	if len(head) == 0 && len(tail) == 0 {
 		return nil
@@ -72,7 +97,7 @@ func BuildUnaryStub(
 	session string,
 	request map[string]any,
 	requestHeaders map[string]any,
-	response map[string]any,
+	response any,
 	responseHeaders map[string]string,
 	callErr error,
 ) *stuber.Stub {
@@ -97,7 +122,7 @@ func BuildServerStreamStub(
 	session string,
 	request map[string]any,
 	requestHeaders map[string]any,
-	responses []map[string]any,
+	responses []any,
 	responseHeaders map[string]string,
 	callErr error,
 ) *stuber.Stub {
@@ -122,7 +147,7 @@ func BuildClientStreamStub(
 	session string,
 	requests []map[string]any,
 	requestHeaders map[string]any,
-	response map[string]any,
+	response any,
 	responseHeaders map[string]string,
 	callErr error,
 ) *stuber.Stub {
@@ -147,7 +172,7 @@ func BuildBidiStub(
 	session string,
 	requests []map[string]any,
 	requestHeaders map[string]any,
-	responses []map[string]any,
+	responses []any,
 	responseHeaders map[string]string,
 	callErr error,
 ) *stuber.Stub {
@@ -175,11 +200,9 @@ func toInputs(requests []map[string]any) []stuber.InputData {
 	return inputs
 }
 
-func toStreamOutput(responses []map[string]any) []any {
+func toStreamOutput(responses []any) []any {
 	streamOutput := make([]any, 0, len(responses))
-	for _, response := range responses {
-		streamOutput = append(streamOutput, response)
-	}
+	streamOutput = append(streamOutput, responses...)
 
 	return streamOutput
 }

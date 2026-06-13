@@ -90,7 +90,7 @@ func (s *StubsTestSuite) TestStubOutputValidation() {
 		{
 			name: "valid output with stream",
 			output: StubOutput{
-				Stream: []map[string]any{{"result": "response1"}},
+				Stream: []any{map[string]any{"result": "response1"}},
 			},
 			valid: true,
 		},
@@ -126,7 +126,7 @@ func (s *StubsTestSuite) TestStubOutputValidation() {
 			name: "output with both data and stream",
 			output: StubOutput{
 				Data:   map[string]any{"result": "success"},
-				Stream: []map[string]any{{"result": "response1"}},
+				Stream: []any{map[string]any{"result": "response1"}},
 			},
 			valid: false, // Should not have both
 		},
@@ -192,7 +192,7 @@ func (s *StubsTestSuite) TestStubValidation() {
 					Contains: map[string]any{"key": "value"},
 				},
 				Output: StubOutput{
-					Stream: []map[string]any{{"result": "response"}},
+					Stream: []any{map[string]any{"result": "response"}},
 				},
 			},
 			valid: true,

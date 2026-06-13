@@ -23,8 +23,8 @@ func responseHeadersFromMetadata(head metadata.MD, tail metadata.MD) map[string]
 	return proxycapture.ResponseHeaders(head, tail)
 }
 
-func messageToMap(message proto.Message) map[string]any {
-	return proxycapture.MessageToMap(message)
+func messageToAny(message proto.Message) any {
+	return proxycapture.MessageToAny(message)
 }
 
 func (m *grpcMocker) recordCapturedStub(
