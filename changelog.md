@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.14.0 - 2026-06-13
+
+### What's Changed
+
+* chore(deps): bump sourcemeta/jsonschema from 15.6.3 to 15.8.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/878
+* wkt fixes by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/883 (thanks [@bterrio](https://github.com/bterrio), issue #882)
+* chore(deps): bump alpine from 3.23 to 3.24 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/880
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.13.1...v3.14.0
+
 ## v3.13.1 - 2026-06-03
 
 ### What's Changed
