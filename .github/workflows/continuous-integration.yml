@@ -20,7 +20,7 @@ jobs:
     env:
       GOCOVERDIR: /tmp/cover-unit
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -49,7 +49,7 @@ jobs:
           - macos-latest
           - windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -69,7 +69,7 @@ jobs:
           - project: eliza
             module: buf.build/connectrpc/eliza
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -103,7 +103,7 @@ jobs:
           - os: windows-latest
             platform: windows
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -184,7 +184,7 @@ jobs:
     name: "GoReleaser Check"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Setup Go
@@ -225,7 +225,7 @@ jobs:
     env:
       COLLECT_COVERAGE: ${{ matrix.collect_coverage }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -368,7 +368,7 @@ jobs:
             grpctestify_tls_ca_file: third_party/tls/mtls/ca.crt
             grpctestify_tls_server_name: localhost
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -417,7 +417,7 @@ jobs:
     name: "GCTF Gates"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install grpctestify
         uses: gripmock/grpctestify-action@v1
@@ -436,7 +436,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [unit-tests, e2e-tests, e2e-tls-tests]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
