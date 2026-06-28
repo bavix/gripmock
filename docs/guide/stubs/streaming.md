@@ -45,23 +45,6 @@ output:
 
 For 3 messages with 200ms delay: total = 400ms (delay × (count-1))
 
-### Per-Message Delays
-
-```yaml
-output:
-  stream:
-    - data:
-        message: "First"
-      delay: 100ms
-    - data:
-        message: "Second"
-      delay: 200ms
-    - data:
-        message: "Third"
-```
-
-Each message can have its own delay value.
-
 ## Client Streaming
 
 Client sends multiple messages, server responds once.

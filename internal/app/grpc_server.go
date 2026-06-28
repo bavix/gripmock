@@ -808,8 +808,9 @@ func (m *grpcMocker) newOutputMessage(data any) (*dynamicpb.Message, error) {
 
 	msg := dynamicpb.NewMessage(m.outputDesc)
 
-	if err := protojson.Unmarshal(pooled.Bytes(), msg); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal JSON into dynamic message: %w", err)
+	jsonBytes := pooled.Bytes()
+	if err := protojson.Unmarshal(jsonBytes, msg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal JSON into dynamic message: %w (json=%s)", err, string(jsonBytes))
 	}
 
 	return msg, nil
