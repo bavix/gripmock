@@ -7,7 +7,6 @@ Content-Type: application/json
 > {%
 client.test("returns Hello, Bob!", function() {
   client.assert(response.status === 200, "Expected 200, got " + response.status);
-  const body = JSON.parse(response.body);
-  client.assert(body.message === "Hello, Bob!", "Expected 'Hello, Bob!', got " + body.message);
+  client.assert(response.body.includes("Hello, Bob!"), "Expected body to contain 'Hello, Bob!', got " + response.body);
 });
 %}

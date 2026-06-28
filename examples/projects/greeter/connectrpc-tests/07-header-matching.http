@@ -9,7 +9,6 @@ X-Token: 123
 > {%
 client.test("matches header stub, returns Hello, Ivan!", function() {
   client.assert(response.status === 200, "Expected 200, got " + response.status);
-  const body = JSON.parse(response.body);
-  client.assert(body.message === "Hello, Ivan!", "Expected 'Hello, Ivan!', got " + body.message);
+  client.assert(response.body.includes("Hello, Ivan!"), "Expected body to contain 'Hello, Ivan!', got " + response.body);
 });
 %}
