@@ -1,3 +1,4 @@
+//nolint:tagalign
 package config
 
 import (
@@ -18,34 +19,34 @@ type Config struct {
 
 	// GRPC server configuration.
 	GRPCNetwork string `env:"GRPC_NETWORK" envDefault:"tcp"`
-	GRPCHost    string `env:"GRPC_HOST"    envDefault:"0.0.0.0"`
-	GRPCPort    string `env:"GRPC_PORT"    envDefault:"4770"`
-	GRPCAddr    string `env:",expand"      envDefault:"$GRPC_HOST:$GRPC_PORT"`
+	GRPCHost    string `env:"GRPC_HOST" envDefault:"0.0.0.0"`
+	GRPCPort    string `env:"GRPC_PORT" envDefault:"4770"`
+	GRPCAddr    string `env:",expand" envDefault:"$GRPC_HOST:$GRPC_PORT"`
 
 	// HTTP server configuration.
 	HTTPHost string `env:"HTTP_HOST" envDefault:"0.0.0.0"`
 	HTTPPort string `env:"HTTP_PORT" envDefault:"4771"`
-	HTTPAddr string `env:",expand"   envDefault:"$HTTP_HOST:$HTTP_PORT"`
+	HTTPAddr string `env:",expand" envDefault:"$HTTP_HOST:$HTTP_PORT"`
 
 	// ConnectRPC server configuration.
-	ConnectHost string `env:"CONNECT_HOST" envDefault:"0.0.0.0"`
-	ConnectPort string `env:"CONNECT_PORT" envDefault:"4769"`
-	ConnectAddr string `env:",expand"      envDefault:"$CONNECT_HOST:$CONNECT_PORT"`
+	ConnectHost string `env:"CONNECTRPC_HOST" envDefault:"0.0.0.0"`
+	ConnectPort string `env:"CONNECTRPC_PORT" envDefault:"4769"`
+	ConnectAddr string `env:",expand" envDefault:"$CONNECTRPC_HOST:$CONNECTRPC_PORT"`
 
 	// Files configuration.
-	StubWatcherEnabled  bool          `env:"STUB_WATCHER_ENABLED"  envDefault:"true"`
+	StubWatcherEnabled  bool          `env:"STUB_WATCHER_ENABLED" envDefault:"true"`
 	StubWatcherInterval time.Duration `env:"STUB_WATCHER_INTERVAL" envDefault:"1s"`
-	StubWatcherType     watcherType   `env:"STUB_WATCHER_TYPE"     envDefault:"fsnotify"`
+	StubWatcherType     watcherType   `env:"STUB_WATCHER_TYPE" envDefault:"fsnotify"`
 
 	// History configuration.
-	HistoryEnabled         bool     `env:"HISTORY_ENABLED"           envDefault:"true"`
-	HistoryLimit           ByteSize `env:"HISTORY_LIMIT"             envDefault:"64M"`
+	HistoryEnabled         bool     `env:"HISTORY_ENABLED" envDefault:"true"`
+	HistoryLimit           ByteSize `env:"HISTORY_LIMIT" envDefault:"64M"`
 	HistoryMessageMaxBytes int64    `env:"HISTORY_MESSAGE_MAX_BYTES" envDefault:"262144"`
 	HistoryRedactKeys      []string `env:"HISTORY_REDACT_KEYS"`
 
 	// Session GC configuration.
 	SessionGCInterval time.Duration `env:"SESSION_GC_INTERVAL" envDefault:"30s"`
-	SessionGCTTL      time.Duration `env:"SESSION_GC_TTL"      envDefault:"60s"`
+	SessionGCTTL      time.Duration `env:"SESSION_GC_TTL" envDefault:"60s"`
 
 	// Plugins configuration.
 	TemplatePluginPaths []string `env:"TEMPLATE_PLUGIN_PATHS"`
@@ -63,14 +64,14 @@ type Config struct {
 	HTTPTLSClientAuth bool   `env:"HTTP_TLS_CLIENT_AUTH" envDefault:"false"`
 	HTTPTLSCAFile     string `env:"HTTP_TLS_CA_FILE"`
 
-	// ConnectTLS configuration.
-	ConnectTLSCertFile   string `env:"CONNECT_TLS_CERT_FILE"`
-	ConnectTLSKeyFile    string `env:"CONNECT_TLS_KEY_FILE"`
-	ConnectTLSClientAuth bool   `env:"CONNECT_TLS_CLIENT_AUTH" envDefault:"false"`
-	ConnectTLSCAFile     string `env:"CONNECT_TLS_CA_FILE"`
+	// ConnectRPC TLS configuration.
+	ConnectTLSCertFile   string `env:"CONNECTRPC_TLS_CERT_FILE"`
+	ConnectTLSKeyFile    string `env:"CONNECTRPC_TLS_KEY_FILE"`
+	ConnectTLSClientAuth bool   `env:"CONNECTRPC_TLS_CLIENT_AUTH" envDefault:"false"`
+	ConnectTLSCAFile     string `env:"CONNECTRPC_TLS_CA_FILE"`
 
 	// OpenTelemetry configuration.
-	OtelEnabled  bool   `env:"OTEL_ENABLED"                envDefault:"false"`
+	OtelEnabled  bool   `env:"OTEL_ENABLED" envDefault:"false"`
 	OtelEndpoint string `env:"OTEL_EXPORTER_OTLP_ENDPOINT" envDefault:"localhost:4317"`
 	OtelInsecure bool   `env:"OTEL_EXPORTER_OTLP_INSECURE" envDefault:"true"`
 

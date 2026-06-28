@@ -1,0 +1,11 @@
+### 2. Unknown service returns 404
+POST http://127.0.0.1:4769/Unknown.Service/UnknownMethod
+Content-Type: application/json
+
+{}
+
+> {%
+client.test("status should be 404", function() {
+  client.assert(response.status === 404, "Expected 404, got " + response.status);
+});
+%}

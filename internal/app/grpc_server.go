@@ -322,7 +322,7 @@ func (m *grpcMocker) streamHandler(srv any, stream grpc.ServerStream) error {
 			return err
 		}
 
-		var fallbackErr *FallbackError
+		var fallbackErr *fallbackError
 		if !stderrors.As(err, &fallbackErr) {
 			return m.proxyStream(stream, route, behavior.captureMiss())
 		}
@@ -662,7 +662,12 @@ func (m *grpcMocker) handleArrayStreamData(
 		}
 
 		delay := found.Output.Delay
-		if perEventDelay, ok, _ := extractStreamDelay(streamData); ok {
+
+		if perEventDelay, ok, err := extractStreamDelay(streamData); ok {
+			if err != nil {
+				return status.Errorf(codes.InvalidArgument, "invalid delay for stream element at index %d: %v", i, err)
+			}
+
 			delay = perEventDelay
 		}
 
@@ -944,7 +949,7 @@ func (m *grpcMocker) handleUnaryWithProxy(ctx context.Context, req *dynamicpb.Me
 
 	resp, err := m.handleUnary(ctx, req)
 
-	var fallbackErr *FallbackError
+	var fallbackErr *fallbackError
 	if !stderrors.As(err, &fallbackErr) || fallbackErr.streamType != StreamTypeUnary {
 		return resp, err
 	}
@@ -2056,9 +2061,20 @@ func (s *GRPCServer) findMethodDescriptor(serviceName, methodName string) (proto
 }
 
 func findMethodInGlobalFiles(serviceName, methodName string) protoreflect.MethodDescriptor { //nolint:ireturn
+	return findMethodInFiles(protoregistry.GlobalFiles, serviceName, methodName)
+}
+
+// methodFilesLister abstracts a descriptor registry that supports iteration
+// over file descriptors. Implemented by *protoregistry.Files and
+// *descriptors.Registry.
+type methodFilesLister interface {
+	RangeFiles(f func(protoreflect.FileDescriptor) bool)
+}
+
+func findMethodInFiles(files methodFilesLister, serviceName, methodName string) protoreflect.MethodDescriptor { //nolint:ireturn
 	var found protoreflect.MethodDescriptor
 
-	protoregistry.GlobalFiles.RangeFiles(func(file protoreflect.FileDescriptor) bool {
+	files.RangeFiles(func(file protoreflect.FileDescriptor) bool {
 		services := file.Services()
 		for i := range services.Len() {
 			service := services.Get(i)

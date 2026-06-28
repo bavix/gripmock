@@ -125,12 +125,13 @@ func (b *Builder) RestServe(
 	handler := handlers.CORS(
 		handlers.AllowedOrigins([]string{"*"}),
 		handlers.AllowedHeaders([]string{
-			"Accept", "Accept-Language", "Content-Type", "Content-Language", "Origin",
+			"Accept", "Accept-Language", "Content-Encoding", "Content-Type", "Content-Language", "Origin",
 			"X-GripMock-RequestInternal",
 			"X-Gripmock-Session",
 		}),
 		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPatch}),
 	)(router)
+	handler = httputil.GzipRequestMiddleware(handler)
 	handler = handlers.CompressHandler(handler)
 
 	if b.config.OtelEnabled {

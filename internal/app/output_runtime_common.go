@@ -2,7 +2,7 @@ package app
 
 import (
 	"context"
-	"net/http"
+	"fmt"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -79,7 +79,10 @@ func extractStreamDelay(item any) (types.Duration, bool, error) {
 
 		return types.Duration(d), true, nil
 	default:
-		return 0, false, nil
+		// Per-event delay was specified but has an unsupported type.
+		// Treat it as an explicit configuration error rather than
+		// silently falling back to the uniform output.delay.
+		return 0, true, fmt.Errorf("unsupported delay type %T for value %v", delayVal, delayVal) //nolint:err113
 	}
 }
 
@@ -94,84 +97,4 @@ func extractStreamData(item any) (map[string]any, bool) {
 	}
 
 	return itemMap, true
-}
-
-//nolint:cyclop,exhaustive
-func ErrorCodeToString(code codes.Code) string {
-	switch code {
-	case codes.Canceled:
-		return "canceled"
-	case codes.Unknown:
-		return "unknown"
-	case codes.InvalidArgument:
-		return "invalid_argument"
-	case codes.DeadlineExceeded:
-		return "deadline_exceeded"
-	case codes.NotFound:
-		return "not_found"
-	case codes.AlreadyExists:
-		return "already_exists"
-	case codes.PermissionDenied:
-		return "permission_denied"
-	case codes.ResourceExhausted:
-		return "resource_exhausted"
-	case codes.FailedPrecondition:
-		return "failed_precondition"
-	case codes.Aborted:
-		return "aborted"
-	case codes.OutOfRange:
-		return "out_of_range"
-	case codes.Unimplemented:
-		return "unimplemented"
-	case codes.Internal:
-		return "internal"
-	case codes.Unavailable:
-		return "unavailable"
-	case codes.DataLoss:
-		return "data_loss"
-	case codes.Unauthenticated:
-		return "unauthenticated"
-	default:
-		return "internal"
-	}
-}
-
-//nolint:cyclop,exhaustive
-func ErrorCodeToHTTPStatus(code codes.Code) int {
-	switch code {
-	case codes.Canceled:
-		return http.StatusRequestTimeout
-	case codes.Unknown:
-		return http.StatusInternalServerError
-	case codes.InvalidArgument:
-		return http.StatusBadRequest
-	case codes.DeadlineExceeded:
-		return http.StatusGatewayTimeout
-	case codes.NotFound:
-		return http.StatusNotFound
-	case codes.AlreadyExists:
-		return http.StatusConflict
-	case codes.PermissionDenied:
-		return http.StatusForbidden
-	case codes.ResourceExhausted:
-		return http.StatusTooManyRequests
-	case codes.FailedPrecondition:
-		return http.StatusBadRequest
-	case codes.Aborted:
-		return http.StatusConflict
-	case codes.OutOfRange:
-		return http.StatusBadRequest
-	case codes.Unimplemented:
-		return http.StatusNotImplemented
-	case codes.Internal:
-		return http.StatusInternalServerError
-	case codes.Unavailable:
-		return http.StatusServiceUnavailable
-	case codes.DataLoss:
-		return http.StatusInternalServerError
-	case codes.Unauthenticated:
-		return http.StatusUnauthorized
-	default:
-		return http.StatusInternalServerError
-	}
 }

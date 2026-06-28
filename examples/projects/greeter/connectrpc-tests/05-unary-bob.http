@@ -1,0 +1,13 @@
+### 5. Unary: Bob
+POST http://127.0.0.1:4769/helloworld.Greeter/SayHello
+Content-Type: application/json
+
+{"name":"Bob"}
+
+> {%
+client.test("returns Hello, Bob!", function() {
+  client.assert(response.status === 200, "Expected 200, got " + response.status);
+  const body = JSON.parse(response.body);
+  client.assert(body.message === "Hello, Bob!", "Expected 'Hello, Bob!', got " + body.message);
+});
+%}

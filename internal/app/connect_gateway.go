@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -118,10 +119,13 @@ func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	adapter := &httpStreamAdapter{
-		ctx: r.Context(),
-		req: r,
-		w:   w,
+		ctx:       r.Context(),
+		req:       r,
+		w:         w,
+		streaming: mocker.serverStream || mocker.clientStream,
 	}
+
+	adapter.ctx = httpHeadersToGRPCContext(r.Context(), r.Header)
 
 	if mocker.serverStream || mocker.clientStream {
 		if err := mocker.streamHandler(adapter.ctx, adapter); err != nil { //nolint:contextcheck
@@ -162,7 +166,15 @@ func (g *ConnectRPCGateway) handleUnary(mocker *grpcMocker, a *httpStreamAdapter
 		return
 	}
 
-	_ = a.SendMsg(resp)
+	if err := a.SendMsg(resp); err != nil {
+		// The client may have disconnected before we could write the
+		// response (e.g. context cancelled, keep-alive timeout). The
+		// stub was matched and a response was produced, but the
+		// transport write failed. We cannot change the response status
+		// at this point (headers already flushed) so the only safe
+		// action is to log the failure for observability.
+		zerolog.Ctx(a.ctx).Debug().Err(err).Msg("connect.gateway: send unary response")
+	}
 }
 
 //nolint:ireturn
@@ -175,37 +187,11 @@ func (g *ConnectRPCGateway) findMethodDescriptor(serviceName, methodName string)
 		return nil, &connectMethodNotFoundError{service: serviceName, method: methodName}
 	}
 
-	var found protoreflect.MethodDescriptor
-
-	g.descriptors.RangeFiles(func(file protoreflect.FileDescriptor) bool {
-		svcs := file.Services()
-		for i := range svcs.Len() {
-			svc := svcs.Get(i)
-			if string(svc.FullName()) != serviceName {
-				continue
-			}
-
-			methods := svc.Methods()
-			for j := range methods.Len() {
-				m := methods.Get(j)
-				if string(m.Name()) != methodName {
-					continue
-				}
-
-				found = m
-
-				return false
-			}
-		}
-
-		return true
-	})
-
-	if found == nil {
-		return nil, &connectMethodNotFoundError{service: serviceName, method: methodName}
+	if method := findMethodInFiles(g.descriptors, serviceName, methodName); method != nil {
+		return method, nil
 	}
 
-	return found, nil
+	return nil, &connectMethodNotFoundError{service: serviceName, method: methodName}
 }
 
 //nolint:funlen
@@ -258,7 +244,10 @@ func (g *ConnectRPCGateway) handleWithoutDescriptor(w http.ResponseWriter, r *ht
 		return
 	}
 
-	if len(outputToUse.Data) > 0 {
+	if outputToUse.Data != nil {
+		g.record(serviceName, methodName, query.Session, found.ID, uint32(codes.Unimplemented),
+			requestTime, []map[string]any{emptyInput}, nil,
+			"proto descriptor required to encode non-empty output for "+serviceName+"/"+methodName)
 		g.writeError(w, codes.Unimplemented,
 			"proto descriptor required to encode non-empty output for "+serviceName+"/"+methodName)
 
@@ -337,7 +326,13 @@ type httpStreamAdapter struct {
 	req *http.Request
 	w   http.ResponseWriter
 
-	sentHeader bool
+	// sentHeader is flipped to true by SendHeader/SendMsg and read by
+	// SetHeader. In bidirectional RPCs the gRPC handler may invoke
+	// these concurrently, so access is synchronised via atomic.
+	sentHeader  atomic.Bool
+	endOfStream atomic.Bool
+
+	streaming bool
 
 	ctx context.Context //nolint:containedctx
 }
@@ -347,7 +342,7 @@ func (a *httpStreamAdapter) Context() context.Context {
 }
 
 func (a *httpStreamAdapter) SetHeader(md metadata.MD) error {
-	if a.sentHeader {
+	if a.sentHeader.Load() {
 		return nil
 	}
 
@@ -361,7 +356,7 @@ func (a *httpStreamAdapter) SetHeader(md metadata.MD) error {
 }
 
 func (a *httpStreamAdapter) SendHeader(md metadata.MD) error {
-	a.sentHeader = true
+	a.sentHeader.Store(true)
 
 	return a.SetHeader(md)
 }
@@ -371,9 +366,8 @@ func (a *httpStreamAdapter) SetTrailer(md metadata.MD) {
 }
 
 func (a *httpStreamAdapter) SendMsg(m any) error {
-	if !a.sentHeader {
-		a.w.WriteHeader(http.StatusOK)
-		a.sentHeader = true
+	if !a.sentHeader.Load() {
+		a.sendHeader()
 	}
 
 	msg, ok := m.(proto.Message)
@@ -383,21 +377,21 @@ func (a *httpStreamAdapter) SendMsg(m any) error {
 
 	ct := a.req.Header.Get("Content-Type")
 
-	data, err := protojson.Marshal(msg)
+	data, err := a.encodeMessage(msg, ct)
 	if err != nil {
 		return err
 	}
 
-	if !isJSONContentType(ct) {
-		data, err = proto.Marshal(msg)
-		if err != nil {
+	if a.streaming {
+		// For streaming, each message is a framed envelope.
+		endStream := a.endOfStream.Load()
+		if err := writeConnectFrame(a.w, data, endStream); err != nil {
 			return err
 		}
-	}
-
-	_, err = a.w.Write(data)
-	if err != nil {
-		return err
+	} else {
+		if _, err = a.w.Write(data); err != nil {
+			return err
+		}
 	}
 
 	if flusher, ok := a.w.(http.Flusher); ok {
@@ -407,38 +401,76 @@ func (a *httpStreamAdapter) SendMsg(m any) error {
 	return nil
 }
 
+// encodeMessage serializes msg using JSON or binary proto based on the
+// request Content-Type. For unary calls, the choice matches the request.
+// For streaming, the response uses the same family (json or proto) as
+// negotiated via the request content type.
 func (a *httpStreamAdapter) RecvMsg(m any) error {
-	buf := make([]byte, 4096) //nolint:mnd
-
-	var body []byte
-
-	for {
-		n, err := a.req.Body.Read(buf)
-
-		if n > 0 {
-			body = append(body, buf[:n]...)
-		}
-
-		if err == io.EOF {
-			break
-		}
-
-		if err != nil {
-			return err
-		}
-	}
-
 	msg, ok := m.(proto.Message)
 	if !ok {
 		return nil
 	}
 
 	ct := a.req.Header.Get("Content-Type")
-	if isJSONContentType(ct) {
-		return protojson.Unmarshal(body, msg)
+
+	if a.streaming {
+		return a.recvStreamingMessage(msg, ct)
 	}
 
-	return proto.Unmarshal(body, msg)
+	return a.recvUnaryMessage(msg, ct)
+}
+
+func (a *httpStreamAdapter) sendHeader() {
+	ct := a.req.Header.Get("Content-Type")
+	switch {
+	case a.streaming && isJSONContentType(ct):
+		a.w.Header().Set("Content-Type", "application/connect+json")
+	case a.streaming:
+		a.w.Header().Set("Content-Type", "application/connect+proto")
+	case isJSONContentType(ct):
+		a.w.Header().Set("Content-Type", "application/json")
+	default:
+		a.w.Header().Set("Content-Type", "application/proto")
+	}
+
+	a.w.WriteHeader(http.StatusOK)
+	a.sentHeader.Store(true)
+}
+
+func (a *httpStreamAdapter) recvUnaryMessage(msg proto.Message, ct string) error {
+	data, err := io.ReadAll(a.req.Body)
+	if err != nil {
+		return err
+	}
+
+	return a.decodeMessage(data, msg, ct)
+}
+
+func (a *httpStreamAdapter) recvStreamingMessage(msg proto.Message, ct string) error {
+	frame, err := readConnectFrame(a.req.Body)
+	if err != nil {
+		return err
+	}
+
+	a.endOfStream.Store(frame.flags&connectEnvelopeFlagEndStream != 0)
+
+	return a.decodeMessage(frame.data, msg, ct)
+}
+
+func (a *httpStreamAdapter) decodeMessage(data []byte, msg proto.Message, ct string) error {
+	if isJSONContentType(ct) {
+		return protojson.Unmarshal(data, msg)
+	}
+
+	return proto.Unmarshal(data, msg)
+}
+
+func (a *httpStreamAdapter) encodeMessage(msg proto.Message, ct string) ([]byte, error) {
+	if isJSONContentType(ct) {
+		return protojson.Marshal(msg)
+	}
+
+	return proto.Marshal(msg)
 }
 
 func (a *httpStreamAdapter) writeError(code codes.Code, msg string) {
@@ -453,3 +485,83 @@ func (a *httpStreamAdapter) writeError(code codes.Code, msg string) {
 }
 
 var _ grpc.ServerStream = (*httpStreamAdapter)(nil)
+
+//nolint:cyclop,exhaustive
+func ErrorCodeToString(code codes.Code) string {
+	switch code {
+	case codes.Canceled:
+		return "canceled"
+	case codes.Unknown:
+		return "unknown"
+	case codes.InvalidArgument:
+		return "invalid_argument"
+	case codes.DeadlineExceeded:
+		return "deadline_exceeded"
+	case codes.NotFound:
+		return "not_found"
+	case codes.AlreadyExists:
+		return "already_exists"
+	case codes.PermissionDenied:
+		return "permission_denied"
+	case codes.ResourceExhausted:
+		return "resource_exhausted"
+	case codes.FailedPrecondition:
+		return "failed_precondition"
+	case codes.Aborted:
+		return "aborted"
+	case codes.OutOfRange:
+		return "out_of_range"
+	case codes.Unimplemented:
+		return "unimplemented"
+	case codes.Internal:
+		return "internal"
+	case codes.Unavailable:
+		return "unavailable"
+	case codes.DataLoss:
+		return "data_loss"
+	case codes.Unauthenticated:
+		return "unauthenticated"
+	default:
+		return "internal"
+	}
+}
+
+//nolint:cyclop,exhaustive
+func ErrorCodeToHTTPStatus(code codes.Code) int {
+	switch code {
+	case codes.Canceled:
+		return http.StatusRequestTimeout
+	case codes.Unknown:
+		return http.StatusInternalServerError
+	case codes.InvalidArgument:
+		return http.StatusBadRequest
+	case codes.DeadlineExceeded:
+		return http.StatusGatewayTimeout
+	case codes.NotFound:
+		return http.StatusNotFound
+	case codes.AlreadyExists:
+		return http.StatusConflict
+	case codes.PermissionDenied:
+		return http.StatusForbidden
+	case codes.ResourceExhausted:
+		return http.StatusTooManyRequests
+	case codes.FailedPrecondition:
+		return http.StatusBadRequest
+	case codes.Aborted:
+		return http.StatusConflict
+	case codes.OutOfRange:
+		return http.StatusBadRequest
+	case codes.Unimplemented:
+		return http.StatusNotImplemented
+	case codes.Internal:
+		return http.StatusInternalServerError
+	case codes.Unavailable:
+		return http.StatusServiceUnavailable
+	case codes.DataLoss:
+		return http.StatusInternalServerError
+	case codes.Unauthenticated:
+		return http.StatusUnauthorized
+	default:
+		return http.StatusInternalServerError
+	}
+}

@@ -2,13 +2,10 @@ package app
 
 import (
 	"io"
-	"sync"
 	"time"
 
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/dynamicpb"
 
 	"github.com/bavix/gripmock/v3/internal/infra/proxycapture"
@@ -34,6 +31,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 	capture bool,
 ) error {
 	startTime := time.Now()
+
 	proxyCtx, cancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
 	defer cancel()
 
@@ -227,8 +225,6 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 	prefetchedRequests []*dynamicpb.Message,
 	capture bool,
 ) error {
-	startTime := time.Now()
-
 	proxyCtx, cancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
 	defer cancel()
 
@@ -239,7 +235,7 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 		return err
 	}
 
-	state := newBidiCaptureState()
+	state := NewStreamCaptureState()
 
 	captureCtx := m.newCaptureRequestContext(stream.Context())
 
@@ -257,9 +253,9 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 	}
 
 	if capture {
-		requests, responses := state.snapshot()
+		requests, responses, delays := state.Snapshot()
 
-		m.captureBidiResult(clientStream, captureCtx, requests, responses, firstErr, secondErr, route.Source.RecordDelay, time.Since(startTime))
+		m.captureBidiResultWithDelays(clientStream, captureCtx, requests, responses, firstErr, secondErr, route.Source.RecordDelay, delays)
 	}
 
 	if firstErr != nil {
@@ -277,11 +273,11 @@ func (m *grpcMocker) forwardBidiRequests(
 	stream grpc.ServerStream,
 	clientStream grpc.ClientStream,
 	prefetchedRequests []*dynamicpb.Message,
-	state *bidiCaptureState,
+	state *StreamCaptureState,
 	errCh chan<- error,
 ) {
 	for _, prefetched := range prefetchedRequests {
-		state.appendRequest(convertToMap(prefetched))
+		state.AppendRequest(convertToMap(prefetched))
 
 		if err := clientStream.SendMsg(prefetched); err != nil {
 			errCh <- err
@@ -306,7 +302,7 @@ func (m *grpcMocker) forwardBidiRequests(
 			return
 		}
 
-		state.appendRequest(convertToMap(req))
+		state.AppendRequest(convertToMap(req))
 
 		if err = clientStream.SendMsg(req); err != nil {
 			errCh <- err
@@ -319,9 +315,11 @@ func (m *grpcMocker) forwardBidiRequests(
 func (m *grpcMocker) forwardBidiResponses(
 	stream grpc.ServerStream,
 	clientStream grpc.ClientStream,
-	state *bidiCaptureState,
+	state *StreamCaptureState,
 	errCh chan<- error,
 ) {
+	var lastRecvTime time.Time
+
 	for {
 		resp := dynamicpb.NewMessage(m.outputDesc)
 
@@ -338,7 +336,14 @@ func (m *grpcMocker) forwardBidiResponses(
 			return
 		}
 
-		state.appendResponse(messageToAny(resp))
+		recvTime := time.Now()
+		if !lastRecvTime.IsZero() {
+			state.AppendDelay(recvTime.Sub(lastRecvTime))
+		}
+
+		lastRecvTime = recvTime
+
+		state.AppendResponse(convertToMap(resp))
 
 		if err = stream.SendMsg(resp); err != nil {
 			errCh <- err
@@ -346,90 +351,4 @@ func (m *grpcMocker) forwardBidiResponses(
 			return
 		}
 	}
-}
-
-func (m *grpcMocker) captureBidiResult(
-	clientStream grpc.ClientStream,
-	captureCtx captureRequestContext,
-	requests []map[string]any,
-	responses []any,
-	firstErr error,
-	secondErr error,
-	recordDelay bool,
-	elapsed time.Duration,
-) {
-	captureErr := selectCaptureError(firstErr, secondErr)
-	captureErr = sanitizeCapturedStreamError(captureErr, len(responses) > 0)
-
-	m.recordCapturedStub(
-		func() *stuber.Stub {
-			return proxycapture.BuildBidiStub(
-				m.fullServiceName, m.methodName, captureCtx.sessionID,
-				requests, captureCtx.headers, responses,
-				responseHeadersFromClientStream(clientStream), captureErr,
-			)
-		},
-		recordDelay, elapsed,
-	)
-}
-
-func selectCaptureError(firstErr, secondErr error) error {
-	if firstErr != nil {
-		return firstErr
-	}
-
-	return secondErr
-}
-
-func sanitizeCapturedStreamError(err error, hasResponses bool) error {
-	if err == nil {
-		return nil
-	}
-
-	if !hasResponses {
-		return err
-	}
-
-	if status.Code(err) == codes.Canceled {
-		return nil
-	}
-
-	return err
-}
-
-type bidiCaptureState struct {
-	mu        sync.Mutex
-	requests  []map[string]any
-	responses []any
-}
-
-func newBidiCaptureState() *bidiCaptureState {
-	return &bidiCaptureState{
-		requests:  make([]map[string]any, 0, proxyMessagesInitCap),
-		responses: make([]any, 0, proxyMessagesInitCap),
-	}
-}
-
-func (s *bidiCaptureState) appendRequest(req map[string]any) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.requests = append(s.requests, req)
-}
-
-func (s *bidiCaptureState) appendResponse(resp any) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.responses = append(s.responses, resp)
-}
-
-func (s *bidiCaptureState) snapshot() ([]map[string]any, []any) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	requests := append([]map[string]any(nil), s.requests...)
-	responses := append([]any(nil), s.responses...)
-
-	return requests, responses
 }

@@ -15,22 +15,22 @@ const (
 	StreamTypeBidi
 )
 
-type FallbackError struct {
+type fallbackError struct {
 	err        error
 	request    *dynamicpb.Message
 	requests   []*dynamicpb.Message
 	streamType StreamType
 }
 
-func (e *FallbackError) Error() string {
+func (e *fallbackError) Error() string {
 	return e.err.Error()
 }
 
-func (e *FallbackError) Unwrap() error {
+func (e *fallbackError) Unwrap() error {
 	return e.err
 }
 
-func (e *FallbackError) GRPCStatus() *status.Status {
+func (e *fallbackError) GRPCStatus() *status.Status {
 	if e.streamType == StreamTypeBidi {
 		return status.New(codes.NotFound, e.err.Error())
 	}
@@ -38,18 +38,18 @@ func (e *FallbackError) GRPCStatus() *status.Status {
 	return status.Convert(e.err)
 }
 
-func newUnaryFallbackError(err error) *FallbackError {
-	return &FallbackError{err: err, streamType: StreamTypeUnary}
+func newUnaryFallbackError(err error) *fallbackError {
+	return &fallbackError{err: err, streamType: StreamTypeUnary}
 }
 
-func newServerStreamFallbackError(err error, req *dynamicpb.Message) *FallbackError {
-	return &FallbackError{err: err, request: req, streamType: StreamTypeServer}
+func newServerStreamFallbackError(err error, req *dynamicpb.Message) *fallbackError {
+	return &fallbackError{err: err, request: req, streamType: StreamTypeServer}
 }
 
-func newClientStreamFallbackError(err error, reqs []*dynamicpb.Message) *FallbackError {
-	return &FallbackError{err: err, requests: reqs, streamType: StreamTypeClient}
+func newClientStreamFallbackError(err error, reqs []*dynamicpb.Message) *fallbackError {
+	return &fallbackError{err: err, requests: reqs, streamType: StreamTypeClient}
 }
 
-func newBidiStreamFallbackError(err error, reqs []*dynamicpb.Message) *FallbackError {
-	return &FallbackError{err: err, requests: reqs, streamType: StreamTypeBidi}
+func newBidiStreamFallbackError(err error, reqs []*dynamicpb.Message) *fallbackError {
+	return &fallbackError{err: err, requests: reqs, streamType: StreamTypeBidi}
 }

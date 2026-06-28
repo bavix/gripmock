@@ -167,7 +167,7 @@ func TestBuildServerStreamStub(t *testing.T) {
 		"session-srv",
 		map[string]any{"request": "data"},
 		map[string]any{"req-header": "value"},
-		[]map[string]any{{"stream": 1}, {"stream": 2}, {"stream": 3}},
+		[]any{map[string]any{"stream": 1}, map[string]any{"stream": 2}, map[string]any{"stream": 3}},
 		map[string]string{"trailer": "value"},
 		nil,
 	)

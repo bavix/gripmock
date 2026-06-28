@@ -79,7 +79,7 @@ output:
 
 ## Streaming Responses
 
-For streaming responses, delay is applied **between** each message in the stream (not before each message):
+For streaming responses, delay is applied **before** every message in the stream.
 
 ### Server-Side Streaming
 ```yaml
@@ -111,14 +111,15 @@ output:
       updatedAt: "2024-01-01T13:00:02.000Z"
 ```
 
-In this example, there will be a 200ms delay **between** each message in the stream. The timing will be:
-- Message 1 sent immediately
+In this example, the 200ms delay is applied **before** every message in the stream. The timing will be:
+- 200ms delay
+- Message 1 sent
 - 200ms delay
 - Message 2 sent
 - 200ms delay
 - Message 3 sent
 
-### Per-Event Delays <VersionTag version="3.14.0" />
+### Per-Event Delays <VersionTag version="v3.15.0" />
 
 For fine-grained control over message timing, you can specify delays per-stream element:
 
@@ -221,10 +222,8 @@ output:
 - Total delay = configured delay value
 
 ### Streaming Calls  
-- Delay is applied **between** each message in the stream
-- First message is sent immediately
-- Subsequent messages are sent after the configured delay
-- Total delay = (number of messages - 1) × configured delay
+- Delay is applied **before** every message in the stream
+- Total delay = number of messages × configured delay
 
 ### Examples
 
@@ -247,13 +246,14 @@ output:
     - message: "Third"
 ```
 **Timing**:
-- Message 1 sent immediately
+- 200ms delay
+- Message 1 sent
 - 200ms delay
 - Message 2 sent
 - 200ms delay
 - Message 3 sent
 
-**Total delay**: 400ms (2 × 200ms)
+**Total delay**: 600ms (3 × 200ms)
 
 ## Limitations
 

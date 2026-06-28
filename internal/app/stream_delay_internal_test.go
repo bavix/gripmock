@@ -104,6 +104,33 @@ func TestExtractStreamDelayFromString(t *testing.T) {
 			wantHasDelay: true,
 			wantErr:      false,
 		},
+		{
+			// Regression: a delay of unsupported type (e.g. bool, slice,
+			// struct) used to be silently ignored via ok=false. After
+			// the fix it must surface as an explicit configuration
+			// error with ok=true so handleArrayStreamData can return
+			// codes.InvalidArgument instead of falling back to the
+			// uniform output.delay.
+			name:         "delay as bool - explicit config error",
+			item:         map[string]any{"delay": true},
+			wantDelay:    0,
+			wantHasDelay: true,
+			wantErr:      true,
+		},
+		{
+			name:         "delay as slice - explicit config error",
+			item:         map[string]any{"delay": []int{1, 2, 3}},
+			wantDelay:    0,
+			wantHasDelay: true,
+			wantErr:      true,
+		},
+		{
+			name:         "delay as map - explicit config error",
+			item:         map[string]any{"delay": map[string]int{"x": 1}},
+			wantDelay:    0,
+			wantHasDelay: true,
+			wantErr:      true,
+		},
 	}
 
 	for _, tc := range tests {

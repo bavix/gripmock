@@ -67,6 +67,13 @@ export default defineConfig({
         collapsed: false,
       },
       {
+        text: 'Protocols',
+        items: [
+          { text: 'ConnectRPC', link: '/guide/connect-rpc' },
+        ],
+        collapsed: false,
+      },
+      {
         text: 'Sources',
         items: [
           { text: 'Overview', link: '/guide/sources/' },

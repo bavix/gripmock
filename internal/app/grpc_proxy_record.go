@@ -71,6 +71,44 @@ func (m *grpcMocker) recordCapturedStub(
 	m.budgerigar.PutMany(stub)
 }
 
+// applyStreamDelays mutates stub in place by setting a "delay" key on each
+// stream entry whose corresponding delay is non-zero. The first argument is
+// only applied if recordDelay is true.
+//
+// Semantics: delays[i] is the wall-clock gap between responses[i] and
+// responses[i+1] as observed during capture, so the value describes the
+// wait BEFORE the (i+1)-th message is delivered. We therefore attach it
+// to stub.Output.Stream[i+1] (not Stream[i]) to match the playback
+// behaviour implemented in handleArrayStreamData.
+func applyStreamDelays(stub *stuber.Stub, recordDelay bool, delays []time.Duration) {
+	if stub == nil {
+		return
+	}
+
+	if !recordDelay || len(delays) == 0 {
+		return
+	}
+
+	for i, d := range delays {
+		if d == 0 {
+			continue
+		}
+
+		target := i + 1
+		if target >= len(stub.Output.Stream) || stub.Output.Stream[target] == nil {
+			continue
+		}
+
+		itemMap, ok := stub.Output.Stream[target].(map[string]any)
+		if !ok {
+			itemMap = map[string]any{"data": stub.Output.Stream[target]}
+			stub.Output.Stream[target] = itemMap
+		}
+
+		itemMap["delay"] = d.String()
+	}
+}
+
 func (m *grpcMocker) recordCapturedStubWithDelays(
 	build func() *stuber.Stub,
 	recordDelay bool,
@@ -81,25 +119,7 @@ func (m *grpcMocker) recordCapturedStubWithDelays(
 		return
 	}
 
-	if recordDelay && len(delays) > 0 {
-		for i, d := range delays {
-			if d == 0 {
-				continue
-			}
-
-			if stub.Output.Stream[i] == nil {
-				continue
-			}
-
-			itemMap, ok := stub.Output.Stream[i].(map[string]any)
-			if !ok {
-				itemMap = map[string]any{"data": stub.Output.Stream[i]}
-				stub.Output.Stream[i] = itemMap
-			}
-
-			itemMap["delay"] = d.String()
-		}
-	}
+	applyStreamDelays(stub, recordDelay, delays)
 
 	m.budgerigar.PutMany(stub)
 }

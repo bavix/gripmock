@@ -8,22 +8,54 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/bavix/gripmock/v3/internal/app"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
+	"github.com/bavix/gripmock/v3/internal/infra/httputil"
 	infraTLS "github.com/bavix/gripmock/v3/internal/infra/tls"
 )
 
-//nolint:funlen
+const (
+	connectReadHeaderTimeout = 10 * time.Second
+	connectReadTimeout       = 30 * time.Second
+	connectIdleTimeout       = 120 * time.Second
+	connectMaxHeaderBytes    = 1 << 20
+)
+
 func (b *Builder) ConnectServe(ctx context.Context) error {
+	gateway := b.newConnectGateway()
+
+	router := mux.NewRouter()
+	router.Handle("/{service}/{method}", gateway).Methods(http.MethodPost)
+
+	srv := b.newConnectServer(ctx, router)
+
+	listener, err := b.listenConnect(ctx, srv)
+	if err != nil {
+		return err
+	}
+
+	b.ender.Add(srv.Shutdown)
+
+	zerolog.Ctx(ctx).Info().
+		Str("addr", listener.Addr().String()).
+		Bool("tls", srv.TLSConfig != nil).
+		Msg("Serving ConnectRPC")
+
+	return b.serveConnect(ctx, srv, listener)
+}
+
+func (b *Builder) newConnectGateway() *app.ConnectRPCGateway {
 	var recorder history.Recorder
 	if store := b.HistoryStore(); store != nil {
 		recorder = store
 	}
 
-	gateway := app.NewConnectRPCGateway(
+	return app.NewConnectRPCGateway(
 		b.Budgerigar(),
 		b.DescriptorRegistry(),
 		recorder,
@@ -31,29 +63,32 @@ func (b *Builder) ConnectServe(ctx context.Context) error {
 		b.StubValidator(),
 		b.ErrorFormatter(),
 	)
+}
 
-	mux := mux.NewRouter()
-	mux.Handle("/{service}/{method}", gateway).Methods(http.MethodPost)
+func (b *Builder) newConnectServer(ctx context.Context, router *mux.Router) *http.Server {
+	var handler http.Handler = router
 
-	const (
-		readHeaderTimeout = 10 * time.Second
-		readTimeout       = 30 * time.Second
-		idleTimeout       = 120 * time.Second
-		maxHeaderBytes    = 1 << 20
-	)
+	handler = httputil.GzipRequestMiddleware(handler)
+	handler = handlers.CompressHandler(handler)
 
-	srv := &http.Server{
+	if b.config.OtelEnabled {
+		handler = otelhttp.NewHandler(handler, "gripmock-connect")
+	}
+
+	return &http.Server{
 		Addr:              b.config.ConnectAddr,
-		Handler:           mux,
-		ReadHeaderTimeout: readHeaderTimeout,
-		ReadTimeout:       readTimeout,
-		IdleTimeout:       idleTimeout,
-		MaxHeaderBytes:    maxHeaderBytes,
+		Handler:           handler,
+		ReadHeaderTimeout: connectReadHeaderTimeout,
+		ReadTimeout:       connectReadTimeout,
+		IdleTimeout:       connectIdleTimeout,
+		MaxHeaderBytes:    connectMaxHeaderBytes,
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},
 	}
+}
 
+func (b *Builder) listenConnect(ctx context.Context, srv *http.Server) (net.Listener, error) {
 	connectTLS := infraTLS.TLSConfig{
 		CertFile:   b.config.ConnectTLSCertFile,
 		KeyFile:    b.config.ConnectTLSKeyFile,
@@ -62,56 +97,50 @@ func (b *Builder) ConnectServe(ctx context.Context) error {
 		MinVersion: infraTLS.MinTLSVersion12,
 	}
 
-	var (
-		listener net.Listener
-		err      error
-	)
-
 	if connectTLS.IsEnabled() {
-		tlsCfg, tlsErr := connectTLS.BuildTLSConfig()
-		if tlsErr != nil {
-			return errors.Wrap(tlsErr, "failed to build Connect TLS config")
-		}
-
-		srv.TLSConfig = tlsCfg
-
-		tlsListener, tlsErr := tls.Listen("tcp", b.config.ConnectAddr, srv.TLSConfig)
-		if tlsErr != nil {
-			return errors.Wrap(tlsErr, "failed to create Connect TLS listener")
-		}
-
-		listener = tlsListener
-
-		srv.Protocols = func() *http.Protocols {
-			var p http.Protocols
-			p.SetHTTP1(true)
-			p.SetHTTP2(true)
-
-			return &p
-		}()
-	} else {
-		listener, err = (&net.ListenConfig{}).Listen(ctx, "tcp", b.config.ConnectAddr)
-		if err != nil {
-			return errors.Wrap(err, "failed to listen for ConnectRPC")
-		}
-
-		srv.Protocols = func() *http.Protocols {
-			var p http.Protocols
-			p.SetHTTP1(true)
-			p.SetUnencryptedHTTP2(true)
-
-			return &p
-		}()
+		return b.tlsConnectListener(srv, connectTLS)
 	}
 
-	b.ender.Add(srv.Shutdown)
+	srv.Protocols = func() *http.Protocols {
+		var p http.Protocols
+		p.SetHTTP1(true)
+		p.SetUnencryptedHTTP2(true)
 
-	logger := zerolog.Ctx(ctx)
-	logger.Info().
-		Str("addr", listener.Addr().String()).
-		Bool("tls", connectTLS.IsEnabled()).
-		Msg("Serving ConnectRPC")
+		return &p
+	}()
 
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", b.config.ConnectAddr)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to listen for ConnectRPC")
+	}
+
+	return listener, nil
+}
+
+func (b *Builder) tlsConnectListener(srv *http.Server, connectTLS infraTLS.TLSConfig) (net.Listener, error) {
+	tlsCfg, err := connectTLS.BuildTLSConfig()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build Connect TLS config")
+	}
+
+	srv.TLSConfig = tlsCfg
+	srv.Protocols = func() *http.Protocols {
+		var p http.Protocols
+		p.SetHTTP1(true)
+		p.SetHTTP2(true)
+
+		return &p
+	}()
+
+	tlsListener, err := tls.Listen("tcp", b.config.ConnectAddr, srv.TLSConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create Connect TLS listener")
+	}
+
+	return tlsListener, nil
+}
+
+func (b *Builder) serveConnect(ctx context.Context, srv *http.Server, listener net.Listener) error {
 	ch := make(chan error, 1)
 
 	go func() {
