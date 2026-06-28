@@ -663,14 +663,6 @@ func (m *grpcMocker) handleArrayStreamData(
 
 		delay := found.Output.Delay
 
-		if perEventDelay, ok, err := extractStreamDelay(streamData); ok {
-			if err != nil {
-				return status.Errorf(codes.InvalidArgument, "invalid delay for stream element at index %d: %v", i, err)
-			}
-
-			delay = perEventDelay
-		}
-
 		if err := m.delay(stream.Context(), delay); err != nil {
 			return err
 		}

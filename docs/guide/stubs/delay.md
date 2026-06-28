@@ -119,45 +119,6 @@ In this example, the 200ms delay is applied **before** every message in the stre
 - 200ms delay
 - Message 3 sent
 
-### Per-Event Delays <VersionTag version="v3.15.0" />
-
-For fine-grained control over message timing, you can specify delays per-stream element:
-
-```yaml
-service: TrackService
-method: StreamTrack
-input:
-  equals:
-    stn: "MS#00005"
-output:
-  stream:
-    - delay: 100ms
-      data:
-        stn: "MS#00005"
-        identity: "00"
-        latitude: 0.11
-        longitude: 0.006
-        speed: 50
-        updatedAt: "2024-01-01T13:00:00.000Z"
-    - delay: 50ms
-      data:
-        stn: "MS#0000502"
-        identity: "01"
-        latitude: 0.11001
-        longitude: 0.00601
-        speed: 51
-        updatedAt: "2024-01-01T13:00:01.000Z"
-    - data:
-        stn: "MS#00005"
-        identity: "02"
-        latitude: 0.11002
-        longitude: 0.00602
-        speed: 52
-        updatedAt: "2024-01-01T13:00:02.000Z"
-```
-
-When an element has a `delay` field, that value is used instead of the uniform `output.delay`. Elements without a `delay` field fall back to the uniform delay if set.
-
 ## Use Cases
 
 ### 1. Timeout Testing

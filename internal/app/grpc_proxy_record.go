@@ -3,7 +3,10 @@ package app
 import (
 	"time"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/bavix/gripmock/v3/internal/infra/proxycapture"
@@ -23,8 +26,32 @@ func responseHeadersFromMetadata(head metadata.MD, tail metadata.MD) map[string]
 	return proxycapture.ResponseHeaders(head, tail)
 }
 
-func messageToMap(message proto.Message) map[string]any {
-	return proxycapture.MessageToMap(message)
+func messageToAny(message proto.Message) any {
+	return proxycapture.MessageToAny(message)
+}
+
+func selectCaptureError(firstErr, secondErr error) error {
+	if firstErr != nil {
+		return firstErr
+	}
+
+	return secondErr
+}
+
+func sanitizeCapturedStreamError(err error, hasResponses bool) error {
+	if err == nil {
+		return nil
+	}
+
+	if !hasResponses {
+		return err
+	}
+
+	if status.Code(err) == codes.Canceled {
+		return nil
+	}
+
+	return err
 }
 
 func (m *grpcMocker) recordCapturedStub(
@@ -42,4 +69,29 @@ func (m *grpcMocker) recordCapturedStub(
 	}
 
 	m.budgerigar.PutMany(stub)
+}
+
+func (m *grpcMocker) captureBidiResult(
+	clientStream grpc.ClientStream,
+	captureCtx captureRequestContext,
+	requests []map[string]any,
+	responses []map[string]any,
+	firstErr error,
+	secondErr error,
+	recordDelay bool,
+	elapsed time.Duration,
+) {
+	captureErr := selectCaptureError(firstErr, secondErr)
+	captureErr = sanitizeCapturedStreamError(captureErr, len(responses) > 0)
+
+	m.recordCapturedStub(
+		func() *stuber.Stub {
+			return proxycapture.BuildBidiStub(
+				m.fullServiceName, m.methodName, captureCtx.sessionID,
+				requests, captureCtx.headers, responses,
+				responseHeadersFromClientStream(clientStream), captureErr,
+			)
+		},
+		recordDelay, elapsed,
+	)
 }

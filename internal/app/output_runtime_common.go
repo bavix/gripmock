@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -50,39 +49,6 @@ func delayResponse(ctx context.Context, delayDur types.Duration) error {
 		}
 
 		return nil
-	}
-}
-
-func extractStreamDelay(item any) (types.Duration, bool, error) {
-	itemMap, ok := item.(map[string]any)
-	if !ok {
-		return 0, false, nil
-	}
-
-	delayVal, hasDelay := itemMap["delay"]
-	if !hasDelay || delayVal == nil {
-		return 0, false, nil
-	}
-
-	switch v := delayVal.(type) {
-	case float64:
-		return types.Duration(time.Duration(v)), true, nil
-	case int64:
-		return types.Duration(time.Duration(v)), true, nil
-	case int:
-		return types.Duration(time.Duration(v)), true, nil
-	case string:
-		d, err := time.ParseDuration(v)
-		if err != nil {
-			return 0, true, err
-		}
-
-		return types.Duration(d), true, nil
-	default:
-		// Per-event delay was specified but has an unsupported type.
-		// Treat it as an explicit configuration error rather than
-		// silently falling back to the uniform output.delay.
-		return 0, true, fmt.Errorf("unsupported delay type %T for value %v", delayVal, delayVal) //nolint:err113
 	}
 }
 

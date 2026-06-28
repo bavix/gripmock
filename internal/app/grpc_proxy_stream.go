@@ -225,6 +225,8 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 	prefetchedRequests []*dynamicpb.Message,
 	capture bool,
 ) error {
+	startTime := time.Now()
+
 	proxyCtx, cancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
 	defer cancel()
 
@@ -253,9 +255,9 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 	}
 
 	if capture {
-		requests, responses, delays := state.Snapshot()
+		requests, responses := state.Snapshot()
 
-		m.captureBidiResultWithDelays(clientStream, captureCtx, requests, responses, firstErr, secondErr, route.Source.RecordDelay, delays)
+		m.captureBidiResult(clientStream, captureCtx, requests, responses, firstErr, secondErr, route.Source.RecordDelay, time.Since(startTime))
 	}
 
 	if firstErr != nil {
@@ -318,8 +320,6 @@ func (m *grpcMocker) forwardBidiResponses(
 	state *StreamCaptureState,
 	errCh chan<- error,
 ) {
-	var lastRecvTime time.Time
-
 	for {
 		resp := dynamicpb.NewMessage(m.outputDesc)
 
@@ -335,13 +335,6 @@ func (m *grpcMocker) forwardBidiResponses(
 
 			return
 		}
-
-		recvTime := time.Now()
-		if !lastRecvTime.IsZero() {
-			state.AppendDelay(recvTime.Sub(lastRecvTime))
-		}
-
-		lastRecvTime = recvTime
 
 		state.AppendResponse(convertToMap(resp))
 

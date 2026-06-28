@@ -132,25 +132,6 @@ output:
     email: "{{faker.Email}}"
 ```
 
-### With Streaming and Per-Event Delays
-
-```yaml
-service: TrackService
-method: StreamTrack
-input:
-  equals:
-    stn: "MS#00005"
-output:
-  stream:
-    - data: { stn: "MS#00005", identity: "00" }
-      delay: 100ms
-    - data: { stn: "MS#0000502", identity: "01" }
-      delay: 50ms
-    - data: { stn: "MS#00005", identity: "02" }
-```
-
-Each `delay` applies before the corresponding message; elements without `delay` fall back to the uniform `output.delay` if set.
-
 ## Session Tracking
 
 Set the `X-Gripmock-Session` header to group requests:
@@ -170,7 +151,7 @@ All gRPC features work with ConnectRPC:
 
 - **Input Matching** — `equals`, `contains`, `regex`, `glob`, `anyOf`
 - **Output Templates** — `faker.*`, `{{uuid}}`, `{{timestamp}}`
-- **Delay Simulation** — `output.delay` and per-event `delay` on stream elements
+- **Delay Simulation** — `output.delay`
 - **Error Responses** — `output.error` with gRPC status codes
 - **Headers** — Custom metadata in responses
 - **Health Checks** — Via `/grpc.health.v1.Health/Check`

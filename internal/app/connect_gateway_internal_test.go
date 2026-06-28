@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/goccy/go-json"
 	"github.com/gorilla/mux"
@@ -335,67 +334,6 @@ func TestConnectExcludedHeaders_ConnectProtocol(t *testing.T) {
 	got := extractConnectHeaders(hdr)
 	assert.NotContains(t, got, "connect-protocol-version")
 	assert.NotContains(t, got, "connect-timeout-ms")
-}
-
-// TestExtractStreamDelay_UnsupportedTypeReturnsError is a regression
-// guard for the previous silent-fallback behaviour. When the user sets
-// a `delay` field with an unsupported type (e.g. bool), the helper must
-// surface an error rather than falling back to the uniform output.delay.
-func TestExtractStreamDelay_UnsupportedTypeReturnsError(t *testing.T) {
-	t.Parallel()
-
-	_, hasDelay, err := extractStreamDelay(map[string]any{"delay": true})
-	require.Error(t, err)
-	assert.True(t, hasDelay, "hasDelay should be true to signal that a delay was specified")
-
-	_, hasDelay, err = extractStreamDelay(map[string]any{"delay": []string{"100ms"}})
-	require.Error(t, err)
-	assert.True(t, hasDelay)
-}
-
-// TestExtractStreamDelay_InvalidStringIsError mirrors the existing
-// invalid-string test but reinforces the contract: an explicit error
-// (not a silent fallback) is required.
-func TestExtractStreamDelay_InvalidStringIsError(t *testing.T) {
-	t.Parallel()
-
-	_, hasDelay, err := extractStreamDelay(map[string]any{"delay": "not-a-duration"})
-	require.Error(t, err)
-	assert.True(t, hasDelay)
-}
-
-// TestApplyStreamDelays_OffByOneInvariant documents the contract that
-// delays[i] is the gap BEFORE stream[i+1] is sent (not before
-// stream[i]). This prevents regression to the previous buggy semantics
-// where delays[i] was applied to stream[i].
-func TestApplyStreamDelays_OffByOneInvariant(t *testing.T) {
-	t.Parallel()
-
-	stub := &stuber.Stub{
-		Service: "test.Service",
-		Method:  "TestMethod",
-		Output: stuber.Output{
-			Stream: []any{
-				map[string]any{"data": "first"},
-				map[string]any{"data": "second"},
-				map[string]any{"data": "third"},
-			},
-		},
-	}
-
-	applyStreamDelays(stub, true, []time.Duration{
-		100 * time.Millisecond,
-		200 * time.Millisecond,
-	})
-
-	entry0 := stub.Output.Stream[0].(map[string]any) //nolint:forcetypeassert
-	require.NotContains(t, entry0, "delay")
-
-	entry1 := stub.Output.Stream[1].(map[string]any) //nolint:forcetypeassert
-	assert.Equal(t, "100ms", entry1["delay"])
-
-	entry2 := stub.Output.Stream[2].(map[string]any) //nolint:forcetypeassert
-	assert.Equal(t, "200ms", entry2["delay"])
 }
 
 // TestConnectRPCGateway_HandleUnary_StubNotFound verifies that when no
