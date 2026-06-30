@@ -666,7 +666,7 @@ func (m *grpcMocker) handleArrayStreamData(
 			return err
 		}
 
-		outputData, ok := extractStreamData(streamData)
+		outputData, ok := streamData.(map[string]any)
 		if !ok {
 			return status.Errorf(codes.Internal, "invalid data format in stream array at index %d", i)
 		}
@@ -2677,24 +2677,18 @@ func (m *grpcMocker) sendStreamResponses(
 	}
 
 	for _, streamElement := range output.Stream {
+		streamDataCopy := streamElement
 		if streamData, ok := streamElement.(map[string]any); ok {
-			outputMsg, err := m.newOutputMessage(streamData)
-			if err != nil {
-				return errors.Wrap(err, "failed to convert response to dynamic message")
-			}
+			streamDataCopy = deepCopyMapAny(streamData)
+		}
 
-			if err := sendStreamMessage(stream, outputMsg); err != nil {
-				return err //nolint:wrapcheck
-			}
-		} else {
-			outputMsg, err := m.newOutputMessage(streamElement)
-			if err != nil {
-				return errors.Wrap(err, "failed to convert response to dynamic message")
-			}
+		outputMsg, err := m.newOutputMessage(streamDataCopy)
+		if err != nil {
+			return errors.Wrap(err, "failed to convert response to dynamic message")
+		}
 
-			if err := sendStreamMessage(stream, outputMsg); err != nil {
-				return err //nolint:wrapcheck
-			}
+		if err := sendStreamMessage(stream, outputMsg); err != nil {
+			return err //nolint:wrapcheck
 		}
 	}
 

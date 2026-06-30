@@ -52,15 +52,4 @@ func delayResponse(ctx context.Context, delayDur types.Duration) error {
 	}
 }
 
-func extractStreamData(item any) (map[string]any, bool) {
-	itemMap, ok := item.(map[string]any)
-	if !ok {
-		return nil, false
-	}
 
-	if data, ok := itemMap["data"].(map[string]any); ok {
-		return data, true
-	}
-
-	return itemMap, true
-}
