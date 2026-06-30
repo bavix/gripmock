@@ -51,5 +51,3 @@ func delayResponse(ctx context.Context, delayDur types.Duration) error {
 		return nil
 	}
 }
-
-

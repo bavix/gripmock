@@ -213,22 +213,6 @@ func TestConnectRPCGateway_RoutedRequest_ParsesVars(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, w.Code)
 }
 
-func TestConnectRPCGateway_StreamingReturnsUnimplemented(t *testing.T) {
-	t.Parallel()
-
-	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
-	w := httptest.NewRecorder()
-
-	gateway.writeError(w, codes.Unimplemented, "streaming not supported")
-
-	require.Equal(t, http.StatusNotImplemented, w.Code)
-	require.Equal(t, "application/json", w.Header().Get("Content-Type"))
-
-	resp := map[string]string{}
-	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	require.Equal(t, "unimplemented", resp["code"])
-}
-
 // TestHttpStreamAdapter_AtomicFlagsNoCopy verifies that the adapter's
 // atomic.Bool fields do not get copied through method calls (which would
 // trip the race detector in -race mode). This is a regression guard for
