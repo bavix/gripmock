@@ -52,6 +52,7 @@ func TestRestServerAddStubAllowsProtectedHealthServiceDefinitions(t *testing.T) 
 				nil,
 				nil,
 				nil,
+				nil,
 			)
 			require.NoError(t, err)
 
@@ -77,6 +78,7 @@ func TestRestServerAddStubAllowsCustomHealthService(t *testing.T) {
 		t.Context(),
 		stuber.NewBudgerigar(),
 		&mockExtender{},
+		nil,
 		nil,
 		nil,
 		nil,

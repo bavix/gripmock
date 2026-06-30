@@ -112,7 +112,7 @@ func TestStubNotFoundError(t *testing.T) {
 		Input:   []map[string]any{{"id": "1"}},
 	}
 
-	err := stubNotFoundError(query, &stuber.Result{})
+	err := NewErrorFormatter().FormatStubNotFoundError(query, &stuber.Result{})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "TestSvc")
 	require.Contains(t, err.Error(), "TestMethod")

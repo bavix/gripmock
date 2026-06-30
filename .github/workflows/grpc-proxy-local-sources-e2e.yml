@@ -55,7 +55,7 @@ jobs:
 
       - name: Start proxy with -S flag (local descriptors)
         run: |
-          GRPC_PORT="$GREETER_PROXY_PORT" HTTP_PORT="$GREETER_HTTP_PORT" \
+          GRPC_PORT="$GREETER_PROXY_PORT" HTTP_PORT="$GREETER_HTTP_PORT" CONNECTRPC_PORT=0 \
             "$RUNNER_TEMP/gripmock" \
             -S examples/projects/greeter/service.proto \
             grpc+proxy://localhost:${GREETER_UPSTREAM_PORT} \
@@ -130,7 +130,7 @@ jobs:
 
       - name: Start capture proxy with -S flag (local descriptors)
         run: |
-          GRPC_PORT="$GREETER_PROXY_PORT" HTTP_PORT="$GREETER_HTTP_PORT" \
+          GRPC_PORT="$GREETER_PROXY_PORT" HTTP_PORT="$GREETER_HTTP_PORT" CONNECTRPC_PORT=0 \
             "$RUNNER_TEMP/gripmock" \
             -S examples/projects/greeter/service.proto \
             grpc+capture://localhost:${GREETER_UPSTREAM_PORT} \

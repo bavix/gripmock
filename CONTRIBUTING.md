@@ -11,6 +11,17 @@ Thank you for your interest in contributing to GripMock! This document provides 
    - Install [grpctestify](https://github.com/gripmock/grpctestify-rust) for integration tests (see [grpctestify documentation](https://gripmock.github.io/grpctestify-rust/) for installation instructions)
    - Ensure you have Go installed and configured
 
+### ConnectRPC Testing
+
+**HTTP Client tests** (`.http` files) for the ConnectRPC server live in `examples/projects/*/connectrpc-tests.http`.
+
+**Running with httpyac:**
+```bash
+npx httpyac run examples/projects/greeter/connectrpc-tests/ --all
+```
+
+You can also open `.http` files in JetBrains IDEs (GoLand, IntelliJ) and click the run icon next to each request.
+
 ## Testing Requirements
 
 ### ⚠️ Critical Rules

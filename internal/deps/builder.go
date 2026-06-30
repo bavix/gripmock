@@ -44,6 +44,9 @@ type Builder struct {
 	stubValidator     *validator.Validate
 	stubValidatorOnce sync.Once
 
+	errorFormatter     *app.ErrorFormatter
+	errorFormatterOnce sync.Once
+
 	descriptorRegistry     *descriptors.Registry
 	descriptorRegistryOnce sync.Once
 
@@ -171,6 +174,15 @@ func (b *Builder) StubValidator() *validator.Validate {
 	})
 
 	return b.stubValidator
+}
+
+// ErrorFormatter returns the shared ErrorFormatter (created once per Builder).
+func (b *Builder) ErrorFormatter() *app.ErrorFormatter {
+	b.errorFormatterOnce.Do(func() {
+		b.errorFormatter = app.NewErrorFormatter()
+	})
+
+	return b.errorFormatter
 }
 
 func (b *Builder) DescriptorRegistry() *descriptors.Registry {

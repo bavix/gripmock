@@ -1,0 +1,8 @@
+### 1. GET returns 405
+GET http://127.0.0.1:4769/helloworld.Greeter/SayHello
+
+> {%
+client.test("status should be 405", function() {
+  client.assert(response.status === 405, "Expected 405, got " + response.status);
+});
+%}

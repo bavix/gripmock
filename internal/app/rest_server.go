@@ -57,6 +57,7 @@ type RestServer struct {
 	validator       *validator.Validate
 	restDescriptors *descriptors.Registry
 	mcpHandler      http.Handler
+	errorFormatter  *ErrorFormatter
 }
 
 var _ rest.ServerInterface = &RestServer{}
@@ -71,6 +72,7 @@ func NewRestServer(
 	historyReader history.Reader,
 	stubValidator *validator.Validate,
 	registry *descriptors.Registry,
+	errorFormatter *ErrorFormatter,
 ) (*RestServer, error) {
 	v := stubValidator
 	if v == nil {
@@ -87,12 +89,18 @@ func NewRestServer(
 		r = descriptors.NewRegistry()
 	}
 
+	e := errorFormatter
+	if e == nil {
+		e = NewErrorFormatter()
+	}
+
 	server := &RestServer{
 		startedAt:       time.Now(),
 		budgerigar:      budgerigar,
 		history:         historyReader,
 		validator:       v,
 		restDescriptors: r,
+		errorFormatter:  e,
 	}
 
 	go func() {
@@ -1838,7 +1846,7 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 
 	if result.Found() == nil {
 		w.WriteHeader(http.StatusNotFound)
-		h.writeResponseError(r.Context(), w, stubNotFoundError(query, result))
+		h.writeResponseError(r.Context(), w, h.errorFormatter.FormatStubNotFoundError(query, result))
 
 		return
 	}
