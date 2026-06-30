@@ -336,7 +336,9 @@ func (m *grpcMocker) forwardBidiResponses(
 			return
 		}
 
-		state.AppendResponse(convertToMap(resp))
+		if respMap, ok := messageToAny(resp).(map[string]any); ok {
+			state.AppendResponse(respMap)
+		}
 
 		if err = stream.SendMsg(resp); err != nil {
 			errCh <- err
