@@ -1,0 +1,15 @@
+### 7. Header-based matching (x-user + x-token)
+POST http://127.0.0.1:4769/helloworld.Greeter/SayHello
+Content-Type: application/json
+X-User: Ivan
+X-Token: 123
+
+{"name":"Alex"}
+
+> {%
+client.test("matches header stub, returns Hello, Ivan!", function() {
+  client.assert(response.status === 200, "Expected 200, got " + response.status);
+  const body = typeof response.body === 'string' ? JSON.parse(response.body) : response.body;
+  client.assert(body.message === "Hello, Ivan!", "Expected 'Hello, Ivan!', got " + body.message);
+});
+%}

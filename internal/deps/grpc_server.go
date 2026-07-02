@@ -62,6 +62,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		b.RemoteClient(),
 		b.config.OtelEnabled,
 		b.StubValidator(),
+		b.ErrorFormatter(),
 	)
 
 	server, err := grpcServer.Build(ctx)

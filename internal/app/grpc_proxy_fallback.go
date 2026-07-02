@@ -6,69 +6,50 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 )
 
-type unaryStubMissError struct {
-	err error
+type StreamType int
+
+const (
+	StreamTypeUnary StreamType = iota
+	StreamTypeServer
+	StreamTypeClient
+	StreamTypeBidi
+)
+
+type fallbackError struct {
+	err        error
+	request    *dynamicpb.Message
+	requests   []*dynamicpb.Message
+	streamType StreamType
 }
 
-func (e *unaryStubMissError) Error() string {
+func (e *fallbackError) Error() string {
 	return e.err.Error()
 }
 
-func (e *unaryStubMissError) Unwrap() error {
+func (e *fallbackError) Unwrap() error {
 	return e.err
 }
 
-func (e *unaryStubMissError) GRPCStatus() *status.Status {
+func (e *fallbackError) GRPCStatus() *status.Status {
+	if e.streamType == StreamTypeBidi {
+		return status.New(codes.NotFound, e.err.Error())
+	}
+
 	return status.Convert(e.err)
 }
 
-type serverStreamFallbackError struct {
-	err     error
-	request *dynamicpb.Message
+func newUnaryFallbackError(err error) *fallbackError {
+	return &fallbackError{err: err, streamType: StreamTypeUnary}
 }
 
-func (e *serverStreamFallbackError) Error() string {
-	return e.err.Error()
+func newServerStreamFallbackError(err error, req *dynamicpb.Message) *fallbackError {
+	return &fallbackError{err: err, request: req, streamType: StreamTypeServer}
 }
 
-func (e *serverStreamFallbackError) Unwrap() error {
-	return e.err
+func newClientStreamFallbackError(err error, reqs []*dynamicpb.Message) *fallbackError {
+	return &fallbackError{err: err, requests: reqs, streamType: StreamTypeClient}
 }
 
-func (e *serverStreamFallbackError) GRPCStatus() *status.Status {
-	return status.Convert(e.err)
-}
-
-type clientStreamFallbackError struct {
-	err      error
-	requests []*dynamicpb.Message
-}
-
-func (e *clientStreamFallbackError) Error() string {
-	return e.err.Error()
-}
-
-func (e *clientStreamFallbackError) Unwrap() error {
-	return e.err
-}
-
-func (e *clientStreamFallbackError) GRPCStatus() *status.Status {
-	return status.Convert(e.err)
-}
-
-type bidiStreamFallbackError struct {
-	err      error
-	requests []*dynamicpb.Message
-}
-
-func (e *bidiStreamFallbackError) Error() string {
-	return e.err.Error()
-}
-
-func (e *bidiStreamFallbackError) Unwrap() error {
-	return e.err
-}
-
-func (e *bidiStreamFallbackError) GRPCStatus() *status.Status {
-	return status.New(codes.NotFound, e.err.Error())
+func newBidiStreamFallbackError(err error, reqs []*dynamicpb.Message) *fallbackError {
+	return &fallbackError{err: err, requests: reqs, streamType: StreamTypeBidi}
 }

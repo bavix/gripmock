@@ -172,7 +172,7 @@ func BuildBidiStub(
 	session string,
 	requests []map[string]any,
 	requestHeaders map[string]any,
-	responses []any,
+	responses []map[string]any,
 	responseHeaders map[string]string,
 	callErr error,
 ) *stuber.Stub {
@@ -183,7 +183,7 @@ func BuildBidiStub(
 		Source:  stuber.SourceProxy,
 		Headers: stuber.InputHeader{Equals: requestHeaders},
 		Inputs:  toInputs(requests),
-		Output:  stuber.Output{Stream: toStreamOutput(responses), Headers: responseHeaders},
+		Output:  stuber.Output{Stream: toStreamOutputFromMaps(responses), Headers: responseHeaders},
 	}
 
 	applyStatusError(&stub.Output, callErr, false)
@@ -203,6 +203,15 @@ func toInputs(requests []map[string]any) []stuber.InputData {
 func toStreamOutput(responses []any) []any {
 	streamOutput := make([]any, 0, len(responses))
 	streamOutput = append(streamOutput, responses...)
+
+	return streamOutput
+}
+
+func toStreamOutputFromMaps(responses []map[string]any) []any {
+	streamOutput := make([]any, 0, len(responses))
+	for _, r := range responses {
+		streamOutput = append(streamOutput, r)
+	}
 
 	return streamOutput
 }

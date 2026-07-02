@@ -121,7 +121,7 @@ jobs:
           grpc_port="$((30000 + RANDOM % 20000))"
           http_port="$((30000 + RANDOM % 20000))"
 
-          GRPC_PORT="$grpc_port" HTTP_PORT="$http_port" "$bin" --stub=examples examples >"$RUNNER_TEMP/gripmock.log" 2>&1 &
+          GRPC_PORT="$grpc_port" HTTP_PORT="$http_port" CONNECTRPC_PORT=0 "$bin" --stub=examples examples >"$RUNNER_TEMP/gripmock.log" 2>&1 &
           pid=$!
 
           cleanup() {
@@ -151,6 +151,7 @@ jobs:
 
           $env:GRPC_PORT = (Get-Random -Minimum 30000 -Maximum 50000).ToString()
           $env:HTTP_PORT = (Get-Random -Minimum 30000 -Maximum 50000).ToString()
+          $env:CONNECTRPC_PORT = "0"
 
           $stdout = Join-Path $env:RUNNER_TEMP "gripmock.out.log"
           $stderr = Join-Path $env:RUNNER_TEMP "gripmock.err.log"
@@ -178,6 +179,7 @@ jobs:
 
             Remove-Item Env:GRPC_PORT -ErrorAction SilentlyContinue
             Remove-Item Env:HTTP_PORT -ErrorAction SilentlyContinue
+            Remove-Item Env:CONNECTRPC_PORT -ErrorAction SilentlyContinue
           }
 
   goreleaser-check:

@@ -23,7 +23,7 @@ func TestMcpMessageNOGoroutineLeakOnNotifications(t *testing.T) {
 	t.Parallel()
 
 	budgerigar := stuber.NewBudgerigar()
-	server, err := NewRestServer(t.Context(), budgerigar, &mockExtender{}, nil, nil, nil)
+	server, err := NewRestServer(t.Context(), budgerigar, &mockExtender{}, nil, nil, nil, nil)
 	require.NoError(t, err)
 
 	baseline := runtime.NumGoroutine()

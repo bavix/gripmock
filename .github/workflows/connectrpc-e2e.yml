@@ -1,0 +1,65 @@
+name: ConnectRPC E2E
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+concurrency:
+  group: connectrpc-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.26"
+  CONNECTRPC_PORT: 4769
+  GRPC_PORT: 4770
+  HTTP_PORT: 4771
+
+jobs:
+  connectrpc-e2e:
+    name: "ConnectRPC E2E"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Install httpyac
+        run: npm install -g httpyac@latest
+
+      - name: Build gripmock binary
+        run: go build -o "$RUNNER_TEMP/gripmock" .
+
+      - name: Start gripmock
+        run: |
+          "$RUNNER_TEMP/gripmock" examples/projects/greeter -s examples/projects/greeter \
+            >"$RUNNER_TEMP/gripmock.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock.pid"
+          for _ in $(seq 1 15); do
+            if "$RUNNER_TEMP/gripmock" check --timeout=1s --silent 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run ConnectRPC tests
+        run: httpyac run examples/projects/greeter/connectrpc-tests/ --all
+
+      - name: Stop server
+        if: always()
+        run: |
+          [ -f "$RUNNER_TEMP/gripmock.pid" ] && kill -INT "$(cat "$RUNNER_TEMP/gripmock.pid")" 2>/dev/null || true
+          sleep 1
+
+      - name: Dump logs on failure
+        if: failure()
+        run: cat "$RUNNER_TEMP/gripmock.log"
