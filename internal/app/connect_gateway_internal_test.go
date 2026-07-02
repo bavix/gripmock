@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -491,4 +492,68 @@ func TestConnectRPCGateway_HandleWithoutDescriptor_WithData(t *testing.T) {
 	var body map[string]string
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 	require.Equal(t, "unimplemented", body["code"])
+}
+
+// TestHttpStreamAdapter_EndStreamFrameReturnsEOF verifies that recvStreamingMessage
+// returns io.EOF when the client sends an endStream-only frame (empty data + endStream
+// flag). Previously the frame was decoded as a zero-value message, hiding the end-of-stream
+// signal from the handler.
+func TestHttpStreamAdapter_EndStreamFrameReturnsEOF(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	require.NoError(t, writeConnectFrame(&buf, nil, true))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", &buf)
+	req.Header.Set("Content-Type", "application/connect+json")
+
+	adapter := &httpStreamAdapter{
+		ctx:       req.Context(),
+		req:       req,
+		w:         nil,
+		streaming: true,
+	}
+
+	// RecvMsg should return io.EOF for a pure endStream envelope.
+	msg := &structpb.Struct{}
+	err := adapter.RecvMsg(msg)
+	require.ErrorIs(t, err, io.EOF)
+}
+
+// TestHttpStreamAdapter_SendMsgNotAffectedByClientEndStream verifies that
+// the server's SendMsg does NOT set the endStream flag on outbound envelopes
+// after receiving a client endStream frame. The client and server end-of-stream
+// signals are independent in the Connect RPC protocol.
+func TestHttpStreamAdapter_SendMsgNotAffectedByClientEndStream(t *testing.T) {
+	t.Parallel()
+
+	var inputBuf bytes.Buffer
+	require.NoError(t, writeConnectFrame(&inputBuf, nil, true))
+
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", &inputBuf)
+	req.Header.Set("Content-Type", "application/connect+json")
+
+	rec := httptest.NewRecorder()
+	adapter := &httpStreamAdapter{
+		ctx:       req.Context(),
+		req:       req,
+		w:         rec,
+		streaming: true,
+	}
+
+	// Consume the client endStream frame — must return io.EOF.
+	err := adapter.RecvMsg(&structpb.Struct{})
+	require.ErrorIs(t, err, io.EOF)
+
+	// Send a server response — the envelope must NOT carry endStream flag.
+	msg := &structpb.Struct{Fields: map[string]*structpb.Value{
+		"key": structpb.NewStringValue("value"),
+	}}
+	require.NoError(t, adapter.SendMsg(msg))
+
+	// Read back the server envelope and assert endStream is clear.
+	frame, err := readConnectFrame(rec.Body)
+	require.NoError(t, err)
+	require.Zero(t, frame.flags&connectEnvelopeFlagEndStream,
+		"server response must not have endStream flag set")
 }

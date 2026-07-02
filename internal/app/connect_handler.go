@@ -30,22 +30,15 @@ func (e *connectMethodNotFoundError) Error() string {
 }
 
 func extractConnectHeaders(hdr http.Header) map[string]any {
-	if len(hdr) == 0 {
-		return nil
-	}
+	result := make(map[string]any)
+	count := 0
 
-	result := make(map[string]any, len(hdr))
+	forLowerConnectHeaders(hdr, func(lower string, values []string) {
+		result[lower] = strings.Join(values, ";")
+		count++
+	})
 
-	for k, goval := range hdr {
-		lower := strings.ToLower(k)
-		if _, excluded := connectExcludedHeaders[lower]; excluded {
-			continue
-		}
-
-		result[lower] = strings.Join(goval, ";")
-	}
-
-	if len(result) == 0 {
+	if count == 0 {
 		return nil
 	}
 
@@ -57,24 +50,30 @@ func extractConnectHeaders(hdr http.Header) map[string]any {
 // consumable by gRPC-style helpers (metadata.FromIncomingContext) used
 // inside the mocker for stub matching (session, headers).
 func httpHeadersToGRPCContext(ctx context.Context, hdr http.Header) context.Context {
-	if len(hdr) == 0 {
+	md := metadata.MD{}
+	count := 0
+
+	forLowerConnectHeaders(hdr, func(lower string, values []string) {
+		md[lower] = append(md[lower], values...)
+		count++
+	})
+
+	if count == 0 {
 		return ctx
 	}
 
-	md := metadata.MD{}
+	return metadata.NewIncomingContext(ctx, md)
+}
 
+// forLowerConnectHeaders iterates over hdr, lowercases each key, and
+// calls fn for every header NOT in the connectExcludedHeaders set.
+func forLowerConnectHeaders(hdr http.Header, fn func(lower string, values []string)) {
 	for k, goval := range hdr {
 		lower := strings.ToLower(k)
 		if _, excluded := connectExcludedHeaders[lower]; excluded {
 			continue
 		}
 
-		md[lower] = append(md[lower], goval...)
+		fn(lower, goval)
 	}
-
-	if len(md) == 0 {
-		return ctx
-	}
-
-	return metadata.NewIncomingContext(ctx, md)
 }
