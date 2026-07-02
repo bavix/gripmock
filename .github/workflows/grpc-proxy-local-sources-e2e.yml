@@ -22,7 +22,7 @@ jobs:
     name: "Proxy with Local Sources (no upstream reflection)"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Go
         uses: actions/setup-go@v6
@@ -96,7 +96,7 @@ jobs:
     name: "Capture with Local Sources (no upstream reflection)"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Go
         uses: actions/setup-go@v6
