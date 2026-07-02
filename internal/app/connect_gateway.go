@@ -127,19 +127,21 @@ func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	adapter.ctx = httpHeadersToGRPCContext(r.Context(), r.Header)
 
-	if mocker.serverStream || mocker.clientStream {
-		if err := mocker.streamHandler(adapter.ctx, adapter); err != nil { //nolint:contextcheck
-			st, _ := status.FromError(err)
-			adapter.writeError(st.Code(), st.Message())
-		} else {
-			// Per Connect RPC protocol, the server signals end of stream
-			// by sending an empty envelope with the endStream flag set.
-			if err := writeConnectFrame(adapter.w, nil, true); err != nil {
-				logger.Debug().Err(err).Msg("connect.gateway: send end stream")
-			}
-		}
-	} else {
+	if !adapter.streaming {
 		g.handleUnary(mocker, adapter)
+
+		return
+	}
+
+	if err := mocker.streamHandler(adapter.ctx, adapter); err != nil { //nolint:contextcheck
+		st, _ := status.FromError(err)
+		adapter.writeError(st.Code(), st.Message())
+	} else {
+		// Per Connect RPC protocol, the server signals end of stream
+		// by sending an empty envelope with the endStream flag set.
+		if err := writeConnectFrame(adapter.w, nil, true); err != nil {
+			logger.Debug().Err(err).Msg("connect.gateway: send end stream")
+		}
 	}
 }
 
