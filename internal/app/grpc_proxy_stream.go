@@ -59,6 +59,9 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 	captureCtx := m.newCaptureRequestContext(stream.Context())
 	requestData := convertToMap(req)
 	recordDelay := route.Source.RecordDelay
+	recorded := false
+
+	lastMsgTime := startTime
 
 	for {
 		resp := dynamicpb.NewMessage(m.outputDesc)
@@ -77,14 +80,30 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 							responseHeadersFromClientStream(clientStream), err,
 						)
 					},
-					recordDelay, time.Since(startTime),
+					recordDelay && !recorded,
+					time.Since(startTime),
 				)
 			}
 
 			return err
 		}
 
-		responses = append(responses, messageToAny(resp))
+		now := time.Now()
+		if recordDelay && capture {
+			entry := messageToAny(resp)
+			if m, ok := entry.(map[string]any); ok {
+				m[stuber.GripmockKey] = map[string]any{
+					"delay": now.Sub(lastMsgTime).String(),
+				}
+				responses = append(responses, m)
+				recorded = true
+			} else {
+				responses = append(responses, entry)
+			}
+		} else {
+			responses = append(responses, messageToAny(resp))
+		}
+		lastMsgTime = now
 
 		if err = stream.SendMsg(resp); err != nil {
 			return err
@@ -104,7 +123,8 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 					responseHeadersFromClientStream(clientStream), nil,
 				)
 			},
-			recordDelay, time.Since(startTime),
+			recordDelay && !recorded,
+			time.Since(startTime),
 		)
 	}
 
@@ -238,6 +258,8 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 	}
 
 	state := NewStreamCaptureState()
+	state.startTime = startTime
+	state.recordDelay = capture && route.Source.RecordDelay
 
 	captureCtx := m.newCaptureRequestContext(stream.Context())
 
@@ -257,7 +279,8 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 	if capture {
 		requests, responses := state.Snapshot()
 
-		m.captureBidiResult(clientStream, captureCtx, requests, responses, firstErr, secondErr, route.Source.RecordDelay, time.Since(startTime))
+		needGlobalDelay := route.Source.RecordDelay && !state.HasTimedResponses()
+		m.captureBidiResult(clientStream, captureCtx, requests, responses, firstErr, secondErr, needGlobalDelay, time.Since(startTime))
 	}
 
 	if firstErr != nil {
@@ -336,8 +359,9 @@ func (m *grpcMocker) forwardBidiResponses(
 			return
 		}
 
+		now := time.Now()
 		if respMap, ok := messageToAny(resp).(map[string]any); ok {
-			state.AppendResponse(respMap)
+			state.AppendResponseWithTiming(respMap, now)
 		}
 
 		if err = stream.SendMsg(resp); err != nil {

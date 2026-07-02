@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/samber/lo"
 	"google.golang.org/grpc/codes"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -88,13 +87,14 @@ func (c *stubBuilderCore) Unary(inKey string, inVal any, outKey string, outVal a
 }
 
 func (c *stubBuilderCore) ReplyStream(msgs ...stuber.Output) StubBuilder {
-	stream := lo.FilterMap(msgs, func(o stuber.Output, _ int) (any, bool) {
-		if o.Data == nil {
-			return nil, false
+	stream := make([]any, 0, len(msgs))
+	for _, o := range msgs {
+		if len(o.Stream) > 0 {
+			stream = append(stream, o.Stream...)
+		} else if o.Data != nil {
+			stream = append(stream, o.Data)
 		}
-
-		return o.Data, true
-	})
+	}
 
 	c.data.output = stuber.Output{Stream: stream}
 	return c
@@ -243,15 +243,24 @@ func Merge(inputs ...stuber.InputData) stuber.InputData {
 		}
 
 		if len(in.Equals) > 0 {
-			out.Equals = lo.Assign(out.Equals, in.Equals)
+			if out.Equals == nil {
+				out.Equals = make(map[string]any, len(in.Equals))
+			}
+			maps.Copy(out.Equals, in.Equals)
 		}
 
 		if len(in.Contains) > 0 {
-			out.Contains = lo.Assign(out.Contains, in.Contains)
+			if out.Contains == nil {
+				out.Contains = make(map[string]any, len(in.Contains))
+			}
+			maps.Copy(out.Contains, in.Contains)
 		}
 
 		if len(in.Matches) > 0 {
-			out.Matches = lo.Assign(out.Matches, in.Matches)
+			if out.Matches == nil {
+				out.Matches = make(map[string]any, len(in.Matches))
+			}
+			maps.Copy(out.Matches, in.Matches)
 		}
 	}
 
@@ -263,15 +272,24 @@ func MergeHeaders(headers ...stuber.InputHeader) stuber.InputHeader {
 	out := stuber.InputHeader{}
 	for _, h := range headers {
 		if len(h.Equals) > 0 {
-			out.Equals = lo.Assign(out.Equals, h.Equals)
+			if out.Equals == nil {
+				out.Equals = make(map[string]any, len(h.Equals))
+			}
+			maps.Copy(out.Equals, h.Equals)
 		}
 
 		if len(h.Contains) > 0 {
-			out.Contains = lo.Assign(out.Contains, h.Contains)
+			if out.Contains == nil {
+				out.Contains = make(map[string]any, len(h.Contains))
+			}
+			maps.Copy(out.Contains, h.Contains)
 		}
 
 		if len(h.Matches) > 0 {
-			out.Matches = lo.Assign(out.Matches, h.Matches)
+			if out.Matches == nil {
+				out.Matches = make(map[string]any, len(h.Matches))
+			}
+			maps.Copy(out.Matches, h.Matches)
 		}
 	}
 
@@ -331,6 +349,17 @@ func StreamItem(kv ...any) stuber.Output {
 	return stuber.Output{Stream: []any{parseKVPairs(kv, "sdk.StreamItem")}}
 }
 
+// StreamItemWithDelay returns Output with one stream message and a per-element
+// _gripmock delay. The delay applies before this message, overriding any global
+// output.delay. Use with MergeOutput or ReplyStream.
+func StreamItemWithDelay(delay time.Duration, kv ...any) stuber.Output {
+	m := parseKVPairs(kv, "sdk.StreamItemWithDelay")
+	m[stuber.GripmockKey] = map[string]any{
+		"delay": delay.String(),
+	}
+	return stuber.Output{Stream: []any{m}}
+}
+
 // MergeOutput combines multiple Output into one (Data/Headers merged; Error/Delay/Stream from first non-zero).
 func MergeOutput(outputs ...stuber.Output) stuber.Output {
 	out := stuber.Output{}
@@ -338,7 +367,7 @@ func MergeOutput(outputs ...stuber.Output) stuber.Output {
 		if o.Data != nil {
 			if outMap, ok := out.Data.(map[string]any); ok {
 				if addMap, ok := o.Data.(map[string]any); ok {
-					out.Data = lo.Assign(outMap, addMap)
+					maps.Copy(outMap, addMap)
 				} else {
 					out.Data = o.Data
 				}
@@ -348,7 +377,10 @@ func MergeOutput(outputs ...stuber.Output) stuber.Output {
 		}
 
 		if len(o.Headers) > 0 {
-			out.Headers = lo.Assign(out.Headers, o.Headers)
+			if out.Headers == nil {
+				out.Headers = make(map[string]string, len(o.Headers))
+			}
+			maps.Copy(out.Headers, o.Headers)
 		}
 
 		if o.Error != "" {

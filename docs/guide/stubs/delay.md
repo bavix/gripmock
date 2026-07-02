@@ -81,7 +81,8 @@ output:
 
 For streaming responses, delay is applied **before** every message in the stream.
 
-### Server-Side Streaming
+### Uniform Delay
+
 ```yaml
 service: TrackService
 method: StreamTrack
@@ -111,13 +112,44 @@ output:
       updatedAt: "2024-01-01T13:00:02.000Z"
 ```
 
-In this example, the 200ms delay is applied **before** every message in the stream. The timing will be:
-- 200ms delay
-- Message 1 sent
-- 200ms delay
-- Message 2 sent
-- 200ms delay
-- Message 3 sent
+The 200ms delay is applied **before** every message:
+- 200ms → Message 1 → 200ms → Message 2 → 200ms → Message 3
+
+### Per-Element Delay <VersionTag version="v3.15.1" />
+
+Use the reserved `_gripmock` key inside a stream element to set a per-message delay:
+
+```yaml
+output:
+  stream:
+    - _gripmock:
+        delay: 50ms
+      status: NOT_SERVING
+    - _gripmock:
+        delay: 150ms
+      status: SERVING
+    - _gripmock:
+        delay: 100ms
+      status: DONE
+```
+
+Each message gets its own delay instead of the global `output.delay`:
+
+- 50ms → `{status: NOT_SERVING}`
+- 150ms → `{status: SERVING}`
+- 100ms → `{status: DONE}`
+
+The `_gripmock` key is **reserved** — it does not conflict with protobuf field names
+and is stripped before the message is sent to the client. The `_gripmock.delay` value
+uses the same duration format as the top-level `delay` field (`100ms`, `1s`, etc.).
+
+When a stream element contains `_gripmock.delay`, the per-element delay takes
+**priority** over the global `output.delay`. Elements without `_gripmock` still
+use the global delay.
+
+This is especially useful for captured streams where `recordDelay` records
+the actual inter-message timing from the upstream service. See
+[Capture Mode](../modes/capture) for details.
 
 ## Use Cases
 

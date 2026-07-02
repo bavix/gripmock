@@ -583,7 +583,9 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 			streamResponses := make([]any, 0, len(found.Output.Stream))
 			for _, item := range found.Output.Stream {
 				if itemMap, ok := item.(map[string]any); ok {
-					streamResponses = append(streamResponses, itemMap)
+					clean := deepCopyMapAny(itemMap)
+					stuber.ExtractGripmockDelay(clean)
+					streamResponses = append(streamResponses, clean)
 				} else {
 					streamResponses = append(streamResponses, item)
 				}
@@ -660,48 +662,67 @@ func (m *grpcMocker) handleArrayStreamData(
 		default:
 		}
 
-		delay := found.Output.Delay
-
-		if err := m.delay(stream.Context(), delay); err != nil {
+		if err := m.handleStreamElement(stream, found, streamData, i, inputMsg, requestTime); err != nil {
 			return err
 		}
+	}
 
-		outputData, ok := streamData.(map[string]any)
-		if !ok {
-			return status.Errorf(codes.Internal, "invalid data format in stream array at index %d", i)
-		}
+	return nil
+}
 
-		outputDataCopy := deepCopyMapAny(outputData)
-		requestData := convertToMap(inputMsg)
+func (m *grpcMocker) handleStreamElement(
+	stream grpc.ServerStream,
+	found *stuber.Stub,
+	streamData any,
+	i int,
+	inputMsg *dynamicpb.Message,
+	requestTime time.Time,
+) error {
+	outputData, ok := streamData.(map[string]any)
+	if !ok {
+		return status.Errorf(codes.Internal, "invalid data format in stream array at index %d", i)
+	}
 
-		headers := make(map[string]any)
-		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
-			headers = processHeaders(md)
-		}
+	outputDataCopy := deepCopyMapAny(outputData)
 
-		templateData := template.Data{
-			Request:      requestData,
-			Headers:      headers,
-			MessageIndex: i,
-			RequestTime:  requestTime,
-			Timestamp:    requestTime,
-			State:        make(map[string]any),
-			Requests:     []any{requestData},
-			StubID:       found.ID.String(),
-			RequestID:    found.ID.String(),
-		}
-		if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
-			return errors.Wrap(err, "failed to process dynamic templates")
-		}
+	delay := found.Output.Delay
+	if d, ok := stuber.ExtractGripmockDelay(outputDataCopy); ok {
+		delay = d
+	}
 
-		outputMsg, err := m.newOutputMessage(outputDataCopy)
-		if err != nil {
-			return errors.Wrap(err, "failed to convert response to dynamic message")
-		}
+	if err := m.delay(stream.Context(), delay); err != nil {
+		return err
+	}
 
-		if err := sendStreamMessage(stream, outputMsg); err != nil {
-			return err
-		}
+	requestData := convertToMap(inputMsg)
+
+	headers := make(map[string]any)
+	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+		headers = processHeaders(md)
+	}
+
+	templateData := template.Data{
+		Request:      requestData,
+		Headers:      headers,
+		MessageIndex: i,
+		RequestTime:  requestTime,
+		Timestamp:    requestTime,
+		State:        make(map[string]any),
+		Requests:     []any{requestData},
+		StubID:       found.ID.String(),
+		RequestID:    found.ID.String(),
+	}
+	if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
+		return errors.Wrap(err, "failed to process dynamic templates")
+	}
+
+	outputMsg, err := m.newOutputMessage(outputDataCopy)
+	if err != nil {
+		return errors.Wrap(err, "failed to convert response to dynamic message")
+	}
+
+	if err := sendStreamMessage(stream, outputMsg); err != nil {
+		return err
 	}
 
 	return nil
@@ -2643,6 +2664,15 @@ func (m *grpcMocker) sendStreamResponses(
 
 			streamDataCopy := deepCopyMapAny(streamData)
 
+			delayDelay := output.Delay
+			if d, ok := stuber.ExtractGripmockDelay(streamDataCopy); ok {
+				delayDelay = d
+			}
+
+			if err := m.delay(stream.Context(), delayDelay); err != nil {
+				return err
+			}
+
 			headers := make(map[string]any)
 			if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
 				headers = processHeaders(md)
@@ -2679,7 +2709,19 @@ func (m *grpcMocker) sendStreamResponses(
 	for _, streamElement := range output.Stream {
 		streamDataCopy := streamElement
 		if streamData, ok := streamElement.(map[string]any); ok {
-			streamDataCopy = deepCopyMapAny(streamData)
+			copied := deepCopyMapAny(streamData)
+			streamDataCopy = copied
+
+			delayDelay := output.Delay
+			if d, found := stuber.ExtractGripmockDelay(copied); found {
+				delayDelay = d
+			}
+
+			if delayDelay != 0 {
+				if err := m.delay(stream.Context(), delayDelay); err != nil {
+					return err
+				}
+			}
 		}
 
 		outputMsg, err := m.newOutputMessage(streamDataCopy)

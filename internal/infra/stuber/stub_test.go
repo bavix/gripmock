@@ -122,6 +122,62 @@ func TestOutputFieldsOptionalDelay(t *testing.T) {
 	require.Equal(t, types.Duration(0), output.Delay)
 }
 
+func TestExtractGripmockDelay(t *testing.T) {
+	t.Parallel()
+
+	t.Run("no_gripmock_key", func(t *testing.T) {
+		t.Parallel()
+
+		m := map[string]any{"status": "OK"}
+		d, ok := stuber.ExtractGripmockDelay(m)
+		require.False(t, ok)
+		require.Zero(t, d)
+		require.Equal(t, map[string]any{"status": "OK"}, m)
+	})
+
+	t.Run("with_valid_delay", func(t *testing.T) {
+		t.Parallel()
+
+		m := map[string]any{"status": "OK", "_gripmock": map[string]any{"delay": "150ms"}}
+		d, ok := stuber.ExtractGripmockDelay(m)
+		require.True(t, ok)
+		require.Equal(t, types.Duration(150*time.Millisecond), d)
+
+		_, has := m["_gripmock"]
+		require.False(t, has)
+		require.Equal(t, map[string]any{"status": "OK"}, m)
+	})
+
+	t.Run("invalid_delay_string", func(t *testing.T) {
+		t.Parallel()
+
+		m := map[string]any{"_gripmock": map[string]any{"delay": "not-a-duration"}}
+		d, ok := stuber.ExtractGripmockDelay(m)
+		require.False(t, ok)
+		require.Zero(t, d)
+	})
+
+	t.Run("nil_map", func(t *testing.T) {
+		t.Parallel()
+
+		d, ok := stuber.ExtractGripmockDelay(nil)
+		require.False(t, ok)
+		require.Zero(t, d)
+	})
+
+	t.Run("gripmock_not_a_map", func(t *testing.T) {
+		t.Parallel()
+
+		m := map[string]any{"_gripmock": "string-not-map"}
+		d, ok := stuber.ExtractGripmockDelay(m)
+		require.False(t, ok)
+		require.Zero(t, d)
+
+		_, has := m["_gripmock"]
+		require.False(t, has)
+	})
+}
+
 func TestOutputDelayJsonSerialization(t *testing.T) {
 	t.Parallel()
 	// Test JSON serialization with delay
