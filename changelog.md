@@ -1,5 +1,18 @@
 # Changelog
 
+## v3.15.0 - 2026-07-02
+
+### What's Changed
+
+* chore(deps): bump sourcemeta/jsonschema from 15.8.0 to 15.11.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/881
+* chore(deps): bump sourcemeta/jsonschema from 15.11.0 to 16.0.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/884
+* ConnectRPC server by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/877
+* chore(deps): bump actions/checkout from 6 to 7 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/886
+* chore(deps): bump the npm_and_yarn group across 1 directory with 2 updates by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/891
+* micro fixes by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/892
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.14.0...v3.15.0
+
 ## v3.14.0 - 2026-06-13
 
 ### What's Changed
