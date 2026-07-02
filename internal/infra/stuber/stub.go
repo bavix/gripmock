@@ -1,6 +1,8 @@
 package stuber
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 
@@ -54,6 +56,52 @@ type Effect struct {
 	Action string         `json:"action"`
 	ID     string         `json:"id,omitempty"`
 	Stub   map[string]any `json:"stub,omitempty"`
+}
+
+// GripmockKey is the reserved map key for per-element stream metadata.
+// When present in a stream entry, it must be a map[string]any.
+// Supported sub-keys:
+//   - "delay" — per-element delay before sending this message (Go duration string)
+const GripmockKey = "_gripmock"
+
+// ExtractGripmockDelay checks a stream element map for GripmockKey.
+// If found, it extracts the "delay" value, deletes GripmockKey from the map,
+// and returns the parsed duration. Returns (0, false) if no valid delay is present.
+//
+// The map is modified in place (GripmockKey is removed).
+func ExtractGripmockDelay(m map[string]any) (types.Duration, bool) {
+	if m == nil {
+		return 0, false
+	}
+
+	raw, has := m[GripmockKey]
+	if !has {
+		return 0, false
+	}
+
+	delete(m, GripmockKey)
+
+	gk, ok := raw.(map[string]any)
+	if !ok {
+		return 0, false
+	}
+
+	delayStr, has := gk["delay"]
+	if !has {
+		return 0, false
+	}
+
+	s, ok := delayStr.(string)
+	if !ok {
+		return 0, false
+	}
+
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		return 0, false
+	}
+
+	return types.Duration(d), true
 }
 
 // EffectiveTimes returns the stub's max match count; 0 means unlimited.

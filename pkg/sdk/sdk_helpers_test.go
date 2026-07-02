@@ -154,6 +154,12 @@ func TestHelpersReplyOutputModifiers(t *testing.T) {
 	out := StreamItem("msg", "hi")
 	require.Len(t, out.Stream, 1)
 	require.Equal(t, "hi", out.Stream[0].(map[string]any)["msg"])
+
+	out2 := StreamItemWithDelay(50*time.Millisecond, "msg", "delayed")
+	require.Len(t, out2.Stream, 1)
+	elem := out2.Stream[0].(map[string]any)
+	require.Equal(t, "50ms", elem["_gripmock"].(map[string]any)["delay"])
+	require.Equal(t, "delayed", elem["msg"])
 }
 
 func TestParseFullMethodName(t *testing.T) {

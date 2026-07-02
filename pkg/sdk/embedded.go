@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -29,6 +30,8 @@ type embeddedMock struct {
 	budgerigar    *stuber.Budgerigar
 	recorder      *InMemoryRecorder
 	expectedTotal atomic.Int32
+	expectedMu    sync.Mutex
+	expectedByMth map[string]int
 }
 
 func (m *embeddedMock) Conn() *grpc.ClientConn { return m.conn }
@@ -48,7 +51,7 @@ func (m *embeddedMock) Stub(service, method string) StubBuilder {
 }
 func (m *embeddedMock) History() HistoryReader { return m.recorder }
 func (m *embeddedMock) Verify() Verifier {
-	return &verifier{recorder: m.recorder, expectedTotal: &m.expectedTotal}
+	return &verifier{recorder: m.recorder, expectedTotal: &m.expectedTotal, expectedByMth: m.expectedByMth, expectedMu: &m.expectedMu}
 }
 
 func (m *embeddedMock) Close() error {
@@ -72,6 +75,13 @@ func (m *embeddedMock) commitStubs(stubs []*stuber.Stub) error {
 		m.budgerigar.PutMany(stub)
 		if stub.Options.Times > 0 {
 			m.expectedTotal.Add(int32(stub.Options.Times))
+
+			m.expectedMu.Lock()
+			if m.expectedByMth == nil {
+				m.expectedByMth = make(map[string]int)
+			}
+			m.expectedByMth[methodKey(stub.Service, stub.Method)] += stub.Options.Times
+			m.expectedMu.Unlock()
 		}
 	}
 

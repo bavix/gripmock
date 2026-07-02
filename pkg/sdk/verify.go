@@ -3,7 +3,9 @@ package sdk
 import (
 	"context"
 	"fmt"
+	"maps"
 	"strings"
+	"sync"
 	"sync/atomic"
 )
 
@@ -92,6 +94,8 @@ type MethodVerifier interface {
 type verifier struct {
 	recorder      *InMemoryRecorder
 	expectedTotal *atomic.Int32
+	expectedByMth map[string]int
+	expectedMu    *sync.Mutex
 }
 
 func (v *verifier) Method(service, method string) MethodVerifier {
@@ -125,6 +129,27 @@ func (v *verifier) VerifyStubTimesErr() error {
 	if want == 0 {
 		return nil
 	}
+
+	if v.expectedMu != nil {
+		v.expectedMu.Lock()
+		perMethod := maps.Clone(v.expectedByMth)
+		v.expectedMu.Unlock()
+
+		for key, expected := range perMethod {
+			service, method, ok := splitMethodKey(key)
+			if !ok {
+				return fmt.Errorf("gripmock: invalid expected method key %q", key)
+			}
+
+			got := len(v.recorder.FilterByMethod(service, method))
+			if got != expected {
+				return fmt.Errorf("gripmock: expected %d calls for %s/%s (from stub Times), got %d", expected, service, method, got)
+			}
+		}
+
+		return nil
+	}
+
 	got := v.recorder.Count()
 	if got != want {
 		return fmt.Errorf("gripmock: expected %d total calls (from stub Times), got %d", want, got)
