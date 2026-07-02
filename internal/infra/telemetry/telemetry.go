@@ -51,7 +51,7 @@ func InitMetrics(ctx context.Context, version string, reg prometheus.Registerer)
 
 	otel.SetMeterProvider(mp)
 
-	meter := otel.Meter("gripmock")
+	meter := mp.Meter("gripmock")
 
 	stubsCounter, _ := meter.Int64UpDownCounter(
 		"gripmock.stub.count",
