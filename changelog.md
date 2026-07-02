@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.15.1 - 2026-07-02
+
+### What's Changed
+
+* chore(deps): bump esbuild from 0.27.4 to 0.28.1 in the npm_and_yarn group across 1 directory by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/893
+* feat: stream with _gripmock.delay by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/894
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.15.0...v3.15.1
+
 ## v3.15.0 - 2026-07-02
 
 ### What's Changed
