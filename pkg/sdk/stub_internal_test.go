@@ -17,13 +17,14 @@ func TestStubBuilderCommitAssignsNonNilID(t *testing.T) {
 	b := &stubBuilderCore{
 		service: "helloworld.Greeter",
 		method:  "SayHello",
-		onCommit: func(stub *stuber.Stub) {
+		onCommit: func(stub *stuber.Stub) error {
 			got = stub
+			return nil
 		},
 	}
 
 	// Act
-	b.Unary("name", "Bob", "message", "Hello Bob").Commit()
+	require.NoError(t, b.Unary("name", "Bob", "message", "Hello Bob").Commit())
 
 	// Assert
 	require.NotNil(t, got)

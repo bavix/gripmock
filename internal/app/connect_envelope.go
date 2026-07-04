@@ -27,6 +27,14 @@ const (
 // reads.
 var ErrEnvelopeTooLarge = errors.New("connect envelope payload exceeds maximum size")
 
+// connectError is the JSON body of a Connect RPC error response.
+// See https://connectrpc.com/docs/protocol/#error-end-stream
+type connectError struct {
+	Code    string           `json:"code"`
+	Message string           `json:"message"`
+	Details []map[string]any `json:"details"`
+}
+
 type connectFrame struct {
 	flags byte
 	data  []byte

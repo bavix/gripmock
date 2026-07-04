@@ -127,7 +127,7 @@ func (m *remoteMock) deleteOwnedStubs() error {
 }
 
 func (m *remoteMock) api() remoteapi.Client {
-	return m.apiWithContext(nil)
+	return m.apiWithContext(context.TODO())
 }
 
 func (m *remoteMock) apiWithContext(ctx context.Context) remoteapi.Client {
@@ -256,6 +256,6 @@ func (m *remoteMock) stubBuilderCore(service, method string) *stubBuilderCore {
 	return &stubBuilderCore{
 		service:  service,
 		method:   method,
-		onCommit: func(stub *stuber.Stub) { m.addStub(stub) },
+		onCommit: func(stub *stuber.Stub) error { return m.commitStubs([]*stuber.Stub{stub}) },
 	}
 }

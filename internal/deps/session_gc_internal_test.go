@@ -41,7 +41,7 @@ func TestBuilderCleanupExpiredSessionsRemovesTouchedSessionData(t *testing.T) {
 
 	session.Touch("A")
 
-	b.cleanupExpiredSessions(t.Context(), time.Now(), 0)
+	cleanupExpiredSessions(t.Context(), time.Now(), 0, b.Budgerigar(), b.HistoryStore())
 
 	all := b.Budgerigar().All()
 	require.Len(t, all, 1)
@@ -62,7 +62,7 @@ func TestBuilderCleanupExpiredSessionsDoesNotDeleteGlobalSession(t *testing.T) {
 
 	session.Touch("A")
 
-	b.cleanupExpiredSessions(t.Context(), time.Now(), 0)
+	cleanupExpiredSessions(t.Context(), time.Now(), 0, b.Budgerigar(), b.HistoryStore())
 
 	all := b.Budgerigar().All()
 	require.Len(t, all, 1)

@@ -477,10 +477,11 @@ func TestRunSugarMatchReturn(t *testing.T) {
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
-		Match("name", "Alex").
-		Return("message", "Hi sugar").
-		Commit()
+	b, err := mock.Stub(By("/helloworld.Greeter/SayHello")).Match("name", "Alex")
+	require.NoError(t, err)
+	b, err = b.Return("message", "Hi sugar")
+	require.NoError(t, err)
+	require.NoError(t, b.Commit())
 
 	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alex")
 	require.Equal(t, "Hi sugar", getMessageField(t, msg, "message"))
@@ -506,10 +507,11 @@ func TestRunDynamicTemplateMatchReturn(t *testing.T) {
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
-		Match("name", "Alex").
-		Return("message", "Hi {{.Request.name}}").
-		Commit()
+	b, err := mock.Stub(By("/helloworld.Greeter/SayHello")).Match("name", "Alex")
+	require.NoError(t, err)
+	b, err = b.Return("message", "Hi {{.Request.name}}")
+	require.NoError(t, err)
+	require.NoError(t, b.Commit())
 
 	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alex")
 	require.Equal(t, "Hi Alex", getMessageField(t, msg, "message"))
@@ -564,9 +566,8 @@ func TestRunSugarMatchPanicOddArgs(t *testing.T) {
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 
-	require.PanicsWithValue(t, "sdk.Match: need pairs (key, value), got 1 args", func() {
-		mock.Stub(By("/helloworld.Greeter/SayHello")).Match("name").Commit()
-	})
+	_, err := mock.Stub(By("/helloworld.Greeter/SayHello")).Match("name")
+	require.ErrorContains(t, err, "sdk.Match: need pairs (key, value), got 1 args")
 }
 
 func TestRunSugarReturnPanicOddArgs(t *testing.T) {
@@ -574,9 +575,8 @@ func TestRunSugarReturnPanicOddArgs(t *testing.T) {
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 
-	require.PanicsWithValue(t, "sdk.Return: need pairs (key, value), got 1 args", func() {
-		mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "x")).Return("message").Commit()
-	})
+	_, err := mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "x")).Return("message")
+	require.ErrorContains(t, err, "sdk.Return: need pairs (key, value), got 1 args")
 }
 
 func TestRunReplyHeaders(t *testing.T) {
@@ -698,8 +698,8 @@ func TestRunVerifyStubTimesFromStubTimes(t *testing.T) {
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
 	// Ben: 1 call, Alice: 2 calls — SDK tracks sum = 3
-	mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "Ben")).Reply(Data("message", "Hi Ben")).Times(1).Commit()
-	mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "Alice")).Reply(Data("message", "Hi Alice")).Times(2).Commit()
+	require.NoError(t, mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "Ben")).Reply(Data("message", "Hi Ben")).Times(1).Commit())
+	require.NoError(t, mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "Alice")).Reply(Data("message", "Hi Alice")).Times(2).Commit())
 
 	_ = invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Ben")
 	_ = invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alice")
@@ -713,7 +713,7 @@ func TestRunCloseVerifiesStubTimes(t *testing.T) {
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "x")).Reply(Data("message", "ok")).Times(1).Commit()
+	require.NoError(t, mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "x")).Reply(Data("message", "ok")).Times(1).Commit())
 	_ = invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "x")
 	// Close() runs VerifyStubTimes — passes (1 call, expected 1)
 }
@@ -730,7 +730,7 @@ func TestRunVerifyStubTimesErrNoErrorWhenMatch(t *testing.T) {
 	require.NoError(t, err)
 
 	// Setup a stub with Times(1) and make exactly 1 call so cleanup verification passes
-	mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "x")).Reply(Data("message", "ok")).Times(1).Commit()
+	require.NoError(t, mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "x")).Reply(Data("message", "ok")).Times(1).Commit())
 
 	// Make the expected call
 	ctx := t.Context()

@@ -71,12 +71,12 @@ func (b *Builder) newConnectServer(ctx context.Context, router *mux.Router) *htt
 	handler = httputil.GzipRequestMiddleware(handler)
 	handler = handlers.CompressHandler(handler)
 
-	if b.config.OtelEnabled {
+	if b.config.OTel.Enabled {
 		handler = otelhttp.NewHandler(handler, "gripmock-connect")
 	}
 
 	return &http.Server{
-		Addr:              b.config.ConnectAddr,
+		Addr:              b.config.Connect.Addr,
 		Handler:           handler,
 		ReadHeaderTimeout: connectReadHeaderTimeout,
 		ReadTimeout:       connectReadTimeout,
@@ -90,10 +90,10 @@ func (b *Builder) newConnectServer(ctx context.Context, router *mux.Router) *htt
 
 func (b *Builder) listenConnect(ctx context.Context, srv *http.Server) (net.Listener, error) {
 	connectTLS := infraTLS.TLSConfig{
-		CertFile:   b.config.ConnectTLSCertFile,
-		KeyFile:    b.config.ConnectTLSKeyFile,
-		ClientAuth: b.config.ConnectTLSClientAuth,
-		CAFile:     b.config.ConnectTLSCAFile,
+		CertFile:   b.config.ConnectTLS.CertFile,
+		KeyFile:    b.config.ConnectTLS.KeyFile,
+		ClientAuth: b.config.ConnectTLS.ClientAuth,
+		CAFile:     b.config.ConnectTLS.CAFile,
 		MinVersion: infraTLS.MinTLSVersion12,
 	}
 
@@ -109,7 +109,7 @@ func (b *Builder) listenConnect(ctx context.Context, srv *http.Server) (net.List
 		return &p
 	}()
 
-	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", b.config.ConnectAddr)
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", b.config.Connect.Addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to listen for ConnectRPC")
 	}
@@ -132,7 +132,7 @@ func (b *Builder) tlsConnectListener(srv *http.Server, connectTLS infraTLS.TLSCo
 		return &p
 	}()
 
-	tlsListener, err := tls.Listen("tcp", b.config.ConnectAddr, srv.TLSConfig)
+	tlsListener, err := tls.Listen("tcp", b.config.Connect.Addr, srv.TLSConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create Connect TLS listener")
 	}

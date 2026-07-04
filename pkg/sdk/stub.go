@@ -11,13 +11,18 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
+// StubBuilder defines a fluent builder for creating and registering stubs.
+//
+// All methods return StubBuilder for chaining.
 type StubBuilder interface {
 	When(input stuber.InputData) StubBuilder
-	Match(kv ...any) StubBuilder
+	Match(kv ...any) (StubBuilder, error)
+	MustMatch(kv ...any) StubBuilder
 	WhenStream(inputs ...stuber.InputData) StubBuilder
 	WhenHeaders(headers stuber.InputHeader) StubBuilder
 	Reply(output stuber.Output) StubBuilder
-	Return(kv ...any) StubBuilder
+	Return(kv ...any) (StubBuilder, error)
+	MustReturn(kv ...any) StubBuilder
 	ReplyStream(msgs ...stuber.Output) StubBuilder
 	ReplyError(code codes.Code, msg string) StubBuilder
 	ReplyErrorWithDetails(code codes.Code, msg string, details ...map[string]any) StubBuilder
@@ -28,7 +33,7 @@ type StubBuilder interface {
 	Priority(p int) StubBuilder
 	Times(n int) StubBuilder
 	Unary(inKey string, inVal any, outKey string, outVal any) StubBuilder
-	Commit()
+	Commit() error
 }
 
 type stubBuilderData struct {
@@ -44,7 +49,7 @@ type stubBuilderCore struct {
 	service  string
 	method   string
 	data     stubBuilderData
-	onCommit func(stub *stuber.Stub)
+	onCommit func(stub *stuber.Stub) error
 }
 
 func (c *stubBuilderCore) When(input stuber.InputData) StubBuilder {
@@ -53,8 +58,21 @@ func (c *stubBuilderCore) When(input stuber.InputData) StubBuilder {
 	return c
 }
 
-func (c *stubBuilderCore) Match(kv ...any) StubBuilder {
-	return c.When(kvToInput(kv, "sdk.Match"))
+// Match adds input data from key-value pairs.
+// Returns error on invalid key-value pairs.
+func (c *stubBuilderCore) Match(kv ...any) (StubBuilder, error) {
+	input, err := kvToInputErr(kv, "sdk.Match")
+	if err != nil {
+		return c, err
+	}
+
+	return c.When(input), nil
+}
+
+// MustMatch adds input data from key-value pairs.
+// Panics on invalid key-value pairs. Use Match for error handling.
+func (c *stubBuilderCore) MustMatch(kv ...any) StubBuilder {
+	return c.When(kvToInput(kv, "sdk.MustMatch"))
 }
 
 func (c *stubBuilderCore) WhenStream(inputs ...stuber.InputData) StubBuilder {
@@ -74,8 +92,21 @@ func (c *stubBuilderCore) Reply(output stuber.Output) StubBuilder {
 	return c
 }
 
-func (c *stubBuilderCore) Return(kv ...any) StubBuilder {
-	return c.Reply(kvToOutput(kv, "sdk.Return"))
+// Return sets output data from key-value pairs.
+// Returns error on invalid key-value pairs.
+func (c *stubBuilderCore) Return(kv ...any) (StubBuilder, error) {
+	output, err := kvToOutputErr(kv, "sdk.Return")
+	if err != nil {
+		return c, err
+	}
+
+	return c.Reply(output), nil
+}
+
+// MustReturn sets output data from key-value pairs.
+// Panics on invalid key-value pairs. Use Return for error handling.
+func (c *stubBuilderCore) MustReturn(kv ...any) StubBuilder {
+	return c.Reply(kvToOutput(kv, "sdk.MustReturn"))
 }
 
 func (c *stubBuilderCore) Unary(inKey string, inVal any, outKey string, outVal any) StubBuilder {
@@ -154,8 +185,13 @@ func (c *stubBuilderCore) Times(n int) StubBuilder {
 	return c
 }
 
-func (c *stubBuilderCore) Commit() {
-	stub := &stuber.Stub{
+// Commit registers the stub. Returns error if registration fails.
+func (c *stubBuilderCore) Commit() error {
+	return c.onCommit(c.newStub())
+}
+
+func (c *stubBuilderCore) newStub() *stuber.Stub {
+	return &stuber.Stub{
 		ID:       uuid.New(),
 		Service:  c.service,
 		Method:   c.method,
@@ -166,7 +202,6 @@ func (c *stubBuilderCore) Commit() {
 		Priority: c.data.priority,
 		Options:  c.data.options,
 	}
-	c.onCommit(stub)
 }
 
 // Equals returns InputData for exact match.
@@ -303,11 +338,37 @@ func kvToInput(kv []any, errPrefix string) stuber.InputData {
 	return stuber.InputData{Equals: parseKVPairs(kv, errPrefix)}
 }
 
+func kvToInputErr(kv []any, errPrefix string) (stuber.InputData, error) {
+	if len(kv) == 0 {
+		return stuber.InputData{}, nil
+	}
+
+	m, err := parseKVPairsErr(kv, errPrefix)
+	if err != nil {
+		return stuber.InputData{}, err
+	}
+
+	return stuber.InputData{Equals: m}, nil
+}
+
 func kvToOutput(kv []any, errPrefix string) stuber.Output {
 	if len(kv) == 0 {
 		return stuber.Output{}
 	}
 	return stuber.Output{Data: parseKVPairs(kv, errPrefix)}
+}
+
+func kvToOutputErr(kv []any, errPrefix string) (stuber.Output, error) {
+	if len(kv) == 0 {
+		return stuber.Output{}, nil
+	}
+
+	m, err := parseKVPairsErr(kv, errPrefix)
+	if err != nil {
+		return stuber.Output{}, err
+	}
+
+	return stuber.Output{Data: m}, nil
 }
 
 // Data returns Output with Data map from key-value pairs.
@@ -331,6 +392,7 @@ func ReplyDelay(d time.Duration) stuber.Output {
 // ReplyErr returns Output with error response. Use with Merge.
 func ReplyErr(code codes.Code, msg string) stuber.Output {
 	c := code
+
 	return stuber.Output{Code: &c, Error: msg}
 }
 

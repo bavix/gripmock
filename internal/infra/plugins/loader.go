@@ -67,16 +67,24 @@ func (l *Loader) Load(ctx context.Context, reg pkgplugins.Registry) {
 			if err := fn(reg); err == nil {
 				continue
 			}
+
+			if logger != nil {
+				logger.Warn().Str("path", p).Err(err).Msg("plugin register error, skipping")
+			}
+
+			continue
 		}
 
 		if fn, ok := sym.(func(pkgplugins.Registry)); ok {
 			fn(reg)
-		} else if logger != nil {
-			logger.Warn().Str("path", p).Msg("plugin register symbol has unsupported signature")
-		}
+		} else {
+			if logger != nil {
+				logger.Warn().Str("path", p).Msg("plugin register symbol has unsupported signature")
+			}
 
-		if !existsPlugin(ctx, reg, info.Name) {
-			reg.AddPlugin(info, nil)
+			if !existsPlugin(ctx, reg, info.Name) {
+				reg.AddPlugin(info, nil)
+			}
 		}
 	}
 }

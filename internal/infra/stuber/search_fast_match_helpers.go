@@ -114,12 +114,12 @@ func (s *searcher) fastMatchInput(queryData map[string]any, stubInput InputData)
 
 		// Fast path: contains only
 		if len(stubInput.Contains) > 0 && len(stubInput.Equals) == 0 && len(stubInput.Matches) == 0 {
-			return contains(stubInput.Contains, queryData, stubInput.IgnoreArrayOrder)
+			return contains(stubInput.Contains, queryData)
 		}
 
 		// Fast path: matches only
 		if len(stubInput.Matches) > 0 && len(stubInput.Equals) == 0 && len(stubInput.Contains) == 0 {
-			return matches(stubInput.Matches, queryData, stubInput.IgnoreArrayOrder)
+			return matches(stubInput.Matches, queryData)
 		}
 	}
 

@@ -221,7 +221,7 @@ func TestRemoteAddStubAndCleanupOwnedIDs(t *testing.T) {
 	s := m.Stub(By("/svc/M"))
 
 	// Act
-	s.Reply(stuber.Output{Data: map[string]any{"ok": true}}).Times(2).Commit()
+	require.NoError(t, s.Reply(stuber.Output{Data: map[string]any{"ok": true}}).Times(2).Commit())
 	err := m.Close()
 
 	// Assert
@@ -345,8 +345,8 @@ func TestStubBatchRemoteSingleAddRequest(t *testing.T) {
 	require.NoError(t, err)
 
 	batch := NewBatch(mock)
-	batch.Stub(By("/svc/M1")).Reply(Data("ok", true)).Commit()
-	batch.Stub(By("/svc/M2")).Reply(Data("ok", true)).Commit()
+	require.NoError(t, batch.Stub(By("/svc/M1")).Reply(Data("ok", true)).Commit())
+	require.NoError(t, batch.Stub(By("/svc/M2")).Reply(Data("ok", true)).Commit())
 
 	require.NoError(t, batch.Commit())
 	require.NoError(t, mock.Close())
@@ -690,7 +690,7 @@ func TestRunRemoteViaSDKCleanupScenarios(t *testing.T) {
 			mock, err := Run(ts, opts...)
 			require.NoError(t, err)
 
-			mock.Stub(By("/svc/M")).Reply(Data("ok", true)).Times(tc.times).Commit()
+			require.NoError(t, mock.Stub(By("/svc/M")).Reply(Data("ok", true)).Times(tc.times).Commit())
 
 			if tc.callHistoryAndMeth {
 				require.Equal(t, tc.historyCalls, mock.History().Count())
@@ -841,11 +841,11 @@ func TestRunRemoteFullyMockedViaSDK(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		mock.Stub(By("/svc/M")).
+		require.NoError(t, mock.Stub(By("/svc/M")).
 			When(Equals("x", 1)).
 			Reply(Data("ok", true)).
 			Times(2).
-			Commit()
+			Commit())
 
 		h := mock.History()
 		require.Equal(t, 2, h.Count())
@@ -940,7 +940,7 @@ func TestRunRemoteWithDescriptorsUploadsDescriptorSet(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	mock.Stub(By("/svc/M")).Reply(Data("ok", true)).Times(1).Commit()
+	require.NoError(t, mock.Stub(By("/svc/M")).Reply(Data("ok", true)).Times(1).Commit())
 	require.NoError(t, mock.Verify().VerifyStubTimesErr())
 
 	ts.RunCleanups()

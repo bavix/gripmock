@@ -44,9 +44,9 @@ func (b *Builder) grpcTLSEnabled() bool {
 
 func (b *Builder) grpcTLSConfig() infraTLS.TLSConfig {
 	return infraTLS.TLSConfig{
-		CertFile:   b.config.GRPCTLSCertFile,
-		KeyFile:    b.config.GRPCTLSKeyFile,
-		CAFile:     b.config.GRPCTLSCAFile,
-		MinVersion: b.config.GRPCTLSMinVersion,
+		CertFile:   b.config.GRPCTLS.CertFile,
+		KeyFile:    b.config.GRPCTLS.KeyFile,
+		CAFile:     b.config.GRPCTLS.CAFile,
+		MinVersion: b.config.GRPCTLS.MinVersion,
 	}
 }

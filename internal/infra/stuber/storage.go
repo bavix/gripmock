@@ -50,10 +50,13 @@ type storage struct {
 	itemSorted   map[uint64]map[string][]*Stub
 	itemsByID    map[uuid.UUID]*Stub
 	sessions     map[string]int
+	stringCache  *lru.Cache[string, uint32]
 }
 
 // newStorage creates a new instance of the storage struct.
 func newStorage() *storage {
+	cache, _ := lru.New[string, uint32](stringCacheSize)
+
 	return &storage{
 		lefts:        make(map[uint32]struct{}),
 		methodSorted: make(map[uint32]map[string][]*Stub),
@@ -61,6 +64,7 @@ func newStorage() *storage {
 		itemSorted:   make(map[uint64]map[string][]*Stub),
 		itemsByID:    make(map[uuid.UUID]*Stub),
 		sessions:     make(map[string]int),
+		stringCache:  cache,
 	}
 }
 
@@ -84,8 +88,10 @@ func (s *storage) findByMethodAvailable(method, session string) iter.Seq[*Stub] 
 		defer s.mu.RUnlock()
 
 		methodID := s.id(method)
+		global := s.methodSorted[methodID][""]
 		if session == "" {
-			for _, stub := range s.methodSorted[methodID][""] {
+			sorted := sortedCopy(global)
+			for _, stub := range sorted {
 				if !yield(stub) {
 					return
 				}
@@ -94,7 +100,16 @@ func (s *storage) findByMethodAvailable(method, session string) iter.Seq[*Stub] 
 			return
 		}
 
-		yieldMergedSorted(s.methodSorted[methodID][""], s.methodSorted[methodID][session], yield)
+		sessionStubs := s.methodSorted[methodID][session]
+		all := make([]*Stub, 0, len(global)+len(sessionStubs))
+		all = append(all, global...)
+		all = append(all, sessionStubs...)
+		slices.SortFunc(all, compareStubsByPriorityAndID)
+		for _, stub := range all {
+			if !yield(stub) {
+				return
+			}
+		}
 	}
 }
 
@@ -493,6 +508,30 @@ func (s *storage) del(keys ...uuid.UUID) int {
 	return deleted
 }
 
+// delBySession deletes all Stub values belonging to the given session.
+// It returns the number of Stub values that were deleted.
+func (s *storage) delBySession(session string) int {
+	if session == "" {
+		return 0
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var deleted int
+
+	for id, stub := range s.itemsByID {
+		if stub.Session == session {
+			s.removeStubIndexes(stub)
+			delete(s.itemsByID, id)
+
+			deleted++
+		}
+	}
+
+	return deleted
+}
+
 func (s *storage) removeStubIndexes(stub *Stub) {
 	pos := s.pos(s.id(stub.Service), s.id(stub.Method))
 
@@ -559,7 +598,7 @@ func (s *storage) upsertSessionIndex(
 		sorted[key] = sortedBuckets
 	}
 
-	sortedBuckets[session] = insertSortedStub(sortedBuckets[session], stub)
+	sortedBuckets[session] = append(sortedBuckets[session], stub)
 }
 
 func (s *storage) upsertMethodSessionIndex(key uint32, session string, stub *Stub) {
@@ -569,7 +608,7 @@ func (s *storage) upsertMethodSessionIndex(key uint32, session string, stub *Stu
 		s.methodSorted[key] = sortedBuckets
 	}
 
-	sortedBuckets[session] = insertSortedStub(sortedBuckets[session], stub)
+	sortedBuckets[session] = append(sortedBuckets[session], stub)
 }
 
 func (s *storage) removeSessionIndex(
@@ -609,13 +648,12 @@ func (s *storage) removeMethodSessionIndex(key uint32, session string, id uuid.U
 	}
 }
 
-func insertSortedStub(stubs []*Stub, stub *Stub) []*Stub {
-	idx, _ := slices.BinarySearchFunc(stubs, stub, compareStubsByPriorityAndID)
-	stubs = append(stubs, nil)
-	copy(stubs[idx+1:], stubs[idx:])
-	stubs[idx] = stub
+func sortedCopy(stubs []*Stub) []*Stub {
+	sorted := make([]*Stub, len(stubs))
+	copy(sorted, stubs)
+	slices.SortFunc(sorted, compareStubsByPriorityAndID)
 
-	return stubs
+	return sorted
 }
 
 func removeSortedStubByID(stubs []*Stub, id uuid.UUID) []*Stub {
@@ -630,108 +668,38 @@ func removeSortedStubByID(stubs []*Stub, id uuid.UUID) []*Stub {
 	return stubs
 }
 
-func yieldMergedSorted(global, session []*Stub, yield func(*Stub) bool) {
-	i := 0
-	j := 0
-
-	for i < len(global) && j < len(session) {
-		if compareStubsByPriorityAndID(global[i], session[j]) <= 0 {
-			if !yield(global[i]) {
-				return
-			}
-
-			i++
-
-			continue
-		}
-
-		if !yield(session[j]) {
-			return
-		}
-
-		j++
-	}
-
-	for i < len(global) {
-		if !yield(global[i]) {
-			return
-		}
-
-		i++
-	}
-
-	for j < len(session) {
-		if !yield(session[j]) {
-			return
-		}
-
-		j++
-	}
-}
-
 func collectAvailableSorted(indexBuckets map[uint64]map[string][]*Stub, indexes []uint64, session string) []*Stub {
 	if len(indexes) == 0 {
 		return nil
 	}
 
-	var merged []*Stub
+	var total int
 
 	for _, index := range indexes {
 		buckets := indexBuckets[index]
-		if len(buckets) == 0 {
-			continue
-		}
-
-		indexStubs := buckets[""]
+		total += len(buckets[""])
 		if session != "" {
-			indexStubs = mergeSortedSlices(indexStubs, buckets[session])
+			total += len(buckets[session])
 		}
-
-		if len(indexStubs) == 0 {
-			continue
-		}
-
-		if len(merged) == 0 {
-			merged = indexStubs
-
-			continue
-		}
-
-		merged = mergeSortedSlices(merged, indexStubs)
 	}
 
-	return merged
-}
-
-func mergeSortedSlices(left, right []*Stub) []*Stub {
-	if len(left) == 0 {
-		return right
+	if total == 0 {
+		return nil
 	}
 
-	if len(right) == 0 {
-		return left
-	}
+	result := make([]*Stub, 0, total)
 
-	merged := make([]*Stub, 0, len(left)+len(right))
-	i := 0
-	j := 0
-
-	for i < len(left) && j < len(right) {
-		if compareStubsByPriorityAndID(left[i], right[j]) <= 0 {
-			merged = append(merged, left[i])
-			i++
-
-			continue
+	for _, index := range indexes {
+		buckets := indexBuckets[index]
+		result = append(result, buckets[""]...)
+		if session != "" {
+			result = append(result, buckets[session]...)
 		}
-
-		merged = append(merged, right[j])
-		j++
 	}
 
-	merged = append(merged, left[i:]...)
-	merged = append(merged, right[j:]...)
+	slices.SortFunc(result, compareStubsByPriorityAndID)
 
-	return merged
+	return result
 }
 
 func compareStubsByPriorityAndID(a, b *Stub) int {
@@ -742,58 +710,24 @@ func compareStubsByPriorityAndID(a, b *Stub) int {
 	return bytes.Compare(a.ID[:], b.ID[:])
 }
 
-// Global LRU cache for string hashes with size limit.
-//
-//nolint:gochecknoglobals
-var globalStringCache *lru.Cache[string, uint32]
-
-// initStringCache initializes the global string hash cache. Used by init and tests.
-// Does not panic on error; logs and sets globalStringCache to nil.
-func initStringCache(size int) {
-	cache, err := lru.New[string, uint32](size)
-	if err != nil {
-		log.Printf("[gripmock] failed to create string hash cache: %v", err)
-
-		globalStringCache = nil
-
-		return
-	}
-
-	globalStringCache = cache
-}
-
-//nolint:gochecknoinits
-func init() {
-	initStringCache(stringCacheSize)
-}
-
 func (s *storage) id(value string) uint32 {
-	if globalStringCache != nil {
-		if hash, exists := globalStringCache.Get(value); exists {
+	if s.stringCache != nil {
+		if hash, exists := s.stringCache.Get(value); exists {
 			return hash
 		}
 	}
 
 	hash := uint32(xxh3.HashString(value)) //nolint:gosec
-	if globalStringCache != nil {
-		globalStringCache.Add(value, hash)
+	if s.stringCache != nil {
+		s.stringCache.Add(value, hash)
 	}
 
 	return hash
 }
 
-// clearStringHashCache clears the string hash cache (for testing).
-func clearStringHashCache() {
-	if globalStringCache != nil {
-		globalStringCache.Purge()
-	}
-}
-
-// ClearAllCaches clears all LRU caches (for testing purposes).
-func ClearAllCaches() {
-	clearStringHashCache()
-	clearRegexCache()
-}
+// ClearAllCaches is a no-op (cache is per-instance, cleared by GC).
+// Deprecated: no longer needed. Cache is per-storage instance.
+func ClearAllCaches() {}
 
 func (s *storage) pos(a, b uint32) uint64 {
 	return uint64(a)<<32 | uint64(b)

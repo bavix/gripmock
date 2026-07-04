@@ -27,9 +27,10 @@ func startConnectServer(t *testing.T) (string, func()) {
 	addr := listener.Addr().String()
 	require.NoError(t, listener.Close())
 
-	builder := NewBuilder(WithConfig(config.Config{
-		ConnectAddr: addr,
-	}))
+	cfg := config.Load()
+	cfg.Connect.Addr = addr
+
+	builder := NewBuilder(WithConfig(cfg))
 
 	ctx, cancel := context.WithCancel(t.Context())
 

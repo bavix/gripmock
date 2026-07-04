@@ -44,8 +44,8 @@ func (m *embeddedMock) Stub(service, method string) StubBuilder {
 	return &stubBuilderCore{
 		service: service,
 		method:  method,
-		onCommit: func(stub *stuber.Stub) {
-			panicIfErr(m.commitStubs([]*stuber.Stub{stub}))
+		onCommit: func(stub *stuber.Stub) error {
+			return m.commitStubs([]*stuber.Stub{stub})
 		},
 	}
 }

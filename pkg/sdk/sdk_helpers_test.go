@@ -193,9 +193,9 @@ func TestStubAndVerifyWithFullMethod(t *testing.T) {
 
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	require.NoError(t, mock.Stub(By("/helloworld.Greeter/SayHello")).
 		Unary("name", "Alex", "message", "Hi Alex").
-		Commit()
+		Commit())
 
 	msg := invokeGreeterSayHello(t, mock.Conn(), reg, t.Context(), "Alex")
 	require.Equal(t, "Hi Alex", getMessageField(t, msg, "message"))

@@ -32,8 +32,9 @@ func (b *StubBatch) Stub(service, method string) StubBuilder {
 	return &stubBuilderCore{
 		service: service,
 		method:  method,
-		onCommit: func(stub *stuber.Stub) {
+		onCommit: func(stub *stuber.Stub) error {
 			b.stubs = append(b.stubs, stub)
+			return nil
 		},
 	}
 }

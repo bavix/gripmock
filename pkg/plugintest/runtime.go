@@ -2,11 +2,9 @@ package plugintest
 
 import (
 	"context"
-	"fmt"
-	"reflect"
-)
 
-var contextType = reflect.TypeOf((*context.Context)(nil)).Elem() //nolint:gochecknoglobals
+	"github.com/bavix/gripmock/v3/internal/infra/funcwrap"
+)
 
 // Wrap converts a testing helper or plugin-style function into the canonical Func
 // so tests can exercise callbacks without rewriting them. It accepts common shapes
@@ -65,107 +63,10 @@ func LookupFunc(reg Registry, name string) (Func, bool) {
 	}
 
 	casted, ok := fn.(Func)
+
 	return casted, ok
 }
 
-//nolint:cyclop,err113,intrange,mnd,nlreturn,wsl_v5,funlen
 func wrapReflect(fn any) Func {
-	val := reflect.ValueOf(fn)
-	if !val.IsValid() || val.Kind() != reflect.Func {
-		return nil
-	}
-
-	typ := val.Type()
-	isVariadic := typ.IsVariadic()
-	fixed := typ.NumIn()
-
-	return func(ctx context.Context, args ...any) (any, error) {
-		in := make([]reflect.Value, 0, len(args)+1)
-		argIdx := 0
-
-		for i := range fixed {
-			paramType := typ.In(i)
-
-			if paramType == contextType {
-				in = append(in, reflect.ValueOf(ctx))
-				continue
-			}
-
-			if !isVariadic || i < fixed-1 {
-				valArg, err := coerceArg(args, &argIdx, paramType, typ, i)
-				if err != nil {
-					return nil, err
-				}
-
-				in = append(in, valArg)
-				continue
-			}
-
-			elemType := paramType.Elem()
-			for argIdx < len(args) {
-				valArg, err := coerceArg(args, &argIdx, elemType, typ, argIdx)
-				if err != nil {
-					return nil, err
-				}
-
-				in = append(in, valArg)
-			}
-		}
-
-		out := val.Call(in)
-
-		switch len(out) {
-		case 0:
-			return nil, nil
-		case 1:
-			return out[0].Interface(), nil
-		case 2:
-			var err error
-			if !out[1].IsNil() {
-				if errVal, ok := out[1].Interface().(error); ok {
-					err = errVal
-				} else {
-					err = fmt.Errorf("second return value of %s does not implement error", typ)
-				}
-			}
-			return out[0].Interface(), err
-		default:
-			return nil, fmt.Errorf("unsupported result count %d for %s", len(out), typ)
-		}
-	}
-}
-
-//nolint:exhaustive
-func isNilAssignable(t reflect.Type) bool {
-	switch t.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		return true
-	default:
-		return false
-	}
-}
-
-//nolint:err113,wsl_v5
-func coerceArg(args []any, idx *int, paramType reflect.Type, fnType reflect.Type, pos int) (reflect.Value, error) {
-	if *idx >= len(args) {
-		return reflect.Value{}, fmt.Errorf("not enough arguments for %s: need %d have %d", fnType, fnType.NumIn(), len(args))
-	}
-
-	raw := args[*idx]
-	*idx++
-
-	if raw == nil {
-		if !isNilAssignable(paramType) {
-			return reflect.Value{}, fmt.Errorf("argument %d to %s is nil but %s is not nilable", pos, fnType, paramType)
-		}
-
-		return reflect.Zero(paramType), nil
-	}
-
-	valArg := reflect.ValueOf(raw)
-	if !valArg.Type().AssignableTo(paramType) {
-		return reflect.Value{}, fmt.Errorf("argument %d to %s: have %s want %s", pos, fnType, valArg.Type(), paramType)
-	}
-
-	return valArg, nil
+	return funcwrap.WrapReflect(fn)
 }

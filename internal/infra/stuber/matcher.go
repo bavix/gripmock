@@ -3,44 +3,11 @@ package stuber
 import (
 	"encoding/json"
 	"errors"
-	"log"
 	"path"
 	"reflect"
-	"regexp"
-
-	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/bavix/gripmock/v3/internal/infra/deeply"
 )
-
-const (
-	// regexCacheSize is the maximum number of regex patterns to cache.
-	regexCacheSize = 1000
-)
-
-// Global LRU cache for regex patterns with size limit.
-//
-//nolint:gochecknoglobals
-var regexCache *lru.Cache[string, *regexp.Regexp]
-
-//nolint:gochecknoinits
-func init() {
-	var err error
-	// Create LRU cache with size limit of regexCacheSize regex patterns
-	regexCache, err = lru.New[string, *regexp.Regexp](regexCacheSize)
-	if err != nil {
-		log.Printf("[gripmock] failed to create regex cache: %v", err)
-
-		regexCache = nil
-	}
-}
-
-// clearRegexCache clears the regex cache (for testing).
-func clearRegexCache() {
-	if regexCache != nil {
-		regexCache.Purge()
-	}
-}
 
 // match checks if a given query matches a given stub.
 //
@@ -61,8 +28,8 @@ func match(query Query, stub *Stub) bool {
 //nolint:cyclop
 func matchHeaders(queryHeaders map[string]any, stubHeaders InputHeader) bool {
 	if !equals(stubHeaders.Equals, queryHeaders, false) ||
-		!contains(stubHeaders.Contains, queryHeaders, false) ||
-		!matches(stubHeaders.Matches, queryHeaders, false) ||
+		!contains(stubHeaders.Contains, queryHeaders) ||
+		!matches(stubHeaders.Matches, queryHeaders) ||
 		!globMatch(stubHeaders.Glob, queryHeaders) {
 		return false
 	}
@@ -74,8 +41,8 @@ func matchHeaders(queryHeaders map[string]any, stubHeaders InputHeader) bool {
 	for i := range stubHeaders.AnyOf {
 		alt := &stubHeaders.AnyOf[i]
 		if equals(alt.Equals, queryHeaders, false) &&
-			contains(alt.Contains, queryHeaders, false) &&
-			matches(alt.Matches, queryHeaders, false) &&
+			contains(alt.Contains, queryHeaders) &&
+			matches(alt.Matches, queryHeaders) &&
 			globMatch(alt.Glob, queryHeaders) {
 			return true
 		}
@@ -89,8 +56,8 @@ func matchHeaders(queryHeaders map[string]any, stubHeaders InputHeader) bool {
 //nolint:cyclop
 func matchInput(queryData map[string]any, stubInput InputData) bool {
 	if !equals(stubInput.Equals, queryData, stubInput.IgnoreArrayOrder) ||
-		!contains(stubInput.Contains, queryData, stubInput.IgnoreArrayOrder) ||
-		!matches(stubInput.Matches, queryData, stubInput.IgnoreArrayOrder) ||
+		!contains(stubInput.Contains, queryData) ||
+		!matches(stubInput.Matches, queryData) ||
 		!globMatch(stubInput.Glob, queryData) {
 		return false
 	}
@@ -102,8 +69,8 @@ func matchInput(queryData map[string]any, stubInput InputData) bool {
 	for i := range stubInput.AnyOf {
 		alt := &stubInput.AnyOf[i]
 		if equals(alt.Equals, queryData, alt.IgnoreArrayOrder) &&
-			contains(alt.Contains, queryData, alt.IgnoreArrayOrder) &&
-			matches(alt.Matches, queryData, alt.IgnoreArrayOrder) &&
+			contains(alt.Contains, queryData) &&
+			matches(alt.Matches, queryData) &&
 			globMatch(alt.Glob, queryData) {
 			return true
 		}
@@ -184,7 +151,7 @@ func equals(expected map[string]any, actual any, orderIgnore bool) bool {
 	}
 
 	for key, expectedValue := range expected {
-		actualValue, exists := actualMap[key]
+		actualValue, exists := findValueWithVariations(actualMap, key)
 		if !exists {
 			return false
 		}
@@ -299,7 +266,7 @@ func fieldValueEquals(expected, actual any) bool {
 //
 // It returns true if the expected map is a subset of the actual value,
 // otherwise false.
-func contains(expected map[string]any, actual any, _ bool) bool {
+func contains(expected map[string]any, actual any) bool {
 	if len(expected) == 0 {
 		return true
 	}
@@ -311,7 +278,7 @@ func contains(expected map[string]any, actual any, _ bool) bool {
 //
 // It returns true if the expected map matches the actual value using regular expressions,
 // otherwise false.
-func matches(expected map[string]any, actual any, _ bool) bool {
+func matches(expected map[string]any, actual any) bool {
 	if len(expected) == 0 {
 		return true
 	}
@@ -436,8 +403,8 @@ func streamItemMatches(stubItem InputData, queryItem map[string]any) bool {
 	}
 
 	return (len(stubItem.Equals) == 0 || equals(stubItem.Equals, queryItem, stubItem.IgnoreArrayOrder)) &&
-		(len(stubItem.Contains) == 0 || contains(stubItem.Contains, queryItem, stubItem.IgnoreArrayOrder)) &&
-		(len(stubItem.Matches) == 0 || matches(stubItem.Matches, queryItem, stubItem.IgnoreArrayOrder)) &&
+		(len(stubItem.Contains) == 0 || contains(stubItem.Contains, queryItem)) &&
+		(len(stubItem.Matches) == 0 || matches(stubItem.Matches, queryItem)) &&
 		(len(stubItem.Glob) == 0 || globMatch(stubItem.Glob, queryItem))
 }
 

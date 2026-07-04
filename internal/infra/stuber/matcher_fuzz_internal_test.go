@@ -48,7 +48,7 @@ func FuzzContains(f *testing.F) {
 			return // Skip invalid JSON
 		}
 
-		_ = contains(expected, actual, orderIgnore)
+		_ = contains(expected, actual)
 	})
 }
 
@@ -70,7 +70,7 @@ func FuzzMatches(f *testing.F) {
 			return // Skip invalid JSON
 		}
 
-		_ = matches(expected, actual, orderIgnore)
+		_ = matches(expected, actual)
 	})
 }
 

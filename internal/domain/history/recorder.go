@@ -1,6 +1,7 @@
 package history
 
 import (
+	"context"
 	"encoding/json"
 	"iter"
 	"slices"
@@ -283,6 +284,21 @@ func (s *MemoryStore) FilterSeq(opts FilterOpts) iter.Seq[CallRecord] {
 // FilterByMethod implements Reader. Delegates to Filter for compatibility.
 func (s *MemoryStore) FilterByMethod(service, method string) []CallRecord {
 	return s.Filter(FilterOpts{Service: service, Method: method})
+}
+
+// AllContext implements context-aware history reader.
+func (s *MemoryStore) AllContext(_ context.Context) ([]CallRecord, error) {
+	return s.All(), nil
+}
+
+// CountContext implements context-aware history reader.
+func (s *MemoryStore) CountContext(_ context.Context) (int, error) {
+	return s.Count(), nil
+}
+
+// FilterByMethodContext implements context-aware history reader.
+func (s *MemoryStore) FilterByMethodContext(_ context.Context, service, method string) ([]CallRecord, error) {
+	return s.FilterByMethod(service, method), nil
 }
 
 // DeleteSession removes records that belong strictly to the provided session.

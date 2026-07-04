@@ -19,8 +19,9 @@ func TestStubBuilderReplyHeadersAndIgnoreArrayOrder(t *testing.T) {
 	b := &stubBuilderCore{
 		service: "svc",
 		method:  "M",
-		onCommit: func(stub *stuber.Stub) {
+		onCommit: func(stub *stuber.Stub) error {
 			got = stub
+			return nil
 		},
 	}
 

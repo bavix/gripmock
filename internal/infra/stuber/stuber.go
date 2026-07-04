@@ -68,20 +68,7 @@ func (b *Budgerigar) DeleteSession(session string) int {
 		return 0
 	}
 
-	all := b.searcher.all()
-	ids := make([]uuid.UUID, 0, len(all))
-
-	for _, stub := range all {
-		if stub.Session == session {
-			ids = append(ids, stub.ID)
-		}
-	}
-
-	if len(ids) == 0 {
-		return 0
-	}
-
-	return b.searcher.del(ids...)
+	return b.searcher.delBySession(session)
 }
 
 // FindByID retrieves the Stub value associated with the given ID.

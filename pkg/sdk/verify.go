@@ -21,14 +21,10 @@ type TestingT interface {
 // HistoryReader provides read access to recorded gRPC calls.
 type HistoryReader interface {
 	All() []CallRecord
-	Count() int
-	FilterByMethod(service, method string) []CallRecord
-}
-
-type HistoryReaderContext interface {
-	HistoryReader
 	AllContext(ctx context.Context) ([]CallRecord, error)
+	Count() int
 	CountContext(ctx context.Context) (int, error)
+	FilterByMethod(service, method string) []CallRecord
 	FilterByMethodContext(ctx context.Context, service, method string) ([]CallRecord, error)
 }
 
@@ -52,27 +48,15 @@ type VerifierContext interface {
 }
 
 func HistoryAllContext(ctx context.Context, history HistoryReader) ([]CallRecord, error) {
-	if withContext, ok := history.(HistoryReaderContext); ok {
-		return withContext.AllContext(ctx)
-	}
-
-	return history.All(), nil
+	return history.AllContext(ctx)
 }
 
 func HistoryCountContext(ctx context.Context, history HistoryReader) (int, error) {
-	if withContext, ok := history.(HistoryReaderContext); ok {
-		return withContext.CountContext(ctx)
-	}
-
-	return history.Count(), nil
+	return history.CountContext(ctx)
 }
 
 func HistoryFilterByMethodContext(ctx context.Context, history HistoryReader, service, method string) ([]CallRecord, error) {
-	if withContext, ok := history.(HistoryReaderContext); ok {
-		return withContext.FilterByMethodContext(ctx, service, method)
-	}
-
-	return history.FilterByMethod(service, method), nil
+	return history.FilterByMethodContext(ctx, service, method)
 }
 
 func VerifyStubTimesErrContext(ctx context.Context, verifier Verifier) error {
