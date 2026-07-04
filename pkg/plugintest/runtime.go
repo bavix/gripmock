@@ -25,7 +25,7 @@ func Wrap(fn any) Func {
 			return f(args...)
 		}
 	default:
-		return wrapReflect(fn)
+		return funcwrap.WrapReflect(fn)
 	}
 }
 
@@ -65,8 +65,4 @@ func LookupFunc(reg Registry, name string) (Func, bool) {
 	casted, ok := fn.(Func)
 
 	return casted, ok
-}
-
-func wrapReflect(fn any) Func {
-	return funcwrap.WrapReflect(fn)
 }

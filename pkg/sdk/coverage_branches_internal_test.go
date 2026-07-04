@@ -63,6 +63,7 @@ func TestRemoteVerifierCalledErrorBranches(t *testing.T) {
 			if r.URL.Path == "/api/verify" {
 				w.WriteHeader(http.StatusBadRequest)
 				_, _ = w.Write([]byte(`{"message":"bad count"}`))
+
 				return
 			}
 
@@ -85,6 +86,7 @@ func TestRemoteVerifierCalledErrorBranches(t *testing.T) {
 		rest := newRemoteServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/api/verify" {
 				w.WriteHeader(http.StatusInternalServerError)
+
 				return
 			}
 
@@ -109,6 +111,7 @@ func TestRemoteVerifierTotalHistoryFetchError(t *testing.T) {
 	rest := newRemoteServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/history" {
 			w.WriteHeader(http.StatusInternalServerError)
+
 			return
 		}
 
@@ -177,14 +180,14 @@ func TestStubDataAndStreamItemBranches(t *testing.T) {
 	require.Panics(t, func() { _ = kvToInput([]any{1, "v"}, "test") })
 	require.Panics(t, func() { _ = kvToOutput([]any{1, "v"}, "test") })
 
-	// MergeHeaders empty branch
-	mergedHeaders := MergeHeaders()
+	// Merge[stuber.InputHeader] empty branch
+	mergedHeaders := Merge[stuber.InputHeader]()
 	require.Empty(t, mergedHeaders.Equals)
 	require.Empty(t, mergedHeaders.Contains)
 	require.Empty(t, mergedHeaders.Matches)
 
 	// MergeOutput nil branches
-	out := MergeOutput(stuber.Output{}, ReplyHeader("x", "1"), ReplyDelay(0))
+	out := Merge(stuber.Output{}, ReplyHeader("x", "1"), ReplyDelay(0))
 	require.Equal(t, "1", out.Headers["x"])
 }
 

@@ -8,9 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
-
 	"github.com/bavix/gripmock/v3/internal/infra/funcwrap"
+	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
 const (

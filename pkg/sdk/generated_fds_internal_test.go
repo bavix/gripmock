@@ -3,11 +3,12 @@ package sdk
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/descriptorpb"
+
 	chatpb "github.com/bavix/gripmock/v3/pkg/sdk/internal/examplefds/gen/examples/projects/chat"
 	multiversepb "github.com/bavix/gripmock/v3/pkg/sdk/internal/examplefds/gen/examples/projects/multiverse"
 	"github.com/bavix/gripmock/v3/pkg/sdk/internal/fdstest"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/descriptorpb"
 )
 
 func TestGeneratedDescriptorsCoverageScenarios(t *testing.T) {

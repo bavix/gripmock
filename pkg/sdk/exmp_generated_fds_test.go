@@ -5,15 +5,15 @@ import (
 	"testing"
 	"time"
 
-	chatpb "github.com/bavix/gripmock/v3/pkg/sdk/internal/examplefds/gen/examples/projects/chat"
-	multiversepb "github.com/bavix/gripmock/v3/pkg/sdk/internal/examplefds/gen/examples/projects/multiverse"
-	"github.com/bavix/gripmock/v3/pkg/sdk/internal/fdstest"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/descriptorpb"
 
 	"github.com/bavix/gripmock/v3/pkg/sdk"
+	chatpb "github.com/bavix/gripmock/v3/pkg/sdk/internal/examplefds/gen/examples/projects/chat"
+	multiversepb "github.com/bavix/gripmock/v3/pkg/sdk/internal/examplefds/gen/examples/projects/multiverse"
+	"github.com/bavix/gripmock/v3/pkg/sdk/internal/fdstest"
 )
 
 func mustRunMockWithDescriptors(t *testing.T, fds *descriptorpb.FileDescriptorSet) sdk.Mock {
@@ -31,7 +31,7 @@ func TestExmpEmbeddedChatStreaming(t *testing.T) {
 	fds := fdstest.DescriptorSetFromFile(chatpb.File_examples_projects_chat_service_proto)
 	mock := mustRunMockWithDescriptors(t, fds)
 
-	stubChatService(mock)
+	stubChatService(t, mock)
 
 	client := chatpb.NewChatServiceClient(mock.Conn())
 	ctx := t.Context()
@@ -75,7 +75,7 @@ func TestExmpEmbeddedMultiverseUnaryAndStreams(t *testing.T) {
 	fds := fdstest.DescriptorSetFromFile(multiversepb.File_examples_projects_multiverse_service_proto)
 	mock := mustRunMockWithDescriptors(t, fds)
 
-	stubMultiverseService(mock)
+	stubMultiverseService(t, mock)
 
 	client := multiversepb.NewMultiverseServiceClient(mock.Conn())
 	ctx := t.Context()
@@ -125,51 +125,57 @@ func TestExmpEmbeddedMergedGeneratedDescriptors(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	mock.Stub(sdk.By(chatpb.ChatService_SendMessage_FullMethodName)).
+	err = mock.Stub(sdk.By(chatpb.ChatService_SendMessage_FullMethodName)).
 		Reply(sdk.Data("success", true, "message", "ok")).
 		Commit()
+	require.NoError(t, err)
 
-	mock.Stub(sdk.By(multiversepb.MultiverseService_Ping_FullMethodName)).
+	err = mock.Stub(sdk.By(multiversepb.MultiverseService_Ping_FullMethodName)).
 		Reply(sdk.Data("reply", "pong")).
 		Commit()
+	require.NoError(t, err)
 
 	mock.Verify().Total(t, 0)
 }
 
-func stubChatService(mock sdk.Mock) {
-	mock.Stub(sdk.By(chatpb.ChatService_SendMessage_FullMethodName)).
-		Reply(sdk.Data("success", true, "message", "stored")).
-		Commit()
+func stubChatService(t *testing.T, mock sdk.Mock) {
+	t.Helper()
 
-	mock.Stub(sdk.By(chatpb.ChatService_ReceiveMessages_FullMethodName)).
+	require.NoError(t, mock.Stub(sdk.By(chatpb.ChatService_SendMessage_FullMethodName)).
+		Reply(sdk.Data("success", true, "message", "stored")).
+		Commit())
+
+	require.NoError(t, mock.Stub(sdk.By(chatpb.ChatService_ReceiveMessages_FullMethodName)).
 		When(sdk.Equals("user", "alice")).
 		ReplyStream(
 			sdk.Data("user", "bob", "text", "hi"),
 			sdk.Data("user", "carol", "text", "welcome"),
 		).
-		Commit()
+		Commit())
 
-	mock.Stub(sdk.By(chatpb.ChatService_Chat_FullMethodName)).
+	require.NoError(t, mock.Stub(sdk.By(chatpb.ChatService_Chat_FullMethodName)).
 		ReplyStream(sdk.Data("user", "server", "text", "ack")).
-		Commit()
+		Commit())
 }
 
-func stubMultiverseService(mock sdk.Mock) {
-	mock.Stub(sdk.By(multiversepb.MultiverseService_Ping_FullMethodName)).
+func stubMultiverseService(t *testing.T, mock sdk.Mock) {
+	t.Helper()
+
+	require.NoError(t, mock.Stub(sdk.By(multiversepb.MultiverseService_Ping_FullMethodName)).
 		When(sdk.Equals("message", "ping")).
 		Reply(sdk.Data("reply", "pong", "user_id", "u1")).
 		ReplyHeaderPairs("x-sdk", "ok").
-		Commit()
+		Commit())
 
-	mock.Stub(sdk.By(multiversepb.MultiverseService_UploadData_FullMethodName)).
+	require.NoError(t, mock.Stub(sdk.By(multiversepb.MultiverseService_UploadData_FullMethodName)).
 		Reply(sdk.Data("upload_id", "up-1", "success", true, "total_chunks", 2)).
-		Commit()
+		Commit())
 
-	mock.Stub(sdk.By(multiversepb.MultiverseService_StreamData_FullMethodName)).
+	require.NoError(t, mock.Stub(sdk.By(multiversepb.MultiverseService_StreamData_FullMethodName)).
 		When(sdk.Equals("stream_id", "s1")).
 		ReplyStream(
 			sdk.Data("chunk_id", "c1", "sequence", 1),
 			sdk.Data("chunk_id", "c2", "sequence", 2),
 		).
-		Commit()
+		Commit())
 }

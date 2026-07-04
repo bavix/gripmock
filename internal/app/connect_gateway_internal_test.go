@@ -84,8 +84,8 @@ func TestConnectRPCGateway_WriteError(t *testing.T) {
 	require.Equal(t, "application/connect+json", w.Header().Get("Content-Type"))
 
 	var resp struct {
-		Code    string          `json:"code"`
-		Message string          `json:"message"`
+		Code    string           `json:"code"`
+		Message string           `json:"message"`
 		Details []map[string]any `json:"details"`
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
@@ -362,8 +362,8 @@ func TestConnectRPCGateway_HandleUnary_StubNotFound(t *testing.T) {
 	require.Equal(t, "application/connect+json", rec.Header().Get("Content-Type"))
 
 	var resp struct {
-		Code    string          `json:"code"`
-		Message string          `json:"message"`
+		Code    string           `json:"code"`
+		Message string           `json:"message"`
 		Details []map[string]any `json:"details"`
 	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))

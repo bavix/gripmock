@@ -6,15 +6,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/reflect/protodesc"
-
-	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 )
 
 func TestRunRemoteConnectionRefused(t *testing.T) {
@@ -54,15 +51,49 @@ func TestRunRemoteIntegration(t *testing.T) {
 	}
 	t.Parallel()
 
+	grpcAddr, restURL := startRemoteGripmock(t)
+
+	mock, err := Run(t,
+		WithRemote(grpcAddr, restURL),
+		WithHealthCheckTimeout(10*time.Second),
+	)
+	if err != nil {
+		t.Skipf("skipping: cannot connect to gripmock: %v", err)
+
+		return
+	}
+
+	err = mock.Stub(By("/helloworld.Greeter/SayHello")).
+		When(Equals("name", "Alex")).
+		Reply(Data("message", "Hi from Remote")).
+		Commit()
+	require.NoError(t, err)
+
+	reg := mustBuildRegistryFromProto(t, sdkProtoPath("greeter"))
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, "Alex")
+
+	require.Equal(t, "Hi from Remote", getMessageField(t, msg))
+	require.Equal(t, 1, mock.History().Count())
+
+	calls := mock.History().FilterByMethod("helloworld.Greeter", "SayHello")
+	require.Len(t, calls, 1)
+	require.Equal(t, "Alex", calls[0].Request["name"])
+	mock.Verify().Method(By("/helloworld.Greeter/SayHello")).Called(t, 1)
+	mock.Verify().Total(t, 1)
+}
+
+func startRemoteGripmock(t *testing.T) (grpcAddr, restURL string) {
+	t.Helper()
+
 	ctx := t.Context()
 
-	// Arrange
-	grpcLis, err := net.Listen("tcp", ":0")
+	var lc net.ListenConfig
+	grpcLis, err := lc.Listen(ctx, "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	grpcPort := grpcLis.Addr().(*net.TCPAddr).Port
 	_ = grpcLis.Close()
 
-	httpLis, err := net.Listen("tcp", ":0")
+	httpLis, err := lc.Listen(ctx, "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	httpPort := httpLis.Addr().(*net.TCPAddr).Port
 	_ = httpLis.Close()
@@ -73,19 +104,18 @@ func TestRunRemoteIntegration(t *testing.T) {
 	goPath, err := exec.LookPath("go")
 	if err != nil {
 		t.Skipf("skipping: go not found in PATH: %v", err)
-		return
 	}
 
 	goDir := filepath.Dir(goPath)
-	if goroot := runtime.GOROOT(); goroot != "" {
-		goDir = goDir + string(filepath.ListSeparator) + filepath.Join(goroot, "bin")
+	if goroot, err := exec.CommandContext(ctx, "go", "env", "GOROOT").Output(); err == nil {
+		goDir = goDir + string(filepath.ListSeparator) + filepath.Join(strings.TrimSpace(string(goroot)), "bin")
 	}
 
-	cmd := exec.CommandContext(ctx, goPath, "run", ".", protoPath)
+	cmd := exec.CommandContext(ctx, goPath, "run", ".", protoPath) //nolint:gosec
 	cmd.Dir = projRoot
 	env := make([]string, 0, len(os.Environ())+4)
-	grpcVar := "GRPC_PORT=" + fmt.Sprintf("%d", grpcPort)
-	httpVar := "HTTP_PORT=" + fmt.Sprintf("%d", httpPort)
+	grpcVar := "GRPC_PORT=" + strconv.Itoa(grpcPort)
+	httpVar := "HTTP_PORT=" + strconv.Itoa(httpPort)
 	safePath := "PATH=" + goDir
 	for _, e := range os.Environ() {
 		if strings.HasPrefix(e, "GRPC_PORT=") || strings.HasPrefix(e, "HTTP_PORT=") || strings.HasPrefix(e, "PATH=") {
@@ -95,47 +125,14 @@ func TestRunRemoteIntegration(t *testing.T) {
 		env = append(env, e)
 	}
 
-	cmd.Env = append(env, safePath, grpcVar, httpVar)
+	env = append(env, safePath, grpcVar, httpVar)
+	cmd.Env = env
 	if err := cmd.Start(); err != nil {
 		t.Skipf("skipping: cannot start gripmock: %v", err)
-		return
 	}
-	defer func() { _ = cmd.Process.Kill() }()
+	t.Cleanup(func() { _ = cmd.Process.Kill() })
 
-	grpcAddr := fmt.Sprintf("127.0.0.1:%d", grpcPort)
-	restURL := fmt.Sprintf("http://127.0.0.1:%d", httpPort)
-
-	// Act
 	time.Sleep(8 * time.Second)
 
-	mock, err := Run(t,
-		WithRemote(grpcAddr, restURL),
-		WithHealthCheckTimeout(10*time.Second),
-	)
-	if err != nil {
-		t.Skipf("skipping: cannot connect to gripmock: %v", err)
-		return
-	}
-
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
-		When(Equals("name", "Alex")).
-		Reply(Data("message", "Hi from Remote")).
-		Commit()
-
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath}, nil)
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-	reg, err := protodesc.NewFiles(fdsSlice[0])
-	require.NoError(t, err)
-	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alex")
-
-	// Assert
-	require.Equal(t, "Hi from Remote", getMessageField(t, msg, "message"))
-	require.Equal(t, 1, mock.History().Count())
-
-	calls := mock.History().FilterByMethod("helloworld.Greeter", "SayHello")
-	require.Len(t, calls, 1)
-	require.Equal(t, "Alex", calls[0].Request["name"])
-	mock.Verify().Method(By("/helloworld.Greeter/SayHello")).Called(t, 1)
-	mock.Verify().Total(t, 1)
+	return fmt.Sprintf("127.0.0.1:%d", grpcPort), fmt.Sprintf("http://127.0.0.1:%d", httpPort)
 }

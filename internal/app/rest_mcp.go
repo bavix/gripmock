@@ -27,6 +27,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
+
 func (h *RestServer) MCPHandler() http.Handler {
 	h.mcpHandlerOnce.Do(func() {
 		h.mcpHandler = newMCPStreamableHandler(h)

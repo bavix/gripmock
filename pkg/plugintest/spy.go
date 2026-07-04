@@ -46,6 +46,7 @@ func (s *Spy) Func() plugins.Func {
 func (s *Spy) Decorator() func(plugins.Func) plugins.Func {
 	return func(base plugins.Func) plugins.Func {
 		s.fn = base
+
 		return s.Func()
 	}
 }

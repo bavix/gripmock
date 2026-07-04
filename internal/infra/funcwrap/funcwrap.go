@@ -6,7 +6,7 @@ import (
 	"reflect"
 )
 
-var ContextType = reflect.TypeOf((*context.Context)(nil)).Elem() //nolint:gochecknoglobals
+var ContextType = reflect.TypeFor[context.Context]() //nolint:gochecknoglobals
 
 // WrapReflect uses reflection to convert any function into the canonical
 // func(context.Context, ...any) (any, error) shape. It injects context.Context

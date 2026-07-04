@@ -267,7 +267,6 @@ func (h *RestServer) DashboardInfo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-
 // ListHistory returns recorded gRPC calls.
 func (h *RestServer) ListHistory(w http.ResponseWriter, r *http.Request) {
 	if h.history == nil {

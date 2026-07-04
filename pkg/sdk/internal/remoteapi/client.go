@@ -17,6 +17,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
+//nolint:containedctx
 type Client struct {
 	BaseURL    string
 	HTTPClient *http.Client
@@ -110,6 +111,10 @@ func (c Client) sendRequest(method, path string, body []byte, contentType string
 	return resp, nil
 }
 
+func closeBody(resp *http.Response) {
+	_ = resp.Body.Close()
+}
+
 func (c Client) AddStub(stub *stuber.Stub) error {
 	return c.AddStubs([]*stuber.Stub{stub})
 }
@@ -133,7 +138,7 @@ func (c Client) AddStubs(stubs []*stuber.Stub) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer closeBody(resp)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		return fmt.Errorf("sdk: add stubs failed with status %d", resp.StatusCode)
@@ -157,7 +162,7 @@ func (c Client) BatchDelete(ids []uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer closeBody(resp)
 
 	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
 		return nil
@@ -188,7 +193,7 @@ func (c Client) UploadDescriptors(files []*descriptorpb.FileDescriptorProto) err
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer closeBody(resp)
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return fmt.Errorf("sdk: upload descriptors failed with status %d", resp.StatusCode)
@@ -207,7 +212,8 @@ func (c Client) FetchHistory() ([]HistoryCall, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer closeBody(resp)
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("sdk: fetch history failed with status %d", resp.StatusCode)
 	}
@@ -239,7 +245,7 @@ func (c Client) FetchHistory() ([]HistoryCall, error) {
 			Responses: ptrOrZero(call.Responses),
 			Code:      ptrOrZero(call.Code),
 			Error:     ptrOrZero(call.Error),
-			StubID:    uuid.UUID(ptrOrZero(call.StubID)),
+			StubID:    ptrOrZero(call.StubID),
 			Timestamp: ptrOrZero(call.Timestamp),
 		}
 	}
@@ -266,7 +272,7 @@ func (c Client) VerifyMethodCalled(service, method string, expectedCount int) er
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer closeBody(resp)
 
 	if resp.StatusCode == http.StatusBadRequest {
 		var errBody struct {
@@ -287,6 +293,7 @@ func (c Client) VerifyMethodCalled(service, method string, expectedCount int) er
 func ptrOrZero[T any](p *T) T {
 	if p == nil {
 		var zero T
+
 		return zero
 	}
 

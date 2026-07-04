@@ -36,6 +36,7 @@ func (r *remoteHistory) fetchWithClient(client remoteapi.Client) ([]CallRecord, 
 	history, err := client.FetchHistory()
 	if err != nil {
 		r.mock.setOpErr(err)
+
 		return nil, err
 	}
 
@@ -43,7 +44,7 @@ func (r *remoteHistory) fetchWithClient(client remoteapi.Client) ([]CallRecord, 
 }
 
 func (r *remoteHistory) fetch() ([]CallRecord, error) {
-	return r.fetchWithClient(r.mock.api())
+	return r.fetchWithClient(r.mock.api(r.mock.ctx))
 }
 
 func (r *remoteHistory) All() []CallRecord {
@@ -56,7 +57,7 @@ func (r *remoteHistory) All() []CallRecord {
 }
 
 func (r *remoteHistory) AllContext(ctx context.Context) ([]CallRecord, error) {
-	return r.fetchWithClient(r.mock.apiWithContext(ctx))
+	return r.fetchWithClient(r.mock.api(ctx))
 }
 
 func (r *remoteHistory) Count() int {
@@ -69,7 +70,7 @@ func (r *remoteHistory) Count() int {
 }
 
 func (r *remoteHistory) CountContext(ctx context.Context) (int, error) {
-	calls, err := r.fetchWithClient(r.mock.apiWithContext(ctx))
+	calls, err := r.fetchWithClient(r.mock.api(ctx))
 	if err != nil {
 		return 0, err
 	}
@@ -94,7 +95,7 @@ func (r *remoteHistory) FilterByMethod(svc, m string) []CallRecord {
 }
 
 func (r *remoteHistory) FilterByMethodContext(ctx context.Context, svc, m string) ([]CallRecord, error) {
-	calls, err := r.fetchWithClient(r.mock.apiWithContext(ctx))
+	calls, err := r.fetchWithClient(r.mock.api(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -124,10 +125,11 @@ func (v *remoteVerifier) Method(service, method string) MethodVerifier {
 
 func (v *remoteVerifier) Total(t TestingT, want int) {
 	history := &remoteHistory{mock: v.mock}
-	calls, err := history.fetchWithClient(v.mock.apiWithContext(t.Context()))
+	calls, err := history.fetchWithClient(v.mock.api(t.Context()))
 	if err != nil {
 		t.Error("gripmock: failed to fetch history: ", err)
 		t.Fail()
+
 		return
 	}
 
@@ -139,18 +141,18 @@ func (v *remoteVerifier) Total(t TestingT, want int) {
 }
 
 func (v *remoteVerifier) VerifyStubTimes(t TestingT) {
-	if err := v.verifyStubTimesErr(v.mock.apiWithContext(t.Context())); err != nil {
+	if err := v.verifyStubTimesErr(v.mock.api(t.Context())); err != nil {
 		t.Error(err)
 		t.Fail()
 	}
 }
 
 func (v *remoteVerifier) VerifyStubTimesErr() error {
-	return v.verifyStubTimesErr(v.mock.api())
+	return v.verifyStubTimesErr(v.mock.api(v.mock.ctx))
 }
 
 func (v *remoteVerifier) VerifyStubTimesErrContext(ctx context.Context) error {
-	return v.verifyStubTimesErr(v.mock.apiWithContext(ctx))
+	return v.verifyStubTimesErr(v.mock.api(ctx))
 }
 
 func (v *remoteVerifier) verifyStubTimesErr(client remoteapi.Client) error {
@@ -192,10 +194,11 @@ func (mv *remoteMethodVerifier) Called(t TestingT, n int) {
 	if opErr := mv.mock.getOpErr(); opErr != nil {
 		t.Error("gripmock: operation failed: ", opErr)
 		t.Fail()
+
 		return
 	}
 
-	err := mv.mock.apiWithContext(t.Context()).VerifyMethodCalled(mv.service, mv.method, n)
+	err := mv.mock.api(t.Context()).VerifyMethodCalled(mv.service, mv.method, n)
 	if err == nil {
 		return
 	}
@@ -204,6 +207,7 @@ func (mv *remoteMethodVerifier) Called(t TestingT, n int) {
 	if stderrors.As(err, &badReq) {
 		t.Error(badReq.Error())
 		t.Fail()
+
 		return
 	}
 
@@ -219,8 +223,8 @@ func methodKey(service, method string) string {
 	return service + "/" + method
 }
 
-func splitMethodKey(key string) (service string, method string, ok bool) {
-	service, method, ok = strings.Cut(key, "/")
+func splitMethodKey(key string) (string, string, bool) {
+	service, method, ok := strings.Cut(key, "/")
 	if !ok || service == "" || method == "" {
 		return "", "", false
 	}

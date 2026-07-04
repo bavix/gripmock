@@ -17,6 +17,7 @@ func TestNewPlugin(t *testing.T) {
 			if len(args) > 0 {
 				return args[0]
 			}
+
 			return nil
 		}}),
 	)
@@ -50,6 +51,7 @@ func TestRegistryAddPluginAndLookup(t *testing.T) {
 							total += n
 						}
 					}
+
 					return total
 				},
 			},

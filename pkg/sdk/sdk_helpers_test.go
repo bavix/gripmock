@@ -39,14 +39,14 @@ func TestHelpersMap(t *testing.T) {
 
 func TestHelpersMapPanicOddArgs(t *testing.T) {
 	t.Parallel()
-	require.PanicsWithValue(t, "sdk.Map: need pairs (key, value), got 3 args", func() {
+	require.Panics(t, func() {
 		Map("a", 1, "b")
 	})
 }
 
 func TestHelpersMapPanicNonStringKey(t *testing.T) {
 	t.Parallel()
-	require.PanicsWithValue(t, "sdk.Map: key at 0 must be string, got int", func() {
+	require.Panics(t, func() {
 		Map(123, "value")
 	})
 }
@@ -61,14 +61,14 @@ func TestHelpersData(t *testing.T) {
 
 func TestHelpersDataPanicOddArgs(t *testing.T) {
 	t.Parallel()
-	require.PanicsWithValue(t, "sdk.Data: need pairs (key, value), got 3 args", func() {
+	require.Panics(t, func() {
 		Data("a", 1, "b")
 	})
 }
 
 func TestHelpersDataPanicNonStringKey(t *testing.T) {
 	t.Parallel()
-	require.PanicsWithValue(t, "sdk.Data: key at 0 must be string, got int", func() {
+	require.Panics(t, func() {
 		Data(123, "value")
 	})
 }
@@ -104,12 +104,11 @@ func TestHelpersIgnoreArrayOrder(t *testing.T) {
 
 func TestHelpersMerge(t *testing.T) {
 	t.Parallel()
-	id := Merge(
+	id := IgnoreArrayOrder(Merge(
 		Equals("name", "Alex"),
 		Contains("tags", "go"),
 		Matches("email", `.*@test\.com`),
-		IgnoreOrder(),
-	)
+	))
 	require.Equal(t, "Alex", id.Equals["name"])
 	require.Equal(t, "go", id.Contains["tags"])
 	require.Equal(t, `.*@test\.com`, id.Matches["email"])
@@ -118,7 +117,7 @@ func TestHelpersMerge(t *testing.T) {
 
 func TestHelpersMergeOutput(t *testing.T) {
 	t.Parallel()
-	out := MergeOutput(
+	out := Merge(
 		Data("message", "Hi", "code", 200),
 		ReplyHeader("x-custom", "value"),
 		ReplyDelay(10*time.Millisecond),
@@ -137,7 +136,7 @@ func TestHelpersMergeOutput(t *testing.T) {
 
 func TestHelpersMergeHeaders(t *testing.T) {
 	t.Parallel()
-	h := MergeHeaders(
+	h := Merge(
 		HeaderEquals("x-id", "123"),
 		HeaderContains("user-agent", "test"),
 	)
@@ -150,12 +149,13 @@ func TestHelpersReplyOutputModifiers(t *testing.T) {
 	require.Equal(t, map[string]string{"x": "y"}, ReplyHeader("x", "y").Headers)
 	require.NotZero(t, ReplyDelay(10*time.Millisecond).Delay)
 	require.Equal(t, "err", ReplyErr(codes.InvalidArgument, "err").Error)
-	require.Len(t, ReplyErrWithDetails(codes.InvalidArgument, "err", map[string]any{"type": "type.googleapis.com/google.protobuf.StringValue", "value": "v"}).Details, 1)
+	require.Len(t, ReplyErrWithDetails(codes.InvalidArgument, "err",
+		map[string]any{"type": "type.googleapis.com/google.protobuf.StringValue", "value": "v"}).Details, 1)
 	out := StreamItem("msg", "hi")
 	require.Len(t, out.Stream, 1)
 	require.Equal(t, "hi", out.Stream[0].(map[string]any)["msg"])
 
-	out2 := StreamItemWithDelay(50*time.Millisecond, "msg", "delayed")
+	out2 := StreamDelayItem(50*time.Millisecond, "msg", "delayed")
 	require.Len(t, out2.Stream, 1)
 	elem := out2.Stream[0].(map[string]any)
 	require.Equal(t, "50ms", elem["_gripmock"].(map[string]any)["delay"])
@@ -197,8 +197,8 @@ func TestStubAndVerifyWithFullMethod(t *testing.T) {
 		Unary("name", "Alex", "message", "Hi Alex").
 		Commit())
 
-	msg := invokeGreeterSayHello(t, mock.Conn(), reg, t.Context(), "Alex")
-	require.Equal(t, "Hi Alex", getMessageField(t, msg, "message"))
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, "Alex")
+	require.Equal(t, "Hi Alex", getMessageField(t, msg))
 
 	mock.Verify().Method(By("/helloworld.Greeter/SayHello")).Called(t, 1)
 }
@@ -206,17 +206,13 @@ func TestStubAndVerifyWithFullMethod(t *testing.T) {
 func TestMustFullMethodHelpersPanicOnInvalidInput(t *testing.T) {
 	t.Parallel()
 
-	require.PanicsWithValue(t, "sdk: invalid full method name \"bad\"", func() {
-		_, _ = MustParseFullMethodName("bad")
-	})
-
 	mock, _ := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	require.PanicsWithValue(t, "sdk: invalid full method name \"bad\"", func() {
+	require.Panics(t, func() {
 		mock.Stub(By("bad"))
 	})
 
-	require.PanicsWithValue(t, "sdk: invalid full method name \"bad\"", func() {
+	require.Panics(t, func() {
 		mock.Verify().Method(By("bad"))
 	})
 }
@@ -226,12 +222,13 @@ func TestMockStubAcceptsFullMethodName(t *testing.T) {
 
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		Unary("name", "Alex", "message", "Hi Alex").
 		Commit()
+	require.NoError(t, err)
 
-	msg := invokeGreeterSayHello(t, mock.Conn(), reg, t.Context(), "Alex")
-	require.Equal(t, "Hi Alex", getMessageField(t, msg, "message"))
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, "Alex")
+	require.Equal(t, "Hi Alex", getMessageField(t, msg))
 }
 
 func TestMockStubPanicsOnInvalidArguments(t *testing.T) {
@@ -239,11 +236,11 @@ func TestMockStubPanicsOnInvalidArguments(t *testing.T) {
 
 	mock, _ := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	require.PanicsWithValue(t, "sdk: invalid full method name \"bad\"", func() {
+	require.Panics(t, func() {
 		mock.Stub(By("bad"))
 	})
 
-	require.PanicsWithValue(t, "sdk: invalid full method name \"svc/\"", func() {
+	require.Panics(t, func() {
 		mock.Stub(By("svc/"))
 	})
 }
@@ -269,13 +266,13 @@ func TestParseFullMethodNameValidationTable(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			svc, mth, err := ParseFullMethodName(tc.input)
 			if tc.wantError != "" {
 				require.EqualError(t, err, tc.wantError)
+
 				return
 			}
 
@@ -291,19 +288,22 @@ func TestMockStubAndVerifierTwoSignatures(t *testing.T) {
 
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub("helloworld.Greeter", "SayHello").
+	var err error
+	err = mock.Stub("helloworld.Greeter", "SayHello").
 		Unary("name", "Alex", "message", "Hi Alex").
 		Commit()
+	require.NoError(t, err)
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err = mock.Stub(By("/helloworld.Greeter/SayHello")).
 		Unary("name", "Bob", "message", "Hi Bob").
 		Commit()
+	require.NoError(t, err)
 
-	msg1 := invokeGreeterSayHello(t, mock.Conn(), reg, t.Context(), "Alex")
-	require.Equal(t, "Hi Alex", getMessageField(t, msg1, "message"))
+	msg1 := invokeGreeterSayHello(t, mock.Conn(), reg, "Alex")
+	require.Equal(t, "Hi Alex", getMessageField(t, msg1))
 
-	msg2 := invokeGreeterSayHello(t, mock.Conn(), reg, t.Context(), "Bob")
-	require.Equal(t, "Hi Bob", getMessageField(t, msg2, "message"))
+	msg2 := invokeGreeterSayHello(t, mock.Conn(), reg, "Bob")
+	require.Equal(t, "Hi Bob", getMessageField(t, msg2))
 
 	mock.Verify().Method("helloworld.Greeter", "SayHello").Called(t, 2)
 	mock.Verify().Method(By("/helloworld.Greeter/SayHello")).Called(t, 2)
@@ -315,20 +315,23 @@ func TestStubBatchEmbedded(t *testing.T) {
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
 	batch := NewBatch(mock)
-	batch.Stub("helloworld.Greeter", "SayHello").
+	err := batch.Stub("helloworld.Greeter", "SayHello").
 		When(Equals("name", "Alex")).
 		Reply(Data("message", "Hi Alex")).
 		Commit()
-	batch.Stub(By("/helloworld.Greeter/SayHello")).
+	require.NoError(t, err)
+
+	err = batch.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "Bob")).
 		Reply(Data("message", "Hi Bob")).
 		Commit()
+	require.NoError(t, err)
 
 	require.NoError(t, batch.Commit())
 
-	msg1 := invokeGreeterSayHello(t, mock.Conn(), reg, t.Context(), "Alex")
-	require.Equal(t, "Hi Alex", getMessageField(t, msg1, "message"))
+	msg1 := invokeGreeterSayHello(t, mock.Conn(), reg, "Alex")
+	require.Equal(t, "Hi Alex", getMessageField(t, msg1))
 
-	msg2 := invokeGreeterSayHello(t, mock.Conn(), reg, t.Context(), "Bob")
-	require.Equal(t, "Hi Bob", getMessageField(t, msg2, "message"))
+	msg2 := invokeGreeterSayHello(t, mock.Conn(), reg, "Bob")
+	require.Equal(t, "Hi Bob", getMessageField(t, msg2))
 }

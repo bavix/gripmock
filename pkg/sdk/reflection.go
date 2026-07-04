@@ -18,7 +18,7 @@ func resolveDescriptorsFromReflection(ctx context.Context, addr string) (*descri
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to connect to %s", addr)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	client := reflectionpb.NewServerReflectionClient(conn)
 	stream, err := client.ServerReflectionInfo(ctx)
@@ -73,6 +73,7 @@ func resolveDescriptorsFromReflection(ctx context.Context, addr string) (*descri
 			if errResp := fdResp.GetErrorResponse(); errResp != nil {
 				return nil, errors.Errorf("reflection error for %s: %s", name, errResp.GetErrorMessage())
 			}
+
 			return nil, errors.Errorf("unexpected response for %s: not FileDescriptorResponse", name)
 		}
 
@@ -99,5 +100,6 @@ func resolveDescriptorsFromReflection(ctx context.Context, addr string) (*descri
 	for _, fdp := range seen {
 		fds.File = append(fds.File, fdp)
 	}
+
 	return fds, nil
 }

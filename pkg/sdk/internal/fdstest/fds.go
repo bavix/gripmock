@@ -26,7 +26,7 @@ func appendFileRecursive(
 	seen[name] = struct{}{}
 
 	imports := fd.Imports()
-	for i := 0; i < imports.Len(); i++ {
+	for i := range imports.Len() {
 		appendFileRecursive(fds, seen, imports.Get(i).FileDescriptor)
 	}
 

@@ -28,6 +28,7 @@ func StartSessionGC(ctx context.Context, cfg config.Config, bg *stuber.Budgeriga
 
 		ender.Add(func(_ context.Context) error {
 			ticker.Stop()
+
 			return nil
 		})
 

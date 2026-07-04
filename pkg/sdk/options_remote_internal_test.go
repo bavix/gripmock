@@ -22,7 +22,7 @@ func TestDeriveAndExtractHostHelpers(t *testing.T) {
 	// extractHost branches
 	require.Equal(t, "example.com", extractHost("example.com:9090"))
 	require.Equal(t, "http://api.local:8080", extractHost("http://api.local:8080"))
-	require.Equal(t, "", extractHost(""))
+	require.Empty(t, extractHost(""))
 }
 
 func TestNormalizeRemoteHelpers(t *testing.T) {
@@ -33,7 +33,7 @@ func TestNormalizeRemoteHelpers(t *testing.T) {
 
 	require.Equal(t, "http://localhost:4771", normalizeRemoteRestURL("localhost:4771"))
 	require.Equal(t, "https://x.local", normalizeRemoteRestURL("https://x.local/"))
-	require.Equal(t, "", normalizeRemoteRestURL(""))
+	require.Empty(t, normalizeRemoteRestURL(""))
 }
 
 func TestRemoteMethodKeyHelpers(t *testing.T) {
@@ -87,6 +87,7 @@ func TestRemoteArmSessionTTLTriggersOwnedCleanup(t *testing.T) {
 		if r.URL.Path == "/api/stubs/batchDelete" {
 			called <- struct{}{}
 			w.WriteHeader(http.StatusOK)
+
 			return
 		}
 
@@ -126,6 +127,7 @@ func TestRemoteArmSessionTTLStoresCleanupError(t *testing.T) {
 	rest := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/stubs/batchDelete" {
 			w.WriteHeader(http.StatusInternalServerError)
+
 			return
 		}
 
@@ -153,6 +155,7 @@ func TestRemoteArmSessionTTLStoresCleanupError(t *testing.T) {
 	for time.Now().Before(deadline) {
 		if err := m.getOpErr(); err != nil {
 			require.Contains(t, err.Error(), "session TTL cleanup failed")
+
 			return
 		}
 

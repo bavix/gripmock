@@ -88,6 +88,7 @@ func (s *storage) findByMethodAvailable(method, session string) iter.Seq[*Stub] 
 		defer s.mu.RUnlock()
 
 		methodID := s.id(method)
+
 		global := s.methodSorted[methodID][""]
 		if session == "" {
 			sorted := sortedCopy(global)
@@ -105,6 +106,7 @@ func (s *storage) findByMethodAvailable(method, session string) iter.Seq[*Stub] 
 		all = append(all, global...)
 		all = append(all, sessionStubs...)
 		slices.SortFunc(all, compareStubsByPriorityAndID)
+
 		for _, stub := range all {
 			if !yield(stub) {
 				return
@@ -677,6 +679,7 @@ func collectAvailableSorted(indexBuckets map[uint64]map[string][]*Stub, indexes 
 
 	for _, index := range indexes {
 		buckets := indexBuckets[index]
+
 		total += len(buckets[""])
 		if session != "" {
 			total += len(buckets[session])
@@ -691,6 +694,7 @@ func collectAvailableSorted(indexBuckets map[uint64]map[string][]*Stub, indexes 
 
 	for _, index := range indexes {
 		buckets := indexBuckets[index]
+
 		result = append(result, buckets[""]...)
 		if session != "" {
 			result = append(result, buckets[session]...)
@@ -724,10 +728,6 @@ func (s *storage) id(value string) uint32 {
 
 	return hash
 }
-
-// ClearAllCaches is a no-op (cache is per-instance, cleared by GC).
-// Deprecated: no longer needed. Cache is per-storage instance.
-func ClearAllCaches() {}
 
 func (s *storage) pos(a, b uint32) uint64 {
 	return uint64(a)<<32 | uint64(b)

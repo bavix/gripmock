@@ -3,9 +3,8 @@ package plugins
 import (
 	"context"
 
-	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
-
 	"github.com/bavix/gripmock/v3/internal/infra/funcwrap"
+	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
 // wrapFunc normalizes arbitrary function shapes into the canonical Func used by the runtime registry.
@@ -24,7 +23,7 @@ func wrapFunc(fn any) pkgplugins.Func {
 			return f(args...)
 		}
 	default:
-		return wrapReflect(fn)
+		return funcwrap.WrapReflect(fn)
 	}
 }
 
@@ -39,8 +38,4 @@ func wrapDecorator(fn any) func(pkgplugins.Func) pkgplugins.Func {
 	default:
 		return nil
 	}
-}
-
-func wrapReflect(fn any) pkgplugins.Func {
-	return funcwrap.WrapReflect(fn)
 }

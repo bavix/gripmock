@@ -34,10 +34,11 @@ func TestRunEmbeddedBufconn(t *testing.T) {
 	require.NotNil(t, mock.Conn())
 	require.Equal(t, "bufnet", mock.Addr())
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "Alex")).
-		Reply(Data("message", "Hi Alex")).
+		Reply(Data("message", "Hi")).
 		Commit()
+	require.NoError(t, err)
 }
 
 func TestRunDescriptorsAppend(t *testing.T) {
@@ -50,10 +51,11 @@ func TestRunDescriptorsAppend(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, mock)
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err = mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "x")).
 		Reply(Data("message", "hi")).
 		Commit()
+	require.NoError(t, err)
 	require.NotNil(t, mock.Conn())
 }
 
@@ -66,10 +68,11 @@ func TestRunDescriptorsAppendDedup(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, mock)
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err = mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "x")).
 		Reply(Data("message", "hi")).
 		Commit()
+	require.NoError(t, err)
 }
 
 func TestRunWhenStreamReplyStream(t *testing.T) {
@@ -78,10 +81,11 @@ func TestRunWhenStreamReplyStream(t *testing.T) {
 	mock := mustRunWithProto(t, sdkProtoPath("calculator"))
 
 	// B7: WhenStream + Reply (client stream)
-	mock.Stub(By("/calculator.CalculatorService/SumNumbers")).
+	err := mock.Stub(By("/calculator.CalculatorService/SumNumbers")).
 		WhenStream(Matches("value", `\d+`), Matches("value", `\d+`)).
 		Reply(Data("result", 42.0, "count", 2)).
 		Commit()
+	require.NoError(t, err)
 }
 
 func TestRunRealPort(t *testing.T) {
@@ -119,10 +123,11 @@ func TestRunHealthCheckMockedViaSDK(t *testing.T) {
 
 	// Arrange
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
-	mock.Stub(By(healthgrpc.Health_Check_FullMethodName)).
+	err := mock.Stub(By(healthgrpc.Health_Check_FullMethodName)).
 		When(Equals("service", "examples.health.backend")).
 		Reply(Data("status", "NOT_SERVING")).
 		Commit()
+	require.NoError(t, err)
 
 	client := healthgrpc.NewHealthClient(mock.Conn())
 
@@ -141,10 +146,11 @@ func TestRunHealthCheckGripmockProtectedViaSDK(t *testing.T) {
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 	// Attempt to mock protected internal key.
 	// Expected runtime behavior: this stub is stored but ignored.
-	mock.Stub(By(healthgrpc.Health_Check_FullMethodName)).
+	err := mock.Stub(By(healthgrpc.Health_Check_FullMethodName)).
 		When(Equals("service", "gripmock")).
 		Reply(Data("status", "NOT_SERVING")).
 		Commit()
+	require.NoError(t, err)
 
 	client := healthgrpc.NewHealthClient(mock.Conn())
 
@@ -178,13 +184,14 @@ func TestRunHealthWatchMockedStreamViaSDK(t *testing.T) {
 
 	// Arrange
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
-	mock.Stub(By(healthgrpc.Health_Watch_FullMethodName)).
+	err := mock.Stub(By(healthgrpc.Health_Watch_FullMethodName)).
 		When(Equals("service", "examples.health.watch")).
 		ReplyStream(
 			Data("status", "NOT_SERVING"),
 			Data("status", "SERVING"),
 		).
 		Commit()
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -212,10 +219,11 @@ func TestRunHealthWatchGripmockProtectedViaSDK(t *testing.T) {
 
 	// Arrange
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
-	mock.Stub(By(healthgrpc.Health_Watch_FullMethodName)).
+	err := mock.Stub(By(healthgrpc.Health_Watch_FullMethodName)).
 		When(Equals("service", "gripmock")).
 		ReplyStream(Data("status", "NOT_SERVING")).
 		Commit()
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -239,10 +247,11 @@ func TestRunContextFromT(t *testing.T) {
 	mock, err := Run(t, WithDescriptors(mustBuildFDS(t, sdkProtoPath("greeter"))))
 	require.NoError(t, err)
 	require.NotNil(t, mock)
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err = mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "x")).
 		Reply(Data("message", "ok")).
 		Commit()
+	require.NoError(t, err)
 }
 
 func TestRunValidation(t *testing.T) {
@@ -272,11 +281,11 @@ func TestRunInvalidDescriptors(t *testing.T) {
 	fds := &descriptorpb.FileDescriptorSet{
 		File: []*descriptorpb.FileDescriptorProto{
 			{
-				Name:   proto.String("bad.proto"),
-				Syntax: proto.String("proto3"),
+				Name:   new("bad.proto"),
+				Syntax: new("proto3"),
 				MessageType: []*descriptorpb.DescriptorProto{
 					{
-						Name: proto.String("Bad"),
+						Name: new("Bad"),
 						Field: []*descriptorpb.FieldDescriptorProto{
 							{Number: proto.Int32(0)}, // invalid: field number must be >= 1
 						},
@@ -334,7 +343,7 @@ func TestRunReplyStreamSkipsNilData(t *testing.T) {
 	mock := mustRunWithProto(t, sdkProtoPath("track-streaming"))
 
 	// ReplyStream with nil Data entries - they are skipped (stuber.Output{Data: nil})
-	mock.Stub(By("/TrackService/StreamTrack")).
+	err := mock.Stub(By("/TrackService/StreamTrack")).
 		When(Equals("stn", "MS#00002")).
 		ReplyStream(
 			Data("stn", "MS#00002", "identity", "00"),
@@ -342,6 +351,7 @@ func TestRunReplyStreamSkipsNilData(t *testing.T) {
 			Data("stn", "MS#00002", "identity", "01"),
 		).
 		Commit()
+	require.NoError(t, err)
 }
 
 func TestRunReplyStream(t *testing.T) {
@@ -350,13 +360,14 @@ func TestRunReplyStream(t *testing.T) {
 	mock := mustRunWithProto(t, sdkProtoPath("track-streaming"))
 
 	// Server stream: When + ReplyStream
-	mock.Stub(By("/TrackService/StreamTrack")).
+	err := mock.Stub(By("/TrackService/StreamTrack")).
 		When(Equals("stn", "MS#00001")).
 		ReplyStream(
 			Data("stn", "MS#00001", "identity", "00", "latitude", 0.08),
 			Data("stn", "MS#00001", "identity", "01", "latitude", 0.09),
 		).
 		Commit()
+	require.NoError(t, err)
 }
 
 func TestRunReplyError(t *testing.T) {
@@ -364,15 +375,17 @@ func TestRunReplyError(t *testing.T) {
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "error")).
 		ReplyError(codes.NotFound, "user not found").
 		Commit()
+	require.NoError(t, err)
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err = mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "Alex")).
 		Reply(Data("message", "Hi")).
 		Commit()
+	require.NoError(t, err)
 }
 
 func TestRunReplyErrorWithDetails(t *testing.T) {
@@ -381,15 +394,16 @@ func TestRunReplyErrorWithDetails(t *testing.T) {
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "error-details")).
 		ReplyErrorWithDetails(codes.InvalidArgument, "validation failed", map[string]any{
 			"type":  "type.googleapis.com/google.protobuf.StringValue",
 			"value": "invalid name value",
 		}).
 		Commit()
+	require.NoError(t, err)
 
-	err := mock.Conn().Invoke(ctx, "/helloworld.Greeter/SayHello", createGreeterRequest(t, reg, "error-details"), &dynamicpb.Message{})
+	err = mock.Conn().Invoke(ctx, "/helloworld.Greeter/SayHello", createGreeterRequest(t, reg, "error-details"), &dynamicpb.Message{})
 	require.Error(t, err)
 
 	st := status.Convert(err)
@@ -409,17 +423,19 @@ func TestRunPriority(t *testing.T) {
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "priority")).
 		Reply(Data("message", "low")).
 		Priority(10).
 		Commit()
+	require.NoError(t, err)
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err = mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "priority")).
 		Reply(Data("message", "high")).
 		Priority(100).
 		Commit()
+	require.NoError(t, err)
 }
 
 func TestRunContains(t *testing.T) {
@@ -427,10 +443,11 @@ func TestRunContains(t *testing.T) {
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Contains("name", "Alice")).
 		Reply(Data("message", "Hello Alice")).
 		Commit()
+	require.NoError(t, err)
 }
 
 func TestRunMap(t *testing.T) {
@@ -438,10 +455,11 @@ func TestRunMap(t *testing.T) {
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Map("name", "Bob", "extra", "value")).
 		Reply(Data("message", "Hi Bob")).
 		Commit()
+	require.NoError(t, err)
 }
 
 func TestRunHealthyTimeout(t *testing.T) {
@@ -459,106 +477,100 @@ func TestRunHealthyTimeout(t *testing.T) {
 func TestRunMergeIntegration(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Merge(Equals("name", "Alex"))).
-		Reply(MergeOutput(Data("message", "Hi from Merge"))).
+		Reply(Merge(Data("message", "Hi from Merge"))).
 		Commit()
+	require.NoError(t, err)
 
-	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alex")
-	require.Equal(t, "Hi from Merge", getMessageField(t, msg, "message"))
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, "Alex")
+	require.Equal(t, "Hi from Merge", getMessageField(t, msg))
 }
 
 func TestRunSugarMatchReturn(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	b, err := mock.Stub(By("/helloworld.Greeter/SayHello")).Match("name", "Alex")
-	require.NoError(t, err)
-	b, err = b.Return("message", "Hi sugar")
-	require.NoError(t, err)
+	b := mock.Stub(By("/helloworld.Greeter/SayHello")).Match("name", "Alex")
+	b = b.Return("message", "Hi sugar")
 	require.NoError(t, b.Commit())
 
-	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alex")
-	require.Equal(t, "Hi sugar", getMessageField(t, msg, "message"))
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, "Alex")
+	require.Equal(t, "Hi sugar", getMessageField(t, msg))
 }
 
 func TestRunSugarUnary(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		Unary("name", "Bob", "message", "Hello Bob").
 		Commit()
+	require.NoError(t, err)
 
-	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Bob")
-	require.Equal(t, "Hello Bob", getMessageField(t, msg, "message"))
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, "Bob")
+	require.Equal(t, "Hello Bob", getMessageField(t, msg))
 }
 
 func TestRunDynamicTemplateMatchReturn(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	b, err := mock.Stub(By("/helloworld.Greeter/SayHello")).Match("name", "Alex")
-	require.NoError(t, err)
-	b, err = b.Return("message", "Hi {{.Request.name}}")
-	require.NoError(t, err)
+	b := mock.Stub(By("/helloworld.Greeter/SayHello")).Match("name", "Alex")
+	b = b.Return("message", "Hi {{.Request.name}}")
 	require.NoError(t, b.Commit())
 
-	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alex")
-	require.Equal(t, "Hi Alex", getMessageField(t, msg, "message"))
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, "Alex")
+	require.Equal(t, "Hi Alex", getMessageField(t, msg))
 }
 
 func TestRunDynamicTemplateWhenReply(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Map("name", "Charlie")).
 		Reply(Data("message", "Greetings {{.Request.name}}!")).
 		Commit()
+	require.NoError(t, err)
 
-	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Charlie")
-	require.Equal(t, "Greetings Charlie!", getMessageField(t, msg, "message"))
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, "Charlie")
+	require.Equal(t, "Greetings Charlie!", getMessageField(t, msg))
 }
 
 func TestRunDynamicTemplateUnary(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		Unary("name", "Diana", "message", "Dear {{.Request.name}}").
 		Commit()
+	require.NoError(t, err)
 
-	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Diana")
-	require.Equal(t, "Dear Diana", getMessageField(t, msg, "message"))
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, "Diana")
+	require.Equal(t, "Dear Diana", getMessageField(t, msg))
 }
 
-func TestRunDynamicTemplateMergeOutput(t *testing.T) {
+func TestRunDynamicTemplateMerge(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "Eve")).
-		Reply(MergeOutput(Data("message", "Hi {{.Request.name}} from Merge"))).
+		Reply(Merge(Data("message", "Hi {{.Request.name}} from Merge"))).
 		Commit()
+	require.NoError(t, err)
 
-	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Eve")
-	require.Equal(t, "Hi Eve from Merge", getMessageField(t, msg, "message"))
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, "Eve")
+	require.Equal(t, "Hi Eve from Merge", getMessageField(t, msg))
 }
 
 func TestRunSugarMatchPanicOddArgs(t *testing.T) {
@@ -566,8 +578,9 @@ func TestRunSugarMatchPanicOddArgs(t *testing.T) {
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 
-	_, err := mock.Stub(By("/helloworld.Greeter/SayHello")).Match("name")
-	require.ErrorContains(t, err, "sdk.Match: need pairs (key, value), got 1 args")
+	require.Panics(t, func() {
+		mock.Stub(By("/helloworld.Greeter/SayHello")).Match("name")
+	})
 }
 
 func TestRunSugarReturnPanicOddArgs(t *testing.T) {
@@ -575,8 +588,9 @@ func TestRunSugarReturnPanicOddArgs(t *testing.T) {
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 
-	_, err := mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "x")).Return("message")
-	require.ErrorContains(t, err, "sdk.Return: need pairs (key, value), got 1 args")
+	require.Panics(t, func() {
+		mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "x")).Return("message")
+	})
 }
 
 func TestRunReplyHeaders(t *testing.T) {
@@ -584,11 +598,12 @@ func TestRunReplyHeaders(t *testing.T) {
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "Alex")).
 		Reply(Data("message", "Hi")).
 		ReplyHeaderPairs("x-custom", "value", "x-id", "123").
 		Commit()
+	require.NoError(t, err)
 }
 
 func TestRunWhenHeadersIntegration(t *testing.T) {
@@ -597,25 +612,33 @@ func TestRunWhenHeadersIntegration(t *testing.T) {
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "Alex")).
 		WhenHeaders(HeaderEquals("x-custom", "expected-value")).
 		Reply(Data("message", "matched-by-header")).
 		Commit()
-
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	require.NoError(t, err)
+	err = mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "Alex")).
 		Reply(Data("message", "no-header-match")).
 		Commit()
+	require.NoError(t, err)
 
 	// Call with matching header — should get "matched-by-header"
 	callCtx := metadata.NewOutgoingContext(ctx, metadata.Pairs("x-custom", "expected-value"))
-	msg1 := invokeGreeterSayHello(t, mock.Conn(), reg, callCtx, "Alex")
-	require.Equal(t, "matched-by-header", getMessageField(t, msg1, "message"))
+	inDesc, _ := reg.FindDescriptorByName("helloworld.HelloRequest")
+	outDesc, _ := reg.FindDescriptorByName("helloworld.HelloReply")
+	in := dynamicpb.NewMessage(inDesc.(protoreflect.MessageDescriptor))
+	fd := inDesc.(protoreflect.MessageDescriptor).Fields().ByName("name")
+	in.Set(fd, protoreflect.ValueOfString("Alex"))
+	out := dynamicpb.NewMessage(outDesc.(protoreflect.MessageDescriptor))
+	require.NoError(t, mock.Conn().Invoke(callCtx, "/helloworld.Greeter/SayHello", in, out))
+	msg1 := getMessageField(t, out)
+	require.Equal(t, "matched-by-header", msg1)
 
 	// Call without header — should get "no-header-match"
-	msg2 := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alex")
-	require.Equal(t, "no-header-match", getMessageField(t, msg2, "message"))
+	msg2 := invokeGreeterSayHello(t, mock.Conn(), reg, "Alex")
+	require.Equal(t, "no-header-match", getMessageField(t, msg2))
 }
 
 func TestRunDelay(t *testing.T) {
@@ -623,11 +646,12 @@ func TestRunDelay(t *testing.T) {
 
 	mock := mustRunWithProto(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "slow")).
 		Reply(Data("message", "delayed")).
 		Delay(10 * time.Millisecond).
 		Commit()
+	require.NoError(t, err)
 }
 
 func TestRunTimesExhaustedAfterLimit(t *testing.T) {
@@ -636,17 +660,18 @@ func TestRunTimesExhaustedAfterLimit(t *testing.T) {
 	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "limited")).
 		Reply(Data("message", "ok")).
 		Times(2).
 		Commit()
+	require.NoError(t, err)
 
 	// 1st and 2nd call — success
-	msg1 := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "limited")
-	require.Equal(t, "ok", getMessageField(t, msg1, "message"))
-	msg2 := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "limited")
-	require.Equal(t, "ok", getMessageField(t, msg2, "message"))
+	msg1 := invokeGreeterSayHello(t, mock.Conn(), reg, "limited")
+	require.Equal(t, "ok", getMessageField(t, msg1))
+	msg2 := invokeGreeterSayHello(t, mock.Conn(), reg, "limited")
+	require.Equal(t, "ok", getMessageField(t, msg2))
 
 	// 3rd call — stub exhausted, should return error (NotFound or similar)
 	out := &dynamicpb.Message{}
@@ -663,19 +688,19 @@ func TestRunTimesExhaustedAfterLimit(t *testing.T) {
 func TestRunHistoryAndVerify(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "Alex")).
 		Reply(Data("message", "Hi")).
 		Commit()
+	require.NoError(t, err)
 
 	// No calls yet
 	require.Equal(t, 0, mock.History().Count())
 
 	// First call
-	_ = invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alex")
+	_ = invokeGreeterSayHello(t, mock.Conn(), reg, "Alex")
 	require.Equal(t, 1, mock.History().Count())
 	calls := mock.History().FilterByMethod("helloworld.Greeter", "SayHello")
 	require.Len(t, calls, 1)
@@ -683,7 +708,7 @@ func TestRunHistoryAndVerify(t *testing.T) {
 	require.Equal(t, "Hi", calls[0].Response["message"])
 
 	// Second call
-	_ = invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alex")
+	_ = invokeGreeterSayHello(t, mock.Conn(), reg, "Alex")
 	require.Equal(t, 2, mock.History().Count())
 
 	// Verify assertions
@@ -694,27 +719,27 @@ func TestRunHistoryAndVerify(t *testing.T) {
 func TestRunVerifyStubTimesFromStubTimes(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
 	// Ben: 1 call, Alice: 2 calls — SDK tracks sum = 3
-	require.NoError(t, mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "Ben")).Reply(Data("message", "Hi Ben")).Times(1).Commit())
-	require.NoError(t, mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "Alice")).Reply(Data("message", "Hi Alice")).Times(2).Commit())
+	require.NoError(t, mock.Stub(By("/helloworld.Greeter/SayHello")).
+		When(Equals("name", "Ben")).Reply(Data("message", "Hi Ben")).Times(1).Commit())
+	require.NoError(t, mock.Stub(By("/helloworld.Greeter/SayHello")).
+		When(Equals("name", "Alice")).Reply(Data("message", "Hi Alice")).Times(2).Commit())
 
-	_ = invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Ben")
-	_ = invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alice")
-	_ = invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alice")
+	_ = invokeGreeterSayHello(t, mock.Conn(), reg, "Ben")
+	_ = invokeGreeterSayHello(t, mock.Conn(), reg, "Alice")
+	_ = invokeGreeterSayHello(t, mock.Conn(), reg, "Alice")
 	// Close() runs VerifyStubTimes — passes (3 calls, expected 3)
 }
 
 func TestRunCloseVerifiesStubTimes(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"))
 
 	require.NoError(t, mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "x")).Reply(Data("message", "ok")).Times(1).Commit())
-	_ = invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "x")
+	_ = invokeGreeterSayHello(t, mock.Conn(), reg, "x")
 	// Close() runs VerifyStubTimes — passes (1 call, expected 1)
 }
 
@@ -733,9 +758,8 @@ func TestRunVerifyStubTimesErrNoErrorWhenMatch(t *testing.T) {
 	require.NoError(t, mock.Stub(By("/helloworld.Greeter/SayHello")).When(Equals("name", "x")).Reply(Data("message", "ok")).Times(1).Commit())
 
 	// Make the expected call
-	ctx := t.Context()
 	reg := mustBuildRegistryFromProto(t, sdkProtoPath("greeter"))
-	invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "x")
+	invokeGreeterSayHello(t, mock.Conn(), reg, "x")
 
 	// Verify that VerifyStubTimesErr returns nil when counts match
 	err = mock.Verify().VerifyStubTimesErr()
@@ -745,15 +769,15 @@ func TestRunVerifyStubTimesErrNoErrorWhenMatch(t *testing.T) {
 func TestRunWithSessionEmbeddedNop(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("greeter"), WithSession("test-session"))
 
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
+	err := mock.Stub(By("/helloworld.Greeter/SayHello")).
 		When(Equals("name", "x")).
 		Reply(Data("message", "ok")).
 		Commit()
-	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "x")
-	require.Equal(t, "ok", getMessageField(t, msg, "message"))
+	require.NoError(t, err)
+	msg := invokeGreeterSayHello(t, mock.Conn(), reg, "x")
+	require.Equal(t, "ok", getMessageField(t, msg))
 }
 
 func TestMockCLoseIdempotent(t *testing.T) {
@@ -774,10 +798,11 @@ func TestRunReplyStreamEmptyStream(t *testing.T) {
 
 	mock, reg := mustRunWithProtoAndReg(t, sdkProtoPath("search"))
 
-	mock.Stub(By("/search.SearchService/Search")).
+	err := mock.Stub(By("/search.SearchService/Search")).
 		When(Equals("query", "empty")).
 		ReplyStream().
 		Commit()
+	require.NoError(t, err)
 
 	inDesc, err := reg.FindDescriptorByName("search.SearchRequest")
 	require.NoError(t, err)

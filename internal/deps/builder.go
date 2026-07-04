@@ -63,8 +63,10 @@ func newStubValidator() *validator.Validate {
 	v, err := app.NewStubValidator()
 	if err != nil {
 		log.Printf("[gripmock] stub validator init failed: %v; using fallback", err)
+
 		return validator.New()
 	}
+
 	return v
 }
 
@@ -89,6 +91,7 @@ func NewBuilder(opts ...Option) *Builder {
 
 func WithDefaultConfig() Option {
 	cfg := config.Load()
+
 	return WithConfig(cfg)
 }
 

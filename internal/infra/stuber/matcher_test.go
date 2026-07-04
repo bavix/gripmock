@@ -117,7 +117,6 @@ func TestMatchData(t *testing.T) {
 //nolint:funlen
 func TestMatchStreamV2(t *testing.T) {
 	t.Parallel()
-	stuber.ClearAllCaches()
 
 	tests := []struct {
 		name       string
@@ -209,7 +208,6 @@ func TestV2MultipleStreamsSingleInputUsesLastElement(t *testing.T) {
 
 func TestV2Priority(t *testing.T) {
 	t.Parallel()
-	stuber.ClearAllCaches()
 
 	stub1 := &stuber.Stub{
 		Service:  "test",
@@ -240,7 +238,6 @@ func TestV2Priority(t *testing.T) {
 // This reproduces the PROD_789 / case_client_streaming_simple scenario.
 func TestBroadcastInputsMatchesAllMessages(t *testing.T) {
 	t.Parallel()
-	stuber.ClearAllCaches()
 
 	stub := &stuber.Stub{
 		Service: "ecommerce.EcommerceService",
@@ -270,7 +267,6 @@ func TestBroadcastInputsMatchesAllMessages(t *testing.T) {
 // does not match the single pattern.
 func TestBroadcastInputsRejectsMismatch(t *testing.T) {
 	t.Parallel()
-	stuber.ClearAllCaches()
 
 	stub := &stuber.Stub{
 		Service: "ecommerce.EcommerceService",

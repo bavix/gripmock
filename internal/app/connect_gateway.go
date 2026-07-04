@@ -497,6 +497,7 @@ func (a *httpStreamAdapter) writeError(code codes.Code, msg string) {
 		if !a.sentHeader.Load() {
 			a.sendHeader()
 		}
+
 		_ = writeConnectFrame(a.w, body, true)
 	} else {
 		a.w.Header().Set("Content-Type", "application/connect+json")
@@ -507,7 +508,7 @@ func (a *httpStreamAdapter) writeError(code codes.Code, msg string) {
 
 var _ grpc.ServerStream = (*httpStreamAdapter)(nil)
 
-//nolint:cyclop,exhaustive
+//nolint:cyclop
 func ErrorCodeToString(code codes.Code) string {
 	switch code {
 	case codes.OK:

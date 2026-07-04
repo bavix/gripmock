@@ -29,7 +29,7 @@ type ServerConfig struct {
 
 // OTelConfig holds OpenTelemetry configuration.
 type OTelConfig struct {
-	Enabled  bool   `env:"ENABLED" envDefault:"false"`
+	Enabled  bool   `env:"ENABLED"                envDefault:"false"`
 	Endpoint string `env:"EXPORTER_OTLP_ENDPOINT" envDefault:"localhost:4317"`
 	Insecure bool   `env:"EXPORTER_OTLP_INSECURE" envDefault:"true"`
 }
@@ -40,7 +40,7 @@ type Config struct {
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 
 	// GRPC server configuration.
-	GRPCNetwork string     `env:"GRPC_NETWORK" envDefault:"tcp"`
+	GRPCNetwork string       `env:"GRPC_NETWORK"    envDefault:"tcp"`
 	GRPC        ServerConfig `envPrefix:"GRPC_"`
 	GRPCTLS     TLSConfig    `envPrefix:"GRPC_TLS_"`
 
@@ -56,19 +56,19 @@ type Config struct {
 	OTel OTelConfig `envPrefix:"OTEL_"`
 
 	// Files configuration.
-	StubWatcherEnabled  bool          `env:"STUB_WATCHER_ENABLED" envDefault:"true"`
+	StubWatcherEnabled  bool          `env:"STUB_WATCHER_ENABLED"  envDefault:"true"`
 	StubWatcherInterval time.Duration `env:"STUB_WATCHER_INTERVAL" envDefault:"1s"`
-	StubWatcherType     watcherType   `env:"STUB_WATCHER_TYPE" envDefault:"fsnotify"`
+	StubWatcherType     watcherType   `env:"STUB_WATCHER_TYPE"     envDefault:"fsnotify"`
 
 	// History configuration.
-	HistoryEnabled         bool     `env:"HISTORY_ENABLED" envDefault:"true"`
-	HistoryLimit           ByteSize `env:"HISTORY_LIMIT" envDefault:"64M"`
+	HistoryEnabled         bool     `env:"HISTORY_ENABLED"           envDefault:"true"`
+	HistoryLimit           ByteSize `env:"HISTORY_LIMIT"             envDefault:"64M"`
 	HistoryMessageMaxBytes int64    `env:"HISTORY_MESSAGE_MAX_BYTES" envDefault:"262144"`
 	HistoryRedactKeys      []string `env:"HISTORY_REDACT_KEYS"`
 
 	// Session GC configuration.
 	SessionGCInterval time.Duration `env:"SESSION_GC_INTERVAL" envDefault:"30s"`
-	SessionGCTTL      time.Duration `env:"SESSION_GC_TTL" envDefault:"60s"`
+	SessionGCTTL      time.Duration `env:"SESSION_GC_TTL"      envDefault:"60s"`
 
 	// Plugins configuration.
 	TemplatePluginPaths []string `env:"TEMPLATE_PLUGIN_PATHS"`
@@ -88,9 +88,11 @@ func Load() Config {
 	if cfg.GRPC.Port == "" {
 		cfg.GRPC.Port = "4770"
 	}
+
 	if cfg.HTTP.Port == "" {
 		cfg.HTTP.Port = "4771"
 	}
+
 	if cfg.Connect.Port == "" {
 		cfg.Connect.Port = "4769"
 	}
@@ -98,9 +100,11 @@ func Load() Config {
 	if cfg.GRPC.Addr == "" {
 		cfg.GRPC.Addr = cfg.GRPC.Host + ":" + cfg.GRPC.Port
 	}
+
 	if cfg.HTTP.Addr == "" {
 		cfg.HTTP.Addr = cfg.HTTP.Host + ":" + cfg.HTTP.Port
 	}
+
 	if cfg.Connect.Addr == "" {
 		cfg.Connect.Addr = cfg.Connect.Host + ":" + cfg.Connect.Port
 	}
