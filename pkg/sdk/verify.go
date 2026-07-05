@@ -2,11 +2,12 @@ package sdk
 
 import (
 	"context"
-	"fmt"
 	"maps"
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/cockroachdb/errors"
 )
 
 // TestingT is the minimal interface for test assertions.
@@ -15,7 +16,7 @@ type TestingT interface {
 	Error(args ...any)
 	Fail()
 	Context() context.Context
-	Cleanup(func())
+	Cleanup(f func())
 }
 
 // HistoryReader provides read access to recorded gRPC calls.
@@ -29,6 +30,8 @@ type HistoryReader interface {
 }
 
 // Verifier provides assertion methods for call verification.
+//
+// Deprecated: use Server.Called, Server.TotalCalls, Server.ExpectationsWereMet instead.
 type Verifier interface {
 	// Method narrows verification to a specific service and method.
 	Method(service, method string) MethodVerifier
@@ -42,32 +45,9 @@ type Verifier interface {
 	VerifyStubTimesErr() error
 }
 
-type VerifierContext interface {
-	Verifier
-	VerifyStubTimesErrContext(ctx context.Context) error
-}
-
-func HistoryAllContext(ctx context.Context, history HistoryReader) ([]CallRecord, error) {
-	return history.AllContext(ctx)
-}
-
-func HistoryCountContext(ctx context.Context, history HistoryReader) (int, error) {
-	return history.CountContext(ctx)
-}
-
-func HistoryFilterByMethodContext(ctx context.Context, history HistoryReader, service, method string) ([]CallRecord, error) {
-	return history.FilterByMethodContext(ctx, service, method)
-}
-
-func VerifyStubTimesErrContext(ctx context.Context, verifier Verifier) error {
-	if withContext, ok := verifier.(VerifierContext); ok {
-		return withContext.VerifyStubTimesErrContext(ctx)
-	}
-
-	return verifier.VerifyStubTimesErr()
-}
-
 // MethodVerifier verifies calls for a specific method.
+//
+// Deprecated: use Server.Called instead.
 type MethodVerifier interface {
 	// Called asserts the method was called exactly n times.
 	Called(t TestingT, n int)
@@ -82,7 +62,7 @@ type verifier struct {
 	expectedMu    *sync.Mutex
 }
 
-func (v *verifier) Method(service, method string) MethodVerifier {
+func (v *verifier) Method(service, method string) MethodVerifier { //nolint:ireturn
 	if strings.TrimSpace(service) == "" || strings.TrimSpace(method) == "" {
 		panic("sdk.Verifier.Method: service and method must be non-empty")
 	}
@@ -109,6 +89,7 @@ func (v *verifier) VerifyStubTimesErr() error {
 	if v.expectedTotal == nil {
 		return nil
 	}
+
 	want := int(v.expectedTotal.Load())
 	if want == 0 {
 		return nil
@@ -122,12 +103,12 @@ func (v *verifier) VerifyStubTimesErr() error {
 		for key, expected := range perMethod {
 			service, method, ok := splitMethodKey(key)
 			if !ok {
-				return fmt.Errorf("gripmock: invalid expected method key %q", key)
+				return errors.Wrapf(ErrVerificationFailed, "invalid expected method key %q", key)
 			}
 
 			got := len(v.recorder.FilterByMethod(service, method))
 			if got != expected {
-				return fmt.Errorf("gripmock: expected %d calls for %s/%s (from stub Times), got %d", expected, service, method, got)
+				return errors.Wrapf(ErrVerificationFailed, "expected %d calls for %s/%s (from stub Times), got %d", expected, service, method, got)
 			}
 		}
 
@@ -136,8 +117,9 @@ func (v *verifier) VerifyStubTimesErr() error {
 
 	got := v.recorder.Count()
 	if got != want {
-		return fmt.Errorf("gripmock: expected %d total calls (from stub Times), got %d", want, got)
+		return errors.Wrapf(ErrVerificationFailed, "expected %d total calls (from stub Times), got %d", want, got)
 	}
+
 	return nil
 }
 

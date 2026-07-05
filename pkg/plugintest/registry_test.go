@@ -46,6 +46,7 @@ func TestRegistryAddPluginAndLookup(t *testing.T) {
 				Name: "sum",
 				Fn: func(args ...any) any {
 					total := 0
+
 					for _, a := range args {
 						if n, ok := a.(int); ok {
 							total += n

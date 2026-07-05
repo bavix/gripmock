@@ -24,6 +24,7 @@ func TestSpecListSPecsEmpty(t *testing.T) {
 	t.Parallel()
 
 	var list SpecList
+
 	got := list.Specs()
 	require.Nil(t, got)
 }

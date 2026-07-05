@@ -13,10 +13,11 @@ import (
 //
 // It is intended for SDK remote-mode tests where a real GripMock process is
 // not required, but Run(...WithRemote...) still needs a healthy gRPC endpoint.
-func StartHealthGRPC(t testing.TB) string {
+func StartHealthGRPC(t testing.TB) string { //nolint:thelper
 	t.Helper()
 
 	var lc net.ListenConfig
+
 	lis, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("listen failed: %v", err)
@@ -33,6 +34,7 @@ func StartHealthGRPC(t testing.TB) string {
 
 	t.Cleanup(func() {
 		gs.Stop()
+
 		_ = lis.Close()
 	})
 

@@ -8,39 +8,43 @@
 **Minimum Requirements**: Go 1.26 or later
 :::
 
+> **Version history:** Stub definition available since <VersionTag version="v3.7.0" /> (legacy API: `mock.Stub(...).When(...).Reply(...).Commit()`). Current v2 API since <VersionTag version="v3.16.0" />. See the [Upgrade Guide](./upgrade.md) for migration.
+
 The SDK provides helper functions to define stubs easily.
 
-## Stub Method Name Forms <VersionTag version="v3.9.1" />
+---
 
-You can define the target gRPC method in two ways:
+### Legacy API (v3.7.0+)
 
-- `mock.Stub("package.Service", "Method")`
-- `mock.Stub(sdk.By("/package.Service/Method"))`
-
-Generated constants (for example `service.Service_Method_FullMethodName`) are preferred with `mock.Stub(sdk.By(...))` because they are less error-prone.
+The same stub definition in the legacy API:
 
 ```go
-mock.Stub(sdk.By(helloworld.Greeter_SayHello_FullMethodName)).
-    When(sdk.Equals("name", "Alex")).
-    Reply(sdk.Data("message", "Hi Alex")).
+mock, err := sdk.Run(t, sdk.WithFileDescriptor(user.File_user_service_proto))
+require.NoError(t, err)
+defer mock.Close()
+
+mock.Stub(sdk.By(UserService_GetUser_FullMethodName)).
+    When(sdk.Equals("id", "user-123")).
+    Reply(sdk.Data("name", "John Doe", "email", "john@example.com")).
     Commit()
 ```
+
+---
 
 ## Basic Matching
 
 ```go
 func TestUserService_GetUser(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(user.File_user_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(user.File_user_service_proto))
+    defer srv.Close()
 
     // Define stubs in the Arrange phase
-    mock.Stub(sdk.By(UserService_GetUser_FullMethodName)).
-        When(sdk.Equals("id", "user-123")).
-        Reply(sdk.Data("name", "John Doe", "email", "john@example.com")).
-        Commit()
+    srv.ExpectUnary(UserService_GetUser_FullMethodName).
+        Match("id", "user-123").
+        Return("name", "John Doe", "email", "john@example.com")
 
-    client := NewUserServiceClient(mock.Conn())
+    client := NewUserServiceClient(srv.Conn())
 
     // ACT
     reply, err := client.GetUser(t.Context(), &GetUserRequest{Id: "user-123"})
@@ -57,34 +61,31 @@ func TestUserService_GetUser(t *testing.T) {
 ```go
 func TestUserService_SearchUsers(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(user.File_user_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(user.File_user_service_proto))
+    defer srv.Close()
 
     // Exact match stub
-    mock.Stub(sdk.By(UserService_SearchUsers_FullMethodName)).
-        When(sdk.Equals("name", "exact-match")).
-        Reply(sdk.Data("results", []any{
+    srv.ExpectUnary(UserService_SearchUsers_FullMethodName).
+        Match("name", "exact-match").
+        Return("results", []any{
             map[string]any{"id": "1", "name": "exact-match"},
-        })).
-        Commit()
+        })
 
     // Partial match stub
-    mock.Stub(sdk.By(UserService_SearchUsers_FullMethodName)).
-        When(sdk.Contains("name", "partial")).
-        Reply(sdk.Data("results", []any{
+    srv.ExpectUnary(UserService_SearchUsers_FullMethodName).
+        Match(sdk.Contains("name", "partial")).
+        Return("results", []any{
             map[string]any{"id": "2", "name": "partial-result"},
-        })).
-        Commit()
+        })
 
     // Regex match stub
-    mock.Stub(sdk.By(UserService_SearchUsers_FullMethodName)).
-        When(sdk.Matches("email", `^[a-zA-Z0-9._%+-]+@example\.com$`)).
-        Reply(sdk.Data("results", []any{
+    srv.ExpectUnary(UserService_SearchUsers_FullMethodName).
+        Match(sdk.Matches("email", `^[a-zA-Z0-9._%+-]+@example\.com$`)).
+        Return("results", []any{
             map[string]any{"id": "3", "name": "regex-match"},
-        })).
-        Commit()
+        })
 
-    client := NewUserServiceClient(mock.Conn())
+    client := NewUserServiceClient(srv.Conn())
 
     // ACT
     exactReply, err := client.SearchUsers(t.Context(), &SearchUsersRequest{Name: "exact-match"})
@@ -118,18 +119,15 @@ import (
 
 func TestGreeter_SayHello(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(helloworld.File_helloworld_proto))
-    require.NoError(t, err)
-    
-    // Define a stub with delay
-    delayMs := 20
-    mock.Stub(sdk.By(Greeter_SayHello_FullMethodName)).
-        When(sdk.Equals("name", "Bob")).
-        Reply(sdk.Data("message", "Hello Bob")).
-        Delay(time.Duration(delayMs) * time.Millisecond).
-        Commit()
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(helloworld.File_helloworld_proto))
+    defer srv.Close()
 
-    client := helloworld.NewGreeterClient(mock.Conn())
+    // Define a stub with delay
+    srv.ExpectUnary(Greeter_SayHello_FullMethodName).
+        Match("name", "Bob").
+        Return(Delay(20*time.Millisecond, "message", "Hello Bob"))
+
+    client := helloworld.NewGreeterClient(srv.Conn())
 
     // ACT
     start := time.Now()
@@ -139,7 +137,7 @@ func TestGreeter_SayHello(t *testing.T) {
     // ASSERT
     require.NoError(t, err)
     require.Equal(t, "Hello Bob", reply.GetMessage())
-    require.GreaterOrEqual(t, elapsed.Milliseconds(), int64(delayMs))
+    require.GreaterOrEqual(t, elapsed.Milliseconds(), int64(20))
 }
 ```
 
@@ -148,16 +146,15 @@ func TestGreeter_SayHello(t *testing.T) {
 ```go
 func TestGreeter_SayHello_DynamicTemplate(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(helloworld.File_helloworld_proto))
-    require.NoError(t, err)
-    
-    // Use dynamic template to return request data in response
-    mock.Stub(sdk.By(Greeter_SayHello_FullMethodName)).
-        When(sdk.Matches("name", ".+")).
-        Reply(sdk.Data("message", "Hi {{.Request.name}}")).
-        Commit()
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(helloworld.File_helloworld_proto))
+    defer srv.Close()
 
-    client := helloworld.NewGreeterClient(mock.Conn())
+    // Use dynamic template to return request data in response
+    srv.ExpectUnary(Greeter_SayHello_FullMethodName).
+        Match(sdk.Matches("name", ".+")).
+        Return("message", "Hi {{.Request.name}}")
+
+    client := helloworld.NewGreeterClient(srv.Conn())
 
     // ACT
     reply, err := client.SayHello(t.Context(), &helloworld.HelloRequest{Name: "Alex"})
@@ -173,24 +170,22 @@ func TestGreeter_SayHello_DynamicTemplate(t *testing.T) {
 ```go
 func TestAuthService_Login(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(auth.File_auth_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(auth.File_auth_service_proto))
+    defer srv.Close()
 
     // With headers matching
-    mock.Stub(sdk.By(AuthService_Login_FullMethodName)).
-        When(sdk.Equals("username", "test-user")).
-        WhenHeaders(sdk.HeaderEquals("authorization", "Bearer valid-token")).
-        Reply(sdk.Data("token", "jwt-token-here")).
-        Commit()
+    srv.ExpectUnary(AuthService_Login_FullMethodName).
+        Match("username", "test-user").
+        WithHeader(sdk.Equals("authorization", "Bearer valid-token")).
+        Return("token", "jwt-token-here")
 
     // With call limit (Times)
-    mock.Stub(sdk.By(AuthService_Login_FullMethodName)).
-        When(sdk.Equals("username", "limited-user")).
-        Reply(sdk.Data("token", "limited-token")).
-        Times(2). // Stub will only match 2 times
-        Commit()
+    srv.ExpectUnary(AuthService_Login_FullMethodName).
+        Match("username", "limited-user").
+        Times(2).
+        Return("token", "limited-token")
 
-    client := NewAuthServiceClient(mock.Conn())
+    client := NewAuthServiceClient(srv.Conn())
 
     // ACT
     authorizedReply, err := client.Login(t.Context(), &LoginRequest{Username: "test-user"})

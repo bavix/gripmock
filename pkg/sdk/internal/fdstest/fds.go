@@ -23,6 +23,7 @@ func appendFileRecursive(
 	if _, ok := seen[name]; ok {
 		return
 	}
+
 	seen[name] = struct{}{}
 
 	imports := fd.Imports()

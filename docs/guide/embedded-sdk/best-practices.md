@@ -8,6 +8,8 @@
 **Minimum Requirements**: Go 1.26 or later
 :::
 
+> **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" /> (legacy API). Current v2 API since <VersionTag version="v3.16.0" />.
+
 Recommended patterns and practices for using GripMock Embedded SDK.
 
 ## Test Helper Functions
@@ -15,34 +17,29 @@ Recommended patterns and practices for using GripMock Embedded SDK.
 Create reusable helper functions for common mock setup:
 
 ```go
-func runMyServiceMock(t *testing.T, opts ...sdk.Option) (sdk.Mock, MyServiceClient) {
+func runMyServiceMock(t *testing.T, opts ...sdk.Option) *sdk.Server {
     t.Helper()
-    
+
     // ARRANGE
     // Add default options
     allOpts := []sdk.Option{
         sdk.WithFileDescriptor(service.File_service_proto),
     }
     allOpts = append(allOpts, opts...)
-    
-    mock, err := sdk.Run(t, allOpts...)
-    if err != nil {
-        t.Fatalf("Failed to start GripMock: %v", err)
-    }
-    
-    client := NewMyServiceClient(mock.Conn())
-    return mock, client
+
+    return sdk.NewServer(t, allOpts...)
 }
 
 func TestMyService_WithHelper(t *testing.T) {
     // ARRANGE
-    mock, client := runMyServiceMock(t)
-    
+    srv := runMyServiceMock(t)
+
     // Define stubs in the Arrange phase
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "test")).
-        Reply(sdk.Data("result", "success")).
-        Commit()
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "test").
+        Return("result", "success")
+
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
     resp, err := client.MyMethod(t.Context(), &MyRequest{Id: "test"})
@@ -60,21 +57,19 @@ Use sessions for parallel tests when using remote mode:
 ```go
 func TestMyService_Parallel(t *testing.T) {
     t.Parallel()
-    
+
     // ARRANGE
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithFileDescriptor(service.File_service_proto),
         sdk.WithSession(t.Name()), // Isolate this test's stubs
     )
-    require.NoError(t, err)
-    
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "parallel")).
-        Reply(sdk.Data("result", "parallel-success")).
-        Commit()
 
-    client := NewMyServiceClient(mock.Conn())
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "parallel").
+        Return("result", "parallel-success")
+
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
     resp, err := client.MyMethod(t.Context(), &MyRequest{Id: "parallel"})
@@ -87,22 +82,18 @@ func TestMyService_Parallel(t *testing.T) {
 
 ## Proper Cleanup
 
-Always pass `t` to `Run`. The SDK registers cleanup automatically and verifies `Times(...)` expectations:
+Always pass `t` to `NewServer`. The SDK registers cleanup automatically and verifies `Times(...)` expectations:
 
 ```go
 func TestCleanupIsAutomatic(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(service.File_service_proto))
-    if err != nil {
-        t.Fatalf("Failed to start GripMock: %v", err)
-    }
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(service.File_service_proto))
 
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "manual")).
-        Reply(sdk.Data("result", "manual-success")).
-        Commit()
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "manual").
+        Return("result", "manual-success")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
     resp, err := client.MyMethod(t.Context(), &MyRequest{Id: "manual"})
@@ -111,7 +102,7 @@ func TestCleanupIsAutomatic(t *testing.T) {
     require.NoError(t, err)
     require.Equal(t, "manual-success", resp.Result)
 
-    // No explicit mock.Close() is required in tests.
+    // No explicit srv.Close() is required in tests.
 }
 ```
 
@@ -122,22 +113,20 @@ Always verify that your code makes the expected calls:
 ```go
 func TestMyService_WithVerification(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(service.File_service_proto))
-    require.NoError(t, err)
-    
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "test")).
-        Reply(sdk.Data("result", "success")).
-        Commit()
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(service.File_service_proto))
 
-    client := NewMyServiceClient(mock.Conn())
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "test").
+        Return("result", "success")
+
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "test"})
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "test"})
-    
+
     // ASSERT - Verify the expected call was made exactly 2 times
-    mock.Verify().Method(sdk.By(MyService_MyMethod_FullMethodName)).Called(t, 2)
+    require.Equal(t, 2, srv.Called(MyService_MyMethod_FullMethodName))
 }
 ```
 
@@ -148,22 +137,19 @@ When working with complex stubs, consider organizing with clear structure:
 ```go
 func TestUserService_ComplexScenario(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(user.File_user_service_proto))
-    require.NoError(t, err)
-    
-    // Existing user stub
-    mock.Stub(sdk.By(UserService_GetUser_FullMethodName)).
-        When(sdk.Equals("id", "existing-user")).
-        Reply(sdk.Data("name", "John Doe", "email", "john@example.com")).
-        Commit()
-    
-    // Missing user stub
-    mock.Stub(sdk.By(UserService_GetUser_FullMethodName)).
-        When(sdk.Equals("id", "missing-user")).
-        ReplyError(codes.NotFound, "User not found").
-        Commit()
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(user.File_user_service_proto))
 
-    client := NewUserServiceClient(mock.Conn())
+    // Existing user stub
+    srv.ExpectUnary(UserService_GetUser_FullMethodName).
+        Match("id", "existing-user").
+        Return("name", "John Doe", "email", "john@example.com")
+
+    // Missing user stub
+    srv.ExpectUnary(UserService_GetUser_FullMethodName).
+        Match("id", "missing-user").
+        ReturnError(codes.NotFound, "User not found")
+
+    client := NewUserServiceClient(srv.Conn())
 
     // ACT
     existingResp, _ := client.GetUser(t.Context(), &GetUserRequest{Id: "existing-user"})
@@ -179,28 +165,25 @@ func TestUserService_ComplexScenario(t *testing.T) {
 
 ## Error Handling
 
-Always check for errors when starting the mock:
+The SDK's `NewServer` does not return an error — startup failures trigger a panic internally:
 
 ```go
-func runSafeMock(t *testing.T) (sdk.Mock, MyServiceClient) {
+func runSafeMock(t *testing.T) *sdk.Server {
     t.Helper()
-    
+
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(service.File_service_proto))
-    require.NoError(t, err, "Failed to start GripMock - check proto file path and syntax")
-    
-    client := NewMyServiceClient(mock.Conn())
-    return mock, client
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(service.File_service_proto))
+
+    return srv
 }
 
 func TestMyService_WithSafeMock(t *testing.T) {
     // ARRANGE
-    mock, client := runSafeMock(t)
-    
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "safe-test")).
-        Reply(sdk.Data("result", "safe-success")).
-        Commit()
+    srv := runSafeMock(t)
+
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "safe-test").
+        Return("result", "safe-success")
 
     // ACT
     resp, err := client.MyMethod(t.Context(), &MyRequest{Id: "safe-test"})
@@ -218,28 +201,25 @@ When you need to verify exact call counts, use the Times feature:
 ```go
 func TestRetryLogic_WithTimes(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(service.File_service_proto))
-    require.NoError(t, err)
-    
-    // First 2 calls fail, 3rd succeeds (simulating retry logic)
-    mock.Stub(sdk.By(ExternalService_Call_FullMethodName)).
-        When(sdk.Equals("attempt", "fail")).
-        ReplyError(codes.Unavailable, "Service unavailable").
-        Times(2). // Allow this stub to match exactly 2 times
-        Commit()
-        
-    mock.Stub(sdk.By(ExternalService_Call_FullMethodName)).
-        When(sdk.Equals("attempt", "success")).
-        Reply(sdk.Data("result", "success")).
-        Commit()
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(service.File_service_proto))
 
-    client := NewExternalServiceClient(mock.Conn())
+    // First 2 calls fail, 3rd succeeds (simulating retry logic)
+    srv.ExpectUnary(ExternalService_Call_FullMethodName).
+        Match("attempt", "fail").
+        Times(2). // Allow this stub to match exactly 2 times
+        ReturnError(codes.Unavailable, "Service unavailable")
+
+    srv.ExpectUnary(ExternalService_Call_FullMethodName).
+        Match("attempt", "success").
+        Return("result", "success")
+
+    client := NewExternalServiceClient(srv.Conn())
 
     // ACT
     // First two calls will fail (triggering retries)
     _, err1 := client.Call(t.Context(), &CallRequest{Attempt: "fail"})
     _, err2 := client.Call(t.Context(), &CallRequest{Attempt: "fail"})
-    
+
     // Third call will succeed
     successResp, err3 := client.Call(t.Context(), &CallRequest{Attempt: "success"})
 
@@ -248,8 +228,8 @@ func TestRetryLogic_WithTimes(t *testing.T) {
     require.Error(t, err2)
     require.NoError(t, err3)
     require.Equal(t, "success", successResp.GetResult())
-    
-    // Verification happens automatically due to Times(2) and passing t to Run
+
+    // Verification happens automatically due to Times(2) and passing t to NewServer
 }
 ```
 
@@ -260,16 +240,14 @@ Only mock what you need to test:
 ```go
 func TestPaymentService_WithMinimalMocks(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(payment.File_payment_service_proto))
-    require.NoError(t, err)
-    
-    // Good: Only mock the service you're testing
-    mock.Stub(sdk.By(PaymentService_Charge_FullMethodName)).
-        When(sdk.Equals("amount", 100)).
-        Reply(sdk.Data("transactionId", "tx-123")).
-        Commit()
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(payment.File_payment_service_proto))
 
-    client := NewPaymentServiceClient(mock.Conn())
+    // Good: Only mock the service you're testing
+    srv.ExpectUnary(PaymentService_Charge_FullMethodName).
+        Match("amount", 100).
+        Return("transactionId", "tx-123")
+
+    client := NewPaymentServiceClient(srv.Conn())
 
     // ACT
     resp, err := client.Charge(t.Context(), &ChargeRequest{Amount: 100})
@@ -287,39 +265,35 @@ Here's a complete example showing all best practices:
 ```go
 func TestOrderService_Comprehensive(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(order.File_order_service_proto))
-    require.NoError(t, err)
-    
-    // Setup multiple stubs with different behaviors
-    mock.Stub(sdk.By(OrderService_CreateOrder_FullMethodName)).
-        When(sdk.Equals("userId", "premium")).
-        Reply(sdk.Data("orderId", "ORD-001", "status", "created")).
-        Commit()
-    
-    mock.Stub(sdk.By(OrderService_GetOrder_FullMethodName)).
-        When(sdk.Equals("orderId", "ORD-001")).
-        Reply(sdk.Data("status", "processing", "total", 99.99)).
-        Times(2). // Expected to be called exactly 2 times
-        Commit()
-    
-    mock.Stub(sdk.By(OrderService_CancelOrder_FullMethodName)).
-        When(sdk.Equals("orderId", "ORD-001")).
-        Reply(sdk.Data("status", "cancelled")).
-        Commit()
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(order.File_order_service_proto))
 
-    client := NewOrderServiceClient(mock.Conn())
+    // Setup multiple stubs with different behaviors
+    srv.ExpectUnary(OrderService_CreateOrder_FullMethodName).
+        Match("userId", "premium").
+        Return("orderId", "ORD-001", "status", "created")
+
+    srv.ExpectUnary(OrderService_GetOrder_FullMethodName).
+        Match("orderId", "ORD-001").
+        Times(2). // Expected to be called exactly 2 times
+        Return("status", "processing", "total", 99.99)
+
+    srv.ExpectUnary(OrderService_CancelOrder_FullMethodName).
+        Match("orderId", "ORD-001").
+        Return("status", "cancelled")
+
+    client := NewOrderServiceClient(srv.Conn())
 
     // ACT
     // Create an order
     createResp, err := client.CreateOrder(t.Context(), &CreateOrderRequest{UserId: "premium"})
     require.NoError(t, err)
-    
+
     // Check order status twice
     status1, err := client.GetOrder(t.Context(), &GetOrderRequest{OrderId: "ORD-001"})
     require.NoError(t, err)
     status2, err := client.GetOrder(t.Context(), &GetOrderRequest{OrderId: "ORD-001"})
     require.NoError(t, err)
-    
+
     // Cancel the order
     cancelResp, err := client.CancelOrder(t.Context(), &CancelOrderRequest{OrderId: "ORD-001"})
     require.NoError(t, err)
@@ -332,11 +306,11 @@ func TestOrderService_Comprehensive(t *testing.T) {
     require.Equal(t, "processing", status2.GetStatus())
     require.Equal(t, 99.99, status2.GetTotal())
     require.Equal(t, "cancelled", cancelResp.GetStatus())
-    
+
     // Verify call counts
-    mock.Verify().Method(sdk.By(OrderService_CreateOrder_FullMethodName)).Called(t, 1)
-    mock.Verify().Method(sdk.By(OrderService_GetOrder_FullMethodName)).Called(t, 2) // Due to Times(2)
-    mock.Verify().Method(sdk.By(OrderService_CancelOrder_FullMethodName)).Called(t, 1)
+    require.Equal(t, 1, srv.Called(OrderService_CreateOrder_FullMethodName))
+    require.Equal(t, 2, srv.Called(OrderService_GetOrder_FullMethodName)) // Due to Times(2)
+    require.Equal(t, 1, srv.Called(OrderService_CancelOrder_FullMethodName))
 }
 ```
 

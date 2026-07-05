@@ -37,12 +37,12 @@ func (s *StreamCaptureState) AppendResponseWithTiming(resp map[string]any, now t
 
 	if s.recordDelay && !s.lastResponseTime.IsZero() {
 		delay := now.Sub(s.lastResponseTime)
-		resp[stuber.GripmockKey] = map[string]any{
+		resp[stuber.GripMockKey] = map[string]any{
 			"delay": delay.String(),
 		}
 	} else if s.recordDelay && s.lastResponseTime.IsZero() {
 		delay := now.Sub(s.startTime)
-		resp[stuber.GripmockKey] = map[string]any{
+		resp[stuber.GripMockKey] = map[string]any{
 			"delay": delay.String(),
 		}
 	}

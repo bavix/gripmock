@@ -15,18 +15,6 @@ linters:
     - wrapcheck  # too strict for this project - requires wrapping all errors
     - gomoddirectives  # allow local replace for pkg/plugins
     - goconst # too strict for this project - requires big refactoring
-  exclusions:
-    rules:
-      - path: "^pkg/.*"
-        linters:
-          - wsl_v5  # deprecated replacement of wsl
-          - ireturn  # fluent builder pattern returns interfaces
-          - err113   # test SDK uses fmt.Errorf
-          - funcorder  # style preference
-          - mnd     # test SDK uses magic numbers
-          - contextcheck  # test SDK doesn't always need context
-          - testpackage  # test SDK uses internal test packages
-          - forcetypeassert  # test SDK uses type assertions
   settings:
     lll:
       tab-width: 1

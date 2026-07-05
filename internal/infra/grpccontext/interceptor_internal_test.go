@@ -154,7 +154,8 @@ func TestPanicRecoveryUnaryInterceptor(t *testing.T) {
 		}
 		resp, err := PanicRecoveryUnaryInterceptor(ctx, "req", info, handler)
 		require.Nil(t, resp)
-		require.NoError(t, err) // recover stops panic; return values are zero
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "handler panic: test panic")
 	})
 }
 

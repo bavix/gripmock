@@ -1,64 +1,37 @@
 package sdk
 
-import (
-	"net/http"
-	"time"
-)
+import "context"
 
-// Run starts an embedded gRPC mock server or connects to a remote gripmock. Blocks until healthy.
-// Registers cleanup to verify stub Times and Close.
-// t must not be nil.
-func Run(t TestingT, opts ...Option) (Mock, error) {
-	if t == nil {
-		panic("gripmock: t must not be nil")
-	}
-
-	o := &options{healthyTimeout: defaultHealthyTimeout, sessionTTL: defaultSessionTTL}
-	for _, opt := range opts {
-		if opt == nil {
-			continue
-		}
-
-		opt(o)
-	}
-
-	if o.httpClient == nil {
-		o.httpClient = &http.Client{Timeout: 10 * time.Second}
-	}
-
-	ctx := t.Context()
-
-	var mock Mock
-	var err error
-	if o.remoteAddr != "" {
-		mock, err = runRemote(ctx, o)
-	} else {
-		if len(o.descriptorFiles) == 0 && o.mockFromAddr == "" {
-			return nil, ErrDescriptorsRequired
-		}
-		if o.mockFromAddr != "" {
-			fds, errResolve := resolveDescriptorsFromReflection(ctx, o.mockFromAddr)
-			if errResolve != nil {
-				return nil, errResolve
-			}
-			o.descriptorFiles = fds.GetFile()
-		}
-		mock, err = runEmbedded(ctx, o)
-	}
+// Run starts an embedded gRPC mock server or connects to a remote gripmock.
+// Returns a Mock for v1 compatibility.
+//
+// Deprecated: use NewServer and the v2 API instead.
+func Run(t TestingT, opts ...Option) (Mock, error) { //nolint:ireturn
+	srv, err := initServer(t, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	t.Cleanup(func() {
-		if err := mock.Verify().VerifyStubTimesErr(); err != nil {
-			t.Error(err)
-			t.Fail()
-		}
-		if err := mock.Close(); err != nil {
-			t.Error(err)
-			t.Fail()
-		}
-	})
+	return &mockServer{Server: srv}, nil
+}
 
-	return mock, nil
+func startServer(ctx context.Context, o *options) (Mock, error) { //nolint:ireturn
+	if o.remoteAddr != "" {
+		return runRemote(ctx, o)
+	}
+
+	if len(o.descriptorFiles) == 0 && o.mockFromAddr == "" {
+		return nil, ErrDescriptorsRequired
+	}
+
+	if o.mockFromAddr != "" {
+		fds, err := resolveDescriptorsFromReflection(ctx, o.mockFromAddr)
+		if err != nil {
+			return nil, err
+		}
+
+		o.descriptorFiles = fds.GetFile()
+	}
+
+	return runEmbedded(ctx, o)
 }

@@ -440,7 +440,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 			for _, item := range found.Output.Stream {
 				if itemMap, ok := item.(map[string]any); ok {
 					clean := deepCopyMapAny(itemMap)
-					stuber.ExtractGripmockDelay(clean)
+					stuber.ExtractGripMockDelay(clean)
 					streamResponses = append(streamResponses, clean)
 				} else {
 					streamResponses = append(streamResponses, item)
@@ -542,7 +542,7 @@ func (m *grpcMocker) handleStreamElement(
 	outputDataCopy := deepCopyMapAny(outputData)
 
 	delay := found.Output.Delay
-	if d, ok := stuber.ExtractGripmockDelay(outputDataCopy); ok {
+	if d, ok := stuber.ExtractGripMockDelay(outputDataCopy); ok {
 		delay = d
 	}
 
@@ -999,12 +999,45 @@ func (m *grpcMocker) tryV2API(messages []map[string]any, md metadata.MD) (*stube
 	return m.budgerigar.FindByQuery(query)
 }
 
+func (m *grpcMocker) matchFirstMessage(stream grpc.ServerStream, messages []map[string]any) *stuber.Stub {
+	stubs, _ := m.budgerigar.FindBy(m.fullServiceName, m.methodName)
+	for _, s := range stubs {
+		if !s.MatchOnFirstMessage {
+			continue
+		}
+
+		query := stuber.Query{
+			Service:       m.fullServiceName,
+			Method:        m.methodName,
+			StrictService: m.strictServiceMatch,
+			Input:         []map[string]any{messages[0]},
+		}
+		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+			query.Headers = processHeaders(md)
+			query.Session = sessionFromMetadata(md)
+		}
+
+		result, matchErr := m.budgerigar.FindByQuery(query)
+		if matchErr == nil && result != nil && result.Found() != nil {
+			return result.Found()
+		}
+	}
+
+	return nil
+}
+
 func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 	requestTime := time.Now()
 
 	messages, originalMessages, err := m.collectClientMessages(stream)
 	if err != nil {
 		return err
+	}
+
+	if len(messages) > 0 {
+		if found := m.matchFirstMessage(stream, messages); found != nil {
+			return m.sendClientStreamResponse(stream, found, messages, requestTime)
+		}
 	}
 
 	found, err := m.tryFindStub(stream, messages)
@@ -1146,6 +1179,12 @@ func (m *grpcMocker) sendClientStreamResponse(
 
 func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 	queryBidi := m.newQueryBidi(stream.Context())
+
+	// Check if there's a stub with a custom handler for this method
+	stubs, _ := m.budgerigar.FindBy(queryBidi.Service, queryBidi.Method)
+	if len(stubs) > 0 && stubs[0].Handler != nil {
+		return stubs[0].Handler(stream.Context(), stream)
+	}
 
 	bidiResult, err := m.budgerigar.FindByQueryBidi(queryBidi)
 	if err != nil {
@@ -1605,11 +1644,13 @@ func BuildFromDescriptorSet(
 	}
 
 	s := &GRPCServer{
-		budgerigar:  budgerigar,
-		healthState: healthState,
-		waiter:      waiter,
-		recorder:    recorder,
-		descriptors: descriptors.NewRegistry(),
+		budgerigar:     budgerigar,
+		healthState:    healthState,
+		waiter:         waiter,
+		recorder:       recorder,
+		descriptors:    descriptors.NewRegistry(),
+		validator:      mustNewStubValidator(),
+		errorFormatter: NewErrorFormatter(),
 	}
 	server := s.createServer(ctx)
 	s.setupHealthCheck(server, reg)
@@ -2147,7 +2188,7 @@ func (m *grpcMocker) sendStreamResponses(
 			streamDataCopy := deepCopyMapAny(streamData)
 
 			delayDelay := output.Delay
-			if d, ok := stuber.ExtractGripmockDelay(streamDataCopy); ok {
+			if d, ok := stuber.ExtractGripMockDelay(streamDataCopy); ok {
 				delayDelay = d
 			}
 
@@ -2195,7 +2236,7 @@ func (m *grpcMocker) sendStreamResponses(
 			streamDataCopy = copied
 
 			delayDelay := output.Delay
-			if d, found := stuber.ExtractGripmockDelay(copied); found {
+			if d, found := stuber.ExtractGripMockDelay(copied); found {
 				delayDelay = d
 			}
 

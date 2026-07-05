@@ -31,6 +31,7 @@ type SpecList []FuncSpec
 
 func (s SpecList) Specs() []FuncSpec { return s }
 
+//nolint:ireturn
 func Specs(specs ...FuncSpec) SpecProvider {
 	return SpecList(specs)
 }
@@ -48,6 +49,7 @@ type pluginDef struct {
 func (p pluginDef) Info() PluginInfo          { return p.info }
 func (p pluginDef) Providers() []SpecProvider { return p.providers }
 
+//nolint:ireturn
 func NewPlugin(info PluginInfo, providers ...SpecProvider) Plugin {
 	return pluginDef{info: info, providers: providers}
 }

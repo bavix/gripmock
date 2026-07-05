@@ -92,7 +92,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 		if recordDelay && capture {
 			entry := messageToAny(resp)
 			if m, ok := entry.(map[string]any); ok {
-				m[stuber.GripmockKey] = map[string]any{
+				m[stuber.GripMockKey] = map[string]any{
 					"delay": now.Sub(lastMsgTime).String(),
 				}
 				responses = append(responses, m)

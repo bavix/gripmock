@@ -57,13 +57,13 @@ func (r *TestRegistry) AddPlugin(info plugins.PluginInfo, providers []plugins.Sp
 	}
 }
 
-func (r *TestRegistry) addProvider(info plugins.PluginInfo, provider plugins.SpecProvider) {
+func (r *TestRegistry) addProvider(info plugins.PluginInfo, provider plugins.SpecProvider) { //nolint:funcorder
 	for _, spec := range provider.Specs() {
 		r.addSpec(info, spec)
 	}
 }
 
-//nolint:cyclop,funlen
+//nolint:cyclop,funlen,nestif,funcorder
 func (r *TestRegistry) addSpec(info plugins.PluginInfo, spec plugins.FuncSpec) {
 	if spec.Name == "" {
 		return
@@ -81,6 +81,7 @@ func (r *TestRegistry) addSpec(info plugins.PluginInfo, spec plugins.FuncSpec) {
 
 	if prev, ok := r.funcOwner[spec.Name]; ok && !hasDecor {
 		r.warnDuplicate(spec.Name, info.Name, prev)
+
 		entry.Deactivated = true
 		entry.Decorates = ""
 		entry.DecoratesPlugin = ""
@@ -90,6 +91,7 @@ func (r *TestRegistry) addSpec(info plugins.PluginInfo, spec plugins.FuncSpec) {
 	}
 
 	var fn plugins.Func
+
 	if hasDecor {
 		dec := wrapDecorator(spec.Fn)
 		if dec == nil {
@@ -153,8 +155,8 @@ func parseDecorates(spec plugins.FuncSpec) (string, string) {
 	raw, _ = strings.CutPrefix(raw, "@")
 
 	if strings.Contains(raw, "/") {
-		parts := strings.SplitN(raw, "/", 2)
-		if len(parts) == 2 {
+		parts := strings.SplitN(raw, "/", 2) //nolint:mnd
+		if len(parts) == 2 {                 //nolint:mnd
 			return parts[1], parts[0]
 		}
 	}
@@ -162,12 +164,13 @@ func parseDecorates(spec plugins.FuncSpec) (string, string) {
 	return raw, ""
 }
 
-func (r *TestRegistry) addDepend(pluginName, depend string) {
+func (r *TestRegistry) addDepend(pluginName, depend string) { //nolint:funcorder
 	if depend == "" {
 		return
 	}
 
 	deps := r.pluginDeps[pluginName]
+
 	seen := make(map[string]struct{}, len(deps)+1)
 	for _, d := range deps {
 		seen[d] = struct{}{}
@@ -180,7 +183,7 @@ func (r *TestRegistry) addDepend(pluginName, depend string) {
 	r.pluginDeps[pluginName] = append(deps, depend)
 }
 
-func (r *TestRegistry) warnDuplicate(name, plugin, existing string) {
+func (r *TestRegistry) warnDuplicate(name, plugin, existing string) { //nolint:funcorder
 	// Test registry doesn't log warnings
 }
 
@@ -210,6 +213,7 @@ func (r *TestRegistry) Plugins(ctx context.Context) []plugins.PluginInfo {
 		if deps, ok := r.pluginDeps[p.Name]; ok {
 			p.Depends = slices.Clone(deps)
 		}
+
 		out = append(out, p)
 	}
 
@@ -249,6 +253,7 @@ func (r *TestRegistry) Hooks(group string) []plugins.Func {
 	}
 
 	res := make([]plugins.Func, 0)
+
 	for _, funcs := range r.pluginFuncs {
 		for _, f := range funcs {
 			if f.Group != group {
@@ -279,27 +284,32 @@ func (r *TestRegistry) sortedPluginOrder() ([]string, []string) {
 
 	visited := make(map[string]int)
 	cycle := make(map[string]bool)
+
 	registered := make(map[string]bool, len(r.plugins))
 	for _, p := range r.plugins {
 		registered[p.Name] = true
 	}
 
 	var visit func(string) bool
+
 	visit = func(name string) bool {
-		if visited[name] == 2 {
+		if visited[name] == 2 { //nolint:mnd
 			return cycle[name]
 		}
+
 		if visited[name] == 1 {
 			return true
 		}
 
 		visited[name] = 1
 		inCycle := false
+
 		for _, dep := range r.pluginDeps[name] {
 			if visit(dep) {
 				inCycle = true
 			}
 		}
+
 		visited[name] = 2
 
 		if inCycle {
@@ -313,6 +323,7 @@ func (r *TestRegistry) sortedPluginOrder() ([]string, []string) {
 
 	for _, p := range r.plugins {
 		visit(p.Name)
+
 		if cycle[p.Name] {
 			skipped = append(skipped, p.Name)
 		}

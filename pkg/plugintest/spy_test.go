@@ -60,6 +60,7 @@ func TestSpyDecorator(t *testing.T) {
 func TestSpyReset(t *testing.T) {
 	t.Parallel()
 
+	//nolint:nilnil
 	base := func(ctx context.Context, args ...any) (any, error) { return nil, nil }
 	spy := plugintest.NewSpy(base)
 	fn := spy.Func()

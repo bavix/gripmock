@@ -8,20 +8,13 @@
 **Minimum Requirements**: Go 1.26 or later
 :::
 
+> **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" /> (legacy API: `sdk.Run`, `mock.Stub`, `.When`, `.Reply`, `.Commit`). Current v2 API available since <VersionTag version="v3.16.0" />. See the [Upgrade Guide](./upgrade.md) for migration.
+
 Get started with GripMock Embedded SDK in your tests.
-
-## Choosing Stub Signature <VersionTag version="v3.9.1" />
-
-The SDK supports two forms:
-
-- `mock.Stub(service, method)`
-- `mock.Stub(sdk.By(fullMethod))` where `fullMethod` is `/package.Service/Method`
-
-Prefer `mock.Stub(sdk.By(...))` with generated `..._FullMethodName` constants from `*_grpc.pb.go` because it reduces typo risk.
 
 ## Basic Example
 
-Here's a simple example of how to use the Embedded SDK:
+Here's a simple example:
 
 ```go
 import (
@@ -33,64 +26,60 @@ import (
 
 func TestMyService_Call(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(helloworld.File_helloworld_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(helloworld.File_helloworld_proto))
+    defer srv.Close()
 
-    // Define a stub
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "test-id")).
-        Reply(sdk.Data("result", "success")).
-        Commit()
+    // Define an expectation
+    srv.ExpectUnary("/helloworld.Greeter/SayHello").
+        Match("name", "Alex").
+        Return("message", "Hi Alex")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := helloworld.NewGreeterClient(srv.Conn())
 
     // ACT
-    reply, err := client.MyMethod(t.Context(), &MyRequest{Id: "test-id"})
+    reply, err := client.SayHello(t.Context(), &helloworld.HelloRequest{Name: "Alex"})
 
     // ASSERT
     require.NoError(t, err)
-    require.Equal(t, "success", reply.GetResult())
+    require.Equal(t, "Hi Alex", reply.GetMessage())
 }
 ```
+
+`NewServer` creates an independent server (safe for `t.Parallel()`), starts it on a random TCP port, and registers `t.Cleanup` for auto-verify + close. There is no error return — programmer mistakes panic immediately.
 
 ## Test Helper Pattern
 
 For better organization, create a helper function:
 
 ```go
-func runMyServiceMock(t *testing.T) (sdk.Mock, MyServiceClient) {
+func runMyServiceMock(t *testing.T) *sdk.Server {
     t.Helper()
-    
-    // ARRANGE: Start embedded GripMock instance - pass t directly
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(helloworld.File_helloworld_proto))
-    require.NoError(t, err)
 
-    client := NewMyServiceClient(mock.Conn())
-    return mock, client
+    return sdk.NewServer(t, sdk.WithFileDescriptor(helloworld.File_helloworld_proto))
 }
 
 func TestMyService_WithHelper(t *testing.T) {
     // ARRANGE
-    mock, client := runMyServiceMock(t)
-    
-    // Define a stub
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "test-id")).
-        Reply(sdk.Data("result", "success")).
-        Commit()
+    srv := runMyServiceMock(t)
+
+    srv.ExpectUnary("/helloworld.Greeter/SayHello").
+        Match("name", "Alex").
+        Return("message", "Hi Alex")
+
+    client := helloworld.NewGreeterClient(srv.Conn())
 
     // ACT
-    reply, err := client.MyMethod(t.Context(), &MyRequest{Id: "test-id"})
+    reply, err := client.SayHello(t.Context(), &helloworld.HelloRequest{Name: "Alex"})
 
     // ASSERT
     require.NoError(t, err)
-    require.Equal(t, "success", reply.GetResult())
+    require.Equal(t, "Hi Alex", reply.GetMessage())
 }
 ```
 
 ## More Complex Example
 
-Here's a more complex example:
+Here's a more complex example with delay:
 
 ```go
 import (
@@ -103,18 +92,15 @@ import (
 
 func TestGreeter_SayHello_WithDelay(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(helloworld.File_helloworld_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(helloworld.File_helloworld_proto))
+    defer srv.Close()
 
-    // Define a stub with delay
-    delayMs := 20
-    mock.Stub(sdk.By(Greeter_SayHello_FullMethodName)).
-        When(sdk.Equals("name", "Bob")).
-        Reply(sdk.Data("message", "Hello Bob")).
-        Delay(time.Duration(delayMs) * time.Millisecond).
-        Commit()
+    // Define an expectation with delay using composable Delay()
+    srv.ExpectUnary("/helloworld.Greeter/SayHello").
+        Match("name", "Bob").
+        Return(Delay(20*time.Millisecond, "message", "Hello Bob"))
 
-    client := helloworld.NewGreeterClient(mock.Conn())
+    client := helloworld.NewGreeterClient(srv.Conn())
 
     // ACT
     start := time.Now()
@@ -124,8 +110,51 @@ func TestGreeter_SayHello_WithDelay(t *testing.T) {
     // ASSERT
     require.NoError(t, err)
     require.Equal(t, "Hello Bob", reply.GetMessage())
-    require.GreaterOrEqual(t, elapsed.Milliseconds(), int64(delayMs))
+    require.GreaterOrEqual(t, elapsed.Milliseconds(), int64(20))
 }
+```
+
+---
+
+### Legacy API (v3.7.0+)
+
+The same example in the legacy API:
+
+```go
+import (
+    "testing"
+
+    "github.com/stretchr/testify/require"
+    sdk "github.com/bavix/gripmock/v3/pkg/sdk"
+)
+
+func TestMyService_Call_Legacy(t *testing.T) {
+    mock, err := sdk.Run(t, sdk.WithFileDescriptor(helloworld.File_helloworld_proto))
+    require.NoError(t, err)
+    defer mock.Close()
+
+    mock.Stub(sdk.By("/helloworld.Greeter/SayHello")).
+        When(sdk.Equals("name", "Alex")).
+        Reply(sdk.Data("message", "Hi Alex")).
+        Commit()
+
+    client := helloworld.NewGreeterClient(mock.Conn())
+
+    reply, err := client.SayHello(t.Context(), &helloworld.HelloRequest{Name: "Alex"})
+
+    require.NoError(t, err)
+    require.Equal(t, "Hi Alex", reply.GetMessage())
+}
+```
+
+---
+
+## Using Full Method Constants
+
+```go
+srv.ExpectUnary(helloworld.Greeter_SayHello_FullMethodName).
+    Match("name", "Alex").
+    Return("message", "Hi Alex")
 ```
 
 ::: warning

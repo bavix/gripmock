@@ -22,9 +22,10 @@ func TestHelloPlugin(t *testing.T) {
 					if len(args) == 0 {
 						return "hello", nil
 					}
+
 					s, ok := args[0].(string)
 					if !ok {
-						return nil, fmt.Errorf("expected string argument, got %T", args[0])
+						return nil, fmt.Errorf("expected string argument, got %T", args[0]) //nolint:err113
 					}
 
 					return "hello " + s, nil

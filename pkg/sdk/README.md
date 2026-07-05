@@ -5,183 +5,234 @@ Go SDK for embedding a gRPC mock server in tests or connecting to a remote GripM
 > **⚠️ Experimental SDK**  
 > This SDK is experimental and may be discontinued or never released. Use at your own risk.
 
-## Quick start (tests)
+## Quick start (v2 API — recommended)
 
 ```go
-mock, err := sdk.Run(t, sdk.WithFileDescriptor(helloworld.File_service_proto))
-require.NoError(t, err)
+srv := sdk.NewServer(t, sdk.WithFileDescriptor(helloworld.File_service_proto))
+defer srv.Close()
 
-mock.Stub(sdk.By(helloworld.Greeter_SayHello_FullMethodName)).
-    Unary("name", "Alex", "message", "Hi Alex").
-    Commit()
+srv.ExpectUnary("/helloworld.Greeter/SayHello").
+    Match("name", "Alex").
+    Return("message", "Hi Alex")
 
-client := helloworld.NewGreeterClient(mock.Conn())
-reply, _ := client.SayHello(t.Context(), &helloworld.HelloRequest{Name: "Alex"})
-// reply.Message == "Hi Alex"
+client := helloworld.NewGreeterClient(srv.Conn())
+resp, _ := client.SayHello(t.Context(), &helloworld.HelloRequest{Name: "Alex"})
+// resp.Message == "Hi Alex"
 ```
 
-`Run` requires a non-nil `TestingT` (e.g. `*testing.T`) and always registers cleanup (`VerifyStubTimesErr` + `Close`).
+`NewServer` creates an independent server (safe for `t.Parallel()`), starts it on a random TCP port, and registers `t.Cleanup` for auto-verify + close.
 
-## Stubbing styles
-
-SDK supports two forms:
-
-- `mock.Stub(service, method)` (backward-compatible)
-- `mock.Stub(sdk.By(fullMethod))` (preferred)
-
-Use generated full-method constants from `*_grpc.pb.go` when available:
-
+**Unary** with delay:
 ```go
-mock.Stub(sdk.By(helloworld.Greeter_SayHello_FullMethodName)).
-    Unary("name", "Alex", "message", "Hi Alex").
-    Commit()
-
-mock.Verify().Method(sdk.By(helloworld.Greeter_SayHello_FullMethodName)).Called(t, 1)
+srv.ExpectUnary("/svc/Method").
+    Match("field", "value").
+    Return(Delay(100*time.Millisecond, "responseField", "responseValue"))
 ```
-`sdk.By(...)` accepts `/package.Service/Method` (leading slash optional).
 
-**Unary** — one-liner: match one field, return one field.
-
+**Unary** with sequential responses (`NextWillReturn`):
 ```go
-mock.Stub(sdk.By(helloworld.Greeter_SayHello_FullMethodName)).
-    Unary("name", "Bob", "message", "Hello Bob").
-    Commit()
+srv.ExpectUnary("/svc/Method").
+    Match("step", "first").
+    Return("result", "ok").
+    NextWillReturn("result", "again")
+// 1st call → {result: ok}, 2nd call → {result: again}, 3rd call → error
 ```
 
-**Match + Return** — key-value pairs for input and output.
-
+**Server Stream**:
 ```go
-mock.Stub(sdk.By(helloworld.Greeter_SayHello_FullMethodName)).
-    Match("name", "Bob").
-    Return("message", "Hello Bob").
-    Commit()
+srv.ExpectServerStream("/svc/Stream").
+    Match("query", "test").
+    SendStream(
+        map[string]any{"id": "1", "title": "result 1"},
+        map[string]any{"id": "2", "title": "result 2"},
+    )
 ```
 
-**Dynamic template** — interpolate request fields into response.
-
+**Client Stream**:
 ```go
-mock.Stub(sdk.By(helloworld.Greeter_SayHello_FullMethodName)).
-    When(sdk.Matches("name", ".+")).
-    Return("message", "Hi {{.Request.name}}").
-    Commit()
-// Request: name="Alex" → Response: message="Hi Alex"
+srv.ExpectClientStream("/svc/Stream").
+    Match(sdk.Matches("value", "\\d+")).
+    Return("result", 42.0)
 ```
 
-**Delay** — simulate slow responses before sending the reply.
-
+**Bidirectional Stream**:
 ```go
-mock.Stub(sdk.By(helloworld.Greeter_SayHello_FullMethodName)).
-    Unary("name", "Bob", "message", "Hello Bob").
-    Delay(100 * time.Millisecond).
-    Commit()
-// Response is sent after 100ms delay
+srv.ExpectBidirectionalStream("/svc/Bidi").
+    Run(func(ctx context.Context, stream any) error {
+        return nil
+    })
 ```
 
-## Verification
-
-When stubs use `Times`, `Run(t, ...)` verifies call count at test end automatically.
-
-For explicit checks, use `mock.Verify()` and `mock.History()`.
-
-In remote mode, management REST calls are context-aware:
-
-- `mock.Verify().Method(sdk.By(...)).Called(t, n)`, `mock.Verify().Total(t, n)`, and `mock.Verify().VerifyStubTimes(t)` use `t.Context()`.
-- You can pass explicit context with helper functions:
-
+**Effects** (register side-effect stubs on match):
 ```go
-ctx := context.WithValue(t.Context(), traceKey{}, "suite-A")
+effect := sdk.Upsert("svc", "NextMethod").
+    Match("step", "complete").
+    Return("status", "done").
+    Build()
 
-err := sdk.VerifyStubTimesErrContext(ctx, mock.Verify())
-require.NoError(t, err)
-
-calls, err := sdk.HistoryAllContext(ctx, mock.History())
-require.NoError(t, err)
-require.NotEmpty(t, calls)
-
-count, err := sdk.HistoryCountContext(ctx, mock.History())
-require.NoError(t, err)
-require.GreaterOrEqual(t, count, 1)
-
-filtered, err := sdk.HistoryFilterByMethodContext(ctx, mock.History(), "helloworld.Greeter", "SayHello")
-require.NoError(t, err)
-require.NotEmpty(t, filtered)
+srv.ExpectUnary("/svc/Method").
+    Match("step", "begin").
+    Effect(effect).
+    Return("status", "started")
 ```
 
-These helpers are backward-compatible:
-
-- For remote verifier/history they use the provided context.
-- For embedded verifier/history they gracefully fall back to non-context methods.
-
-## Multiple services (one mock)
-
-One mock can serve N services. Pass several descriptors via chained options (duplicates by file name are skipped):
-
+**Verification**:
 ```go
-// Option 1: multiple WithFileDescriptor (generated code)
-mock, err := sdk.Run(t,
-    sdk.WithFileDescriptor(helloworld.File_service_proto),
-    sdk.WithFileDescriptor(echo.File_service_v1_proto),
-)
-require.NoError(t, err)
-
-mock.Stub(sdk.By(helloworld.Greeter_SayHello_FullMethodName)).
-    Unary("name", "Alex", "message", "Hi Alex").
-    Commit()
-mock.Stub(sdk.By(echo.EchoService_SendMessage_FullMethodName)).
-    Unary("message", "ping", "response", "pong").
-    Commit()
+err := srv.ExpectationsWereMet()
+n := srv.Called("/svc/Method")
+total := srv.TotalCalls()
+history := srv.History()
 ```
 
+**Matchers** for fine-grained matching:
 ```go
-// Option 2: multiple WithDescriptors (FileDescriptorSet from protoc, buf, etc.)
-mock, err := sdk.Run(t,
-    sdk.WithDescriptors(fdsGreeter),
-    sdk.WithDescriptors(fdsEcho),
-)
-require.NoError(t, err)
+// Equals (default), Contains, Matches (regex), Glob
+srv.ExpectUnary("/svc/Method").
+    Match("name", sdk.Contains("partial")).
+    Match(sdk.Matches("email", `.*@example\.com$`)).
+    Match(sdk.Glob("path", "prefix/**/suffix")).
+    Match("exact_field", "exact_value").
+    Return("result", "matched")
+
+// Header matching — same universal matchers, pass to WithHeader/WithHeaders
+srv.ExpectUnary("/svc/Method").
+    WithHeader(sdk.Contains("authorization", "Bearer ")).
+    Return("result", "auth_ok")
+
+// AnyOf, And, IgnoreArrayOrder for complex conditions
+srv.ExpectUnary("/svc/Method").
+    Match(sdk.AnyOf(
+        sdk.Equals("status", "active"),
+        sdk.Equals("status", "pending"),
+    )).
+    Return("result", "ok")
 ```
 
+### Advanced features
+
+**Priority** (higher wins):
 ```go
-// Option 3: single WithDescriptors with merged FileDescriptorSet
-fds := &descriptorpb.FileDescriptorSet{
-    File: append(fdsGreeter.GetFile(), fdsEcho.GetFile()...),
-}
-mock, err := sdk.Run(t, sdk.WithDescriptors(fds))
+srv.ExpectUnary("/svc/Method").
+    Match("id", "specific").
+    Priority(100).Return("result", "specific")
+
+srv.ExpectUnary("/svc/Method").
+    Match(sdk.Contains("id", "")).
+    Priority(10).Return("result", "generic")
 ```
 
-## Run options
+**Times** (call limit):
+```go
+srv.ExpectUnary("/svc/Method").
+    Match("id", "limited").
+    Times(3).Return("result", "ok")
+// Only matches 3 times, 4th call returns error
+```
+
+**ReturnError**:
+```go
+srv.ExpectUnary("/svc/Method").
+    Match("amount", 0).
+    ReturnError(codes.InvalidArgument, "amount must be positive")
+```
+
+---
+
+## Migration guide: v1 → v2
+
+### Key differences
+
+| v1 (deprecated) | v2 (recommended) |
+|---|---|
+| `sdk.Run(t, opts...)` | `sdk.NewServer(t, opts...)` |
+| `mock.Stub(svc, method).Unary(...).Commit()` | `srv.ExpectUnary(fullMethod).Match(...).Return(...)` |
+| `sdk.By(fullMethod)` | use full method string directly |
+| `mock.Verify().Method(...).Called(t, n)` | `srv.Called(fullMethod)` |
+| `mock.History()` | `srv.History()` |
+| `mock.Stub(...).Delay(d).Commit()` | `Return(Delay(d, ...))` or `SendStream(Delay(d, ...))` |
+| `mock.Stub(...).WhenStream(...)` | `ExpectClientStream(...).Match(...)` |
+| `mock.Stub(...).ReplyStream(...)` | `ExpectServerStream(...).SendStream(...)` |
+
+### Removed in v2
+
+- `sdk.By()`, `sdk.ParseFullMethodName()`, `sdk.StubBatch()` — use full method strings directly
+- `MockFrom()` → `WithReflection()`
+- `Remote()` → `WithRemote()` (auto-derives REST URL from gRPC address)
+- `WithServiceDesc()` — no-op, removed
+- `WithPayloadFunc()` — no-op, removed
+- `bufconn` — default is now TCP `:0` (real address like `127.0.0.1:PORT`)
+- `MergeHeaders()`, `MergeOutput()` — replaced by Matcher-based API
+
+### New in v2
+
+- 4 dedicated expectation types: `UnaryExpectation`, `ServerStreamExpectation`, `ClientStreamExpectation`, `BidirectionalExpectation`
+- `NextWillReturn(kv...)` — sequential responses
+- `Delay(d, kv...)` — composable delay inside `Return`
+- `Effect(Upsert(...).Build())` — side effects on match
+- `WithBatch()` — optional batching for remote mode
+- `Server.Reset()` — clear state without stopping server
+- `Server.Flush()` — flush pending stubs (batch mode)
+- `Server.Address()` — get listen address
+- Unified `Matcher` type: `Equals`, `Contains`, `Matches`, `Glob`, `AnyOf`, `And` for payload AND header matching (pass to `Match()` for payload, `WithHeader()` for headers)
+
+---
+
+## Options
 
 | Option | Description |
 |--------|-------------|
 | `WithFileDescriptor(fd)` | Use generated descriptor (e.g. `helloworld.File_service_proto`) |
-| `WithDescriptors(fds)` | Use `FileDescriptorSet` (one or more files); can be chained for multiple protos |
-| `WithListenAddr(network, addr)` | Listen on a real port (e.g. `"tcp", ":0"`) |
-| `WithRemote(grpcAddr, restURL)` | Connect to an external GripMock (gRPC + REST) |
-| `Remote(grpcAddr)` | Deprecated alias; derives REST URL automatically |
-| `WithSession(id)` | Session isolation for parallel tests (remote only) |
-| `WithSessionTTL(d)` | Automatic cleanup window for session resources (remote only) |
-| `WithGRPCTimeout(d)` | Default per-RPC timeout for remote gRPC calls |
+| `WithDescriptors(fds)` | Use `FileDescriptorSet` (one or more files); can be chained |
+| `WithProtoFiles(paths...)` | Compile `.proto` files at test time |
+| `WithListenAddr(network, addr)` | Listen on a specific address (default: `:0`) |
+| `WithRemote(grpcAddr, restURL)` | Connect to an external GripMock |
+| `WithSession(id)` | Session isolation for parallel tests |
+| `WithSessionTTL(d)` | Cleanup window for session resources |
+| `WithGRPCTimeout(d)` | Per-RPC timeout for remote gRPC calls |
+| `WithHealthCheckTimeout(d)` | Readiness check timeout |
+| `WithReflection(addr)` | Load descriptors via gRPC reflection |
+| `WithHTTPClient(c)` | Custom HTTP client for remote mode |
+| `WithBatch()` | Enable stub batching for remote mode (flush via `Flush()`) |
 
 ## Remote mode
 
-`WithFileDescriptor(...)` / `WithDescriptors(...)` are optional in remote mode.
-When provided in remote mode, SDK uploads descriptors to `/api/descriptors` on startup.
-Descriptors remain required for embedded mode.
-
-`WithHTTPClient(...)` customizes the REST client used for remote management calls.
-
 ```go
-mock, err := sdk.Run(t,
+srv := sdk.NewServer(t,
     sdk.WithRemote("localhost:4770", "http://localhost:4771"),
     sdk.WithSession("suite-A"),
 )
-require.NoError(t, err)
+defer srv.Close()
 
-mock.Stub(sdk.By(helloworld.Greeter_SayHello_FullMethodName)).
-    Unary("name", "Alex", "message", "Hi Alex").
-    Commit()
+srv.ExpectUnary("/helloworld.Greeter/SayHello").
+    Match("name", "Alex").
+    Return("message", "Hi Alex")
 
-client := helloworld.NewGreeterClient(mock.Conn())
+client := helloworld.NewGreeterClient(srv.Conn())
+```
+
+Use `WithBatch()` to queue stubs and send them all at once via `Flush()`:
+```go
+srv := sdk.NewServer(t, sdk.WithRemote("localhost:4770", "http://localhost:4771"), sdk.WithBatch())
+defer srv.Close()
+
+srv.ExpectUnary("/svc/M").Match("k", "v").Return("r", "1")
+srv.ExpectUnary("/svc/M").Match("k2", "v2").Return("r", "2")
+srv.Flush() // sends both stubs in one REST call
+```
+
+## Lifecycle methods
+
+```go
+srv := sdk.NewServer(t, opts...)
+srv.Address()               // "127.0.0.1:PORT"
+srv.Conn()                  // *grpc.ClientConn
+srv.Reset()                 // clear state without stopping
+srv.Flush()                 // flush pending stubs (batch mode)
+srv.Called("/svc/Method")   // call count
+srv.TotalCalls()            // total call count
+srv.History()               // all recorded calls
+srv.ExpectationsWereMet()   // verify Times expectations
+srv.Close()                 // stop + cleanup
 ```
 
 ## Installation

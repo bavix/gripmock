@@ -21,6 +21,7 @@ func (o *options) appendDescriptorFiles(files []*descriptorpb.FileDescriptorProt
 
 		seen[f.GetName()] = true
 	}
+
 	for _, f := range files {
 		if f == nil {
 			continue
@@ -35,6 +36,8 @@ func (o *options) appendDescriptorFiles(files []*descriptorpb.FileDescriptorProt
 
 type options struct {
 	descriptorFiles []*descriptorpb.FileDescriptorProto // accumulated via append
+	protoPaths      []string                            // .proto file paths to compile
+	batchMode       bool                                // batch stubs in remote mode
 	mockFromAddr    string
 	remoteAddr      string // gRPC address for remote mode
 	remoteRestURL   string // REST base URL (e.g. "http://localhost:4771") for remote mode
@@ -52,7 +55,6 @@ const (
 	defaultSessionTTL     = 60 * time.Second
 )
 
-// Option configures Run behavior.
 type Option func(*options)
 
 // WithDescriptors appends files from the FileDescriptorSet to the mock server (skips duplicates by name).
@@ -78,17 +80,9 @@ func WithListenAddr(network, addr string) Option {
 	}
 }
 
-// WithHealthCheckTimeout sets timeout for readiness/health check.
 func WithHealthCheckTimeout(d time.Duration) Option {
 	return func(o *options) {
 		o.healthyTimeout = d
-	}
-}
-
-// MockFrom configures the mock to use gRPC reflection from the given address (phase 0.5).
-func MockFrom(addr string) Option {
-	return func(o *options) {
-		o.mockFromAddr = addr
 	}
 }
 
@@ -99,16 +93,6 @@ func WithRemote(grpcAddr string, restURL string) Option {
 	return func(o *options) {
 		o.remoteAddr = normalizeRemoteAddr(grpcAddr)
 		o.remoteRestURL = normalizeRemoteRestURL(restURL)
-	}
-}
-
-// Remote configures remote mode and derives the REST URL from grpcAddr.
-//
-// Deprecated: use WithRemote(grpcAddr, restURL) for explicit endpoints.
-func Remote(grpcAddr string) Option {
-	return func(o *options) {
-		o.remoteAddr = normalizeRemoteAddr(grpcAddr)
-		o.remoteRestURL = deriveRestURLFromGrpcAddr(o.remoteAddr)
 	}
 }
 
@@ -137,10 +121,32 @@ func WithSessionTTL(d time.Duration) Option {
 }
 
 // WithGRPCTimeout sets default per-RPC timeout for remote gRPC calls.
-// Applied only when call context has no deadline.
+// Applied only when request context has no deadline.
 func WithGRPCTimeout(d time.Duration) Option {
 	return func(o *options) {
 		o.grpcTimeout = d
+	}
+}
+
+func WithProtoFiles(paths ...string) Option {
+	return func(o *options) {
+		o.protoPaths = append(o.protoPaths, paths...)
+	}
+}
+
+// WithBatch enables batch mode for remote stub registration.
+// Stubs are queued locally and sent on Flush()/Close()/ExpectationsWereMet().
+// Without this option, each stub is sent immediately via REST.
+func WithBatch() Option {
+	return func(o *options) {
+		o.batchMode = true
+	}
+}
+
+// WithReflection resolves descriptors from a running gRPC server via reflection.
+func WithReflection(addr string) Option {
+	return func(o *options) {
+		o.mockFromAddr = addr
 	}
 }
 

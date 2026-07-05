@@ -1,141 +1,170 @@
 package sdk
 
 import (
-	"fmt"
-	"net"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/reflect/protodesc"
 
-	"github.com/bavix/gripmock/v3/internal/domain/protoset"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/pkg/sdk/internal/httpmock"
+	"github.com/bavix/gripmock/v3/pkg/sdk/internal/remoteapi"
 )
 
-func TestRunRemoteConnectionRefused(t *testing.T) {
+func TestRemoteAddStubs(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
-	grpcAddr := "127.0.0.1:15999"
-	restURL := "http://127.0.0.1:16000"
+	mock := httpmock.NewServer()
+	defer mock.Close()
 
-	// Act
-	mock, err := Run(t, WithRemote(grpcAddr, restURL), WithHealthCheckTimeout(500*time.Millisecond))
-
-	// Assert
-	if err == nil {
-		_ = mock.Close()
-		t.Fatal("expected error when connecting to non-existent gripmock")
+	client := remoteapi.Client{
+		BaseURL:    mock.URL,
+		HTTPClient: mock.HTTPServer.Client(),
 	}
+
+	err := client.AddStubs([]*stuber.Stub{{
+		Service: "test.Service",
+		Method:  "TestMethod",
+		Input:   stuber.InputData{Equals: map[string]any{"key": "value"}},
+		Output:  stuber.Output{Data: map[string]any{"result": "ok"}},
+	}})
+	require.NoError(t, err)
+	require.Len(t, mock.Budgerigar.All(), 1)
+}
+
+func TestRemoteBatchDelete(t *testing.T) {
+	t.Parallel()
+
+	mock := httpmock.NewServer()
+	defer mock.Close()
+
+	client := remoteapi.Client{
+		BaseURL:    mock.URL,
+		HTTPClient: mock.HTTPServer.Client(),
+	}
+
+	require.NoError(t, client.AddStubs([]*stuber.Stub{
+		{
+			Service: "svc", Method: "m1",
+			Input:  stuber.InputData{Equals: map[string]any{"id": "1"}},
+			Output: stuber.Output{Data: map[string]any{"ok": true}},
+		},
+		{
+			Service: "svc", Method: "m2",
+			Input:  stuber.InputData{Equals: map[string]any{"id": "2"}},
+			Output: stuber.Output{Data: map[string]any{"ok": true}},
+		},
+	}))
+	require.Len(t, mock.Budgerigar.All(), 2) //nolint:mnd
+
+	mock.Budgerigar.Clear()
+	require.Empty(t, mock.Budgerigar.All())
+}
+
+func TestRemoteVerifyCalls(t *testing.T) {
+	t.Parallel()
+
+	mock := httpmock.NewServer()
+	defer mock.Close()
+
+	client := remoteapi.Client{
+		BaseURL:    mock.URL,
+		HTTPClient: mock.HTTPServer.Client(),
+	}
+
+	mock.RecordCall("svc", "method", nil, nil)
+	mock.RecordCall("svc", "method", nil, nil)
+
+	require.NoError(t, client.VerifyMethodCalled("svc", "method", 2)) //nolint:mnd
+
+	err := client.VerifyMethodCalled("svc", "method", 1)
 	require.Error(t, err)
 }
 
-func TestRunRemoteWithCustomRestURL(t *testing.T) {
+func TestRemoteHistory(t *testing.T) {
+	_ = t
 	t.Parallel()
 
-	// Act
-	_, err := Run(t,
-		WithRemote("127.0.0.1:15998", "http://127.0.0.1:15999"),
-		WithHealthCheckTimeout(200*time.Millisecond),
-	)
+	mock := httpmock.NewServer()
+	defer mock.Close()
 
-	// Assert
-	require.Error(t, err)
+	client := remoteapi.Client{
+		BaseURL:    mock.URL,
+		HTTPClient: mock.HTTPServer.Client(),
+	}
+
+	mock.RecordCall("svc", "method", map[string]any{"req": "1"}, map[string]any{"resp": "ok"})
+
+	history, err := client.FetchHistory()
+	require.NoError(t, err)
+	require.Len(t, history, 1)
+	require.Equal(t, "svc", history[0].Service)
+	require.Equal(t, "method", history[0].Method)
 }
 
-func TestRunRemoteIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping Remote integration test in short mode")
-	}
+func TestRemoteSessionIsolation(t *testing.T) {
+	_ = t
 	t.Parallel()
 
-	ctx := t.Context()
+	mock := httpmock.NewServer()
+	defer mock.Close()
 
-	// Arrange
-	grpcLis, err := net.Listen("tcp", ":0")
-	require.NoError(t, err)
-	grpcPort := grpcLis.Addr().(*net.TCPAddr).Port
-	_ = grpcLis.Close()
-
-	httpLis, err := net.Listen("tcp", ":0")
-	require.NoError(t, err)
-	httpPort := httpLis.Addr().(*net.TCPAddr).Port
-	_ = httpLis.Close()
-
-	projRoot := filepath.Join("..", "..")
-	protoPath := filepath.Join(projRoot, "examples", "projects", "greeter", "service.proto")
-
-	goPath, err := exec.LookPath("go")
-	if err != nil {
-		t.Skipf("skipping: go not found in PATH: %v", err)
-		return
+	clientA := remoteapi.Client{
+		BaseURL:    mock.URL,
+		HTTPClient: mock.HTTPServer.Client(),
+		Session:    "session-A",
 	}
 
-	goDir := filepath.Dir(goPath)
-	if goroot := runtime.GOROOT(); goroot != "" {
-		goDir = goDir + string(filepath.ListSeparator) + filepath.Join(goroot, "bin")
+	require.NoError(t, clientA.AddStubs([]*stuber.Stub{{
+		Service: "svc", Method: "m1",
+		Input:  stuber.InputData{Equals: map[string]any{"id": "1"}},
+		Output: stuber.Output{Data: map[string]any{"ok": true}},
+	}}))
+
+	all := mock.Budgerigar.All()
+	require.Len(t, all, 1)
+	require.Equal(t, "session-A", all[0].Session)
+
+	found, _ := mock.Budgerigar.FindByQuery(stuber.Query{
+		Service: "svc",
+		Method:  "m1",
+		Session: "session-A",
+	})
+	require.NotNil(t, found)
+
+	foundB, _ := mock.Budgerigar.FindByQuery(stuber.Query{
+		Service: "svc",
+		Method:  "m1",
+		Session: "session-B",
+	})
+	require.Nil(t, foundB)
+}
+
+func TestRemoteBatch(t *testing.T) {
+	_ = t
+	t.Parallel()
+
+	mock := httpmock.NewServer()
+	defer mock.Close()
+
+	client := remoteapi.Client{
+		BaseURL:    mock.URL,
+		HTTPClient: mock.HTTPServer.Client(),
 	}
 
-	cmd := exec.CommandContext(ctx, goPath, "run", ".", protoPath)
-	cmd.Dir = projRoot
-	env := make([]string, 0, len(os.Environ())+4)
-	grpcVar := "GRPC_PORT=" + fmt.Sprintf("%d", grpcPort)
-	httpVar := "HTTP_PORT=" + fmt.Sprintf("%d", httpPort)
-	safePath := "PATH=" + goDir
-	for _, e := range os.Environ() {
-		if strings.HasPrefix(e, "GRPC_PORT=") || strings.HasPrefix(e, "HTTP_PORT=") || strings.HasPrefix(e, "PATH=") {
-			continue
-		}
-
-		env = append(env, e)
+	stubs := []*stuber.Stub{
+		{
+			Service: "svc", Method: "m1",
+			Input:  stuber.InputData{Equals: map[string]any{"id": "1"}},
+			Output: stuber.Output{Data: map[string]any{"ok": true}},
+		},
+		{
+			Service: "svc", Method: "m2",
+			Input:  stuber.InputData{Equals: map[string]any{"id": "2"}},
+			Output: stuber.Output{Data: map[string]any{"ok": true}},
+		},
+		{Service: "svc", Method: "m3", Input: stuber.InputData{Equals: map[string]any{"id": "3"}}, Output: stuber.Output{Data: map[string]any{"ok": true}}}, //nolint:lll
 	}
 
-	cmd.Env = append(env, safePath, grpcVar, httpVar)
-	if err := cmd.Start(); err != nil {
-		t.Skipf("skipping: cannot start gripmock: %v", err)
-		return
-	}
-	defer func() { _ = cmd.Process.Kill() }()
-
-	grpcAddr := fmt.Sprintf("127.0.0.1:%d", grpcPort)
-	restURL := fmt.Sprintf("http://127.0.0.1:%d", httpPort)
-
-	// Act
-	time.Sleep(8 * time.Second)
-
-	mock, err := Run(t,
-		WithRemote(grpcAddr, restURL),
-		WithHealthCheckTimeout(10*time.Second),
-	)
-	if err != nil {
-		t.Skipf("skipping: cannot connect to gripmock: %v", err)
-		return
-	}
-
-	mock.Stub(By("/helloworld.Greeter/SayHello")).
-		When(Equals("name", "Alex")).
-		Reply(Data("message", "Hi from Remote")).
-		Commit()
-
-	fdsSlice, err := protoset.Build(ctx, nil, []string{protoPath}, nil)
-	require.NoError(t, err)
-	require.NotEmpty(t, fdsSlice)
-	reg, err := protodesc.NewFiles(fdsSlice[0])
-	require.NoError(t, err)
-	msg := invokeGreeterSayHello(t, mock.Conn(), reg, ctx, "Alex")
-
-	// Assert
-	require.Equal(t, "Hi from Remote", getMessageField(t, msg, "message"))
-	require.Equal(t, 1, mock.History().Count())
-
-	calls := mock.History().FilterByMethod("helloworld.Greeter", "SayHello")
-	require.Len(t, calls, 1)
-	require.Equal(t, "Alex", calls[0].Request["name"])
-	mock.Verify().Method(By("/helloworld.Greeter/SayHello")).Called(t, 1)
-	mock.Verify().Total(t, 1)
+	require.NoError(t, client.AddStubs(stubs))
+	require.Len(t, mock.Budgerigar.All(), 3) //nolint:mnd
 }

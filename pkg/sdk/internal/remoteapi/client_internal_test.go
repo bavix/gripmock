@@ -15,19 +15,23 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 
+	"github.com/bavix/gripmock/v3/internal/infra/httputil"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 type errRoundTripper struct{}
 
 func (errRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
-	return nil, errors.New("transport failed")
+	return nil, errors.New("transport failed") //nolint:err113
 }
 
 func newTestServer(t *testing.T, handler func(http.ResponseWriter, *http.Request)) *httptest.Server {
 	t.Helper()
 
-	ts := httptest.NewServer(http.HandlerFunc(handler))
+	// Wrap with gzip decompression middleware to match real server behavior
+	h := httputil.GzipRequestMiddleware(http.HandlerFunc(handler))
+
+	ts := httptest.NewServer(h)
 	t.Cleanup(ts.Close)
 
 	return ts
@@ -42,15 +46,41 @@ func TestClientAddStub(t *testing.T) {
 
 	// Arrange
 	var called bool
+
 	ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/api/stubs", r.URL.Path)
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "A", r.Header.Get("X-Gripmock-Session"))
+		if r.URL.Path != "/api/stubs" {
+			t.Errorf("expected /api/stubs, got %s", r.URL.Path)
+
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+
+			return
+		}
+
+		if r.Header.Get("X-Gripmock-Session") != "A" {
+			t.Error("expected session A")
+
+			return
+		}
 
 		var payload []map[string]any
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
-		require.Len(t, payload, 1)
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Error(err)
+
+			return
+		}
+
+		if len(payload) != 1 {
+			t.Error("expected 1 stub")
+
+			return
+		}
+
 		called = true
+
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -74,14 +104,23 @@ func TestClientBatchDeleteAcceptsNotFoundOrGone(t *testing.T) {
 		{name: "not-found", statusCode: http.StatusNotFound},
 		{name: "gone", statusCode: http.StatusGone},
 	} {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			// Arrange
 			ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-				require.Equal(t, "/api/stubs/batchDelete", r.URL.Path)
-				require.Equal(t, http.MethodPost, r.Method)
+				if r.URL.Path != "/api/stubs/batchDelete" {
+					t.Errorf("expected /api/stubs/batchDelete, got %s", r.URL.Path)
+
+					return
+				}
+
+				if r.Method != http.MethodPost {
+					t.Errorf("expected POST, got %s", r.Method)
+
+					return
+				}
+
 				w.WriteHeader(tc.statusCode)
 			})
 			c := newTestClient(ts, "")
@@ -95,26 +134,62 @@ func TestClientBatchDeleteAcceptsNotFoundOrGone(t *testing.T) {
 	}
 }
 
+//nolint:funlen
 func TestClientUploadDescriptors(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
 	name := "svc.proto"
+
 	var called bool
+
 	ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/api/descriptors", r.URL.Path)
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "application/octet-stream", r.Header.Get("Content-Type"))
+		if r.URL.Path != "/api/descriptors" {
+			t.Errorf("expected /api/descriptors, got %s", r.URL.Path)
+
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+
+			return
+		}
+
+		if r.Header.Get("Content-Type") != "application/octet-stream" {
+			t.Errorf("expected Content-Type application/octet-stream, got %s", r.Header.Get("Content-Type"))
+
+			return
+		}
 
 		raw, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+
+			return
+		}
 
 		var fds descriptorpb.FileDescriptorSet
-		require.NoError(t, proto.Unmarshal(raw, &fds))
-		require.Len(t, fds.File, 1)
-		require.Equal(t, name, fds.File[0].GetName())
+		if err := proto.Unmarshal(raw, &fds); err != nil {
+			t.Errorf("unexpected error: %v", err)
+
+			return
+		}
+
+		if len(fds.GetFile()) != 1 {
+			t.Errorf("expected 1 file, got %d", len(fds.GetFile()))
+
+			return
+		}
+
+		if fds.GetFile()[0].GetName() != name {
+			t.Errorf("expected name %s, got %s", name, fds.GetFile()[0].GetName())
+
+			return
+		}
 
 		called = true
+
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -134,11 +209,26 @@ func TestClientFetchHistory(t *testing.T) {
 	// Arrange
 	now := "2026-03-29T10:00:00Z"
 	ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/api/history", r.URL.Path)
-		require.Equal(t, http.MethodGet, r.Method)
-		require.Equal(t, "A", r.Header.Get("X-Gripmock-Session"))
+		if r.URL.Path != "/api/history" {
+			t.Errorf("expected /api/history, got %s", r.URL.Path)
+
+			return
+		}
+
+		if r.Method != http.MethodGet {
+			t.Errorf("expected GET, got %s", r.Method)
+
+			return
+		}
+
+		if r.Header.Get("X-Gripmock-Session") != "A" {
+			t.Error("expected session A")
+
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte("[{\"service\":\"svc\",\"method\":\"M\",\"request\":{\"x\":1},\"response\":{\"ok\":true},\"stubId\":\"550e8400-e29b-41d4-a716-446655440000\",\"timestamp\":\"" + now + "\"}]"))
+		_, _ = w.Write([]byte("[{\"service\":\"svc\",\"method\":\"M\",\"request\":{\"x\":1},\"response\":{\"ok\":true},\"stubId\":\"550e8400-e29b-41d4-a716-446655440000\",\"timestamp\":\"" + now + "\"}]")) //nolint:lll
 	})
 
 	c := newTestClient(ts, "A")
@@ -152,7 +242,7 @@ func TestClientFetchHistory(t *testing.T) {
 	require.Equal(t, "svc", history[0].Service)
 	require.Equal(t, "M", history[0].Method)
 	require.Equal(t, "550e8400-e29b-41d4-a716-446655440000", history[0].StubID.String())
-	require.Equal(t, float64(1), history[0].Request["x"])
+	require.InDelta(t, float64(1), history[0].Request["x"], 0.001)
 }
 
 func TestClientVerifyMethodCalledBadRequest(t *testing.T) {
@@ -160,8 +250,18 @@ func TestClientVerifyMethodCalledBadRequest(t *testing.T) {
 
 	// Arrange
 	ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/api/verify", r.URL.Path)
-		require.Equal(t, http.MethodPost, r.Method)
+		if r.URL.Path != "/api/verify" {
+			t.Errorf("expected /api/verify, got %s", r.URL.Path)
+
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+
+			return
+		}
+
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(`{"message":"bad count"}`))
 	})
@@ -173,8 +273,9 @@ func TestClientVerifyMethodCalledBadRequest(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
-	badReq, ok := err.(VerifyBadRequestError)
-	require.True(t, ok)
+
+	var badReq VerifyBadRequestError
+	require.ErrorAs(t, err, &badReq)
 	require.Equal(t, "bad count", badReq.Error())
 }
 
@@ -183,10 +284,22 @@ func TestClientAddStubUsesDefaultHTTPClientWhenNil(t *testing.T) {
 
 	// Arrange
 	var called bool
+
 	ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/api/stubs", r.URL.Path)
-		require.Equal(t, http.MethodPost, r.Method)
+		if r.URL.Path != "/api/stubs" {
+			t.Errorf("expected /api/stubs, got %s", r.URL.Path)
+
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+
+			return
+		}
+
 		called = true
+
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -204,12 +317,27 @@ func TestClientAddStubsBatchPayload(t *testing.T) {
 	t.Parallel()
 
 	var gotLen int
+
 	ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/api/stubs", r.URL.Path)
-		require.Equal(t, http.MethodPost, r.Method)
+		if r.URL.Path != "/api/stubs" {
+			t.Errorf("expected /api/stubs, got %s", r.URL.Path)
+
+			return
+		}
+
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+
+			return
+		}
 
 		var payload []map[string]any
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&payload))
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Error(err)
+
+			return
+		}
+
 		gotLen = len(payload)
 
 		w.WriteHeader(http.StatusOK)
@@ -233,7 +361,7 @@ func TestPtrOrZero(t *testing.T) {
 	m := map[string]any{"k": "v"}
 
 	// Act + Assert
-	require.Equal(t, "", ptrOrZero[string](nil))
+	require.Empty(t, ptrOrZero[string](nil))
 	require.Equal(t, value, ptrOrZero(&value))
 	require.Nil(t, ptrOrZero[map[string]any](nil))
 	require.Equal(t, m, ptrOrZero(&m))
@@ -252,7 +380,12 @@ func TestClientAddStubErrorStatus(t *testing.T) {
 	t.Parallel()
 
 	ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/api/stubs", r.URL.Path)
+		if r.URL.Path != "/api/stubs" {
+			t.Errorf("expected /api/stubs, got %s", r.URL.Path)
+
+			return
+		}
+
 		w.WriteHeader(http.StatusInternalServerError)
 	})
 
@@ -266,7 +399,7 @@ func TestClientAddStubMarshalError(t *testing.T) {
 	t.Parallel()
 
 	c := Client{BaseURL: "http://127.0.0.1"}
-	err := c.AddStub(&stuber.Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: stuber.Output{Data: map[string]any{"bad": make(chan int)}}})
+	err := c.AddStub(&stuber.Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: stuber.Output{Data: map[string]any{"bad": make(chan int)}}}) //nolint:lll
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to marshal stubs")
 }
@@ -275,7 +408,12 @@ func TestClientBatchDeleteErrorStatus(t *testing.T) {
 	t.Parallel()
 
 	ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/api/stubs/batchDelete", r.URL.Path)
+		if r.URL.Path != "/api/stubs/batchDelete" {
+			t.Errorf("expected /api/stubs/batchDelete, got %s", r.URL.Path)
+
+			return
+		}
+
 		w.WriteHeader(http.StatusInternalServerError)
 	})
 
@@ -292,8 +430,10 @@ func TestClientUploadDescriptorsBranches(t *testing.T) {
 		t.Parallel()
 
 		var called bool
+
 		ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 			called = true
+
 			w.WriteHeader(http.StatusOK)
 		})
 
@@ -308,7 +448,12 @@ func TestClientUploadDescriptorsBranches(t *testing.T) {
 
 		name := "svc.proto"
 		ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/api/descriptors", r.URL.Path)
+			if r.URL.Path != "/api/descriptors" {
+				t.Errorf("expected /api/descriptors, got %s", r.URL.Path)
+
+				return
+			}
+
 			w.WriteHeader(http.StatusInternalServerError)
 		})
 
@@ -319,6 +464,7 @@ func TestClientUploadDescriptorsBranches(t *testing.T) {
 	})
 }
 
+//nolint:funlen
 func TestClientFetchHistoryErrorBranches(t *testing.T) {
 	t.Parallel()
 
@@ -326,7 +472,12 @@ func TestClientFetchHistoryErrorBranches(t *testing.T) {
 		t.Parallel()
 
 		ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/api/history", r.URL.Path)
+			if r.URL.Path != "/api/history" {
+				t.Errorf("expected /api/history, got %s", r.URL.Path)
+
+				return
+			}
+
 			w.WriteHeader(http.StatusInternalServerError)
 		})
 
@@ -340,7 +491,12 @@ func TestClientFetchHistoryErrorBranches(t *testing.T) {
 		t.Parallel()
 
 		ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/api/history", r.URL.Path)
+			if r.URL.Path != "/api/history" {
+				t.Errorf("expected /api/history, got %s", r.URL.Path)
+
+				return
+			}
+
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"invalid":`))
 		})
@@ -355,17 +511,27 @@ func TestClientFetchHistoryErrorBranches(t *testing.T) {
 		t.Parallel()
 
 		ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/api/history", r.URL.Path)
+			if r.URL.Path != "/api/history" {
+				t.Errorf("expected /api/history, got %s", r.URL.Path)
+
+				return
+			}
+
 			w.WriteHeader(http.StatusOK)
-			require.NoError(t, json.NewEncoder(w).Encode([]map[string]any{{}}))
+
+			if err := json.NewEncoder(w).Encode([]map[string]any{{}}); err != nil {
+				t.Errorf("unexpected error: %v", err)
+
+				return
+			}
 		})
 
 		c := newTestClient(ts, "")
 		history, err := c.FetchHistory()
 		require.NoError(t, err)
 		require.Len(t, history, 1)
-		require.Equal(t, "", history[0].Service)
-		require.Equal(t, "", history[0].Method)
+		require.Empty(t, history[0].Service)
+		require.Empty(t, history[0].Method)
 		require.Nil(t, history[0].Request)
 		require.Nil(t, history[0].Response)
 		require.True(t, history[0].Timestamp.IsZero())
@@ -379,7 +545,12 @@ func TestClientVerifyMethodCalledBranches(t *testing.T) {
 		t.Parallel()
 
 		ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/api/verify", r.URL.Path)
+			if r.URL.Path != "/api/verify" {
+				t.Errorf("expected /api/verify, got %s", r.URL.Path)
+
+				return
+			}
+
 			w.WriteHeader(http.StatusOK)
 		})
 
@@ -391,15 +562,21 @@ func TestClientVerifyMethodCalledBranches(t *testing.T) {
 		t.Parallel()
 
 		ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/api/verify", r.URL.Path)
+			if r.URL.Path != "/api/verify" {
+				t.Errorf("expected /api/verify, got %s", r.URL.Path)
+
+				return
+			}
+
 			w.WriteHeader(http.StatusBadRequest)
 			_, _ = w.Write([]byte("not-json"))
 		})
 
 		c := newTestClient(ts, "")
 		err := c.VerifyMethodCalled("svc", "M", 1)
+
 		var badReq VerifyBadRequestError
-		require.True(t, errors.As(err, &badReq))
+		require.ErrorAs(t, err, &badReq)
 		require.Equal(t, "verification failed", badReq.Error())
 	})
 
@@ -407,7 +584,12 @@ func TestClientVerifyMethodCalledBranches(t *testing.T) {
 		t.Parallel()
 
 		ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-			require.Equal(t, "/api/verify", r.URL.Path)
+			if r.URL.Path != "/api/verify" {
+				t.Errorf("expected /api/verify, got %s", r.URL.Path)
+
+				return
+			}
+
 			w.WriteHeader(http.StatusInternalServerError)
 		})
 
@@ -418,7 +600,7 @@ func TestClientVerifyMethodCalledBranches(t *testing.T) {
 	})
 }
 
-func TestClientURLBuildErrors(t *testing.T) {
+func TestClientURLBuildErrors(t *testing.T) { //nolint:dupl
 	t.Parallel()
 
 	c := Client{BaseURL: "://bad-url", HTTPClient: &http.Client{Transport: errRoundTripper{}}}
@@ -450,6 +632,7 @@ func TestClientURLBuildErrors(t *testing.T) {
 			name: "fetch-history",
 			call: func() error {
 				_, err := c.FetchHistory()
+
 				return err
 			},
 			errContain: "failed to build request URL",
@@ -462,8 +645,6 @@ func TestClientURLBuildErrors(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -474,7 +655,7 @@ func TestClientURLBuildErrors(t *testing.T) {
 	}
 }
 
-func TestClientTransportErrors(t *testing.T) {
+func TestClientTransportErrors(t *testing.T) { //nolint:dupl
 	t.Parallel()
 
 	c := Client{BaseURL: "http://127.0.0.1", HTTPClient: &http.Client{Transport: errRoundTripper{}}}
@@ -506,6 +687,7 @@ func TestClientTransportErrors(t *testing.T) {
 			name: "fetch-history",
 			call: func() error {
 				_, err := c.FetchHistory()
+
 				return err
 			},
 			errContain: "failed to execute request",
@@ -518,8 +700,6 @@ func TestClientTransportErrors(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

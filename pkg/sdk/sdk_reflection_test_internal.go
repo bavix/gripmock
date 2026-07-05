@@ -13,30 +13,33 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-func TestRunMockFrom(t *testing.T) {
+func TestRunWithReflection(t *testing.T) {
 	t.Parallel()
 
-	mock1 := mustRunWithProto(t, sdkProtoPath("greeter"),
+	mock1 := mustRunWithProto(t,
+		sdkProtoPath("greeter"),
 		WithListenAddr("tcp", ":0"),
-		WithHealthCheckTimeout(5*time.Second),
+		WithHealthCheckTimeout(5*time.Second), //nolint:mnd
 	)
 
 	mock2, err := Run(t,
-		MockFrom(mock1.Addr()),
-		WithHealthCheckTimeout(5*time.Second),
+		WithReflection(mock1.Addr()),
+		WithHealthCheckTimeout(5*time.Second), //nolint:mnd
 	)
 
 	require.NoError(t, err)
 	require.NotNil(t, mock2)
-	require.Equal(t, "bufnet", mock2.Addr())
+	require.Contains(t, mock2.Addr(), "127.0.0.1:")
 }
 
-func TestRunMockFromNoServices(t *testing.T) {
+func TestRunWithReflectionNoServices(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	lis, err := net.Listen("tcp", ":0")
+	lc := net.ListenConfig{}
+	lis, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
+
 	addr := lis.Addr().String()
 
 	_, port, _ := net.SplitHostPort(addr)
@@ -46,23 +49,25 @@ func TestRunMockFromNoServices(t *testing.T) {
 	hs := health.NewServer()
 	hs.SetServingStatus("", healthgrpc.HealthCheckResponse_SERVING)
 	healthgrpc.RegisterHealthServer(server, hs)
+
 	reflection.Register(server)
 	go func() { _ = server.Serve(lis) }()
+
 	defer server.GracefulStop()
 
 	// Act
-	_, err = Run(t, MockFrom(addr), WithHealthCheckTimeout(2*time.Second))
+	_, err = Run(t, WithReflection(addr), WithHealthCheckTimeout(2*time.Second)) //nolint:mnd
 
 	// Assert
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no services found via reflection")
 }
 
-func TestRunMockFromInvalidAddr(t *testing.T) {
+func TestRunWithReflectionInvalidAddr(t *testing.T) {
 	t.Parallel()
 
 	// Act
-	_, err := Run(t, MockFrom("localhost:59999"), WithHealthCheckTimeout(100*time.Millisecond))
+	_, err := Run(t, WithReflection("localhost:59999"), WithHealthCheckTimeout(100*time.Millisecond)) //nolint:mnd
 
 	// Assert
 	require.Error(t, err)

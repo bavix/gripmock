@@ -4,6 +4,8 @@
 ⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
 :::
 
+> **Version history:** Health service stubbing available since <VersionTag version="v3.9.3" /> (JSON stubs). Embedded SDK support since <VersionTag version="v3.9.3" /> (legacy API). Current v2 API since <VersionTag version="v3.16.0" />.
+
 GripMock supports stubbing the standard gRPC health service:
 
 - `grpc.health.v1.Health/Check` — unary health status
@@ -20,15 +22,15 @@ The service key `gripmock` is reserved for GripMock internal readiness.
 - User stubs targeting `service: "gripmock"` are stored but always overridden by the internal stub
 
 ```go
-mock := mustRunWithProto(t, sdkProtoPath("greeter"))
+srv := sdk.NewServer(t, sdk.WithProtoFiles("examples/projects/greeter/service.proto"))
+defer srv.Close()
 
 // This stub is stored but always overridden by internal stub:
-mock.Stub("grpc.health.v1.Health", "Check").
-    When(sdk.Equals("service", "gripmock")).
-    Reply(sdk.Data("status", "NOT_SERVING")).
-    Commit()
+srv.ExpectUnary("/grpc.health.v1.Health/Check").
+    Match("service", "gripmock").
+    Return("status", "NOT_SERVING")
 
-client := grpc_health_v1.NewHealthClient(mock.Conn())
+client := grpc_health_v1.NewHealthClient(srv.Conn())
 resp, err := client.Check(t.Context(), &grpc_health_v1.HealthCheckRequest{
     Service: "gripmock",
 })
@@ -41,14 +43,14 @@ require.Equal(t, grpc_health_v1.HealthCheckResponse_SERVING, resp.GetStatus())
 
 ```go
 func TestHealthCheckMockedViaSDK(t *testing.T) {
-    mock := mustRunWithProto(t, sdkProtoPath("greeter"))
+    srv := sdk.NewServer(t, sdk.WithProtoFiles("examples/projects/greeter/service.proto"))
+    defer srv.Close()
 
-    mock.Stub("grpc.health.v1.Health", "Check").
-        When(sdk.Equals("service", "examples.health.backend")).
-        Reply(sdk.Data("status", "NOT_SERVING")).
-        Commit()
+    srv.ExpectUnary("/grpc.health.v1.Health/Check").
+        Match("service", "examples.health.backend").
+        Return("status", "NOT_SERVING")
 
-    client := grpc_health_v1.NewHealthClient(mock.Conn())
+    client := grpc_health_v1.NewHealthClient(srv.Conn())
     resp, err := client.Check(t.Context(), &grpc_health_v1.HealthCheckRequest{
         Service: "examples.health.backend",
     })
@@ -63,15 +65,15 @@ Requests for the `gripmock` service return the internal stub status:
 
 ```go
 func TestHealthCheckGripmockProtectedViaSDK(t *testing.T) {
-    mock := mustRunWithProto(t, sdkProtoPath("greeter"))
+    srv := sdk.NewServer(t, sdk.WithProtoFiles("examples/projects/greeter/service.proto"))
+    defer srv.Close()
 
     // Even with a stub that targets "gripmock"...
-    mock.Stub("grpc.health.v1.Health", "Check").
-        When(sdk.Equals("service", "gripmock")).
-        Reply(sdk.Data("status", "NOT_SERVING")).
-        Commit()
+    srv.ExpectUnary("/grpc.health.v1.Health/Check").
+        Match("service", "gripmock").
+        Return("status", "NOT_SERVING")
 
-    client := grpc_health_v1.NewHealthClient(mock.Conn())
+    client := grpc_health_v1.NewHealthClient(srv.Conn())
     resp, err := client.Check(t.Context(), &grpc_health_v1.HealthCheckRequest{
         Service: "gripmock",
     })
@@ -87,9 +89,10 @@ If no stub matches and the service is not `gripmock`, the request returns `NotFo
 
 ```go
 func TestHealthCheckUnknownServiceFallbackViaSDK(t *testing.T) {
-    mock := mustRunWithProto(t, sdkProtoPath("greeter"))
+    srv := sdk.NewServer(t, sdk.WithProtoFiles("examples/projects/greeter/service.proto"))
+    defer srv.Close()
 
-    client := grpc_health_v1.NewHealthClient(mock.Conn())
+    client := grpc_health_v1.NewHealthClient(srv.Conn())
     resp, err := client.Check(t.Context(), &grpc_health_v1.HealthCheckRequest{
         Service: "examples.health.unknown",
     })
@@ -104,17 +107,17 @@ The `Watch` method returns a stream of health status updates. You can stub it to
 
 ```go
 func TestRunHealthWatchMockedStreamViaSDK(t *testing.T) {
-    mock := mustRunWithProto(t, sdkProtoPath("greeter"))
+    srv := sdk.NewServer(t, sdk.WithProtoFiles("examples/projects/greeter/service.proto"))
+    defer srv.Close()
 
-    mock.Stub("grpc.health.v1.Health", "Watch").
-        When(sdk.Equals("service", "examples.health.watch")).
-        ReplyStream(
-            sdk.Data("status", "NOT_SERVING"),
-            sdk.Data("status", "SERVING"),
-        ).
-        Commit()
+    srv.ExpectServerStream("/grpc.health.v1.Health/Watch").
+        Match("service", "examples.health.watch").
+        SendStream(
+            map[string]any{"status": "NOT_SERVING"},
+            map[string]any{"status": "SERVING"},
+        )
 
-    client := grpc_health_v1.NewHealthClient(mock.Conn())
+    client := grpc_health_v1.NewHealthClient(srv.Conn())
     ctx, cancel := context.WithCancel(t.Context())
     defer cancel()
 
@@ -135,14 +138,15 @@ func TestRunHealthWatchMockedStreamViaSDK(t *testing.T) {
 
 ## Watch with delay
 
-You can add a delay before the stream starts:
+You can add a delay before individual stream messages using `Delay`:
 
 ```go
-mock.Stub("grpc.health.v1.Health", "Watch").
-    When(sdk.Equals("service", "examples.health.watch")).
-    Reply(sdk.Data("status", "NOT_SERVING"), sdk.Data("status", "SERVING")).
-    Delay(10 * time.Millisecond).
-    Commit()
+srv.ExpectServerStream("/grpc.health.v1.Health/Watch").
+    Match("service", "examples.health.watch").
+    SendStream(
+        Delay(10*time.Millisecond, "status", "NOT_SERVING"),
+        map[string]any{"status": "SERVING"},
+    )
 ```
 
 ## Full runnable example

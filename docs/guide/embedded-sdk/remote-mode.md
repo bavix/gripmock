@@ -1,4 +1,4 @@
-# Remote Mode <VersionTag version="v3.7.0" />
+# Remote Mode <VersionTag version="v3.16.0" />
 
 ::: warning
 ⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
@@ -7,6 +7,8 @@
 ::: info
 **Minimum Requirements**: Go 1.26 or later
 :::
+
+> **Version history:** Remote mode introduced in <VersionTag version="v3.16.0" />. Not available in the legacy API.
 
 Connect to a remote GripMock instance instead of running embedded. When using remote mode, you must provide both the gRPC endpoint (for mock server) and HTTP endpoint (for management operations).
 
@@ -25,19 +27,17 @@ When connecting to a remote GripMock instance, you must specify both the gRPC en
 func TestMyService_Remote(t *testing.T) {
     // ARRANGE
     // Connect to a remote GripMock server - specify both gRPC and HTTP endpoints
-    mock, err := sdk.Run(t, 
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),  // gRPC endpoint, HTTP management endpoint
         sdk.WithFileDescriptor(service.File_service_proto),
     )
-    require.NoError(t, err)
 
     // Define stubs in the Arrange phase
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "remote-test")).
-        Reply(sdk.Data("result", "from-remote")).
-        Commit()
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "remote-test").
+        Return("result", "from-remote")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
     resp, err := client.MyMethod(t.Context(), &MyRequest{Id: "remote-test"})
@@ -56,20 +56,18 @@ func TestMyService_SessionIsolation(t *testing.T) {
 
     // ARRANGE
     // Use a unique session for this test
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithFileDescriptor(service.File_service_proto),
         sdk.WithSession(t.Name()), // Use test name as session ID
     )
-    require.NoError(t, err)
 
     // Stubs in this session are isolated from other tests
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "isolated")).
-        Reply(sdk.Data("result", "isolated_result")).
-        Commit()
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "isolated").
+        Return("result", "isolated_result")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
     resp, err := client.MyMethod(t.Context(), &MyRequest{Id: "isolated"})
@@ -86,19 +84,17 @@ func TestMyService_SessionIsolation(t *testing.T) {
 func TestMyService_HealthTimeout(t *testing.T) {
     // ARRANGE
     // Configure the timeout for waiting for the remote server to become healthy
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithFileDescriptor(service.File_service_proto),
         sdk.WithHealthCheckTimeout(15 * time.Second), // Wait up to 15 seconds
     )
-    require.NoError(t, err)
 
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "timeout-test")).
-        Reply(sdk.Data("result", "success")).
-        Commit()
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "timeout-test").
+        Return("result", "success")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
     resp, err := client.MyMethod(t.Context(), &MyRequest{Id: "timeout-test"})
@@ -114,21 +110,19 @@ func TestMyService_HealthTimeout(t *testing.T) {
 ```go
 func TestMyService_RemoteWithError(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithFileDescriptor(service.File_service_proto),
     )
-    require.NoError(t, err)
 
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "error-case")).
-        ReplyError(codes.Internal, "Remote service error").
-        Commit()
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "error-case").
+        ReturnError(codes.Internal, "Remote service error")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
-    _, err = client.MyMethod(t.Context(), &MyRequest{Id: "error-case"})
+    _, err := client.MyMethod(t.Context(), &MyRequest{Id: "error-case"})
 
     // ASSERT
     require.Error(t, err)
@@ -144,19 +138,17 @@ func TestMyService_ParallelExecution(t *testing.T) {
     t.Parallel()
 
     // ARRANGE
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithFileDescriptor(service.File_service_proto),
         sdk.WithSession(t.Name()),
     )
-    require.NoError(t, err)
 
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "parallel-test")).
-        Reply(sdk.Data("result", "parallel-success")).
-        Commit()
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "parallel-test").
+        Return("result", "parallel-success")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
     resp, err := client.MyMethod(t.Context(), &MyRequest{Id: "parallel-test"})
@@ -172,28 +164,26 @@ func TestMyService_ParallelExecution(t *testing.T) {
 ```go
 func TestMyService_RemoteVerification(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithFileDescriptor(service.File_service_proto),
         sdk.WithSession(t.Name()),
     )
-    require.NoError(t, err)
 
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "verify-test")).
-        Reply(sdk.Data("result", "verified")).
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "verify-test").
         Times(2). // Expect exactly 2 calls
-        Commit()
+        Return("result", "verified")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "verify-test"})
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "verify-test"})
 
     // ASSERT
-    // Verification happens automatically due to Times(2) and passing t to Run
-    mock.Verify().Method(sdk.By(MyService_MyMethod_FullMethodName)).Called(t, 2)
+    // Verification happens automatically due to Times(2) and passing t to NewServer
+    require.Equal(t, 2, srv.Called(MyService_MyMethod_FullMethodName))
 }
 ```
 
@@ -206,20 +196,18 @@ func TestMyService_RemoteWithCustomHTTPClient(t *testing.T) {
     // ARRANGE
     httpClient := &http.Client{Timeout: 3 * time.Second}
 
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithHTTPClient(httpClient),
         sdk.WithFileDescriptor(service.File_service_proto),
         sdk.WithSession(t.Name()),
     )
-    require.NoError(t, err)
 
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "custom-http")).
-        Reply(sdk.Data("result", "ok")).
-        Commit()
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "custom-http").
+        Return("result", "ok")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
     resp, err := client.MyMethod(t.Context(), &MyRequest{Id: "custom-http"})
@@ -241,20 +229,21 @@ Remote mode uses HTTP management APIs (`/api/stubs`, `/api/history`, `/api/verif
   - `sdk.HistoryFilterByMethodContext(...)`
   - `sdk.VerifyStubTimesErrContext(...)`
 
+Use `ExpectationsWereMetContext(ctx)` for context-aware verification:
+
 ```go
 func TestMyService_RemoteContextCancel(t *testing.T) {
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithSession(t.Name()),
     )
-    require.NoError(t, err)
 
     // ... Arrange/Act ...
 
     ctx, cancel := context.WithCancel(t.Context())
     cancel()
 
-    err = sdk.VerifyStubTimesErrContext(ctx, mock.Verify())
+    err := srv.ExpectationsWereMetContext(ctx)
     require.Error(t, err)
     require.ErrorIs(t, err, context.Canceled)
 }
@@ -267,23 +256,20 @@ Use `sdk.WithGRPCTimeout(...)` to apply a default timeout to remote gRPC calls w
 ```go
 func TestMyService_RemoteWithGRPCTimeout(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithSession(t.Name()),
         sdk.WithGRPCTimeout(250*time.Millisecond),
         sdk.WithFileDescriptor(service.File_service_proto),
     )
-    require.NoError(t, err)
 
-    mock.Stub(sdk.By(MyService_SlowMethod_FullMethodName)).
-        Reply(sdk.Data("result", "ok")).
-        Delay(2 * time.Second).
-        Commit()
+    srv.ExpectUnary(MyService_SlowMethod_FullMethodName).
+        Return(Delay(2*time.Second, "result", "ok"))
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
-    _, err = client.SlowMethod(t.Context(), &MyRequest{})
+    _, err := client.SlowMethod(t.Context(), &MyRequest{})
 
     // ASSERT
     require.Error(t, err)

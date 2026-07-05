@@ -3,8 +3,13 @@ package plugintest
 import (
 	"context"
 
+	"github.com/cockroachdb/errors"
+
 	"github.com/bavix/gripmock/v3/internal/infra/funcwrap"
 )
+
+// ErrNilFunc is returned when Call receives a nil function.
+var ErrNilFunc = errors.New("plugintest: nil function")
 
 // Wrap converts a testing helper or plugin-style function into the canonical Func
 // so tests can exercise callbacks without rewriting them. It accepts common shapes
@@ -34,7 +39,7 @@ func Wrap(fn any) Func {
 // runtime uses.
 func Call(ctx context.Context, fn Func, args ...any) (any, error) {
 	if fn == nil {
-		return nil, nil
+		return nil, ErrNilFunc
 	}
 
 	return fn(ctx, args...)

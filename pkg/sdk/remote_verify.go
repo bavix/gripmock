@@ -3,9 +3,10 @@ package sdk
 import (
 	"context"
 	stderrors "errors"
-	"fmt"
 	"maps"
 	"strings"
+
+	"github.com/cockroachdb/errors"
 
 	"github.com/bavix/gripmock/v3/pkg/sdk/internal/remoteapi"
 )
@@ -32,16 +33,19 @@ func convertHistory(history []remoteapi.HistoryCall) []CallRecord {
 	return out
 }
 
+//nolint:funcorder
 func (r *remoteHistory) fetchWithClient(client remoteapi.Client) ([]CallRecord, error) {
 	history, err := client.FetchHistory()
 	if err != nil {
 		r.mock.setOpErr(err)
+
 		return nil, err
 	}
 
 	return convertHistory(history), nil
 }
 
+//nolint:funcorder
 func (r *remoteHistory) fetch() ([]CallRecord, error) {
 	return r.fetchWithClient(r.mock.api())
 }
@@ -56,7 +60,7 @@ func (r *remoteHistory) All() []CallRecord {
 }
 
 func (r *remoteHistory) AllContext(ctx context.Context) ([]CallRecord, error) {
-	return r.fetchWithClient(r.mock.apiWithContext(ctx))
+	return r.fetchWithClient(r.mock.apiWithContext(ctx)) //nolint:contextcheck
 }
 
 func (r *remoteHistory) Count() int {
@@ -69,7 +73,7 @@ func (r *remoteHistory) Count() int {
 }
 
 func (r *remoteHistory) CountContext(ctx context.Context) (int, error) {
-	calls, err := r.fetchWithClient(r.mock.apiWithContext(ctx))
+	calls, err := r.fetchWithClient(r.mock.apiWithContext(ctx)) //nolint:contextcheck
 	if err != nil {
 		return 0, err
 	}
@@ -84,6 +88,7 @@ func (r *remoteHistory) FilterByMethod(svc, m string) []CallRecord {
 	}
 
 	var out []CallRecord
+
 	for _, c := range calls {
 		if c.Service == svc && c.Method == m {
 			out = append(out, c)
@@ -94,12 +99,13 @@ func (r *remoteHistory) FilterByMethod(svc, m string) []CallRecord {
 }
 
 func (r *remoteHistory) FilterByMethodContext(ctx context.Context, svc, m string) ([]CallRecord, error) {
-	calls, err := r.fetchWithClient(r.mock.apiWithContext(ctx))
+	calls, err := r.fetchWithClient(r.mock.apiWithContext(ctx)) //nolint:contextcheck
 	if err != nil {
 		return nil, err
 	}
 
 	var out []CallRecord
+
 	for _, c := range calls {
 		if c.Service == svc && c.Method == m {
 			out = append(out, c)
@@ -114,7 +120,7 @@ type remoteVerifier struct {
 	mock *remoteMock
 }
 
-func (v *remoteVerifier) Method(service, method string) MethodVerifier {
+func (v *remoteVerifier) Method(service, method string) MethodVerifier { //nolint:ireturn
 	if strings.TrimSpace(service) == "" || strings.TrimSpace(method) == "" {
 		panic("sdk.Verifier.Method: service and method must be non-empty")
 	}
@@ -124,10 +130,12 @@ func (v *remoteVerifier) Method(service, method string) MethodVerifier {
 
 func (v *remoteVerifier) Total(t TestingT, want int) {
 	history := &remoteHistory{mock: v.mock}
+
 	calls, err := history.fetchWithClient(v.mock.apiWithContext(t.Context()))
 	if err != nil {
 		t.Error("gripmock: failed to fetch history: ", err)
 		t.Fail()
+
 		return
 	}
 
@@ -150,7 +158,7 @@ func (v *remoteVerifier) VerifyStubTimesErr() error {
 }
 
 func (v *remoteVerifier) VerifyStubTimesErrContext(ctx context.Context) error {
-	return v.verifyStubTimesErr(v.mock.apiWithContext(ctx))
+	return v.verifyStubTimesErr(v.mock.apiWithContext(ctx)) //nolint:contextcheck
 }
 
 func (v *remoteVerifier) verifyStubTimesErr(client remoteapi.Client) error {
@@ -170,12 +178,12 @@ func (v *remoteVerifier) verifyStubTimesErr(client remoteapi.Client) error {
 	for key, expected := range perMethod {
 		service, method, ok := splitMethodKey(key)
 		if !ok {
-			return fmt.Errorf("gripmock: invalid expected method key %q", key)
+			return errors.Wrapf(ErrVerificationFailed, "invalid expected method key %q", key)
 		}
 
 		err := client.VerifyMethodCalled(service, method, expected)
 		if err != nil {
-			return fmt.Errorf("gripmock: expected %d calls for %s/%s: %w", expected, service, method, err)
+			return errors.Wrapf(ErrVerificationFailed, "expected %d calls for %s/%s", expected, service, method)
 		}
 	}
 
@@ -192,6 +200,7 @@ func (mv *remoteMethodVerifier) Called(t TestingT, n int) {
 	if opErr := mv.mock.getOpErr(); opErr != nil {
 		t.Error("gripmock: operation failed: ", opErr)
 		t.Fail()
+
 		return
 	}
 
@@ -204,6 +213,7 @@ func (mv *remoteMethodVerifier) Called(t TestingT, n int) {
 	if stderrors.As(err, &badReq) {
 		t.Error(badReq.Error())
 		t.Fail()
+
 		return
 	}
 
@@ -219,8 +229,8 @@ func methodKey(service, method string) string {
 	return service + "/" + method
 }
 
-func splitMethodKey(key string) (service string, method string, ok bool) {
-	service, method, ok = strings.Cut(key, "/")
+func splitMethodKey(key string) (string, string, bool) {
+	service, method, ok := strings.Cut(key, "/")
 	if !ok || service == "" || method == "" {
 		return "", "", false
 	}
