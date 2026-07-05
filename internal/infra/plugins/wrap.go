@@ -9,22 +9,7 @@ import (
 
 // wrapFunc normalizes arbitrary function shapes into the canonical Func used by the runtime registry.
 func wrapFunc(fn any) pkgplugins.Func {
-	switch f := fn.(type) {
-	case pkgplugins.Func:
-		return f
-	case func(context.Context, ...any) (any, error):
-		return f
-	case func(...any) any:
-		return func(_ context.Context, args ...any) (any, error) {
-			return f(args...), nil
-		}
-	case func(...any) (any, error):
-		return func(_ context.Context, args ...any) (any, error) {
-			return f(args...)
-		}
-	default:
-		return funcwrap.WrapReflect(fn)
-	}
+	return pkgplugins.WrapFunc(fn, func(fn any) pkgplugins.Func { return funcwrap.WrapReflect(fn) })
 }
 
 func wrapDecorator(fn any) func(pkgplugins.Func) pkgplugins.Func {

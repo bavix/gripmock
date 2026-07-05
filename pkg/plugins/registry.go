@@ -2,6 +2,28 @@ package plugins
 
 import "context"
 
+// WrapFunc converts any function shape into Func using the provided fallback.
+// Accepts Func, func(context.Context, ...any) (any, error), func(...any) any,
+// func(...any) (any, error), or falls back to fn for reflection-based wrapping.
+func WrapFunc(fn any, fallback func(any) Func) Func {
+	switch f := fn.(type) {
+	case Func:
+		return f
+	case func(context.Context, ...any) (any, error):
+		return f
+	case func(...any) any:
+		return func(_ context.Context, args ...any) (any, error) {
+			return f(args...), nil
+		}
+	case func(...any) (any, error):
+		return func(_ context.Context, args ...any) (any, error) {
+			return f(args...)
+		}
+	default:
+		return fallback(fn)
+	}
+}
+
 type Registry interface {
 	AddPlugin(info PluginInfo, providers []SpecProvider)
 	Funcs() map[string]any

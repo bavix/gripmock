@@ -6,6 +6,7 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/bavix/gripmock/v3/internal/infra/funcwrap"
+	"github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
 // ErrNilFunc is returned when Call receives a nil function.
@@ -16,22 +17,7 @@ var ErrNilFunc = errors.New("plugintest: nil function")
 // used in plugins and falls back to reflection with context injection, rejecting
 // mismatched arity or types with clear errors.
 func Wrap(fn any) Func {
-	switch f := fn.(type) {
-	case Func:
-		return f
-	case func(context.Context, ...any) (any, error):
-		return f
-	case func(...any) any:
-		return func(_ context.Context, args ...any) (any, error) {
-			return f(args...), nil
-		}
-	case func(...any) (any, error):
-		return func(_ context.Context, args ...any) (any, error) {
-			return f(args...)
-		}
-	default:
-		return funcwrap.WrapReflect(fn)
-	}
+	return plugins.WrapFunc(fn, func(fn any) Func { return funcwrap.WrapReflect(fn) })
 }
 
 // Call executes a Func with context propagation and returns its result. It is

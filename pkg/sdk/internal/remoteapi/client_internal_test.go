@@ -600,112 +600,58 @@ func TestClientVerifyMethodCalledBranches(t *testing.T) {
 	})
 }
 
-func TestClientURLBuildErrors(t *testing.T) { //nolint:dupl
+func TestClientRequestErrors(t *testing.T) {
 	t.Parallel()
 
-	c := Client{BaseURL: "://bad-url", HTTPClient: &http.Client{Transport: errRoundTripper{}}}
 	name := "svc.proto"
 
-	tests := []struct {
-		name       string
-		call       func() error
-		errContain string
+	errClient := Client{HTTPClient: &http.Client{Transport: errRoundTripper{}}}
+
+	for _, group := range []struct {
+		name   string
+		client Client
+		err    string
 	}{
-		{
-			name: "add-stub",
-			call: func() error {
-				return c.AddStub(&stuber.Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: stuber.Output{Data: map[string]any{"ok": true}}})
-			},
-			errContain: "failed to build request URL",
-		},
-		{
-			name:       "batch-delete",
-			call:       func() error { return c.BatchDelete([]uuid.UUID{uuid.New()}) },
-			errContain: "failed to build request URL",
-		},
-		{
-			name:       "upload-descriptors",
-			call:       func() error { return c.UploadDescriptors([]*descriptorpb.FileDescriptorProto{{Name: &name}}) },
-			errContain: "failed to build request URL",
-		},
-		{
-			name: "fetch-history",
-			call: func() error {
-				_, err := c.FetchHistory()
-
-				return err
-			},
-			errContain: "failed to build request URL",
-		},
-		{
-			name:       "verify",
-			call:       func() error { return c.VerifyMethodCalled("svc", "M", 1) },
-			errContain: "failed to build request URL",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
+		{name: "url-build", client: Client{BaseURL: "://bad-url", HTTPClient: errClient.HTTPClient}, err: "failed to build request URL"},
+		{name: "transport", client: Client{BaseURL: "http://127.0.0.1", HTTPClient: errClient.HTTPClient}, err: "failed to execute request"},
+	} {
+		t.Run(group.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := tc.call()
-			require.Error(t, err)
-			require.Contains(t, err.Error(), tc.errContain)
-		})
-	}
-}
+			c := group.client
 
-func TestClientTransportErrors(t *testing.T) { //nolint:dupl
-	t.Parallel()
+			tests := []struct {
+				name string
+				call func() error
+			}{
+				{
+					name: "add-stub",
+					call: func() error {
+						return c.AddStub(&stuber.Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: stuber.Output{Data: map[string]any{"ok": true}}})
+					},
+				},
+				{name: "batch-delete", call: func() error { return c.BatchDelete([]uuid.UUID{uuid.New()}) }},
+				{name: "upload-descriptors", call: func() error { return c.UploadDescriptors([]*descriptorpb.FileDescriptorProto{{Name: &name}}) }},
+				{
+					name: "fetch-history",
+					call: func() error {
+						_, err := c.FetchHistory()
 
-	c := Client{BaseURL: "http://127.0.0.1", HTTPClient: &http.Client{Transport: errRoundTripper{}}}
-	name := "svc.proto"
+						return err
+					},
+				},
+				{name: "verify", call: func() error { return c.VerifyMethodCalled("svc", "M", 1) }},
+			}
 
-	tests := []struct {
-		name       string
-		call       func() error
-		errContain string
-	}{
-		{
-			name: "add-stub",
-			call: func() error {
-				return c.AddStub(&stuber.Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: stuber.Output{Data: map[string]any{"ok": true}}})
-			},
-			errContain: "failed to execute request",
-		},
-		{
-			name:       "batch-delete",
-			call:       func() error { return c.BatchDelete([]uuid.UUID{uuid.New()}) },
-			errContain: "failed to execute request",
-		},
-		{
-			name:       "upload-descriptors",
-			call:       func() error { return c.UploadDescriptors([]*descriptorpb.FileDescriptorProto{{Name: &name}}) },
-			errContain: "failed to execute request",
-		},
-		{
-			name: "fetch-history",
-			call: func() error {
-				_, err := c.FetchHistory()
+			for _, tc := range tests {
+				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
 
-				return err
-			},
-			errContain: "failed to execute request",
-		},
-		{
-			name:       "verify",
-			call:       func() error { return c.VerifyMethodCalled("svc", "M", 1) },
-			errContain: "failed to execute request",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			err := tc.call()
-			require.Error(t, err)
-			require.Contains(t, err.Error(), tc.errContain)
+					err := tc.call()
+					require.Error(t, err)
+					require.Contains(t, err.Error(), group.err)
+				})
+			}
 		})
 	}
 }
