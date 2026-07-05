@@ -10,16 +10,22 @@ import (
 	"github.com/bavix/gripmock/v3/pkg/sdk/internal/remoteapi"
 )
 
-func TestRemoteAddStubs(t *testing.T) {
-	t.Parallel()
+func newRemoteMock(t *testing.T) (*httpmock.Server, remoteapi.Client) {
+	t.Helper()
 
 	mock := httpmock.NewServer()
-	defer mock.Close()
+	t.Cleanup(mock.Close)
 
-	client := remoteapi.Client{
+	return mock, remoteapi.Client{
 		BaseURL:    mock.URL,
 		HTTPClient: mock.HTTPServer.Client(),
 	}
+}
+
+func TestRemoteAddStubs(t *testing.T) {
+	t.Parallel()
+
+	mock, client := newRemoteMock(t)
 
 	err := client.AddStubs([]*stuber.Stub{{
 		Service: "test.Service",
@@ -34,13 +40,7 @@ func TestRemoteAddStubs(t *testing.T) {
 func TestRemoteBatchDelete(t *testing.T) {
 	t.Parallel()
 
-	mock := httpmock.NewServer()
-	defer mock.Close()
-
-	client := remoteapi.Client{
-		BaseURL:    mock.URL,
-		HTTPClient: mock.HTTPServer.Client(),
-	}
+	mock, client := newRemoteMock(t)
 
 	require.NoError(t, client.AddStubs([]*stuber.Stub{
 		{
@@ -63,13 +63,7 @@ func TestRemoteBatchDelete(t *testing.T) {
 func TestRemoteVerifyCalls(t *testing.T) {
 	t.Parallel()
 
-	mock := httpmock.NewServer()
-	defer mock.Close()
-
-	client := remoteapi.Client{
-		BaseURL:    mock.URL,
-		HTTPClient: mock.HTTPServer.Client(),
-	}
+	mock, client := newRemoteMock(t)
 
 	mock.RecordCall("svc", "method", nil, nil)
 	mock.RecordCall("svc", "method", nil, nil)
@@ -81,16 +75,9 @@ func TestRemoteVerifyCalls(t *testing.T) {
 }
 
 func TestRemoteHistory(t *testing.T) {
-	_ = t
 	t.Parallel()
 
-	mock := httpmock.NewServer()
-	defer mock.Close()
-
-	client := remoteapi.Client{
-		BaseURL:    mock.URL,
-		HTTPClient: mock.HTTPServer.Client(),
-	}
+	mock, client := newRemoteMock(t)
 
 	mock.RecordCall("svc", "method", map[string]any{"req": "1"}, map[string]any{"resp": "ok"})
 
@@ -102,15 +89,12 @@ func TestRemoteHistory(t *testing.T) {
 }
 
 func TestRemoteSessionIsolation(t *testing.T) {
-	_ = t
 	t.Parallel()
 
-	mock := httpmock.NewServer()
-	defer mock.Close()
-
+	mock, clientBase := newRemoteMock(t)
 	clientA := remoteapi.Client{
-		BaseURL:    mock.URL,
-		HTTPClient: mock.HTTPServer.Client(),
+		BaseURL:    clientBase.BaseURL,
+		HTTPClient: clientBase.HTTPClient,
 		Session:    "session-A",
 	}
 
@@ -140,16 +124,9 @@ func TestRemoteSessionIsolation(t *testing.T) {
 }
 
 func TestRemoteBatch(t *testing.T) {
-	_ = t
 	t.Parallel()
 
-	mock := httpmock.NewServer()
-	defer mock.Close()
-
-	client := remoteapi.Client{
-		BaseURL:    mock.URL,
-		HTTPClient: mock.HTTPServer.Client(),
-	}
+	mock, client := newRemoteMock(t)
 
 	stubs := []*stuber.Stub{
 		{

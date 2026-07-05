@@ -921,78 +921,84 @@ func TestOnceTwice(t *testing.T) {
 	require.Error(t, sayHelloErr(t, srv, fds, "twice"))
 }
 
-func TestGlobMatcher(t *testing.T) {
+func TestMatchers(t *testing.T) {
 	t.Parallel()
 
-	srv, fds := newServer(t)
-	defer func() { _ = srv.Close() }()
+	t.Run("glob", func(t *testing.T) {
+		t.Parallel()
 
-	srv.ExpectUnary("/test.Greeter/SayHello").
-		Match(sdk.Glob("name", "A*")).
-		Return("message", "glob")
+		srv, fds := newServer(t)
+		defer func() { _ = srv.Close() }()
 
-	msg := sayHello(t, srv, fds, "Alex")
-	require.Equal(t, "glob", getMsg(t, msg))
+		srv.ExpectUnary("/test.Greeter/SayHello").
+			Match(sdk.Glob("name", "A*")).
+			Return("message", "glob")
+
+		msg := sayHello(t, srv, fds, "Alex")
+		require.Equal(t, "glob", getMsg(t, msg))
+	})
+
+	t.Run("anyof", func(t *testing.T) {
+		t.Parallel()
+
+		srv, fds := newServer(t)
+		defer func() { _ = srv.Close() }()
+
+		srv.ExpectUnary("/test.Greeter/SayHello").
+			Match(sdk.AnyOf(
+				sdk.Equals("name", "Alex"),
+				sdk.Equals("name", "Bob"),
+			)).
+			Return("message", "anyof")
+
+		require.Equal(t, "anyof", getMsg(t, sayHello(t, srv, fds, "Alex")))
+		require.Equal(t, "anyof", getMsg(t, sayHello(t, srv, fds, "Bob")))
+	})
 }
 
-func TestAnyOfMatcher(t *testing.T) {
+func TestReturnFormats(t *testing.T) {
 	t.Parallel()
 
-	srv, fds := newServer(t)
-	defer func() { _ = srv.Close() }()
+	t.Run("proto", func(t *testing.T) {
+		t.Parallel()
 
-	srv.ExpectUnary("/test.Greeter/SayHello").
-		Match(sdk.AnyOf(
-			sdk.Equals("name", "Alex"),
-			sdk.Equals("name", "Bob"),
-		)).
-		Return("message", "anyof")
+		srv, fds := newServer(t)
+		defer func() { _ = srv.Close() }()
 
-	msg1 := sayHello(t, srv, fds, "Alex")
-	require.Equal(t, "anyof", getMsg(t, msg1))
+		d := resolveDesc(t, fds, "test.HelloRequest", "test.HelloReply")
+		reply := dynamicpb.NewMessage(d.out)
+		reply.Set(d.out.Fields().ByName("message"), protoreflect.ValueOfString("proto-reply"))
 
-	msg2 := sayHello(t, srv, fds, "Bob")
-	require.Equal(t, "anyof", getMsg(t, msg2))
+		srv.ExpectUnary("/test.Greeter/SayHello").
+			Match("name", "proto").
+			ReturnProto(reply)
+
+		msg := sayHello(t, srv, fds, "proto")
+		require.Equal(t, "proto-reply", getMsg(t, msg))
+	})
+
+	t.Run("json", func(t *testing.T) {
+		t.Parallel()
+
+		srv, fds := newServer(t)
+		defer func() { _ = srv.Close() }()
+
+		srv.ExpectUnary("/test.Greeter/SayHello").
+			Match("name", "json").
+			ReturnJSON(map[string]any{"message": "json-reply"})
+
+		msg := sayHello(t, srv, fds, "json")
+		require.Equal(t, "json-reply", getMsg(t, msg))
+	})
 }
 
-func TestReturnProto(t *testing.T) {
+func TestNextWillReturnSequences(t *testing.T) {
 	t.Parallel()
 
 	srv, fds := newServer(t)
 	defer func() { _ = srv.Close() }()
 
-	d := resolveDesc(t, fds, "test.HelloRequest", "test.HelloReply")
-	reply := dynamicpb.NewMessage(d.out)
-	reply.Set(d.out.Fields().ByName("message"), protoreflect.ValueOfString("proto-reply"))
-
-	srv.ExpectUnary("/test.Greeter/SayHello").
-		Match("name", "proto").
-		ReturnProto(reply)
-
-	msg := sayHello(t, srv, fds, "proto")
-	require.Equal(t, "proto-reply", getMsg(t, msg))
-}
-
-func TestReturnJSON(t *testing.T) {
-	t.Parallel()
-
-	srv, fds := newServer(t)
-	defer func() { _ = srv.Close() }()
-
-	srv.ExpectUnary("/test.Greeter/SayHello").
-		Match("name", "json").
-		ReturnJSON(map[string]any{"message": "json-reply"})
-
-	msg := sayHello(t, srv, fds, "json")
-	require.Equal(t, "json-reply", getMsg(t, msg))
-}
-
-func TestNextWillReturnError(t *testing.T) {
-	t.Parallel()
-
-	srv, fds := newServer(t)
-	defer func() { _ = srv.Close() }()
-
+	// Test: first 2 calls error, 3rd succeeds
 	srv.ExpectUnary("/test.Greeter/SayHello").
 		Match("name", "retry").
 		ReturnError(codes.Unavailable, "try again").

@@ -20,10 +20,7 @@ import (
 func TestV2Unary(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "greeter")
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
+	srv, fds := newProjectSrv(t, "greeter")
 
 	require.NotNil(t, srv.Conn())
 	require.Contains(t, srv.Address(), "127.0.0.1:")
@@ -40,10 +37,7 @@ func TestV2Unary(t *testing.T) {
 func TestV2Templates(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "greeter")
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
+	srv, fds := newProjectSrv(t, "greeter")
 
 	srv.ExpectUnary("/helloworld.Greeter/SayHello").
 		Match("name", "Alex").
@@ -57,10 +51,7 @@ func TestV2Templates(t *testing.T) {
 func TestV2Priority(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "greeter")
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
+	srv, fds := newProjectSrv(t, "greeter")
 
 	srv.ExpectUnary("/helloworld.Greeter/SayHello").
 		Match("name", "Alex").
@@ -80,10 +71,7 @@ func TestV2Priority(t *testing.T) {
 func TestV2Error(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "greeter")
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
+	srv, fds := newProjectSrv(t, "greeter")
 
 	srv.ExpectUnary("/helloworld.Greeter/SayHello").
 		Match("name", "error").
@@ -98,10 +86,7 @@ func TestV2Error(t *testing.T) {
 func TestV2Times(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "greeter")
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
+	srv, fds := newProjectSrv(t, "greeter")
 
 	srv.ExpectUnary("/helloworld.Greeter/SayHello").
 		Match("name", "limited").
@@ -123,10 +108,7 @@ func TestV2Times(t *testing.T) {
 func TestV2NextWillReturn(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "greeter")
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
+	srv, fds := newProjectSrv(t, "greeter")
 
 	srv.ExpectUnary("/helloworld.Greeter/SayHello").
 		Match("name", "chain").
@@ -152,8 +134,7 @@ func TestV2NextWillReturn(t *testing.T) {
 func TestV2Verification(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "greeter")
-	srv := NewServer(t, WithDescriptors(fds))
+	srv, fds := newProjectSrv(t, "greeter")
 
 	srv.ExpectUnary("/helloworld.Greeter/SayHello").
 		Match("name", "Alex").
@@ -176,8 +157,7 @@ func TestV2Verification(t *testing.T) {
 func TestV2VerificationFailed(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "greeter")
-	srv := NewServer(t, WithDescriptors(fds))
+	srv, fds := newProjectSrv(t, "greeter")
 
 	srv.ExpectUnary("/helloworld.Greeter/SayHello").
 		Match("name", "Alex").
@@ -204,10 +184,7 @@ func TestV2VerificationFailed(t *testing.T) {
 func TestV2Reset(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "greeter")
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
+	srv, fds := newProjectSrv(t, "greeter")
 
 	srv.ExpectUnary("/helloworld.Greeter/SayHello").
 		Match("name", "Alex").
@@ -232,10 +209,7 @@ func TestV2ParallelIsolation(t *testing.T) {
 	// Each subtest creates its own server — fully isolated
 	t.Run("sub1", func(t *testing.T) {
 		t.Parallel()
-		fds := buildTestFDS(t, "greeter")
-
-		srv := NewServer(t, WithDescriptors(fds))
-		defer func() { _ = srv.Close() }()
+		srv, fds := newProjectSrv(t, "greeter")
 
 		srv.ExpectUnary("/helloworld.Greeter/SayHello").
 			Match("name", "user1").
@@ -248,10 +222,7 @@ func TestV2ParallelIsolation(t *testing.T) {
 
 	t.Run("sub2", func(t *testing.T) {
 		t.Parallel()
-		fds := buildTestFDS(t, "greeter")
-
-		srv := NewServer(t, WithDescriptors(fds))
-		defer func() { _ = srv.Close() }()
+		srv, fds := newProjectSrv(t, "greeter")
 
 		srv.ExpectUnary("/helloworld.Greeter/SayHello").
 			Match("name", "user2").
@@ -266,10 +237,7 @@ func TestV2ParallelIsolation(t *testing.T) {
 func TestV2ServerStream(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "search")
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
+	srv, fds := newProjectSrv(t, "search")
 
 	srv.ExpectServerStream("/search.SearchService/Search").
 		Match("query", "test").
@@ -311,10 +279,7 @@ func TestV2ServerStream(t *testing.T) {
 func TestV2ClientStream(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "calculator")
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
+	srv, fds := newProjectSrv(t, "calculator")
 
 	srv.ExpectClientStream("/calculator.CalculatorService/SumNumbers").
 		WithPayloadMap(Matches("value", "\\d+")).
@@ -359,10 +324,7 @@ func TestV2ClientStream(t *testing.T) {
 func TestV2ServerStreamEmpty(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "search")
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
+	srv, fds := newProjectSrv(t, "search")
 
 	srv.ExpectServerStream("/search.SearchService/Search").
 		Match("query", "empty").
@@ -396,10 +358,7 @@ func TestV2ServerStreamEmpty(t *testing.T) {
 func TestV2EnumOneof(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "validator")
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
+	srv, fds := newProjectSrv(t, "validator")
 
 	srv.ExpectUnary("/validator.Validator/Validate").
 		WithPayloadMap(
@@ -449,16 +408,8 @@ func TestV2EnumOneof(t *testing.T) {
 func TestV2RepeatedField(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "greeter")
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
-
 	// Use a simple repeated field test via the identifier project
-	fds2 := buildTestFDS(t, "identifier")
-
-	srv2 := NewServer(t, WithDescriptors(fds2))
-	defer func() { _ = srv2.Close() }()
+	srv2, fds2 := newProjectSrv(t, "identifier")
 
 	srv2.ExpectUnary("/example.identifier.v1.IdentifierService/ProcessUUIDs").
 		WithPayloadMap(
@@ -496,11 +447,8 @@ func TestV2RepeatedField(t *testing.T) {
 func TestV2EffectWithTemplate(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "greeter")
+	srv, fds := newProjectSrv(t, "greeter")
 	reg := mustBuildReg(t, fds)
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
 
 	// Effect that uses {{.Request.name}} in its response
 	effect := Upsert("helloworld.Greeter", "SayHello").
@@ -525,10 +473,7 @@ func TestV2EffectWithTemplate(t *testing.T) {
 func TestV2StreamWithError(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "search")
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
+	srv, fds := newProjectSrv(t, "search")
 
 	srv.ExpectServerStream("/search.SearchService/Search").
 		Match("query", "partial").
@@ -573,11 +518,8 @@ func TestV2StreamWithError(t *testing.T) {
 func TestV2EffectsUpsert(t *testing.T) {
 	t.Parallel()
 
-	fds := buildTestFDS(t, "greeter")
+	srv, fds := newProjectSrv(t, "greeter")
 	reg := mustBuildReg(t, fds)
-
-	srv := NewServer(t, WithDescriptors(fds))
-	defer func() { _ = srv.Close() }()
 
 	effect := Upsert("helloworld.Greeter", "SayHello").
 		Match("name", "next").
@@ -594,6 +536,14 @@ func TestV2EffectsUpsert(t *testing.T) {
 
 	msg2 := invokeGreeter(t, srv.Conn(), reg, "next")
 	require.Equal(t, "from effect", getMsgField(t, msg2))
+}
+
+// newProjectSrv creates a test server with a project's proto descriptors.
+func newProjectSrv(t *testing.T, project string) (*Server, *descriptorpb.FileDescriptorSet) {
+	t.Helper()
+	fds := buildTestFDS(t, project)
+
+	return NewServer(t, WithDescriptors(fds)), fds
 }
 
 func buildTestFDS(t *testing.T, project string) *descriptorpb.FileDescriptorSet {
