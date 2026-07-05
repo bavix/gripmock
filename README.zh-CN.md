@@ -6,7 +6,7 @@
 
 # GripMock 🚀
 
-**语言版本：** [English](README.md) | 简体中文
+**语言版本：** [English](README.md) | 简体中文 | [日本語](README.ja-JP.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 > 提示：本页面由机器翻译生成，内容可能存在不准确或不完整之处。请以英文原文 [`README.md`](README.md) 为准。
 
@@ -35,7 +35,7 @@ GripMock 可以根据你的 `.proto` 文件或编译后的 `.pb` 描述文件创
 - **OpenTelemetry 链路追踪** - 支持 gRPC 与 HTTP 路径的 OTLP 追踪（`otelgrpc` + `otelhttp`）
 - **Prometheus 指标（`/metrics`）** - 暴露运行时/进程指标（`go_*`、`process_*`）以及 GripMock 指标
 - **运维 API** - 健康检查端点、descriptors API、stubs API 以及 Web 控制台
-- **Embedded SDK（实验性）** - 在 Go 测试/服务中运行 GripMock，并提供验证助手
+- **Embedded SDK（实验性）** - 在 Go 测试中内嵌 GripMock 并提供验证助手
 - **MCP API（实验性）** - 提供可流式处理的 MCP 端点，用于 Agent 与工具集成
 - **Upstream Modes（实验性）** - `proxy`、`replay`、`capture` 模式，用于从真实上游服务渐进迁移到本地 mocks
 
@@ -45,7 +45,7 @@ GripMock 可以根据你的 `.proto` 文件或编译后的 `.pb` 描述文件创
 
 - **Descriptor API（`/api/descriptors`）**：运行时加载编译后的 proto 描述文件（`.pb`），附带可验证的 curl 工作流：[文档](https://bavix.github.io/gripmock/guide/api/descriptors)
 - **Upstream Modes（实验性）**：`proxy`、`replay`、`capture`，包含实用的上线迁移指导：[文档](https://bavix.github.io/gripmock/guide/modes)
-- **Embedded SDK（实验性）**：进程内测试，支持 stubs、verification、`sdk.By(fullMethod)` 助手以及带上下文的远程校验：[文档](https://bavix.github.io/gripmock/guide/embedded-sdk)
+- **Embedded SDK（实验性）**：进程内测试，支持 `sdk.NewServer`、`Match()`、`Return()` 及校验：[文档](https://bavix.github.io/gripmock/guide/embedded-sdk)
 - **Faker 参考**：内置 faker 的逐键说明与示例：[文档](https://bavix.github.io/gripmock/guide/stubs/faker)
 - **OpenTelemetry + 指标**：追踪环境变量与 `/metrics` 说明：[文档](https://bavix.github.io/gripmock/guide/introduction/advanced-usage)
 - **GitHub Actions（CI/CD）**：官方工作流 Action，可自动下载安装、启动、等待就绪并停止 GripMock：[文档](https://bavix.github.io/gripmock/guide/ci-cd/github-actions)
