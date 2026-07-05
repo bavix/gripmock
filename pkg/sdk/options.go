@@ -102,6 +102,16 @@ func WithRemote(grpcAddr string, restURL string) Option {
 	}
 }
 
+// Remote configures remote mode and derives the REST URL from grpcAddr.
+//
+// Deprecated: use WithRemote(grpcAddr, restURL) for explicit endpoints.
+func Remote(grpcAddr string) Option {
+	return func(o *options) {
+		o.remoteAddr = normalizeRemoteAddr(grpcAddr)
+		o.remoteRestURL = deriveRestURLFromGrpcAddr(o.remoteAddr)
+	}
+}
+
 // WithHTTPClient overrides the HTTP client used by WithRemote mode for REST API calls.
 // If not set, SDK uses a default client with 10s timeout.
 func WithHTTPClient(client *http.Client) Option {

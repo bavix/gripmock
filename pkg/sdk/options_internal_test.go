@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 
@@ -107,7 +108,21 @@ func TestWithRemoteKeepsEmptyRestURLWhenNotProvided(t *testing.T) {
 
 	// Assert
 	require.Equal(t, "localhost:4770", o.remoteAddr)
-	require.Empty(t, o.remoteRestURL)
+	require.Equal(t, "", o.remoteRestURL)
+}
+
+func TestRemoteDeprecatedAlias(t *testing.T) {
+	t.Parallel()
+
+	// Arrange
+	o := &options{}
+
+	// Act
+	Remote("127.0.0.1:7770")(o)
+
+	// Assert
+	require.Equal(t, "127.0.0.1:7770", o.remoteAddr)
+	require.Equal(t, "http://127.0.0.1:4771", o.remoteRestURL)
 }
 
 func TestWithDescriptorsSkipsNilFiles(t *testing.T) {
@@ -118,9 +133,9 @@ func TestWithDescriptorsSkipsNilFiles(t *testing.T) {
 	name := "svc.proto"
 	fds := &descriptorpb.FileDescriptorSet{File: []*descriptorpb.FileDescriptorProto{
 		nil,
-		{Name: new(name)},
+		{Name: proto.String(name)},
 		nil,
-		{Name: new(name)},
+		{Name: proto.String(name)},
 	}}
 
 	// Act

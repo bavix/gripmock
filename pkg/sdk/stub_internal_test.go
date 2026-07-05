@@ -19,7 +19,6 @@ func TestStubBuilderCommitAssignsNonNilID(t *testing.T) {
 		method:  "SayHello",
 		onCommit: func(stub *stuber.Stub) error {
 			got = stub
-
 			return nil
 		},
 	}

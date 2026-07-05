@@ -35,8 +35,7 @@ func TestRunMockFromNoServices(t *testing.T) {
 	t.Parallel()
 
 	// Arrange
-	var lc net.ListenConfig
-	lis, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	lis, err := net.Listen("tcp", ":0")
 	require.NoError(t, err)
 	addr := lis.Addr().String()
 

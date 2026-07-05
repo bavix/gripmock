@@ -67,7 +67,6 @@ func (m *embeddedMock) Close() error {
 		m.server.GracefulStop()
 		m.server = nil
 	}
-
 	return nil
 }
 
@@ -75,7 +74,7 @@ func (m *embeddedMock) commitStubs(stubs []*stuber.Stub) error {
 	for _, stub := range stubs {
 		m.budgerigar.PutMany(stub)
 		if stub.Options.Times > 0 {
-			m.expectedTotal.Add(int32(stub.Options.Times)) //nolint:gosec
+			m.expectedTotal.Add(int32(stub.Options.Times))
 
 			m.expectedMu.Lock()
 			if m.expectedByMth == nil {
@@ -105,43 +104,6 @@ func runEmbedded(ctx context.Context, o *options) (Mock, error) {
 		return nil, err
 	}
 
-	lis, bufLis, addr, err := setupEmbeddedListener(o, server)
-	if err != nil {
-		server.GracefulStop()
-
-		return nil, err
-	}
-
-	go func() { _ = server.Serve(lis) }()
-
-	conn, err := setupEmbeddedClient(addr, bufLis)
-	if err != nil {
-		_ = lis.Close()
-		server.GracefulStop()
-
-		return nil, err
-	}
-
-	if err := waitForHealthy(ctx, conn, timeout); err != nil {
-		_ = conn.Close()
-		_ = lis.Close()
-		server.GracefulStop()
-
-		return nil, err
-	}
-
-	return &embeddedMock{
-		conn:       conn,
-		server:     server,
-		lis:        lis,
-		bufLis:     bufLis,
-		addr:       addr,
-		budgerigar: budgerigar,
-		recorder:   recorder,
-	}, nil
-}
-
-func setupEmbeddedListener(o *options, server *grpc.Server) (net.Listener, *bufconn.Listener, string, error) {
 	var lis net.Listener
 	var bufLis *bufconn.Listener
 	addr := "bufnet"
@@ -154,28 +116,49 @@ func setupEmbeddedListener(o *options, server *grpc.Server) (net.Listener, *bufc
 		if network == "" {
 			network = "tcp"
 		}
-		var lc net.ListenConfig
 		var listenErr error
-		lis, listenErr = lc.Listen(context.Background(), network, o.listenAddr)
+		lis, listenErr = net.Listen(network, o.listenAddr)
 		if listenErr != nil {
-			return nil, nil, "", listenErr
+			server.GracefulStop()
+			return nil, listenErr
 		}
 		addr = listenAddrString(lis)
 	}
 
-	return lis, bufLis, addr, nil
-}
+	go func() { _ = server.Serve(lis) }()
 
-func setupEmbeddedClient(addr string, bufLis *bufconn.Listener) (*grpc.ClientConn, error) {
+	var conn *grpc.ClientConn
 	if bufLis != nil {
-		return grpc.NewClient("passthrough:///bufnet",
+		conn, err = grpc.NewClient("passthrough:///bufnet",
 			grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 				return bufLis.DialContext(ctx)
 			}),
 			grpc.WithTransportCredentials(insecure.NewCredentials()))
+	} else {
+		conn, err = grpc.NewClient("passthrough:///"+addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	}
+	if err != nil {
+		_ = lis.Close()
+		server.GracefulStop()
+		return nil, err
 	}
 
-	return grpc.NewClient("passthrough:///"+addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err := waitForHealthy(ctx, conn, timeout); err != nil {
+		_ = conn.Close()
+		_ = lis.Close()
+		server.GracefulStop()
+		return nil, err
+	}
+
+	return &embeddedMock{
+		conn:       conn,
+		server:     server,
+		lis:        lis,
+		bufLis:     bufLis,
+		addr:       addr,
+		budgerigar: budgerigar,
+		recorder:   recorder,
+	}, nil
 }
 
 func waitForHealthy(ctx context.Context, conn *grpc.ClientConn, timeout time.Duration) error {
@@ -208,6 +191,5 @@ func listenAddrString(l net.Listener) string {
 	if tcp, ok := l.Addr().(*net.TCPAddr); ok {
 		return fmt.Sprintf("127.0.0.1:%d", tcp.Port)
 	}
-
 	return l.Addr().String()
 }

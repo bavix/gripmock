@@ -21,14 +21,14 @@ func TestStubBuilderReplyHeadersAndIgnoreArrayOrder(t *testing.T) {
 		method:  "M",
 		onCommit: func(stub *stuber.Stub) error {
 			got = stub
-
 			return nil
 		},
 	}
 
 	// Act
-	err := b.When(IgnoreArrayOrder(Equals("items", []any{1, 2}))).
-		WhenStream(IgnoreArrayOrder(Equals("a", 1)), IgnoreArrayOrder(Equals("b", 2))).
+	b.When(Equals("items", []any{1, 2})).
+		WhenStream(Equals("a", 1), Equals("b", 2)).
+		IgnoreArrayOrder().
 		Reply(Data("ok", true)).
 		ReplyHeaders(map[string]string{"x-a": "1"}).
 		ReplyHeaderPairs("x-b", "2").
@@ -36,7 +36,6 @@ func TestStubBuilderReplyHeadersAndIgnoreArrayOrder(t *testing.T) {
 		Priority(7).
 		Times(2).
 		Commit()
-	require.NoError(t, err)
 
 	// Assert
 	require.NotNil(t, got)
@@ -44,7 +43,7 @@ func TestStubBuilderReplyHeadersAndIgnoreArrayOrder(t *testing.T) {
 	require.Equal(t, 7, got.Priority)
 	require.Equal(t, "1", got.Output.Headers["x-a"])
 	require.Equal(t, "2", got.Output.Headers["x-b"])
-	require.Empty(t, got.Input.Equals)
+	require.True(t, got.Input.IgnoreArrayOrder)
 	require.Len(t, got.Inputs, 2)
 	require.True(t, got.Inputs[0].IgnoreArrayOrder)
 	require.True(t, got.Inputs[1].IgnoreArrayOrder)

@@ -15,7 +15,7 @@ type TestingT interface {
 	Error(args ...any)
 	Fail()
 	Context() context.Context
-	Cleanup(f func())
+	Cleanup(func())
 }
 
 // HistoryReader provides read access to recorded gRPC calls.
@@ -138,7 +138,6 @@ func (v *verifier) VerifyStubTimesErr() error {
 	if got != want {
 		return fmt.Errorf("gripmock: expected %d total calls (from stub Times), got %d", want, got)
 	}
-
 	return nil
 }
 

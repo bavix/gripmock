@@ -11,18 +11,17 @@ import (
 	"sync/atomic"
 	"time"
 
+	grpcclient "github.com/bavix/gripmock/v3/internal/infra/grpcclient"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/descriptorpb"
 
-	grpcclient "github.com/bavix/gripmock/v3/internal/infra/grpcclient"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/pkg/sdk/internal/remoteapi"
 )
 
-//nolint:containedctx
 type remoteMock struct {
 	ctx           context.Context
 	conn          *grpc.ClientConn
@@ -127,7 +126,11 @@ func (m *remoteMock) deleteOwnedStubs() error {
 	return m.batchDelete(ids)
 }
 
-func (m *remoteMock) api(ctx context.Context) remoteapi.Client {
+func (m *remoteMock) api() remoteapi.Client {
+	return m.apiWithContext(context.TODO())
+}
+
+func (m *remoteMock) apiWithContext(ctx context.Context) remoteapi.Client {
 	httpClient := m.httpClient
 	if httpClient == nil {
 		httpClient = http.DefaultClient
@@ -147,11 +150,11 @@ func (m *remoteMock) api(ctx context.Context) remoteapi.Client {
 }
 
 func (m *remoteMock) batchDelete(ids []uuid.UUID) error {
-	return m.api(m.ctx).BatchDelete(ids)
+	return m.api().BatchDelete(ids)
 }
 
 func (m *remoteMock) uploadDescriptors(files []*descriptorpb.FileDescriptorProto) error {
-	return m.api(m.ctx).UploadDescriptors(files)
+	return m.api().UploadDescriptors(files)
 }
 
 func (m *remoteMock) addStub(stub *stuber.Stub) {
@@ -167,9 +170,8 @@ func (m *remoteMock) commitStubs(stubs []*stuber.Stub) error {
 		return opErr
 	}
 
-	if err := m.api(m.ctx).AddStubs(stubs); err != nil {
+	if err := m.api().AddStubs(stubs); err != nil {
 		m.setOpErr(err)
-
 		return err
 	}
 
@@ -185,7 +187,7 @@ func (m *remoteMock) commitStubs(stubs []*stuber.Stub) error {
 }
 
 func (m *remoteMock) recordExpected(service, method string, times int) {
-	m.expectedTotal.Add(int32(times)) //nolint:gosec
+	m.expectedTotal.Add(int32(times))
 
 	m.expectedMu.Lock()
 	if m.expectedByMth == nil {
@@ -205,10 +207,9 @@ func runRemote(ctx context.Context, o *options) (Mock, error) {
 	o.remoteAddr = normalizeRemoteAddr(o.remoteAddr)
 	o.remoteRestURL = normalizeRemoteRestURL(o.remoteRestURL)
 
-	opts := make([]grpc.DialOption, 0, 3)
-	opts = append(opts,
+	opts := []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+	}
 
 	unaryInterceptors := []grpc.UnaryClientInterceptor{grpcclient.UnaryTimeoutInterceptor(o.grpcTimeout)}
 	streamInterceptors := []grpc.StreamClientInterceptor{grpcclient.StreamTimeoutInterceptor(o.grpcTimeout)}
@@ -229,7 +230,6 @@ func runRemote(ctx context.Context, o *options) (Mock, error) {
 	}
 	if err := waitForHealthy(ctx, conn, o.healthyTimeout); err != nil {
 		_ = conn.Close()
-
 		return nil, err
 	}
 	rm := &remoteMock{
@@ -244,7 +244,6 @@ func runRemote(ctx context.Context, o *options) (Mock, error) {
 
 	if err := rm.uploadDescriptors(o.descriptorFiles); err != nil {
 		_ = conn.Close()
-
 		return nil, err
 	}
 

@@ -1,6 +1,7 @@
 package sdk
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
@@ -69,7 +70,7 @@ func mustBuildRegistryFromProto(t *testing.T, protoPath string) *protoregistry.F
 	return reg
 }
 
-func invokeGreeterSayHello(t *testing.T, conn *grpc.ClientConn, reg *protoregistry.Files, name string) *dynamicpb.Message {
+func invokeGreeterSayHello(t *testing.T, conn *grpc.ClientConn, reg *protoregistry.Files, ctx context.Context, name string) *dynamicpb.Message {
 	t.Helper()
 	inDesc, err := reg.FindDescriptorByName("helloworld.HelloRequest")
 	require.NoError(t, err)
@@ -81,17 +82,15 @@ func invokeGreeterSayHello(t *testing.T, conn *grpc.ClientConn, reg *protoregist
 	in.Set(fd, protoreflect.ValueOfString(name))
 
 	out := dynamicpb.NewMessage(outDesc.(protoreflect.MessageDescriptor))
-	err = conn.Invoke(t.Context(), "/helloworld.Greeter/SayHello", in, out)
+	err = conn.Invoke(ctx, "/helloworld.Greeter/SayHello", in, out)
 	require.NoError(t, err)
-
 	return out
 }
 
-func getMessageField(t *testing.T, msg *dynamicpb.Message) string {
+func getMessageField(t *testing.T, msg *dynamicpb.Message, field string) string {
 	t.Helper()
-	fd := msg.Descriptor().Fields().ByName("message")
+	fd := msg.Descriptor().Fields().ByName(protoreflect.Name(field))
 	require.NotNil(t, fd)
-
 	return msg.Get(fd).String()
 }
 
@@ -102,6 +101,5 @@ func createGreeterRequest(t *testing.T, reg *protoregistry.Files, name string) *
 	in := dynamicpb.NewMessage(inDesc.(protoreflect.MessageDescriptor))
 	fd := inDesc.(protoreflect.MessageDescriptor).Fields().ByName("name")
 	in.Set(fd, protoreflect.ValueOfString(name))
-
 	return in
 }

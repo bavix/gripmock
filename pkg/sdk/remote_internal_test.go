@@ -25,7 +25,6 @@ import (
 	"github.com/bavix/gripmock/v3/pkg/sdk/internal/testkit"
 )
 
-//nolint:containedctx
 type captureTestingT struct {
 	ctx context.Context
 
@@ -67,8 +66,8 @@ func (c *captureTestingT) RunCleanups() {
 	cleanups := slices.Clone(c.cleanup)
 	c.mu.Unlock()
 
-	for _, v := range slices.Backward(cleanups) {
-		v()
+	for i := len(cleanups) - 1; i >= 0; i-- {
+		cleanups[i]()
 	}
 }
 
@@ -141,7 +140,6 @@ func TestRemoteHistoryAndVerifier(t *testing.T) {
 			if req["expectedCount"] == float64(2) {
 				w.WriteHeader(http.StatusBadRequest)
 				_, _ = w.Write([]byte(`{"message":"bad count"}`))
-
 				return
 			}
 			w.WriteHeader(http.StatusOK)
@@ -203,7 +201,6 @@ func TestRemoteAddStubAndCleanupOwnedIDs(t *testing.T) {
 				require.Equal(t, "A", r.Header.Get("X-Gripmock-Session"))
 				added.Add(1)
 				w.WriteHeader(http.StatusOK)
-
 				return
 			}
 
@@ -273,7 +270,6 @@ func TestRemoteAddStubHTTPFailureStoredAsError(t *testing.T) {
 		if r.URL.Path == "/api/stubs" {
 			calls.Add(1)
 			w.WriteHeader(http.StatusInternalServerError)
-
 			return
 		}
 
@@ -302,7 +298,6 @@ func TestRemoteAPIUsesDefaultHTTPClientWhenNil(t *testing.T) {
 		if r.URL.Path == "/api/stubs" {
 			calls.Add(1)
 			w.WriteHeader(http.StatusOK)
-
 			return
 		}
 
@@ -485,6 +480,7 @@ func TestRemoteVerifyStubTimesErrScenarios(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -509,7 +505,6 @@ func TestRemoteVerifyStubTimesErrScenarios(t *testing.T) {
 				}
 
 				require.Equal(t, tc.wantVerifyCalls, verifyCalls.Load())
-
 				return
 			}
 
@@ -617,6 +612,7 @@ func TestRunRemoteViaSDKCleanupScenarios(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -650,7 +646,6 @@ func TestRunRemoteViaSDKCleanupScenarios(t *testing.T) {
 						createdID = id
 						mu.Unlock()
 						w.WriteHeader(http.StatusOK)
-
 						return
 					}
 
@@ -664,7 +659,7 @@ func TestRunRemoteViaSDKCleanupScenarios(t *testing.T) {
 					mu.Unlock()
 
 					recs := make([]map[string]any, 0, tc.historyCalls)
-					for range tc.historyCalls {
+					for i := 0; i < tc.historyCalls; i++ {
 						recs = append(recs, map[string]any{"service": "svc", "method": "M", "stubId": id})
 					}
 					w.WriteHeader(http.StatusOK)
@@ -773,7 +768,6 @@ func TestRunRemoteFullyMockedViaSDK(t *testing.T) {
 				mu.Unlock()
 
 				w.WriteHeader(http.StatusOK)
-
 				return
 			}
 
@@ -904,8 +898,8 @@ func TestRunRemoteWithDescriptorsUploadsDescriptorSet(t *testing.T) {
 
 			var fds descriptorpb.FileDescriptorSet
 			require.NoError(t, proto.Unmarshal(raw, &fds))
-			require.Len(t, fds.GetFile(), 1)
-			require.Equal(t, "svc.proto", fds.GetFile()[0].GetName())
+			require.Len(t, fds.File, 1)
+			require.Equal(t, "svc.proto", fds.File[0].GetName())
 
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"message":"ok"}`))
@@ -918,7 +912,6 @@ func TestRunRemoteWithDescriptorsUploadsDescriptorSet(t *testing.T) {
 				require.Len(t, payload, 1)
 				stubID, _ = payload[0]["id"].(string)
 				w.WriteHeader(http.StatusOK)
-
 				return
 			}
 

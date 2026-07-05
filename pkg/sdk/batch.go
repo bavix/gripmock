@@ -1,7 +1,7 @@
 package sdk
 
 import (
-	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -34,7 +34,6 @@ func (b *StubBatch) Stub(service, method string) StubBuilder {
 		method:  method,
 		onCommit: func(stub *stuber.Stub) error {
 			b.stubs = append(b.stubs, stub)
-
 			return nil
 		},
 	}
@@ -47,7 +46,7 @@ func (b *StubBatch) Commit() error {
 
 	committer, ok := b.mock.(stubCommitter)
 	if !ok {
-		return errors.New("sdk: mock does not support batch commit")
+		return fmt.Errorf("sdk: mock does not support batch commit")
 	}
 
 	if err := committer.commitStubs(b.stubs); err != nil {
@@ -57,4 +56,8 @@ func (b *StubBatch) Commit() error {
 	b.stubs = nil
 
 	return nil
+}
+
+func (b *StubBatch) MustCommit() {
+	panicIfErr(b.Commit())
 }

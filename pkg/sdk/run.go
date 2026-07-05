@@ -8,8 +8,6 @@ import (
 // Run starts an embedded gRPC mock server or connects to a remote gripmock. Blocks until healthy.
 // Registers cleanup to verify stub Times and Close.
 // t must not be nil.
-//
-//nolint:cyclop
 func Run(t TestingT, opts ...Option) (Mock, error) {
 	if t == nil {
 		panic("gripmock: t must not be nil")

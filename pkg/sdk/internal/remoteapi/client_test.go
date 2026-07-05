@@ -74,6 +74,7 @@ func TestClientBatchDeleteAcceptsNotFoundOrGone(t *testing.T) {
 		{name: "not-found", statusCode: http.StatusNotFound},
 		{name: "gone", statusCode: http.StatusGone},
 	} {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -110,8 +111,8 @@ func TestClientUploadDescriptors(t *testing.T) {
 
 		var fds descriptorpb.FileDescriptorSet
 		require.NoError(t, proto.Unmarshal(raw, &fds))
-		require.Len(t, fds.GetFile(), 1)
-		require.Equal(t, name, fds.GetFile()[0].GetName())
+		require.Len(t, fds.File, 1)
+		require.Equal(t, name, fds.File[0].GetName())
 
 		called = true
 		w.WriteHeader(http.StatusOK)
@@ -172,8 +173,7 @@ func TestClientVerifyMethodCalledBadRequest(t *testing.T) {
 
 	// Assert
 	require.Error(t, err)
-	var badReq VerifyBadRequestError
-	ok := errors.As(err, &badReq)
+	badReq, ok := err.(VerifyBadRequestError)
 	require.True(t, ok)
 	require.Equal(t, "bad count", badReq.Error())
 }
@@ -233,7 +233,7 @@ func TestPtrOrZero(t *testing.T) {
 	m := map[string]any{"k": "v"}
 
 	// Act + Assert
-	require.Empty(t, ptrOrZero[string](nil))
+	require.Equal(t, "", ptrOrZero[string](nil))
 	require.Equal(t, value, ptrOrZero(&value))
 	require.Nil(t, ptrOrZero[map[string]any](nil))
 	require.Equal(t, m, ptrOrZero(&m))
@@ -364,8 +364,8 @@ func TestClientFetchHistoryErrorBranches(t *testing.T) {
 		history, err := c.FetchHistory()
 		require.NoError(t, err)
 		require.Len(t, history, 1)
-		require.Empty(t, history[0].Service)
-		require.Empty(t, history[0].Method)
+		require.Equal(t, "", history[0].Service)
+		require.Equal(t, "", history[0].Method)
 		require.Nil(t, history[0].Request)
 		require.Nil(t, history[0].Response)
 		require.True(t, history[0].Timestamp.IsZero())
@@ -399,7 +399,7 @@ func TestClientVerifyMethodCalledBranches(t *testing.T) {
 		c := newTestClient(ts, "")
 		err := c.VerifyMethodCalled("svc", "M", 1)
 		var badReq VerifyBadRequestError
-		require.ErrorAs(t, err, &badReq)
+		require.True(t, errors.As(err, &badReq))
 		require.Equal(t, "verification failed", badReq.Error())
 	})
 
@@ -418,7 +418,6 @@ func TestClientVerifyMethodCalledBranches(t *testing.T) {
 	})
 }
 
-//nolint:dupl
 func TestClientURLBuildErrors(t *testing.T) {
 	t.Parallel()
 
@@ -451,7 +450,6 @@ func TestClientURLBuildErrors(t *testing.T) {
 			name: "fetch-history",
 			call: func() error {
 				_, err := c.FetchHistory()
-
 				return err
 			},
 			errContain: "failed to build request URL",
@@ -464,6 +462,8 @@ func TestClientURLBuildErrors(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -474,7 +474,6 @@ func TestClientURLBuildErrors(t *testing.T) {
 	}
 }
 
-//nolint:dupl
 func TestClientTransportErrors(t *testing.T) {
 	t.Parallel()
 
@@ -507,7 +506,6 @@ func TestClientTransportErrors(t *testing.T) {
 			name: "fetch-history",
 			call: func() error {
 				_, err := c.FetchHistory()
-
 				return err
 			},
 			errContain: "failed to execute request",
@@ -520,6 +518,8 @@ func TestClientTransportErrors(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
+
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
