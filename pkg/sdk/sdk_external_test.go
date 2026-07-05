@@ -835,69 +835,61 @@ func TestExtendedTypes(t *testing.T) {
 	require.Equal(t, "active", out.Get(statusFd).String())
 }
 
-func TestUnaryStubID(t *testing.T) {
+func TestStubID(t *testing.T) {
 	t.Parallel()
 
-	srv, fds := newServer(t)
-	defer func() { _ = srv.Close() }()
+	t.Run("unary", func(t *testing.T) {
+		t.Parallel()
 
-	e := srv.ExpectUnary("/test.Greeter/SayHello").
-		Match("name", "Alex").
-		Return("message", "Hi")
+		srv, _ := newServer(t)
+		defer func() { _ = srv.Close() }()
 
-	id := e.StubID()
-	require.NotEmpty(t, id)
+		e := srv.ExpectUnary("/test.Greeter/SayHello").
+			Match("name", "Alex").
+			Return("message", "Hi")
 
-	_ = fds
-}
+		require.NotEmpty(t, e.StubID())
+	})
 
-func TestServerStreamStubID(t *testing.T) {
-	t.Parallel()
+	t.Run("server_stream", func(t *testing.T) {
+		t.Parallel()
 
-	srv, fds := newServerSearch(t)
-	defer func() { _ = srv.Close() }()
+		srv, _ := newServerSearch(t)
+		defer func() { _ = srv.Close() }()
 
-	e := srv.ExpectServerStream("/search.SearchService/Search").
-		Match("query", "test").
-		SendStream(map[string]any{"id": "1", "title": "r1"})
+		exp := srv.ExpectServerStream("/search.SearchService/Search").
+			Match("query", "test")
+		exp.SendStream(map[string]any{"id": "1"})
 
-	id := e.StubID()
-	require.NotEmpty(t, id)
+		require.NotEmpty(t, exp.StubID())
+	})
 
-	_ = fds
-}
+	t.Run("client_stream", func(t *testing.T) {
+		t.Parallel()
 
-func TestClientStreamStubID(t *testing.T) {
-	t.Parallel()
+		srv, _ := newServerSearch(t)
+		defer func() { _ = srv.Close() }()
 
-	srv, fds := newServerSearch(t)
-	defer func() { _ = srv.Close() }()
+		e := srv.ExpectClientStream("/search.SearchService/Search").
+			Match(sdk.Matches("value", "\\d+")).
+			Return("result", 42.0)
 
-	e := srv.ExpectClientStream("/search.SearchService/Search").
-		Match(sdk.Matches("value", "\\d+")).
-		Return("result", 42.0)
+		require.NotEmpty(t, e.StubID())
+	})
 
-	id := e.StubID()
-	require.NotEmpty(t, id)
+	t.Run("bidi", func(t *testing.T) {
+		t.Parallel()
 
-	_ = fds
-}
+		srv, _ := newServerChat(t)
+		defer func() { _ = srv.Close() }()
 
-func TestBidiStubID(t *testing.T) {
-	t.Parallel()
+		e := srv.ExpectBidirectionalStream("/chat.ChatService/Chat").
+			Run(func(ctx context.Context, stream any) error {
+				return nil
+			})
 
-	srv, fds := newServerChat(t)
-	defer func() { _ = srv.Close() }()
-
-	e := srv.ExpectBidirectionalStream("/chat.ChatService/Chat").
-		Run(func(ctx context.Context, stream any) error {
-			return nil
-		})
-
-	id := e.StubID()
-	require.NotEmpty(t, id)
-
-	_ = fds
+		require.NotEmpty(t, e.StubID())
+	})
 }
 
 func TestOnceTwice(t *testing.T) {

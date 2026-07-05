@@ -421,10 +421,6 @@ type ServerStreamBuilder struct {
 	chainIdx int
 }
 
-func (b *ServerStreamBuilder) StubID() string {
-	return b.stubID.String()
-}
-
 // Send accepts KV pairs or DelayItem: Send(Delay(100*ms, "msg", "hello")).
 func (b *ServerStreamBuilder) Send(kv ...any) *ServerStreamBuilder {
 	if len(kv) == 1 {

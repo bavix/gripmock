@@ -134,7 +134,7 @@ func (m *remoteMock) deleteOwnedStubs() error {
 }
 
 func (m *remoteMock) api() remoteapi.Client {
-	return m.apiWithContext(context.TODO())
+	return m.apiWithContext(context.Background())
 }
 
 func (m *remoteMock) apiWithContext(ctx context.Context) remoteapi.Client {

@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
@@ -45,7 +46,7 @@ func TestRunWithReflectionNoServices(t *testing.T) {
 	_, port, _ := net.SplitHostPort(addr)
 	addr = "127.0.0.1:" + port
 
-	server := grpc.NewServer()
+	server := grpc.NewServer(grpc.Creds(insecure.NewCredentials()))
 	hs := health.NewServer()
 	hs.SetServingStatus("", healthgrpc.HealthCheckResponse_SERVING)
 	healthgrpc.RegisterHealthServer(server, hs)

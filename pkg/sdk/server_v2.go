@@ -228,7 +228,7 @@ func (s *Server) remoteVerify(ctx context.Context, ec []expectedCall) error {
 func (s *Server) Called(fullMethod string) int {
 	service, method := splitMethodName(fullMethod)
 	if s.remote != nil {
-		calls, _ := s.remote.History().FilterByMethodContext(context.TODO(), service, method)
+		calls, _ := s.remote.History().FilterByMethodContext(s.t.Context(), service, method)
 
 		return len(calls)
 	}
@@ -238,7 +238,7 @@ func (s *Server) Called(fullMethod string) int {
 
 func (s *Server) TotalCalls() int {
 	if s.remote != nil {
-		count, _ := s.remote.History().CountContext(context.TODO())
+		count, _ := s.remote.History().CountContext(s.t.Context())
 
 		return count
 	}
@@ -248,7 +248,7 @@ func (s *Server) TotalCalls() int {
 
 func (s *Server) History() []CallRecord {
 	if s.remote != nil {
-		calls, _ := s.remote.History().AllContext(context.TODO())
+		calls, _ := s.remote.History().AllContext(s.t.Context())
 
 		return calls
 	}
