@@ -268,11 +268,11 @@ func (g *ConnectRPCGateway) handleWithoutDescriptor(w http.ResponseWriter, r *ht
 
 	ct := r.Header.Get("Content-Type")
 	if isJSONContentType(ct) {
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/connect+json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	} else {
-		w.Header().Set("Content-Type", "application/proto")
+		w.Header().Set("Content-Type", "application/connect+proto")
 		w.WriteHeader(http.StatusOK)
 	}
 
@@ -316,12 +316,13 @@ func (g *ConnectRPCGateway) record(
 }
 
 func (g *ConnectRPCGateway) writeError(w http.ResponseWriter, code codes.Code, msg string) {
-	body, _ := json.Marshal(map[string]string{
-		"code":    ErrorCodeToString(code),
-		"message": msg,
+	body, _ := json.Marshal(connectError{
+		Code:    ErrorCodeToString(code),
+		Message: msg,
+		Details: []map[string]any{},
 	})
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/connect+json")
 	w.WriteHeader(ErrorCodeToHTTPStatus(code))
 	_, _ = w.Write(body)
 }
@@ -486,21 +487,32 @@ func (a *httpStreamAdapter) encodeMessage(msg proto.Message, ct string) ([]byte,
 }
 
 func (a *httpStreamAdapter) writeError(code codes.Code, msg string) {
-	body, _ := json.Marshal(map[string]string{
-		"code":    ErrorCodeToString(code),
-		"message": msg,
+	body, _ := json.Marshal(connectError{
+		Code:    ErrorCodeToString(code),
+		Message: msg,
+		Details: []map[string]any{},
 	})
 
-	a.w.Header().Set("Content-Type", "application/json")
-	a.w.WriteHeader(ErrorCodeToHTTPStatus(code))
-	_, _ = a.w.Write(body)
+	if a.streaming {
+		if !a.sentHeader.Load() {
+			a.sendHeader()
+		}
+
+		_ = writeConnectFrame(a.w, body, true)
+	} else {
+		a.w.Header().Set("Content-Type", "application/connect+json")
+		a.w.WriteHeader(ErrorCodeToHTTPStatus(code))
+		_, _ = a.w.Write(body)
+	}
 }
 
 var _ grpc.ServerStream = (*httpStreamAdapter)(nil)
 
-//nolint:cyclop,exhaustive
+//nolint:cyclop
 func ErrorCodeToString(code codes.Code) string {
 	switch code {
+	case codes.OK:
+		return "ok"
 	case codes.Canceled:
 		return "canceled"
 	case codes.Unknown:

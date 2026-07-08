@@ -25,14 +25,33 @@ func (s *searcher) del(ids ...uuid.UUID) int {
 	}
 
 	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	for key := range s.stubCallCount {
 		if _, ok := idSet[key.id]; ok {
 			delete(s.stubCallCount, key)
 		}
 	}
-	s.mu.Unlock()
 
 	return s.storage.del(ids...)
+}
+
+// delBySession deletes all stubs belonging to the given session.
+func (s *searcher) delBySession(session string) int {
+	if session == "" {
+		return 0
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for key := range s.stubCallCount {
+		if key.session == session {
+			delete(s.stubCallCount, key)
+		}
+	}
+
+	return s.storage.delBySession(session)
 }
 
 // findByID retrieves the stub value associated with the given ID from the
@@ -110,9 +129,8 @@ func (s *searcher) used() []*Stub {
 // unused returns all Stub values that have not been used by the searcher (in any session).
 func (s *searcher) unused() []*Stub {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-
 	usedIDs := s.collectUsedIDs()
+	s.mu.RUnlock()
 
 	// Collect unused stubs in a single pass
 	var unused []*Stub

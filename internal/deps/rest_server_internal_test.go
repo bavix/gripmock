@@ -17,7 +17,7 @@ func TestRestServeAssignsActualPortForHTTPAddrZero(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.Load()
-	cfg.HTTPAddr = "127.0.0.1:0"
+	cfg.HTTP.Addr = "127.0.0.1:0"
 
 	builder := deps.NewBuilder(deps.WithConfig(cfg))
 	srv, err := builder.RestServe(t.Context(), "")
@@ -64,7 +64,7 @@ func TestRestServeReturnsErrorWhenHTTPPortIsBusy(t *testing.T) {
 	})
 
 	cfg := config.Load()
-	cfg.HTTPAddr = listener.Addr().String()
+	cfg.HTTP.Addr = listener.Addr().String()
 
 	builder := deps.NewBuilder(deps.WithConfig(cfg))
 	srv, serveErr := builder.RestServe(t.Context(), "")

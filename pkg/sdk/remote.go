@@ -11,17 +11,18 @@ import (
 	"sync/atomic"
 	"time"
 
-	grpcclient "github.com/bavix/gripmock/v3/internal/infra/grpcclient"
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/descriptorpb"
 
+	grpcclient "github.com/bavix/gripmock/v3/internal/infra/grpcclient"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/pkg/sdk/internal/remoteapi"
 )
 
+//nolint:containedctx
 type remoteMock struct {
 	ctx           context.Context
 	conn          *grpc.ClientConn
@@ -42,9 +43,14 @@ type remoteMock struct {
 
 func (m *remoteMock) Conn() *grpc.ClientConn { return m.conn }
 func (m *remoteMock) Addr() string           { return m.addr }
+
+//nolint:ireturn
 func (m *remoteMock) History() HistoryReader { return &remoteHistory{mock: m} }
-func (m *remoteMock) Verify() Verifier       { return &remoteVerifier{mock: m} }
-func (m *remoteMock) Stub(service, method string) StubBuilder {
+
+//nolint:ireturn
+func (m *remoteMock) Verify() Verifier { return &remoteVerifier{mock: m} }
+
+func (m *remoteMock) Stub(service, method string) StubBuilder { //nolint:ireturn
 	if strings.TrimSpace(service) == "" || strings.TrimSpace(method) == "" {
 		panic("sdk.Mock.Stub: service and method must be non-empty")
 	}
@@ -59,6 +65,7 @@ func (m *remoteMock) Close() error {
 
 	cleanupErr := m.cleanupStubs()
 	opErr := m.getOpErr()
+
 	var connErr error
 	if m.conn != nil {
 		connErr = m.conn.Close()
@@ -127,7 +134,7 @@ func (m *remoteMock) deleteOwnedStubs() error {
 }
 
 func (m *remoteMock) api() remoteapi.Client {
-	return m.apiWithContext(nil)
+	return m.apiWithContext(context.Background())
 }
 
 func (m *remoteMock) apiWithContext(ctx context.Context) remoteapi.Client {
@@ -136,7 +143,7 @@ func (m *remoteMock) apiWithContext(ctx context.Context) remoteapi.Client {
 		httpClient = http.DefaultClient
 	}
 
-	requestCtx := m.ctx
+	requestCtx := m.ctx //nolint:contextcheck
 	if ctx != nil {
 		requestCtx = ctx
 	}
@@ -157,10 +164,6 @@ func (m *remoteMock) uploadDescriptors(files []*descriptorpb.FileDescriptorProto
 	return m.api().UploadDescriptors(files)
 }
 
-func (m *remoteMock) addStub(stub *stuber.Stub) {
-	_ = m.commitStubs([]*stuber.Stub{stub})
-}
-
 func (m *remoteMock) commitStubs(stubs []*stuber.Stub) error {
 	if len(stubs) == 0 {
 		return nil
@@ -172,6 +175,7 @@ func (m *remoteMock) commitStubs(stubs []*stuber.Stub) error {
 
 	if err := m.api().AddStubs(stubs); err != nil {
 		m.setOpErr(err)
+
 		return err
 	}
 
@@ -186,13 +190,45 @@ func (m *remoteMock) commitStubs(stubs []*stuber.Stub) error {
 	return nil
 }
 
+// commitStubsBatch sends all stubs in a single REST call.
+func (m *remoteMock) commitStubsBatch(stubs []*stuber.Stub) error {
+	if len(stubs) == 0 {
+		return nil
+	}
+
+	if opErr := m.getOpErr(); opErr != nil {
+		return opErr
+	}
+
+	if err := m.compressAndSend(stubs); err != nil {
+		m.setOpErr(err)
+
+		return err
+	}
+
+	for _, stub := range stubs {
+		if stub.Options.Times > 0 {
+			m.recordExpected(stub.Service, stub.Method, stub.Options.Times)
+		}
+
+		m.appendStubID(stub.ID)
+	}
+
+	return nil
+}
+
+func (m *remoteMock) compressAndSend(stubs []*stuber.Stub) error {
+	return m.api().AddStubs(stubs)
+}
+
 func (m *remoteMock) recordExpected(service, method string, times int) {
-	m.expectedTotal.Add(int32(times))
+	m.expectedTotal.Add(int32(times)) //nolint:gosec
 
 	m.expectedMu.Lock()
 	if m.expectedByMth == nil {
 		m.expectedByMth = make(map[string]int)
 	}
+
 	m.expectedByMth[methodKey(service, method)] += times
 	m.expectedMu.Unlock()
 }
@@ -203,15 +239,16 @@ func (m *remoteMock) appendStubID(id uuid.UUID) {
 	m.stubIDsMu.Unlock()
 }
 
-func runRemote(ctx context.Context, o *options) (Mock, error) {
+func runRemote(ctx context.Context, o *options) (Mock, error) { //nolint:ireturn
 	o.remoteAddr = normalizeRemoteAddr(o.remoteAddr)
 	o.remoteRestURL = normalizeRemoteRestURL(o.remoteRestURL)
 
-	opts := []grpc.DialOption{
+	opts := []grpc.DialOption{ //nolint:prealloc
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
 
 	unaryInterceptors := []grpc.UnaryClientInterceptor{grpcclient.UnaryTimeoutInterceptor(o.grpcTimeout)}
+
 	streamInterceptors := []grpc.StreamClientInterceptor{grpcclient.StreamTimeoutInterceptor(o.grpcTimeout)}
 	if o.session != "" {
 		sess := o.session
@@ -228,10 +265,13 @@ func runRemote(ctx context.Context, o *options) (Mock, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to connect to remote gripmock at %s", o.remoteAddr)
 	}
+
 	if err := waitForHealthy(ctx, conn, o.healthyTimeout); err != nil {
 		_ = conn.Close()
+
 		return nil, err
 	}
+
 	rm := &remoteMock{
 		ctx:         context.WithoutCancel(ctx),
 		conn:        conn,
@@ -242,12 +282,13 @@ func runRemote(ctx context.Context, o *options) (Mock, error) {
 		sessionTTL:  o.sessionTTL,
 	}
 
-	if err := rm.uploadDescriptors(o.descriptorFiles); err != nil {
+	if err := rm.uploadDescriptors(o.descriptorFiles); err != nil { //nolint:contextcheck
 		_ = conn.Close()
+
 		return nil, err
 	}
 
-	rm.armSessionTTL()
+	rm.armSessionTTL() //nolint:contextcheck
 
 	return rm, nil
 }
@@ -256,6 +297,6 @@ func (m *remoteMock) stubBuilderCore(service, method string) *stubBuilderCore {
 	return &stubBuilderCore{
 		service:  service,
 		method:   method,
-		onCommit: func(stub *stuber.Stub) { m.addStub(stub) },
+		onCommit: func(stub *stuber.Stub) error { return m.commitStubs([]*stuber.Stub{stub}) },
 	}
 }

@@ -100,13 +100,7 @@ func rankInputData(inputData InputData, messageData map[string]any) float64 {
 }
 
 func matchInputEquals(expected map[string]any, messageData map[string]any) bool {
-	for key, expectedValue := range expected {
-		if actualValue, exists := findValueWithVariations(messageData, key); !exists || !deepEqual(actualValue, expectedValue) {
-			return false
-		}
-	}
-
-	return true
+	return equals(expected, messageData, false)
 }
 
 func matchInputContains(expected map[string]any, messageData map[string]any) bool {
@@ -120,7 +114,7 @@ func matchInputRegex(expected map[string]any, messageData map[string]any) bool {
 func matchInputByComparator(
 	expected map[string]any,
 	messageData map[string]any,
-	comparator func(map[string]any, any, bool) bool,
+	comparator func(map[string]any, any) bool,
 ) bool {
 	var scratch map[string]any
 
@@ -135,7 +129,7 @@ func matchInputByComparator(
 		}
 
 		scratch[key] = expectedValue
-		if !comparator(scratch, actualValue, false) {
+		if !comparator(scratch, actualValue) {
 			delete(scratch, key)
 
 			return false
@@ -151,7 +145,7 @@ func rankInputEquals(expected map[string]any, messageData map[string]any) float6
 	total := 0.0
 
 	for key, expectedValue := range expected {
-		if actualValue, exists := findValueWithVariations(messageData, key); exists && deepEqual(actualValue, expectedValue) {
+		if actualValue, exists := findValueWithVariations(messageData, key); exists && compareFieldValue(expectedValue, actualValue, false) {
 			total += 100.0
 		}
 	}
@@ -170,7 +164,7 @@ func rankInputRegex(expected map[string]any, messageData map[string]any) float64
 func rankInputByComparator(
 	expected map[string]any,
 	messageData map[string]any,
-	comparator func(map[string]any, any, bool) bool,
+	comparator func(map[string]any, any) bool,
 ) float64 {
 	var scratch map[string]any
 
@@ -183,7 +177,7 @@ func rankInputByComparator(
 			}
 
 			scratch[key] = expectedValue
-			if comparator(scratch, actualValue, false) {
+			if comparator(scratch, actualValue) {
 				total += 10.0
 			}
 

@@ -15,20 +15,24 @@ func TestConfigDefaults(t *testing.T) {
 
 	require.Equal(t, "info", conf.LogLevel)
 
-	require.Equal(t, "0.0.0.0", conf.HTTPHost)
-	require.Equal(t, "4771", conf.HTTPPort)
-	require.Equal(t, "0.0.0.0:4771", conf.HTTPAddr)
+	require.Equal(t, "0.0.0.0", conf.GRPC.Host)
+	require.Equal(t, "4770", conf.GRPC.Port)
+	require.Equal(t, "0.0.0.0:4770", conf.GRPC.Addr)
 
-	require.Empty(t, conf.GRPCTLSCertFile)
-	require.Empty(t, conf.GRPCTLSKeyFile)
-	require.False(t, conf.GRPCTLSClientAuth)
-	require.Empty(t, conf.GRPCTLSCAFile)
-	require.Equal(t, "1.2", conf.GRPCTLSMinVersion)
+	require.Equal(t, "0.0.0.0", conf.HTTP.Host)
+	require.Equal(t, "4771", conf.HTTP.Port)
+	require.Equal(t, "0.0.0.0:4771", conf.HTTP.Addr)
 
-	require.Empty(t, conf.HTTPTLSCertFile)
-	require.Empty(t, conf.HTTPTLSKeyFile)
-	require.False(t, conf.HTTPTLSClientAuth)
-	require.Empty(t, conf.HTTPTLSCAFile)
+	require.Empty(t, conf.GRPCTLS.CertFile)
+	require.Empty(t, conf.GRPCTLS.KeyFile)
+	require.False(t, conf.GRPCTLS.ClientAuth)
+	require.Empty(t, conf.GRPCTLS.CAFile)
+	require.Equal(t, "1.2", conf.GRPCTLS.MinVersion)
+
+	require.Empty(t, conf.HTTPTLS.CertFile)
+	require.Empty(t, conf.HTTPTLS.KeyFile)
+	require.False(t, conf.HTTPTLS.ClientAuth)
+	require.Empty(t, conf.HTTPTLS.CAFile)
 }
 
 //nolint:paralleltest
@@ -61,22 +65,22 @@ func TestConfigOverride(t *testing.T) {
 	require.Equal(t, "trace", conf.LogLevel)
 
 	require.Equal(t, "udp", conf.GRPCNetwork)
-	require.Equal(t, "111.111.111.111", conf.GRPCHost)
-	require.Equal(t, "1111", conf.GRPCPort)
-	require.Equal(t, "111.111.111.111:1111", conf.GRPCAddr)
+	require.Equal(t, "111.111.111.111", conf.GRPC.Host)
+	require.Equal(t, "1111", conf.GRPC.Port)
+	require.Equal(t, "111.111.111.111:1111", conf.GRPC.Addr)
 
-	require.Equal(t, "192.168.1.2", conf.HTTPHost)
-	require.Equal(t, "2000", conf.HTTPPort)
-	require.Equal(t, "192.168.1.2:2000", conf.HTTPAddr)
+	require.Equal(t, "192.168.1.2", conf.HTTP.Host)
+	require.Equal(t, "2000", conf.HTTP.Port)
+	require.Equal(t, "192.168.1.2:2000", conf.HTTP.Addr)
 
-	require.Equal(t, "grpc-cert.pem", conf.GRPCTLSCertFile)
-	require.Equal(t, "grpc-key.pem", conf.GRPCTLSKeyFile)
-	require.True(t, conf.GRPCTLSClientAuth)
-	require.Equal(t, "grpc-ca.pem", conf.GRPCTLSCAFile)
-	require.Equal(t, "1.3", conf.GRPCTLSMinVersion)
+	require.Equal(t, "grpc-cert.pem", conf.GRPCTLS.CertFile)
+	require.Equal(t, "grpc-key.pem", conf.GRPCTLS.KeyFile)
+	require.True(t, conf.GRPCTLS.ClientAuth)
+	require.Equal(t, "grpc-ca.pem", conf.GRPCTLS.CAFile)
+	require.Equal(t, "1.3", conf.GRPCTLS.MinVersion)
 
-	require.Equal(t, "http-cert.pem", conf.HTTPTLSCertFile)
-	require.Equal(t, "http-key.pem", conf.HTTPTLSKeyFile)
-	require.True(t, conf.HTTPTLSClientAuth)
-	require.Equal(t, "http-ca.pem", conf.HTTPTLSCAFile)
+	require.Equal(t, "http-cert.pem", conf.HTTPTLS.CertFile)
+	require.Equal(t, "http-key.pem", conf.HTTPTLS.KeyFile)
+	require.True(t, conf.HTTPTLS.ClientAuth)
+	require.Equal(t, "http-ca.pem", conf.HTTPTLS.CAFile)
 }

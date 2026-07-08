@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"strings"
@@ -35,6 +36,32 @@ func TestResolveDescriptorsFromReflectionInvalidAddress(t *testing.T) {
 			strings.Contains(errStr, "missing port"))
 }
 
+// newReflectionSrv creates a test gRPC server with a registered reflection fake.
+func newReflectionSrv(t *testing.T, fake reflectionpb.ServerReflectionServer) (context.Context, string) {
+	t.Helper()
+
+	lc := net.ListenConfig{}
+	lis, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	t.Cleanup(func() { _ = lis.Close() })
+
+	_, port, _ := net.SplitHostPort(lis.Addr().String())
+	addr := "127.0.0.1:" + port
+
+	server := grpc.NewServer()
+	reflectionpb.RegisterServerReflectionServer(server, fake)
+
+	go func() { _ = server.Serve(lis) }()
+
+	t.Cleanup(server.GracefulStop)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
+	t.Cleanup(cancel)
+
+	return ctx, addr
+}
+
 // fakeReflectionAbortImmediately returns error from ServerReflectionInfo before Recv,
 // causing client's stream.Send to fail (stream is aborted).
 type fakeReflectionAbortImmediately struct {
@@ -48,24 +75,10 @@ func (f *fakeReflectionAbortImmediately) ServerReflectionInfo(stream reflectionp
 func TestResolveDescriptorsFromReflectionStreamAborted(t *testing.T) {
 	t.Parallel()
 
-	lis, err := net.Listen("tcp", ":0")
-	require.NoError(t, err)
-	defer lis.Close()
+	ctx, addr := newReflectionSrv(t, &fakeReflectionAbortImmediately{})
 
-	_, port, _ := net.SplitHostPort(lis.Addr().String())
-	addr := "127.0.0.1:" + port
-
-	server := grpc.NewServer()
-	reflectionpb.RegisterServerReflectionServer(server, &fakeReflectionAbortImmediately{})
-	go func() { _ = server.Serve(lis) }()
-	defer server.GracefulStop()
-
-	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
-	defer cancel()
-
-	_, err = resolveDescriptorsFromReflection(ctx, addr)
+	_, err := resolveDescriptorsFromReflection(ctx, addr)
 	require.Error(t, err)
-	// Server aborts immediately; client Send or stream setup fails
 	errStr := err.Error()
 	require.True(t,
 		strings.Contains(errStr, "failed to send ListServices") ||
@@ -76,9 +89,11 @@ func TestResolveDescriptorsFromReflectionStreamAborted(t *testing.T) {
 func TestResolveDescriptorsFromReflectionConnectionClosed(t *testing.T) {
 	t.Parallel()
 
-	lis, err := net.Listen("tcp", ":0")
+	lc := net.ListenConfig{}
+	lis, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	defer lis.Close()
+
+	defer func() { _ = lis.Close() }()
 
 	_, port, _ := net.SplitHostPort(lis.Addr().String())
 	addr := "127.0.0.1:" + port
@@ -87,6 +102,7 @@ func TestResolveDescriptorsFromReflectionConnectionClosed(t *testing.T) {
 		conn, _ := lis.Accept()
 		if conn != nil {
 			time.Sleep(100 * time.Millisecond)
+
 			_ = conn.Close()
 		}
 	}()
@@ -108,14 +124,16 @@ func TestResolveDescriptorsFromReflectionConnectionClosed(t *testing.T) {
 // fakeReflectionServer returns unexpected response to trigger listResp == nil path.
 type fakeReflectionServer struct {
 	reflectionpb.UnimplementedServerReflectionServer
+
 	response *reflectionpb.ServerReflectionResponse
 }
 
 func (f *fakeReflectionServer) ServerReflectionInfo(stream reflectionpb.ServerReflection_ServerReflectionInfoServer) error {
 	_, err := stream.Recv()
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		return nil
 	}
+
 	if err != nil {
 		return err
 	}
@@ -126,29 +144,17 @@ func (f *fakeReflectionServer) ServerReflectionInfo(stream reflectionpb.ServerRe
 func TestResolveDescriptorsFromReflectionUnexpectedResponse(t *testing.T) {
 	t.Parallel()
 
-	lis, err := net.Listen("tcp", ":0")
-	require.NoError(t, err)
-	defer lis.Close()
-
-	_, port, _ := net.SplitHostPort(lis.Addr().String())
-	addr := "127.0.0.1:" + port
-
-	server := grpc.NewServer()
 	fake := &fakeReflectionServer{
 		response: &reflectionpb.ServerReflectionResponse{
 			MessageResponse: &reflectionpb.ServerReflectionResponse_FileDescriptorResponse{
-				FileDescriptorResponse: &reflectionpb.FileDescriptorResponse{}, // wrong type for ListServices
+				FileDescriptorResponse: &reflectionpb.FileDescriptorResponse{},
 			},
 		},
 	}
-	reflectionpb.RegisterServerReflectionServer(server, fake)
-	go func() { _ = server.Serve(lis) }()
-	defer server.GracefulStop()
 
-	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
-	defer cancel()
+	ctx, addr := newReflectionSrv(t, fake)
 
-	_, err = resolveDescriptorsFromReflection(ctx, addr)
+	_, err := resolveDescriptorsFromReflection(ctx, addr)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unexpected response: not ListServicesResponse")
 }
@@ -162,13 +168,15 @@ type fakeReflectionErrorResponse struct {
 func (f *fakeReflectionErrorResponse) ServerReflectionInfo(stream reflectionpb.ServerReflection_ServerReflectionInfoServer) error {
 	for {
 		req, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
+
 		if err != nil {
 			return err
 		}
-		if _, ok := req.MessageRequest.(*reflectionpb.ServerReflectionRequest_ListServices); ok {
+
+		if _, ok := req.GetMessageRequest().(*reflectionpb.ServerReflectionRequest_ListServices); ok {
 			_ = stream.Send(&reflectionpb.ServerReflectionResponse{
 				MessageResponse: &reflectionpb.ServerReflectionResponse_ListServicesResponse{
 					ListServicesResponse: &reflectionpb.ListServiceResponse{
@@ -193,22 +201,9 @@ func (f *fakeReflectionErrorResponse) ServerReflectionInfo(stream reflectionpb.S
 func TestResolveDescriptorsFromReflectionErrorResponse(t *testing.T) {
 	t.Parallel()
 
-	lis, err := net.Listen("tcp", ":0")
-	require.NoError(t, err)
-	defer lis.Close()
+	ctx, addr := newReflectionSrv(t, &fakeReflectionErrorResponse{})
 
-	_, port, _ := net.SplitHostPort(lis.Addr().String())
-	addr := "127.0.0.1:" + port
-
-	server := grpc.NewServer()
-	reflectionpb.RegisterServerReflectionServer(server, &fakeReflectionErrorResponse{})
-	go func() { _ = server.Serve(lis) }()
-	defer server.GracefulStop()
-
-	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
-	defer cancel()
-
-	_, err = resolveDescriptorsFromReflection(ctx, addr)
+	_, err := resolveDescriptorsFromReflection(ctx, addr)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "reflection error for")
 	require.Contains(t, err.Error(), "symbol not found")
@@ -223,13 +218,15 @@ type fakeReflectionUnexpectedFileResp struct {
 func (f *fakeReflectionUnexpectedFileResp) ServerReflectionInfo(stream reflectionpb.ServerReflection_ServerReflectionInfoServer) error {
 	for {
 		req, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
+
 		if err != nil {
 			return err
 		}
-		if _, ok := req.MessageRequest.(*reflectionpb.ServerReflectionRequest_ListServices); ok {
+
+		if _, ok := req.GetMessageRequest().(*reflectionpb.ServerReflectionRequest_ListServices); ok {
 			_ = stream.Send(&reflectionpb.ServerReflectionResponse{
 				MessageResponse: &reflectionpb.ServerReflectionResponse_ListServicesResponse{
 					ListServicesResponse: &reflectionpb.ListServiceResponse{
@@ -252,22 +249,9 @@ func (f *fakeReflectionUnexpectedFileResp) ServerReflectionInfo(stream reflectio
 func TestResolveDescriptorsFromReflectionUnexpectedFileResponse(t *testing.T) {
 	t.Parallel()
 
-	lis, err := net.Listen("tcp", ":0")
-	require.NoError(t, err)
-	defer lis.Close()
+	ctx, addr := newReflectionSrv(t, &fakeReflectionUnexpectedFileResp{})
 
-	_, port, _ := net.SplitHostPort(lis.Addr().String())
-	addr := "127.0.0.1:" + port
-
-	server := grpc.NewServer()
-	reflectionpb.RegisterServerReflectionServer(server, &fakeReflectionUnexpectedFileResp{})
-	go func() { _ = server.Serve(lis) }()
-	defer server.GracefulStop()
-
-	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
-	defer cancel()
-
-	_, err = resolveDescriptorsFromReflection(ctx, addr)
+	_, err := resolveDescriptorsFromReflection(ctx, addr)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unexpected response for")
 	require.Contains(t, err.Error(), "not FileDescriptorResponse")
@@ -282,13 +266,15 @@ type fakeReflectionCorruptProto struct {
 func (f *fakeReflectionCorruptProto) ServerReflectionInfo(stream reflectionpb.ServerReflection_ServerReflectionInfoServer) error {
 	for {
 		req, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
+
 		if err != nil {
 			return err
 		}
-		if _, ok := req.MessageRequest.(*reflectionpb.ServerReflectionRequest_ListServices); ok {
+
+		if _, ok := req.GetMessageRequest().(*reflectionpb.ServerReflectionRequest_ListServices); ok {
 			_ = stream.Send(&reflectionpb.ServerReflectionResponse{
 				MessageResponse: &reflectionpb.ServerReflectionResponse_ListServicesResponse{
 					ListServicesResponse: &reflectionpb.ListServiceResponse{
@@ -312,22 +298,9 @@ func (f *fakeReflectionCorruptProto) ServerReflectionInfo(stream reflectionpb.Se
 func TestResolveDescriptorsFromReflectionCorruptProto(t *testing.T) {
 	t.Parallel()
 
-	lis, err := net.Listen("tcp", ":0")
-	require.NoError(t, err)
-	defer lis.Close()
+	ctx, addr := newReflectionSrv(t, &fakeReflectionCorruptProto{})
 
-	_, port, _ := net.SplitHostPort(lis.Addr().String())
-	addr := "127.0.0.1:" + port
-
-	server := grpc.NewServer()
-	reflectionpb.RegisterServerReflectionServer(server, &fakeReflectionCorruptProto{})
-	go func() { _ = server.Serve(lis) }()
-	defer server.GracefulStop()
-
-	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
-	defer cancel()
-
-	_, err = resolveDescriptorsFromReflection(ctx, addr)
+	_, err := resolveDescriptorsFromReflection(ctx, addr)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to unmarshal FileDescriptorProto")
 }
@@ -340,13 +313,15 @@ type fakeReflectionEmptyName struct {
 func (f *fakeReflectionEmptyName) ServerReflectionInfo(stream reflectionpb.ServerReflection_ServerReflectionInfoServer) error {
 	for {
 		req, err := stream.Recv()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
+
 		if err != nil {
 			return err
 		}
-		if _, ok := req.MessageRequest.(*reflectionpb.ServerReflectionRequest_ListServices); ok {
+
+		if _, ok := req.GetMessageRequest().(*reflectionpb.ServerReflectionRequest_ListServices); ok {
 			// Include empty name to trigger name=="" continue branch
 			_ = stream.Send(&reflectionpb.ServerReflectionResponse{
 				MessageResponse: &reflectionpb.ServerReflectionResponse_ListServicesResponse{
@@ -360,8 +335,8 @@ func (f *fakeReflectionEmptyName) ServerReflectionInfo(stream reflectionpb.Serve
 			})
 		} else if req.GetFileContainingSymbol() != "" {
 			fdp := &descriptorpb.FileDescriptorProto{
-				Name:    proto.String(""), // empty -> key becomes "test.unknown"
-				Package: proto.String("test"),
+				Name:    new(""), // empty -> key becomes "test.unknown"
+				Package: new("test"),
 			}
 			raw, _ := proto.Marshal(fdp)
 			_ = stream.Send(&reflectionpb.ServerReflectionResponse{
@@ -378,25 +353,12 @@ func (f *fakeReflectionEmptyName) ServerReflectionInfo(stream reflectionpb.Serve
 func TestResolveDescriptorsFromReflectionEmptyNameKey(t *testing.T) {
 	t.Parallel()
 
-	lis, err := net.Listen("tcp", ":0")
-	require.NoError(t, err)
-	defer lis.Close()
-
-	_, port, _ := net.SplitHostPort(lis.Addr().String())
-	addr := "127.0.0.1:" + port
-
-	server := grpc.NewServer()
-	reflectionpb.RegisterServerReflectionServer(server, &fakeReflectionEmptyName{})
-	go func() { _ = server.Serve(lis) }()
-	defer server.GracefulStop()
-
-	ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
-	defer cancel()
+	ctx, addr := newReflectionSrv(t, &fakeReflectionEmptyName{})
 
 	fds, err := resolveDescriptorsFromReflection(ctx, addr)
 	require.NoError(t, err)
 	require.NotNil(t, fds)
-	require.Len(t, fds.File, 1)
+	require.Len(t, fds.GetFile(), 1)
 	// key was "test.unknown" from empty name + package
-	require.Equal(t, "test", fds.File[0].GetPackage())
+	require.Equal(t, "test", fds.GetFile()[0].GetPackage())
 }

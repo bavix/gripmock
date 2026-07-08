@@ -168,7 +168,7 @@ func BenchmarkAll(b *testing.B) {
 	budgerigar := stuber.NewBudgerigar()
 
 	// Insert initial values.
-	for range 500 {
+	for range 5000 {
 		budgerigar.PutMany(&stuber.Stub{
 			ID:      uuid.New(),
 			Service: "service-" + uuid.NewString(),

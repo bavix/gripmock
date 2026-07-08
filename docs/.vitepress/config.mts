@@ -188,6 +188,7 @@ export default defineConfig({
           { text: 'Remote Mode', link: '/guide/embedded-sdk/remote-mode' },
           { text: 'Sessions', link: '/guide/embedded-sdk/sessions' },
           { text: 'Best Practices', link: '/guide/embedded-sdk/best-practices' },
+          { text: 'Upgrade Guide', link: '/guide/embedded-sdk/upgrade' },
         ],
         collapsed: false,
       },

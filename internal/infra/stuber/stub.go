@@ -1,6 +1,7 @@
 package stuber
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,19 +33,25 @@ type StubOptions struct {
 
 // Stub represents a gRPC service method and its associated data.
 type Stub struct {
-	ID       uuid.UUID   `json:"id"`                                               // The unique identifier of the stub.
-	Service  string      `json:"service"           validate:"required"`            // The name of the service.
-	Method   string      `json:"method"            validate:"required"`            // The name of the method.
-	Session  string      `json:"session,omitempty"`                                // Session ID for isolation (empty = global).
-	Priority int         `json:"priority"`                                         // The priority score of the stub.
-	Options  StubOptions `json:"options,omitempty"`                                //nolint:modernize
-	Headers  InputHeader `json:"headers"`                                          // The headers of the request.
-	Input    InputData   `json:"input"             validate:"valid_input_config"`  // Unary input (mutually exclusive with Inputs).
-	Inputs   []InputData `json:"inputs,omitempty"  validate:"valid_input_config"`  // Client streaming inputs (mutually exclusive with Input).
-	Output   Output      `json:"output"            validate:"valid_output_config"` // The output data of the response.
-	Effects  []Effect    `json:"effects,omitempty" validate:"valid_effects"`       // Side effects applied after a successful match.
-	Source   string      `json:"source,omitempty"`                                 // Stub source.
+	ID                  uuid.UUID     `json:"id"`                                                           // Unique stub identifier.
+	Service             string        `json:"service"                       validate:"required"`            // Service name.
+	Method              string        `json:"method"                        validate:"required"`            // Method name.
+	Session             string        `json:"session,omitempty"`                                            // Session ID (empty = global).
+	Priority            int           `json:"priority"`                                                     // Priority score.
+	Options             StubOptions   `json:"options,omitempty"`                                            //nolint:modernize
+	Headers             InputHeader   `json:"headers"`                                                      // Request headers.
+	Input               InputData     `json:"input"                         validate:"valid_input_config"`  // Unary matches.
+	Inputs              []InputData   `json:"inputs,omitempty"              validate:"valid_input_config"`  // Stream matches.
+	Output              Output        `json:"output"                        validate:"valid_output_config"` // Response output.
+	Effects             []Effect      `json:"effects,omitempty"             validate:"valid_effects"`       // Side effects.
+	Source              string        `json:"source,omitempty"`                                             // Stub source.
+	Handler             StreamHandler `json:"-"`                                                            // Custom stream handler.
+	MatchOnFirstMessage bool          `json:"matchOnFirstMessage,omitempty"`                                // Match on first msg only.
 }
+
+// StreamHandler processes a bidirectional stream directly.
+// When set on a Stub, the handler manages send/recv instead of using static Output.
+type StreamHandler func(ctx context.Context, stream any) error
 
 const (
 	EffectActionUpsert = "upsert"
@@ -58,28 +65,28 @@ type Effect struct {
 	Stub   map[string]any `json:"stub,omitempty"`
 }
 
-// GripmockKey is the reserved map key for per-element stream metadata.
+// GripMockKey is the reserved map key for per-element stream metadata.
 // When present in a stream entry, it must be a map[string]any.
 // Supported sub-keys:
 //   - "delay" — per-element delay before sending this message (Go duration string)
-const GripmockKey = "_gripmock"
+const GripMockKey = "_gripmock"
 
-// ExtractGripmockDelay checks a stream element map for GripmockKey.
-// If found, it extracts the "delay" value, deletes GripmockKey from the map,
+// ExtractGripMockDelay checks a stream element map for GripMockKey.
+// If found, it extracts the "delay" value, deletes GripMockKey from the map,
 // and returns the parsed duration. Returns (0, false) if no valid delay is present.
 //
-// The map is modified in place (GripmockKey is removed).
-func ExtractGripmockDelay(m map[string]any) (types.Duration, bool) {
+// The map is modified in place (GripMockKey is removed).
+func ExtractGripMockDelay(m map[string]any) (types.Duration, bool) {
 	if m == nil {
 		return 0, false
 	}
 
-	raw, has := m[GripmockKey]
+	raw, has := m[GripMockKey]
 	if !has {
 		return 0, false
 	}
 
-	delete(m, GripmockKey)
+	delete(m, GripMockKey)
 
 	gk, ok := raw.(map[string]any)
 	if !ok {

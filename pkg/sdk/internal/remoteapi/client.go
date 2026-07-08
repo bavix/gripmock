@@ -2,9 +2,11 @@ package remoteapi
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -17,6 +19,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
+//nolint:containedctx
 type Client struct {
 	BaseURL    string
 	HTTPClient *http.Client
@@ -49,14 +52,79 @@ func (e VerifyBadRequestError) Error() string {
 	return e.Message
 }
 
+//nolint:funcorder
 func (c Client) getHTTPClient() *http.Client {
-	if c.HTTPClient != nil {
-		return c.HTTPClient
+	cli := c.HTTPClient
+	if cli == nil {
+		cli = http.DefaultClient
 	}
 
-	return http.DefaultClient
+	// Wrap transport with gzip compression middleware
+	transport := cli.Transport
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+
+	return &http.Client{
+		Transport:     &gzipRoundTripper{next: transport},
+		CheckRedirect: cli.CheckRedirect,
+		Jar:           cli.Jar,
+		Timeout:       cli.Timeout,
+	}
 }
 
+// gzipRoundTripper compresses request bodies and decompresses response bodies.
+type gzipRoundTripper struct {
+	next http.RoundTripper
+}
+
+func (rt *gzipRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Compress request body if present
+	if req.Body != nil && req.Body != http.NoBody {
+		origBody, err := io.ReadAll(req.Body)
+		_ = req.Body.Close()
+
+		if err != nil {
+			return nil, err
+		}
+
+		var buf bytes.Buffer
+
+		gw := gzip.NewWriter(&buf)
+		if _, err := gw.Write(origBody); err != nil {
+			return nil, err
+		}
+
+		if err := gw.Close(); err != nil {
+			return nil, err
+		}
+
+		req.Body = io.NopCloser(bytes.NewReader(buf.Bytes()))
+		req.ContentLength = int64(buf.Len())
+		req.Header.Set("Content-Encoding", "gzip")
+	}
+
+	resp, err := rt.next.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decompress response body if gzip encoded
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		reader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			_ = resp.Body.Close()
+
+			return nil, err
+		}
+
+		resp.Body = reader
+	}
+
+	return resp, nil
+}
+
+//nolint:funcorder
 func (c Client) getContext() context.Context {
 	if c.Context != nil {
 		return c.Context
@@ -65,6 +133,7 @@ func (c Client) getContext() context.Context {
 	return context.Background()
 }
 
+//nolint:funcorder
 func (c Client) newRequest(method, requestURL string, body []byte, contentType string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(c.getContext(), method, requestURL, bytes.NewReader(body))
 	if err != nil {
@@ -82,6 +151,7 @@ func (c Client) newRequest(method, requestURL string, body []byte, contentType s
 	return req, nil
 }
 
+//nolint:funcorder
 func (c Client) buildAPIURL(path string) (string, error) {
 	apiURL, err := url.JoinPath(c.BaseURL, path)
 	if err != nil {
@@ -91,6 +161,7 @@ func (c Client) buildAPIURL(path string) (string, error) {
 	return apiURL, nil
 }
 
+//nolint:funcorder
 func (c Client) sendRequest(method, path string, body []byte, contentType string) (*http.Response, error) {
 	apiURL, err := c.buildAPIURL(path)
 	if err != nil {
@@ -133,10 +204,10 @@ func (c Client) AddStubs(stubs []*stuber.Stub) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("sdk: add stubs failed with status %d", resp.StatusCode)
+		return fmt.Errorf("sdk: add stubs failed with status %d", resp.StatusCode) //nolint:err113
 	}
 
 	return nil
@@ -157,13 +228,14 @@ func (c Client) BatchDelete(ids []uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
 		return nil
 	}
+
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("sdk: batch delete stubs failed with status %d", resp.StatusCode)
+		return fmt.Errorf("sdk: batch delete stubs failed with status %d", resp.StatusCode) //nolint:err113
 	}
 
 	return nil
@@ -188,10 +260,10 @@ func (c Client) UploadDescriptors(files []*descriptorpb.FileDescriptorProto) err
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("sdk: upload descriptors failed with status %d", resp.StatusCode)
+		return fmt.Errorf("sdk: upload descriptors failed with status %d", resp.StatusCode) //nolint:err113
 	}
 
 	return nil
@@ -207,9 +279,10 @@ func (c Client) FetchHistory() ([]HistoryCall, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
+
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("sdk: fetch history failed with status %d", resp.StatusCode)
+		return nil, fmt.Errorf("sdk: fetch history failed with status %d", resp.StatusCode) //nolint:err113
 	}
 
 	var list []struct {
@@ -239,7 +312,7 @@ func (c Client) FetchHistory() ([]HistoryCall, error) {
 			Responses: ptrOrZero(call.Responses),
 			Code:      ptrOrZero(call.Code),
 			Error:     ptrOrZero(call.Error),
-			StubID:    uuid.UUID(ptrOrZero(call.StubID)),
+			StubID:    ptrOrZero(call.StubID),
 			Timestamp: ptrOrZero(call.Timestamp),
 		}
 	}
@@ -266,27 +339,29 @@ func (c Client) VerifyMethodCalled(service, method string, expectedCount int) er
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusBadRequest {
 		var errBody struct {
 			Message *string `json:"message"`
 		}
+
 		_ = json.NewDecoder(resp.Body).Decode(&errBody)
 
 		return VerifyBadRequestError{Message: ptrOrZero(errBody.Message)}
 	}
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("sdk: verify request failed with status %d", resp.StatusCode)
+		return fmt.Errorf("sdk: verify request failed with status %d", resp.StatusCode) //nolint:err113
 	}
 
 	return nil
 }
 
-func ptrOrZero[T any](p *T) T {
+func ptrOrZero[T any](p *T) T { //nolint:ireturn
 	if p == nil {
 		var zero T
+
 		return zero
 	}
 

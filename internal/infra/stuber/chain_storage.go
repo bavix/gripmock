@@ -143,6 +143,12 @@ func (s *storageWithInternal) clear() {
 	s.internalBase.clear()
 }
 
+// delBySession deletes all external stubs belonging to the given session.
+// Internal stubs are not session-scoped and are never deleted by session.
+func (s *storageWithInternal) delBySession(session string) int {
+	return s.storage.delBySession(session)
+}
+
 // findByIDs returns stubs by IDs from storage.
 func (s *storageWithInternal) findByIDs(ids iter.Seq[uuid.UUID]) iter.Seq[*Stub] {
 	return s.storage.findByIDs(ids)

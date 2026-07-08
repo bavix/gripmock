@@ -6,7 +6,7 @@
 
 # GripMock 🚀
 
-**Languages:** English | [简体中文](README.zh-CN.md)
+**Languages:** English | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
 **The fastest and most reliable gRPC mock server** for testing and development.
 
@@ -33,7 +33,7 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 - **OpenTelemetry Tracing** - OTLP tracing for gRPC and HTTP paths (`otelgrpc` + `otelhttp`)
 - **Prometheus Metrics (`/metrics`)** - Runtime/process metrics (`go_*`, `process_*`) plus GripMock metrics
 - **Operational APIs** - Health endpoints, descriptors API, stubs API, and web dashboard
-- **Embedded SDK (Experimental)** - Run GripMock inside Go tests/services with verification helpers
+- **Embedded SDK (Experimental)** - Run GripMock inside Go tests with verification helpers
 - **MCP API (Experimental)** - Streamable MCP endpoint for agent and tool integrations
 - **Upstream Modes (Experimental)** - `proxy`, `replay`, `capture` modes for gradual migration from live upstream services to local mocks
 
@@ -43,7 +43,7 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 
 - **Descriptor API (`/api/descriptors`)**: runtime loading of compiled proto descriptors (`.pb`) with validated curl workflow: [docs](https://bavix.github.io/gripmock/guide/api/descriptors)
 - **Upstream Modes (Experimental)**: `proxy`, `replay`, `capture` with practical rollout guidance: [docs](https://bavix.github.io/gripmock/guide/modes)
-- **Embedded SDK (Experimental)**: in-process testing with stubs, verification, `sdk.By(fullMethod)` helpers, and context-aware remote checks: [docs](https://bavix.github.io/gripmock/guide/embedded-sdk)
+- **Embedded SDK (Experimental)**: in-process testing with `sdk.NewServer`, `Match()`, `Return()`, and verification: [docs](https://bavix.github.io/gripmock/guide/embedded-sdk)
 - **Faker Reference**: built-in faker key-by-key catalog with examples: [docs](https://bavix.github.io/gripmock/guide/stubs/faker)
 - **OpenTelemetry + Metrics**: tracing env vars and `/metrics` behavior: [docs](https://bavix.github.io/gripmock/guide/introduction/advanced-usage)
 - **GitHub Actions (CI/CD)**: official workflow action to download, start, wait for readiness, and stop GripMock automatically: [docs](https://bavix.github.io/gripmock/guide/ci-cd/github-actions)

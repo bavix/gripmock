@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -20,7 +19,6 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-json"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
@@ -31,7 +29,6 @@ import (
 	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/reflection"
 	reflectiongrpc "google.golang.org/grpc/reflection/grpc_reflection_v1"
 	reflectiongrpcv1alpha "google.golang.org/grpc/reflection/grpc_reflection_v1alpha"
@@ -51,7 +48,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/grpccontext"
 	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
-	"github.com/bavix/gripmock/v3/internal/infra/session"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
@@ -102,146 +98,6 @@ var (
 		},
 	}
 )
-
-func sessionFromMetadata(md metadata.MD) string {
-	for _, v := range md.Get(sessionHeaderKey) {
-		if sessionID := strings.TrimSpace(v); sessionID != "" {
-			session.Touch(sessionID)
-
-			return sessionID
-		}
-	}
-
-	return ""
-}
-
-func sessionFromContext(ctx context.Context) string {
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		return sessionFromMetadata(md)
-	}
-
-	return ""
-}
-
-type bidiRecordingStream struct {
-	grpc.ServerStream
-
-	requests  []map[string]any
-	responses []map[string]any
-	stubID    uuid.UUID
-	maxItems  int
-}
-
-func (s *bidiRecordingStream) RecvMsg(m any) error {
-	err := s.ServerStream.RecvMsg(m)
-	if err != nil {
-		return err
-	}
-
-	if msgMap := protoToMap(m); msgMap != nil && len(s.requests) < s.maxItems {
-		s.requests = append(s.requests, msgMap)
-	}
-
-	return nil
-}
-
-func (s *bidiRecordingStream) SendMsg(m any) error {
-	err := s.ServerStream.SendMsg(m)
-	if err != nil {
-		return err
-	}
-
-	if msgMap := protoToMap(m); msgMap != nil && len(s.responses) < s.maxItems {
-		s.responses = append(s.responses, msgMap)
-	}
-
-	return nil
-}
-
-func (s *bidiRecordingStream) getRequests() []map[string]any { return s.requests }
-
-func (s *bidiRecordingStream) getResponses() []map[string]any { return s.responses }
-
-func (s *bidiRecordingStream) setStubID(id uuid.UUID) { s.stubID = id }
-
-func (s *bidiRecordingStream) getStubID() uuid.UUID { return s.stubID }
-
-func (m *grpcMocker) recordCall(
-	ctx context.Context,
-	stubID uuid.UUID,
-	code uint32,
-	timestamp time.Time,
-	requests []map[string]any,
-	responses []any,
-	errMsg string,
-) {
-	if m.recorder == nil || len(requests) == 0 {
-		return
-	}
-
-	recordedResponses := make([]map[string]any, 0, len(responses))
-	for _, r := range responses {
-		if m, ok := r.(map[string]any); ok {
-			recordedResponses = append(recordedResponses, m)
-		}
-	}
-
-	rec := history.CallRecord{
-		Service:   m.fullServiceName,
-		Method:    m.methodName,
-		Session:   sessionFromContext(ctx),
-		Requests:  requests,
-		Responses: recordedResponses,
-		Error:     errMsg,
-		Code:      code,
-		StubID:    stubID,
-		Timestamp: timestamp,
-	}
-
-	if len(requests) > 0 {
-		rec.Request = requests[0]
-	}
-
-	if len(recordedResponses) > 0 {
-		rec.Response = recordedResponses[0]
-	}
-
-	m.recorder.Record(rec)
-}
-
-// processHeaders converts metadata to headers map, excluding specified headers.
-func processHeaders(md metadata.MD) map[string]any {
-	if len(md) == 0 {
-		return nil
-	}
-
-	headers := make(map[string]any, len(md))
-
-	for k, v := range md {
-		if _, excluded := excludedHeaders[k]; !excluded {
-			headers[k] = strings.Join(v, ";")
-		}
-	}
-
-	return headers
-}
-
-func sendStreamMessage(stream grpc.ServerStream, msg *dynamicpb.Message) error {
-	if err := stream.SendMsg(msg); err != nil {
-		return errors.Wrap(err, "failed to send response")
-	}
-
-	return nil
-}
-
-func receiveStreamMessage(stream grpc.ServerStream, msg *dynamicpb.Message) error {
-	err := stream.RecvMsg(msg)
-	if err != nil {
-		return errors.Wrap(err, "failed to receive message")
-	}
-
-	return nil
-}
 
 const serviceReflection = "grpc.reflection.v1.ServerReflection"
 
@@ -584,7 +440,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 			for _, item := range found.Output.Stream {
 				if itemMap, ok := item.(map[string]any); ok {
 					clean := deepCopyMapAny(itemMap)
-					stuber.ExtractGripmockDelay(clean)
+					stuber.ExtractGripMockDelay(clean)
 					streamResponses = append(streamResponses, clean)
 				} else {
 					streamResponses = append(streamResponses, item)
@@ -686,7 +542,7 @@ func (m *grpcMocker) handleStreamElement(
 	outputDataCopy := deepCopyMapAny(outputData)
 
 	delay := found.Output.Delay
-	if d, ok := stuber.ExtractGripmockDelay(outputDataCopy); ok {
+	if d, ok := stuber.ExtractGripMockDelay(outputDataCopy); ok {
 		delay = d
 	}
 
@@ -1127,180 +983,6 @@ func (m *grpcMocker) handleOutputError(_ context.Context, _ grpc.ServerStream, o
 	return nil
 }
 
-func (m *grpcMocker) applyEffects(
-	ctx context.Context,
-	matched *stuber.Stub,
-	templateData template.Data,
-) {
-	if len(matched.Effects) == 0 {
-		return
-	}
-
-	prepared := make([]effectOperation, 0, len(matched.Effects))
-
-	for i, effect := range matched.Effects {
-		op, err := m.prepareEffect(effect, templateData, matched.Session)
-		if err != nil {
-			zerolog.Ctx(ctx).Err(err).
-				Str("stub_id", matched.ID.String()).
-				Int("effect_index", i).
-				Str("effect_action", effect.Action).
-				Msg("failed to prepare effect; skip all effects for request")
-
-			return
-		}
-
-		prepared = append(prepared, op)
-	}
-
-	for i, op := range prepared {
-		if err := m.applyEffectOperation(op); err != nil {
-			zerolog.Ctx(ctx).Err(err).
-				Str("stub_id", matched.ID.String()).
-				Int("effect_index", i).
-				Str("effect_action", op.action).
-				Msg("failed to apply prepared effect")
-		}
-	}
-}
-
-type effectOperation struct {
-	action        string
-	upsertStub    *stuber.Stub
-	deleteID      uuid.UUID
-	parentSession string
-}
-
-func (m *grpcMocker) prepareEffect(
-	effect stuber.Effect,
-	templateData template.Data,
-	parentSession string,
-) (effectOperation, error) {
-	switch effect.Action {
-	case stuber.EffectActionUpsert:
-		upsert, err := m.prepareUpsertEffect(effect, templateData, parentSession)
-		if err != nil {
-			return effectOperation{}, err
-		}
-
-		return effectOperation{action: effect.Action, upsertStub: upsert, parentSession: parentSession}, nil
-	case stuber.EffectActionDelete:
-		deleteID, err := m.prepareDeleteEffect(effect, templateData)
-		if err != nil {
-			return effectOperation{}, err
-		}
-
-		return effectOperation{action: effect.Action, deleteID: deleteID, parentSession: parentSession}, nil
-	default:
-		return effectOperation{}, errors.New("unknown effect action")
-	}
-}
-
-func (m *grpcMocker) prepareUpsertEffect(
-	effect stuber.Effect,
-	templateData template.Data,
-	parentSession string,
-) (*stuber.Stub, error) {
-	if len(effect.Stub) == 0 {
-		return nil, errors.New("upsert effect requires stub payload")
-	}
-
-	payload := deepCopyMapAny(effect.Stub)
-	if err := m.templateEngine.ProcessMap(payload, templateData); err != nil {
-		return nil, errors.Wrap(err, "failed to process effect upsert templates")
-	}
-
-	stub, err := decodeEffectStub(payload)
-	if err != nil {
-		return nil, err
-	}
-
-	if stub.ID == uuid.Nil {
-		stub.ID = uuid.New()
-	}
-
-	stub.Session = parentSession
-	stub.Source = stuber.SourceRest
-
-	if err := m.validator.Struct(stub); err != nil {
-		return nil, errors.Wrap(err, "invalid generated upsert effect stub")
-	}
-
-	return stub, nil
-}
-
-func (m *grpcMocker) prepareDeleteEffect(
-	effect stuber.Effect,
-	templateData template.Data,
-) (uuid.UUID, error) {
-	idString := effect.ID
-	if idString == "" {
-		return uuid.Nil, errors.New("delete effect requires id")
-	}
-
-	if template.IsTemplateString(idString) {
-		renderedID, err := m.templateEngine.Render(idString, templateData)
-		if err != nil {
-			return uuid.Nil, errors.Wrap(err, "failed to process effect delete id template")
-		}
-
-		idString = renderedID
-	}
-
-	id, err := uuid.Parse(idString)
-	if err != nil {
-		return uuid.Nil, errors.Wrap(err, "invalid effect delete id")
-	}
-
-	return id, nil
-}
-
-func (m *grpcMocker) applyEffectOperation(op effectOperation) error {
-	switch op.action {
-	case stuber.EffectActionUpsert:
-		if op.upsertStub == nil {
-			return errors.New("prepared upsert effect has nil stub")
-		}
-
-		m.budgerigar.PutMany(op.upsertStub)
-
-		return nil
-	case stuber.EffectActionDelete:
-		existing := m.budgerigar.FindByID(op.deleteID)
-		if existing == nil || !effectCanDeleteStub(existing, op.parentSession) {
-			return nil
-		}
-
-		m.budgerigar.DeleteByID(op.deleteID)
-
-		return nil
-	default:
-		return errors.New("unknown prepared effect action")
-	}
-}
-
-func effectCanDeleteStub(stub *stuber.Stub, targetSession string) bool {
-	if targetSession == "" {
-		return stub.Session == ""
-	}
-
-	return stub.Session == targetSession
-}
-
-func decodeEffectStub(payload map[string]any) (*stuber.Stub, error) {
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal effect stub payload")
-	}
-
-	generated := &stuber.Stub{}
-	if err := json.Unmarshal(body, generated); err != nil {
-		return nil, errors.Wrap(err, "failed to decode effect stub payload")
-	}
-
-	return generated, nil
-}
-
 func (m *grpcMocker) tryV2API(messages []map[string]any, md metadata.MD) (*stuber.Result, error) {
 	query := stuber.Query{
 		Service:       m.fullServiceName,
@@ -1317,12 +999,45 @@ func (m *grpcMocker) tryV2API(messages []map[string]any, md metadata.MD) (*stube
 	return m.budgerigar.FindByQuery(query)
 }
 
+func (m *grpcMocker) matchFirstMessage(stream grpc.ServerStream, messages []map[string]any) *stuber.Stub {
+	stubs, _ := m.budgerigar.FindBy(m.fullServiceName, m.methodName)
+	for _, s := range stubs {
+		if !s.MatchOnFirstMessage {
+			continue
+		}
+
+		query := stuber.Query{
+			Service:       m.fullServiceName,
+			Method:        m.methodName,
+			StrictService: m.strictServiceMatch,
+			Input:         []map[string]any{messages[0]},
+		}
+		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+			query.Headers = processHeaders(md)
+			query.Session = sessionFromMetadata(md)
+		}
+
+		result, matchErr := m.budgerigar.FindByQuery(query)
+		if matchErr == nil && result != nil && result.Found() != nil {
+			return result.Found()
+		}
+	}
+
+	return nil
+}
+
 func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 	requestTime := time.Now()
 
 	messages, originalMessages, err := m.collectClientMessages(stream)
 	if err != nil {
 		return err
+	}
+
+	if len(messages) > 0 {
+		if found := m.matchFirstMessage(stream, messages); found != nil {
+			return m.sendClientStreamResponse(stream, found, messages, requestTime)
+		}
 	}
 
 	found, err := m.tryFindStub(stream, messages)
@@ -1464,6 +1179,12 @@ func (m *grpcMocker) sendClientStreamResponse(
 
 func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 	queryBidi := m.newQueryBidi(stream.Context())
+
+	// Check if there's a stub with a custom handler for this method
+	stubs, _ := m.budgerigar.FindBy(queryBidi.Service, queryBidi.Method)
+	if len(stubs) > 0 && stubs[0].Handler != nil {
+		return stubs[0].Handler(stream.Context(), stream)
+	}
 
 	bidiResult, err := m.budgerigar.FindByQueryBidi(queryBidi)
 	if err != nil {
@@ -1923,11 +1644,13 @@ func BuildFromDescriptorSet(
 	}
 
 	s := &GRPCServer{
-		budgerigar:  budgerigar,
-		healthState: healthState,
-		waiter:      waiter,
-		recorder:    recorder,
-		descriptors: descriptors.NewRegistry(),
+		budgerigar:     budgerigar,
+		healthState:    healthState,
+		waiter:         waiter,
+		recorder:       recorder,
+		descriptors:    descriptors.NewRegistry(),
+		validator:      mustNewStubValidator(),
+		errorFormatter: NewErrorFormatter(),
 	}
 	server := s.createServer(ctx)
 	s.setupHealthCheck(server, reg)
@@ -2378,206 +2101,6 @@ func getMessageDescriptor(reg *protoregistry.Files, messageType string) (protore
 	return msgDesc, nil
 }
 
-func LogUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-	start := time.Now()
-	resp, err := handler(ctx, req)
-
-	grpcPeer, _ := peer.FromContext(ctx)
-	service, method := splitMethodName(info.FullMethod)
-
-	level := zerolog.InfoLevel
-	if service == serviceReflection {
-		level = zerolog.DebugLevel
-	}
-
-	event := zerolog.Ctx(ctx).WithLevel(level).
-		Str("grpc.component", "server").
-		Str("grpc.method", method).
-		Str("grpc.method_type", "unary").
-		Str("grpc.service", service).
-		Str("grpc.code", status.Code(err).String()).
-		Dur("grpc.time_ms", time.Since(start)).
-		Str("peer.address", getPeerAddress(grpcPeer)).
-		Str("protocol", "grpc")
-
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		event.Interface("grpc.metadata", md)
-	}
-
-	if content := protoToJSON(req); content != nil {
-		event.RawJSON("grpc.request.content", content)
-	}
-
-	if content := protoToJSON(resp); content != nil {
-		event.RawJSON("grpc.response.content", content)
-	}
-
-	event.Msg("gRPC call completed")
-
-	return resp, err
-}
-
-func LogStreamInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	start := time.Now()
-	grpcPeer, _ := peer.FromContext(stream.Context())
-	service, method := splitMethodName(info.FullMethod)
-
-	wrapped := &loggingStream{stream, []any{}, []any{}}
-	err := handler(srv, wrapped)
-
-	level := zerolog.InfoLevel
-	if service == serviceReflection {
-		level = zerolog.DebugLevel
-	}
-
-	zerolog.Ctx(stream.Context()).WithLevel(level).
-		Str("grpc.component", "server").
-		Str("grpc.method", method).
-		Str("grpc.method_type", "stream").
-		Str("grpc.service", service).
-		Str("grpc.code", status.Code(err).String()).
-		Dur("grpc.time_ms", time.Since(start)).
-		Str("peer.address", getPeerAddress(grpcPeer)).
-		Array("grpc.request.content", toLogArray(wrapped.requests...)).
-		Array("grpc.response.content", toLogArray(wrapped.responses...)).
-		Str("protocol", "grpc").
-		Msg("gRPC call completed")
-
-	return err
-}
-
-func splitMethodName(fullMethod string) (string, string) {
-	const (
-		slash = "/"
-	)
-
-	parts := strings.Split(fullMethod, slash)
-	if len(parts) != 3 { //nolint:mnd
-		return unknownValue, unknownValue
-	}
-
-	return parts[1], parts[2]
-}
-
-func getPeerAddress(p *peer.Peer) string {
-	if p != nil && p.Addr != nil {
-		return p.Addr.String()
-	}
-
-	return unknownValue
-}
-
-func protoToJSON(msg any) []byte {
-	if msg == nil || isNilInterface(msg) {
-		return nil
-	}
-
-	message, ok := msg.(proto.Message)
-	if !ok || message == nil {
-		return nil
-	}
-
-	marshaller := protojson.MarshalOptions{
-		EmitUnpopulated: false,
-		UseProtoNames:   true,
-		Indent:          "",
-	}
-
-	data, err := marshaller.Marshal(message)
-	if err != nil {
-		return nil
-	}
-
-	return data
-}
-
-func protoToMap(msg any) map[string]any {
-	data := protoToJSON(msg)
-	if data == nil {
-		return nil
-	}
-
-	var result map[string]any
-	if err := json.Unmarshal(data, &result); err != nil {
-		return nil
-	}
-
-	return result
-}
-
-func isNilInterface(v any) bool {
-	if v == nil {
-		return true
-	}
-
-	rv := reflect.ValueOf(v)
-	//nolint:exhaustive
-	switch rv.Kind() {
-	case reflect.Pointer, reflect.Interface, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func:
-		return rv.IsNil()
-	default:
-		return false
-	}
-}
-
-func toLogArray(items ...any) *zerolog.Array {
-	arr := zerolog.Arr()
-
-	for _, item := range items {
-		// Skip nil items (they shouldn't be in the array anymore, but just in case)
-		if item == nil || isNilInterface(item) {
-			continue
-		}
-
-		if value := protoToJSON(item); value != nil {
-			arr = arr.RawJSON(value)
-		} else {
-			arr = arr.Str(fmt.Sprintf("%v", item))
-		}
-	}
-
-	return arr
-}
-
-type loggingStream struct {
-	grpc.ServerStream
-
-	requests  []any
-	responses []any
-}
-
-func (s *loggingStream) SendMsg(m any) error {
-	s.appendResponse(m)
-
-	return s.ServerStream.SendMsg(m)
-}
-
-func (s *loggingStream) RecvMsg(m any) error {
-	s.appendRequest(m)
-
-	return s.ServerStream.RecvMsg(m)
-}
-
-func (s *loggingStream) appendRequest(m any) {
-	if m == nil || isNilInterface(m) {
-		return
-	}
-
-	if len(s.requests) < maxLoggingStreamMsgs {
-		s.requests = append(s.requests, m)
-	}
-}
-
-func (s *loggingStream) appendResponse(m any) {
-	if m == nil || isNilInterface(m) {
-		return
-	}
-
-	if len(s.responses) < maxLoggingStreamMsgs {
-		s.responses = append(s.responses, m)
-	}
-}
-
 func (m *grpcMocker) sendBidiResponses(
 	stream grpc.ServerStream,
 	output stuber.Output,
@@ -2665,7 +2188,7 @@ func (m *grpcMocker) sendStreamResponses(
 			streamDataCopy := deepCopyMapAny(streamData)
 
 			delayDelay := output.Delay
-			if d, ok := stuber.ExtractGripmockDelay(streamDataCopy); ok {
+			if d, ok := stuber.ExtractGripMockDelay(streamDataCopy); ok {
 				delayDelay = d
 			}
 
@@ -2713,7 +2236,7 @@ func (m *grpcMocker) sendStreamResponses(
 			streamDataCopy = copied
 
 			delayDelay := output.Delay
-			if d, found := stuber.ExtractGripmockDelay(copied); found {
+			if d, found := stuber.ExtractGripMockDelay(copied); found {
 				delayDelay = d
 			}
 

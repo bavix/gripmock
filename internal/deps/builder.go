@@ -2,6 +2,7 @@ package deps
 
 import (
 	"context"
+	"log"
 	"slices"
 	"sync"
 
@@ -35,26 +36,17 @@ type Builder struct {
 	promReg   *prometheus.Registry
 	otelInstr *telemetry.Instruments
 
+	// eagerly initialized
+	stubValidator      *validator.Validate
+	errorFormatter     *app.ErrorFormatter
+	descriptorRegistry *descriptors.Registry
+
+	// lazy stateful
 	budgerigar     *stuber.Budgerigar
 	budgerigarOnce sync.Once
 
 	historyStore     *history.MemoryStore
 	historyStoreOnce sync.Once
-
-	stubValidator     *validator.Validate
-	stubValidatorOnce sync.Once
-
-	errorFormatter     *app.ErrorFormatter
-	errorFormatterOnce sync.Once
-
-	descriptorRegistry     *descriptors.Registry
-	descriptorRegistryOnce sync.Once
-
-	bufClient     protosetdom.BSRClient
-	bufClientOnce sync.Once
-
-	reflectClient     protosetdom.RemoteClient
-	reflectClientOnce sync.Once
 
 	remoteClient     protosetdom.RemoteClient
 	remoteClientOnce sync.Once
@@ -65,23 +57,36 @@ type Builder struct {
 	pluginPaths    []string
 	pluginRegistry *internalplugins.Registry
 	pluginOnce     sync.Once
+}
 
-	sessionGCOnce sync.Once
+func newStubValidator() *validator.Validate {
+	v, err := app.NewStubValidator()
+	if err != nil {
+		log.Printf("[gripmock] stub validator init failed: %v; using fallback", err)
+
+		return validator.New()
+	}
+
+	return v
 }
 
 func NewBuilder(opts ...Option) *Builder {
-	builder := &Builder{
+	b := &Builder{
 		ender:   lifecycle.New(nil),
 		promReg: prometheus.NewRegistry(),
 	}
 	for _, opt := range opts {
-		opt(builder)
+		opt(b)
 	}
 
-	builder.promReg.MustRegister(collectors.NewGoCollector())
-	builder.promReg.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	b.stubValidator = newStubValidator()
+	b.errorFormatter = app.NewErrorFormatter()
+	b.descriptorRegistry = descriptors.NewRegistry()
 
-	return builder
+	b.promReg.MustRegister(collectors.NewGoCollector())
+	b.promReg.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+
+	return b
 }
 
 func WithDefaultConfig() Option {
@@ -90,16 +95,15 @@ func WithDefaultConfig() Option {
 	return WithConfig(cfg)
 }
 
-func WithConfig(config config.Config) Option {
-	return func(builder *Builder) {
-		builder.config = config
+func WithConfig(cfg config.Config) Option {
+	return func(b *Builder) {
+		b.config = cfg
 	}
 }
 
-// WithPlugins sets additional plugin paths (e.g. from CLI flags).
 func WithPlugins(paths []string) Option {
-	return func(builder *Builder) {
-		builder.pluginPaths = slices.Clone(paths)
+	return func(b *Builder) {
+		b.pluginPaths = slices.Clone(paths)
 	}
 }
 
@@ -115,15 +119,14 @@ func (b *Builder) LoadPlugins(ctx context.Context) {
 	})
 }
 
-// InitTelemetry initializes OpenTelemetry with fail-safe startup.
 func (b *Builder) InitTelemetry(ctx context.Context) {
 	b.otelInstr = telemetry.InitMetrics(ctx, build.Version, b.promReg)
 
-	if b.config.OtelEnabled {
+	if b.config.OTel.Enabled {
 		cfg := telemetry.Config{
-			Enabled:  b.config.OtelEnabled,
-			Endpoint: b.config.OtelEndpoint,
-			Insecure: b.config.OtelInsecure,
+			Enabled:  b.config.OTel.Enabled,
+			Endpoint: b.config.OTel.Endpoint,
+			Insecure: b.config.OTel.Insecure,
 			Version:  build.Version,
 		}
 		shutdownFn := telemetry.InitTracing(ctx, cfg)
@@ -141,8 +144,6 @@ func (b *Builder) PluginInfos(ctx context.Context) []pkgplugins.PluginWithFuncs 
 	return b.pluginRegistry.Groups(ctx)
 }
 
-// HistoryStore returns the shared in-memory history store when HistoryEnabled.
-// Returns nil when history is disabled.
 func (b *Builder) HistoryStore() *history.MemoryStore {
 	if !b.config.HistoryEnabled {
 		return nil
@@ -162,59 +163,25 @@ func (b *Builder) HistoryStore() *history.MemoryStore {
 	return b.historyStore
 }
 
-// StubValidator returns the shared stub validator (created once per Builder).
 func (b *Builder) StubValidator() *validator.Validate {
-	b.stubValidatorOnce.Do(func() {
-		var err error
-
-		b.stubValidator, err = app.NewStubValidator()
-		if err != nil {
-			panic("stub validator init: " + err.Error())
-		}
-	})
-
 	return b.stubValidator
 }
 
-// ErrorFormatter returns the shared ErrorFormatter (created once per Builder).
 func (b *Builder) ErrorFormatter() *app.ErrorFormatter {
-	b.errorFormatterOnce.Do(func() {
-		b.errorFormatter = app.NewErrorFormatter()
-	})
-
 	return b.errorFormatter
 }
 
 func (b *Builder) DescriptorRegistry() *descriptors.Registry {
-	b.descriptorRegistryOnce.Do(func() {
-		b.descriptorRegistry = descriptors.NewRegistry()
-	})
-
 	return b.descriptorRegistry
-}
-
-//nolint:ireturn
-func (b *Builder) BufClient() protosetdom.BSRClient {
-	b.bufClientOnce.Do(func() {
-		b.bufClient = bufclient.NewRouter(b.config.BSR)
-	})
-
-	return b.bufClient
-}
-
-//nolint:ireturn
-func (b *Builder) ReflectClient() protosetdom.RemoteClient {
-	b.reflectClientOnce.Do(func() {
-		b.reflectClient = reflectclient.NewClient()
-	})
-
-	return b.reflectClient
 }
 
 //nolint:ireturn
 func (b *Builder) RemoteClient() protosetdom.RemoteClient {
 	b.remoteClientOnce.Do(func() {
-		b.remoteClient = sourceclient.NewRouter(b.BufClient(), b.ReflectClient())
+		b.remoteClient = sourceclient.NewRouter(
+			bufclient.NewRouter(b.config.BSR),
+			reflectclient.NewClient(),
+		)
 	})
 
 	return b.remoteClient

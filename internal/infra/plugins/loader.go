@@ -20,7 +20,7 @@ func NewLoader(paths []string) *Loader {
 	return &Loader{paths: paths}
 }
 
-//nolint:cyclop
+//nolint:cyclop,gocognit,funlen
 func (l *Loader) Load(ctx context.Context, reg pkgplugins.Registry) {
 	logger := zerolog.Ctx(ctx)
 
@@ -64,19 +64,25 @@ func (l *Loader) Load(ctx context.Context, reg pkgplugins.Registry) {
 		}
 
 		if fn, ok := sym.(func(pkgplugins.Registry) error); ok {
-			if err := fn(reg); err == nil {
-				continue
+			if registerErr := fn(reg); registerErr != nil {
+				if logger != nil {
+					logger.Warn().Str("path", p).Err(registerErr).Msg("plugin register error, skipping")
+				}
 			}
+
+			continue
 		}
 
 		if fn, ok := sym.(func(pkgplugins.Registry)); ok {
 			fn(reg)
-		} else if logger != nil {
-			logger.Warn().Str("path", p).Msg("plugin register symbol has unsupported signature")
-		}
+		} else {
+			if logger != nil {
+				logger.Warn().Str("path", p).Msg("plugin register symbol has unsupported signature")
+			}
 
-		if !existsPlugin(ctx, reg, info.Name) {
-			reg.AddPlugin(info, nil)
+			if !existsPlugin(ctx, reg, info.Name) {
+				reg.AddPlugin(info, nil)
+			}
 		}
 	}
 }

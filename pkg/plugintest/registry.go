@@ -57,12 +57,13 @@ func (r *TestRegistry) AddPlugin(info plugins.PluginInfo, providers []plugins.Sp
 	}
 }
 
-func (r *TestRegistry) addProvider(info plugins.PluginInfo, provider plugins.SpecProvider) {
+func (r *TestRegistry) addProvider(info plugins.PluginInfo, provider plugins.SpecProvider) { //nolint:funcorder
 	for _, spec := range provider.Specs() {
 		r.addSpec(info, spec)
 	}
 }
 
+//nolint:cyclop,funlen,nestif,funcorder
 func (r *TestRegistry) addSpec(info plugins.PluginInfo, spec plugins.FuncSpec) {
 	if spec.Name == "" {
 		return
@@ -80,14 +81,17 @@ func (r *TestRegistry) addSpec(info plugins.PluginInfo, spec plugins.FuncSpec) {
 
 	if prev, ok := r.funcOwner[spec.Name]; ok && !hasDecor {
 		r.warnDuplicate(spec.Name, info.Name, prev)
+
 		entry.Deactivated = true
 		entry.Decorates = ""
 		entry.DecoratesPlugin = ""
 		r.pluginFuncs[info.Name] = append(r.pluginFuncs[info.Name], entry)
+
 		return
 	}
 
 	var fn plugins.Func
+
 	if hasDecor {
 		dec := wrapDecorator(spec.Fn)
 		if dec == nil {
@@ -142,19 +146,17 @@ func wrapDecorator(fn any) func(plugins.Func) plugins.Func {
 	}
 }
 
-func parseDecorates(spec plugins.FuncSpec) (targetName string, targetPlugin string) {
+func parseDecorates(spec plugins.FuncSpec) (string, string) {
 	raw := strings.TrimSpace(spec.Decorates)
 	if raw == "" {
 		return spec.Name, ""
 	}
 
-	if strings.HasPrefix(raw, "@") {
-		raw = strings.TrimPrefix(raw, "@")
-	}
+	raw, _ = strings.CutPrefix(raw, "@")
 
 	if strings.Contains(raw, "/") {
-		parts := strings.SplitN(raw, "/", 2)
-		if len(parts) == 2 {
+		parts := strings.SplitN(raw, "/", 2) //nolint:mnd
+		if len(parts) == 2 {                 //nolint:mnd
 			return parts[1], parts[0]
 		}
 	}
@@ -162,12 +164,13 @@ func parseDecorates(spec plugins.FuncSpec) (targetName string, targetPlugin stri
 	return raw, ""
 }
 
-func (r *TestRegistry) addDepend(pluginName, depend string) {
+func (r *TestRegistry) addDepend(pluginName, depend string) { //nolint:funcorder
 	if depend == "" {
 		return
 	}
 
 	deps := r.pluginDeps[pluginName]
+
 	seen := make(map[string]struct{}, len(deps)+1)
 	for _, d := range deps {
 		seen[d] = struct{}{}
@@ -180,7 +183,7 @@ func (r *TestRegistry) addDepend(pluginName, depend string) {
 	r.pluginDeps[pluginName] = append(deps, depend)
 }
 
-func (r *TestRegistry) warnDuplicate(name, plugin, existing string) {
+func (r *TestRegistry) warnDuplicate(name, plugin, existing string) { //nolint:funcorder
 	// Test registry doesn't log warnings
 }
 
@@ -210,6 +213,7 @@ func (r *TestRegistry) Plugins(ctx context.Context) []plugins.PluginInfo {
 		if deps, ok := r.pluginDeps[p.Name]; ok {
 			p.Depends = slices.Clone(deps)
 		}
+
 		out = append(out, p)
 	}
 
@@ -249,6 +253,7 @@ func (r *TestRegistry) Hooks(group string) []plugins.Func {
 	}
 
 	res := make([]plugins.Func, 0)
+
 	for _, funcs := range r.pluginFuncs {
 		for _, f := range funcs {
 			if f.Group != group {
@@ -274,64 +279,57 @@ func (r *TestRegistry) lookupPlugin(name string) plugins.PluginInfo {
 	return plugins.PluginInfo{Name: name}
 }
 
-func (r *TestRegistry) sortedPluginOrder() (ordered []string, skipped []string) {
-	state := make(map[string]int, len(r.plugins))
-	inCycle := make(map[string]struct{})
-	registered := make(map[string]struct{}, len(r.plugins))
+func (r *TestRegistry) sortedPluginOrder() ([]string, []string) {
+	var ordered, skipped []string
+
+	visited := make(map[string]int)
+	cycle := make(map[string]bool)
+
+	registered := make(map[string]bool, len(r.plugins))
 	for _, p := range r.plugins {
-		registered[p.Name] = struct{}{}
+		registered[p.Name] = true
 	}
 
-	var stack []string
-	var dfs func(string)
-	dfs = func(n string) {
-		if state[n] == 1 {
-			inCycle[n] = struct{}{}
-			for i := len(stack) - 1; i >= 0; i-- {
-				inCycle[stack[i]] = struct{}{}
-				if stack[i] == n {
-					break
-				}
+	var visit func(string) bool
+
+	visit = func(name string) bool {
+		if visited[name] == 2 { //nolint:mnd
+			return cycle[name]
+		}
+
+		if visited[name] == 1 {
+			return true
+		}
+
+		visited[name] = 1
+		inCycle := false
+
+		for _, dep := range r.pluginDeps[name] {
+			if visit(dep) {
+				inCycle = true
 			}
-			return
 		}
 
-		if state[n] == 2 {
-			return
+		visited[name] = 2
+
+		if inCycle {
+			cycle[name] = true
+		} else if registered[name] {
+			ordered = append(ordered, name)
 		}
 
-		state[n] = 1
-		stack = append(stack, n)
-
-		for _, dep := range r.pluginDeps[n] {
-			dfs(dep)
-		}
-
-		stack = stack[:len(stack)-1]
-		state[n] = 2
-
-		if _, cyc := inCycle[n]; cyc {
-			return
-		}
-
-		if _, ok := registered[n]; ok {
-			ordered = append(ordered, n)
-		}
+		return inCycle
 	}
 
 	for _, p := range r.plugins {
-		dfs(p.Name)
+		visit(p.Name)
+
+		if cycle[p.Name] {
+			skipped = append(skipped, p.Name)
+		}
 	}
 
-	if len(inCycle) > 0 {
-		skipped = make([]string, 0, len(inCycle))
-		for name := range inCycle {
-			if _, ok := registered[name]; ok {
-				skipped = append(skipped, name)
-			}
-		}
-		sort.Strings(skipped)
-	}
+	sort.Strings(skipped)
 
 	return ordered, skipped
 }

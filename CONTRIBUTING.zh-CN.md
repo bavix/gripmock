@@ -1,6 +1,6 @@
 # 为 GripMock 做贡献
 
-**语言版本：** [English](CONTRIBUTING.md) | 简体中文
+**语言版本：** [English](CONTRIBUTING.md) | 简体中文 | [日本語](CONTRIBUTING.ja-JP.md) | [Deutsch](CONTRIBUTING.de.md) | [Español](CONTRIBUTING.es.md)
 
 > 提示：本页面由机器翻译生成，内容可能存在不准确或不完整之处。请以英文原文 [`CONTRIBUTING.md`](CONTRIBUTING.md) 为准。
 

@@ -49,7 +49,7 @@ func runDump(cmd *cobra.Command, _ []string) error {
 		return errors.Newf("unsupported scheme %q, use http or https", scheme)
 	}
 
-	endpoint := scheme + "://" + cfg.HTTPAddr
+	endpoint := scheme + "://" + cfg.HTTP.Addr
 
 	stubs, err := fetchStubs(cmd.Context(), endpoint, filterSrc)
 	if err != nil {

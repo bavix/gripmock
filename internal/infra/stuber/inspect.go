@@ -122,12 +122,13 @@ func (s *searcher) inspect(query Query) InspectReport {
 	query.toggles = features.New(RequestInternalFlag)
 
 	trace := newSearchTrace()
-	all := s.all()
+
+	candidates := s.collectInspectCandidates(query)
 	fallbackToMethod := s.detectFallbackToMethod(query)
 
-	trace.initCandidates(s.collectTraceCandidates(query, all, fallbackToMethod))
+	trace.initCandidates(s.collectTraceCandidates(query, candidates, fallbackToMethod))
 
-	factory := newSearchTraceFinderFactory(s, newSearchTraceStageBuilder(s, all))
+	factory := newSearchTraceFinderFactory(s, newSearchTraceStageBuilder(s, candidates))
 	finder := factory.New(trace)
 
 	result, err := finder.Find(query)
@@ -190,4 +191,34 @@ func applyResultIDs(report *InspectReport, result *Result) {
 		id := similar.ID
 		report.SimilarStubID = &id
 	}
+}
+
+// collectInspectCandidates returns stubs relevant to the query.
+// For ID queries, returns the stub with that ID or empty.
+// For service/method queries, returns all stubs for that service+method.
+// Falls back to method-only candidates when the service lookup has no stubs
+// (for fallback-to-method debugging).
+func (s *searcher) collectInspectCandidates(query Query) []*Stub {
+	if query.ID != nil {
+		if stub := s.findByID(*query.ID); stub != nil {
+			return []*Stub{stub}
+		}
+
+		return nil
+	}
+
+	// Use findAll to get ALL stubs matching service+method, regardless of session.
+	// This includes session-mismatched stubs so InspectQuery can show why they failed.
+	seq, err := s.storage.findAll(query.Service, query.Method)
+	if err == nil {
+		return collectStubs(seq)
+	}
+
+	// Fall back to method-only lookup for fallback-to-method debugging.
+	lookup := s.lookup(query.Session)
+	if lookup.HasMethodAvailable(query.Method) {
+		return collectStubs(lookup.LookupMethodAvailable(query.Method))
+	}
+
+	return nil
 }

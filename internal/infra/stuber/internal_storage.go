@@ -13,6 +13,7 @@ import (
 type stubStorage interface {
 	upsert(stubs ...*Stub) []uuid.UUID
 	del(ids ...uuid.UUID) int
+	delBySession(session string) int
 	findByID(id uuid.UUID) *Stub
 	findByIDs(ids iter.Seq[uuid.UUID]) iter.Seq[*Stub]
 	findAll(service, method string) (iter.Seq[*Stub], error)

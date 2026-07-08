@@ -59,7 +59,7 @@ func (b *Builder) RestServe(
 	ctx context.Context,
 	stubPath string,
 ) (*RestServer, error) {
-	b.StartSessionGC(ctx)
+	StartSessionGC(ctx, b.config, b.Budgerigar(), b.HistoryStore(), b.ender)
 
 	extender := b.Extender(ctx)
 	// Load stubs synchronously before starting HTTP server
@@ -134,12 +134,12 @@ func (b *Builder) RestServe(
 	handler = httputil.GzipRequestMiddleware(handler)
 	handler = handlers.CompressHandler(handler)
 
-	if b.config.OtelEnabled {
+	if b.config.OTel.Enabled {
 		handler = otelhttp.NewHandler(handler, "gripmock-rest")
 	}
 
 	srv := &http.Server{
-		Addr:              b.config.HTTPAddr,
+		Addr:              b.config.HTTP.Addr,
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
 		WriteTimeout:      writeTimeout,
@@ -154,10 +154,10 @@ func (b *Builder) RestServe(
 	b.ender.Add(srv.Shutdown)
 
 	httpTLS := infraTLS.TLSConfig{
-		CertFile:   b.config.HTTPTLSCertFile,
-		KeyFile:    b.config.HTTPTLSKeyFile,
-		ClientAuth: b.config.HTTPTLSClientAuth,
-		CAFile:     b.config.HTTPTLSCAFile,
+		CertFile:   b.config.HTTPTLS.CertFile,
+		KeyFile:    b.config.HTTPTLS.KeyFile,
+		ClientAuth: b.config.HTTPTLS.ClientAuth,
+		CAFile:     b.config.HTTPTLS.CAFile,
 		MinVersion: infraTLS.MinTLSVersion12,
 	}
 	if httpTLS.IsEnabled() {
@@ -169,7 +169,7 @@ func (b *Builder) RestServe(
 		srv.TLSConfig = tlsCfg
 	}
 
-	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", b.config.HTTPAddr)
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", b.config.HTTP.Addr)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to listen")
 	}

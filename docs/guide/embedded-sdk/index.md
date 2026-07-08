@@ -8,6 +8,8 @@
 **Minimum Requirements**: Go 1.26 or later
 :::
 
+> **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" /> (legacy API: `sdk.Run`, `mock.Stub`, `.When`, `.Reply`, `.Commit`). Current v2 API available since <VersionTag version="v3.16.0" />. See the [Upgrade Guide](./upgrade.md) for migration.
+
 The GripMock Embedded SDK provides an integrated way to use GripMock directly within your Go tests without requiring external processes or containers. This approach offers faster test execution and better integration with your development workflow.
 
 ## Real-World Example

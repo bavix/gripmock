@@ -15,10 +15,10 @@ import (
 
 //nolint:funlen,cyclop
 func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
-	b.StartSessionGC(ctx)
+	StartSessionGC(ctx, b.config, b.Budgerigar(), b.HistoryStore(), b.ender)
 
 	grpcTLS := b.grpcTLSConfig()
-	grpcTLS.ClientAuth = b.config.GRPCTLSClientAuth
+	grpcTLS.ClientAuth = b.config.GRPCTLS.ClientAuth
 
 	var (
 		tlsCfg *tls.Config
@@ -32,7 +32,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		}
 	}
 
-	listener, err := (&net.ListenConfig{}).Listen(ctx, b.config.GRPCNetwork, b.config.GRPCAddr)
+	listener, err := (&net.ListenConfig{}).Listen(ctx, b.config.GRPCNetwork, b.config.GRPC.Addr)
 	if err != nil {
 		return errors.Wrap(err, "failed to listen")
 	}
@@ -52,7 +52,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 
 	grpcServer := app.NewGRPCServer(
 		b.config.GRPCNetwork,
-		b.config.GRPCAddr,
+		b.config.GRPC.Addr,
 		param,
 		b.Budgerigar(),
 		b.Extender(ctx),
@@ -60,7 +60,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		b.DescriptorRegistry(),
 		tlsCfg,
 		b.RemoteClient(),
-		b.config.OtelEnabled,
+		b.config.OTel.Enabled,
 		b.StubValidator(),
 		b.ErrorFormatter(),
 	)

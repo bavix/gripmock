@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/bavix/gripmock/v3/internal/infra/funcwrap"
 	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
@@ -226,7 +227,7 @@ func TestIsNilAssignable(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			require.Equal(t, tt.want, isNilAssignable(tt.typ))
+			require.Equal(t, tt.want, funcwrap.IsNilAssignable(tt.typ))
 		})
 	}
 }
@@ -241,7 +242,7 @@ func TestCoerceArg(t *testing.T) {
 	fnType := reflect.TypeFor[func(int)]()
 
 	// Act
-	val, err := coerceArg(args, &idx, paramType, fnType, 0)
+	val, err := funcwrap.CoerceArg(args, &idx, paramType, fnType, 0)
 
 	// Assert
 	require.NoError(t, err)
@@ -259,7 +260,7 @@ func TestCoerceArgNilValue(t *testing.T) {
 	fnType := reflect.TypeFor[func(*int)]()
 
 	// Act
-	val, err := coerceArg(args, &idx, paramType, fnType, 0)
+	val, err := funcwrap.CoerceArg(args, &idx, paramType, fnType, 0)
 
 	// Assert
 	require.NoError(t, err)
@@ -276,7 +277,7 @@ func TestCoerceArgNotEnoughArgs(t *testing.T) {
 	fnType := reflect.TypeFor[func(int)]()
 
 	// Act
-	_, err := coerceArg(args, &idx, paramType, fnType, 0)
+	_, err := funcwrap.CoerceArg(args, &idx, paramType, fnType, 0)
 
 	// Assert
 	require.Error(t, err)
@@ -293,7 +294,7 @@ func TestCoerceArgTypeMismatch(t *testing.T) {
 	fnType := reflect.TypeFor[func(int)]()
 
 	// Act
-	_, err := coerceArg(args, &idx, paramType, fnType, 0)
+	_, err := funcwrap.CoerceArg(args, &idx, paramType, fnType, 0)
 
 	// Assert
 	require.Error(t, err)

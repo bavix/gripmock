@@ -2,17 +2,23 @@ package deps
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
 
+	"github.com/bavix/gripmock/v3/internal/config"
+	"github.com/bavix/gripmock/v3/internal/domain/history"
+	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 	"github.com/bavix/gripmock/v3/internal/infra/session"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-func (b *Builder) StartSessionGC(ctx context.Context) {
-	b.sessionGCOnce.Do(func() {
-		interval := b.config.SessionGCInterval
-		ttl := b.config.SessionGCTTL
+func StartSessionGC(ctx context.Context, cfg config.Config, bg *stuber.Budgerigar, hs *history.MemoryStore, ender *lifecycle.Manager) {
+	var once sync.Once
+	once.Do(func() {
+		interval := cfg.SessionGCInterval
+		ttl := cfg.SessionGCTTL
 
 		if interval <= 0 || ttl <= 0 {
 			return
@@ -20,7 +26,7 @@ func (b *Builder) StartSessionGC(ctx context.Context) {
 
 		ticker := time.NewTicker(interval)
 
-		b.ender.Add(func(_ context.Context) error {
+		ender.Add(func(_ context.Context) error {
 			ticker.Stop()
 
 			return nil
@@ -32,28 +38,27 @@ func (b *Builder) StartSessionGC(ctx context.Context) {
 				case <-ctx.Done():
 					return
 				case now := <-ticker.C:
-					b.cleanupExpiredSessions(ctx, now, ttl)
+					cleanupExpiredSessions(ctx, now, ttl, bg, hs)
 				}
 			}
 		}()
 	})
 }
 
-func (b *Builder) cleanupExpiredSessions(ctx context.Context, now time.Time, ttl time.Duration) {
+func cleanupExpiredSessions(ctx context.Context, now time.Time, ttl time.Duration, bg *stuber.Budgerigar, hs *history.MemoryStore) {
 	expired := session.Expired(now, ttl)
 	if len(expired) == 0 {
 		return
 	}
 
 	logger := zerolog.Ctx(ctx)
-	historyStore := b.HistoryStore()
 
 	for _, sessionID := range expired {
-		deletedStubs := b.Budgerigar().DeleteSession(sessionID)
+		deletedStubs := bg.DeleteSession(sessionID)
 		deletedHistory := 0
 
-		if historyStore != nil {
-			deletedHistory = historyStore.DeleteSession(sessionID)
+		if hs != nil {
+			deletedHistory = hs.DeleteSession(sessionID)
 		}
 
 		session.Forget(sessionID)

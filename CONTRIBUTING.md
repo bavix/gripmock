@@ -1,6 +1,6 @@
 # Contributing to GripMock
 
-**Languages:** English | [简体中文](CONTRIBUTING.zh-CN.md)
+**Languages:** English | [简体中文](CONTRIBUTING.zh-CN.md) | [日本語](CONTRIBUTING.ja-JP.md) | [Deutsch](CONTRIBUTING.de.md) | [Español](CONTRIBUTING.es.md)
 
 Thank you for your interest in contributing to GripMock! This document provides guidelines for contributing to the project.
 

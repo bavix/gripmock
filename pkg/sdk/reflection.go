@@ -13,14 +13,17 @@ import (
 )
 
 // resolveDescriptorsFromReflection fetches FileDescriptorSet from a gRPC server via reflection.
+//
+//nolint:gocognit,cyclop,funlen
 func resolveDescriptorsFromReflection(ctx context.Context, addr string) (*descriptorpb.FileDescriptorSet, error) {
 	conn, err := grpc.NewClient("passthrough:///"+addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to connect to %s", addr)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	client := reflectionpb.NewServerReflectionClient(conn)
+
 	stream, err := client.ServerReflectionInfo(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get reflection stream")
@@ -44,6 +47,7 @@ func resolveDescriptorsFromReflection(ctx context.Context, addr string) (*descri
 	}
 
 	seen := make(map[string]*descriptorpb.FileDescriptorProto)
+
 	for _, svc := range listResp.GetService() {
 		name := svc.GetName()
 		if name == "" {
@@ -71,9 +75,10 @@ func resolveDescriptorsFromReflection(ctx context.Context, addr string) (*descri
 		fd := fdResp.GetFileDescriptorResponse()
 		if fd == nil {
 			if errResp := fdResp.GetErrorResponse(); errResp != nil {
-				return nil, errors.Errorf("reflection error for %s: %s", name, errResp.GetErrorMessage())
+				return nil, errors.Wrapf(ErrReflection, "reflection error for %s: %s", name, errResp.GetErrorMessage())
 			}
-			return nil, errors.Errorf("unexpected response for %s: not FileDescriptorResponse", name)
+
+			return nil, errors.Wrapf(ErrReflection, "unexpected response for %s: not FileDescriptorResponse", name)
 		}
 
 		for _, raw := range fd.GetFileDescriptorProto() {
@@ -81,10 +86,12 @@ func resolveDescriptorsFromReflection(ctx context.Context, addr string) (*descri
 			if err := proto.Unmarshal(raw, &fdp); err != nil {
 				return nil, errors.Wrapf(err, "failed to unmarshal FileDescriptorProto for %s", name)
 			}
+
 			key := fdp.GetName()
 			if key == "" {
 				key = fmt.Sprintf("%s.%s", fdp.GetPackage(), "unknown")
 			}
+
 			if _, exists := seen[key]; !exists {
 				seen[key] = &fdp
 			}
@@ -99,5 +106,6 @@ func resolveDescriptorsFromReflection(ctx context.Context, addr string) (*descri
 	for _, fdp := range seen {
 		fds.File = append(fds.File, fdp)
 	}
+
 	return fds, nil
 }

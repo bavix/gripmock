@@ -8,43 +8,67 @@
 **Minimum Requirements**: Go 1.26 or later
 :::
 
+> **Version history:** Verification available since <VersionTag version="v3.7.0" /> (legacy API: `mock.Verify().Method(fm).Called(t, n)`, `mock.Verify().Total(t, n)`). Current v2 API since <VersionTag version="v3.16.0" />. See the [Upgrade Guide](./upgrade.md) for migration.
+
 Verify that your code interacts with the mock as expected.
+
+---
+
+### Legacy API (v3.7.0+)
+
+The same verification in the legacy API:
+
+```go
+mock, err := sdk.Run(t, sdk.WithFileDescriptor(service.File_service_proto))
+require.NoError(t, err)
+defer mock.Close()
+
+mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
+    When(sdk.Equals("id", "test")).
+    Reply(sdk.Data("result", "success")).
+    Commit()
+
+// ... make calls ...
+
+mock.Verify().Method(sdk.By(MyService_MyMethod_FullMethodName)).Called(t, 2)
+mock.Verify().Total(t, 3)
+mock.History().FilterByMethod("MyService", "MyMethod")
+```
+
+---
 
 ## Call Verification
 
 ```go
 func TestMyService_CallVerification(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(service.File_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(service.File_service_proto))
 
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "test")).
-        Reply(sdk.Data("result", "success")).
-        Commit()
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "test").
+        Return("result", "success")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT - Make calls to the mock
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "test"})
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "test"})
 
     // ASSERT - Verify the method was called exactly 2 times
-    mock.Verify().Method(sdk.By(MyService_MyMethod_FullMethodName)).Called(t, 2)
+    require.Equal(t, 2, srv.Called(MyService_MyMethod_FullMethodName))
 }
 ```
 
-## Using Generated Full Method Constants <VersionTag version="v3.9.1" />
+## Using Generated Full Method Constants <VersionTag version="v3.16.0" />
 
 If your generated gRPC package exposes `*_FullMethodName` constants, you can avoid manual full-method strings:
 
 ```go
-mock.Stub(sdk.By(myservice.MyService_MyMethod_FullMethodName)).
-    When(sdk.Equals("id", "test")).
-    Reply(sdk.Data("result", "ok")).
-    Commit()
+srv.ExpectUnary(myservice.MyService_MyMethod_FullMethodName).
+    Match("id", "test").
+    Return("result", "ok")
 
-mock.Verify().Method(sdk.By(myservice.MyService_MyMethod_FullMethodName)).Called(t, 1)
+require.Equal(t, 1, srv.Called(myservice.MyService_MyMethod_FullMethodName))
 ```
 
 ## Total Call Verification
@@ -52,20 +76,17 @@ mock.Verify().Method(sdk.By(myservice.MyService_MyMethod_FullMethodName)).Called
 ```go
 func TestMyService_TotalCalls(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(service.File_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(service.File_service_proto))
 
-    mock.Stub(sdk.By(MyService_MethodA_FullMethodName)).
-        When(sdk.Equals("id", "a")).
-        Reply(sdk.Data("result", "A")).
-        Commit()
+    srv.ExpectUnary(MyService_MethodA_FullMethodName).
+        Match("id", "a").
+        Return("result", "A")
 
-    mock.Stub(sdk.By(MyService_MethodB_FullMethodName)).
-        When(sdk.Equals("id", "b")).
-        Reply(sdk.Data("result", "B")).
-        Commit()
+    srv.ExpectUnary(MyService_MethodB_FullMethodName).
+        Match("id", "b").
+        Return("result", "B")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT - Make calls to different methods
     _, _ = client.MethodA(t.Context(), &MethodARequest{Id: "a"})
@@ -73,7 +94,7 @@ func TestMyService_TotalCalls(t *testing.T) {
     _, _ = client.MethodA(t.Context(), &MethodARequest{Id: "a"})
 
     // ASSERT - Verify total calls to all methods
-    mock.Verify().Total(t, 3) // 2 calls to MethodA + 1 call to MethodB
+    require.Equal(t, 3, srv.TotalCalls()) // 2 calls to MethodA + 1 call to MethodB
 }
 ```
 
@@ -82,32 +103,27 @@ func TestMyService_TotalCalls(t *testing.T) {
 ```go
 func TestMyService_History(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(service.File_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(service.File_service_proto))
 
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "tracked")).
-        Reply(sdk.Data("result", "ok")).
-        Commit()
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "tracked").
+        Return("result", "ok")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT - Make some calls
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "tracked"})
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "tracked"})
 
     // ASSERT - Check history
-    calls := mock.History().FilterByMethod("MyService", "MyMethod")
+    calls := srv.History()
     require.Len(t, calls, 2)
     require.Len(t, calls[0].Requests, 1)
-    require.Len(t, calls[1].Requests, 1)
-
-    // Check the request data
     require.Equal(t, "tracked", calls[0].Requests[0]["id"])
     require.Equal(t, "tracked", calls[1].Requests[0]["id"])
 
     // Verify individual calls
-    mock.Verify().Method(sdk.By(MyService_MyMethod_FullMethodName)).Called(t, 2)
+    require.Equal(t, 2, srv.Called(MyService_MyMethod_FullMethodName))
 }
 ```
 
@@ -115,9 +131,10 @@ func TestMyService_History(t *testing.T) {
 
 In remote mode, verification and history operations call GripMock REST endpoints.
 
-- `mock.Verify().Method(sdk.By(...)).Called(t, n)`
-- `mock.Verify().Total(t, n)`
-- `mock.Verify().VerifyStubTimes(t)`
+- `srv.Called(fullMethod)` — returns call count for a method
+- `srv.TotalCalls()` — returns total call count
+- `srv.ExpectationsWereMet()` — verifies all expectations
+- `srv.History()` — returns all recorded calls
 
 All these APIs use `t.Context()` for their network requests.
 
@@ -125,21 +142,22 @@ If you need to pass a specific context (for cancellation, tracing, request-scope
 
 ```go
 func TestMyService_RemoteContextAwareChecks(t *testing.T) {
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithSession(t.Name()),
     )
-    require.NoError(t, err)
 
     // ... Arrange/Act ...
 
     ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
     defer cancel()
 
-    err = sdk.VerifyStubTimesErrContext(ctx, mock.Verify())
+    err = sdk.VerifyStubTimesErrContext(ctx, srv.ExpectationsWereMet())
+    // ... or use the Server's context-aware method directly:
+    err = srv.ExpectationsWereMetContext(ctx)
     require.NoError(t, err)
 
-    calls, err := sdk.HistoryFilterByMethodContext(ctx, mock.History(), "MyService", "MyMethod")
+    calls, err := sdk.HistoryFilterByMethodContext(ctx, srv.History(), "MyService", "MyMethod")
     require.NoError(t, err)
     require.NotEmpty(t, calls)
 }
@@ -152,26 +170,24 @@ These helpers are backward-compatible: for embedded mode they fall back to non-c
 ```go
 func TestMyService_NeverCalled(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(service.File_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(service.File_service_proto))
 
-    mock.Stub(sdk.By(MyService_UsedMethod_FullMethodName)).
-        When(sdk.Equals("id", "used")).
-        Reply(sdk.Data("result", "success")).
-        Commit()
+    srv.ExpectUnary(MyService_UsedMethod_FullMethodName).
+        Match("id", "used").
+        Return("result", "success")
 
     // Don't define stub for UnusedMethod - it shouldn't be called
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT - Only call the used method
     _, _ = client.UsedMethod(t.Context(), &UsedMethodRequest{Id: "used"})
 
     // ASSERT - Verify the unused method was never called
-    mock.Verify().Method(sdk.By(MyService_UnusedMethod_FullMethodName)).Never(t)
+    require.Equal(t, 0, srv.Called(MyService_UnusedMethod_FullMethodName))
 
     // Also verify the used method was called once
-    mock.Verify().Method(sdk.By(MyService_UsedMethod_FullMethodName)).Called(t, 1)
+    require.Equal(t, 1, srv.Called(MyService_UsedMethod_FullMethodName))
 }
 ```
 
@@ -182,24 +198,24 @@ When using the `Times` feature, the SDK automatically verifies that the expected
 ```go
 func TestMyService_TimesVerification(t *testing.T) {
     // ARRANGE
-    // Pass t to Run to enable automatic verification
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(service.File_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(service.File_service_proto))
 
     // Stub that should be called exactly 2 times
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "limited")).
-        Reply(sdk.Data("result", "ok")).
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "limited").
         Times(2). // Expected to be called exactly 2 times
-        Commit()
+        Return("result", "ok")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT - Make exactly 2 calls as specified in Times(2)
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "limited"})
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "limited"})
 
-    // ASSERT - Automatic verification at test cleanup via Times(2)
+    // ASSERT - Automatic verification via srv.Cleanup
+    // srv.Cleanup registers ExpectationsWereMet() — no manual call needed
+    // To verify explicitly:
+    require.NoError(t, srv.ExpectationsWereMet())
 }
 ```
 
@@ -208,29 +224,25 @@ func TestMyService_TimesVerification(t *testing.T) {
 ```go
 func TestOrderService_ComplexVerification(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(order.File_order_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(order.File_order_service_proto))
 
     // Create stubs with different call limits
-    mock.Stub(sdk.By(OrderService_CreateOrder_FullMethodName)).
-        When(sdk.Equals("userId", "premium")).
-        Reply(sdk.Data("orderId", "ORD-001")).
+    srv.ExpectUnary(OrderService_CreateOrder_FullMethodName).
+        Match("userId", "premium").
         Times(1). // Should be called exactly once
-        Commit()
+        Return("orderId", "ORD-001")
 
-    mock.Stub(sdk.By(OrderService_CancelOrder_FullMethodName)).
-        When(sdk.Equals("orderId", "ORD-001")).
-        Reply(sdk.Data("status", "cancelled")).
+    srv.ExpectUnary(OrderService_CancelOrder_FullMethodName).
+        Match("orderId", "ORD-001").
         Times(1). // Should be called exactly once
-        Commit()
+        Return("status", "cancelled")
 
-    mock.Stub(sdk.By(OrderService_GetOrder_FullMethodName)).
-        When(sdk.Equals("orderId", "ORD-001")).
-        Reply(sdk.Data("status", "active")).
+    srv.ExpectUnary(OrderService_GetOrder_FullMethodName).
+        Match("orderId", "ORD-001").
         Times(2). // Should be called exactly twice
-        Commit()
+        Return("status", "active")
 
-    client := NewOrderServiceClient(mock.Conn())
+    client := NewOrderServiceClient(srv.Conn())
 
     // ACT
     // Create order
@@ -247,8 +259,11 @@ func TestOrderService_ComplexVerification(t *testing.T) {
     _, err = client.CancelOrder(t.Context(), &CancelOrderRequest{OrderId: "ORD-001"})
     require.NoError(t, err)
 
-    // ASSERT - Automatic verification via Times()
+    // ASSERT - Automatic verification via Times() in srv.Cleanup
     require.Equal(t, "ORD-001", createResp.GetOrderId())
+
+    // Or verify explicitly:
+    require.NoError(t, srv.ExpectationsWereMet())
 }
 ```
 
@@ -257,20 +272,17 @@ func TestOrderService_ComplexVerification(t *testing.T) {
 ```go
 func TestPaymentService_HistoryAnalysis(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(payment.File_payment_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(payment.File_payment_service_proto))
 
-    mock.Stub(sdk.By(PaymentService_ProcessPayment_FullMethodName)).
-        When(sdk.Equals("amount", 100)).
-        Reply(sdk.Data("transactionId", "TXN-100")).
-        Commit()
+    srv.ExpectUnary(PaymentService_ProcessPayment_FullMethodName).
+        Match("amount", float64(100)).
+        Return("transactionId", "TXN-100")
 
-    mock.Stub(sdk.By(PaymentService_ProcessPayment_FullMethodName)).
-        When(sdk.Equals("amount", 200)).
-        Reply(sdk.Data("transactionId", "TXN-200")).
-        Commit()
+    srv.ExpectUnary(PaymentService_ProcessPayment_FullMethodName).
+        Match("amount", float64(200)).
+        Return("transactionId", "TXN-200")
 
-    client := NewPaymentServiceClient(mock.Conn())
+    client := NewPaymentServiceClient(srv.Conn())
 
     // ACT
     _, _ = client.ProcessPayment(t.Context(), &ProcessPaymentRequest{Amount: 100})
@@ -279,13 +291,13 @@ func TestPaymentService_HistoryAnalysis(t *testing.T) {
 
     // ASSERT
     // Check total calls
-    mock.Verify().Total(t, 3)
+    require.Equal(t, 3, srv.TotalCalls())
 
     // Check specific method calls
-    mock.Verify().Method(sdk.By(PaymentService_ProcessPayment_FullMethodName)).Called(t, 3)
+    require.Equal(t, 3, srv.Called(PaymentService_ProcessPayment_FullMethodName))
 
     // Analyze history
-    allCalls := mock.History().All()
+    allCalls := srv.History()
     require.Len(t, allCalls, 3)
 
     for _, call := range allCalls {

@@ -8,29 +8,47 @@
 **Minimum Requirements**: Go 1.26 or later
 :::
 
+> **Version history:** All features existed in <VersionTag version="v3.7.0" /> (legacy API). Current v2 API since <VersionTag version="v3.16.0" />. See the [Upgrade Guide](./upgrade.md) for migration.
+
 Learn about advanced features of the GripMock Embedded SDK.
+
+---
+
+### Legacy API (v3.7.0+)
+
+The same features in the legacy API:
+
+```go
+mock.Stub(sdk.By(FullMethod)).
+    WhenHeaders(sdk.Equals("authorization", "Bearer token")).
+    Reply(sdk.Data("result", "ok")).
+    Delay(100 * time.Millisecond).
+    Priority(10).
+    Times(3).
+    Commit()
+```
+
+---
 
 ## Headers Matching
 
 ```go
 func TestAuthService_AuthenticatedEndpoint(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(auth.File_auth_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(auth.File_auth_service_proto))
+    defer srv.Close()
 
-    mock.Stub(sdk.By(AuthService_ProtectedEndpoint_FullMethodName)).
-        When(sdk.Equals("resource", "secret-data")).
-        WhenHeaders(sdk.HeaderEquals("authorization", "Bearer valid-token")).
-        Reply(sdk.Data("data", "secret-content")).
-        Commit()
+    srv.ExpectUnary(AuthService_ProtectedEndpoint_FullMethodName).
+        Match("resource", "secret-data").
+        WithHeader(sdk.Contains("authorization", "Bearer valid-token")).
+        Return("data", "secret-content")
 
-    mock.Stub(sdk.By(AuthService_ProtectedEndpoint_FullMethodName)).
-        When(sdk.Equals("resource", "secret-data")).
-        WhenHeaders(sdk.HeaderEquals("authorization", "Bearer invalid-token")).
-        ReplyError(codes.Unauthenticated, "Invalid token").
-        Commit()
+    srv.ExpectUnary(AuthService_ProtectedEndpoint_FullMethodName).
+        Match("resource", "secret-data").
+        WithHeader(sdk.Contains("authorization", "Bearer invalid-token")).
+        ReturnError(codes.Unauthenticated, "Invalid token")
 
-    client := NewAuthServiceClient(mock.Conn())
+    client := NewAuthServiceClient(srv.Conn())
 
     // ACT - Valid token
     validCtx := metadata.NewOutgoingContext(t.Context(), metadata.Pairs("authorization", "Bearer valid-token"))
@@ -53,16 +71,14 @@ func TestAuthService_AuthenticatedEndpoint(t *testing.T) {
 ```go
 func TestExternalService_SlowResponse(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(external.File_external_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(external.File_external_service_proto))
+    defer srv.Close()
 
-    mock.Stub(sdk.By(ExternalService_Process_FullMethodName)).
-        When(sdk.Equals("id", "slow-request")).
-        Reply(sdk.Data("result", "processed")).
-        Delay(500 * time.Millisecond).
-        Commit()
+    srv.ExpectUnary(ExternalService_Process_FullMethodName).
+        Match("id", "slow-request").
+        Return(Delay(500*time.Millisecond, "result", "processed"))
 
-    client := NewExternalServiceClient(mock.Conn())
+    client := NewExternalServiceClient(srv.Conn())
 
     // ACT
     start := time.Now()
@@ -81,24 +97,22 @@ func TestExternalService_SlowResponse(t *testing.T) {
 ```go
 func TestUserService_GetUser_Priority(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(user.File_user_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(user.File_user_service_proto))
+    defer srv.Close()
 
     // High priority: Specific case
-    mock.Stub(sdk.By(UserService_GetUser_FullMethodName)).
-        When(sdk.Equals("id", "special-user")).
-        Reply(sdk.Data("name", "Special User", "role", "admin")).
+    srv.ExpectUnary(UserService_GetUser_FullMethodName).
+        Match("id", "special-user").
         Priority(100).
-        Commit()
+        Return("name", "Special User", "role", "admin")
 
     // Lower priority: General case
-    mock.Stub(sdk.By(UserService_GetUser_FullMethodName)).
-        When(sdk.Contains("id", "")). // Matches any ID
-        Reply(sdk.Data("name", "General User", "role", "user")).
+    srv.ExpectUnary(UserService_GetUser_FullMethodName).
+        Match(sdk.Contains("id", "")). // Matches any ID
         Priority(10).
-        Commit()
+        Return("name", "General User", "role", "user")
 
-    client := NewUserServiceClient(mock.Conn())
+    client := NewUserServiceClient(srv.Conn())
 
     // ACT
     specialReply, err1 := client.GetUser(t.Context(), &GetUserRequest{Id: "special-user"})
@@ -119,17 +133,16 @@ func TestUserService_GetUser_Priority(t *testing.T) {
 ```go
 func TestRateLimitService_LimitedCalls(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(rate.File_rate_limit_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(rate.File_rate_limit_service_proto))
+    defer srv.Close()
 
     // Stub matches exactly 3 times, then becomes unavailable
-    mock.Stub(sdk.By(RateLimitService_Call_FullMethodName)).
-        When(sdk.Equals("id", "limited")).
-        Reply(sdk.Data("result", "ok")).
+    srv.ExpectUnary(RateLimitService_Call_FullMethodName).
+        Match("id", "limited").
         Times(3).
-        Commit()
+        Return("result", "ok")
 
-    client := NewRateLimitServiceClient(mock.Conn())
+    client := NewRateLimitServiceClient(srv.Conn())
 
     // ACT
     reply1, err1 := client.Call(t.Context(), &CallRequest{Id: "limited"})
@@ -153,19 +166,18 @@ func TestRateLimitService_LimitedCalls(t *testing.T) {
 ```go
 func TestChatService_ServerStreaming(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(chat.File_chat_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(chat.File_chat_service_proto))
+    defer srv.Close()
 
-    mock.Stub(sdk.By(ChatService_ChatStream_FullMethodName)).
-        When(sdk.Equals("roomId", "room-123")).
-        ReplyStream(
-            sdk.Data("message", "Hello", "sender", "Alice"),
-            sdk.Data("message", "Hi there", "sender", "Bob"),
-            sdk.Data("message", "Goodbye", "sender", "Alice"),
-        ).
-        Commit()
+    srv.ExpectServerStream(ChatService_ChatStream_FullMethodName).
+        Match("roomId", "room-123").
+        SendStream(
+            map[string]any{"message": "Hello", "sender": "Alice"},
+            map[string]any{"message": "Hi there", "sender": "Bob"},
+            map[string]any{"message": "Goodbye", "sender": "Alice"},
+        )
 
-    client := NewChatServiceClient(mock.Conn())
+    client := NewChatServiceClient(srv.Conn())
 
     // ACT
     stream, err := client.ChatStream(t.Context(), &ChatStreamRequest{RoomId: "room-123"})
@@ -197,15 +209,14 @@ func TestChatService_ServerStreaming(t *testing.T) {
 ```go
 func TestPaymentService_Failure(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(payment.File_payment_service_proto))
-    require.NoError(t, err)
+    srv := sdk.NewServer(t, sdk.WithFileDescriptor(payment.File_payment_service_proto))
+    defer srv.Close()
 
-    mock.Stub(sdk.By(PaymentService_Charge_FullMethodName)).
-        When(sdk.Equals("amount", 0)).
-        ReplyError(codes.InvalidArgument, "Amount must be greater than 0").
-        Commit()
+    srv.ExpectUnary(PaymentService_Charge_FullMethodName).
+        Match("amount", 0).
+        ReturnError(codes.InvalidArgument, "Amount must be greater than 0")
 
-    client := NewPaymentServiceClient(mock.Conn())
+    client := NewPaymentServiceClient(srv.Conn())
 
     // ACT
     _, err = client.Charge(t.Context(), &ChargeRequest{Amount: 0})
@@ -214,38 +225,6 @@ func TestPaymentService_Failure(t *testing.T) {
     require.Error(t, err)
     require.Equal(t, codes.InvalidArgument, status.Code(err))
     require.Contains(t, err.Error(), "Amount must be greater than 0")
-}
-```
-
-## Response Headers
-
-```go
-func TestAuthService_LoginWithHeaders(t *testing.T) {
-    // ARRANGE
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(auth.File_auth_service_proto))
-    require.NoError(t, err)
-
-    mock.Stub(sdk.By(AuthService_Login_FullMethodName)).
-        When(sdk.Equals("username", "test-user")).
-        Reply(sdk.Data("token", "jwt-token")).
-        ReplyHeaderPairs("x-session-id", "session-123", "x-permissions", "read,write").
-        Commit()
-
-    client := NewAuthServiceClient(mock.Conn())
-
-    // ACT
-    ctx := t.Context()
-    reply, err := client.Login(ctx, &LoginRequest{Username: "test-user"})
-
-    // ASSERT
-    require.NoError(t, err)
-    require.Equal(t, "jwt-token", reply.GetToken())
-    
-    // Check response headers
-    trailer := metadata.MD{}
-    require.NoError(t, grpc.GetTrailer(ctx, &trailer))
-    require.Equal(t, []string{"session-123"}, trailer["x-session-id"])
-    require.Equal(t, []string{"read,write"}, trailer["x-permissions"])
 }
 ```
 

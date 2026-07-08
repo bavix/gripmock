@@ -1,4 +1,4 @@
-# Session Management <VersionTag version="v3.7.0" />
+# Session Management <VersionTag version="v3.16.0" />
 
 ::: warning
 ⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
@@ -7,6 +7,8 @@
 ::: info
 **Minimum Requirements**: Go 1.26 or later
 :::
+
+> **Version history:** Sessions introduced in <VersionTag version="v3.16.0" />. Not available in the legacy API.
 
 Sessions provide isolation for stubs and history data when using remote GripMock instances. Each session maintains its own set of stubs and call history, preventing interference between different test contexts.
 
@@ -26,20 +28,18 @@ To use sessions, specify a session ID when connecting to a remote GripMock insta
 ```go
 func TestMyService_WithSession(t *testing.T) {
     // ARRANGE
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithFileDescriptor(service.File_service_proto),
         sdk.WithSession("test-session-123"), // Isolate this test's stubs and history
     )
-    require.NoError(t, err)
 
     // Stubs defined in this session are isolated from other sessions
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "session-test")).
-        Reply(sdk.Data("result", "session-isolated")).
-        Commit()
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "session-test").
+        Return("result", "session-isolated")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
     resp, err := client.MyMethod(t.Context(), &MyRequest{Id: "session-test"})
@@ -67,14 +67,14 @@ Always use unique session identifiers to prevent conflicts:
 
 ```go
 // Good: Use test name as session ID for uniqueness
-mock, err := sdk.Run(t,
+srv := sdk.NewServer(t,
     sdk.WithRemote("localhost:4770", "http://localhost:4771"),
     sdk.WithSession(t.Name()), // Uses test function name as session ID
 )
 
 // Good: Use UUID for guaranteed uniqueness
 sessionID := uuid.New().String()
-mock, err := sdk.Run(t,
+srv := sdk.NewServer(t,
     sdk.WithRemote("localhost:4770", "http://localhost:4771"),
     sdk.WithSession(sessionID),
 )
@@ -82,18 +82,17 @@ mock, err := sdk.Run(t,
 
 ### 2. Clean Up Sessions
 
-`mock.Close()` cleans remote stubs associated with the active session. You can also set a TTL to trigger automatic cleanup:
+`srv.Close()` cleans remote stubs associated with the active session. You can also set a TTL to trigger automatic cleanup:
 
 ```go
 func TestMyService_WithCleanup(t *testing.T) {
     sessionID := "test-" + t.Name()
     
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithSession(sessionID),
         sdk.WithSessionTTL(30 * time.Second),
     )
-    require.NoError(t, err)
 
     // Test logic here...
     
@@ -107,20 +106,18 @@ When using sessions, verification occurs within the context of that session:
 
 ```go
 func TestMyService_SessionVerification(t *testing.T) {
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithFileDescriptor(service.File_service_proto),
         sdk.WithSession(t.Name()),
     )
-    require.NoError(t, err)
 
-    mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-        When(sdk.Equals("id", "verify-test")).
-        Reply(sdk.Data("result", "verified")).
+    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
+        Match("id", "verify-test").
         Times(2). // Expected to be called exactly 2 times in this session
-        Commit()
+        Return("result", "verified")
 
-    client := NewMyServiceClient(mock.Conn())
+    client := NewMyServiceClient(srv.Conn())
 
     // ACT
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "verify-test"})
@@ -128,7 +125,7 @@ func TestMyService_SessionVerification(t *testing.T) {
 
     // ASSERT
     // Verification happens within the session context
-    mock.Verify().Method(sdk.By(MyService_MyMethod_FullMethodName)).Called(t, 2)
+    require.Equal(t, 2, srv.Called(MyService_MyMethod_FullMethodName))
 }
 ```
 
@@ -141,12 +138,11 @@ Sessions can be configured with various options depending on your needs:
 By default, SDK schedules remote session cleanup with TTL `60s`. Use `sdk.WithSessionTTL(...)` to override:
 
 ```go
-mock, err := sdk.Run(t,
+srv := sdk.NewServer(t,
     sdk.WithRemote("localhost:4770", "http://localhost:4771"),
     sdk.WithSession(t.Name()),
     sdk.WithSessionTTL(2*time.Minute),
 )
-require.NoError(t, err)
 ```
 
 ### Session Persistence
@@ -167,12 +163,11 @@ When running tests in parallel with a shared remote GripMock instance:
 func TestMyService_Parallel(t *testing.T) {
     t.Parallel() // Safe with sessions
 
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithFileDescriptor(service.File_service_proto),
         sdk.WithSession(t.Name()), // Each parallel test gets its own session
     )
-    require.NoError(t, err)
 
     // Rest of test...
 }
@@ -183,16 +178,15 @@ func TestMyService_Parallel(t *testing.T) {
 For integration tests that need shared state, create the mock in test setup code that has access to `t` (for example in suite setup helpers):
 
 ```go
-func runSharedSessionMock(t *testing.T) sdk.Mock {
+func runSharedSessionMock(t *testing.T) *sdk.Server {
     t.Helper()
 
-    mock, err := sdk.Run(t,
+    srv := sdk.NewServer(t,
         sdk.WithRemote("localhost:4770", "http://localhost:4771"),
         sdk.WithSession("integration-suite"),
     )
-    require.NoError(t, err)
 
-    return mock
+    return srv
 }
 ```
 

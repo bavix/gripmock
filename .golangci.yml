@@ -15,9 +15,6 @@ linters:
     - wrapcheck  # too strict for this project - requires wrapping all errors
     - gomoddirectives  # allow local replace for pkg/plugins
     - goconst # too strict for this project - requires big refactoring
-  exclusions: # remove it later
-    paths:
-      - "^pkg/.*"
   settings:
     lll:
       tab-width: 1
@@ -40,9 +37,6 @@ formatters:
     - gofmt
     - gofumpt
     - goimports
-  exclusions: # remove it later
-    paths:
-      - "^pkg/.*"
   settings:
     gci:
       sections:

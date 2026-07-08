@@ -1,16 +1,18 @@
-package plugintest
+package plugintest_test
 
 import (
 	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/bavix/gripmock/v3/pkg/plugintest"
 )
 
 func TestDecorate(t *testing.T) {
 	t.Parallel()
 
-	base := Func(func(_ context.Context, args ...any) (any, error) {
+	base := plugintest.Func(func(_ context.Context, args ...any) (any, error) {
 		if len(args) == 0 {
 			return "", nil
 		}
@@ -20,14 +22,14 @@ func TestDecorate(t *testing.T) {
 		return s + "-base", nil
 	})
 
-	decorated := Decorate(base, func(next Func) Func {
+	decorated := plugintest.Decorate(base, func(next plugintest.Func) plugintest.Func {
 		return func(ctx context.Context, args ...any) (any, error) {
 			res, err := next(ctx, args...)
 			if err != nil {
 				return nil, err
 			}
 
-			return res.(string) + "-decorated", nil
+			return res.(string) + "-decorated", nil //nolint:forcetypeassert
 		}
 	})
 

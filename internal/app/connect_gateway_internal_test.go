@@ -51,7 +51,7 @@ func TestConnectRPCGateway_StubNotFoundWithoutDescriptor(t *testing.T) {
 	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/UnknownService/UnknownMethod", bytes.NewReader([]byte(`{}`)))
-	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Content-Type", "application/connect+json")
 
 	gateway.ServeHTTP(w, r)
 
@@ -81,11 +81,16 @@ func TestConnectRPCGateway_WriteError(t *testing.T) {
 	gateway.writeError(w, codes.Unimplemented, "streaming not supported")
 
 	require.Equal(t, http.StatusNotImplemented, w.Code)
-	require.Equal(t, "application/json", w.Header().Get("Content-Type"))
+	require.Equal(t, "application/connect+json", w.Header().Get("Content-Type"))
 
-	resp := map[string]string{}
+	var resp struct {
+		Code    string           `json:"code"`
+		Message string           `json:"message"`
+		Details []map[string]any `json:"details"`
+	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
-	require.Equal(t, "unimplemented", resp["code"])
+	require.Equal(t, "unimplemented", resp.Code)
+	require.NotNil(t, resp.Details)
 }
 
 func TestConnectRPCGateway_IsJSONContentType(t *testing.T) {
@@ -354,11 +359,15 @@ func TestConnectRPCGateway_HandleUnary_StubNotFound(t *testing.T) {
 	gateway.handleUnary(mocker, adapter)
 
 	require.Equal(t, http.StatusNotFound, rec.Code)
-	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	require.Equal(t, "application/connect+json", rec.Header().Get("Content-Type"))
 
-	resp := map[string]string{}
+	var resp struct {
+		Code    string           `json:"code"`
+		Message string           `json:"message"`
+		Details []map[string]any `json:"details"`
+	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
-	require.Equal(t, "not_found", resp["code"])
+	require.Equal(t, "not_found", resp.Code)
 }
 
 // TestConnectRPCGateway_HandleUnary_Success verifies that handleUnary
@@ -427,11 +436,13 @@ func TestConnectRPCGateway_HandleWithoutDescriptor_StubNotFound(t *testing.T) {
 	gateway.handleWithoutDescriptor(rec, req, "test.Service", "TestMethod")
 
 	require.Equal(t, http.StatusNotFound, rec.Code)
-	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	require.Equal(t, "application/connect+json", rec.Header().Get("Content-Type"))
 
-	var body map[string]string
+	var body struct {
+		Code string `json:"code"`
+	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
-	require.Equal(t, "not_found", body["code"])
+	require.Equal(t, "not_found", body.Code)
 }
 
 // TestConnectRPCGateway_HandleWithoutDescriptor_EmptyData verifies the
@@ -457,7 +468,7 @@ func TestConnectRPCGateway_HandleWithoutDescriptor_EmptyData(t *testing.T) {
 	gateway.handleWithoutDescriptor(rec, req, "test.Service", "TestMethod")
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	require.Equal(t, "application/connect+json", rec.Header().Get("Content-Type"))
 	require.Equal(t, "{}", rec.Body.String())
 }
 
@@ -487,11 +498,13 @@ func TestConnectRPCGateway_HandleWithoutDescriptor_WithData(t *testing.T) {
 	gateway.handleWithoutDescriptor(rec, req, "test.Service", "TestMethod")
 
 	require.Equal(t, http.StatusNotImplemented, rec.Code)
-	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
+	require.Equal(t, "application/connect+json", rec.Header().Get("Content-Type"))
 
-	var body map[string]string
+	var body struct {
+		Code string `json:"code"`
+	}
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
-	require.Equal(t, "unimplemented", body["code"])
+	require.Equal(t, "unimplemented", body.Code)
 }
 
 // TestHttpStreamAdapter_EndStreamFrameReturnsEOF verifies that recvStreamingMessage

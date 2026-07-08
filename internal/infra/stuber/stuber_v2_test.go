@@ -122,7 +122,6 @@ func TestBudgerigarUnusedV2(t *testing.T) {
 func TestBudgerigarSearchWithHeadersV2(t *testing.T) {
 	t.Parallel()
 	// Clear all caches before test
-	stuber.ClearAllCaches()
 
 	s := stuber.NewBudgerigar()
 
@@ -212,7 +211,6 @@ func TestResultSimilarV2(t *testing.T) {
 func TestStuberMatchesEqualsFoundV2(t *testing.T) {
 	t.Parallel()
 	// Clear all caches before test
-	stuber.ClearAllCaches()
 
 	s := stuber.NewBudgerigar()
 
@@ -406,7 +404,6 @@ func TestDivideByZeroClientStreaming(t *testing.T) {
 func TestBudgerigarUsedV2(t *testing.T) {
 	t.Parallel()
 	// Clear all caches before test
-	stuber.ClearAllCaches()
 
 	s := stuber.NewBudgerigar()
 	stub1, stub2 := newPairGreeterStubs()
@@ -1262,7 +1259,6 @@ func TestStableSortingOptimized(t *testing.T) {
 func TestPriorityHeadersOverEquals(t *testing.T) {
 	t.Parallel()
 	// Clear all caches before test
-	stuber.ClearAllCaches()
 
 	s := stuber.NewBudgerigar()
 
@@ -1589,8 +1585,6 @@ func assertFindByEmptyQueryNoMatch(t *testing.T, s *stuber.Budgerigar) {
 func newCleanBudgerigar(t *testing.T) *stuber.Budgerigar {
 	t.Helper()
 
-	stuber.ClearAllCaches()
-
 	return stuber.NewBudgerigar()
 }
 
@@ -1658,7 +1652,6 @@ func TestEmptyQueryInputMixedConditions(t *testing.T) {
 func TestMethodTypes(t *testing.T) {
 	t.Parallel()
 	// Clear all caches before test
-	stuber.ClearAllCaches()
 
 	s := stuber.NewBudgerigar()
 
@@ -1787,7 +1780,6 @@ func TestMethodTypes(t *testing.T) {
 func TestMethodTypesPriority(t *testing.T) {
 	t.Parallel()
 	// Clear all caches before test
-	stuber.ClearAllCaches()
 
 	s := stuber.NewBudgerigar()
 
@@ -1830,7 +1822,6 @@ func TestMethodTypesPriority(t *testing.T) {
 func TestMethodTypesEmptyInput(t *testing.T) {
 	t.Parallel()
 	// Clear all caches before test
-	stuber.ClearAllCaches()
 
 	s := stuber.NewBudgerigar()
 

@@ -5,11 +5,21 @@ import (
 
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 // PanicRecoveryUnaryInterceptor recovers from panics in unary gRPC handlers.
-func PanicRecoveryUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+// Named returns required: defer-set err must propagate after panic recovery.
+//
+//nolint:nonamedreturns
+func PanicRecoveryUnaryInterceptor(
+	ctx context.Context,
+	req any,
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (resp any, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			zerolog.Ctx(ctx).
@@ -18,6 +28,7 @@ func PanicRecoveryUnaryInterceptor(ctx context.Context, req any, info *grpc.Unar
 				Str("grpc.service", info.FullMethod).
 				Str("grpc.method_type", "unary").
 				Msg("Panic recovered in unary gRPC handler")
+			err = status.Errorf(codes.Internal, "handler panic: %v", r)
 		}
 	}()
 
