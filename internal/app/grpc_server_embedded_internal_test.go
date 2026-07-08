@@ -46,6 +46,7 @@ func TestGRPCServerBuildWithoutStartupDescriptors(t *testing.T) {
 		nil,
 		nil,
 		false,
+		256,
 		nil,
 		nil,
 	)
@@ -86,6 +87,7 @@ func TestGRPCServerFindMethodDescriptorFromDynamicRegistry(t *testing.T) {
 		nil,
 		nil,
 		false,
+		256,
 		nil,
 		nil,
 	)

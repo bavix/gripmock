@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/google/uuid"
@@ -94,19 +93,6 @@ func TestNewQueryInvalidJson(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestNewQueryBidi(t *testing.T) {
-	t.Parallel()
-
-	body := `{"service":"svc","method":"mthd","headers":{"h":"v"}}`
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewBufferString(body))
-	req.Header.Set("Content-Type", "application/json")
-	q, err := NewQueryBidi(req)
-	require.NoError(t, err)
-	require.Equal(t, "svc", q.Service)
-	require.Equal(t, "mthd", q.Method)
-	require.Equal(t, "v", q.Headers["h"])
-}
-
 func TestRequestInternalBidi(t *testing.T) {
 	t.Parallel()
 
@@ -191,14 +177,4 @@ func TestQueryData(t *testing.T) {
 
 	q = Query{Input: nil}
 	require.Nil(t, q.Data())
-}
-
-func TestNewQueryFromInput(t *testing.T) {
-	t.Parallel()
-
-	q := NewQueryFromInput("svc", "mth", []map[string]any{{"k": "v"}}, map[string]any{"h": "v"})
-	require.Equal(t, "svc", q.Service)
-	require.Equal(t, "mth", q.Method)
-	require.Equal(t, []map[string]any{{"k": "v"}}, q.Input)
-	require.Equal(t, map[string]any{"h": "v"}, q.Headers)
 }

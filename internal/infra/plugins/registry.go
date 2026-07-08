@@ -29,12 +29,6 @@ type Registry struct {
 
 type Option func(*Registry)
 
-func WithForceSource(src string) Option {
-	return func(r *Registry) {
-		r.forceSource = src
-	}
-}
-
 func NewRegistry(opts ...Option) *Registry {
 	r := &Registry{
 		funcs:       make(map[string]any),

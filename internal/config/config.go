@@ -60,6 +60,9 @@ type Config struct {
 	StubWatcherInterval time.Duration `env:"STUB_WATCHER_INTERVAL" envDefault:"1s"`
 	StubWatcherType     watcherType   `env:"STUB_WATCHER_TYPE"     envDefault:"fsnotify"`
 
+	// Proto message-to-map conversion limits.
+	MaxNestingDepth uint32 `env:"MAX_NESTING_DEPTH" envDefault:"256"`
+
 	// History configuration.
 	HistoryEnabled         bool     `env:"HISTORY_ENABLED"           envDefault:"true"`
 	HistoryLimit           ByteSize `env:"HISTORY_LIMIT"             envDefault:"64M"`

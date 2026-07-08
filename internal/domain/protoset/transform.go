@@ -412,49 +412,6 @@ func (p *processor) process(ctx context.Context, paths []string) error {
 }
 
 //nolint:funcorder
-func (p *processor) processDirectory(ctx context.Context, absPath string) error {
-	logger := zerolog.Ctx(ctx)
-	logger.Debug().Str("directory", absPath).Msg("Walking directory")
-
-	p.addImport(ctx, absPath)
-
-	return errors.Wrapf(filepath.Walk(absPath, func(pth string, info os.FileInfo, err error) error {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
-		if err != nil {
-			return errors.Wrapf(err, "failed to access path %s", pth)
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		ext := filepath.Ext(pth)
-		logger := logger.With().
-			Str("file", pth).
-			Str("extension", ext).
-			Logger()
-
-		switch {
-		case slices.Contains(p.allowedProtoExts, ext):
-			logger.Debug().Msg("Found proto file")
-			p.AddProtoFile(ctx, pth)
-		case slices.Contains(p.allowedDescExts, ext):
-			logger.Debug().Msg("Found descriptor file")
-			p.AddDescriptorFile(ctx, pth)
-		default:
-			logger.Debug().Msg("Skipping unsupported file type")
-		}
-
-		return nil
-	}), "failed to walk directory %s", absPath)
-}
-
-//nolint:funcorder
 func (p *processor) addImport(ctx context.Context, dir string) {
 	var (
 		dirAbs string

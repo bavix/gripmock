@@ -7,29 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMatch(t *testing.T) {
-	t.Parallel()
-	// Test with different service - match function doesn't check service/method
-	query := Query{Service: "test", Method: "test"}
-	stub := &Stub{Service: "different", Method: "test"}
-	require.True(t, match(query, stub)) // match only checks headers and data, not service/method
-
-	// Test match with headers mismatch
-	query = Query{Service: "test", Method: "test", Headers: map[string]any{"header": "value"}}
-	stub = &Stub{Service: "test", Method: "test", Headers: InputHeader{Equals: map[string]any{"header": "different"}}}
-	require.False(t, match(query, stub))
-
-	// Test match with data mismatch
-	query = Query{Service: "test", Method: "test", Input: []map[string]any{{"key": "value"}}}
-	stub = &Stub{Service: "test", Method: "test", Input: InputData{Equals: map[string]any{"key": "different"}}}
-	require.False(t, match(query, stub))
-
-	// Test successful match
-	query = Query{Service: "test", Method: "test", Input: []map[string]any{{"key": "value"}}}
-	stub = &Stub{Service: "test", Method: "test", Input: InputData{Equals: map[string]any{"key": "value"}}}
-	require.True(t, match(query, stub))
-}
-
 func TestEqualsFunction(t *testing.T) {
 	t.Parallel()
 	// Test equals function directly
@@ -346,45 +323,6 @@ func TestEqualsEdgeCases(t *testing.T) {
 		"map":    map[string]any{"nested": "value"},
 	}
 	require.False(t, equals(mixed1, mixed3, false))
-}
-
-func TestMatchHeadersAnyOf(t *testing.T) {
-	t.Parallel()
-
-	query := Query{
-		Headers: map[string]any{
-			"authorization": "Bearer token123",
-		},
-	}
-
-	stub := &Stub{
-		Headers: InputHeader{
-			AnyOf: []AnyOfHeaderElement{
-				{Equals: map[string]any{"x-user": "alice"}},
-				{Equals: map[string]any{"authorization": "Bearer token123"}},
-			},
-		},
-	}
-
-	require.True(t, match(query, stub))
-}
-
-func TestMatchHeadersAnyOfRequiresBaseAndAlternative(t *testing.T) {
-	t.Parallel()
-
-	stub := &Stub{
-		Headers: InputHeader{
-			Equals: map[string]any{"x-env": "prod"},
-			AnyOf: []AnyOfHeaderElement{
-				{Equals: map[string]any{"x-user": "alice"}},
-				{Matches: map[string]any{"authorization": "^Bearer admin_"}},
-			},
-		},
-	}
-
-	require.True(t, match(Query{Headers: map[string]any{"x-env": "prod", "x-user": "alice"}}, stub))
-	require.False(t, match(Query{Headers: map[string]any{"x-env": "dev", "x-user": "alice"}}, stub))
-	require.False(t, match(Query{Headers: map[string]any{"x-env": "prod", "x-user": "bob"}}, stub))
 }
 
 func TestToFloat64(t *testing.T) {

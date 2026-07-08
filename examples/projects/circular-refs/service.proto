@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package circular;
+
+option go_package = "github.com/bavix/gripmock/v3/examples/circular";
+
+service RewardService {
+  rpc GetReward(RewardRequest) returns (Reward);
+  rpc ProcessReward(Reward) returns (RewardResponse);
+}
+
+message RewardRequest {
+  string id = 1;
+}
+
+message RewardResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message Reward {
+  string id = 1;
+  oneof reward {
+    string simple_gift = 2;
+    ExprReward expr_reward = 3;
+  }
+}
+
+message ExprReward {
+  string description = 1;
+  Reward reward = 2;
+  int32 multiplier = 3;
+}

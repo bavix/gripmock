@@ -60,7 +60,7 @@ func (m *grpcMocker) recordUnaryStub(
 	elapsed time.Duration,
 ) {
 	captureCtx := m.newCaptureRequestContext(ctx)
-	requestData := convertToMap(req)
+	requestData := m.convertToMap(req)
 	responseHeaders := responseHeadersFromMetadata(header, trailer)
 
 	var responseData any

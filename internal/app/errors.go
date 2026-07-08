@@ -99,16 +99,8 @@ func mcpInvalidArgErrorWithCause(message string, cause error) error {
 	return kindError{kind: ErrMCPInvalidArgument, cause: cause, message: message}
 }
 
-func mcpInvalidRequestError() error {
-	return kindError{kind: ErrMCPInvalidRequest, message: "invalid JSON-RPC request"}
-}
-
 func mcpMethodNotFound(message string) error {
 	return kindError{kind: ErrMCPToolNotFound, message: message}
-}
-
-func mcpRPCMethodNotFoundError() error {
-	return mcpMethodNotFound("method not found")
 }
 
 func mcpUnknownTool(name string) error {

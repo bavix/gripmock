@@ -3,7 +3,6 @@ package deps_test
 import (
 	"context"
 	"net"
-	"net/http"
 	"testing"
 	"time"
 
@@ -46,12 +45,6 @@ func TestRestServeAssignsActualPortForHTTPAddrZero(t *testing.T) {
 
 		return true
 	}, time.Second, 50*time.Millisecond)
-
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer shutdownCancel()
-
-	require.NoError(t, srv.Shutdown(shutdownCtx))
-	require.ErrorIs(t, <-errCh, http.ErrServerClosed)
 }
 
 func TestRestServeReturnsErrorWhenHTTPPortIsBusy(t *testing.T) {

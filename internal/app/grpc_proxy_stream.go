@@ -57,7 +57,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 
 	responses := make([]any, 0, proxyMessagesInitCap)
 	captureCtx := m.newCaptureRequestContext(stream.Context())
-	requestData := convertToMap(req)
+	requestData := m.convertToMap(req)
 	recordDelay := route.Source.RecordDelay
 	recorded := false
 
@@ -176,7 +176,7 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 	recordDelay := route.Source.RecordDelay
 
 	for _, req := range requestsToForward {
-		requests = append(requests, convertToMap(req))
+		requests = append(requests, m.convertToMap(req))
 
 		if err = clientStream.SendMsg(req); err != nil {
 			return err
@@ -302,7 +302,7 @@ func (m *grpcMocker) forwardBidiRequests(
 	errCh chan<- error,
 ) {
 	for _, prefetched := range prefetchedRequests {
-		state.AppendRequest(convertToMap(prefetched))
+		state.AppendRequest(m.convertToMap(prefetched))
 
 		if err := clientStream.SendMsg(prefetched); err != nil {
 			errCh <- err
@@ -327,7 +327,7 @@ func (m *grpcMocker) forwardBidiRequests(
 			return
 		}
 
-		state.AppendRequest(convertToMap(req))
+		state.AppendRequest(m.convertToMap(req))
 
 		if err = clientStream.SendMsg(req); err != nil {
 			errCh <- err

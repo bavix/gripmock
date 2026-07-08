@@ -1,15 +1,5 @@
 package mcp
 
-import (
-	"net/http"
-
-	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
-)
-
-func ApplyTransportSession(r *http.Request, toolName string, args map[string]any) map[string]any {
-	return ApplySession(toolName, args, muxmiddleware.FromRequest(r))
-}
-
 func ApplySession(toolName string, args map[string]any, sessionID string) map[string]any {
 	if !ToolUsesSession(toolName) {
 		return args

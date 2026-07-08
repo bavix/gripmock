@@ -1,0 +1,17 @@
+--- ENDPOINT ---
+circular.RewardService/ProcessReward
+
+--- REQUEST ---
+{
+  "expr_reward": {
+    "description": "test",
+    "multiplier": 2
+  },
+  "id": "test_reward"
+}
+
+--- RESPONSE ---
+{
+  "message": "Processed reward with circular refs",
+  "success": true
+}

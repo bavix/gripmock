@@ -50,10 +50,6 @@ func (s *RestServer) ListenAndServe() error {
 	return s.server.Serve(s.listener)
 }
 
-func (s *RestServer) Shutdown(ctx context.Context) error {
-	return s.server.Shutdown(ctx)
-}
-
 //nolint:funlen
 func (b *Builder) RestServe(
 	ctx context.Context,

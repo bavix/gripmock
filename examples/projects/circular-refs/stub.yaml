@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: circular.RewardService
+  method: GetReward
+  input:
+    equals:
+      id: "reward_1"
+  output:
+    data:
+      id: "reward_1"
+      expr_reward:
+        description: "Bonus multiplier"
+        reward:
+          id: "nested_reward_1"
+          simple_gift: "gold_coin"
+        multiplier: 3
+
+- service: circular.RewardService
+  method: GetReward
+  input:
+    matches:
+      id: "^reward_dyn_"
+  output:
+    data:
+      id: "{{.Request.id}}"
+      expr_reward:
+        description: "Regular reward"
+        reward:
+          id: "inner_{{.Request.id}}"
+          simple_gift: "silver_coin"
+        multiplier: 1
+
+- service: circular.RewardService
+  method: ProcessReward
+  input:
+    equals:
+      id: "test_reward"
+  output:
+    data:
+      success: true
+      message: "Processed reward with circular refs"

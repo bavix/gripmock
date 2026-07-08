@@ -102,20 +102,21 @@ var (
 const serviceReflection = "grpc.reflection.v1.ServerReflection"
 
 type GRPCServer struct {
-	network        string
-	address        string
-	params         *protoloc.Arguments
-	budgerigar     *stuber.Budgerigar
-	healthState    stuber.Aliveness
-	waiter         Extender
-	recorder       history.Recorder
-	descriptors    *descriptors.Registry
-	remoteClient   protosetdom.RemoteClient
-	tlsConfig      *tls.Config
-	proxies        *proxyroutes.Registry
-	otelEnabled    bool
-	validator      *validator.Validate
-	errorFormatter *ErrorFormatter
+	network         string
+	address         string
+	params          *protoloc.Arguments
+	budgerigar      *stuber.Budgerigar
+	healthState     stuber.Aliveness
+	waiter          Extender
+	recorder        history.Recorder
+	descriptors     *descriptors.Registry
+	remoteClient    protosetdom.RemoteClient
+	tlsConfig       *tls.Config
+	proxies         *proxyroutes.Registry
+	otelEnabled     bool
+	maxNestingDepth uint32
+	validator       *validator.Validate
+	errorFormatter  *ErrorFormatter
 }
 
 type grpcMocker struct {
@@ -139,6 +140,12 @@ type grpcMocker struct {
 	clientStream bool
 
 	strictServiceMatch bool
+
+	maxNestingDepth uint32
+}
+
+func (m *grpcMocker) convertToMap(msg proto.Message) map[string]any {
+	return convertToMapWithDepth(msg, int(m.maxNestingDepth))
 }
 
 //nolint:cyclop
@@ -207,7 +214,7 @@ func (m *grpcMocker) newQuery(ctx context.Context, msg *dynamicpb.Message) stube
 		Service:       m.fullServiceName,
 		Method:        m.methodName,
 		StrictService: m.strictServiceMatch,
-		Input:         []map[string]any{convertToMap(msg)},
+		Input:         []map[string]any{m.convertToMap(msg)},
 	}
 
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -235,18 +242,73 @@ func (m *grpcMocker) newQueryBidi(ctx context.Context) stuber.QueryBidi {
 	return query
 }
 
+const defaultConvertDepth = 256
+
+type convertScope struct {
+	seen  map[protoreflect.Message]struct{}
+	depth int
+	max   int
+}
+
+func newConvertScope(maxDepth int) *convertScope {
+	if maxDepth <= 0 {
+		maxDepth = defaultConvertDepth
+	}
+
+	return &convertScope{
+		seen: make(map[protoreflect.Message]struct{}),
+		max:  maxDepth,
+	}
+}
+
+func (c *convertScope) enter(msg protoreflect.Message) bool {
+	if msg == nil || !msg.IsValid() {
+		return false
+	}
+
+	if c.depth >= c.max {
+		return false
+	}
+
+	if _, ok := c.seen[msg]; ok {
+		return false
+	}
+
+	c.seen[msg] = struct{}{}
+	c.depth++
+
+	return true
+}
+
+func (c *convertScope) exit() {
+	c.depth--
+}
+
 func convertToMap(msg proto.Message) map[string]any {
 	if msg == nil {
 		return nil
 	}
 
-	message := msg.ProtoReflect()
+	return convertToMapVisited(msg.ProtoReflect(), newConvertScope(defaultConvertDepth))
+}
+
+func convertToMapWithDepth(msg proto.Message, maxDepth int) map[string]any {
+	if msg == nil {
+		return nil
+	}
+
+	return convertToMapVisited(msg.ProtoReflect(), newConvertScope(maxDepth))
+}
+
+func convertToMapVisited(message protoreflect.Message, scope *convertScope) map[string]any {
+	if !scope.enter(message) {
+		return nil
+	}
+	defer scope.exit()
+
 	desc := message.Descriptor()
 	result := make(map[string]any, desc.Fields().Len())
 
-	// Iterate over descriptor fields, not message.Range: Range only visits populated fields.
-	// In proto3, scalars with default values (e.g. 0.0) are not "populated", so Range skips them.
-	// We need all fields including defaults for stub matching.
 	for i := range desc.Fields().Len() {
 		fd := desc.Fields().Get(i)
 
@@ -255,24 +317,24 @@ func convertToMap(msg proto.Message) map[string]any {
 		}
 
 		fieldName := string(fd.Name())
-		result[fieldName] = convertValue(fd, message.Get(fd))
+		result[fieldName] = convertValueVisited(fd, message.Get(fd), scope)
 	}
 
 	return result
 }
 
-func convertValue(fd protoreflect.FieldDescriptor, value protoreflect.Value) any {
+func convertValueVisited(fd protoreflect.FieldDescriptor, value protoreflect.Value, scope *convertScope) any {
 	switch {
 	case fd.IsList():
-		return convertList(fd, value.List())
+		return convertListVisited(fd, value.List(), scope)
 	case fd.IsMap():
-		return convertMap(fd, value.Map())
+		return convertMapVisited(fd, value.Map(), scope)
 	default:
-		return convertScalar(fd, value)
+		return convertScalarVisited(fd, value, scope)
 	}
 }
 
-func convertList(fd protoreflect.FieldDescriptor, list protoreflect.List) []any {
+func convertListVisited(fd protoreflect.FieldDescriptor, list protoreflect.List, scope *convertScope) []any {
 	result := make([]any, list.Len())
 	elemType := fd.Message()
 
@@ -280,16 +342,18 @@ func convertList(fd protoreflect.FieldDescriptor, list protoreflect.List) []any 
 		elem := list.Get(i)
 
 		if elemType != nil {
-			result[i] = convertToMap(elem.Message().Interface())
+			if m := elem.Message(); m.IsValid() {
+				result[i] = convertToMapVisited(m, scope)
+			}
 		} else {
-			result[i] = convertScalar(fd, elem)
+			result[i] = convertScalarVisited(fd, elem, scope)
 		}
 	}
 
 	return result
 }
 
-func convertMap(fd protoreflect.FieldDescriptor, m protoreflect.Map) map[string]any {
+func convertMapVisited(fd protoreflect.FieldDescriptor, m protoreflect.Map, scope *convertScope) map[string]any {
 	result := make(map[string]any)
 	keyType := fd.MapKey()
 	valType := fd.MapValue().Message()
@@ -301,7 +365,9 @@ func convertMap(fd protoreflect.FieldDescriptor, m protoreflect.Map) map[string]
 		}
 
 		if valType != nil {
-			result[convertedKey] = convertToMap(val.Message().Interface())
+			if m := val.Message(); m.IsValid() {
+				result[convertedKey] = convertToMapVisited(m, scope)
+			}
 		} else {
 			result[convertedKey] = convertScalar(fd.MapValue(), val)
 		}
@@ -312,8 +378,12 @@ func convertMap(fd protoreflect.FieldDescriptor, m protoreflect.Map) map[string]
 	return result
 }
 
-//nolint:cyclop
 func convertScalar(fd protoreflect.FieldDescriptor, value protoreflect.Value) any {
+	return convertScalarVisited(fd, value, nil)
+}
+
+//nolint:cyclop
+func convertScalarVisited(fd protoreflect.FieldDescriptor, value protoreflect.Value, scope *convertScope) any {
 	const nullValue = "google.protobuf.NullValue"
 
 	switch fd.Kind() {
@@ -347,7 +417,16 @@ func convertScalar(fd protoreflect.FieldDescriptor, value protoreflect.Value) an
 
 		return ""
 	case protoreflect.MessageKind, protoreflect.GroupKind:
-		return convertToMap(value.Message().Interface())
+		if scope == nil {
+			return convertToMap(value.Message().Interface())
+		}
+
+		m := value.Message()
+		if !m.IsValid() {
+			return nil
+		}
+
+		return convertToMapVisited(m, scope)
 	default:
 		return nil
 	}
@@ -392,7 +471,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	}
 
 	outputToUse := found.Output
-	requestData := convertToMap(inputMsg)
+	requestData := m.convertToMap(inputMsg)
 
 	headers := make(map[string]any)
 	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
@@ -550,7 +629,7 @@ func (m *grpcMocker) handleStreamElement(
 		return err
 	}
 
-	requestData := convertToMap(inputMsg)
+	requestData := m.convertToMap(inputMsg)
 
 	headers := make(map[string]any)
 	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
@@ -608,7 +687,7 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 		inputMsg := dynamicpb.NewMessage(m.inputDesc)
 		if err := stream.RecvMsg(inputMsg); err == nil {
 			requestTime := time.Now()
-			requestData := convertToMap(inputMsg)
+			requestData := m.convertToMap(inputMsg)
 
 			headers := make(map[string]any)
 			if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
@@ -871,7 +950,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 	}
 
 	outputToUse := found.Output
-	requestData := convertToMap(req)
+	requestData := m.convertToMap(req)
 
 	headers := make(map[string]any)
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
@@ -1070,7 +1149,7 @@ func (m *grpcMocker) collectClientMessages(stream grpc.ServerStream) ([]map[stri
 			return nil, nil, err //nolint:wrapcheck
 		}
 
-		messages = append(messages, convertToMap(inputMsg))
+		messages = append(messages, m.convertToMap(inputMsg))
 		originalMessages = append(originalMessages, proto.CloneOf(inputMsg))
 	}
 
@@ -1247,7 +1326,7 @@ func (m *grpcMocker) processBidiStreamMessageImpl(
 ) error {
 	requestTime := time.Now()
 
-	stub, err := bidiResult.Next(convertToMap(inputMsg))
+	stub, err := bidiResult.Next(m.convertToMap(inputMsg))
 	if err != nil {
 		wrappedErr := errors.Wrap(err, "failed to process bidirectional message")
 		if errors.Is(err, stuber.ErrStubNotFound) {
@@ -1271,7 +1350,7 @@ func (m *grpcMocker) processBidiStreamSendResponse(
 	inputMsg *dynamicpb.Message,
 	requestTime time.Time,
 ) error {
-	requestData := convertToMap(inputMsg)
+	requestData := m.convertToMap(inputMsg)
 
 	headers := make(map[string]any)
 	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
@@ -1419,6 +1498,7 @@ func NewGRPCServer(
 	tlsConfig *tls.Config,
 	remoteClient protosetdom.RemoteClient,
 	otelEnabled bool,
+	maxNestingDepth uint32,
 	stubValidator *validator.Validate,
 	errorFormatter *ErrorFormatter,
 ) *GRPCServer {
@@ -1443,19 +1523,20 @@ func NewGRPCServer(
 	}
 
 	return &GRPCServer{
-		network:        network,
-		address:        address,
-		params:         params,
-		budgerigar:     budgerigar,
-		healthState:    healthState,
-		waiter:         waiter,
-		recorder:       recorder,
-		descriptors:    registry,
-		remoteClient:   remoteClient,
-		tlsConfig:      tlsConfig,
-		otelEnabled:    otelEnabled,
-		validator:      v,
-		errorFormatter: e,
+		network:         network,
+		address:         address,
+		params:          params,
+		budgerigar:      budgerigar,
+		healthState:     healthState,
+		waiter:          waiter,
+		recorder:        recorder,
+		descriptors:     registry,
+		remoteClient:    remoteClient,
+		tlsConfig:       tlsConfig,
+		otelEnabled:     otelEnabled,
+		maxNestingDepth: maxNestingDepth,
+		validator:       v,
+		errorFormatter:  e,
 	}
 }
 
@@ -1730,6 +1811,7 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 		descriptorResolver: &dynamicDescriptorResolver{static: protoregistry.GlobalFiles, dynamic: s.descriptors},
 		proxies:            s.proxies,
 		validator:          s.validator,
+		maxNestingDepth:    s.maxNestingDepth,
 		inputDesc:          methodDesc.Input(),
 		outputDesc:         methodDesc.Output(),
 		fullServiceName:    serviceName,
@@ -2047,6 +2129,7 @@ func (s *GRPCServer) createGrpcMocker(
 		descriptorResolver: resolver,
 		proxies:            s.proxies,
 		validator:          s.validator,
+		maxNestingDepth:    s.maxNestingDepth,
 
 		inputDesc:  inputDesc,
 		outputDesc: outputDesc,

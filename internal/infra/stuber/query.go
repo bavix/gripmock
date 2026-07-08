@@ -62,16 +62,6 @@ func NewQuery(r *http.Request) (Query, error) {
 	return q, decoder.Decode(&q)
 }
 
-// NewQueryFromInput creates a Query with the given input data (convenience for programmatic use).
-func NewQueryFromInput(service, method string, input []map[string]any, headers map[string]any) Query {
-	return Query{
-		Service: service,
-		Method:  method,
-		Input:   input,
-		Headers: headers,
-	}
-}
-
 // UnmarshalJSON implements json.Unmarshaler to support both "data" and "input" in request body.
 func (q *Query) UnmarshalJSON(data []byte) error {
 	var raw queryJSON
@@ -123,20 +113,6 @@ type QueryBidi struct {
 	Headers       map[string]any `json:"headers"` // The headers to match.
 
 	toggles features.Toggles
-}
-
-// NewQueryBidi creates a new QueryBidi from an HTTP request.
-func NewQueryBidi(r *http.Request) (QueryBidi, error) {
-	q := QueryBidi{
-		toggles: toggles(r),
-	}
-
-	decoder := json.NewDecoder(r.Body)
-	decoder.UseNumber()
-
-	err := decoder.Decode(&q)
-
-	return q, err
 }
 
 // RequestInternal returns true if the query is marked as internal.
