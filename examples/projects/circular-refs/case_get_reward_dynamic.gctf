@@ -2,7 +2,19 @@
 circular.RewardService/GetReward
 
 --- REQUEST ---
-{"id": "reward_dyn_42"}
+{
+  "id": "reward_dyn_42"
+}
 
 --- RESPONSE ---
-{"id": "reward_dyn_42", "expr_reward": {"description": "Regular reward", "reward": {"id": "inner_reward_dyn_42", "simple_gift": "silver_coin"}, "multiplier": 1}}
+{
+  "expr_reward": {
+    "description": "Regular reward",
+    "multiplier": 1,
+    "reward": {
+      "id": "inner_reward_dyn_42",
+      "simple_gift": "silver_coin"
+    }
+  },
+  "id": "reward_dyn_42"
+}

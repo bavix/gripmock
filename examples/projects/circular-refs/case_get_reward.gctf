@@ -2,7 +2,19 @@
 circular.RewardService/GetReward
 
 --- REQUEST ---
-{"id": "reward_1"}
+{
+  "id": "reward_1"
+}
 
 --- RESPONSE ---
-{"id": "reward_1", "expr_reward": {"description": "Bonus multiplier", "reward": {"id": "nested_reward_1", "simple_gift": "gold_coin"}, "multiplier": 3}}
+{
+  "expr_reward": {
+    "description": "Bonus multiplier",
+    "multiplier": 3,
+    "reward": {
+      "id": "nested_reward_1",
+      "simple_gift": "gold_coin"
+    }
+  },
+  "id": "reward_1"
+}

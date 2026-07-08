@@ -2,7 +2,16 @@
 circular.RewardService/ProcessReward
 
 --- REQUEST ---
-{"id": "test_reward", "expr_reward": {"description": "test", "multiplier": 2}}
+{
+  "expr_reward": {
+    "description": "test",
+    "multiplier": 2
+  },
+  "id": "test_reward"
+}
 
 --- RESPONSE ---
-{"success": true, "message": "Processed reward with circular refs"}
+{
+  "message": "Processed reward with circular refs",
+  "success": true
+}
