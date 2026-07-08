@@ -187,48 +187,6 @@ func TestEngineProcessMap(t *testing.T) {
 	require.Equal(t, "second", array[1])
 }
 
-func TestEngineProcessStream(t *testing.T) {
-	t.Parallel()
-
-	engine := New(t.Context(), nil)
-
-	t.Run("stream with templates", func(t *testing.T) {
-		t.Parallel()
-
-		stream := []any{
-			map[string]any{"msg": "{{.Request.name}}"},
-			map[string]any{"msg": "{{.Request.age}}"},
-		}
-		templateData := Data{
-			Request: map[string]any{"name": "Alice", "age": "25"},
-		}
-		err := engine.ProcessStream(stream, templateData)
-		require.NoError(t, err)
-
-		item0, ok := stream[0].(map[string]any)
-		require.True(t, ok)
-		require.Equal(t, "Alice", item0["msg"])
-
-		item1, ok := stream[1].(map[string]any)
-		require.True(t, ok)
-		require.Equal(t, "25", item1["msg"])
-	})
-
-	t.Run("nil stream", func(t *testing.T) {
-		t.Parallel()
-
-		err := engine.ProcessStream(nil, Data{})
-		require.NoError(t, err)
-	})
-
-	t.Run("empty stream", func(t *testing.T) {
-		t.Parallel()
-
-		err := engine.ProcessStream([]any{}, Data{})
-		require.NoError(t, err)
-	})
-}
-
 func TestEngineProcessHeaders(t *testing.T) {
 	t.Parallel()
 
@@ -312,89 +270,6 @@ func TestEngineProcessError(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tt.expected, result)
 			}
-		})
-	}
-}
-
-func TestHasTemplates(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		data     map[string]any
-		expected bool
-	}{
-		{
-			name: "no templates",
-			data: map[string]any{
-				"name": "John",
-				"age":  30,
-			},
-			expected: false,
-		},
-		{
-			name: "has templates",
-			data: map[string]any{
-				"name": "{{.Request.name}}",
-				"age":  30,
-			},
-			expected: true,
-		},
-		{
-			name: "nested templates",
-			data: map[string]any{
-				"user": map[string]any{
-					"name": "{{.Request.name}}",
-				},
-			},
-			expected: true,
-		},
-	}
-
-	for _, tt := range tests {
-		// capture range variable
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			result := HasTemplates(tt.data)
-			require.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-func TestHasTemplatesInStream(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		stream   []any
-		expected bool
-	}{
-		{
-			name: "no templates",
-			stream: []any{
-				map[string]any{"name": "John"},
-				map[string]any{"age": 30},
-			},
-			expected: false,
-		},
-		{
-			name: "has templates",
-			stream: []any{
-				map[string]any{"name": "{{.Request.name}}"},
-				map[string]any{"age": 30},
-			},
-			expected: true,
-		},
-	}
-
-	for _, tt := range tests {
-		// capture range variable
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			result := HasTemplatesInStream(tt.stream)
-			require.Equal(t, tt.expected, result)
 		})
 	}
 }

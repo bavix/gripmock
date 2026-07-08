@@ -61,6 +61,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		tlsCfg,
 		b.RemoteClient(),
 		b.config.OTel.Enabled,
+		b.config.MaxNestingDepth,
 		b.StubValidator(),
 		b.ErrorFormatter(),
 	)

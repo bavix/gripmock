@@ -9,20 +9,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/deeply"
 )
 
-// match checks if a given query matches a given stub.
-//
-// It checks if the query matches the stub's input data and headers using
-// the equals, contains, and matches methods.
-func match(query Query, stub *Stub) bool {
-	// Check headers first
-	if !matchHeaders(query.Headers, stub.Headers) {
-		return false
-	}
-
-	// Check if the query's input data matches the stub's input data
-	return matchInput(query.Data(), stub.Input)
-}
-
 // matchHeaders checks if query headers match stub headers.
 //
 //nolint:cyclop

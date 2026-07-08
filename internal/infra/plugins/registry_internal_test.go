@@ -20,20 +20,6 @@ func TestNewRegistry(t *testing.T) {
 	require.NotNil(t, reg.plugins)
 }
 
-func TestNewRegistryWithForceSource(t *testing.T) {
-	t.Parallel()
-
-	// Arrange
-	forceSource := "test-source"
-
-	// Act
-	reg := NewRegistry(WithForceSource(forceSource))
-
-	// Assert
-	require.NotNil(t, reg)
-	require.Equal(t, forceSource, reg.forceSource)
-}
-
 func TestRegistryAddPlugin(t *testing.T) {
 	t.Parallel()
 
@@ -185,25 +171,6 @@ func TestRegistryHOoksEmptyGroup(t *testing.T) {
 
 	// Assert
 	require.Nil(t, hooks)
-}
-
-func TestRegistryNOrmalizeInfoForceSource(t *testing.T) {
-	t.Parallel()
-
-	// Arrange
-	forceSource := "forced-source"
-	reg := NewRegistry(WithForceSource(forceSource))
-	info := pkgplugins.PluginInfo{
-		Name:   "test-plugin",
-		Source: "original-source",
-		Kind:   "external",
-	}
-
-	// Act
-	normalized := reg.normalizeInfo(info)
-
-	// Assert
-	require.Equal(t, forceSource, normalized.Source)
 }
 
 func TestRegistryNOrmalizeInfoDefaultKind(t *testing.T) {

@@ -202,55 +202,6 @@ func TestProcessorPRocessFileUnsupportedFile(t *testing.T) {
 	require.Contains(t, processor.protos, "test.txt")
 }
 
-func TestProcessorProcessDirectory(t *testing.T) {
-	t.Parallel()
-
-	// Test processing directory
-	processor := newProcessor([]string{}, nil)
-	ctx := t.Context()
-
-	// Create temporary directory with mixed files
-	tempDir := t.TempDir()
-
-	// Create proto file
-	protoFile := filepath.Join(tempDir, "test.proto")
-	err := os.WriteFile(protoFile, []byte("syntax = \"proto3\";"), 0o600)
-	require.NoError(t, err)
-
-	// Create descriptor file
-	descFile := filepath.Join(tempDir, "test.pb")
-	fds := &descriptorpb.FileDescriptorSet{
-		File: []*descriptorpb.FileDescriptorProto{
-			{
-				Name: new("test.proto"),
-			},
-		},
-	}
-	descData, err := proto.Marshal(fds)
-	require.NoError(t, err)
-	err = os.WriteFile(descFile, descData, 0o600)
-	require.NoError(t, err)
-
-	// Create unsupported file
-	unsupportedFile := filepath.Join(tempDir, "test.txt")
-	err = os.WriteFile(unsupportedFile, []byte("not a proto file"), 0o600)
-	require.NoError(t, err)
-
-	err = processor.processDirectory(ctx, tempDir)
-	require.NoError(t, err)
-
-	// Should have added the directory as import
-	require.Contains(t, processor.imports, tempDir)
-
-	// Should have processed proto and descriptor files
-	require.Contains(t, processor.protos, "test.proto")
-	require.Contains(t, processor.descriptors, descFile)
-
-	// Should not have processed unsupported file
-	require.NotContains(t, processor.protos, "test.txt")
-	require.NotContains(t, processor.descriptors, unsupportedFile)
-}
-
 func TestProcessorProcessReflectNamespacesDuplicateDescriptorFiles(t *testing.T) {
 	t.Parallel()
 

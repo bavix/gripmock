@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 	"text/template"
 	"time"
@@ -136,16 +135,6 @@ func IsTemplateString(s string) bool {
 	return strings.Contains(s, "{{") && strings.Contains(s, "}}")
 }
 
-// HasTemplates checks if the data contains any template strings.
-func HasTemplates(data map[string]any) bool {
-	return hasTemplatesInMap(data, 0)
-}
-
-// HasTemplatesInStream checks if the stream contains any template strings.
-func HasTemplatesInStream(stream []any) bool {
-	return hasTemplatesInStream(stream, 0)
-}
-
 // HasTemplatesInHeaders checks if the headers contain any template strings.
 func HasTemplatesInHeaders(headers map[string]string) bool {
 	return hasTemplatesInHeaders(headers)
@@ -154,11 +143,6 @@ func HasTemplatesInHeaders(headers map[string]string) bool {
 // ProcessMap processes templates in a map recursively.
 func (e *Engine) ProcessMap(data map[string]any, templateData Data) error {
 	return processMapTemplates(data, templateData, e, 0)
-}
-
-// ProcessStream processes templates in a stream.
-func (e *Engine) ProcessStream(stream []any, templateData Data) error {
-	return processStreamField(stream, templateData, e, 0)
 }
 
 // ProcessHeaders processes templates in headers.
@@ -200,28 +184,6 @@ func processMapTemplates(data map[string]any, templateData Data, engine *Engine,
 			if err := processArrayTemplates(v, templateData, engine, depth+1); err != nil {
 				return err
 			}
-		}
-	}
-
-	return nil
-}
-
-func processStreamField(stream []any, templateData Data, engine *Engine, depth int) error {
-	if stream == nil {
-		return nil
-	}
-
-	if depth > MaxRecursionDepth {
-		return ErrMaxRecursionDepthExceeded
-	}
-
-	for i, item := range stream {
-		if itemMap, ok := item.(map[string]any); ok {
-			if err := processMapTemplates(itemMap, templateData, engine, depth+1); err != nil {
-				return fmt.Errorf("failed to process stream template at index %d: %w", i, err)
-			}
-
-			stream[i] = itemMap
 		}
 	}
 
@@ -289,56 +251,11 @@ func processArrayTemplates(arr []any, templateData Data, engine *Engine, depth i
 	return nil
 }
 
-func hasTemplatesInMap(data map[string]any, depth int) bool {
-	if depth > MaxRecursionDepth {
-		return false
-	}
-
-	for _, value := range data {
-		if hasTemplatesInValue(value, depth) {
-			return true
-		}
-	}
-
-	return false
-}
-
-func hasTemplatesInStream(stream []any, depth int) bool {
-	if depth > MaxRecursionDepth {
-		return false
-	}
-
-	for _, item := range stream {
-		if itemMap, ok := item.(map[string]any); ok && hasTemplatesInMap(itemMap, depth+1) {
-			return true
-		}
-	}
-
-	return false
-}
-
 func hasTemplatesInHeaders(headers map[string]string) bool {
 	for _, value := range headers {
 		if IsTemplateString(value) {
 			return true
 		}
-	}
-
-	return false
-}
-
-func hasTemplatesInValue(value any, depth int) bool {
-	if depth > MaxRecursionDepth {
-		return false
-	}
-
-	switch v := value.(type) {
-	case string:
-		return IsTemplateString(v)
-	case map[string]any:
-		return hasTemplatesInMap(v, depth+1)
-	case []any:
-		return slices.ContainsFunc(v, func(item any) bool { return hasTemplatesInValue(item, depth+1) })
 	}
 
 	return false

@@ -1,0 +1,8 @@
+--- ENDPOINT ---
+circular.RewardService/GetReward
+
+--- REQUEST ---
+{"id": "reward_1"}
+
+--- RESPONSE ---
+{"id": "reward_1", "expr_reward": {"description": "Bonus multiplier", "reward": {"id": "nested_reward_1", "simple_gift": "gold_coin"}, "multiplier": 3}}

@@ -7,6 +7,7 @@ GripMock reads configuration from environment variables on startup.
 | Variable | Default | Description |
 |---|---|---|
 | `LOG_LEVEL` | `info` | Log level (`trace`, `debug`, `info`, `warn`, `error`). |
+| `MAX_NESTING_DEPTH` | `256` | Max message nesting depth during stub matching (safety net for circular refs). |
 
 ## gRPC server
 

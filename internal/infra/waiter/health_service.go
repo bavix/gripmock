@@ -19,17 +19,6 @@ func NewService(client healthv1.HealthClient) *Service {
 	return &Service{client: client}
 }
 
-func (s *Service) PingWithTimeout(
-	ctx context.Context,
-	timeout time.Duration,
-	service string,
-) (ServingStatus, error) {
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	return s.Ping(ctx, service)
-}
-
 func (s *Service) Ping(ctx context.Context, service string) (ServingStatus, error) {
 	check, err := s.client.Check(
 		ctx,

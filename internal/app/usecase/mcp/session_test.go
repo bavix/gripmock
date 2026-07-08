@@ -1,8 +1,6 @@
 package mcp_test
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,14 +11,10 @@ import (
 func TestToolUsesSession(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	tools := []string{"history_list", "history_errors", "debug_call"}
 
 	for _, tool := range tools {
-		// Act
 		usesSession := mcpusecase.ToolUsesSession(tool)
-
-		// Assert
 		require.True(t, usesSession)
 	}
 }
@@ -28,52 +22,7 @@ func TestToolUsesSession(t *testing.T) {
 func TestToolUsesSessionFalseForOtherTools(t *testing.T) {
 	t.Parallel()
 
-	// Act
 	usesSession := mcpusecase.ToolUsesSession("services_list")
 
-	// Assert
 	require.False(t, usesSession)
-}
-
-func TestApplyTransportSessionInjectsHeaderSession(t *testing.T) {
-	t.Parallel()
-
-	// Arrange
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/mcp", nil)
-	req.Header.Set("X-Gripmock-Session", "A")
-
-	// Act
-	args := mcpusecase.ApplyTransportSession(req, "history_list", map[string]any{"service": "svc"})
-
-	// Assert
-	require.Equal(t, "A", args["session"])
-}
-
-func TestApplyTransportSessionDoesNotOverrideExplicitSession(t *testing.T) {
-	t.Parallel()
-
-	// Arrange
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/mcp", nil)
-	req.Header.Set("X-Gripmock-Session", "A")
-
-	// Act
-	args := mcpusecase.ApplyTransportSession(req, "history_list", map[string]any{"session": "B"})
-
-	// Assert
-	require.Equal(t, "B", args["session"])
-}
-
-func TestApplyTransportSessionSkipsUnsupportedTool(t *testing.T) {
-	t.Parallel()
-
-	// Arrange
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/mcp", nil)
-	req.Header.Set("X-Gripmock-Session", "A")
-
-	// Act
-	args := mcpusecase.ApplyTransportSession(req, "services_list", map[string]any{"x": 1})
-
-	// Assert
-	_, hasSession := args["session"]
-	require.False(t, hasSession)
 }

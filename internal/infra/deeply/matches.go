@@ -8,20 +8,6 @@ import (
 	"github.com/spf13/cast"
 )
 
-// Matches checks if the expected and actual values match.
-// It returns true if any of the following conditions are met:
-//   - The expected and actual values are both nil.
-//   - The expected and actual values are both slices and have the same length.
-//   - The expected and actual values are both maps and have the same number of keys.
-//   - The expected and actual values match using a regular expression.
-//   - The expected and actual values are deeply equal using reflect.DeepEqual.
-func Matches(expect, actual any) bool {
-	return mapDeepMatches(expect, actual, Matches) ||
-		slicesDeepMatches(expect, actual, Matches) ||
-		regexMatch(expect, actual) ||
-		reflect.DeepEqual(expect, actual)
-}
-
 // MatchesIgnoreArrayOrder checks if the expected and actual values match
 // ignoring the order of arrays. It behaves similarly to Matches except that it
 // uses slicesDeepContains instead of slicesDeepMatches to compare slices.
@@ -30,13 +16,6 @@ func MatchesIgnoreArrayOrder(expect, actual any) bool {
 		slicesDeepMatchesIgnoreOrder(expect, actual, MatchesIgnoreArrayOrder) ||
 		regexMatch(expect, actual) ||
 		reflect.DeepEqual(expect, actual)
-}
-
-// slicesDeepMatches checks if the expected and actual slices match.
-// It returns true if the expected and actual values are both slices and have
-// the same length.
-func slicesDeepMatches(expect, actual any, compare cmp) bool {
-	return slicesDeepCompareOrdered(expect, actual, compare)
 }
 
 // slicesDeepMatchesIgnoreOrder compares slices allowing actual to be same length or longer.
