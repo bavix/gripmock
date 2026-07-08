@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.16.0 - 2026-07-08
+
+### What's Changed
+
+* chore(deps): bump vitepress from 2.0.0-alpha.17 to 2.0.0-alpha.18 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/896
+* sdk v2 + technical debt by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/895
+* max nesting depth by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/898
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.15.1...v3.16.0
+
 ## v3.15.1 - 2026-07-02
 
 ### What's Changed
