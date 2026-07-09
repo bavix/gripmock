@@ -250,104 +250,77 @@ func fieldDesc(t *testing.T, msg proto.Message) protoreflect.FieldDescriptor {
 	return fd
 }
 
+type convertStringCase struct {
+	input string
+	want  any
+}
+
+func runConvertStringCases(t *testing.T, fd protoreflect.FieldDescriptor, cases []convertStringCase) {
+	t.Helper()
+
+	for _, tt := range cases {
+		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
+
+			got := convertStringValue(tt.input, fd)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestConvertStringValueDouble(t *testing.T) {
 	t.Parallel()
 
-	doubleFD := fieldDesc(t, &wrapperspb.DoubleValue{})
-	tests := []struct {
-		input string
-		want  any
-	}{
+	runConvertStringCases(t, fieldDesc(t, &wrapperspb.DoubleValue{}), []convertStringCase{
 		{"0", json.Number("0")},
 		{"-0", json.Number("0")},
 		{"1e308", json.Number("1e+308")},
 		{"1e-308", json.Number("1e-308")},
 		{"-3.14", json.Number("-3.14")},
 		{"3.141592653589793", json.Number("3.141592653589793")},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			t.Parallel()
-
-			got := convertStringValue(tt.input, doubleFD)
-			require.Equal(t, tt.want, got)
-		})
-	}
+	})
 }
 
 func TestConvertStringValueInt32(t *testing.T) {
 	t.Parallel()
 
-	int32FD := fieldDesc(t, &wrapperspb.Int32Value{})
-	tests := []struct {
-		input string
-		want  any
-	}{
+	runConvertStringCases(t, fieldDesc(t, &wrapperspb.Int32Value{}), []convertStringCase{
 		{"0", json.Number("0")},
 		{"1", json.Number("1")},
 		{"-1", json.Number("-1")},
 		{"2147483647", json.Number("2147483647")},
 		{"-2147483648", json.Number("-2147483648")},
 		{"2147483648", json.Number("2147483648")},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			t.Parallel()
-
-			got := convertStringValue(tt.input, int32FD)
-			require.Equal(t, tt.want, got)
-		})
-	}
+	})
 }
 
 func TestConvertStringValueInt64StaysString(t *testing.T) {
 	t.Parallel()
 
-	int64FD := fieldDesc(t, &wrapperspb.Int64Value{})
-
-	got := convertStringValue("9223372036854775000", int64FD)
+	got := convertStringValue("9223372036854775000", fieldDesc(t, &wrapperspb.Int64Value{}))
 	require.Equal(t, "9223372036854775000", got)
 }
 
 func TestConvertStringValueUint64StaysString(t *testing.T) {
 	t.Parallel()
 
-	uint64FD := fieldDesc(t, &wrapperspb.UInt64Value{})
-	tests := []struct {
-		input string
-		want  any
-	}{
+	runConvertStringCases(t, fieldDesc(t, &wrapperspb.UInt64Value{}), []convertStringCase{
 		{"0", "0"},
 		{"18446744073709551615", "18446744073709551615"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			t.Parallel()
-
-			got := convertStringValue(tt.input, uint64FD)
-			require.Equal(t, tt.want, got)
-		})
-	}
+	})
 }
 
 func TestConvertStringValueKeepsStringField(t *testing.T) {
 	t.Parallel()
 
-	strFD := fieldDesc(t, &wrapperspb.StringValue{})
-
-	got := convertStringValue("42", strFD)
+	got := convertStringValue("42", fieldDesc(t, &wrapperspb.StringValue{}))
 	require.Equal(t, "42", got)
 }
 
 func TestConvertStringValueKeepsBoolField(t *testing.T) {
 	t.Parallel()
 
-	boolFD := fieldDesc(t, &wrapperspb.BoolValue{})
-
-	got := convertStringValue("42", boolFD)
+	got := convertStringValue("42", fieldDesc(t, &wrapperspb.BoolValue{}))
 	require.Equal(t, "42", got)
 }
 
@@ -361,18 +334,14 @@ func TestConvertStringValueNilDesc(t *testing.T) {
 func TestConvertStringValueNonNumericString(t *testing.T) {
 	t.Parallel()
 
-	int32FD := fieldDesc(t, &wrapperspb.Int32Value{})
-
-	got := convertStringValue("hello", int32FD)
+	got := convertStringValue("hello", fieldDesc(t, &wrapperspb.Int32Value{}))
 	require.Equal(t, "hello", got)
 }
 
 func TestConvertStringValueEmptyString(t *testing.T) {
 	t.Parallel()
 
-	int32FD := fieldDesc(t, &wrapperspb.Int32Value{})
-
-	got := convertStringValue("", int32FD)
+	got := convertStringValue("", fieldDesc(t, &wrapperspb.Int32Value{}))
 	require.Empty(t, got)
 }
 
