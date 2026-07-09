@@ -25,4 +25,7 @@ func (g *generator) Text() TextContract { return &g.text }
 func (g *generator) DateTime() DateTimeContract { return &g.datetime }
 
 //nolint:ireturn
+func (g *generator) Number() NumberContract { return &g.number }
+
+//nolint:ireturn
 func (g *generator) Identity() IdentityContract { return &g.identity }

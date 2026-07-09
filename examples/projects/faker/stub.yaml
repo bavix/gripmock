@@ -21,3 +21,25 @@
       bio: "{{faker.Text.Paragraph 1}}"
       created_at: "{{faker.DateTime.PastDate}}"
       account_id: "{{faker.Identity.UUID}}"
+
+- service: example.UserService
+  method: GetSubscription
+  input:
+    matches:
+      user_id: "\\d+"
+  output:
+    data:
+      subscription_id: "{{faker.Identity.UUID}}"
+      plan_name: "{{faker.Commerce.ProductName}}"
+      price: "{{faker.Commerce.Price 5 100}}"
+      currency: "{{faker.Commerce.CurrencyShort}}"
+      status: "active"
+      billing_email: "{{faker.Contact.Email}}"
+      billing_name: "{{faker.Person.Name}}"
+      company_name: "{{faker.Company.Company}}"
+      description: "{{faker.Text.Sentence 10}}"
+      max_users: "{{faker.Number.IntRange 1 100}}"
+      trial_days: "{{faker.Number.IntN 30}}"
+      start_date: "{{faker.DateTime.PastDate}}"
+      next_billing_date: "{{faker.DateTime.FutureDate}}"
+      cancelled_at: "{{faker.DateTime.Date}}"

@@ -2,7 +2,6 @@ package faker_test
 
 import (
 	"testing"
-	"time"
 
 	infrafaker "github.com/bavix/gripmock/v3/internal/infra/faker"
 )
@@ -37,7 +36,27 @@ func benchmarkFloatMethod(b *testing.B, fn func() float64) {
 	}
 }
 
-func benchmarkTimeMethod(b *testing.B, fn func() time.Time) {
+func benchmarkInt32Method(b *testing.B, fn func() int32) {
+	b.Helper()
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for range b.N {
+		_ = fn()
+	}
+}
+
+func benchmarkInt64Method(b *testing.B, fn func() int64) {
+	b.Helper()
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for range b.N {
+		_ = fn()
+	}
+}
+
+func benchmarkFloat32Method(b *testing.B, fn func() float32) {
 	b.Helper()
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -160,9 +179,9 @@ func BenchmarkDateTimeMethods(b *testing.B) {
 	g := infrafaker.New()
 	d := g.DateTime()
 
-	b.Run("Date", func(b *testing.B) { benchmarkTimeMethod(b, d.Date) })
-	b.Run("PastDate", func(b *testing.B) { benchmarkTimeMethod(b, d.PastDate) })
-	b.Run("FutureDate", func(b *testing.B) { benchmarkTimeMethod(b, d.FutureDate) })
+	b.Run("Date", func(b *testing.B) { benchmarkStringMethod(b, d.Date) })
+	b.Run("PastDate", func(b *testing.B) { benchmarkStringMethod(b, d.PastDate) })
+	b.Run("FutureDate", func(b *testing.B) { benchmarkStringMethod(b, d.FutureDate) })
 	b.Run("Year", func(b *testing.B) { benchmarkIntMethod(b, d.Year) })
 	b.Run("Month", func(b *testing.B) { benchmarkIntMethod(b, d.Month) })
 	b.Run("Day", func(b *testing.B) { benchmarkIntMethod(b, d.Day) })
@@ -170,6 +189,49 @@ func BenchmarkDateTimeMethods(b *testing.B) {
 	b.Run("Minute", func(b *testing.B) { benchmarkIntMethod(b, d.Minute) })
 	b.Run("Second", func(b *testing.B) { benchmarkIntMethod(b, d.Second) })
 	b.Run("WeekDay", func(b *testing.B) { benchmarkStringMethod(b, d.WeekDay) })
+}
+
+func BenchmarkNumberMethods(b *testing.B) {
+	g := infrafaker.NewWithSeed(1)
+	n := g.Number()
+
+	b.Run("Int", func(b *testing.B) { benchmarkIntMethod(b, n.Int) })
+	b.Run("Int32", func(b *testing.B) { benchmarkInt32Method(b, n.Int32) })
+	b.Run("Int64", func(b *testing.B) { benchmarkInt64Method(b, n.Int64) })
+	b.Run("Float32", func(b *testing.B) { benchmarkFloat32Method(b, n.Float32) })
+	b.Run("Float64", func(b *testing.B) { benchmarkFloatMethod(b, n.Float64) })
+	b.Run("IntN", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+
+		for range b.N {
+			_ = n.IntN(100)
+		}
+	})
+	b.Run("IntRange", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+
+		for range b.N {
+			_ = n.IntRange(10, 20)
+		}
+	})
+	b.Run("Float32Range", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+
+		for range b.N {
+			_ = n.Float32Range(1.5, 9.5)
+		}
+	})
+	b.Run("Float64Range", func(b *testing.B) {
+		b.ReportAllocs()
+		b.ResetTimer()
+
+		for range b.N {
+			_ = n.Float64Range(1.5, 9.5)
+		}
+	})
 }
 
 func BenchmarkIdentityMethods(b *testing.B) {

@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -335,11 +336,9 @@ type httpStreamAdapter struct {
 	req *http.Request
 	w   http.ResponseWriter
 
-	// sentHeader is flipped to true by SendHeader/SendMsg and read by
-	// SetHeader. In bidirectional RPCs the gRPC handler may invoke
-	// these concurrently, so access is synchronised via atomic.
-	sentHeader  atomic.Bool
-	endOfStream atomic.Bool
+	mu             sync.Mutex
+	sendHeaderOnce sync.Once
+	endOfStream    atomic.Bool
 
 	streaming bool
 
@@ -351,9 +350,8 @@ func (a *httpStreamAdapter) Context() context.Context {
 }
 
 func (a *httpStreamAdapter) SetHeader(md metadata.MD) error {
-	if a.sentHeader.Load() {
-		return nil
-	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
 	for k, v := range md {
 		for _, val := range v {
@@ -365,8 +363,6 @@ func (a *httpStreamAdapter) SetHeader(md metadata.MD) error {
 }
 
 func (a *httpStreamAdapter) SendHeader(md metadata.MD) error {
-	a.sentHeader.Store(true)
-
 	return a.SetHeader(md)
 }
 
@@ -375,9 +371,7 @@ func (a *httpStreamAdapter) SetTrailer(md metadata.MD) {
 }
 
 func (a *httpStreamAdapter) SendMsg(m any) error {
-	if !a.sentHeader.Load() {
-		a.sendHeader()
-	}
+	a.sendHeader()
 
 	msg, ok := m.(proto.Message)
 	if !ok {
@@ -428,20 +422,24 @@ func (a *httpStreamAdapter) RecvMsg(m any) error {
 }
 
 func (a *httpStreamAdapter) sendHeader() {
-	ct := a.req.Header.Get("Content-Type")
-	switch {
-	case a.streaming && isJSONContentType(ct):
-		a.w.Header().Set("Content-Type", "application/connect+json")
-	case a.streaming:
-		a.w.Header().Set("Content-Type", "application/connect+proto")
-	case isJSONContentType(ct):
-		a.w.Header().Set("Content-Type", "application/json")
-	default:
-		a.w.Header().Set("Content-Type", "application/proto")
-	}
+	a.sendHeaderOnce.Do(func() {
+		a.mu.Lock()
+		defer a.mu.Unlock()
 
-	a.w.WriteHeader(http.StatusOK)
-	a.sentHeader.Store(true)
+		ct := a.req.Header.Get("Content-Type")
+		switch {
+		case a.streaming && isJSONContentType(ct):
+			a.w.Header().Set("Content-Type", "application/connect+json")
+		case a.streaming:
+			a.w.Header().Set("Content-Type", "application/connect+proto")
+		case isJSONContentType(ct):
+			a.w.Header().Set("Content-Type", "application/json")
+		default:
+			a.w.Header().Set("Content-Type", "application/proto")
+		}
+
+		a.w.WriteHeader(http.StatusOK)
+	})
 }
 
 func (a *httpStreamAdapter) recvUnaryMessage(msg proto.Message, ct string) error {
@@ -494,9 +492,7 @@ func (a *httpStreamAdapter) writeError(code codes.Code, msg string) {
 	})
 
 	if a.streaming {
-		if !a.sentHeader.Load() {
-			a.sendHeader()
-		}
+		a.sendHeader()
 
 		_ = writeConnectFrame(a.w, body, true)
 	} else {

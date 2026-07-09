@@ -43,6 +43,7 @@ func NewWithSeed(seed uint64) Generator {
 	g.commerce.faker = f
 	g.text.faker = f
 	g.datetime.faker = f
+	g.number.faker = f
 	g.identity.faker = f
 
 	return g
