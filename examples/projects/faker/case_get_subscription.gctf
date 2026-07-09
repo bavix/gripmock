@@ -30,7 +30,8 @@ example.UserService/GetSubscription
 
 // Number domain (fields are JSON numbers after convertStringValue fix)
 .max_users > 0
-.trial_days >= 0
+.trial_days >= 1
+.trial_days <= 30
 
 // Timestamp fields (google.protobuf.Timestamp) populated via faker.DateTime
 // All three must be valid RFC3339 strings for protobuf Timestamp unmarshal

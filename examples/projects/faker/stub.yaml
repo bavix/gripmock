@@ -39,7 +39,7 @@
       company_name: "{{faker.Company.Company}}"
       description: "{{faker.Text.Sentence 10}}"
       max_users: "{{faker.Number.IntRange 1 100}}"
-      trial_days: "{{faker.Number.IntN 30}}"
+      trial_days: "{{faker.Number.IntRange 1 30}}"
       start_date: "{{faker.DateTime.PastDate}}"
       next_billing_date: "{{faker.DateTime.FutureDate}}"
       cancelled_at: "{{faker.DateTime.Date}}"
