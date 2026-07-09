@@ -17,7 +17,8 @@ example.UserService/GetSubscription
 --- ASSERTS ---
 // Commerce domain coverage
 !@empty(.plan_name)
-!@empty(.price)
+.price >= 5
+.price <= 100
 !@empty(.currency)
 
 // Other domains via billing fields
@@ -27,9 +28,9 @@ example.UserService/GetSubscription
 !@empty(.description)
 !@empty(.subscription_id)
 
-// Number domain
-!@empty(.max_users)
-!@empty(.trial_days)
+// Number domain (fields are JSON numbers after convertStringValue fix)
+.max_users > 0
+.trial_days >= 0
 
 // Timestamp fields (google.protobuf.Timestamp) populated via faker.DateTime
 // All three must be valid RFC3339 strings for protobuf Timestamp unmarshal
