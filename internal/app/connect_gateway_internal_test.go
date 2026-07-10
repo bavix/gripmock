@@ -136,7 +136,8 @@ func TestHttpStreamAdapter_SendMsg_NonProtoMessage(t *testing.T) {
 
 	err := adapter.SendMsg("not a proto")
 	require.NoError(t, err)
-	require.True(t, adapter.sentHeader.Load())
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "application/proto", rec.Header().Get("Content-Type"))
 }
 
 func TestHttpStreamAdapter_RecvMsg_EmptyBody(t *testing.T) {
@@ -220,10 +221,9 @@ func TestConnectRPCGateway_RoutedRequest_ParsesVars(t *testing.T) {
 }
 
 // TestHttpStreamAdapter_AtomicFlagsNoCopy verifies that the adapter's
-// atomic.Bool fields do not get copied through method calls (which would
-// trip the race detector in -race mode). This is a regression guard for
-// the atomic.Bool refactor.
-func TestHttpStreamAdapter_AtomicFlagsNoCopy(t *testing.T) {
+// endOfStream (still atomic.Bool) must not be copied through method
+// calls, otherwise the race detector would fire in -race mode.
+func TestHttpStreamAdapter_EndOfStreamNoCopy(t *testing.T) {
 	t.Parallel()
 
 	rec := httptest.NewRecorder()
@@ -235,23 +235,14 @@ func TestHttpStreamAdapter_AtomicFlagsNoCopy(t *testing.T) {
 		w:   rec,
 	}
 
-	// Taking the address of the embedded atomic.Bool (rather than the
-	// struct field directly) is the recommended access pattern. The
-	// code under test must not dereference and copy the value.
-	require.NotNil(t, &adapter.sentHeader)
 	require.NotNil(t, &adapter.endOfStream)
-
-	// Set + Load round-trip.
-	adapter.sentHeader.Store(true)
-	require.True(t, adapter.sentHeader.Load())
 
 	adapter.endOfStream.Store(true)
 	require.True(t, adapter.endOfStream.Load())
 }
 
 // TestHttpStreamAdapter_ConcurrentSendMsgNoRace exercises SendMsg from
-// multiple goroutines to confirm atomic.Bool changes are race-free. Run
-// under `go test -race` to verify.
+// multiple goroutines to confirm sendHeaderOnce is race-free.
 func TestHttpStreamAdapter_ConcurrentSendMsgNoRace(t *testing.T) {
 	t.Parallel()
 
@@ -265,8 +256,7 @@ func TestHttpStreamAdapter_ConcurrentSendMsgNoRace(t *testing.T) {
 	}
 
 	// SendMsg with a non-proto message short-circuits without writing to
-	// the adapter beyond sentHeader. We use it as a minimal concurrent
-	// stimulus.
+	// the body. We use it as a minimal concurrent stimulus.
 	var wg sync.WaitGroup
 
 	const goroutines = 8
@@ -285,7 +275,8 @@ func TestHttpStreamAdapter_ConcurrentSendMsgNoRace(t *testing.T) {
 
 	wg.Wait()
 
-	require.True(t, adapter.sentHeader.Load())
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "application/proto", rec.Header().Get("Content-Type"))
 }
 
 // TestHttpHeadersToGRPCContext_PreservesAllHeaders verifies that custom

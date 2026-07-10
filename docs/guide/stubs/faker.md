@@ -178,9 +178,9 @@ output:
 ## 8. DateTime Domain
 
 ### Keys
-- Key: `faker.DateTime.Date` - Example: `2026-02-17T10:24:51Z`
-- Key: `faker.DateTime.PastDate` - Example: `2021-08-03T14:12:11Z`
-- Key: `faker.DateTime.FutureDate` - Example: `2028-11-29T07:53:02Z`
+- Key: `faker.DateTime.Date` - Example: `2026-02-17T10:24:51.123456789Z`
+- Key: `faker.DateTime.PastDate` - Example: `2021-08-03T14:12:11.987654321Z`
+- Key: `faker.DateTime.FutureDate` - Example: `2028-11-29T07:53:02.456789012Z`
 - Key: `faker.DateTime.Year` - Example: `2027`
 - Key: `faker.DateTime.Month` - Example: `9`
 - Key: `faker.DateTime.Day` - Example: `18`
@@ -201,7 +201,35 @@ output:
 ```
 :::
 
-## 9. Identity Domain
+## 9. Number Domain <VersionTag version="v3.16.1" />
+
+The Number domain generates random numeric values — useful for counters, limits, prices, and range validation.
+
+### Keys
+- Key: `faker.Number.Int` - Example: `7249581`
+- Key: `faker.Number.IntN 100` - Example: `73`
+- Key: `faker.Number.IntRange 10 50` - Example: `27`
+- Key: `faker.Number.Int32` - Example: `17249581`
+- Key: `faker.Number.Int64` - Example: `38942174958123`
+- Key: `faker.Number.Float32` - Example: `0.7425`
+- Key: `faker.Number.Float32Range 1.5 9.5` - Example: `4.23`
+- Key: `faker.Number.Float64` - Example: `0.123456789`
+- Key: `faker.Number.Float64Range 100.0 999.0` - Example: `567.89`
+
+### Stub Example
+
+::: v-pre
+```yaml
+output:
+  data:
+    score: "{{faker.Number.IntN 100}}"
+    rating: "{{faker.Number.Float32}}"
+    max_users: "{{faker.Number.IntRange 10 100}}"
+    price: "{{faker.Number.Float64Range 9.99 999.99}}"
+```
+:::
+
+## 10. Identity Domain
 
 ### Keys
 - Key: `faker.Identity.UUID` - Example: `3f8b6a6e-3f34-41e2-a06f-e6a8b8db7a4d`
@@ -246,16 +274,21 @@ output:
       id: "{{.Request.id}}"
       first_name: "{{faker.Person.FirstName}}"
       last_name: "{{faker.Person.LastName}}"
+      full_name: "{{faker.Person.Name}}"
       email: "{{faker.Contact.Email}}"
+      phone: "{{faker.Contact.Phone}}"
       city: "{{faker.Geo.City}}"
+      country: "{{faker.Geo.Country}}"
       lat: "{{faker.Geo.Latitude}}"
       lon: "{{faker.Geo.Longitude}}"
       ip: "{{faker.Network.IPv4}}"
       user_agent: "{{faker.Network.UserAgent}}"
       company: "{{faker.Company.Company}}"
       product: "{{faker.Commerce.ProductName}}"
+      price: "{{faker.Commerce.Price 10 500}}"
       bio: "{{faker.Text.Paragraph 1}}"
       created_at: "{{faker.DateTime.PastDate}}"
+      score: "{{faker.Number.IntN 100}}"
       account_id: "{{faker.Identity.UUID}}"
 ```
 :::

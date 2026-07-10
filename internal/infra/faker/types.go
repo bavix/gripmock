@@ -12,6 +12,7 @@ type generator struct {
 	commerce commerceGen
 	text     textGen
 	datetime dateTimeGen
+	number   numberGen
 	identity identityGen
 }
 
@@ -24,5 +25,6 @@ type (
 	commerceGen struct{ faker *gofakeit.Faker }
 	textGen     struct{ faker *gofakeit.Faker }
 	dateTimeGen struct{ faker *gofakeit.Faker }
+	numberGen   struct{ faker *gofakeit.Faker }
 	identityGen struct{ faker *gofakeit.Faker }
 )

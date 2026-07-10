@@ -1,7 +1,5 @@
 package faker
 
-import "time"
-
 type PersonContract interface {
 	FirstName() string
 	LastName() string
@@ -70,9 +68,9 @@ type TextContract interface {
 }
 
 type DateTimeContract interface {
-	Date() time.Time
-	PastDate() time.Time
-	FutureDate() time.Time
+	Date() string
+	PastDate() string
+	FutureDate() string
 	Year() int
 	Month() int
 	Day() int
@@ -80,6 +78,18 @@ type DateTimeContract interface {
 	Minute() int
 	Second() int
 	WeekDay() string
+}
+
+type NumberContract interface {
+	Int() int
+	IntN(n int) int
+	IntRange(pMin, pMax int) int
+	Int32() int32
+	Int64() int64
+	Float32() float32
+	Float32Range(pMin, pMax float32) float32
+	Float64() float64
+	Float64Range(pMin, pMax float64) float64
 }
 
 type IdentityContract interface {
@@ -99,5 +109,6 @@ type Generator interface {
 	Commerce() CommerceContract
 	Text() TextContract
 	DateTime() DateTimeContract
+	Number() NumberContract
 	Identity() IdentityContract
 }

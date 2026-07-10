@@ -24,6 +24,7 @@ func TestNewContracts(t *testing.T) {
 	require.NotNil(t, g.Commerce())
 	require.NotNil(t, g.Text())
 	require.NotNil(t, g.DateTime())
+	require.NotNil(t, g.Number())
 	require.NotNil(t, g.Identity())
 }
 
@@ -136,9 +137,9 @@ func TestDateTimeContract(t *testing.T) {
 	t.Parallel()
 
 	d := infrafaker.NewWithSeed(17).DateTime()
-	require.False(t, d.Date().IsZero())
-	require.False(t, d.PastDate().IsZero())
-	require.False(t, d.FutureDate().IsZero())
+	require.NotEmpty(t, d.Date())
+	require.NotEmpty(t, d.PastDate())
+	require.NotEmpty(t, d.FutureDate())
 	require.Positive(t, d.Year())
 	require.GreaterOrEqual(t, d.Month(), 1)
 	require.LessOrEqual(t, d.Month(), 12)
@@ -151,6 +152,24 @@ func TestDateTimeContract(t *testing.T) {
 	require.GreaterOrEqual(t, d.Second(), 0)
 	require.LessOrEqual(t, d.Second(), 59)
 	require.NotEmpty(t, d.WeekDay())
+}
+
+func TestNumberContract(t *testing.T) {
+	t.Parallel()
+
+	n := infrafaker.NewWithSeed(16).Number()
+	require.NotZero(t, n.Int())
+	require.NotZero(t, n.IntN(100))
+	require.GreaterOrEqual(t, n.IntRange(5, 10), 5)
+	require.LessOrEqual(t, n.IntRange(5, 10), 10)
+	require.NotZero(t, n.Int32())
+	require.NotZero(t, n.Int64())
+	require.NotZero(t, n.Float32())
+	require.GreaterOrEqual(t, n.Float32Range(1.5, 9.5), float32(1.5))
+	require.LessOrEqual(t, n.Float32Range(1.5, 9.5), float32(9.5))
+	require.NotZero(t, n.Float64())
+	require.GreaterOrEqual(t, n.Float64Range(1.5, 9.5), 1.5)
+	require.LessOrEqual(t, n.Float64Range(1.5, 9.5), 9.5)
 }
 
 func TestIdentityContract(t *testing.T) {

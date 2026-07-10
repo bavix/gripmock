@@ -582,12 +582,23 @@ func TestBidiStream(t *testing.T) {
 	srv, fds := newServerChat(t)
 	defer func() { _ = srv.Close() }()
 
+	d := resolveDesc(t, fds, "chat.ChatMessage", "chat.ChatMessage")
+
 	srv.ExpectBidirectionalStream("/chat.ChatService/Chat").
 		Run(func(ctx context.Context, stream any) error {
+			srvStream, ok := stream.(grpc.ServerStream)
+			if !ok {
+				return errNotServerStream
+			}
+
+			msg := dynamicpb.NewMessage(d.in)
+			if err := srvStream.RecvMsg(msg); err != nil {
+				return err
+			}
+
 			return nil
 		})
 
-	d := resolveDesc(t, fds, "chat.ChatMessage", "chat.ChatMessage")
 	stream, err := srv.Conn().NewStream(t.Context(),
 		&grpc.StreamDesc{StreamName: "Chat", ServerStreams: true, ClientStreams: true},
 		"/chat.ChatService/Chat")

@@ -15,8 +15,8 @@ example.UserService/GetProfile
 }
 
 --- ASSERTS ---
-!@empty(.first_name)
-!@empty(.last_name)
-!@empty(.email)
-!@empty(.ip)
-!@empty(.account_id)
+@has_value(.first_name)
+@has_value(.last_name)
+@has_value(.email)
+@has_value(.ip)
+@has_value(.account_id)

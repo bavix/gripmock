@@ -754,7 +754,7 @@ func (m *grpcMocker) newOutputMessage(data any) (*dynamicpb.Message, error) {
 
 	payload := data
 	if dataMap, ok := data.(map[string]any); ok {
-		payload = convertMapNumericToStringNumber(dataMap)
+		payload = convertMapNumericToStringNumber(dataMap, m.outputDesc)
 	}
 
 	enc := json.NewEncoder(pooled)
@@ -772,31 +772,89 @@ func (m *grpcMocker) newOutputMessage(data any) (*dynamicpb.Message, error) {
 	return msg, nil
 }
 
-func convertMapNumericToStringNumber(data map[string]any) map[string]any {
+func convertMapNumericToStringNumber(data map[string]any, desc protoreflect.MessageDescriptor) map[string]any {
 	result := make(map[string]any, len(data))
+
 	for k, v := range data {
-		result[k] = convertMapValue(v)
+		var fd protoreflect.FieldDescriptor
+		if desc != nil {
+			fd = desc.Fields().ByName(protoreflect.Name(k))
+			if fd == nil {
+				fd = desc.Fields().ByJSONName(k)
+			}
+		}
+
+		result[k] = convertMapValue(v, fd)
 	}
 
 	return result
 }
 
-func convertMapValue(v any) any {
+func convertMapValue(v any, fd protoreflect.FieldDescriptor) any {
 	switch val := v.(type) {
 	case map[string]any:
-		return convertMapNumericToStringNumber(val)
+		var nestedDesc protoreflect.MessageDescriptor
+		if fd != nil && fd.Kind() == protoreflect.MessageKind {
+			nestedDesc = fd.Message()
+		}
+
+		return convertMapNumericToStringNumber(val, nestedDesc)
 	case []any:
-		return convertMapArray(val)
+		return convertMapArray(val, fd)
+	case string:
+		return convertStringValue(val, fd)
 	case float64:
 		return convertFloat64(val)
 	case float32:
 		return convertFloat64(float64(val))
-	case int, int8, int16, int32, int64:
-		return json.Number(strconv.FormatInt(toInt64(val), 10))
-	case uint, uint8, uint16, uint32, uint64:
-		return json.Number(strconv.FormatUint(toUint64(val), 10))
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return convertIntLikeValue(val)
 	default:
 		return v
+	}
+}
+
+func convertIntLikeValue(v any) any {
+	switch val := v.(type) {
+	case int, int8, int16, int32, int64:
+		return json.Number(strconv.FormatInt(toInt64(val), 10))
+	default:
+		return json.Number(strconv.FormatUint(toUint64(val), 10))
+	}
+}
+
+func convertStringValue(val string, fd protoreflect.FieldDescriptor) any {
+	if fd == nil || !isNumericKind(fd.Kind()) {
+		return val
+	}
+
+	// 64-bit integers keep string representation to avoid float64 precision loss.
+	// Protojson accepts both string and number for these types.
+	if is64BitIntKind(fd.Kind()) {
+		return val
+	}
+
+	if f, err := strconv.ParseFloat(val, 64); err == nil {
+		return convertFloat64(f)
+	}
+
+	return val
+}
+
+func is64BitIntKind(k protoreflect.Kind) bool {
+	switch k {
+	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind,
+		protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
+		return true
+	case protoreflect.BoolKind, protoreflect.EnumKind,
+		protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Uint32Kind,
+		protoreflect.Sfixed32Kind, protoreflect.Fixed32Kind,
+		protoreflect.FloatKind, protoreflect.DoubleKind,
+		protoreflect.StringKind, protoreflect.BytesKind,
+		protoreflect.MessageKind, protoreflect.GroupKind:
+		return false
+	default:
+		return false
 	}
 }
 
@@ -846,13 +904,32 @@ func isSafeInteger(f float64) bool {
 	return f == float64(int64(f))
 }
 
-func convertMapArray(arr []any) []any {
+func convertMapArray(arr []any, fd protoreflect.FieldDescriptor) []any {
 	result := make([]any, len(arr))
+
 	for i, v := range arr {
-		result[i] = convertMapValue(v)
+		result[i] = convertMapValue(v, fd)
 	}
 
 	return result
+}
+
+func isNumericKind(k protoreflect.Kind) bool {
+	switch k {
+	case protoreflect.DoubleKind, protoreflect.FloatKind,
+		protoreflect.Int32Kind, protoreflect.Int64Kind,
+		protoreflect.Uint32Kind, protoreflect.Uint64Kind,
+		protoreflect.Sint32Kind, protoreflect.Sint64Kind,
+		protoreflect.Sfixed32Kind, protoreflect.Sfixed64Kind,
+		protoreflect.Fixed32Kind, protoreflect.Fixed64Kind:
+		return true
+	case protoreflect.BoolKind, protoreflect.EnumKind,
+		protoreflect.StringKind, protoreflect.BytesKind,
+		protoreflect.MessageKind, protoreflect.GroupKind:
+		return false
+	default:
+		return false
+	}
 }
 
 func (m *grpcMocker) unaryHandler() grpc.MethodHandler {

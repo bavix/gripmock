@@ -1,0 +1,40 @@
+--- META ---
+tags: [faker, subscription, timestamp]
+
+--- ENDPOINT ---
+example.UserService/GetSubscription
+
+--- REQUEST ---
+{
+  "user_id": "42"
+}
+
+--- RESPONSE partial with_asserts ---
+{
+  "status": "active"
+}
+
+--- ASSERTS ---
+// Commerce domain coverage
+@has_value(.plan_name)
+.price >= 5
+.price <= 100
+@has_value(.currency)
+
+// Other domains via billing fields
+@has_value(.billing_email)
+@has_value(.billing_name)
+@has_value(.company_name)
+@has_value(.description)
+@has_value(.subscription_id)
+
+// Number domain (fields are JSON numbers after convertStringValue fix)
+.max_users > 0
+.trial_days >= 1
+.trial_days <= 30
+
+// Timestamp fields (google.protobuf.Timestamp) populated via faker.DateTime
+// All three must be valid RFC3339 strings for protobuf Timestamp unmarshal
+@has_value(.start_date)
+@has_value(.next_billing_date)
+@has_value(.cancelled_at)
