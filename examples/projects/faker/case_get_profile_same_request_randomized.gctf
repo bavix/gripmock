@@ -17,9 +17,7 @@ example.UserService/GetProfile
 }
 
 --- ASSERTS ---
-!@empty(.account_id)
-
---- EXTRACT ---
+@has_value(.account_id)
 
 --- ENDPOINT ---
 example.UserService/GetProfile

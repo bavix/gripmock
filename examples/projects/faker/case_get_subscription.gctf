@@ -16,17 +16,17 @@ example.UserService/GetSubscription
 
 --- ASSERTS ---
 // Commerce domain coverage
-!@empty(.plan_name)
+@has_value(.plan_name)
 .price >= 5
 .price <= 100
-!@empty(.currency)
+@has_value(.currency)
 
 // Other domains via billing fields
-!@empty(.billing_email)
-!@empty(.billing_name)
-!@empty(.company_name)
-!@empty(.description)
-!@empty(.subscription_id)
+@has_value(.billing_email)
+@has_value(.billing_name)
+@has_value(.company_name)
+@has_value(.description)
+@has_value(.subscription_id)
 
 // Number domain (fields are JSON numbers after convertStringValue fix)
 .max_users > 0
@@ -35,6 +35,6 @@ example.UserService/GetSubscription
 
 // Timestamp fields (google.protobuf.Timestamp) populated via faker.DateTime
 // All three must be valid RFC3339 strings for protobuf Timestamp unmarshal
-!@empty(.start_date)
-!@empty(.next_billing_date)
-!@empty(.cancelled_at)
+@has_value(.start_date)
+@has_value(.next_billing_date)
+@has_value(.cancelled_at)
