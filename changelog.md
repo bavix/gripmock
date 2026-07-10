@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.16.1 - 2026-07-10
+
+### What's Changed
+
+* chore(deps): bump sourcemeta/jsonschema from 16.0.0 to 16.1.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/899
+* feat: faker number & fix date/time by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/901
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.16.0...v3.16.1
+
 ## v3.16.0 - 2026-07-08
 
 ### What's Changed
