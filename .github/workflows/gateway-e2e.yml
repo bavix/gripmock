@@ -1,4 +1,4 @@
-name: ConnectRPC E2E
+name: Gateway E2E
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   pull_request:
 
 concurrency:
-  group: connectrpc-e2e-${{ github.workflow }}-${{ github.ref }}
+  group: gateway-e2e-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -17,8 +17,8 @@ env:
   HTTP_PORT: 4771
 
 jobs:
-  connectrpc-e2e:
-    name: "ConnectRPC E2E"
+  gateway-e2e:
+    name: "Gateway E2E (ConnectRPC + gRPC-Web)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -53,6 +53,9 @@ jobs:
 
       - name: Run ConnectRPC tests
         run: httpyac run examples/projects/greeter/connectrpc-tests/ --all
+
+      - name: Run gRPC-Web tests
+        run: httpyac run examples/projects/greeter/grpcweb-tests/ --all
 
       - name: Stop server
         if: always()

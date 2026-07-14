@@ -1,0 +1,12 @@
+### 3. Unary: Alex
+POST http://127.0.0.1:4769/helloworld.Greeter/SayHello
+Content-Type: application/grpc-web+json
+
+{"name":"Alex"}
+
+> {%
+client.test("returns Hello, Alex!", function() {
+  client.assert(response.status === 200, "Expected 200, got " + response.status);
+  client.assert(response.body.includes("Hello, Alex!"), "Expected 'Hello, Alex!' in response body");
+});
+%}

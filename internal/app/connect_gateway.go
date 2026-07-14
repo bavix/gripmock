@@ -1,12 +1,9 @@
 package app
 
 import (
-	"context"
 	"io"
 	"net/http"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -16,11 +13,9 @@ import (
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/dynamicpb"
 
@@ -77,14 +72,15 @@ func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fullMethod := "/" + service + "/" + method
 
 	logger := zerolog.Ctx(r.Context())
-	logger.Info().
+	logger.Debug().
 		Str("method", r.Method).
 		Str("path", r.URL.Path).
+		Str("protocol", "connectrpc").
 		Str("service", service).
 		Str("method", method).
-		Msg("connect.gateway: handling request")
+		Msg("gateway: handling connectrpc request")
 
-	methodDesc, err := g.findMethodDescriptor(service, method)
+	methodDesc, err := findMethodDescriptor(g.descriptors, service, method)
 	if err != nil {
 		if g.descriptors == nil && g.budgerigar != nil {
 			g.handleWithoutDescriptor(w, r, service, method)
@@ -120,9 +116,11 @@ func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	adapter := &httpStreamAdapter{
-		ctx:       r.Context(),
-		req:       r,
-		w:         w,
+		baseStreamAdapter: baseStreamAdapter{
+			ctx: r.Context(),
+			req: r,
+			w:   w,
+		},
 		streaming: mocker.serverStream || mocker.clientStream,
 	}
 
@@ -186,23 +184,6 @@ func (g *ConnectRPCGateway) handleUnary(mocker *grpcMocker, a *httpStreamAdapter
 	}
 }
 
-//nolint:ireturn
-func (g *ConnectRPCGateway) findMethodDescriptor(serviceName, methodName string) (protoreflect.MethodDescriptor, error) {
-	if method := findMethodInGlobalFiles(serviceName, methodName); method != nil {
-		return method, nil
-	}
-
-	if g.descriptors == nil {
-		return nil, &connectMethodNotFoundError{service: serviceName, method: methodName}
-	}
-
-	if method := findMethodInFiles(g.descriptors, serviceName, methodName); method != nil {
-		return method, nil
-	}
-
-	return nil, &connectMethodNotFoundError{service: serviceName, method: methodName}
-}
-
 //nolint:funlen
 func (g *ConnectRPCGateway) handleWithoutDescriptor(w http.ResponseWriter, r *http.Request, serviceName, methodName string) {
 	_, _ = io.Copy(io.Discard, r.Body)
@@ -225,7 +206,7 @@ func (g *ConnectRPCGateway) handleWithoutDescriptor(w http.ResponseWriter, r *ht
 		}
 
 		notFoundMsg := g.errorFormatter.FormatStubNotFoundError(query, result).Error()
-		g.record(serviceName, methodName, query.Session, uuid.Nil, uint32(codes.NotFound),
+		recordCall(g.recorder, serviceName, methodName, query.Session, uuid.Nil, uint32(codes.NotFound),
 			requestTime, []map[string]any{emptyInput}, nil, notFoundMsg)
 		g.writeError(w, codes.NotFound, notFoundMsg)
 
@@ -236,7 +217,7 @@ func (g *ConnectRPCGateway) handleWithoutDescriptor(w http.ResponseWriter, r *ht
 
 	if err := delayResponse(r.Context(), found.Output.Delay); err != nil {
 		st, _ := status.FromError(err)
-		g.record(serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
+		recordCall(g.recorder, serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
 			requestTime, []map[string]any{emptyInput}, nil, st.Message())
 		g.writeError(w, st.Code(), st.Message())
 
@@ -246,7 +227,7 @@ func (g *ConnectRPCGateway) handleWithoutDescriptor(w http.ResponseWriter, r *ht
 	outputToUse := found.Output
 
 	if st := outputStatusBase(outputToUse); st != nil {
-		g.record(serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
+		recordCall(g.recorder, serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
 			requestTime, []map[string]any{emptyInput}, nil, st.Message())
 		g.writeError(w, st.Code(), st.Message())
 
@@ -254,7 +235,7 @@ func (g *ConnectRPCGateway) handleWithoutDescriptor(w http.ResponseWriter, r *ht
 	}
 
 	if outputToUse.Data != nil {
-		g.record(serviceName, methodName, query.Session, found.ID, uint32(codes.Unimplemented),
+		recordCall(g.recorder, serviceName, methodName, query.Session, found.ID, uint32(codes.Unimplemented),
 			requestTime, []map[string]any{emptyInput}, nil,
 			"proto descriptor required to encode non-empty output for "+serviceName+"/"+methodName)
 		g.writeError(w, codes.Unimplemented,
@@ -277,43 +258,8 @@ func (g *ConnectRPCGateway) handleWithoutDescriptor(w http.ResponseWriter, r *ht
 		w.WriteHeader(http.StatusOK)
 	}
 
-	g.record(serviceName, methodName, query.Session, found.ID, uint32(codes.OK),
+	recordCall(g.recorder, serviceName, methodName, query.Session, found.ID, uint32(codes.OK),
 		requestTime, []map[string]any{emptyInput}, []map[string]any{{}}, "")
-}
-
-func (g *ConnectRPCGateway) record(
-	service, method, session string,
-	stubID uuid.UUID,
-	code uint32,
-	ts time.Time,
-	requests, responses []map[string]any,
-	errMsg string,
-) {
-	if g.recorder == nil {
-		return
-	}
-
-	rec := history.CallRecord{
-		StubID:    stubID,
-		Service:   service,
-		Method:    method,
-		Session:   session,
-		Code:      code,
-		Error:     errMsg,
-		Timestamp: ts,
-		Requests:  requests,
-		Responses: responses,
-	}
-
-	if len(requests) > 0 {
-		rec.Request = requests[0]
-	}
-
-	if len(responses) > 0 {
-		rec.Response = responses[0]
-	}
-
-	g.recorder.Record(rec)
 }
 
 func (g *ConnectRPCGateway) writeError(w http.ResponseWriter, code codes.Code, msg string) {
@@ -333,41 +279,9 @@ func isJSONContentType(ct string) bool {
 }
 
 type httpStreamAdapter struct {
-	req *http.Request
-	w   http.ResponseWriter
-
-	mu             sync.Mutex
-	sendHeaderOnce sync.Once
-	endOfStream    atomic.Bool
+	baseStreamAdapter
 
 	streaming bool
-
-	ctx context.Context //nolint:containedctx
-}
-
-func (a *httpStreamAdapter) Context() context.Context {
-	return a.ctx
-}
-
-func (a *httpStreamAdapter) SetHeader(md metadata.MD) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	for k, v := range md {
-		for _, val := range v {
-			a.w.Header().Add(k, val)
-		}
-	}
-
-	return nil
-}
-
-func (a *httpStreamAdapter) SendHeader(md metadata.MD) error {
-	return a.SetHeader(md)
-}
-
-func (a *httpStreamAdapter) SetTrailer(md metadata.MD) {
-	_ = a.SetHeader(md)
 }
 
 func (a *httpStreamAdapter) SendMsg(m any) error {

@@ -1,0 +1,14 @@
+### 2. Unknown service returns error trailers
+POST http://127.0.0.1:4769/Unknown.Service/UnknownMethod
+Content-Type: application/grpc-web+json
+
+{}
+
+> {%
+client.test("status should be 200 (gRPC-Web convention)", function() {
+  client.assert(response.status === 200, "Expected 200, got " + response.status);
+});
+client.test("response contains grpc-status: 5 (not found)", function() {
+  client.assert(response.body.includes("grpc-status: 5"), "Expected grpc-status: 5 in trailers");
+});
+%}

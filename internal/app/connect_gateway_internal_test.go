@@ -129,9 +129,11 @@ func TestHttpStreamAdapter_SendMsg_NonProtoMessage(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	adapter := &httpStreamAdapter{
-		ctx: nil,
-		req: httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil),
-		w:   rec,
+		baseStreamAdapter: baseStreamAdapter{
+			ctx: nil,
+			req: httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil),
+			w:   rec,
+		},
 	}
 
 	err := adapter.SendMsg("not a proto")
@@ -145,9 +147,11 @@ func TestHttpStreamAdapter_RecvMsg_EmptyBody(t *testing.T) {
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewReader([]byte{}))
 	adapter := &httpStreamAdapter{
-		ctx: req.Context(),
-		req: req,
-		w:   nil,
+		baseStreamAdapter: baseStreamAdapter{
+			ctx: req.Context(),
+			req: req,
+			w:   nil,
+		},
 	}
 
 	_ = adapter.RecvMsg(nil)
@@ -230,9 +234,11 @@ func TestHttpStreamAdapter_EndOfStreamNoCopy(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", nil)
 
 	adapter := httpStreamAdapter{
-		ctx: req.Context(),
-		req: req,
-		w:   rec,
+		baseStreamAdapter: baseStreamAdapter{
+			ctx: req.Context(),
+			req: req,
+			w:   rec,
+		},
 	}
 
 	require.NotNil(t, &adapter.endOfStream)
@@ -250,9 +256,11 @@ func TestHttpStreamAdapter_ConcurrentSendMsgNoRace(t *testing.T) {
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/", bytes.NewReader(nil))
 
 	adapter := &httpStreamAdapter{
-		ctx: req.Context(),
-		req: req,
-		w:   rec,
+		baseStreamAdapter: baseStreamAdapter{
+			ctx: req.Context(),
+			req: req,
+			w:   rec,
+		},
 	}
 
 	// SendMsg with a non-proto message short-circuits without writing to
@@ -342,9 +350,11 @@ func TestConnectRPCGateway_HandleUnary_StubNotFound(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	adapter := &httpStreamAdapter{
-		ctx: req.Context(),
-		req: req,
-		w:   rec,
+		baseStreamAdapter: baseStreamAdapter{
+			ctx: req.Context(),
+			req: req,
+			w:   rec,
+		},
 	}
 
 	gateway.handleUnary(mocker, adapter)
@@ -396,9 +406,11 @@ func TestConnectRPCGateway_HandleUnary_Success(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	adapter := &httpStreamAdapter{
-		ctx: req.Context(),
-		req: req,
-		w:   rec,
+		baseStreamAdapter: baseStreamAdapter{
+			ctx: req.Context(),
+			req: req,
+			w:   rec,
+		},
 	}
 
 	gateway.handleUnary(mocker, adapter)
@@ -512,9 +524,11 @@ func TestHttpStreamAdapter_EndStreamFrameReturnsEOF(t *testing.T) {
 	req.Header.Set("Content-Type", "application/connect+json")
 
 	adapter := &httpStreamAdapter{
-		ctx:       req.Context(),
-		req:       req,
-		w:         nil,
+		baseStreamAdapter: baseStreamAdapter{
+			ctx: req.Context(),
+			req: req,
+			w:   nil,
+		},
 		streaming: true,
 	}
 
@@ -539,9 +553,11 @@ func TestHttpStreamAdapter_SendMsgNotAffectedByClientEndStream(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	adapter := &httpStreamAdapter{
-		ctx:       req.Context(),
-		req:       req,
-		w:         rec,
+		baseStreamAdapter: baseStreamAdapter{
+			ctx: req.Context(),
+			req: req,
+			w:   rec,
+		},
 		streaming: true,
 	}
 
