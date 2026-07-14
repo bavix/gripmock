@@ -1,0 +1,12 @@
+### 6. Accept-Encoding: gzip
+POST http://127.0.0.1:4769/helloworld.Greeter/SayHello
+Content-Type: application/grpc-web+json
+Accept-Encoding: gzip
+
+{"name":"Bob"}
+
+> {%
+client.test("status should be 200", function() {
+  client.assert(response.status === 200, "Expected 200, got " + response.status);
+});
+%}

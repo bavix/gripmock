@@ -67,12 +67,12 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 					zerolog.Ctx(ctx).
 						Fatal().
 						Interface("panic", r).
-						Msg("Fatal panic in ConnectRPC server goroutine - terminating server")
+						Msg("Fatal panic in gateway server goroutine - terminating server")
 				}
 			}()
 
-			if err := builder.ConnectServe(ctx); err != nil {
-				zerolog.Ctx(ctx).Fatal().Err(err).Msg("Fatal error in ConnectRPC server - terminating server")
+			if err := builder.GatewayServe(ctx); err != nil {
+				zerolog.Ctx(ctx).Fatal().Err(err).Msg("Fatal error in gateway server - terminating server")
 			}
 		}()
 

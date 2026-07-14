@@ -26,23 +26,38 @@ GripMock reads configuration from environment variables on startup.
 | `HTTP_PORT` | `4771` | HTTP bind port. |
 | `HTTP_ADDR` | `$HTTP_HOST:$HTTP_PORT` | Full HTTP bind address. |
 
-## ConnectRPC server <VersionTag version="v3.15.0" />
+## Gateway server <VersionTag version="v3.17.0" />
 
-::: warning Experimental Feature
-The ConnectRPC server is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::
+The gateway serves both **ConnectRPC** and **gRPC-web** protocols on a single HTTP port. Content-Type negotiation dispatches to the correct handler automatically.
 
 | Variable | Default | Description |
 |---|---|---|
-| `CONNECTRPC_HOST` | `0.0.0.0` | ConnectRPC bind host. |
-| `CONNECTRPC_PORT` | `4769` | ConnectRPC bind port. |
-| `CONNECTRPC_ADDR` | `$CONNECTRPC_HOST:$CONNECTRPC_PORT` | Full ConnectRPC bind address. |
-| `CONNECTRPC_TLS_CERT_FILE` | *(empty)* | ConnectRPC server TLS certificate file. |
-| `CONNECTRPC_TLS_KEY_FILE` | *(empty)* | ConnectRPC server TLS private key file. |
-| `CONNECTRPC_TLS_CLIENT_AUTH` | `false` | Require client certs for ConnectRPC (mTLS). |
-| `CONNECTRPC_TLS_CA_FILE` | *(empty)* | CA file for validating ConnectRPC client certs. |
+| `GATEWAY_HOST` | `0.0.0.0` | Gateway bind host. |
+| `GATEWAY_PORT` | `4769` | Gateway bind port. |
+| `GATEWAY_ADDR` | `$GATEWAY_HOST:$GATEWAY_PORT` | Full gateway bind address. |
+| `GATEWAY_TLS_CERT_FILE` | *(empty)* | Gateway server TLS certificate file. |
+| `GATEWAY_TLS_KEY_FILE` | *(empty)* | Gateway server TLS private key file. |
+| `GATEWAY_TLS_CLIENT_AUTH` | `false` | Require client certs for gateway (mTLS). |
+| `GATEWAY_TLS_CA_FILE` | *(empty)* | CA file for validating gateway client certs. |
 
-ConnectRPC server provides unary and streaming RPC support over HTTP/1.1 and HTTP/2 (with or without TLS). Streaming uses the Connect envelope framing protocol. It shares the same stub storage, descriptor registry, and history store as gRPC and REST servers.
+The gateway provides unary and streaming RPC support for both protocols over HTTP/1.1 and HTTP/2 (with or without TLS). It shares the same stub storage, descriptor registry, and history store as gRPC and REST servers.
+
+### Legacy aliases (deprecated)
+
+The following `CONNECTRPC_*` variables are still supported as fallbacks when the corresponding `GATEWAY_*` variable is not set:
+
+| Deprecated | Unified |
+|---|---|
+| `CONNECTRPC_HOST` | `GATEWAY_HOST` |
+| `CONNECTRPC_PORT` | `GATEWAY_PORT` |
+| `CONNECTRPC_ADDR` | `GATEWAY_ADDR` |
+| `CONNECTRPC_TLS_CERT_FILE` | `GATEWAY_TLS_CERT_FILE` |
+| `CONNECTRPC_TLS_KEY_FILE` | `GATEWAY_TLS_KEY_FILE` |
+| `CONNECTRPC_TLS_CLIENT_AUTH` | `GATEWAY_TLS_CLIENT_AUTH` |
+| `CONNECTRPC_TLS_CA_FILE` | `GATEWAY_TLS_CA_FILE` |
+| `CONNECTRPC_TLS_MIN_VERSION` | `GATEWAY_TLS_MIN_VERSION` |
+
+These aliases will be removed in a future release. Migrate to `GATEWAY_*` variables.
 
 ## Stub watcher
 

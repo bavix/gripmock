@@ -16,7 +16,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/config"
 )
 
-func startConnectServer(t *testing.T) (string, func()) {
+func startGatewayServer(t *testing.T) (string, func()) {
 	t.Helper()
 
 	lc := net.ListenConfig{}
@@ -28,7 +28,7 @@ func startConnectServer(t *testing.T) (string, func()) {
 	require.NoError(t, listener.Close())
 
 	cfg := config.Load()
-	cfg.Connect.Addr = addr
+	cfg.Gateway.Addr = addr
 
 	builder := NewBuilder(WithConfig(cfg))
 
@@ -37,7 +37,7 @@ func startConnectServer(t *testing.T) (string, func()) {
 	errCh := make(chan error, 1)
 
 	go func() {
-		errCh <- builder.ConnectServe(ctx)
+		errCh <- builder.GatewayServe(ctx)
 	}()
 
 	deadline := time.Now().Add(2 * time.Second)
@@ -54,7 +54,7 @@ func startConnectServer(t *testing.T) (string, func()) {
 
 		if time.Now().After(deadline) {
 			cancel()
-			t.Fatalf("ConnectRPC server did not start within deadline: %v", dialErr)
+			t.Fatalf("gateway server did not start within deadline: %v", dialErr)
 		}
 
 		time.Sleep(20 * time.Millisecond)
@@ -72,10 +72,10 @@ func startConnectServer(t *testing.T) (string, func()) {
 	return addr, teardown
 }
 
-func TestConnectServe_RejectsMethodNotAllowed(t *testing.T) {
+func TestGatewayServe_RejectsMethodNotAllowed(t *testing.T) {
 	t.Parallel()
 
-	addr, teardown := startConnectServer(t)
+	addr, teardown := startGatewayServer(t)
 	defer teardown()
 
 	resp, err := http.Get("http://" + addr + "/test.Service/TestMethod") //nolint:noctx
@@ -86,10 +86,10 @@ func TestConnectServe_RejectsMethodNotAllowed(t *testing.T) {
 	require.Equal(t, http.StatusMethodNotAllowed, resp.StatusCode)
 }
 
-func TestConnectServe_AcceptsPostToUnknownRoute(t *testing.T) {
+func TestGatewayServe_AcceptsPostToUnknownRoute(t *testing.T) {
 	t.Parallel()
 
-	addr, teardown := startConnectServer(t)
+	addr, teardown := startGatewayServer(t)
 	defer teardown()
 
 	resp, err := http.Post( //nolint:noctx
@@ -104,12 +104,77 @@ func TestConnectServe_AcceptsPostToUnknownRoute(t *testing.T) {
 	require.NotEqual(t, http.StatusMethodNotAllowed, resp.StatusCode)
 }
 
-// TestConnectServe_CompressionRequestAccepted verifies that gzip-encoded
-// requests are accepted and decoded by the GzipRequestMiddleware.
-func TestConnectServe_CompressionRequestAccepted(t *testing.T) {
+// TestGatewayServe_ConnectRPCErrorFormat verifies that a request with
+// Content-Type: application/json is routed to the ConnectRPC handler and
+// returns a Connect-style JSON error (non-200 status, JSON body).
+func TestGatewayServe_ConnectRPCErrorFormat(t *testing.T) {
 	t.Parallel()
 
-	addr, teardown := startConnectServer(t)
+	addr, teardown := startGatewayServer(t)
+	defer teardown()
+
+	resp, err := http.Post( //nolint:noctx
+		"http://"+addr+"/unknown.Service/UnknownMethod",
+		"application/json",
+		strings.NewReader("{}"),
+	)
+	require.NoError(t, err)
+
+	defer resp.Body.Close() //nolint:errcheck
+
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+	require.Equal(t, "application/connect+json", resp.Header.Get("Content-Type"))
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `"code":"not_found"`)
+}
+
+// TestGatewayServe_GRPCWebRoutedByContentType verifies that a request with
+// Content-Type: application/grpc-web+proto is routed to the GRPCWeb handler
+// and returns a gRPC-web-style response (HTTP 200 with trailers).
+func TestGatewayServe_GRPCWebRoutedByContentType(t *testing.T) {
+	t.Parallel()
+
+	addr, teardown := startGatewayServer(t)
+	defer teardown()
+
+	req, err := http.NewRequestWithContext(
+		t.Context(),
+		http.MethodPost,
+		"http://"+addr+"/unknown.Service/UnknownMethod",
+		strings.NewReader("{}"),
+	)
+	require.NoError(t, err)
+
+	req.Header.Set("Content-Type", "application/grpc-web+proto")
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	defer resp.Body.Close() //nolint:errcheck
+
+	// gRPC-web always returns 200, status is in trailers
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.Equal(t, "application/grpc-web+proto", resp.Header.Get("Content-Type"))
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	// Response should be a trailers frame (flag 0x80) with grpc-status
+	require.GreaterOrEqual(t, len(body), 5, "expected at least a frame header")
+
+	// First byte should be the trailers flag (0x80)
+	require.Equal(t, byte(0x80), body[0], "expected gRPC-web trailers flag")
+	require.Contains(t, string(body), "grpc-status")
+}
+
+// TestGatewayServe_CompressionRequestAccepted verifies that gzip-encoded
+// requests are accepted and decoded by the GzipRequestMiddleware.
+func TestGatewayServe_CompressionRequestAccepted(t *testing.T) {
+	t.Parallel()
+
+	addr, teardown := startGatewayServer(t)
 	defer teardown()
 
 	body := gzipEncode(t, []byte("{}"))
@@ -133,12 +198,12 @@ func TestConnectServe_CompressionRequestAccepted(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
-// TestConnectServe_CompressionResponse verifies that the client receives
+// TestGatewayServe_CompressionResponse verifies that the client receives
 // a gzipped response when Accept-Encoding: gzip is sent.
-func TestConnectServe_CompressionResponse(t *testing.T) {
+func TestGatewayServe_CompressionResponse(t *testing.T) {
 	t.Parallel()
 
-	addr, teardown := startConnectServer(t)
+	addr, teardown := startGatewayServer(t)
 	defer teardown()
 
 	req, err := http.NewRequestWithContext(
@@ -164,13 +229,13 @@ func TestConnectServe_CompressionResponse(t *testing.T) {
 	require.Contains(t, string(decoded), `"code":"not_found"`)
 }
 
-// TestConnectServe_RespectsContextCancellation verifies that the server
+// TestGatewayServe_RespectsContextCancellation verifies that the server
 // is reachable while running and that context cancellation does not
 // deadlock the calling goroutine.
-func TestConnectServe_RespectsContextCancellation(t *testing.T) {
+func TestGatewayServe_RespectsContextCancellation(t *testing.T) {
 	t.Parallel()
 
-	addr, teardown := startConnectServer(t)
+	addr, teardown := startGatewayServer(t)
 	defer teardown()
 
 	resp, err := http.Get("http://" + addr + "/") //nolint:noctx

@@ -1,0 +1,12 @@
+### 4. Unary: Alice
+POST http://127.0.0.1:4769/helloworld.Greeter/SayHello
+Content-Type: application/grpc-web+json
+
+{"name":"Alice"}
+
+> {%
+client.test("returns Hello, Alice!", function() {
+  client.assert(response.status === 200, "Expected 200, got " + response.status);
+  client.assert(response.body.includes("Hello, Alice!"), "Expected 'Hello, Alice!' in response body");
+});
+%}

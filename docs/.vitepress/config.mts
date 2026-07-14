@@ -70,6 +70,7 @@ export default defineConfig({
         text: 'Protocols',
         items: [
           { text: 'ConnectRPC', link: '/guide/connect-rpc' },
+          { text: 'gRPC-web', link: '/guide/grpc-web' },
         ],
         collapsed: false,
       },
