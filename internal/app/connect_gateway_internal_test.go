@@ -436,7 +436,7 @@ func TestConnectRPCGateway_HandleWithoutDescriptor_StubNotFound(t *testing.T) {
 		"/test.Service/TestMethod", bytes.NewReader([]byte(`{}`)))
 	req.Header.Set("Content-Type", "application/json")
 
-	gateway.handleWithoutDescriptor(rec, req, "test.Service", "TestMethod")
+	gateway.handleWithoutDescriptor(rec, req, "test.Service", "TestMethod", connectResponse{})
 
 	require.Equal(t, http.StatusNotFound, rec.Code)
 	require.Equal(t, "application/connect+json", rec.Header().Get("Content-Type"))
@@ -468,7 +468,7 @@ func TestConnectRPCGateway_HandleWithoutDescriptor_EmptyData(t *testing.T) {
 		"/test.Service/TestMethod", bytes.NewReader([]byte(`{}`)))
 	req.Header.Set("Content-Type", "application/json")
 
-	gateway.handleWithoutDescriptor(rec, req, "test.Service", "TestMethod")
+	gateway.handleWithoutDescriptor(rec, req, "test.Service", "TestMethod", connectResponse{})
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "application/connect+json", rec.Header().Get("Content-Type"))
@@ -498,7 +498,7 @@ func TestConnectRPCGateway_HandleWithoutDescriptor_WithData(t *testing.T) {
 		"/test.Service/TestMethod", bytes.NewReader([]byte(`{}`)))
 	req.Header.Set("Content-Type", "application/json")
 
-	gateway.handleWithoutDescriptor(rec, req, "test.Service", "TestMethod")
+	gateway.handleWithoutDescriptor(rec, req, "test.Service", "TestMethod", connectResponse{})
 
 	require.Equal(t, http.StatusNotImplemented, rec.Code)
 	require.Equal(t, "application/connect+json", rec.Header().Get("Content-Type"))

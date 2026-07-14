@@ -6,10 +6,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
@@ -17,14 +15,12 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/dynamicpb"
 
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
-	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
 const (
@@ -39,12 +35,7 @@ const (
 // It translates between gRPC-Web framing (length-prefixed messages +
 // trailers with grpc-status/grpc-message) and the shared mocker.
 type GRPCWebGateway struct {
-	budgerigar     *stuber.Budgerigar
-	descriptors    *descriptors.Registry
-	recorder       history.Recorder
-	proxies        *proxyroutes.Registry
-	validator      *validator.Validate
-	errorFormatter *ErrorFormatter
+	gatewayHandler
 }
 
 func NewGRPCWebGateway(
@@ -55,22 +46,11 @@ func NewGRPCWebGateway(
 	validator *validator.Validate,
 	errorFormatter *ErrorFormatter,
 ) *GRPCWebGateway {
-	e := errorFormatter
-	if e == nil {
-		e = NewErrorFormatter()
-	}
-
 	return &GRPCWebGateway{
-		budgerigar:     budgerigar,
-		descriptors:    descriptorRegistry,
-		recorder:       recorder,
-		proxies:        proxies,
-		validator:      validator,
-		errorFormatter: e,
+		gatewayHandler: newGatewayHandler(budgerigar, descriptorRegistry, recorder, proxies, validator, errorFormatter),
 	}
 }
 
-//nolint:funlen
 func (g *GRPCWebGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -95,7 +75,7 @@ func (g *GRPCWebGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	methodDesc, err := findMethodDescriptor(g.descriptors, service, method)
 	if err != nil {
 		if g.descriptors == nil && g.budgerigar != nil {
-			g.handleWithoutDescriptor(w, r, service, method)
+			g.handleWithoutDescriptor(w, r, service, method, grpcwebResponse{})
 
 			return
 		}
@@ -105,27 +85,7 @@ func (g *GRPCWebGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	mocker := &grpcMocker{
-		budgerigar:     g.budgerigar,
-		templateEngine: template.New(r.Context(), nil),
-		errorFormatter: g.errorFormatter,
-		recorder:       g.recorder,
-		descriptorResolver: &dynamicDescriptorResolver{
-			static:  protoregistry.GlobalFiles,
-			dynamic: g.descriptors,
-		},
-		proxies:            g.proxies,
-		validator:          g.validator,
-		fullServiceName:    service,
-		serviceName:        service,
-		methodName:         method,
-		fullMethod:         fullMethod,
-		inputDesc:          methodDesc.Input(),
-		outputDesc:         methodDesc.Output(),
-		serverStream:       methodDesc.IsStreamingServer(),
-		clientStream:       methodDesc.IsStreamingClient(),
-		strictServiceMatch: g.proxies != nil && g.proxies.RouteByMethod(fullMethod) != nil,
-	}
+	mocker := g.buildMocker(r, service, method, fullMethod, methodDesc)
 
 	adapter := newGRPCWebAdapter(r, w, mocker)
 
@@ -218,90 +178,20 @@ func extractPayload(raw []byte) ([]byte, error) {
 	}
 }
 
-// handleWithoutDescriptor matches stubs by service/method name alone,
-// without requiring proto descriptors. Results are returned as empty
-// length-prefixed frames with gRPC-Web trailers.
-//
-//nolint:funlen
-func (g *GRPCWebGateway) handleWithoutDescriptor(w http.ResponseWriter, r *http.Request, serviceName, methodName string) {
-	_, _ = io.Copy(io.Discard, r.Body)
+// grpcwebResponse implements withoutDescriptorResponse for the gRPC-Web protocol.
+type grpcwebResponse struct{}
 
-	requestTime := time.Now()
-	emptyInput := map[string]any{}
-
-	query := stuber.Query{
-		Service: serviceName,
-		Method:  methodName,
-		Input:   []map[string]any{emptyInput},
-		Headers: extractConnectHeaders(r.Header),
-		Session: strings.TrimSpace(r.Header.Get("X-Gripmock-Session")),
-	}
-
-	result, findErr := g.budgerigar.FindByQuery(query)
-	if findErr != nil || result == nil || result.Found() == nil {
-		if result == nil {
-			result = &stuber.Result{}
-		}
-
-		notFoundMsg := g.errorFormatter.FormatStubNotFoundError(query, result).Error()
-		recordCall(g.recorder, serviceName, methodName, query.Session, uuid.Nil, uint32(codes.NotFound),
-			requestTime, []map[string]any{emptyInput}, nil, notFoundMsg)
-		setGRPCWebContentType(w, r)
-		w.WriteHeader(http.StatusOK)
-		writeGRPCWebTrailers(w, codes.NotFound, notFoundMsg)
-
-		return
-	}
-
-	found := result.Found()
-
-	if err := delayResponse(r.Context(), found.Output.Delay); err != nil {
-		st, _ := status.FromError(err)
-		recordCall(g.recorder, serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
-			requestTime, []map[string]any{emptyInput}, nil, st.Message())
-		setGRPCWebContentType(w, r)
-		w.WriteHeader(http.StatusOK)
-		writeGRPCWebTrailers(w, st.Code(), st.Message())
-
-		return
-	}
-
-	outputToUse := found.Output
-
-	if st := outputStatusBase(outputToUse); st != nil {
-		recordCall(g.recorder, serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
-			requestTime, []map[string]any{emptyInput}, nil, st.Message())
-		setGRPCWebContentType(w, r)
-		w.WriteHeader(http.StatusOK)
-		writeGRPCWebTrailers(w, st.Code(), st.Message())
-
-		return
-	}
-
-	if outputToUse.Data != nil {
-		recordCall(g.recorder, serviceName, methodName, query.Session, found.ID, uint32(codes.Unimplemented),
-			requestTime, []map[string]any{emptyInput}, nil,
-			"proto descriptor required to encode non-empty output for "+serviceName+"/"+methodName)
-		setGRPCWebContentType(w, r)
-		w.WriteHeader(http.StatusOK)
-		writeGRPCWebTrailers(w, codes.Unimplemented,
-			"proto descriptor required to encode non-empty output for "+serviceName+"/"+methodName)
-
-		return
-	}
-
-	for k, v := range outputToUse.Headers {
-		w.Header().Set(k, v)
-	}
-
+func (grpcwebResponse) WriteError(w http.ResponseWriter, r *http.Request, code codes.Code, msg string) {
 	setGRPCWebContentType(w, r)
 	w.WriteHeader(http.StatusOK)
+	writeGRPCWebTrailers(w, code, msg)
+}
 
+func (grpcwebResponse) WriteSuccess(w http.ResponseWriter, r *http.Request) {
+	setGRPCWebContentType(w, r)
+	w.WriteHeader(http.StatusOK)
 	_ = writeConnectFrame(w, nil, false)
 	writeGRPCWebTrailers(w, codes.OK, "")
-
-	recordCall(g.recorder, serviceName, methodName, query.Session, found.ID, uint32(codes.OK),
-		requestTime, []map[string]any{emptyInput}, []map[string]any{{}}, "")
 }
 
 func isGRPCWebJSONContentType(ct string) bool {
@@ -447,19 +337,11 @@ func (a *grpcwebAdapter) sendHeader() {
 }
 
 func (a *grpcwebAdapter) decodeMessage(data []byte, msg proto.Message, ct string) error {
-	if isGRPCWebJSONContentType(ct) {
-		return protojson.Unmarshal(data, msg)
-	}
-
-	return proto.Unmarshal(data, msg)
+	return decodeMessageData(data, msg, ct, isGRPCWebJSONContentType)
 }
 
 func (a *grpcwebAdapter) encodeMessage(msg proto.Message, ct string) ([]byte, error) {
-	if isGRPCWebJSONContentType(ct) {
-		return protojson.Marshal(msg)
-	}
-
-	return proto.Marshal(msg)
+	return encodeMessageData(msg, ct, isGRPCWebJSONContentType)
 }
 
 func (a *grpcwebAdapter) writeError(code codes.Code, msg string) {
