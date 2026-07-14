@@ -13,9 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/dynamicpb"
 
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
@@ -118,26 +116,12 @@ func (g *GRPCWebGateway) handleUnary(mocker *grpcMocker, a *grpcwebAdapter) {
 		return
 	}
 
-	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	if isGRPCWebJSONContentType(a.req.Header.Get("Content-Type")) {
-		if err := protojson.Unmarshal(data, inputMsg); err != nil {
-			a.writeError(codes.InvalidArgument, "failed to unmarshal: "+err.Error())
-
-			return
-		}
-	} else {
-		if err := proto.Unmarshal(data, inputMsg); err != nil {
-			a.writeError(codes.InvalidArgument, "failed to unmarshal: "+err.Error())
-
-			return
-		}
-	}
-
-	resp, err := mocker.handleUnary(a.ctx, inputMsg)
+	resp, err := handleUnaryCore(a.ctx, data, mocker,
+		a.req.Header.Get("Content-Type"),
+		isGRPCWebJSONContentType,
+		a.writeError,
+	)
 	if err != nil {
-		st, _ := status.FromError(err)
-		a.writeError(st.Code(), st.Message())
-
 		return
 	}
 

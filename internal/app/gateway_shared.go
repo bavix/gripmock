@@ -18,6 +18,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/dynamicpb"
 
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
@@ -261,6 +262,40 @@ func decodeMessageData(data []byte, msg proto.Message, ct string, isJSONType fun
 	}
 
 	return proto.Unmarshal(data, msg)
+}
+
+func handleUnaryCore(
+	ctx context.Context,
+	data []byte,
+	mocker *grpcMocker,
+	contentType string,
+	isJSONType func(string) bool,
+	writeError func(codes.Code, string),
+) (any, error) {
+	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
+	if isJSONType(contentType) {
+		if err := protojson.Unmarshal(data, inputMsg); err != nil {
+			writeError(codes.InvalidArgument, "failed to unmarshal: "+err.Error())
+
+			return nil, err
+		}
+	} else {
+		if err := proto.Unmarshal(data, inputMsg); err != nil {
+			writeError(codes.InvalidArgument, "failed to unmarshal: "+err.Error())
+
+			return nil, err
+		}
+	}
+
+	resp, err := mocker.handleUnary(ctx, inputMsg)
+	if err != nil {
+		st, _ := status.FromError(err)
+		writeError(st.Code(), st.Message())
+
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func encodeMessageData(msg proto.Message, ct string, isJSONType func(string) bool) ([]byte, error) {

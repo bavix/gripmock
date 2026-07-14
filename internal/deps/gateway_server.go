@@ -122,13 +122,7 @@ func (b *Builder) listenGateway(ctx context.Context, srv *http.Server) (net.List
 		return b.tlsGatewayListener(srv, gatewayTLS)
 	}
 
-	srv.Protocols = func() *http.Protocols {
-		var p http.Protocols
-		p.SetHTTP1(true)
-		p.SetUnencryptedHTTP2(true)
-
-		return &p
-	}()
+	setGatewayProtocols(srv)
 
 	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", b.config.Gateway.Addr)
 	if err != nil {
@@ -145,13 +139,7 @@ func (b *Builder) tlsGatewayListener(srv *http.Server, gatewayTLS infraTLS.TLSCo
 	}
 
 	srv.TLSConfig = tlsCfg
-	srv.Protocols = func() *http.Protocols {
-		var p http.Protocols
-		p.SetHTTP1(true)
-		p.SetHTTP2(true)
-
-		return &p
-	}()
+	setGatewayProtocols(srv)
 
 	tlsListener, err := tls.Listen("tcp", b.config.Gateway.Addr, srv.TLSConfig)
 	if err != nil {
@@ -159,6 +147,21 @@ func (b *Builder) tlsGatewayListener(srv *http.Server, gatewayTLS infraTLS.TLSCo
 	}
 
 	return tlsListener, nil
+}
+
+func setGatewayProtocols(srv *http.Server) {
+	srv.Protocols = func() *http.Protocols {
+		var p http.Protocols
+		p.SetHTTP1(true)
+
+		if srv.TLSConfig != nil {
+			p.SetHTTP2(true)
+		} else {
+			p.SetUnencryptedHTTP2(true)
+		}
+
+		return &p
+	}()
 }
 
 // gatewayAccessLogMiddleware logs each gateway request on completion with

@@ -11,9 +11,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/dynamicpb"
 
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
@@ -103,42 +101,24 @@ func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//nolint:nlreturn
 func (g *ConnectRPCGateway) handleUnary(mocker *grpcMocker, a *httpStreamAdapter) {
 	body, err := io.ReadAll(a.req.Body)
 	if err != nil {
 		a.writeError(codes.Internal, "failed to read body")
+
 		return
 	}
 
-	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	if isJSONContentType(a.req.Header.Get("Content-Type")) {
-		if err := protojson.Unmarshal(body, inputMsg); err != nil {
-			a.writeError(codes.InvalidArgument, "failed to unmarshal: "+err.Error())
-			return
-		}
-	} else {
-		if err := proto.Unmarshal(body, inputMsg); err != nil {
-			a.writeError(codes.InvalidArgument, "failed to unmarshal: "+err.Error())
-			return
-		}
-	}
-
-	resp, err := mocker.handleUnary(a.ctx, inputMsg)
+	resp, err := handleUnaryCore(a.ctx, body, mocker,
+		a.req.Header.Get("Content-Type"),
+		isJSONContentType,
+		a.writeError,
+	)
 	if err != nil {
-		st, _ := status.FromError(err)
-		a.writeError(st.Code(), st.Message())
-
 		return
 	}
 
 	if err := a.SendMsg(resp); err != nil {
-		// The client may have disconnected before we could write the
-		// response (e.g. context cancelled, keep-alive timeout). The
-		// stub was matched and a response was produced, but the
-		// transport write failed. We cannot change the response status
-		// at this point (headers already flushed) so the only safe
-		// action is to log the failure for observability.
 		zerolog.Ctx(a.ctx).Debug().Err(err).Msg("connect.gateway: send unary response")
 	}
 }
