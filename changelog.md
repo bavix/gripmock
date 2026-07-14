@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.17.1 - 2026-07-14
+
+### What's Changed
+
+* bump deps by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/905
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.17.0...v3.17.1
+
 ## v3.17.0 - 2026-07-14
 
 ### What's Changed
