@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.17.0 - 2026-07-14
+
+### What's Changed
+
+* bump grpctestify by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/902
+* chore(deps): bump github.com/oapi-codegen/runtime from 1.4.2 to 1.5.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/903
+* feat: grpc-web by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/904
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.16.1...v3.17.0
+
 ## v3.16.1 - 2026-07-10
 
 ### What's Changed
