@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"io"
 	"net"
 	"net/http"
@@ -23,8 +24,9 @@ import (
 )
 
 const (
-	maxBodyCapture      = 4 << 10 // 4 KiB
-	grpcFrameHeaderSize = 5       // 1 flag byte + 4 byte length (gRPC/gRPC-Web)
+	maxBodyCapture            = 4 << 10 // 4 KiB
+	grpcFrameHeaderSize       = 5       // 1 flag byte + 4 byte length (gRPC/gRPC-Web)
+	connectEnvelopeHeaderSize = 5       // 1 flag byte + 4 byte length (ConnectRPC envelope)
 )
 
 const (
@@ -70,14 +72,17 @@ func (b *Builder) newMultiProtocolGateway() *app.MultiProtocolGateway {
 		recorder = store
 	}
 
-	return app.NewMultiProtocolGateway(
+	g := app.NewMultiProtocolGateway(
 		b.Budgerigar(),
 		b.DescriptorRegistry(),
 		recorder,
-		nil,
+		b.ProxyRoutes(),
 		b.StubValidator(),
 		b.ErrorFormatter(),
 	)
+	b.SetGateway(g)
+
+	return g
 }
 
 func (b *Builder) newGatewayServer(ctx context.Context, router *mux.Router) *http.Server {
@@ -183,29 +188,28 @@ func gatewayAccessLogMiddleware(next http.Handler) http.Handler {
 		service, methodName := parseServiceMethod(r.URL.Path)
 		meta := buildMetadata(r.Header)
 
-		// Strip gRPC-Web frame header for readable body logging.
-		if protocol == "grpc-web" {
+		// Strip protocol frame headers for readable body logging.
+		switch protocol {
+		case "grpc-web":
 			reqBody = stripGRPCFrame(reqBody)
 			rec.bodyContent = stripGRPCFrame(rec.bodyContent)
+		case "connectrpc":
+			reqBody = stripConnectFrame(reqBody)
+			rec.bodyContent = stripConnectFrame(rec.bodyContent)
 		}
 
-		log := zerolog.Ctx(r.Context()).Info(). //nolint:zerologlint
-							Str("gateway.code", http.StatusText(rec.statusCode)).
-							Str("gateway.component", "server").
-							Any("gateway.metadata", meta).
-							Str("gateway.method", methodName).
-							Str("gateway.service", service).
-							Float64("gateway.time_ms", float64(time.Since(start).Microseconds())/1000.0). //nolint:mnd
-							Str("peer.address", r.RemoteAddr)
+		log := zerolog.Ctx(r.Context()).Info().
+			Str("gateway.code", http.StatusText(rec.statusCode)).
+			Str("gateway.component", "server").
+			Any("gateway.metadata", meta).
+			Str("gateway.method", methodName).
+			Str("gateway.service", service).
+			Float64("gateway.time_ms", float64(time.Since(start).Microseconds())/1000.0). //nolint:mnd
+			Str("peer.address", r.RemoteAddr)
 
-		// Include bodies for text-based content types only.
-		if isTextBody(r.Header) && reqBody != "" {
-			log = log.RawJSON("gateway.request.content", []byte(truncate(reqBody, maxBodyCapture)))
-		}
-
-		if isTextBody(rec.Header()) && rec.bodyContent != "" {
-			log = log.RawJSON("gateway.response.content", []byte(truncate(rec.bodyContent, maxBodyCapture)))
-		}
+		// Include request and response bodies (JSON-safe logging).
+		log = logRequestBody(log, "gateway.request.content", r.Header, reqBody)
+		log = logRequestBody(log, "gateway.response.content", rec.Header(), rec.bodyContent)
 
 		log.Str("protocol", protocol).
 			Msg("gateway call completed")
@@ -297,6 +301,32 @@ func stripGRPCFrame(data string) string {
 	return payload
 }
 
+// stripConnectFrame removes ConnectRPC envelope framing from log payloads.
+// Connect envelopes are 5 bytes: 1 flag byte + 4 byte big-endian length.
+// We skip the header and return only the payload up to the declared length.
+// Raw bodies (JSON without framing) are returned unchanged.
+func stripConnectFrame(data string) string {
+	if len(data) < connectEnvelopeHeaderSize {
+		return data
+	}
+
+	// Connect envelopes start with flag byte 0x00 (data) or 0x02 (end_stream).
+	// JSON starts with 0x7B ('{') or 0x5B ('[').
+	if data[0] != 0x00 && data[0] != 0x02 {
+		return data
+	}
+
+	declared := int(data[1])<<24 | int(data[2])<<16 | int(data[3])<<8 | int(data[4])
+
+	// Skip remaining envelope frames by returning the first payload.
+	payload := data[connectEnvelopeHeaderSize:]
+	if declared < len(payload) {
+		payload = payload[:declared]
+	}
+
+	return payload
+}
+
 // isTextBody returns true when the content-type suggests a text-based
 // payload (JSON). Binary protobuf bodies are skipped in the access log.
 func isTextBody(h http.Header) bool {
@@ -326,6 +356,21 @@ func parseServiceMethod(path string) (string, string) {
 	}
 
 	return "", ""
+}
+
+// logRequestBody conditionally adds a body field to the zerolog event.
+// If the content-type is text-based and the body is valid JSON, it is logged
+// as RawJSON; otherwise as a truncated string. Returns the modified event.
+func logRequestBody(log *zerolog.Event, key string, h http.Header, body string) *zerolog.Event {
+	if !isTextBody(h) || body == "" {
+		return log
+	}
+
+	if json.Valid([]byte(body)) {
+		return log.RawJSON(key, []byte(body))
+	}
+
+	return log.Str(key, truncate(body, maxBodyCapture))
 }
 
 // captureResponseWriter wraps http.ResponseWriter to capture the HTTP

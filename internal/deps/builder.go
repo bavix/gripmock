@@ -5,6 +5,7 @@ import (
 	"log"
 	"slices"
 	"sync"
+	"sync/atomic"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/prometheus/client_golang/prometheus"
@@ -19,6 +20,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/build"
 	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 	internalplugins "github.com/bavix/gripmock/v3/internal/infra/plugins"
+	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	reflectclient "github.com/bavix/gripmock/v3/internal/infra/reflectclient"
 	sourceclient "github.com/bavix/gripmock/v3/internal/infra/sourceclient"
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
@@ -57,6 +59,9 @@ type Builder struct {
 	pluginPaths    []string
 	pluginRegistry *internalplugins.Registry
 	pluginOnce     sync.Once
+
+	gateway     *app.MultiProtocolGateway
+	proxyRoutes atomic.Pointer[proxyroutes.Registry]
 }
 
 func newStubValidator() *validator.Validate {
@@ -185,4 +190,20 @@ func (b *Builder) RemoteClient() protosetdom.RemoteClient {
 	})
 
 	return b.remoteClient
+}
+
+func (b *Builder) SetProxyRoutes(r *proxyroutes.Registry) {
+	b.proxyRoutes.Store(r)
+}
+
+func (b *Builder) ProxyRoutes() *proxyroutes.Registry {
+	return b.proxyRoutes.Load()
+}
+
+func (b *Builder) SetGateway(g *app.MultiProtocolGateway) {
+	b.gateway = g
+}
+
+func (b *Builder) Gateway() *app.MultiProtocolGateway {
+	return b.gateway
 }

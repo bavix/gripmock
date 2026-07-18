@@ -71,6 +71,15 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		return errors.Wrap(err, "failed to build gRPC server")
 	}
 
+	// Share proxy routes with the gateway (built lazily at request time).
+	if p := grpcServer.Proxies(); p != nil {
+		b.SetProxyRoutes(p)
+
+		if gw := b.Gateway(); gw != nil {
+			gw.SetProxies(p)
+		}
+	}
+
 	b.ender.Add(func(_ context.Context) error {
 		server.GracefulStop()
 

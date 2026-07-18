@@ -49,7 +49,7 @@ func TestHistoryUnary(t *testing.T) {
 	mocker.budgerigar.PutMany(stub)
 
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	resp, err := mocker.handleUnary(t.Context(), inputMsg)
+	resp, err := mocker.handleUnary(t.Context(), nil, inputMsg)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 

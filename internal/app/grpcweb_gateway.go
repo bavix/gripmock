@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
@@ -95,7 +96,7 @@ func (g *GRPCWebGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := mocker.streamHandler(adapter.ctx, adapter); err != nil { //nolint:contextcheck
 		st, _ := status.FromError(err)
-		adapter.writeError(st.Code(), st.Message())
+		adapter.writeErrorStatus(normalizeHealthError(st, mocker.serviceName))
 	} else {
 		adapter.writeTrailers(codes.OK, "")
 	}
@@ -116,10 +117,12 @@ func (g *GRPCWebGateway) handleUnary(mocker *grpcMocker, a *grpcwebAdapter) {
 		return
 	}
 
-	resp, err := handleUnaryCore(a.ctx, data, mocker,
+	resp, err := handleUnaryCore(a.ctx, a, data, mocker,
 		a.req.Header.Get("Content-Type"),
 		isGRPCWebJSONContentType,
-		a.writeError,
+		func(st *status.Status) {
+			a.writeErrorStatus(normalizeHealthError(st, mocker.serviceName))
+		},
 	)
 	if err != nil {
 		return
@@ -196,17 +199,31 @@ func writeGRPCWebError(w http.ResponseWriter, code codes.Code, msg string) {
 	writeGRPCWebTrailers(w, code, msg)
 }
 
+// writeDataFrame writes a gRPC-Web data frame (flag 0x00) to w.
+// The data is written as a 5-byte header (flag + big-endian length) followed by payload.
+func writeDataFrame(w http.ResponseWriter, data []byte) {
+	var header [connectEnvelopeHeaderSize]byte
+
+	header[0] = 0x00                                           // data frame flag
+	binary.BigEndian.PutUint32(header[1:5], uint32(len(data))) //nolint:gosec
+	_, _ = w.Write(header[:])
+	_, _ = w.Write(data)
+}
+
 // writeGRPCWebTrailers writes a gRPC-Web trailers frame containing
-// grpc-status and optionally grpc-message (percent-encoded).
-// This frame uses the gRPC-Web trailers flag (0x80) which is distinct
-// from the Connect end-stream flag (0x02).
-func writeGRPCWebTrailers(w http.ResponseWriter, code codes.Code, msg string) {
+// grpc-status and optionally grpc-message (percent-encoded), plus any
+// additional trailer lines from extra.
+func writeGRPCWebTrailers(w http.ResponseWriter, code codes.Code, msg string, extra ...string) {
 	var data string
 	if msg == "" {
 		data = fmt.Sprintf("grpc-status: %d\r\n", code)
 	} else {
 		data = fmt.Sprintf("grpc-status: %d\r\ngrpc-message: %s\r\n",
 			code, percentEncode(msg))
+	}
+
+	for _, e := range extra {
+		data += e + "\r\n" //nolint:perfsprint
 	}
 
 	var header [connectEnvelopeHeaderSize]byte
@@ -220,6 +237,10 @@ func writeGRPCWebTrailers(w http.ResponseWriter, code codes.Code, msg string) {
 
 	if _, err := io.WriteString(w, data); err != nil {
 		return
+	}
+
+	if flusher, ok := w.(http.Flusher); ok {
+		flusher.Flush()
 	}
 }
 
@@ -249,6 +270,8 @@ func shouldEscape(b byte) bool {
 // trailers frame via writeTrailers or writeError.
 type grpcwebAdapter struct {
 	baseStreamAdapter
+
+	trailerExtra []string
 }
 
 func newGRPCWebAdapter(r *http.Request, w http.ResponseWriter, _ *grpcMocker) *grpcwebAdapter {
@@ -290,9 +313,15 @@ func (a *grpcwebAdapter) SendMsg(m any) error {
 }
 
 func (a *grpcwebAdapter) RecvMsg(m any) error {
+	if a.endOfStream.Load() {
+		return io.EOF
+	}
+
 	msg, ok := m.(proto.Message)
 	if !ok {
-		return nil
+		// nil message = end-of-stream check. Body is already consumed
+		// after the first read, so signal EOF.
+		return io.EOF
 	}
 
 	ct := a.req.Header.Get("Content-Type")
@@ -328,14 +357,31 @@ func (a *grpcwebAdapter) encodeMessage(msg proto.Message, ct string) ([]byte, er
 	return encodeMessageData(msg, ct, isGRPCWebJSONContentType)
 }
 
+func (a *grpcwebAdapter) setTrailerExtra(lines ...string) {
+	a.trailerExtra = append(a.trailerExtra, lines...)
+}
+
 func (a *grpcwebAdapter) writeError(code codes.Code, msg string) {
 	a.sendHeader()
 
-	writeGRPCWebTrailers(a.w, code, msg)
+	writeGRPCWebTrailers(a.w, code, msg, a.trailerExtra...)
+}
+
+func (a *grpcwebAdapter) writeErrorStatus(st *status.Status) {
+	a.sendHeader()
+
+	// gRPC-Web unary errors: write a data frame with the full google.rpc.Status
+	// (including @type-annotated details), then a trailers frame.
+	statusJSON, _ := protojson.MarshalOptions{UseProtoNames: false}.Marshal(st.Proto())
+	if len(statusJSON) > 0 {
+		writeDataFrame(a.w, statusJSON)
+	}
+
+	writeGRPCWebTrailers(a.w, st.Code(), st.Message(), a.trailerExtra...)
 }
 
 func (a *grpcwebAdapter) writeTrailers(code codes.Code, msg string) {
-	writeGRPCWebTrailers(a.w, code, msg)
+	writeGRPCWebTrailers(a.w, code, msg, a.trailerExtra...)
 }
 
 // Compile-time check that grpcwebAdapter satisfies grpc.ServerStream.

@@ -48,13 +48,14 @@ func (br *BidiResult) Next(messageData map[string]any) (*Stub, error) {
 	}
 }
 
-// GetMessageIndex returns the current message index in the bidirectional stream.
+// GetMessageIndex returns the current message index in the bidirectional stream (0-based).
 func (br *BidiResult) GetMessageIndex() int {
-	return int(br.messageCount.Load())
+	return max(0, int(br.messageCount.Load())-1)
 }
 
 func (br *BidiResult) ensureMatchingStubs(messageData map[string]any) (bool, int) {
-	messageIndex := 0
+	// Track the actual message index regardless of matchingStubs state.
+	messageIndex := int(br.messageCount.Add(1)) - 1
 
 	if len(br.matchingStubs) == 0 {
 		allStubs, err := br.lookup.LookupServiceAvailable(br.reserveQuery.Service, br.reserveQuery.Method)
@@ -68,7 +69,6 @@ func (br *BidiResult) ensureMatchingStubs(messageData map[string]any) (bool, int
 			}
 		}
 	} else {
-		messageIndex = int(br.messageCount.Add(1))
 		br.filterMatchingStubs(messageData)
 	}
 
@@ -123,7 +123,6 @@ func (br *BidiResult) tryReserveAndFinalize(bestStub *Stub, itemQuery Query, isF
 
 	if !bestStub.IsClientStream() && isFirstMessage {
 		br.matchingStubs = nil
-		br.messageCount.Store(0)
 	}
 
 	return true

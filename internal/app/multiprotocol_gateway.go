@@ -65,3 +65,11 @@ func (g *MultiProtocolGateway) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		g.connect.ServeHTTP(w, r)
 	}
 }
+
+// SetProxies updates the proxy routes on both sub-gateways at runtime.
+// This lets the gRPC server share its proxy routes with the gateway after
+// they are built (the gateway is created before proxy routes are available).
+func (g *MultiProtocolGateway) SetProxies(r *proxyroutes.Registry) {
+	g.grpcweb.SetProxies(r)
+	g.connect.SetProxies(r)
+}
