@@ -1,5 +1,7 @@
 # MCP API <VersionTag version="v3.7.0" />
 
+⚠️ **EXPERIMENTAL FEATURE**: The MCP API is experimental and may change without notice.
+
 GripMock exposes MCP over HTTP at `POST /api/mcp` using `github.com/modelcontextprotocol/go-sdk`.
 
 ## Protocol

@@ -98,7 +98,7 @@ docker pull bavix/gripmock
 プラグインビルドには、ペアのビルダーイメージを使用します：
 
 ```bash
-docker pull bavix/gripmock:v3.7.1-builder
+docker pull bavix/gripmock:v3.17.2-builder
 ```
 
 #### Go インストール
@@ -162,7 +162,7 @@ gripmock --stub stubs/ bsr.company.local/team/payments
 
 **Docker を使用：**
 ```bash
-docker run -p 4770:4770 -p 4771:4771 \
+docker run -p 4770:4770 -p 4771:4771 -p 4769:4769 \
   -v $(pwd)/stubs:/stubs \
   -v $(pwd)/proto:/proto \
   bavix/gripmock --stub=/stubs /proto/service.proto
@@ -170,6 +170,7 @@ docker run -p 4770:4770 -p 4771:4771 \
 
 - **ポート 4770**: gRPC サーバー
 - **ポート 4771**: Web UI および REST API
+- **ポート 4769**: ゲートウェイ（gRPC-web / ConnectRPC）
 
 ### 可観測性（v3.10.0）
 

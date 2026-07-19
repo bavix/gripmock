@@ -152,18 +152,16 @@ func TestMyService_RemoteContextAwareChecks(t *testing.T) {
     ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
     defer cancel()
 
-    err = sdk.VerifyStubTimesErrContext(ctx, srv.ExpectationsWereMet())
-    // ... or use the Server's context-aware method directly:
-    err = srv.ExpectationsWereMetContext(ctx)
-    require.NoError(t, err)
+    // Context-aware expectation check (honors cancellation/deadline in remote mode).
+    require.NoError(t, srv.ExpectationsWereMetContext(ctx))
 
-    calls, err := sdk.HistoryFilterByMethodContext(ctx, srv.History(), "MyService", "MyMethod")
-    require.NoError(t, err)
+    // Recorded calls are available via srv.History(); filter by method client-side.
+    calls := srv.History()
     require.NotEmpty(t, calls)
 }
 ```
 
-These helpers are backward-compatible: for embedded mode they fall back to non-context APIs.
+`ExpectationsWereMetContext` is backward-compatible: in embedded mode it falls back to the non-context check.
 
 ## Never Called Verification
 

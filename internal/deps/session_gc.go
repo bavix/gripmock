@@ -2,7 +2,6 @@ package deps
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -15,34 +14,31 @@ import (
 )
 
 func StartSessionGC(ctx context.Context, cfg config.Config, bg *stuber.Budgerigar, hs *history.MemoryStore, ender *lifecycle.Manager) {
-	var once sync.Once
-	once.Do(func() {
-		interval := cfg.SessionGCInterval
-		ttl := cfg.SessionGCTTL
+	interval := cfg.SessionGCInterval
+	ttl := cfg.SessionGCTTL
 
-		if interval <= 0 || ttl <= 0 {
-			return
-		}
+	if interval <= 0 || ttl <= 0 {
+		return
+	}
 
-		ticker := time.NewTicker(interval)
+	ticker := time.NewTicker(interval)
 
-		ender.Add(func(_ context.Context) error {
-			ticker.Stop()
+	ender.Add(func(_ context.Context) error {
+		ticker.Stop()
 
-			return nil
-		})
-
-		go func() {
-			for {
-				select {
-				case <-ctx.Done():
-					return
-				case now := <-ticker.C:
-					cleanupExpiredSessions(ctx, now, ttl, bg, hs)
-				}
-			}
-		}()
+		return nil
 	})
+
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case now := <-ticker.C:
+				cleanupExpiredSessions(ctx, now, ttl, bg, hs)
+			}
+		}
+	}()
 }
 
 func cleanupExpiredSessions(ctx context.Context, now time.Time, ttl time.Duration, bg *stuber.Budgerigar, hs *history.MemoryStore) {

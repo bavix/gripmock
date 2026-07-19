@@ -181,6 +181,10 @@
           "items": {
             "$ref": "#/$defs/effect"
           }
+        },
+        "session": {
+          "description": "Session ID isolating this stub (empty = global)",
+          "type": "string"
         }
       },
       "additionalProperties": false
@@ -241,6 +245,10 @@
             "items": {
               "$ref": "#/$defs/effect"
             }
+          },
+          "session": {
+            "description": "Session ID isolating this stub (empty = global)",
+            "type": "string"
           }
         },
         "additionalProperties": false

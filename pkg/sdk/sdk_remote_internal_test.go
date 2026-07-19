@@ -54,7 +54,7 @@ func TestRemoteBatchDelete(t *testing.T) {
 			Output: stuber.Output{Data: map[string]any{"ok": true}},
 		},
 	}))
-	require.Len(t, mock.Budgerigar.All(), 2) //nolint:mnd
+	require.Len(t, mock.Budgerigar.All(), 2)
 
 	mock.Budgerigar.Clear()
 	require.Empty(t, mock.Budgerigar.All())
@@ -68,7 +68,7 @@ func TestRemoteVerifyCalls(t *testing.T) {
 	mock.RecordCall("svc", "method", nil, nil)
 	mock.RecordCall("svc", "method", nil, nil)
 
-	require.NoError(t, client.VerifyMethodCalled("svc", "method", 2)) //nolint:mnd
+	require.NoError(t, client.VerifyMethodCalled("svc", "method", 2))
 
 	err := client.VerifyMethodCalled("svc", "method", 1)
 	require.Error(t, err)
@@ -143,5 +143,5 @@ func TestRemoteBatch(t *testing.T) {
 	}
 
 	require.NoError(t, client.AddStubs(stubs))
-	require.Len(t, mock.Budgerigar.All(), 3) //nolint:mnd
+	require.Len(t, mock.Budgerigar.All(), 3)
 }

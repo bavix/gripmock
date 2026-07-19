@@ -50,6 +50,18 @@ func (s *RestServer) ListenAndServe() error {
 	return s.server.Serve(s.listener)
 }
 
+// httpTLSConfig maps HTTP TLS settings from config into the infra TLS config,
+// honoring HTTP_TLS_MIN_VERSION.
+func (b *Builder) httpTLSConfig() infraTLS.TLSConfig {
+	return infraTLS.TLSConfig{
+		CertFile:   b.config.HTTPTLS.CertFile,
+		KeyFile:    b.config.HTTPTLS.KeyFile,
+		ClientAuth: b.config.HTTPTLS.ClientAuth,
+		CAFile:     b.config.HTTPTLS.CAFile,
+		MinVersion: b.config.HTTPTLS.MinVersion,
+	}
+}
+
 //nolint:funlen
 func (b *Builder) RestServe(
 	ctx context.Context,
@@ -149,13 +161,7 @@ func (b *Builder) RestServe(
 
 	b.ender.Add(srv.Shutdown)
 
-	httpTLS := infraTLS.TLSConfig{
-		CertFile:   b.config.HTTPTLS.CertFile,
-		KeyFile:    b.config.HTTPTLS.KeyFile,
-		ClientAuth: b.config.HTTPTLS.ClientAuth,
-		CAFile:     b.config.HTTPTLS.CAFile,
-		MinVersion: infraTLS.MinTLSVersion12,
-	}
+	httpTLS := b.httpTLSConfig()
 	if httpTLS.IsEnabled() {
 		tlsCfg, tlsErr := httpTLS.BuildTLSConfig()
 		if tlsErr != nil {

@@ -30,7 +30,7 @@ jobs:
       - name: Run unit tests with coverage
         run: |
           mkdir -p "$GOCOVERDIR"
-          go test -cover -covermode=atomic ./... -args -test.gocoverdir="$GOCOVERDIR"
+          go test -race -cover -covermode=atomic ./... -args -test.gocoverdir="$GOCOVERDIR"
         shell: bash
 
       - name: Upload unit coverage
@@ -432,6 +432,20 @@ jobs:
 
       - name: Validate GCTF files
         run: grpctestify check .
+
+  govulncheck:
+    name: "Vulnerability Scan"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Run govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
   coverage-report:
     name: "Coverage Report"

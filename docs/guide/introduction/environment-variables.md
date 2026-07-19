@@ -39,6 +39,7 @@ The gateway serves both **ConnectRPC** and **gRPC-web** protocols on a single HT
 | `GATEWAY_TLS_KEY_FILE` | *(empty)* | Gateway server TLS private key file. |
 | `GATEWAY_TLS_CLIENT_AUTH` | `false` | Require client certs for gateway (mTLS). |
 | `GATEWAY_TLS_CA_FILE` | *(empty)* | CA file for validating gateway client certs. |
+| `GATEWAY_TLS_MIN_VERSION` | `1.2` | Minimum TLS version (`1.2`, `1.3`). |
 
 The gateway provides unary and streaming RPC support for both protocols over HTTP/1.1 and HTTP/2 (with or without TLS). It shares the same stub storage, descriptor registry, and history store as gRPC and REST servers.
 
@@ -107,6 +108,7 @@ These aliases will be removed in a future release. Migrate to `GATEWAY_*` variab
 | `HTTP_TLS_KEY_FILE` | *(empty)* | HTTP server TLS private key file. |
 | `HTTP_TLS_CLIENT_AUTH` | `false` | Require client certs for HTTP (mTLS). |
 | `HTTP_TLS_CA_FILE` | *(empty)* | CA file for validating HTTP client certs. |
+| `HTTP_TLS_MIN_VERSION` | `1.2` | Minimum TLS version (`1.2`, `1.3`). |
 
 ## OpenTelemetry
 

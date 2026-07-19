@@ -98,7 +98,7 @@ docker pull bavix/gripmock
 如需构建插件，请使用配套 builder 镜像：
 
 ```bash
-docker pull bavix/gripmock:v3.7.1-builder
+docker pull bavix/gripmock:v3.17.2-builder
 ```
 
 #### Go Install
@@ -162,7 +162,7 @@ gripmock --stub stubs/ bsr.company.local/team/payments
 
 **使用 Docker：**
 ```bash
-docker run -p 4770:4770 -p 4771:4771 \
+docker run -p 4770:4770 -p 4771:4771 -p 4769:4769 \
   -v $(pwd)/stubs:/stubs \
   -v $(pwd)/proto:/proto \
   bavix/gripmock --stub=/stubs /proto/service.proto
@@ -170,6 +170,7 @@ docker run -p 4770:4770 -p 4771:4771 \
 
 - **端口 4770**：gRPC 服务
 - **端口 4771**：Web UI 和 REST API
+- **端口 4769**：网关（gRPC-web / ConnectRPC）
 
 ### 可观测性（v3.10.0）
 

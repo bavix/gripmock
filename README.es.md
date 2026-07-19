@@ -98,7 +98,7 @@ docker pull bavix/gripmock
 Para builds de plugins, use la imagen builder asociada:
 
 ```bash
-docker pull bavix/gripmock:v3.7.1-builder
+docker pull bavix/gripmock:v3.17.2-builder
 ```
 
 #### Instalación Go
@@ -162,7 +162,7 @@ gripmock --stub stubs/ bsr.company.local/team/payments
 
 **Usando Docker:**
 ```bash
-docker run -p 4770:4770 -p 4771:4771 \
+docker run -p 4770:4770 -p 4771:4771 -p 4769:4769 \
   -v $(pwd)/stubs:/stubs \
   -v $(pwd)/proto:/proto \
   bavix/gripmock --stub=/stubs /proto/service.proto
@@ -170,6 +170,7 @@ docker run -p 4770:4770 -p 4771:4771 \
 
 - **Puerto 4770**: Servidor gRPC
 - **Puerto 4771**: Interfaz web y API REST
+- **Puerto 4769**: Puerta de enlace (gRPC-web / ConnectRPC)
 
 ### Observabilidad (v3.10.0)
 
