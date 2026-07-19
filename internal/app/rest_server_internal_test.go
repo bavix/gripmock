@@ -1772,7 +1772,6 @@ func (s *RestServerTestSuite) mcpErrorCode(response map[string]any) float64 {
 }
 
 // TestRestServerTestSuite runs the test suite.
-func TestRestServerTestSuite(t *testing.T) {
-	t.Parallel()
+func TestRestServerTestSuite(t *testing.T) { //nolint:paralleltest
 	suite.Run(t, new(RestServerTestSuite))
 }

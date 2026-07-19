@@ -84,7 +84,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		return nil
 	})
 
-	ch := make(chan error)
+	ch := make(chan error, 1)
 
 	go func() {
 		defer func() {

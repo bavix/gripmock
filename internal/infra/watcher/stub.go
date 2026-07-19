@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -19,6 +20,49 @@ type StubWatcher struct {
 	enabled     bool
 	interval    time.Duration
 	watcherType string
+}
+
+// debouncer coalesces rapid file change events into a single notification.
+// Each file path has its own timer that resets on each new event.
+type debouncer struct {
+	mu     sync.Mutex
+	timers map[string]*time.Timer
+	output chan<- string
+}
+
+func newDebouncer(output chan<- string) *debouncer {
+	return &debouncer{
+		timers: make(map[string]*time.Timer),
+		output: output,
+	}
+}
+
+func (d *debouncer) add(path string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if t, ok := d.timers[path]; ok {
+		t.Stop()
+	}
+
+	d.timers[path] = time.AfterFunc(100*time.Millisecond, func() { //nolint:mnd
+		d.mu.Lock()
+		delete(d.timers, path)
+		d.mu.Unlock()
+
+		d.output <- path
+	})
+}
+
+func (d *debouncer) stopAll() {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	for _, t := range d.timers {
+		t.Stop()
+	}
+
+	d.timers = make(map[string]*time.Timer)
 }
 
 func NewStubWatcher(
@@ -62,6 +106,7 @@ func (s *StubWatcher) Watch(ctx context.Context, folderPath string) (<-chan stri
 	return s.ticker(ctx, folderPath)
 }
 
+//nolint:cyclop
 func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan string, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -69,6 +114,7 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 	}
 
 	ch := make(chan string)
+	d := newDebouncer(ch)
 
 	go func() {
 		defer func() {
@@ -79,7 +125,11 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 					Msg("Panic recovered in fsnotify watcher goroutine")
 			}
 
-			_ = watcher.Close()
+			d.stopAll()
+
+			if err := watcher.Close(); err != nil {
+				zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to close file watcher")
+			}
 		}()
 		defer close(ch)
 
@@ -92,7 +142,7 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 					continue
 				}
 
-				s.handleFsnotifyEvent(ctx, watcher, ch, event)
+				s.handleFsnotifyEvent(ctx, watcher, d, event)
 			}
 		}
 	}()
@@ -141,7 +191,7 @@ func (s *StubWatcher) ticker(ctx context.Context, folderPath string) (<-chan str
 						return err
 					}
 
-					if info.IsDir() || isStub(currentPath) {
+					if info.IsDir() || !isStub(currentPath) {
 						return nil
 					}
 
@@ -169,7 +219,7 @@ func isStub(path string) bool {
 }
 
 // handleFsnotifyEvent handles a single fsnotify event with panic recovery.
-func (s *StubWatcher) handleFsnotifyEvent(ctx context.Context, watcher *fsnotify.Watcher, ch chan<- string, event fsnotify.Event) {
+func (s *StubWatcher) handleFsnotifyEvent(ctx context.Context, watcher *fsnotify.Watcher, d *debouncer, event fsnotify.Event) {
 	defer func() {
 		if r := recover(); r != nil {
 			zerolog.Ctx(ctx).
@@ -188,6 +238,6 @@ func (s *StubWatcher) handleFsnotifyEvent(ctx context.Context, watcher *fsnotify
 	}
 
 	if isStub(event.Name) {
-		ch <- event.Name
+		d.add(event.Name)
 	}
 }

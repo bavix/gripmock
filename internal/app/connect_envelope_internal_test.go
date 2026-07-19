@@ -125,7 +125,7 @@ func TestWriteConnectFrame_WithData(t *testing.T) {
 	var buf bytes.Buffer
 	require.NoError(t, writeConnectFrame(&buf, payload, false))
 
-	expected := make([]byte, 0, connectEnvelopeHeaderSize+len(payload))
+	expected := make([]byte, 0, ConnectEnvelopeHeaderSize+len(payload))
 	expected = append(expected, 0)
 	lengthBuf := make([]byte, 4)
 	binary.BigEndian.PutUint32(lengthBuf, uint32(len(payload))) //nolint:gosec

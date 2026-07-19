@@ -2,6 +2,7 @@ package proxyroutes
 
 import (
 	"context"
+	"log"
 
 	"github.com/cockroachdb/errors"
 	"google.golang.org/grpc"
@@ -27,9 +28,9 @@ const (
 )
 
 type Route struct {
-	Mode   Mode
 	Source *protosetdom.Source
 	Conn   *grpc.ClientConn
+	Mode   Mode
 }
 
 type Registry struct {
@@ -261,7 +262,9 @@ func (r *Registry) Close() {
 			continue
 		}
 
-		_ = route.Conn.Close()
+		if err := route.Conn.Close(); err != nil {
+			log.Printf("[gripmock] failed to close proxy connection: %v", err)
+		}
 	}
 }
 

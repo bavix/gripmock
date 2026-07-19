@@ -46,6 +46,9 @@ func (s *Service) Ping(ctx context.Context, service string) (ServingStatus, erro
 func (s *Service) WaitForReady(ctx context.Context, timeout, interval time.Duration, service string) error {
 	deadline := time.Now().Add(timeout)
 
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
 	for time.Now().Before(deadline) {
 		code, err := s.Ping(ctx, service)
 		if err == nil && code == Serving {
@@ -55,7 +58,7 @@ func (s *Service) WaitForReady(ctx context.Context, timeout, interval time.Durat
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(interval):
+		case <-ticker.C:
 		}
 	}
 

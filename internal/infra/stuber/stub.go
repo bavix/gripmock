@@ -159,12 +159,12 @@ func (s *Stub) Score() int {
 
 // InputData represents the input data of a gRPC request.
 type InputData struct {
-	IgnoreArrayOrder bool           `json:"ignoreArrayOrder,omitempty"` // Whether to ignore the order of arrays in the input data.
 	Equals           map[string]any `json:"equals"`                     // The data to match exactly.
 	Contains         map[string]any `json:"contains"`                   // The data to match partially.
 	Matches          map[string]any `json:"matches"`                    // The data to match using regular expressions.
 	Glob             map[string]any `json:"glob,omitempty"`             // The data to match using glob patterns.
 	AnyOf            []AnyOfElement `json:"anyOf,omitempty"`            // Alternative matchers (OR logic).
+	IgnoreArrayOrder bool           `json:"ignoreArrayOrder,omitempty"` // Whether to ignore the order of arrays in the input data.
 }
 
 // AnyOfElement is a flat alternative matcher inside InputData.

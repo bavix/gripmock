@@ -1,6 +1,7 @@
 package stuber
 
 import (
+	"bytes"
 	"net/http"
 
 	"github.com/goccy/go-json"
@@ -32,9 +33,9 @@ type Query struct {
 	Service       string           `json:"service"`           // The service name to search for.
 	Method        string           `json:"method"`            // The method name to search for.
 	Session       string           `json:"session,omitempty"` // Session ID (empty = global only).
+	Headers       map[string]any   `json:"headers"`           // The headers to match.
+	Input         []map[string]any `json:"input"`             // The input data to match (unary or streaming).
 	StrictService bool             `json:"strictService,omitempty"`
-	Headers       map[string]any   `json:"headers"` // The headers to match.
-	Input         []map[string]any `json:"input"`   // The input data to match (unary or streaming).
 
 	toggles features.Toggles
 }
@@ -65,7 +66,11 @@ func NewQuery(r *http.Request) (Query, error) {
 // UnmarshalJSON implements json.Unmarshaler to support both "data" and "input" in request body.
 func (q *Query) UnmarshalJSON(data []byte) error {
 	var raw queryJSON
-	if err := json.Unmarshal(data, &raw); err != nil {
+
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+
+	if err := decoder.Decode(&raw); err != nil {
 		return err
 	}
 
@@ -109,8 +114,8 @@ type QueryBidi struct {
 	Service       string         `json:"service"`           // The service name to search for.
 	Method        string         `json:"method"`            // The method name to search for.
 	Session       string         `json:"session,omitempty"` // Session ID (empty = global only).
+	Headers       map[string]any `json:"headers"`           // The headers to match.
 	StrictService bool           `json:"strictService,omitempty"`
-	Headers       map[string]any `json:"headers"` // The headers to match.
 
 	toggles features.Toggles
 }

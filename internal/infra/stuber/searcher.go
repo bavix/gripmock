@@ -41,9 +41,6 @@ type searcher struct {
 	internalStorage InternalStubStorage
 	lookupProvider  searcherLookupProvider
 	lookupCache     map[string]*searcherLookup
-	processStrategy processStubsStrategy
-	matcher         matchStrategy
-	ranker          rankStrategy
 }
 
 // Result holds the search result: exact match (Found) or best similar (Similar).

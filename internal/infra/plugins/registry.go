@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"log"
 	"maps"
 	"slices"
 	"sort"
@@ -364,13 +365,16 @@ func (r *Registry) collectCycles(registered map[string]struct{}, indegree map[st
 
 func (r *Registry) warnDuplicate(ctx context.Context, name, plugin, existing string) {
 	logger := zerolog.Ctx(ctx)
-	if logger == nil {
+	if logger != nil {
+		logger.Warn().
+			Str("plugin", plugin).
+			Str("function", name).
+			Str("owner", existing).
+			Msg("function ignored (implicit override); use Decorates=@owner/function to decorate explicitly")
+
 		return
 	}
 
-	logger.Warn().
-		Str("plugin", plugin).
-		Str("function", name).
-		Str("owner", existing).
-		Msg("function ignored (implicit override); use Decorates=@owner/function to decorate explicitly")
+	log.Printf("[gripmock] function %q from plugin %q ignored (implicit override by %q); "+
+		"use Decorates=@owner/function to decorate explicitly", name, plugin, existing)
 }

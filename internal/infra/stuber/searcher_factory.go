@@ -1,11 +1,8 @@
 package stuber
 
 type searcherOptions struct {
-	lookupProvider  searcherLookupProvider
-	lookupFactory   searcherLookupFactory
-	processStrategy processStubsStrategy
-	matcher         matchStrategy
-	ranker          rankStrategy
+	lookupProvider searcherLookupProvider
+	lookupFactory  searcherLookupFactory
 }
 
 // newSearcher creates a new searcher instance.
@@ -27,32 +24,11 @@ func newSearcherWithOptions(options searcherOptions) *searcher {
 
 	storage := newStorageWithInternal()
 
-	s := &searcher{
+	return &searcher{
 		storage:         storage,
 		internalStorage: storage.Internal(),
 		stubCallCount:   make(map[callCountKey]int),
 		lookupProvider:  lookupProvider,
 		lookupCache:     make(map[string]*searcherLookup),
 	}
-
-	processStrategy := options.processStrategy
-	if processStrategy == nil {
-		processStrategy = newDefaultProcessStubsStrategy(s)
-	}
-
-	matcher := options.matcher
-	if matcher == nil {
-		matcher = newDefaultMatchStrategy(s)
-	}
-
-	ranker := options.ranker
-	if ranker == nil {
-		ranker = newDefaultRankStrategy(s)
-	}
-
-	s.processStrategy = processStrategy
-	s.matcher = matcher
-	s.ranker = ranker
-
-	return s
 }

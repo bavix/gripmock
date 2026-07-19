@@ -43,24 +43,20 @@ type Builder struct {
 	errorFormatter     *app.ErrorFormatter
 	descriptorRegistry *descriptors.Registry
 
-	// lazy stateful
+	// lazy stateful — guarded fields together, then all sync.Once
 	budgerigar     *stuber.Budgerigar
-	budgerigarOnce sync.Once
-
-	historyStore     *history.MemoryStore
-	historyStoreOnce sync.Once
-
-	remoteClient     protosetdom.RemoteClient
-	remoteClientOnce sync.Once
-
-	extender     *storage.Extender
-	extenderOnce sync.Once
-
-	pluginPaths    []string
+	historyStore   *history.MemoryStore
+	remoteClient   protosetdom.RemoteClient
+	extender       *storage.Extender
 	pluginRegistry *internalplugins.Registry
-	pluginOnce     sync.Once
+	pluginPaths    []string
 
-	gateway     *app.MultiProtocolGateway
+	budgerigarOnce   sync.Once
+	historyStoreOnce sync.Once
+	remoteClientOnce sync.Once
+	extenderOnce     sync.Once
+	pluginOnce       sync.Once
+
 	proxyRoutes atomic.Pointer[proxyroutes.Registry]
 }
 
@@ -202,12 +198,4 @@ func (b *Builder) ProxyRoutes() *proxyroutes.Registry {
 
 func (b *Builder) ProxyRoutesRef() *atomic.Pointer[proxyroutes.Registry] {
 	return &b.proxyRoutes
-}
-
-func (b *Builder) SetGateway(g *app.MultiProtocolGateway) {
-	b.gateway = g
-}
-
-func (b *Builder) Gateway() *app.MultiProtocolGateway {
-	return b.gateway
 }
