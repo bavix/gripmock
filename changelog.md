@@ -1,5 +1,19 @@
 # Changelog
 
+## v3.17.2 - 2026-07-19
+
+### What's Changed
+
+* chore(deps): bump actions/setup-node from 6 to 7 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/906
+* fix grpc-web & connectrpc by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/907
+* chore(deps): bump sourcemeta/jsonschema from 16.1.0 to 16.2.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/908
+* chore(deps): bump actions/setup-go from 6 to 7 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/910
+* chore(deps): bump github.com/oapi-codegen/runtime from 1.5.0 to 1.6.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/911
+* chore(deps): bump google.golang.org/grpc from 1.82.0 to 1.82.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/909
+* bump deps by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/912
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.17.1...v3.17.2
+
 ## v3.17.1 - 2026-07-14
 
 ### What's Changed
