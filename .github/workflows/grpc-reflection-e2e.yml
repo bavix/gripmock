@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GRPCTESTIFY_VERSION: "1.8.6"
+  GRPCTESTIFY_VERSION: "1.8.10"
   GO_VERSION: "1.26"
   GREETER_GRPC_PORT: "4444"
   CALC_GRPC_PORT: "5555"
@@ -79,8 +79,17 @@ jobs:
           done
 
   capture-replay-offline:
-    name: "Capture Replay Offline"
+    name: "Capture Replay Offline (${{ matrix.protocol }})"
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - protocol: grpc
+            port_env: TARGET_GRPC_PORT
+          - protocol: grpc-web
+            port_env: TARGET_HTTP_PORT
+          - protocol: connectrpc
+            port_env: TARGET_HTTP_PORT
     steps:
       - uses: actions/checkout@v7
 
@@ -107,12 +116,14 @@ jobs:
 
       - name: Start + check capture target server
         run: |
-          GRPC_PORT="$TARGET_GRPC_PORT" HTTP_PORT="$TARGET_HTTP_PORT" GATEWAY_PORT=0 "$RUNNER_TEMP/gripmock" "grpc+capture://localhost:${CAPTURE_SOURCE_GRPC_PORT}?recordDelay=true" >"$RUNNER_TEMP/gripmock-capture-target.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-capture-target.pid"
+          GRPC_PORT="$TARGET_GRPC_PORT" HTTP_PORT=0 GATEWAY_PORT="$TARGET_HTTP_PORT" "$RUNNER_TEMP/gripmock" "grpc+capture://localhost:${CAPTURE_SOURCE_GRPC_PORT}?recordDelay=true" >"$RUNNER_TEMP/gripmock-capture-target.log" 2>&1 & echo $! >"$RUNNER_TEMP/gripmock-capture-target.pid"
           GRPC_PORT="$TARGET_GRPC_PORT" "$RUNNER_TEMP/gripmock" check --timeout=60s --silent
 
       - name: Warm up capture from upstream
         run: |
-          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" grpctestify examples --skip-tags sequential,effects
+          GRPCTESTIFY_ADDRESS="localhost:${!ADDRESS_PORT}" grpctestify examples --skip-tags sequential,effects --protocol ${{ matrix.protocol }}
+        env:
+          ADDRESS_PORT: ${{ matrix.port_env }}
 
       - name: Stop upstream server
         run: |
@@ -123,7 +134,9 @@ jobs:
 
       - name: Replay full suite from captured stubs
         run: |
-          GRPCTESTIFY_ADDRESS="localhost:${TARGET_GRPC_PORT}" grpctestify examples --skip-tags sequential,effects
+          GRPCTESTIFY_ADDRESS="localhost:${!ADDRESS_PORT}" grpctestify examples --skip-tags sequential,effects --protocol ${{ matrix.protocol }}
+        env:
+          ADDRESS_PORT: ${{ matrix.port_env }}
 
       - name: Replay header-sensitive greeter cases
         run: |

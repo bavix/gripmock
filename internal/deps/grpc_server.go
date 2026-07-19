@@ -71,6 +71,13 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		return errors.Wrap(err, "failed to build gRPC server")
 	}
 
+	// Share proxy routes with the gateway.
+	// The gateway reads the atomic pointer directly, so it picks up
+	// the routes as soon as they are stored here.
+	if p := grpcServer.Proxies(); p != nil {
+		b.SetProxyRoutes(p)
+	}
+
 	b.ender.Add(func(_ context.Context) error {
 		server.GracefulStop()
 

@@ -3,6 +3,7 @@ package app
 import (
 	"io"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-json"
@@ -27,12 +28,12 @@ func NewConnectRPCGateway(
 	budgerigar *stuber.Budgerigar,
 	descriptorRegistry *descriptors.Registry,
 	recorder history.Recorder,
-	proxies *proxyroutes.Registry,
+	proxyRoutesRef *atomic.Pointer[proxyroutes.Registry],
 	validator *validator.Validate,
 	errorFormatter *ErrorFormatter,
 ) *ConnectRPCGateway {
 	return &ConnectRPCGateway{
-		gatewayHandler: newGatewayHandler(budgerigar, descriptorRegistry, recorder, proxies, validator, errorFormatter),
+		gatewayHandler: newGatewayHandler(budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
 	}
 }
 
@@ -91,7 +92,7 @@ func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := mocker.streamHandler(adapter.ctx, adapter); err != nil { //nolint:contextcheck
 		st, _ := status.FromError(err)
-		adapter.writeError(st.Code(), st.Message())
+		adapter.writeErrorStatus(normalizeHealthError(st, service))
 	} else {
 		// Per Connect RPC protocol, the server signals end of stream
 		// by sending an empty envelope with the endStream flag set.
@@ -109,10 +110,12 @@ func (g *ConnectRPCGateway) handleUnary(mocker *grpcMocker, a *httpStreamAdapter
 		return
 	}
 
-	resp, err := handleUnaryCore(a.ctx, body, mocker,
+	resp, err := handleUnaryCore(a.ctx, a, body, mocker,
 		a.req.Header.Get("Content-Type"),
 		isJSONContentType,
-		a.writeError,
+		func(st *status.Status) {
+			a.writeErrorStatus(normalizeHealthError(st, mocker.serviceName))
+		},
 	)
 	if err != nil {
 		return
@@ -209,9 +212,17 @@ func (a *httpStreamAdapter) SendMsg(m any) error {
 // For streaming, the response uses the same family (json or proto) as
 // negotiated via the request content type.
 func (a *httpStreamAdapter) RecvMsg(m any) error {
+	// If the peer already signalled end-of-stream (via an end-stream
+	// envelope or a single plain-body read), return EOF immediately.
+	if a.endOfStream.Load() {
+		return io.EOF
+	}
+
 	msg, ok := m.(proto.Message)
 	if !ok {
-		return nil
+		// nil message = end-of-stream check. The body is consumed
+		// after the first read, so signal EOF.
+		return io.EOF
 	}
 
 	ct := a.req.Header.Get("Content-Type")
@@ -254,6 +265,25 @@ func (a *httpStreamAdapter) recvUnaryMessage(msg proto.Message, ct string) error
 }
 
 func (a *httpStreamAdapter) recvStreamingMessage(msg proto.Message, ct string) error {
+	// Plain application/json (without connect+ envelope) on a streaming
+	// endpoint: treat the entire body as a single stream message.
+	// This matches gRPC-Web behaviour and improves interop with clients
+	// that do not frame every message when they only send one.
+	if ct == "application/json" || ct == "application/proto" {
+		data, err := io.ReadAll(a.req.Body)
+		if err != nil {
+			return err
+		}
+
+		if len(data) == 0 {
+			return io.EOF
+		}
+
+		a.endOfStream.Store(true)
+
+		return a.decodeMessage(data, msg, ct)
+	}
+
 	frame, err := readConnectFrame(a.req.Body)
 	if err != nil {
 		return err
@@ -284,7 +314,15 @@ func (a *httpStreamAdapter) writeError(code codes.Code, msg string) {
 		Message: msg,
 		Details: []map[string]any{},
 	})
+	a.writeBody(code, body)
+}
 
+func (a *httpStreamAdapter) writeErrorStatus(st *status.Status) {
+	body, _ := json.Marshal(serializeErrorStatus(st))
+	a.writeBody(st.Code(), body)
+}
+
+func (a *httpStreamAdapter) writeBody(code codes.Code, body []byte) {
 	if a.streaming {
 		a.sendHeader()
 

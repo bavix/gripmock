@@ -150,63 +150,60 @@ func (m *grpcMocker) convertToMap(msg proto.Message) map[string]any {
 
 //nolint:cyclop
 func (m *grpcMocker) streamHandler(srv any, stream grpc.ServerStream) error {
-	info := &grpc.StreamServerInfo{
-		FullMethod:     m.fullMethod,
-		IsClientStream: m.clientStream,
-		IsServerStream: m.serverStream,
+	route := m.proxyRoute()
+
+	if route == nil && m.proxies != nil {
+		if m.fullMethod == "/grpc.health.v1.Health/Watch" {
+			if routes := m.proxies.Routes(); len(routes) > 0 {
+				route = routes[0]
+			}
+		}
 	}
 
-	handler := func(_ any, stream grpc.ServerStream) error {
-		route := m.proxyRoute()
-		behavior := newProxyBehavior(route)
+	behavior := newProxyBehavior(route)
 
-		if behavior != nil && behavior.proxyOnly() {
-			return m.proxyStream(stream, route, false)
-		}
+	if behavior != nil && behavior.proxyOnly() {
+		return m.proxyStream(stream, route, false)
+	}
 
-		var err error
+	var err error
 
-		switch {
-		case m.serverStream && !m.clientStream:
-			err = m.handleServerStream(stream)
-		case !m.serverStream && m.clientStream:
-			err = m.handleClientStream(stream)
-		case m.serverStream && m.clientStream:
-			err = m.handleBidiStream(stream)
-		default:
-			err = status.Errorf(codes.Unimplemented, "Unknown stream type")
-		}
+	switch {
+	case m.serverStream && !m.clientStream:
+		err = m.handleServerStream(stream)
+	case !m.serverStream && m.clientStream:
+		err = m.handleClientStream(stream)
+	case m.serverStream && m.clientStream:
+		err = m.handleBidiStream(stream)
+	default:
+		err = status.Errorf(codes.Unimplemented, "Unknown stream type")
+	}
 
-		if behavior == nil {
-			return err
-		}
+	if behavior == nil {
+		return err
+	}
 
-		if !behavior.canFallback(err) {
-			return err
-		}
+	if !behavior.canFallback(err) {
+		return err
+	}
 
-		var fallbackErr *fallbackError
-		if !stderrors.As(err, &fallbackErr) {
-			return m.proxyStream(stream, route, behavior.captureMiss())
-		}
-
-		switch fallbackErr.streamType {
-		case StreamTypeServer:
-			return m.proxyServerStreamWithRequest(stream, route, fallbackErr.request, behavior.captureMiss())
-		case StreamTypeClient:
-			return m.proxyClientStreamWithRequests(stream, route, fallbackErr.requests, behavior.captureMiss())
-		case StreamTypeBidi:
-			return m.proxyBidiStreamWithRequests(stream, route, fallbackErr.requests, behavior.captureMiss())
-		case StreamTypeUnary:
-			return m.proxyStream(stream, route, behavior.captureMiss())
-		}
-
+	var fallbackErr *fallbackError
+	if !stderrors.As(err, &fallbackErr) {
 		return m.proxyStream(stream, route, behavior.captureMiss())
 	}
 
-	return grpc.StreamServerInterceptor(func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		return handler(srv, ss)
-	})(srv, stream, info, handler)
+	switch fallbackErr.streamType {
+	case StreamTypeServer:
+		return m.proxyServerStreamWithRequest(stream, route, fallbackErr.request, behavior.captureMiss())
+	case StreamTypeClient:
+		return m.proxyClientStreamWithRequests(stream, route, fallbackErr.requests, behavior.captureMiss())
+	case StreamTypeBidi:
+		return m.proxyBidiStreamWithRequests(stream, route, fallbackErr.requests, behavior.captureMiss())
+	case StreamTypeUnary:
+		return m.proxyStream(stream, route, behavior.captureMiss())
+	}
+
+	return m.proxyStream(stream, route, behavior.captureMiss())
 }
 
 func (m *grpcMocker) newQuery(ctx context.Context, msg *dynamicpb.Message) stuber.Query {
@@ -945,41 +942,57 @@ func (m *grpcMocker) unaryHandler() grpc.MethodHandler {
 				FullMethod: m.fullMethod,
 			}, func(ctx context.Context, req any) (any, error) {
 				if msg, ok := req.(*dynamicpb.Message); ok {
-					return m.handleUnaryWithProxy(ctx, msg)
+					return m.handleUnaryWithProxy(ctx, nil, msg)
 				}
 
 				return nil, status.Errorf(codes.InvalidArgument, "expected *dynamicpb.Message, got %T", req)
 			})
 		}
 
-		return m.handleUnaryWithProxy(ctx, req)
+		return m.handleUnaryWithProxy(ctx, nil, req)
 	}
 }
 
-func (m *grpcMocker) handleUnaryWithProxy(ctx context.Context, req *dynamicpb.Message) (*dynamicpb.Message, error) {
+//nolint:cyclop
+func (m *grpcMocker) handleUnaryWithProxy(
+	ctx context.Context,
+	stream grpc.ServerStream,
+	req *dynamicpb.Message,
+) (*dynamicpb.Message, error) {
 	route := m.proxyRoute()
+
+	// Health check is excluded from the proxy index by the reflection
+	// client (shouldSkipService). Fall back to the first available route.
+	if route == nil && m.proxies != nil {
+		if m.fullMethod == "/grpc.health.v1.Health/Check" {
+			if routes := m.proxies.Routes(); len(routes) > 0 {
+				route = routes[0]
+			}
+		}
+	}
+
 	behavior := newProxyBehavior(route)
 
 	if behavior == nil {
-		return m.handleUnary(ctx, req)
+		return m.handleUnary(ctx, stream, req)
 	}
 
 	if behavior.proxyOnly() {
-		return m.proxyUnary(ctx, req, route, false)
+		return m.proxyUnary(ctx, stream, req, route, false)
 	}
 
 	if behavior.captureMiss() && m.captureShouldProxyUnaryByHeaders(ctx, req) {
-		return m.proxyUnary(ctx, req, route, true)
+		return m.proxyUnary(ctx, stream, req, route, true)
 	}
 
-	resp, err := m.handleUnary(ctx, req)
+	resp, err := m.handleUnary(ctx, stream, req)
 
 	var fallbackErr *fallbackError
 	if !stderrors.As(err, &fallbackErr) || fallbackErr.streamType != StreamTypeUnary {
 		return resp, err
 	}
 
-	return m.proxyUnary(ctx, req, route, behavior.captureMiss())
+	return m.proxyUnary(ctx, stream, req, route, behavior.captureMiss())
 }
 
 func (m *grpcMocker) captureShouldProxyUnaryByHeaders(ctx context.Context, req *dynamicpb.Message) bool {
@@ -1003,7 +1016,7 @@ func (m *grpcMocker) captureShouldProxyUnaryByHeaders(ctx context.Context, req *
 }
 
 //nolint:cyclop,funlen
-func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*dynamicpb.Message, error) {
+func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, req *dynamicpb.Message) (*dynamicpb.Message, error) {
 	requestTime := time.Now()
 
 	query := m.newQuery(ctx, req)
@@ -1076,13 +1089,13 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 		outputToUse.Error = errorStr
 	}
 
-	if err := m.setResponseHeadersAny(ctx, nil, outputToUse.Headers); err != nil {
+	if err := m.setResponseHeadersAny(ctx, stream, outputToUse.Headers); err != nil {
 		return nil, err //nolint:wrapcheck
 	}
 
 	m.applyEffects(ctx, found, templateData)
 
-	if err := m.handleOutputError(ctx, nil, outputToUse); err != nil {
+	if err := m.handleOutputError(ctx, stream, outputToUse); err != nil {
 		code := status.Code(err)
 		m.recordCall(ctx, found.ID, uint32(code), requestTime, []map[string]any{requestData}, nil, err.Error())
 		outputToUse.Error = err.Error()
@@ -1100,22 +1113,22 @@ func (m *grpcMocker) handleUnary(ctx context.Context, req *dynamicpb.Message) (*
 	return outputMsg, nil
 }
 
-func buildResponseMetadata(headers map[string]string) (metadata.MD, bool) {
+func (m *grpcMocker) setResponseHeadersAny(ctx context.Context, stream grpc.ServerStream, headers map[string]string) error {
 	if len(headers) == 0 {
-		return nil, false
+		return nil
 	}
 
 	mdResp := make(metadata.MD, len(headers))
 	for k, v := range headers {
+		switch strings.ToLower(k) {
+		case "content-type", "content-length", "content-encoding", "grpc-status", "grpc-message", "grpc-status-details-bin":
+			continue
+		}
+
 		mdResp.Append(k, strings.Split(v, ";")...)
 	}
 
-	return mdResp, true
-}
-
-func (m *grpcMocker) setResponseHeadersAny(ctx context.Context, stream grpc.ServerStream, headers map[string]string) error {
-	mdResp, ok := buildResponseMetadata(headers)
-	if !ok {
+	if len(mdResp) == 0 {
 		return nil
 	}
 
@@ -1123,7 +1136,9 @@ func (m *grpcMocker) setResponseHeadersAny(ctx context.Context, stream grpc.Serv
 		return stream.SetHeader(mdResp)
 	}
 
-	return grpc.SetHeader(ctx, mdResp)
+	_ = grpc.SetHeader(ctx, mdResp)
+
+	return nil
 }
 
 func (m *grpcMocker) handleOutputError(_ context.Context, _ grpc.ServerStream, output stuber.Output) error {
@@ -1190,6 +1205,8 @@ func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 		return err
 	}
 
+	zerolog.Ctx(stream.Context()).Debug().Int("msg_count", len(messages)).Msg("client_stream: collected messages")
+
 	if len(messages) > 0 {
 		if found := m.matchFirstMessage(stream, messages); found != nil {
 			return m.sendClientStreamResponse(stream, found, messages, requestTime)
@@ -1214,7 +1231,7 @@ func (m *grpcMocker) collectClientMessages(stream grpc.ServerStream) ([]map[stri
 	messages := make([]map[string]any, 0, clientMessagesInitCap)
 	originalMessages := make([]*dynamicpb.Message, 0, clientMessagesInitCap)
 
-	for {
+	for i := 0; ; i++ {
 		inputMsg := dynamicpb.NewMessage(m.inputDesc)
 
 		err := receiveStreamMessage(stream, inputMsg)
@@ -1226,7 +1243,8 @@ func (m *grpcMocker) collectClientMessages(stream grpc.ServerStream) ([]map[stri
 			return nil, nil, err //nolint:wrapcheck
 		}
 
-		messages = append(messages, m.convertToMap(inputMsg))
+		msgMap := m.convertToMap(inputMsg)
+		messages = append(messages, msgMap)
 		originalMessages = append(originalMessages, proto.CloneOf(inputMsg))
 	}
 
@@ -1336,7 +1354,7 @@ func (m *grpcMocker) sendClientStreamResponse(
 func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 	queryBidi := m.newQueryBidi(stream.Context())
 
-	// Check if there's a stub with a custom handler for this method
+	// Check for custom handler
 	stubs, _ := m.budgerigar.FindBy(queryBidi.Service, queryBidi.Method)
 	if len(stubs) > 0 && stubs[0].Handler != nil {
 		return stubs[0].Handler(stream.Context(), stream)
@@ -1385,10 +1403,10 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 				return newBidiStreamFallbackError(err, []*dynamicpb.Message{inputMsg})
 			}
 
-			return err //nolint:wrapcheck
+			return err
 		}
 
-		if err := m.processBidiStreamMessageImpl(recordingStream, bidiResult, inputMsg); err != nil {
+		if err := m.processBidiStreamMessage(recordingStream, bidiResult, inputMsg); err != nil {
 			m.recordBidiStream(recordingStream, bidiResult, requestTime, err.Error())
 
 			return err
@@ -1396,14 +1414,15 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 	}
 }
 
-func (m *grpcMocker) processBidiStreamMessageImpl(
+func (m *grpcMocker) processBidiStreamMessage(
 	stream grpc.ServerStream,
 	bidiResult *stuber.BidiResult,
 	inputMsg *dynamicpb.Message,
 ) error {
 	requestTime := time.Now()
+	inputMap := m.convertToMap(inputMsg)
 
-	stub, err := bidiResult.Next(m.convertToMap(inputMsg))
+	stub, err := bidiResult.Next(inputMap)
 	if err != nil {
 		wrappedErr := errors.Wrap(err, "failed to process bidirectional message")
 		if errors.Is(err, stuber.ErrStubNotFound) {
@@ -1417,20 +1436,21 @@ func (m *grpcMocker) processBidiStreamMessageImpl(
 		return err
 	}
 
-	return m.processBidiStreamSendResponse(stream, bidiResult, stub, inputMsg, requestTime)
+	return m.sendBidiResponse(stream, stub, inputMsg, bidiResult, requestTime)
 }
 
-func (m *grpcMocker) processBidiStreamSendResponse(
+func (m *grpcMocker) sendBidiResponse(
 	stream grpc.ServerStream,
-	bidiResult *stuber.BidiResult,
 	stub *stuber.Stub,
 	inputMsg *dynamicpb.Message,
+	bidiResult *stuber.BidiResult,
 	requestTime time.Time,
 ) error {
 	requestData := m.convertToMap(inputMsg)
+	md, _ := metadata.FromIncomingContext(stream.Context())
 
 	headers := make(map[string]any)
-	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+	if len(md) > 0 {
 		headers = processHeaders(md)
 	}
 
@@ -1459,7 +1479,7 @@ func (m *grpcMocker) processBidiStreamSendResponse(
 		}
 	}
 
-	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil { //nolint:wrapcheck
+	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil {
 		return err
 	}
 
@@ -1615,6 +1635,10 @@ func NewGRPCServer(
 		validator:       v,
 		errorFormatter:  e,
 	}
+}
+
+func (s *GRPCServer) Proxies() *proxyroutes.Registry {
+	return s.proxies
 }
 
 //nolint:cyclop
@@ -1909,7 +1933,7 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 		return err
 	}
 
-	resp, err := mocker.handleUnary(stream.Context(), req)
+	resp, err := mocker.handleUnary(stream.Context(), stream, req)
 	if err != nil {
 		return err
 	}

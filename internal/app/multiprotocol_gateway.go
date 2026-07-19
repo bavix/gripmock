@@ -3,6 +3,7 @@ package app
 import (
 	"net/http"
 	"strings"
+	"sync/atomic"
 
 	"github.com/go-playground/validator/v10"
 	"google.golang.org/grpc/codes"
@@ -32,13 +33,13 @@ func NewMultiProtocolGateway(
 	budgerigar *stuber.Budgerigar,
 	descriptorRegistry *descriptors.Registry,
 	recorder history.Recorder,
-	proxies *proxyroutes.Registry,
+	proxyRoutesRef *atomic.Pointer[proxyroutes.Registry],
 	validator *validator.Validate,
 	errorFormatter *ErrorFormatter,
 ) *MultiProtocolGateway {
 	return &MultiProtocolGateway{
-		connect: NewConnectRPCGateway(budgerigar, descriptorRegistry, recorder, proxies, validator, errorFormatter),
-		grpcweb: NewGRPCWebGateway(budgerigar, descriptorRegistry, recorder, proxies, validator, errorFormatter),
+		connect: NewConnectRPCGateway(budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
+		grpcweb: NewGRPCWebGateway(budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
 	}
 }
 

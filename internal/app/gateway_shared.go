@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -121,7 +123,7 @@ type gatewayHandler struct {
 	budgerigar     *stuber.Budgerigar
 	descriptors    *descriptors.Registry
 	recorder       history.Recorder
-	proxies        *proxyroutes.Registry
+	proxyRoutesRef *atomic.Pointer[proxyroutes.Registry]
 	validator      *validator.Validate
 	errorFormatter *ErrorFormatter
 }
@@ -130,7 +132,7 @@ func newGatewayHandler(
 	budgerigar *stuber.Budgerigar,
 	descriptorRegistry *descriptors.Registry,
 	recorder history.Recorder,
-	proxies *proxyroutes.Registry,
+	proxyRoutesRef *atomic.Pointer[proxyroutes.Registry],
 	validator *validator.Validate,
 	errorFormatter *ErrorFormatter,
 ) gatewayHandler {
@@ -143,7 +145,7 @@ func newGatewayHandler(
 		budgerigar:     budgerigar,
 		descriptors:    descriptorRegistry,
 		recorder:       recorder,
-		proxies:        proxies,
+		proxyRoutesRef: proxyRoutesRef,
 		validator:      validator,
 		errorFormatter: e,
 	}
@@ -152,6 +154,11 @@ func newGatewayHandler(
 func (h *gatewayHandler) buildMocker(r *http.Request, service, method, fullMethod string,
 	methodDesc protoreflect.MethodDescriptor,
 ) *grpcMocker {
+	var proxies *proxyroutes.Registry
+	if h.proxyRoutesRef != nil {
+		proxies = h.proxyRoutesRef.Load()
+	}
+
 	return &grpcMocker{
 		budgerigar:     h.budgerigar,
 		templateEngine: template.New(r.Context(), nil),
@@ -161,7 +168,7 @@ func (h *gatewayHandler) buildMocker(r *http.Request, service, method, fullMetho
 			static:  protoregistry.GlobalFiles,
 			dynamic: h.descriptors,
 		},
-		proxies:            h.proxies,
+		proxies:            proxies,
 		validator:          h.validator,
 		fullServiceName:    service,
 		serviceName:        service,
@@ -171,7 +178,7 @@ func (h *gatewayHandler) buildMocker(r *http.Request, service, method, fullMetho
 		outputDesc:         methodDesc.Output(),
 		serverStream:       methodDesc.IsStreamingServer(),
 		clientStream:       methodDesc.IsStreamingClient(),
-		strictServiceMatch: h.proxies != nil && h.proxies.RouteByMethod(fullMethod) != nil,
+		strictServiceMatch: proxies != nil && proxies.RouteByMethod(fullMethod) != nil,
 	}
 }
 
@@ -256,9 +263,147 @@ func (h *gatewayHandler) handleWithoutDescriptor(
 		requestTime, []map[string]any{emptyInput}, []map[string]any{{}}, "")
 }
 
+// collectFieldMaskNames returns a set of JSON field names that are
+// google.protobuf.FieldMask in the given message descriptor.
+func collectFieldMaskNames(msg proto.Message) map[string]struct{} {
+	if msg == nil {
+		return nil
+	}
+
+	desc := msg.ProtoReflect().Descriptor()
+	if desc == nil {
+		return nil
+	}
+
+	fields := desc.Fields()
+	result := make(map[string]struct{}, fields.Len())
+
+	for i := range fields.Len() {
+		fd := fields.Get(i)
+		if fd.Kind() == protoreflect.MessageKind &&
+			string(fd.Message().FullName()) == "google.protobuf.FieldMask" {
+			result[string(fd.Name())] = struct{}{}
+		}
+	}
+
+	return result
+}
+
+// normalizeFieldMaskJSON converts well-known FieldMask fields from object JSON
+// form {"paths": ["a","b"]} to string form "a,b" which is what protojson
+// expects for google.protobuf.FieldMask. Only fields confirmed as FieldMask
+// via the message descriptor are normalized. Returns the original data unchanged
+// if no FieldMask fields are found or if conversion isn't needed.
+//
+//nolint:cyclop
+func normalizeFieldMaskJSON(data []byte, msg proto.Message) []byte {
+	fieldMaskNames := collectFieldMaskNames(msg)
+	if len(fieldMaskNames) == 0 {
+		return data
+	}
+
+	var rawMap map[string]any
+	if err := json.Unmarshal(data, &rawMap); err != nil {
+		return data
+	}
+
+	modified := false
+
+	for key, val := range rawMap {
+		if _, ok := fieldMaskNames[key]; !ok {
+			continue
+		}
+
+		obj, ok := val.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		pathsRaw, ok := obj["paths"]
+		if !ok {
+			continue
+		}
+
+		pathsArr, ok := pathsRaw.([]any)
+		if !ok || len(pathsArr) == 0 {
+			continue
+		}
+
+		paths := make([]string, 0, len(pathsArr))
+		for _, p := range pathsArr {
+			if s, ok := p.(string); ok {
+				paths = append(paths, s)
+			}
+		}
+
+		if len(paths) == 0 {
+			continue
+		}
+
+		rawMap[key] = strings.Join(paths, ",")
+		modified = true
+	}
+
+	if !modified {
+		return data
+	}
+
+	result, err := json.Marshal(rawMap)
+	if err != nil {
+		return data
+	}
+
+	return result
+}
+
+// serializeErrorStatus converts a *status.Status to a connectError JSON struct
+// with properly serialized error details (including @type annotations via protojson).
+//
+//nolint:nestif
+func serializeErrorStatus(st *status.Status) connectError {
+	sp := st.Proto()
+
+	details := make([]map[string]any, 0, len(sp.GetDetails()))
+	if len(sp.GetDetails()) > 0 {
+		statusData, err := protojson.MarshalOptions{UseProtoNames: false}.Marshal(sp)
+		if err == nil {
+			var statusObj map[string]any
+			if err := json.Unmarshal(statusData, &statusObj); err == nil {
+				if d, ok := statusObj["details"].([]any); ok {
+					details = make([]map[string]any, 0, len(d))
+					for _, item := range d {
+						if m, ok := item.(map[string]any); ok {
+							details = append(details, m)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return connectError{
+		Code:    ErrorCodeToString(st.Code()),
+		Message: st.Message(),
+		Details: details,
+	}
+}
+
+// normalizeHealthError returns "unknown service" NotFound for unknown health check services,
+// matching the standard gRPC health check protocol behavior.
+func normalizeHealthError(st *status.Status, serviceName string) *status.Status {
+	if serviceName == "grpc.health.v1.Health" && st.Code() == codes.NotFound {
+		return status.New(codes.NotFound, "unknown service")
+	}
+
+	return st
+}
+
 func decodeMessageData(data []byte, msg proto.Message, ct string, isJSONType func(string) bool) error {
 	if isJSONType(ct) {
-		return protojson.Unmarshal(data, msg)
+		// Preprocess FieldMask fields (accept {"paths": [...]} format)
+		normalized := normalizeFieldMaskJSON(data, msg)
+
+		return protojson.Unmarshal(normalized, msg)
 	}
 
 	return proto.Unmarshal(data, msg)
@@ -266,31 +411,33 @@ func decodeMessageData(data []byte, msg proto.Message, ct string, isJSONType fun
 
 func handleUnaryCore(
 	ctx context.Context,
+	stream grpc.ServerStream,
 	data []byte,
 	mocker *grpcMocker,
 	contentType string,
 	isJSONType func(string) bool,
-	writeError func(codes.Code, string),
+	writeError func(*status.Status),
 ) (any, error) {
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 	if isJSONType(contentType) {
-		if err := protojson.Unmarshal(data, inputMsg); err != nil {
-			writeError(codes.InvalidArgument, "failed to unmarshal: "+err.Error())
+		normalized := normalizeFieldMaskJSON(data, inputMsg)
+		if err := protojson.Unmarshal(normalized, inputMsg); err != nil {
+			writeError(status.New(codes.InvalidArgument, "failed to unmarshal: "+err.Error()))
 
 			return nil, err
 		}
 	} else {
 		if err := proto.Unmarshal(data, inputMsg); err != nil {
-			writeError(codes.InvalidArgument, "failed to unmarshal: "+err.Error())
+			writeError(status.New(codes.InvalidArgument, "failed to unmarshal: "+err.Error()))
 
 			return nil, err
 		}
 	}
 
-	resp, err := mocker.handleUnary(ctx, inputMsg)
+	resp, err := mocker.handleUnaryWithProxy(ctx, stream, inputMsg)
 	if err != nil {
 		st, _ := status.FromError(err)
-		writeError(st.Code(), st.Message())
+		writeError(st)
 
 		return nil, err
 	}
@@ -300,7 +447,9 @@ func handleUnaryCore(
 
 func encodeMessageData(msg proto.Message, ct string, isJSONType func(string) bool) ([]byte, error) {
 	if isJSONType(ct) {
-		return protojson.Marshal(msg)
+		return protojson.MarshalOptions{
+			UseProtoNames: true,
+		}.Marshal(msg)
 	}
 
 	return proto.Marshal(msg)
