@@ -3,6 +3,7 @@ package reflectclient
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"time"
 
@@ -74,7 +75,9 @@ func (c *Client) FetchDescriptorSet(ctx context.Context, source *protoset.Source
 	}
 
 	defer func() {
-		_ = conn.Close()
+		if err := conn.Close(); err != nil {
+			log.Printf("[gripmock] failed to close reflection connection: %v", err)
+		}
 	}()
 
 	return fetchDescriptorSet(ctx, conn)

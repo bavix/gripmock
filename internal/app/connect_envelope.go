@@ -10,7 +10,7 @@ import (
 // Reference: https://connectrpc.com/docs/protocol/
 const (
 	connectEnvelopeFlagEndStream = 0b00000010
-	connectEnvelopeHeaderSize    = 5
+	ConnectEnvelopeHeaderSize    = 5
 
 	// connectEnvelopeMaxFrameSize caps the per-message payload a peer may
 	// advertise. The Connect spec does not define an upper bound; we
@@ -44,7 +44,7 @@ type connectFrame struct {
 // Returns io.EOF if the stream ended cleanly (no partial data) and
 // io.ErrUnexpectedEOF if the peer closed mid-frame (protocol violation).
 func readConnectFrame(r io.Reader) (connectFrame, error) {
-	var header [connectEnvelopeHeaderSize]byte
+	var header [ConnectEnvelopeHeaderSize]byte
 
 	_, err := io.ReadFull(r, header[:])
 	if errors.Is(err, io.EOF) {
@@ -78,7 +78,7 @@ func readConnectFrame(r io.Reader) (connectFrame, error) {
 // flag (0x02) is set when endStream is true (used to signal the end of
 // server streaming).
 func writeConnectFrame(w io.Writer, data []byte, endStream bool) error {
-	var header [connectEnvelopeHeaderSize]byte
+	var header [ConnectEnvelopeHeaderSize]byte
 
 	flags := byte(0)
 	if endStream {

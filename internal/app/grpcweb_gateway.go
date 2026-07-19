@@ -146,18 +146,18 @@ func (g *GRPCWebGateway) handleUnary(mocker *grpcMocker, a *grpcwebAdapter) {
 //   - flag 0x01 (compressed data):   clear error — not supported
 //   - no valid frame detected:       raw body returned as-is
 func extractPayload(raw []byte) ([]byte, error) {
-	if len(raw) < connectEnvelopeHeaderSize {
+	if len(raw) < ConnectEnvelopeHeaderSize {
 		return raw, nil
 	}
 
 	declared := binary.BigEndian.Uint32(raw[1:5])
-	if int(declared)+connectEnvelopeHeaderSize != len(raw) {
+	if int(declared)+ConnectEnvelopeHeaderSize != len(raw) {
 		return raw, nil
 	}
 
 	switch raw[0] {
 	case 0x00: //nolint:mnd
-		return raw[connectEnvelopeHeaderSize:], nil
+		return raw[ConnectEnvelopeHeaderSize:], nil
 	case 0x01: //nolint:mnd
 		return nil, status.Error(codes.Unimplemented,
 			"grpc frame compression (flag 0x01) is not supported; use Content-Encoding: gzip on the HTTP body instead")
@@ -203,7 +203,7 @@ func writeGRPCWebError(w http.ResponseWriter, code codes.Code, msg string) {
 // writeDataFrame writes a gRPC-Web data frame (flag 0x00) to w.
 // The data is written as a 5-byte header (flag + big-endian length) followed by payload.
 func writeDataFrame(w http.ResponseWriter, data []byte) {
-	var header [connectEnvelopeHeaderSize]byte
+	var header [ConnectEnvelopeHeaderSize]byte
 
 	header[0] = 0x00                                           // data frame flag
 	binary.BigEndian.PutUint32(header[1:5], uint32(len(data))) //nolint:gosec
@@ -227,7 +227,7 @@ func writeGRPCWebTrailers(w http.ResponseWriter, code codes.Code, msg string, ex
 		data += e + "\r\n" //nolint:perfsprint
 	}
 
-	var header [connectEnvelopeHeaderSize]byte
+	var header [ConnectEnvelopeHeaderSize]byte
 
 	header[0] = grpcwebEnvelopeFlagTrailers
 	binary.BigEndian.PutUint32(header[1:5], uint32(len(data))) //nolint:gosec

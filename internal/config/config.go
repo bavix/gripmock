@@ -30,8 +30,8 @@ type ServerConfig struct {
 
 // OTelConfig holds OpenTelemetry configuration.
 type OTelConfig struct {
-	Enabled  bool   `env:"ENABLED"                envDefault:"false"`
 	Endpoint string `env:"EXPORTER_OTLP_ENDPOINT" envDefault:"localhost:4317"`
+	Enabled  bool   `env:"ENABLED"                envDefault:"false"`
 	Insecure bool   `env:"EXPORTER_OTLP_INSECURE" envDefault:"true"`
 }
 

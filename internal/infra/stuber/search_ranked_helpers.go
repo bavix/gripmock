@@ -31,12 +31,12 @@ func (s *searcher) buildSimilarCandidateFromRanked(stub *Stub, ranked rankedMatc
 		stub:        stub,
 		score:       ranked.totalScore,
 		specificity: ranked.specificity,
-		fieldCount:  s.ranker.FieldCount(stub),
+		fieldCount:  countStubFields(stub),
 	}
 }
 
 func (s *searcher) scoreWithPriority(query Query, stub *Stub) float64 {
-	return s.ranker.Score(query, stub) + float64(stub.Priority)*PriorityMultiplier
+	return s.fastRankV2(query, stub) + float64(stub.Priority)*PriorityMultiplier
 }
 
 func betterSimilar(current, candidate similarCandidate) bool {
@@ -58,16 +58,16 @@ func betterSimilar(current, candidate similarCandidate) bool {
 func (s *searcher) rankedMatchFor(query Query, stub *Stub) rankedMatch {
 	return rankedMatch{
 		stub:        stub,
-		specificity: s.ranker.Specificity(query, stub),
+		specificity: s.calcSpecificity(stub, query),
 		totalScore:  s.scoreWithPriority(query, stub),
-		fieldCount:  s.ranker.FieldCount(stub),
+		fieldCount:  countStubFields(stub),
 	}
 }
 
 func (s *searcher) evaluateRankedMatch(query Query, stub *Stub) (rankedMatch, bool) {
 	ranked := s.rankedMatchFor(query, stub)
 
-	return ranked, s.matcher.Match(query, stub)
+	return ranked, s.fastMatchV2(query, stub)
 }
 
 func compareRankedMatches(a, b rankedMatch) int {
@@ -104,6 +104,34 @@ func betterRanked(current, candidate rankedMatch) bool {
 
 func sortRankedMatches(matches []rankedMatch) {
 	slices.SortFunc(matches, compareRankedMatches)
+}
+
+func countStubFields(stub *Stub) int {
+	count := len(stub.Input.Equals) + len(stub.Input.Contains) + len(stub.Input.Matches)
+	count += len(stub.Headers.Equals) + len(stub.Headers.Contains) + len(stub.Headers.Matches)
+
+	for _, input := range stub.Inputs {
+		count += len(input.Equals) + len(input.Contains) + len(input.Matches)
+		count += countAnyOfFields(input.AnyOf)
+	}
+
+	count += countAnyOfFields(stub.Input.AnyOf)
+
+	for _, alt := range stub.Headers.AnyOf {
+		count += len(alt.Equals) + len(alt.Contains) + len(alt.Matches)
+	}
+
+	return count
+}
+
+func countAnyOfFields(anyOf []AnyOfElement) int {
+	var n int
+
+	for _, alt := range anyOf {
+		n += len(alt.Equals) + len(alt.Contains) + len(alt.Matches)
+	}
+
+	return n
 }
 
 func pickHigherScore(current, candidate scoredStub) scoredStub {

@@ -25,6 +25,7 @@ type Extender struct {
 	ch           chan struct{}
 	watcher      *watcher.StubWatcher
 	mapIDsByFile map[string]uuid.UUIDs
+	muMapIDs     sync.Mutex
 	muUniqueIDs  sync.Mutex
 	uniqueIDs    map[uuid.UUID]struct{}
 	loaded       atomic.Bool
@@ -203,12 +204,17 @@ func (s *Extender) isStubFile(filename string) bool {
 func (s *Extender) readByFile(ctx context.Context, filePath string) {
 	stubs, err := s.readStub(ctx, filePath)
 	if err != nil {
+		s.muMapIDs.Lock()
 		s.handleFileReadError(ctx, filePath, err)
+		s.muMapIDs.Unlock()
 
 		return
 	}
 
 	s.checkUniqIDs(ctx, filePath, stubs)
+
+	s.muMapIDs.Lock()
+	defer s.muMapIDs.Unlock()
 
 	existingIDs, exists := s.mapIDsByFile[filePath]
 	if !exists {

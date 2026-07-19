@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
@@ -192,11 +193,15 @@ func (s *mockableHealthServer) proxyCheck(
 	elapsed := time.Since(startTime)
 
 	if len(header) > 0 {
-		_ = grpc.SetHeader(ctx, header)
+		if err := grpc.SetHeader(ctx, header); err != nil {
+			zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to set header metadata")
+		}
 	}
 
 	if len(trailer) > 0 {
-		_ = grpc.SetTrailer(ctx, trailer)
+		if err := grpc.SetTrailer(ctx, trailer); err != nil {
+			zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to set trailer metadata")
+		}
 	}
 
 	respHeaders := responseHeadersFromMetadata(header, trailer)

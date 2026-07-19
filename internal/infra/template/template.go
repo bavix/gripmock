@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/bavix/gripmock/v3/pkg/plugins"
 )
@@ -17,7 +18,10 @@ import (
 var ErrMaxRecursionDepthExceeded = errors.New("maximum recursion depth exceeded")
 
 // MaxRecursionDepth is the maximum allowed nesting depth for ProcessMap/ProcessStream.
-const MaxRecursionDepth = 250
+const (
+	MaxRecursionDepth = 250
+	templateCacheSize = 1024
+)
 
 // Data represents the context data available for template rendering.
 type Data struct {
@@ -43,36 +47,58 @@ type Data struct {
 // Engine provides template rendering functionality.
 type Engine struct {
 	funcs template.FuncMap
+	cache *lru.Cache[string, *template.Template]
 }
 
 // New creates a new template engine with custom functions.
 func New(ctx context.Context, reg plugins.Registry) *Engine {
+	cache, _ := lru.New[string, *template.Template](templateCacheSize)
+
 	return &Engine{
 		funcs: Functions(ctx, reg),
+		cache: cache,
 	}
 }
 
 // Render renders a template string with the given data.
-func (e *Engine) Render(tmpl string, data Data) (string, error) {
+//
+//nolint:nonamedreturns
+func (e *Engine) Render(tmpl string, data Data) (result string, err error) {
 	if tmpl == "" {
 		return "", nil
 	}
 
 	tmpl = unescapeTemplateQuotes(tmpl)
 
-	t := e.createTemplate()
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("template execution panic: %v", r) //nolint:err113
+		}
+	}()
 
-	parsed, err := t.Parse(tmpl)
+	exec := func(parsed *template.Template) error {
+		var buf bytes.Buffer
+		if err := parsed.Execute(&buf, data); err != nil {
+			return fmt.Errorf("failed to execute template: %w", err)
+		}
+
+		result = buf.String()
+
+		return nil
+	}
+
+	if cached, ok := e.cache.Get(tmpl); ok {
+		return result, exec(cached)
+	}
+
+	parsed, err := template.New("dynamic").Funcs(e.funcs).Parse(tmpl)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse template: %w", err)
 	}
 
-	var buf bytes.Buffer
-	if err := parsed.Execute(&buf, data); err != nil {
-		return "", fmt.Errorf("failed to execute template: %w", err)
-	}
+	e.cache.Add(tmpl, parsed)
 
-	return buf.String(), nil
+	return result, exec(parsed)
 }
 
 // unescapeTemplateQuotes removes escape sequences from quotes inside template expressions.
@@ -153,11 +179,6 @@ func (e *Engine) ProcessHeaders(headers map[string]string, templateData Data) er
 // ProcessError processes error template.
 func (e *Engine) ProcessError(errorStr string, templateData Data) (string, error) {
 	return processErrorField(errorStr, templateData, e)
-}
-
-// createTemplate creates a template with custom functions.
-func (e *Engine) createTemplate() *template.Template {
-	return template.New("dynamic").Funcs(e.funcs)
 }
 
 func processMapTemplates(data map[string]any, templateData Data, engine *Engine, depth int) error {

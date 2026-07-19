@@ -24,9 +24,8 @@ import (
 )
 
 const (
-	maxBodyCapture            = 4 << 10 // 4 KiB
-	grpcFrameHeaderSize       = 5       // 1 flag byte + 4 byte length (gRPC/gRPC-Web)
-	connectEnvelopeHeaderSize = 5       // 1 flag byte + 4 byte length (ConnectRPC envelope)
+	maxBodyCapture      = 4 << 10 // 4 KiB
+	grpcFrameHeaderSize = 5       // 1 flag byte + 4 byte length (gRPC/gRPC-Web)
 )
 
 const (
@@ -80,7 +79,6 @@ func (b *Builder) newMultiProtocolGateway() *app.MultiProtocolGateway {
 		b.StubValidator(),
 		b.ErrorFormatter(),
 	)
-	b.SetGateway(g)
 
 	return g
 }
@@ -306,7 +304,7 @@ func stripGRPCFrame(data string) string {
 // We skip the header and return only the payload up to the declared length.
 // Raw bodies (JSON without framing) are returned unchanged.
 func stripConnectFrame(data string) string {
-	if len(data) < connectEnvelopeHeaderSize {
+	if len(data) < app.ConnectEnvelopeHeaderSize {
 		return data
 	}
 
@@ -319,7 +317,7 @@ func stripConnectFrame(data string) string {
 	declared := int(data[1])<<24 | int(data[2])<<16 | int(data[3])<<8 | int(data[4])
 
 	// Skip remaining envelope frames by returning the first payload.
-	payload := data[connectEnvelopeHeaderSize:]
+	payload := data[app.ConnectEnvelopeHeaderSize:]
 	if declared < len(payload) {
 		payload = payload[:declared]
 	}

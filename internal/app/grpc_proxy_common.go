@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
@@ -42,31 +43,41 @@ func ssmFilterMD(md metadata.MD) metadata.MD {
 }
 
 func setStreamMetadata(ctx context.Context, stream grpc.ServerStream, header, trailer metadata.MD) {
-	if stream != nil {
-		// Forward filtered upstream metadata as HTTP response headers
-		// for ConnectRPC (httpStreamAdapter).  Skip for gRPC-Web
-		// (grpcwebAdapter) — its framed format does not use HTTP headers.
-		if _, ok := stream.(*grpcwebAdapter); ok {
-			return
-		}
-
-		if h := ssmFilterMD(header); len(h) > 0 {
-			_ = stream.SetHeader(h)
-		}
-
-		if t := ssmFilterMD(trailer); len(t) > 0 {
-			stream.SetTrailer(t)
-		}
+	if stream == nil {
+		setContextMetadata(ctx, header, trailer)
 
 		return
 	}
 
+	// Forward filtered upstream metadata as HTTP response headers
+	// for ConnectRPC (httpStreamAdapter).  Skip for gRPC-Web
+	// (grpcwebAdapter) — its framed format does not use HTTP headers.
+	if _, ok := stream.(*grpcwebAdapter); ok {
+		return
+	}
+
+	if h := ssmFilterMD(header); len(h) > 0 {
+		if err := stream.SetHeader(h); err != nil {
+			zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to set stream header metadata")
+		}
+	}
+
+	if t := ssmFilterMD(trailer); len(t) > 0 {
+		stream.SetTrailer(t)
+	}
+}
+
+func setContextMetadata(ctx context.Context, header, trailer metadata.MD) {
 	if len(header) > 0 {
-		_ = grpc.SetHeader(ctx, header)
+		if err := grpc.SetHeader(ctx, header); err != nil {
+			zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to set header metadata")
+		}
 	}
 
 	if len(trailer) > 0 {
-		_ = grpc.SetTrailer(ctx, trailer)
+		if err := grpc.SetTrailer(ctx, trailer); err != nil {
+			zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to set trailer metadata")
+		}
 	}
 }
 

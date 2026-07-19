@@ -827,7 +827,6 @@ func (s *RestServerExtendedTestSuite) addStubAndAssertOK(payload string) {
 }
 
 // TestRestServerExtendedTestSuite runs the extended REST server test suite.
-func TestRestServerExtendedTestSuite(t *testing.T) {
-	t.Parallel()
+func TestRestServerExtendedTestSuite(t *testing.T) { //nolint:paralleltest
 	suite.Run(t, new(RestServerExtendedTestSuite))
 }

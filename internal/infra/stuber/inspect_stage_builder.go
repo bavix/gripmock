@@ -45,7 +45,7 @@ func countHeadersAndInputMatches(s *searcher, query Query, stubs []*Stub) (int, 
 
 		headersCount++
 
-		if s.matcher.Match(query, stub) {
+		if s.fastMatchV2(query, stub) {
 			inputCount++
 		}
 	}

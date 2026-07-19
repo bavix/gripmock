@@ -7,7 +7,7 @@ func (s *searcher) searchOptimized(query Query) (*Result, error) {
 		return nil, err
 	}
 
-	return s.processStrategy.Process(query, candidates)
+	return s.processStubs(query, candidates)
 }
 
 func (s *searcher) resolveSearchCandidates(query Query) ([]*Stub, error) {
@@ -62,7 +62,7 @@ func (s *searcher) processStubsSequential(query Query, stubs []*Stub) (*Result, 
 }
 
 func (s *searcher) processSingleStub(query Query, stub *Stub) (*Result, error) {
-	if s.matcher.Match(query, stub) && s.tryReserve(query, stub) {
+	if s.fastMatchV2(query, stub) && s.tryReserve(query, stub) {
 		return &Result{found: stub}, nil
 	}
 

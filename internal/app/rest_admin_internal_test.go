@@ -335,7 +335,6 @@ func (s *AdminPanelTestSuite) TestMixedInternalAndNormalSearches() {
 }
 
 // TestAdminPanelTestSuite runs the admin panel test suite.
-func TestAdminPanelTestSuite(t *testing.T) {
-	t.Parallel()
+func TestAdminPanelTestSuite(t *testing.T) { //nolint:paralleltest
 	suite.Run(t, new(AdminPanelTestSuite))
 }

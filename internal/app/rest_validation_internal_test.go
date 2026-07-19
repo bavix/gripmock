@@ -571,7 +571,6 @@ func (s *RestValidationTestSuite) TestAddStubSpecialCases() {
 }
 
 // TestRestValidationTestSuite runs the REST validation test suite.
-func TestRestValidationTestSuite(t *testing.T) {
-	t.Parallel()
+func TestRestValidationTestSuite(t *testing.T) { //nolint:paralleltest
 	suite.Run(t, new(RestValidationTestSuite))
 }

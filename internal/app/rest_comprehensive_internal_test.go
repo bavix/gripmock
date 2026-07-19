@@ -366,7 +366,6 @@ func getFirstKey(m map[string]any) string {
 }
 
 // TestRestComprehensiveTestSuite runs the comprehensive REST test suite.
-func TestRestComprehensiveTestSuite(t *testing.T) {
-	t.Parallel()
+func TestRestComprehensiveTestSuite(t *testing.T) { //nolint:paralleltest
 	suite.Run(t, new(RestComprehensiveTestSuite))
 }

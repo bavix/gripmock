@@ -3,6 +3,7 @@ package deeply
 import (
 	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/spf13/cast"
 )
@@ -23,6 +24,16 @@ type ranker func(expect, actual any) float64
 // Returns:
 //   - A float64 representing the cumulative match score.
 func RankMatch(expected, actual any) float64 {
+	return rankMatchWithDepth(expected, actual, 0)
+}
+
+const maxRankDepth = 64
+
+func rankMatchWithDepth(expected, actual any, depth int) float64 {
+	if depth > maxRankDepth {
+		return 0
+	}
+
 	// Special case handling for empty maps.
 	if value, ok := expected.(map[string]any); ok && len(value) == 0 {
 		return 0.1 //nolint:mnd
@@ -32,10 +43,14 @@ func RankMatch(expected, actual any) float64 {
 	score := rank(expected, actual)
 
 	// Include scores from slice comparisons.
-	score += slicesRankMatch(expected, actual, RankMatch)
+	score += slicesRankMatch(expected, actual, func(e, a any) float64 {
+		return rankMatchWithDepth(e, a, depth+1)
+	})
 
 	// Include scores from map comparisons.
-	score += mapRankMatch(expected, actual, RankMatch)
+	score += mapRankMatch(expected, actual, func(e, a any) float64 {
+		return rankMatchWithDepth(e, a, depth+1)
+	})
 
 	// Return the total match score.
 	return score
@@ -88,11 +103,16 @@ func rank(expect, actual any) float64 {
 		return 1
 	}
 
-	// Try to compile the expected string as a regular expression and find the
-	// first match in the actual string. If a match is found, calculate the match
-	// score based on the length of the match.
-	compile, err := regexp.Compile(expectedStr)
-	if compile != nil && err == nil {
+	// Only attempt regex matching if the expected string contains
+	// metacharacters — otherwise skip the expensive Compile call.
+	const regexMeta = `\^$.*+?[]{}|()`
+
+	var compile *regexp.Regexp
+	if strings.ContainsAny(expectedStr, regexMeta) {
+		compile, _ = regexp.Compile(expectedStr)
+	}
+
+	if compile != nil {
 		results := compile.FindStringIndex(actualStr)
 
 		// If a match is found, calculate the match score based on the length of
@@ -346,13 +366,8 @@ func distanceASCII(s, t string) float64 {
 		column = make([]int, lenS+1)
 	}
 
-	// Initialize column using copy for small sizes
-	if lenS+1 <= maxStackLen {
-		copy(column, columnStack[:])
-	} else {
-		for y := range column {
-			column[y] = y
-		}
+	for y := range column {
+		column[y] = y
 	}
 
 	for x := 1; x <= lenT; x++ {

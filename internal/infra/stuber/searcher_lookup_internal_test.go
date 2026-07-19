@@ -57,18 +57,6 @@ func (f *fakeLookupProvider) build(_ *searcher, _ string) *searcherLookup {
 	return f.lookup
 }
 
-type fakeProcessStrategy struct {
-	called bool
-	result *Result
-	err    error
-}
-
-func (f *fakeProcessStrategy) Process(_ Query, _ []*Stub) (*Result, error) {
-	f.called = true
-
-	return f.result, f.err
-}
-
 func seqFromStubs(stubs []*Stub) iter.Seq[*Stub] {
 	return func(yield func(*Stub) bool) {
 		for _, stub := range stubs {
@@ -77,42 +65,6 @@ func seqFromStubs(stubs []*Stub) iter.Seq[*Stub] {
 			}
 		}
 	}
-}
-
-type fakeMatchStrategy struct {
-	called bool
-	match  bool
-}
-
-func (f *fakeMatchStrategy) Match(_ Query, _ *Stub) bool {
-	f.called = true
-
-	return f.match
-}
-
-type fakeRankStrategy struct {
-	called      bool
-	scores      map[uuid.UUID]float64
-	specificity map[uuid.UUID]int
-	fieldCount  map[uuid.UUID]int
-}
-
-func (f *fakeRankStrategy) Score(_ Query, stub *Stub) float64 {
-	f.called = true
-
-	return f.scores[stub.ID]
-}
-
-func (f *fakeRankStrategy) Specificity(_ Query, stub *Stub) int {
-	f.called = true
-
-	return f.specificity[stub.ID]
-}
-
-func (f *fakeRankStrategy) FieldCount(stub *Stub) int {
-	f.called = true
-
-	return f.fieldCount[stub.ID]
 }
 
 func TestSearcherLookupFactoryMethodFallback(t *testing.T) {
@@ -297,72 +249,6 @@ func TestSearcherLookupFactoryUsedWhenProviderMissing(t *testing.T) {
 	require.True(t, factoryConstructed)
 	require.True(t, factoryService.called)
 	require.True(t, factoryMethod.called)
-}
-
-func TestSearcherUsesConfiguredProcessStrategy(t *testing.T) {
-	t.Parallel()
-
-	strategy := &fakeProcessStrategy{result: &Result{similar: &Stub{ID: uuid.New()}}}
-
-	s := newSearcherWithOptions(searcherOptions{processStrategy: strategy})
-	s.upsert(&Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: Output{Data: map[string]any{"ok": true}}})
-
-	result, err := s.find(Query{Service: "svc", Method: "M", Input: []map[string]any{{"k": "v"}}})
-
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.True(t, strategy.called)
-}
-
-func TestSearcherUsesConfiguredMatcherForSingleStub(t *testing.T) {
-	t.Parallel()
-
-	stub := &Stub{
-		ID:      uuid.New(),
-		Service: "svc",
-		Method:  "M",
-		Input:   InputData{Equals: map[string]any{"name": "Alex"}},
-		Output:  Output{Data: map[string]any{"ok": true}},
-	}
-
-	matcher := &fakeMatchStrategy{match: true}
-
-	s := newSearcherWithOptions(searcherOptions{matcher: matcher})
-	s.upsert(stub)
-
-	result, err := s.find(Query{Service: "svc", Method: "M", Input: []map[string]any{{"name": "Bob"}}})
-
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.NotNil(t, result.Found())
-	require.Equal(t, stub.ID, result.Found().ID)
-	require.True(t, matcher.called)
-}
-
-func TestSearcherUsesConfiguredRankerForCandidateOrdering(t *testing.T) {
-	t.Parallel()
-
-	first := &Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: Output{Data: map[string]any{"n": 1}}}
-	second := &Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: Output{Data: map[string]any{"n": 2}}}
-
-	matcher := &fakeMatchStrategy{match: true}
-	ranker := &fakeRankStrategy{
-		scores:      map[uuid.UUID]float64{first.ID: 1, second.ID: 1},
-		specificity: map[uuid.UUID]int{first.ID: 1, second.ID: 10},
-		fieldCount:  map[uuid.UUID]int{first.ID: 1, second.ID: 1},
-	}
-
-	s := newSearcherWithOptions(searcherOptions{matcher: matcher, ranker: ranker})
-	s.upsert(first, second)
-
-	result, err := s.find(Query{Service: "svc", Method: "M", Input: []map[string]any{{"k": "v"}}})
-
-	require.NoError(t, err)
-	require.NotNil(t, result)
-	require.NotNil(t, result.Found())
-	require.Equal(t, second.ID, result.Found().ID)
-	require.True(t, matcher.called)
-	require.True(t, ranker.called)
 }
 
 func TestSessionLookupFallsBackToGlobalWhenSessionEmpty(t *testing.T) {
