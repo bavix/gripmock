@@ -112,14 +112,20 @@ func (b *Builder) newGatewayServer(ctx context.Context, router *mux.Router) *htt
 	}
 }
 
-func (b *Builder) listenGateway(ctx context.Context, srv *http.Server) (net.Listener, error) {
-	gatewayTLS := infraTLS.TLSConfig{
+// gatewayTLSConfig maps gateway TLS settings from config into the infra TLS
+// config, honoring GATEWAY_TLS_MIN_VERSION.
+func (b *Builder) gatewayTLSConfig() infraTLS.TLSConfig {
+	return infraTLS.TLSConfig{
 		CertFile:   b.config.GatewayTLS.CertFile,
 		KeyFile:    b.config.GatewayTLS.KeyFile,
 		ClientAuth: b.config.GatewayTLS.ClientAuth,
 		CAFile:     b.config.GatewayTLS.CAFile,
-		MinVersion: infraTLS.MinTLSVersion12,
+		MinVersion: b.config.GatewayTLS.MinVersion,
 	}
+}
+
+func (b *Builder) listenGateway(ctx context.Context, srv *http.Server) (net.Listener, error) {
+	gatewayTLS := b.gatewayTLSConfig()
 
 	if gatewayTLS.IsEnabled() {
 		return b.tlsGatewayListener(srv, gatewayTLS)

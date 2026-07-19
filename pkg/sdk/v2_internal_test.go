@@ -1,10 +1,12 @@
 package sdk
 
 import (
+	"context"
 	"io"
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -59,7 +61,7 @@ func TestV2Priority(t *testing.T) {
 		Return("message", "exact")
 
 	srv.ExpectUnary("/helloworld.Greeter/SayHello").
-		WithPayloadMap(Matches("name", "A.*")).
+		Match(Matches("name", "A.*")).
 		Priority(1).
 		Return("message", "fallback")
 
@@ -282,7 +284,7 @@ func TestV2ClientStream(t *testing.T) {
 	srv, fds := newProjectSrv(t, "calculator")
 
 	srv.ExpectClientStream("/calculator.CalculatorService/SumNumbers").
-		WithPayloadMap(Matches("value", "\\d+")).
+		Match(Matches("value", "\\d+")).
 		Return("result", 42.0, "count", 2)
 
 	reg := mustBuildReg(t, fds)
@@ -361,11 +363,11 @@ func TestV2EnumOneof(t *testing.T) {
 	srv, fds := newProjectSrv(t, "validator")
 
 	srv.ExpectUnary("/validator.Validator/Validate").
-		WithPayloadMap(
-			Equals("number", 42),
-			Equals("validation_type", "NUMBER_RANGE"),
-			Equals("min", 10),
-			Equals("max", 100),
+		Match(
+			"number", 42,
+			"validation_type", "NUMBER_RANGE",
+			"min", 10,
+			"max", 100,
 		).
 		Return("isValid", true)
 
@@ -412,9 +414,7 @@ func TestV2RepeatedField(t *testing.T) {
 	srv2, fds2 := newProjectSrv(t, "identifier")
 
 	srv2.ExpectUnary("/example.identifier.v1.IdentifierService/ProcessUUIDs").
-		WithPayloadMap(
-			Equals("string_uuids", []any{"uuid-1", "uuid-2"}),
-		).
+		Match("string_uuids", []any{"uuid-1", "uuid-2"}).
 		Return("processId", 42.0)
 
 	reg := mustBuildReg(t, fds2)
@@ -544,6 +544,55 @@ func newProjectSrv(t *testing.T, project string) (*Server, *descriptorpb.FileDes
 	fds := buildTestFDS(t, project)
 
 	return NewServer(t, WithDescriptors(fds)), fds
+}
+
+// TestStreamExpectationEffectsRegistered guards against the regression where
+// Effect() on stream expectations was a silent no-op (only unary attached
+// effects). It verifies all three stream types persist effects onto the stored
+// stub, both when Effect() is called before and after the terminal method.
+func TestStreamExpectationEffectsRegistered(t *testing.T) {
+	t.Parallel()
+
+	srv, _ := newProjectSrv(t, "greeter")
+
+	requireEffect := func(id uuid.UUID) {
+		t.Helper()
+
+		stub := srv.budgerigar.FindByID(id)
+		require.NotNil(t, stub)
+		require.Len(t, stub.Effects, 1)
+	}
+
+	newEffect := func() *Effect {
+		return Upsert("svc", "Next").Match("k", "v").Return("r", "x").Build()
+	}
+
+	// Server stream — Effect before terminal SendStream.
+	ss := srv.ExpectServerStream("/helloworld.Greeter/SayHello").Match("q", "a").Effect(newEffect())
+	ss.SendStream(map[string]any{"id": "1"})
+	requireEffect(ss.stubID)
+
+	// Server stream — Effect after terminal (committed re-registration path).
+	ss2 := srv.ExpectServerStream("/helloworld.Greeter/SayHello").Match("q", "b")
+	ss2.SendStream(map[string]any{"id": "2"})
+	ss2.Effect(newEffect())
+	requireEffect(ss2.stubID)
+
+	// Client stream — Effect before terminal Return.
+	cs := srv.ExpectClientStream("/helloworld.Greeter/SayHello").Match("k", "v").Effect(newEffect())
+	cs.Return("r", 1.0)
+	requireEffect(cs.stubID)
+
+	// Client stream — Effect after terminal (committed path).
+	cs2 := srv.ExpectClientStream("/helloworld.Greeter/SayHello").Match("k", "w")
+	cs2.Return("r", 2.0)
+	cs2.Effect(newEffect())
+	requireEffect(cs2.stubID)
+
+	// Bidirectional — Effect before terminal Run.
+	bd := srv.ExpectBidirectionalStream("/helloworld.Greeter/Chat").Effect(newEffect())
+	bd.Run(func(_ context.Context, _ any) error { return nil })
+	requireEffect(bd.stubID)
 }
 
 func buildTestFDS(t *testing.T, project string) *descriptorpb.FileDescriptorSet {

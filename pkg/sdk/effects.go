@@ -105,6 +105,43 @@ func (e *UnaryExpectation) Effect(effects ...*Effect) *UnaryExpectation {
 	return e
 }
 
-func (e *ServerStreamExpectation) Effect(effects ...*Effect) *ServerStreamExpectation   { return e }
-func (e *ClientStreamExpectation) Effect(effects ...*Effect) *ClientStreamExpectation   { return e }
-func (e *BidirectionalExpectation) Effect(effects ...*Effect) *BidirectionalExpectation { return e }
+// Effect attaches side effects to a server-stream expectation.
+// Call before or after the terminal SendStream — both work via re-registration.
+func (e *ServerStreamExpectation) Effect(effects ...*Effect) *ServerStreamExpectation {
+	e.appendEffects(effects...)
+
+	return e
+}
+
+// Effect attaches side effects to a client-stream expectation.
+// Call before or after the terminal Return/ReturnError — both work via re-registration.
+func (e *ClientStreamExpectation) Effect(effects ...*Effect) *ClientStreamExpectation {
+	e.appendEffects(effects...)
+
+	return e
+}
+
+// Effect attaches side effects to a bidirectional-stream expectation.
+// Call before or after the terminal Run — both work via re-registration.
+func (e *BidirectionalExpectation) Effect(effects ...*Effect) *BidirectionalExpectation {
+	e.appendEffects(effects...)
+
+	return e
+}
+
+// appendEffects records effects on the shared base and, when the stub has
+// already been committed, re-registers it so the effects take hold.
+func (b *expectationBase) appendEffects(effects ...*Effect) {
+	for _, ef := range effects {
+		b.effects = append(b.effects, ef.effect)
+	}
+
+	if !b.committed {
+		return
+	}
+
+	if existing := b.srv.budgerigar.FindByID(b.stubID); existing != nil {
+		existing.Effects = b.effects
+		b.srv.budgerigar.PutMany(existing)
+	}
+}

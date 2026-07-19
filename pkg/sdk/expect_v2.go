@@ -32,6 +32,8 @@ type expectationBase struct {
 	priority  int
 	committed bool
 	stubID    uuid.UUID
+
+	effects []stuber.Effect
 }
 
 // Available after calling a terminal method (Return, SendStream, Run).
@@ -72,8 +74,6 @@ type UnaryExpectation struct {
 	kv    map[string]any
 	err   *stuberError
 	first uuid.UUID
-
-	effects []stuber.Effect
 }
 
 func newUnaryExpectation(srv *Server, fullMethod string) *UnaryExpectation {
@@ -92,26 +92,6 @@ func newUnaryExpectation(srv *Server, fullMethod string) *UnaryExpectation {
 // For header matching use WithHeader(sdk.Contains("key", "val")).
 func (e *UnaryExpectation) Match(matches ...any) *UnaryExpectation {
 	e.matchers = append(e.matchers, compileMatchArgs(matches...)...)
-
-	return e
-}
-
-// WithPayload marshals a proto.Message to JSON and matches all fields exactly.
-//
-// Deprecated: use Match with key-value pairs instead.
-func (e *UnaryExpectation) WithPayload(msg proto.Message) *UnaryExpectation {
-	e.matchers = append(e.matchers, equalsFields(msg))
-
-	return e
-}
-
-// WithPayloadMap adds payload matching rules using Matcher values.
-//
-// Deprecated: use Match(sdk.Contains(...)) or Match("k", "v") instead.
-func (e *UnaryExpectation) WithPayloadMap(inputs ...Matcher) *UnaryExpectation {
-	for _, m := range inputs {
-		e.matchers = append(e.matchers, m.compilePayload())
-	}
 
 	return e
 }
@@ -332,17 +312,6 @@ func (e *ServerStreamExpectation) Match(matches ...any) *ServerStreamExpectation
 	return e
 }
 
-// WithPayloadMap adds payload matching rules using Matcher values.
-//
-// Deprecated: use Match(sdk.Contains(...)) or Match("k", "v") instead.
-func (e *ServerStreamExpectation) WithPayloadMap(inputs ...Matcher) *ServerStreamExpectation {
-	for _, m := range inputs {
-		e.matchers = append(e.matchers, m.compilePayload())
-	}
-
-	return e
-}
-
 func (e *ServerStreamExpectation) WithHeader(headers ...Matcher) *ServerStreamExpectation {
 	for _, h := range headers {
 		e.headers = mergeInputHeader(e.headers, h.compileHeader())
@@ -373,6 +342,7 @@ func (e *ServerStreamExpectation) SendStream(items ...any) *ServerStreamBuilder 
 		Output:   output,
 		Priority: e.priority,
 		Options:  stuber.StubOptions{Times: e.times},
+		Effects:  e.effects,
 	}
 	e.stubID = id
 	e.srv.trackExpectation(stub)
@@ -515,31 +485,9 @@ func (e *ClientStreamExpectation) Match(matches ...any) *ClientStreamExpectation
 	return e
 }
 
-// WithPayloadMap adds payload matching rules using Matcher values.
-//
-// Deprecated: use Match(sdk.Contains(...)) or Match("k", "v") instead.
-func (e *ClientStreamExpectation) WithPayloadMap(inputs ...Matcher) *ClientStreamExpectation {
-	for _, m := range inputs {
-		e.matchers = append(e.matchers, m.compilePayload())
-	}
-
-	return e
-}
-
 func (e *ClientStreamExpectation) WithHeader(headers ...Matcher) *ClientStreamExpectation {
 	for _, h := range headers {
 		e.headers = mergeInputHeader(e.headers, h.compileHeader())
-	}
-
-	return e
-}
-
-// WithPayloads sets proto.Message payload matchers for client-stream messages.
-//
-// Deprecated: use Match(sdk.Contains(...)) instead.
-func (e *ClientStreamExpectation) WithPayloads(msgs ...proto.Message) *ClientStreamExpectation {
-	for _, msg := range msgs {
-		e.matchers = append(e.matchers, equalsFields(msg))
 	}
 
 	return e
@@ -609,6 +557,7 @@ func (e *ClientStreamExpectation) register() {
 		Priority:            e.priority,
 		Options:             stuber.StubOptions{Times: e.times},
 		MatchOnFirstMessage: e.matchOnFirst,
+		Effects:             e.effects,
 	}
 	e.srv.trackExpectation(stub)
 }
@@ -649,6 +598,7 @@ func (e *BidirectionalExpectation) Run(fn BidirectionalHandler) *BidirectionalEx
 		Priority: e.priority,
 		Options:  stuber.StubOptions{Times: e.times},
 		Handler:  stuber.StreamHandler(fn),
+		Effects:  e.effects,
 	}
 	e.srv.trackExpectation(stub)
 
@@ -701,20 +651,6 @@ func compileMatchArgs(args ...any) []stuber.InputData {
 	}
 
 	return out
-}
-
-func equalsFields(msg proto.Message) stuber.InputData {
-	raw, err := protojson.Marshal(msg)
-	if err != nil {
-		panic("gripmock: failed to marshal proto message: " + err.Error())
-	}
-
-	var m map[string]any
-	if err := json.Unmarshal(raw, &m); err != nil {
-		panic("gripmock: failed to unmarshal proto JSON: " + err.Error())
-	}
-
-	return stuber.InputData{Equals: m}
 }
 
 func protoToMap(msg proto.Message) map[string]any {

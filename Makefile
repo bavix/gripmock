@@ -9,7 +9,7 @@ build:
 	docker buildx build --load -t bavix/gripmock:${version} .
 
 test:
-	go test -tags mock -race -cover ./...
+	go test -race -cover ./...
 
 lint:
 	$(GOLANGCI_LINT) run --color always
@@ -29,9 +29,13 @@ plugins:
 semgrep:
 	docker run --rm -v $$(pwd):/src bavix/semgrep:master semgrep scan --error --config=p/golang -f /semgrep-go
 
+# Override to pin a specific codegen version, e.g. make gen-rest OAPI_CODEGEN=...@v2.5.0
+OAPI_CODEGEN ?= github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+
 gen-rest:
-	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest -generate gorilla,types -package rest ${OPENAPI} > internal/domain/rest/api.gen.go
-	sed -i '' 's/interface{}/any/g' internal/domain/rest/api.gen.go
+	go run $(OAPI_CODEGEN) -generate gorilla,types -package rest ${OPENAPI} > internal/domain/rest/api.gen.go
+	sed 's/interface{}/any/g' internal/domain/rest/api.gen.go > internal/domain/rest/api.gen.go.tmp
+	mv internal/domain/rest/api.gen.go.tmp internal/domain/rest/api.gen.go
 	gofmt -w internal/domain/rest/api.gen.go
 	goimports -w internal/domain/rest/api.gen.go
 

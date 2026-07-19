@@ -20,12 +20,12 @@ func TestRunWithReflection(t *testing.T) {
 	mock1 := mustRunWithProto(t,
 		sdkProtoPath("greeter"),
 		WithListenAddr("tcp", ":0"),
-		WithHealthCheckTimeout(5*time.Second), //nolint:mnd
+		WithHealthCheckTimeout(5*time.Second),
 	)
 
 	mock2, err := Run(t,
 		WithReflection(mock1.Addr()),
-		WithHealthCheckTimeout(5*time.Second), //nolint:mnd
+		WithHealthCheckTimeout(5*time.Second),
 	)
 
 	require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestRunWithReflectionNoServices(t *testing.T) {
 	defer server.GracefulStop()
 
 	// Act
-	_, err = Run(t, WithReflection(addr), WithHealthCheckTimeout(2*time.Second)) //nolint:mnd
+	_, err = Run(t, WithReflection(addr), WithHealthCheckTimeout(2*time.Second))
 
 	// Assert
 	require.Error(t, err)
@@ -68,7 +68,7 @@ func TestRunWithReflectionInvalidAddr(t *testing.T) {
 	t.Parallel()
 
 	// Act
-	_, err := Run(t, WithReflection("localhost:59999"), WithHealthCheckTimeout(100*time.Millisecond)) //nolint:mnd
+	_, err := Run(t, WithReflection("localhost:59999"), WithHealthCheckTimeout(100*time.Millisecond))
 
 	// Assert
 	require.Error(t, err)

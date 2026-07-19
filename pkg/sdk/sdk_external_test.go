@@ -362,7 +362,7 @@ func TestUnaryPriority(t *testing.T) {
 		Return("message", "exact")
 
 	srv.ExpectUnary("/test.Greeter/SayHello").
-		WithPayloadMap(sdk.Matches("name", "A.*")).
+		Match(sdk.Matches("name", "A.*")).
 		Priority(1).
 		Return("message", "fallback")
 
@@ -553,7 +553,7 @@ func TestClientStream(t *testing.T) {
 	defer func() { _ = srv.Close() }()
 
 	srv.ExpectClientStream("/calc.Calculator/SumNumbers").
-		WithPayloadMap(sdk.Matches("value", "\\d+")).
+		Match(sdk.Matches("value", "\\d+")).
 		Return("result", 42.0, "count", 2)
 
 	d := resolveDesc(t, fds, "calc.NumberRequest", "calc.SumResponse")
