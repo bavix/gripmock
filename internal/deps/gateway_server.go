@@ -76,7 +76,7 @@ func (b *Builder) newMultiProtocolGateway() *app.MultiProtocolGateway {
 		b.Budgerigar(),
 		b.DescriptorRegistry(),
 		recorder,
-		b.ProxyRoutes(),
+		b.ProxyRoutesRef(),
 		b.StubValidator(),
 		b.ErrorFormatter(),
 	)

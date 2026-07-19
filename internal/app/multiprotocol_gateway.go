@@ -3,6 +3,7 @@ package app
 import (
 	"net/http"
 	"strings"
+	"sync/atomic"
 
 	"github.com/go-playground/validator/v10"
 	"google.golang.org/grpc/codes"
@@ -32,13 +33,13 @@ func NewMultiProtocolGateway(
 	budgerigar *stuber.Budgerigar,
 	descriptorRegistry *descriptors.Registry,
 	recorder history.Recorder,
-	proxies *proxyroutes.Registry,
+	proxyRoutesRef *atomic.Pointer[proxyroutes.Registry],
 	validator *validator.Validate,
 	errorFormatter *ErrorFormatter,
 ) *MultiProtocolGateway {
 	return &MultiProtocolGateway{
-		connect: NewConnectRPCGateway(budgerigar, descriptorRegistry, recorder, proxies, validator, errorFormatter),
-		grpcweb: NewGRPCWebGateway(budgerigar, descriptorRegistry, recorder, proxies, validator, errorFormatter),
+		connect: NewConnectRPCGateway(budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
+		grpcweb: NewGRPCWebGateway(budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
 	}
 }
 
@@ -64,12 +65,4 @@ func (g *MultiProtocolGateway) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	default:
 		g.connect.ServeHTTP(w, r)
 	}
-}
-
-// SetProxies updates the proxy routes on both sub-gateways at runtime.
-// This lets the gRPC server share its proxy routes with the gateway after
-// they are built (the gateway is created before proxy routes are available).
-func (g *MultiProtocolGateway) SetProxies(r *proxyroutes.Registry) {
-	g.grpcweb.SetProxies(r)
-	g.connect.SetProxies(r)
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync/atomic"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
@@ -41,12 +42,12 @@ func NewGRPCWebGateway(
 	budgerigar *stuber.Budgerigar,
 	descriptorRegistry *descriptors.Registry,
 	recorder history.Recorder,
-	proxies *proxyroutes.Registry,
+	proxyRoutesRef *atomic.Pointer[proxyroutes.Registry],
 	validator *validator.Validate,
 	errorFormatter *ErrorFormatter,
 ) *GRPCWebGateway {
 	return &GRPCWebGateway{
-		gatewayHandler: newGatewayHandler(budgerigar, descriptorRegistry, recorder, proxies, validator, errorFormatter),
+		gatewayHandler: newGatewayHandler(budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
 	}
 }
 

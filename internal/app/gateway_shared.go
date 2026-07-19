@@ -123,20 +123,16 @@ type gatewayHandler struct {
 	budgerigar     *stuber.Budgerigar
 	descriptors    *descriptors.Registry
 	recorder       history.Recorder
-	proxies        *proxyroutes.Registry
+	proxyRoutesRef *atomic.Pointer[proxyroutes.Registry]
 	validator      *validator.Validate
 	errorFormatter *ErrorFormatter
-}
-
-func (h *gatewayHandler) SetProxies(r *proxyroutes.Registry) {
-	h.proxies = r
 }
 
 func newGatewayHandler(
 	budgerigar *stuber.Budgerigar,
 	descriptorRegistry *descriptors.Registry,
 	recorder history.Recorder,
-	proxies *proxyroutes.Registry,
+	proxyRoutesRef *atomic.Pointer[proxyroutes.Registry],
 	validator *validator.Validate,
 	errorFormatter *ErrorFormatter,
 ) gatewayHandler {
@@ -149,7 +145,7 @@ func newGatewayHandler(
 		budgerigar:     budgerigar,
 		descriptors:    descriptorRegistry,
 		recorder:       recorder,
-		proxies:        proxies,
+		proxyRoutesRef: proxyRoutesRef,
 		validator:      validator,
 		errorFormatter: e,
 	}
@@ -158,6 +154,11 @@ func newGatewayHandler(
 func (h *gatewayHandler) buildMocker(r *http.Request, service, method, fullMethod string,
 	methodDesc protoreflect.MethodDescriptor,
 ) *grpcMocker {
+	var proxies *proxyroutes.Registry
+	if h.proxyRoutesRef != nil {
+		proxies = h.proxyRoutesRef.Load()
+	}
+
 	return &grpcMocker{
 		budgerigar:     h.budgerigar,
 		templateEngine: template.New(r.Context(), nil),
@@ -167,7 +168,7 @@ func (h *gatewayHandler) buildMocker(r *http.Request, service, method, fullMetho
 			static:  protoregistry.GlobalFiles,
 			dynamic: h.descriptors,
 		},
-		proxies:            h.proxies,
+		proxies:            proxies,
 		validator:          h.validator,
 		fullServiceName:    service,
 		serviceName:        service,
@@ -177,7 +178,7 @@ func (h *gatewayHandler) buildMocker(r *http.Request, service, method, fullMetho
 		outputDesc:         methodDesc.Output(),
 		serverStream:       methodDesc.IsStreamingServer(),
 		clientStream:       methodDesc.IsStreamingClient(),
-		strictServiceMatch: h.proxies != nil && h.proxies.RouteByMethod(fullMethod) != nil,
+		strictServiceMatch: proxies != nil && proxies.RouteByMethod(fullMethod) != nil,
 	}
 }
 

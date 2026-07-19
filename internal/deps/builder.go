@@ -200,6 +200,10 @@ func (b *Builder) ProxyRoutes() *proxyroutes.Registry {
 	return b.proxyRoutes.Load()
 }
 
+func (b *Builder) ProxyRoutesRef() *atomic.Pointer[proxyroutes.Registry] {
+	return &b.proxyRoutes
+}
+
 func (b *Builder) SetGateway(g *app.MultiProtocolGateway) {
 	b.gateway = g
 }
