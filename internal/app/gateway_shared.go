@@ -262,24 +262,57 @@ func (h *gatewayHandler) handleWithoutDescriptor(
 		requestTime, []map[string]any{emptyInput}, []map[string]any{{}}, "")
 }
 
+// collectFieldMaskNames returns a set of JSON field names that are
+// google.protobuf.FieldMask in the given message descriptor.
+func collectFieldMaskNames(msg proto.Message) map[string]struct{} {
+	if msg == nil {
+		return nil
+	}
+
+	desc := msg.ProtoReflect().Descriptor()
+	if desc == nil {
+		return nil
+	}
+
+	fields := desc.Fields()
+	result := make(map[string]struct{}, fields.Len())
+
+	for i := range fields.Len() {
+		fd := fields.Get(i)
+		if fd.Kind() == protoreflect.MessageKind &&
+			string(fd.Message().FullName()) == "google.protobuf.FieldMask" {
+			result[string(fd.Name())] = struct{}{}
+		}
+	}
+
+	return result
+}
+
 // normalizeFieldMaskJSON converts well-known FieldMask fields from object JSON
 // form {"paths": ["a","b"]} to string form "a,b" which is what protojson
-// expects for google.protobuf.FieldMask. Returns the original data unchanged
+// expects for google.protobuf.FieldMask. Only fields confirmed as FieldMask
+// via the message descriptor are normalized. Returns the original data unchanged
 // if no FieldMask fields are found or if conversion isn't needed.
 //
 //nolint:cyclop
-func normalizeFieldMaskJSON(data []byte, _ proto.Message) []byte {
+func normalizeFieldMaskJSON(data []byte, msg proto.Message) []byte {
+	fieldMaskNames := collectFieldMaskNames(msg)
+	if len(fieldMaskNames) == 0 {
+		return data
+	}
+
 	var rawMap map[string]any
 	if err := json.Unmarshal(data, &rawMap); err != nil {
 		return data
 	}
 
-	// Blind-scan: any JSON value with {"paths": [...]} structure gets normalized.
-	// This works for FieldMask regardless of the message descriptor, but could
-	// theoretically match non-FieldMask fields with the same shape.
 	modified := false
 
 	for key, val := range rawMap {
+		if _, ok := fieldMaskNames[key]; !ok {
+			continue
+		}
+
 		obj, ok := val.(map[string]any)
 		if !ok {
 			continue

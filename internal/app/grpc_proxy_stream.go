@@ -281,8 +281,11 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 
 	errCh := make(chan error, proxyErrChanCap)
 
-	go m.forwardBidiRequests(stream, clientStream, prefetchedRequests, state, errCh, proxyCtx)
-	go m.forwardBidiResponses(stream, clientStream, state, errCh)
+	bidiCtx, bidiCancel := context.WithCancel(proxyCtx)
+	defer bidiCancel()
+
+	go m.forwardBidiRequests(bidiCtx, stream, clientStream, prefetchedRequests, state, errCh)
+	go m.forwardBidiResponses(bidiCtx, stream, clientStream, state, errCh)
 
 	firstErr := <-errCh
 
@@ -290,13 +293,14 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 	// indefinitely when the second goroutine is blocked.
 	timeout := route.Source.ReflectTimeout
 	if timeout <= 0 {
-		timeout = 5 * time.Second //nolint:mnd
+		timeout = proxyBidiTimeoutFallback
 	}
 
 	var secondErr error
 	select {
 	case secondErr = <-errCh:
 	case <-time.After(timeout):
+		bidiCancel()
 	}
 
 	if trailer := clientStream.Trailer(); len(trailer) > 0 {
@@ -326,16 +330,19 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 }
 
 func trySendErr(ch chan<- error, err error) {
-	ch <- err
+	select {
+	case ch <- err:
+	default:
+	}
 }
 
 func (m *grpcMocker) forwardBidiRequests(
+	bidiCtx context.Context,
 	stream grpc.ServerStream,
 	clientStream grpc.ClientStream,
 	prefetchedRequests []*dynamicpb.Message,
 	state *StreamCaptureState,
 	errCh chan<- error,
-	proxyCtx context.Context,
 ) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -344,6 +351,12 @@ func (m *grpcMocker) forwardBidiRequests(
 	}()
 
 	for _, prefetched := range prefetchedRequests {
+		if bidiCtx.Err() != nil {
+			trySendErr(errCh, nil)
+
+			return
+		}
+
 		state.AppendRequest(m.convertToMap(prefetched))
 
 		if err := clientStream.SendMsg(prefetched); err != nil {
@@ -354,11 +367,13 @@ func (m *grpcMocker) forwardBidiRequests(
 	}
 
 	for {
-		req := dynamicpb.NewMessage(m.inputDesc)
+		if bidiCtx.Err() != nil {
+			trySendErr(errCh, nil)
 
-		if err := proxyCtx.Err(); err != nil {
-			break
+			return
 		}
+
+		req := dynamicpb.NewMessage(m.inputDesc)
 
 		err := stream.RecvMsg(req)
 
@@ -383,11 +398,10 @@ func (m *grpcMocker) forwardBidiRequests(
 			return
 		}
 	}
-
-	trySendErr(errCh, nil)
 }
 
 func (m *grpcMocker) forwardBidiResponses(
+	bidiCtx context.Context,
 	stream grpc.ServerStream,
 	clientStream grpc.ClientStream,
 	state *StreamCaptureState,
@@ -400,6 +414,12 @@ func (m *grpcMocker) forwardBidiResponses(
 	}()
 
 	for {
+		if bidiCtx.Err() != nil {
+			trySendErr(errCh, nil)
+
+			return
+		}
+
 		resp := dynamicpb.NewMessage(m.outputDesc)
 
 		err := clientStream.RecvMsg(resp)

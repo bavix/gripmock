@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"strings"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -70,8 +71,9 @@ func setStreamMetadata(ctx context.Context, stream grpc.ServerStream, header, tr
 }
 
 const (
-	proxyMessagesInitCap = 8
-	proxyErrChanCap      = 2
+	proxyMessagesInitCap     = 8
+	proxyErrChanCap          = 2
+	proxyBidiTimeoutFallback = 5 * time.Second
 )
 
 type captureRequestContext struct {

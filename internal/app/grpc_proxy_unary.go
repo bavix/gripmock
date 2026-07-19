@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -105,8 +106,14 @@ func (m *grpcMocker) proxyHealthCheck(
 	}
 
 	resp := dynamicpb.NewMessage(m.outputDesc)
-	if respData, marshalErr := proto.Marshal(healthResp); marshalErr == nil {
-		_ = proto.Unmarshal(respData, resp)
+
+	respData, marshalErr := proto.Marshal(healthResp)
+	if marshalErr != nil {
+		return nil, fmt.Errorf("marshal health response: %w", marshalErr)
+	}
+
+	if unmarshalErr := proto.Unmarshal(respData, resp); unmarshalErr != nil {
+		return nil, fmt.Errorf("unmarshal health response: %w", unmarshalErr)
 	}
 
 	return resp, nil
