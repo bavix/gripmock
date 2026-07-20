@@ -29,6 +29,9 @@ func (h *DirectoryHandler) Parse(raw string) (*Source, error) {
 func (h *DirectoryHandler) Process(ctx context.Context, source *Source, processor SourceProcessor) error {
 	processor.AddImportPath(ctx, source.Path)
 
+	// Track which proto basenames we've seen to skip duplicate .pb/.protoset
+	seenProto := make(map[string]bool)
+
 	return filepath.Walk(source.Path, func(pth string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -43,8 +46,20 @@ func (h *DirectoryHandler) Process(ctx context.Context, source *Source, processo
 
 		switch ext {
 		case ".proto":
+			seenProto[absPath] = true
 			processor.AddProtoFile(ctx, absPath)
 		case ".pb", ".protoset":
+			// Skip .pb/.protoset if a .proto with the same base name exists in the same dir
+			protoPath := absPath[:len(absPath)-len(ext)] + ".proto"
+			if seenProto[protoPath] {
+				return nil
+			}
+			// Also check on disk (in case .proto was already registered via walk order
+			// or in a different handler earlier)
+			if _, statErr := os.Stat(protoPath); statErr == nil {
+				return nil
+			}
+
 			processor.AddDescriptorFile(ctx, absPath)
 		}
 

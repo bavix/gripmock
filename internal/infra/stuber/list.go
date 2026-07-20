@@ -4,6 +4,7 @@ import (
 	"iter"
 	"slices"
 	"sort"
+	"strings"
 )
 
 const (
@@ -18,6 +19,10 @@ type ListOptions struct {
 	Source  string
 	Service string
 	Method  string
+
+	// Query is a case-insensitive substring matched against the stub's
+	// service, method and ID. Empty means no text filter.
+	Query string
 
 	Session    string
 	SessionSet bool
@@ -67,6 +72,15 @@ func filterStubs(stubs iter.Seq[*Stub], options ListOptions) []*Stub {
 		session := options.Session
 		seq = whereStubs(seq, func(stub *Stub) bool {
 			return stub.Session == session
+		})
+	}
+
+	if options.Query != "" {
+		q := strings.ToLower(options.Query)
+		seq = whereStubs(seq, func(stub *Stub) bool {
+			return strings.Contains(strings.ToLower(stub.Service), q) ||
+				strings.Contains(strings.ToLower(stub.Method), q) ||
+				strings.Contains(strings.ToLower(stub.ID.String()), q)
 		})
 	}
 

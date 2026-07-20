@@ -957,7 +957,7 @@ func (s *RestServerTestSuite) TestListStubs_EmptyByUsage() {
 // TestListHistory tests history endpoint (empty when history is disabled).
 func (s *RestServerTestSuite) TestListHistory() {
 	w := httptest.NewRecorder()
-	s.server.ListHistory(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/history", nil))
+	s.server.ListHistory(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/history", nil), rest.ListHistoryParams{})
 	s.Equal(http.StatusOK, w.Code)
 
 	var list []any
@@ -1690,7 +1690,7 @@ func (s *RestServerTestSuite) listHistory(server *RestServer, prepare func(*http
 	}
 
 	w := httptest.NewRecorder()
-	server.ListHistory(w, req)
+	server.ListHistory(w, req, rest.ListHistoryParams{})
 
 	return w
 }

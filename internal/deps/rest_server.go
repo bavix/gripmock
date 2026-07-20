@@ -9,6 +9,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/rs/zerolog"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/bavix/gripmock/v3/internal/app"
@@ -18,6 +19,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
 	"github.com/bavix/gripmock/v3/internal/infra/telemetry"
 	infraTLS "github.com/bavix/gripmock/v3/internal/infra/tls"
+	gripmockui "github.com/bavix/gripmock/v3/ui"
 )
 
 type RestServer struct {
@@ -70,14 +72,20 @@ func (b *Builder) RestServe(
 	StartSessionGC(ctx, b.config, b.Budgerigar(), b.HistoryStore(), b.ender)
 
 	extender := b.Extender(ctx)
-	// Load stubs synchronously before starting HTTP server
-	// This ensures stubs are available when gRPC server starts
+
+	// Phase 1: load stubs
+	zerolog.Ctx(ctx).Info().Str("path", stubPath).Msg("startup: loading stubs")
+
 	if stubPath != "" {
 		extender.ReadFromPathSync(ctx, stubPath)
 	} else {
-		// No stub path, close the channel to signal completion
 		extender.SignalLoaded()
 	}
+
+	zerolog.Ctx(ctx).Info().Msg("startup: stubs loaded")
+
+	// Phase 2: create API server
+	zerolog.Ctx(ctx).Info().Msg("startup: initialising API server")
 
 	var historyReader history.Reader
 	if store := b.HistoryStore(); store != nil {
@@ -97,10 +105,22 @@ func (b *Builder) RestServe(
 		return nil, errors.Wrapf(err, "failed to create rest server")
 	}
 
-	ui, err := b.ui()
+	apiServer.SetPorts(app.ServerPorts{
+		GRPC:    b.config.GRPC.Addr,
+		Gateway: b.config.Gateway.Addr,
+		HTTP:    b.config.HTTP.Addr,
+	})
+	zerolog.Ctx(ctx).Info().Msg("startup: API server created")
+
+	// Phase 3: load UI assets
+	zerolog.Ctx(ctx).Info().Msg("startup: loading UI assets")
+
+	ui, err := gripmockui.Assets()
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get UI assets")
 	}
+
+	zerolog.Ctx(ctx).Info().Msg("startup: UI assets loaded")
 
 	router := mux.NewRouter()
 	rest.HandlerWithOptions(apiServer, rest.GorillaServerOptions{
@@ -120,7 +140,7 @@ func (b *Builder) RestServe(
 
 	router.Path("/metrics").Handler(telemetry.MetricsHandler(b.promReg))
 
-	router.PathPrefix("/").Handler(http.FileServerFS(ui)).Methods(http.MethodGet)
+	router.PathPrefix("/").Handler(spaHandler(ui)).Methods(http.MethodGet)
 
 	const (
 		readHeaderTimeout = 10 * time.Second
@@ -131,13 +151,13 @@ func (b *Builder) RestServe(
 	)
 
 	handler := handlers.CORS(
-		handlers.AllowedOrigins([]string{"*"}),
+		handlers.AllowedOrigins(b.config.CORSAllowedOrigins),
 		handlers.AllowedHeaders([]string{
 			"Accept", "Accept-Language", "Content-Encoding", "Content-Type", "Content-Language", "Origin",
 			"X-GripMock-RequestInternal",
 			"X-Gripmock-Session",
 		}),
-		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodPatch}),
+		handlers.AllowedMethods(b.config.CORSAllowedMethods),
 	)(router)
 	handler = httputil.GzipRequestMiddleware(handler)
 	handler = handlers.CompressHandler(handler)

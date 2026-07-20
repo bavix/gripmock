@@ -112,6 +112,14 @@ func (b *Budgerigar) Used() []*Stub {
 	return stubs
 }
 
+// UsedIDs returns the set of stub IDs that have matched at least once.
+func (b *Budgerigar) UsedIDs() map[uuid.UUID]struct{} {
+	b.searcher.mu.RLock()
+	defer b.searcher.mu.RUnlock()
+
+	return b.searcher.collectUsedIDs()
+}
+
 // Unused returns all Stub values that have not been used.
 func (b *Budgerigar) Unused() []*Stub {
 	stubs := b.searcher.unused()

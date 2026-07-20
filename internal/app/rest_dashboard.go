@@ -3,6 +3,8 @@ package app
 import (
 	"fmt"
 	"net/http"
+	"sort"
+	"strconv"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -12,6 +14,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
 	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
+	"github.com/bavix/gripmock/v3/internal/infra/session"
 )
 
 func (h *RestServer) Readiness(w http.ResponseWriter, r *http.Request) {
@@ -39,6 +42,8 @@ func (h *RestServer) DashboardOverview(w http.ResponseWriter, r *http.Request) {
 		TotalStubs:         payload.TotalStubs,
 		UsedStubs:          payload.UsedStubs,
 		UnusedStubs:        payload.UnusedStubs,
+		CoveredMethods:     payload.CoveredMethods,
+		TotalMethods:       payload.TotalMethods,
 		TotalSessions:      payload.TotalSessions,
 		RuntimeDescriptors: payload.RuntimeDescriptors,
 		TotalHistory:       payload.TotalHistory,
@@ -55,7 +60,33 @@ func (h *RestServer) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 // SessionsList returns distinct non-empty session IDs for UI selectors.
 func (h *RestServer) SessionsList(w http.ResponseWriter, r *http.Request) {
-	h.writeResponse(r.Context(), w, rest.Sessions{Sessions: h.budgerigar.Sessions()})
+	h.writeResponse(r.Context(), w, rest.Sessions{Sessions: h.mergedSessions()})
+}
+
+// mergedSessions is the sorted union of stub-scoped session IDs and sessions
+// seen making live calls (the request tracker), minus the empty (global) one.
+func (h *RestServer) mergedSessions() []string {
+	seen := make(map[string]struct{})
+	merged := make([]string, 0)
+
+	add := func(ids []string) {
+		for _, id := range ids {
+			if id == "" {
+				continue
+			}
+
+			if _, ok := seen[id]; !ok {
+				seen[id] = struct{}{}
+				merged = append(merged, id)
+			}
+		}
+	}
+
+	add(h.budgerigar.Sessions())
+	add(session.IDs())
+	sort.Strings(merged)
+
+	return merged
 }
 
 // DashboardInfo returns build metadata and runtime process information.
@@ -82,14 +113,29 @@ func (h *RestServer) DashboardInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListHistory returns recorded gRPC calls.
-func (h *RestServer) ListHistory(w http.ResponseWriter, r *http.Request) {
+func (h *RestServer) ListHistory(w http.ResponseWriter, r *http.Request, params rest.ListHistoryParams) {
 	if h.history == nil {
 		h.writeResponse(r.Context(), w, rest.HistoryList{})
 
 		return
 	}
 
-	calls := h.history.Filter(history.FilterOpts{Session: muxmiddleware.FromRequest(r)})
+	calls := h.history.Filter(history.FilterOpts{
+		Session: muxmiddleware.FromRequest(r),
+		Service: stringFromPtr(params.Service),
+		Method:  stringFromPtr(params.Method),
+	})
+
+	w.Header().Set("X-Total-Count", strconv.Itoa(len(calls)))
+
+	// ?limit=N returns the most recent N; ?offset=M skips the M newest first.
+	// offset=0 (default) preserves the legacy tail behavior.
+	if limit := intFromPtr(params.Limit); limit > 0 {
+		offset := max(intFromPtr(params.Offset), 0)
+		end := max(len(calls)-offset, 0)
+		start := max(end-limit, 0)
+		calls = calls[start:end]
+	}
 
 	out := make(rest.HistoryList, len(calls))
 	for i, c := range calls {
@@ -130,6 +176,10 @@ func historyCallRecordToRest(c history.CallRecord) rest.CallRecord {
 	if c.Code != 0 {
 		code := int(c.Code)
 		r.Code = &code
+	}
+
+	if c.ElapsedMS > 0 {
+		r.ElapsedMs = &c.ElapsedMS
 	}
 
 	if !c.Timestamp.IsZero() {

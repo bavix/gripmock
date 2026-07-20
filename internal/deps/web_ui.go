@@ -2,17 +2,43 @@ package deps
 
 import (
 	"io/fs"
-
-	"github.com/cockroachdb/errors"
-
-	gripmockui "github.com/bavix/gripmock-ui"
+	"net/http"
+	"strings"
 )
 
-func (b *Builder) ui() (fs.FS, error) {
-	assets, err := gripmockui.Assets()
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get UI assets")
+func spaHandler(assets fs.FS) http.Handler {
+	fileServer := http.FileServerFS(assets)
+
+	serveIndex := func(w http.ResponseWriter, r *http.Request) {
+		idx := r.Clone(r.Context())
+		idx.URL.Path = "/"
+		idx.URL.RawPath = ""
+
+		fileServer.ServeHTTP(w, idx)
 	}
 
-	return assets, nil
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upath := strings.TrimPrefix(r.URL.Path, "/")
+		if upath == "" {
+			serveIndex(w, r)
+
+			return
+		}
+
+		if f, err := assets.Open(upath); err == nil {
+			_ = f.Close()
+
+			fileServer.ServeHTTP(w, r)
+
+			return
+		}
+
+		if strings.HasPrefix(upath, "assets/") {
+			http.NotFound(w, r)
+
+			return
+		}
+
+		serveIndex(w, r)
+	})
 }

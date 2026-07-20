@@ -24,6 +24,7 @@ type CallRecord struct {
 	Responses []map[string]any `json:"responses,omitempty"` // For streaming calls with multiple messages.
 	Code      uint32           `json:"code,omitempty"`      // gRPC status code (e.g., codes.OK, codes.NotFound).
 	Error     string           `json:"error,omitempty"`
+	ElapsedMS int64            `json:"elapsedMs,omitempty"` // Handler duration in milliseconds.
 	Timestamp time.Time        `json:"timestamp"`
 }
 

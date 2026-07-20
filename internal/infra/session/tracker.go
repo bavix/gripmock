@@ -35,6 +35,21 @@ func (t *Tracker) Forget(sessionID string) {
 	t.mu.Unlock()
 }
 
+// IDs returns all currently-tracked session IDs, sorted.
+func (t *Tracker) IDs() []string {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
+	ids := make([]string, 0, len(t.lastSeen))
+	for sessionID := range t.lastSeen {
+		ids = append(ids, sessionID)
+	}
+
+	slices.Sort(ids)
+
+	return ids
+}
+
 func (t *Tracker) Expired(now time.Time, ttl time.Duration) []string {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
@@ -60,6 +75,11 @@ func Touch(sessionID string) {
 
 func Forget(sessionID string) {
 	defaultTracker.Forget(sessionID)
+}
+
+// IDs returns all session IDs seen by the default tracker, sorted.
+func IDs() []string {
+	return defaultTracker.IDs()
 }
 
 func Expired(now time.Time, ttl time.Duration) []string {

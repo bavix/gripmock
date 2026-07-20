@@ -337,6 +337,12 @@ paths:
           required: false
           schema:
             type: string
+        - name: q
+          in: query
+          description: Case-insensitive substring search over service, method and stub ID
+          required: false
+          schema:
+            type: string
         - name: limit
           in: query
           description: Maximum number of returned stubs
@@ -433,6 +439,36 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ListID'
+  /stubs/validate:
+    post:
+      tags:
+        - stubs
+      summary: Validate a stub payload without persisting
+      description: Validates one or more stubs and returns them normalized without adding to storage
+      operationId: validateStub
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/StubList'
+        '400':
+          description: Invalid stub data
+        '422':
+          description: Validation error
+        '500':
+          description: Internal Server Error
+      requestBody:
+        description: Stub payload to validate
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/StubList'
+                - $ref: '#/components/schemas/Stub'
   /stubs/{uuid}:
     get:
       tags:
@@ -545,9 +581,39 @@ paths:
       summary: Get call history
       description: Returns recorded gRPC calls (when history is enabled)
       operationId: listHistory
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: Return at most N most-recent records
+          schema:
+            type: integer
+            minimum: 0
+        - name: offset
+          in: query
+          required: false
+          description: Skip the N newest records (page backward through older calls)
+          schema:
+            type: integer
+            minimum: 0
+        - name: service
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: method
+          in: query
+          required: false
+          schema:
+            type: string
       responses:
         '200':
           description: List of recorded calls
+          headers:
+            X-Total-Count:
+              description: Total number of records before pagination
+              schema:
+                type: integer
           content:
             application/json:
               schema:
@@ -921,6 +987,10 @@ components:
           description: gRPC status code (e.g., 0 for OK, 5 for NotFound)
         error:
           type: string
+        elapsedMs:
+          type: integer
+          format: int64
+          description: Handler duration in milliseconds
     HistoryList:
       type: array
       items:
@@ -1116,6 +1186,28 @@ components:
         unusedStubs:
           type: integer
           minimum: 0
+        coveredMethods:
+          type: integer
+          minimum: 0
+          description: Number of gRPC methods that have at least one stub
+          x-go-type-skip-optional-pointer: true
+        totalMethods:
+          type: integer
+          minimum: 0
+          description: Total number of gRPC methods across all services
+          x-go-type-skip-optional-pointer: true
+        grpcAddr:
+          type: string
+          description: Native gRPC listen address
+          x-go-type-skip-optional-pointer: true
+        gatewayAddr:
+          type: string
+          description: ConnectRPC + gRPC-web listen address
+          x-go-type-skip-optional-pointer: true
+        httpAddr:
+          type: string
+          description: Admin REST API + UI listen address
+          x-go-type-skip-optional-pointer: true
         totalSessions:
           type: integer
           minimum: 0
@@ -1253,6 +1345,28 @@ components:
         unusedStubs:
           type: integer
           minimum: 0
+        coveredMethods:
+          type: integer
+          minimum: 0
+          description: Number of gRPC methods that have at least one stub
+          x-go-type-skip-optional-pointer: true
+        totalMethods:
+          type: integer
+          minimum: 0
+          description: Total number of gRPC methods across all services
+          x-go-type-skip-optional-pointer: true
+        grpcAddr:
+          type: string
+          description: Native gRPC listen address
+          x-go-type-skip-optional-pointer: true
+        gatewayAddr:
+          type: string
+          description: ConnectRPC + gRPC-web listen address
+          x-go-type-skip-optional-pointer: true
+        httpAddr:
+          type: string
+          description: Admin REST API + UI listen address
+          x-go-type-skip-optional-pointer: true
         totalSessions:
           type: integer
           minimum: 0
@@ -1287,6 +1401,10 @@ components:
           type: integer
           default: 0
           description: Priority of the stub. Higher priority stubs are matched first.
+          x-go-type-skip-optional-pointer: true
+        used:
+          type: boolean
+          description: Response-only — whether the stub has matched at least once. Ignored on input.
           x-go-type-skip-optional-pointer: true
         headers:
           $ref: '#/components/schemas/StubHeaders'

@@ -44,6 +44,15 @@ type RestServer struct {
 	restDescriptors *descriptors.Registry
 	mcpHandler      http.Handler
 	errorFormatter  *ErrorFormatter
+	ports           ServerPorts
+}
+
+// ServerPorts holds the listen addresses of the protocol endpoints, surfaced on
+// the dashboard so users know where to point clients.
+type ServerPorts struct {
+	GRPC    string // native gRPC
+	Gateway string // ConnectRPC + gRPC-web (one port)
+	HTTP    string // admin REST API + this UI
 }
 
 var _ rest.ServerInterface = &RestServer{}
@@ -99,6 +108,9 @@ func NewRestServer(
 
 	return server, nil
 }
+
+// SetPorts records the protocol listen addresses for the dashboard (optional).
+func (h *RestServer) SetPorts(p ServerPorts) { h.ports = p }
 
 const (
 	servicesListCap   = 16
@@ -281,9 +293,40 @@ func (h *RestServer) validateStub(stub *stuber.Stub) error {
 	return nil
 }
 
+// methodCoverage counts how many known gRPC methods have at least one stub.
+// A stub's Service may be the FQN or the bare service name (package optional),
+// so a method is covered when a stub matches either form.
+func methodCoverage(services []rest.Service, stubs []*stuber.Stub) (int, int) {
+	type ref struct{ service, method string }
+
+	have := make(map[ref]struct{}, len(stubs))
+	for _, s := range stubs {
+		have[ref{s.Service, s.Method}] = struct{}{}
+	}
+
+	var covered, total int
+
+	for _, svc := range services {
+		for _, m := range svc.Methods {
+			total++
+
+			_, byID := have[ref{svc.Id, m.Name}]
+			_, byName := have[ref{svc.Name, m.Name}]
+
+			if byID || byName {
+				covered++
+			}
+		}
+	}
+
+	return covered, total
+}
+
 func (h *RestServer) dashboardPayload(r *http.Request) rest.Dashboard {
 	all := h.budgerigar.All()
 	used := h.budgerigar.Used()
+	services := h.collectAllServices()
+	coveredMethods, totalMethods := methodCoverage(services, all)
 
 	payload := rest.Dashboard{
 		AppName:            "gripmock",
@@ -297,11 +340,16 @@ func (h *RestServer) dashboardPayload(r *http.Request) rest.Dashboard {
 		UptimeSeconds:      int(time.Since(h.startedAt).Seconds()),
 		Ready:              h.ok.Load(),
 		HistoryEnabled:     h.history != nil,
-		TotalServices:      len(h.collectAllServices()),
+		TotalServices:      len(services),
 		TotalStubs:         len(all),
 		UsedStubs:          len(used),
 		UnusedStubs:        max(len(all)-len(used), 0),
-		TotalSessions:      len(h.budgerigar.Sessions()),
+		CoveredMethods:     coveredMethods,
+		TotalMethods:       totalMethods,
+		GrpcAddr:           h.ports.GRPC,
+		GatewayAddr:        h.ports.Gateway,
+		HttpAddr:           h.ports.HTTP,
+		TotalSessions:      len(h.mergedSessions()),
 		RuntimeDescriptors: len(h.restDescriptors.ServiceIDs()),
 		TotalHistory:       0,
 		HistoryErrors:      0,

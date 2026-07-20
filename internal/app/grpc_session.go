@@ -107,6 +107,7 @@ func (m *grpcMocker) recordCall(
 		Error:     errMsg,
 		Code:      code,
 		StubID:    stubID,
+		ElapsedMS: time.Since(timestamp).Milliseconds(),
 		Timestamp: timestamp,
 	}
 

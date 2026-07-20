@@ -92,9 +92,12 @@ type AddDescriptorsResponse struct {
 // CallRecord defines model for CallRecord.
 type CallRecord struct {
 	// Code gRPC status code (e.g., 0 for OK, 5 for NotFound)
-	Code   *int    `json:"code,omitempty"`
-	Error  *string `json:"error,omitempty"`
-	Method *string `json:"method,omitempty"`
+	Code *int `json:"code,omitempty"`
+
+	// ElapsedMs Handler duration in milliseconds
+	ElapsedMs *int64  `json:"elapsedMs,omitempty"`
+	Error     *string `json:"error,omitempty"`
+	Method    *string `json:"method,omitempty"`
 
 	// Request Deprecated: use requests for streaming calls
 	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
@@ -121,25 +124,40 @@ type CallRecord struct {
 
 // Dashboard defines model for Dashboard.
 type Dashboard struct {
-	AppName            string    `json:"appName"`
-	Compiler           string    `json:"compiler"`
-	GoVersion          string    `json:"goVersion"`
-	Goarch             string    `json:"goarch"`
-	Goos               string    `json:"goos"`
-	HistoryEnabled     bool      `json:"historyEnabled"`
-	HistoryErrors      int       `json:"historyErrors"`
+	AppName  string `json:"appName"`
+	Compiler string `json:"compiler"`
+
+	// CoveredMethods Number of gRPC methods that have at least one stub
+	CoveredMethods int `json:"coveredMethods,omitempty"`
+
+	// GatewayAddr ConnectRPC + gRPC-web listen address
+	GatewayAddr string `json:"gatewayAddr,omitempty"`
+	GoVersion   string `json:"goVersion"`
+	Goarch      string `json:"goarch"`
+	Goos        string `json:"goos"`
+
+	// GrpcAddr Native gRPC listen address
+	GrpcAddr       string `json:"grpcAddr,omitempty"`
+	HistoryEnabled bool   `json:"historyEnabled"`
+	HistoryErrors  int    `json:"historyErrors"`
+
+	// HttpAddr Admin REST API + UI listen address
+	HttpAddr           string    `json:"httpAddr,omitempty"`
 	NumCPU             int       `json:"numCPU"`
 	Ready              bool      `json:"ready"`
 	RuntimeDescriptors int       `json:"runtimeDescriptors"`
 	StartedAt          time.Time `json:"startedAt"`
 	TotalHistory       int       `json:"totalHistory"`
-	TotalServices      int       `json:"totalServices"`
-	TotalSessions      int       `json:"totalSessions"`
-	TotalStubs         int       `json:"totalStubs"`
-	UnusedStubs        int       `json:"unusedStubs"`
-	UptimeSeconds      int       `json:"uptimeSeconds"`
-	UsedStubs          int       `json:"usedStubs"`
-	Version            string    `json:"version"`
+
+	// TotalMethods Total number of gRPC methods across all services
+	TotalMethods  int    `json:"totalMethods,omitempty"`
+	TotalServices int    `json:"totalServices"`
+	TotalSessions int    `json:"totalSessions"`
+	TotalStubs    int    `json:"totalStubs"`
+	UnusedStubs   int    `json:"unusedStubs"`
+	UptimeSeconds int    `json:"uptimeSeconds"`
+	UsedStubs     int    `json:"usedStubs"`
+	Version       string `json:"version"`
 }
 
 // DashboardInfo defines model for DashboardInfo.
@@ -163,14 +181,28 @@ type DashboardInfo struct {
 
 // DashboardOverview defines model for DashboardOverview.
 type DashboardOverview struct {
-	HistoryErrors      int `json:"historyErrors"`
-	RuntimeDescriptors int `json:"runtimeDescriptors"`
-	TotalHistory       int `json:"totalHistory"`
-	TotalServices      int `json:"totalServices"`
-	TotalSessions      int `json:"totalSessions"`
-	TotalStubs         int `json:"totalStubs"`
-	UnusedStubs        int `json:"unusedStubs"`
-	UsedStubs          int `json:"usedStubs"`
+	// CoveredMethods Number of gRPC methods that have at least one stub
+	CoveredMethods int `json:"coveredMethods,omitempty"`
+
+	// GatewayAddr ConnectRPC + gRPC-web listen address
+	GatewayAddr string `json:"gatewayAddr,omitempty"`
+
+	// GrpcAddr Native gRPC listen address
+	GrpcAddr      string `json:"grpcAddr,omitempty"`
+	HistoryErrors int    `json:"historyErrors"`
+
+	// HttpAddr Admin REST API + UI listen address
+	HttpAddr           string `json:"httpAddr,omitempty"`
+	RuntimeDescriptors int    `json:"runtimeDescriptors"`
+	TotalHistory       int    `json:"totalHistory"`
+
+	// TotalMethods Total number of gRPC methods across all services
+	TotalMethods  int `json:"totalMethods,omitempty"`
+	TotalServices int `json:"totalServices"`
+	TotalSessions int `json:"totalSessions"`
+	TotalStubs    int `json:"totalStubs"`
+	UnusedStubs   int `json:"unusedStubs"`
+	UsedStubs     int `json:"usedStubs"`
 }
 
 // DescriptorServiceIDs defines model for DescriptorServiceIDs.
@@ -382,6 +414,9 @@ type Stub struct {
 
 	// Source Source of the stub (file, rest, mcp, proxy)
 	Source *string `json:"source,omitempty,omitzero"`
+
+	// Used Response-only — whether the stub has matched at least once. Ignored on input.
+	Used bool `json:"used,omitempty"`
 }
 
 // StubEffect defines model for StubEffect.
@@ -482,6 +517,17 @@ type VerifyRequest struct {
 	Service       string `json:"service"`
 }
 
+// ListHistoryParams defines parameters for ListHistory.
+type ListHistoryParams struct {
+	// Limit Return at most N most-recent records
+	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// Offset Skip the N newest records (page backward through older calls)
+	Offset  *int    `form:"offset,omitempty" json:"offset,omitempty"`
+	Service *string `form:"service,omitempty" json:"service,omitempty"`
+	Method  *string `form:"method,omitempty" json:"method,omitempty"`
+}
+
 // ListStubsParams defines parameters for ListStubs.
 type ListStubsParams struct {
 	// Source Filter by source (file, rest, mcp, proxy)
@@ -495,6 +541,9 @@ type ListStubsParams struct {
 
 	// Session Filter by session ID (empty means global stubs)
 	Session *string `form:"session,omitempty" json:"session,omitempty"`
+
+	// Q Case-insensitive substring search over service, method and stub ID
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
 
 	// Limit Maximum number of returned stubs
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
@@ -516,6 +565,16 @@ type AddStub200JSONResponseBody struct {
 	union json.RawMessage
 }
 
+// ValidateStubJSONBody defines parameters for ValidateStub.
+type ValidateStubJSONBody struct {
+	union json.RawMessage
+}
+
+// ValidateStub200JSONResponseBody defines parameters for ValidateStub.
+type ValidateStub200JSONResponseBody struct {
+	union json.RawMessage
+}
+
 // AddStubJSONRequestBody defines body for AddStub for application/json ContentType.
 type AddStubJSONRequestBody AddStubJSONBody
 
@@ -527,6 +586,9 @@ type InspectStubsJSONRequestBody = InspectRequest
 
 // SearchStubsJSONRequestBody defines body for SearchStubs for application/json ContentType.
 type SearchStubsJSONRequestBody = SearchRequest
+
+// ValidateStubJSONRequestBody defines body for ValidateStub for application/json ContentType.
+type ValidateStubJSONRequestBody ValidateStubJSONBody
 
 // VerifyCallsJSONRequestBody defines body for VerifyCalls for application/json ContentType.
 type VerifyCallsJSONRequestBody = VerifyRequest
@@ -695,6 +757,104 @@ func (t *AddStub200JSONResponseBody) UnmarshalJSON(b []byte) error {
 	return err
 }
 
+// AsStubList returns the union data inside the ValidateStubJSONBody as a StubList
+func (t ValidateStubJSONBody) AsStubList() (StubList, error) {
+	var body StubList
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStubList overwrites any union data inside the ValidateStubJSONBody as the provided StubList
+func (t *ValidateStubJSONBody) FromStubList(v StubList) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeStubList performs a merge with any union data inside the ValidateStubJSONBody, using the provided StubList
+func (t *ValidateStubJSONBody) MergeStubList(v StubList) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+// AsStub returns the union data inside the ValidateStubJSONBody as a Stub
+func (t ValidateStubJSONBody) AsStub() (Stub, error) {
+	var body Stub
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStub overwrites any union data inside the ValidateStubJSONBody as the provided Stub
+func (t *ValidateStubJSONBody) FromStub(v Stub) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeStub performs a merge with any union data inside the ValidateStubJSONBody, using the provided Stub
+func (t *ValidateStubJSONBody) MergeStub(v Stub) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ValidateStubJSONBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ValidateStubJSONBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
+// AsStubList returns the union data inside the ValidateStub200JSONResponseBody as a StubList
+func (t ValidateStub200JSONResponseBody) AsStubList() (StubList, error) {
+	var body StubList
+	err := json.Unmarshal(t.union, &body)
+	return body, err
+}
+
+// FromStubList overwrites any union data inside the ValidateStub200JSONResponseBody as the provided StubList
+func (t *ValidateStub200JSONResponseBody) FromStubList(v StubList) error {
+	b, err := json.Marshal(v)
+	t.union = b
+	return err
+}
+
+// MergeStubList performs a merge with any union data inside the ValidateStub200JSONResponseBody, using the provided StubList
+func (t *ValidateStub200JSONResponseBody) MergeStubList(v StubList) error {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+
+	merged, err := runtime.JSONMerge(t.union, b)
+	t.union = merged
+	return err
+}
+
+func (t ValidateStub200JSONResponseBody) MarshalJSON() ([]byte, error) {
+	b, err := t.union.MarshalJSON()
+	return b, err
+}
+
+func (t *ValidateStub200JSONResponseBody) UnmarshalJSON(b []byte) error {
+	err := t.union.UnmarshalJSON(b)
+	return err
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Dashboard Dashboard aggregate payload
@@ -720,7 +880,7 @@ type ServerInterface interface {
 	Readiness(w http.ResponseWriter, r *http.Request)
 	// ListHistory Get call history
 	// (GET /history)
-	ListHistory(w http.ResponseWriter, r *http.Request)
+	ListHistory(w http.ResponseWriter, r *http.Request, params ListHistoryParams)
 	// ServicesList Services
 	// (GET /services)
 	ServicesList(w http.ResponseWriter, r *http.Request)
@@ -763,6 +923,9 @@ type ServerInterface interface {
 	// ListUsedStubs Getting a list of used stubs
 	// (GET /stubs/used)
 	ListUsedStubs(w http.ResponseWriter, r *http.Request)
+	// ValidateStub Validate a stub payload without persisting
+	// (POST /stubs/validate)
+	ValidateStub(w http.ResponseWriter, r *http.Request)
 	// DeleteStubByID Deletes stub by ID
 	// (DELETE /stubs/{uuid})
 	DeleteStubByID(w http.ResponseWriter, r *http.Request, uuid ID)
@@ -884,8 +1047,66 @@ func (siw *ServerInterfaceWrapper) Readiness(w http.ResponseWriter, r *http.Requ
 // ListHistory operation middleware
 func (siw *ServerInterfaceWrapper) ListHistory(w http.ResponseWriter, r *http.Request) {
 
+	var err error
+	_ = err
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListHistoryParams
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "limit"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "limit", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "offset" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "offset", r.URL.Query(), &params.Offset, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "offset"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "offset", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "service" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "service", r.URL.Query(), &params.Service, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "service"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "service", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "method" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "method", r.URL.Query(), &params.Method, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "method"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "method", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListHistory(w, r)
+		siw.Handler.ListHistory(w, r, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1111,6 +1332,19 @@ func (siw *ServerInterfaceWrapper) ListStubs(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", r.URL.Query(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
 	// ------------- Optional query parameter "limit" -------------
 
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", r.URL.Query(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
@@ -1236,6 +1470,20 @@ func (siw *ServerInterfaceWrapper) ListUsedStubs(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListUsedStubs(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ValidateStub operation middleware
+func (siw *ServerInterfaceWrapper) ValidateStub(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ValidateStub(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -1457,6 +1705,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/stubs", wrapper.AddStub).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/stubs/batchDelete", wrapper.BatchStubsDelete).Methods(http.MethodPost)
+
+	r.HandleFunc(options.BaseURL+"/stubs/validate", wrapper.ValidateStub).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/stubs/{uuid}", wrapper.DeleteStubByID).Methods(http.MethodDelete)
 
