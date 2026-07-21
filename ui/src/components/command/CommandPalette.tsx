@@ -96,14 +96,14 @@ export function CommandPalette() {
   const stubItems = items.filter((i) => i.kind === 'stub');
 
   return (
-    <div role="button" tabIndex={0} aria-label="Close command palette"
-      onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
-      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setOpen(false); } }}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(6,10,20,0.55)',
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh',
-      }}>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 300,
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh',
+    }}>
+      <button type="button" aria-label="Close command palette" onClick={() => setOpen(false)}
+        style={{ position: 'fixed', inset: 0, border: 'none', padding: 0, cursor: 'default', background: 'rgba(6,10,20,0.55)' }} />
       <div role="dialog" aria-modal="true" aria-label="Command palette" style={{
+        position: 'relative', zIndex: 1,
         width: 560, maxWidth: '92vw', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-xl)',
         border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)', overflow: 'hidden',
       }}>

@@ -19,18 +19,11 @@ export function SlideOver({ open, onClose, title, children, width = '640px' }: R
       pointerEvents: open ? 'auto' : 'none',
     }}>
       {open && (
-        <div
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
           aria-label="Close"
           onClick={onClose}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              onClose();
-            }
-          }}
-          style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)' }}
+          style={{ position: 'absolute', inset: 0, border: 'none', padding: 0, cursor: 'default', background: 'rgba(0,0,0,0.3)' }}
         />
       )}
 

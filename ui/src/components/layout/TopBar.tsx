@@ -121,12 +121,12 @@ export function TopBar({ onToggleSidebar }: Readonly<TopBarProps>) {
       </button>
 
       {showSettings && (
-        <div role="button" tabIndex={0} aria-label="Close settings"
-          style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)' }}
-          onClick={() => setShowSettings(false)}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowSettings(false); } }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button type="button" aria-label="Close settings" onClick={() => setShowSettings(false)}
+            style={{ position: 'fixed', inset: 0, border: 'none', padding: 0, cursor: 'default', background: 'rgba(0,0,0,0.4)' }} />
           <div ref={settingsRef} role="dialog" aria-modal="true" aria-label="Connection settings" tabIndex={-1}
-            onClick={(e) => e.stopPropagation()} style={{
+            style={{
+            position: 'relative', zIndex: 1,
             width: 380, padding: 20, borderRadius: 8, background: 'var(--bg-primary)', border: '1px solid var(--border)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', gap: 12,
           }}>
