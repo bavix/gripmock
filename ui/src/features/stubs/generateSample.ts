@@ -71,7 +71,7 @@ function generateByKind(kind: string, typeName?: string, field?: ProtoFieldSchem
   if (typeName) {
     if (wktSamples[typeName]) return wktSamples[typeName]();
     if (field?.enumValues?.length) return field.enumValues.find((v) => v !== 'UNSPECIFIED' && v !== 'UNKNOWN') || field.enumValues[0];
-    if (typeName && !typeName.startsWith('google.')) {
+    if (!typeName.startsWith('google.')) {
       if (field?.message) return generateSample(field.message);
       return { [`${typeName.split('.').pop() || 'value'}`]: '...' };
     }

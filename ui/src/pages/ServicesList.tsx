@@ -96,7 +96,7 @@ export function ServicesList() {
   );
 }
 
-function MethodBlock({ method, serviceId, navigate, stubCount }: { method: Method; serviceId: string; navigate: (p: string) => void; stubCount: number }) {
+function MethodBlock({ method, serviceId, navigate, stubCount }: Readonly<{ method: Method; serviceId: string; navigate: (p: string) => void; stubCount: number }>) {
   const [expanded, setExpanded] = useState(false);
   const { data: methodDetail, isFetching } = useServiceMethod(expanded ? serviceId : null, expanded ? method.name : null);
 
@@ -106,17 +106,19 @@ function MethodBlock({ method, serviceId, navigate, stubCount }: { method: Metho
 
   return (
     <div className="card">
-      <div onClick={() => setExpanded(!expanded)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(!expanded); } }} className="card-header hover-row" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', textTransform: 'none', letterSpacing: 0 }}>
-        {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-        <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{method.name}</span>
-        <span className="badge" style={badgeStyle(method.methodType)}>{method.methodType === 'unary' ? 'U' : method.methodType === 'server_streaming' ? 'SS' : method.methodType === 'client_streaming' ? 'CS' : 'BD'}</span>
-        {stubCount > 0
-          ? <span className="badge" style={{ background: 'var(--success-bg)', color: colors.success }} title="stubs covering this method">{stubCount} stub{stubCount > 1 ? 's' : ''}</span>
-          : <span className="badge" style={{ background: 'var(--error-bg)', color: colors.error }} title="no stubs — this method is uncovered">no stubs</span>}
-        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--mono)', marginLeft: 4 }}>
-          {method.requestType} → {method.responseType}
-        </span>
-        <div style={{ flex: 1 }} />
+      <div className="card-header hover-row" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', textTransform: 'none', letterSpacing: 0 }}>
+        <button type="button" onClick={() => setExpanded(!expanded)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, cursor: 'pointer', background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'inherit', textTransform: 'none', letterSpacing: 0 }}>
+          {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{method.name}</span>
+          <span className="badge" style={badgeStyle(method.methodType)}>{method.methodType === 'unary' ? 'U' : method.methodType === 'server_streaming' ? 'SS' : method.methodType === 'client_streaming' ? 'CS' : 'BD'}</span>
+          {stubCount > 0
+            ? <span className="badge" style={{ background: 'var(--success-bg)', color: colors.success }} title="stubs covering this method">{stubCount} stub{stubCount > 1 ? 's' : ''}</span>
+            : <span className="badge" style={{ background: 'var(--error-bg)', color: colors.error }} title="no stubs — this method is uncovered">no stubs</span>}
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--mono)', marginLeft: 4 }}>
+            {method.requestType} → {method.responseType}
+          </span>
+        </button>
         {isFetching && <Loader2 size={12} className="animate-spin" style={{ color: 'var(--text-muted)' }} />}
         <button onClick={(e) => { e.stopPropagation(); navigate(`/stubs/create?service=${encodeURIComponent(serviceId)}&method=${encodeURIComponent(method.name)}`); }}
           className="btn btn-ghost btn-sm" title="Create a stub for this method"><Plus size={12} /></button>
@@ -144,7 +146,7 @@ function MethodBlock({ method, serviceId, navigate, stubCount }: { method: Metho
   );
 }
 
-function SchemaView({ title, schema }: { title: string; schema?: ProtoMessageSchema | null }) {
+function SchemaView({ title, schema }: Readonly<{ title: string; schema?: ProtoMessageSchema | null }>) {
   return (
     <div className="card" style={{ background: 'var(--bg)' }}>
       <div className="card-header" style={{ fontSize: 11, borderBottom: 'none', paddingBottom: 4, textTransform: 'none', letterSpacing: 0 }}>{title}</div>
@@ -165,7 +167,7 @@ function fieldType(f: ProtoFieldSchema): string {
   return f.typeName || f.kind;
 }
 
-function SchemaFieldsTable({ fields, depth }: { fields: ProtoFieldSchema[]; depth: number }) {
+function SchemaFieldsTable({ fields, depth }: Readonly<{ fields: ProtoFieldSchema[]; depth: number }>) {
   return (
     <div>
       {fields.map((f, i) => (
@@ -199,7 +201,7 @@ function SchemaFieldsTable({ fields, depth }: { fields: ProtoFieldSchema[]; dept
 
 function RepeatedBadge() { return <span className="chip" style={{ background: '#f59e0b18', color: '#f59e0b', fontSize: 11 }}>repeated</span>; }
 function RequiredBadge() { return <span className="chip" style={{ background: '#3b82f618', color: '#3b82f6', fontSize: 11 }}>required</span>; }
-function OneofBadge({ label }: { label: string }) { return <span className="chip" style={{ background: '#a855f718', color: '#a855f7', fontSize: 11 }}>oneof: {label}</span>; }
+function OneofBadge({ label }: Readonly<{ label: string }>) { return <span className="chip" style={{ background: '#a855f718', color: '#a855f7', fontSize: 11 }}>oneof: {label}</span>; }
 
 const badgeStyle = (type: string) => {
   const m: Record<string, string> = { unary: '#3b82f6', client_streaming: '#f59e0b', server_streaming: '#a855f7', bidi_streaming: '#ef4444' };

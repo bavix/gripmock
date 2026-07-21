@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCreateStub, useUpdateStub, useStubs } from '../../hooks/useStubs';
 import { useServiceMethod } from '../../hooks/useServices';
@@ -19,17 +19,26 @@ interface StubFormData {
   service: string; method: string; priority: number; times: number;
   inputEquals: string; inputContains: string; inputMatches: string; inputGlob: string;
   inputIgnoreArrayOrder: boolean;
-  inputAnyOf: { type: string; value: string; ignoreArrayOrder: boolean }[];
-  inputsAlt: { type: string; value: string; ignoreArrayOrder: boolean }[];
+  inputAnyOf: { type: string; value: string; ignoreArrayOrder: boolean; _k?: string }[];
+  inputsAlt: { type: string; value: string; ignoreArrayOrder: boolean; _k?: string }[];
   headersEquals: string; headersContains: string; headersMatches: string;
-  headersAnyOf: { type: string; value: string }[];
+  headersAnyOf: { type: string; value: string; _k?: string }[];
   outputData: string; outputStream: string;
   outputError: string; outputCode: number; outputDelay: string;
   outputHeaders: string; outputDetails: string;
-  effects: { action: 'upsert' | 'delete'; id?: string; stub?: string }[];
+  effects: { action: 'upsert' | 'delete'; id?: string; stub?: string; _k?: string }[];
 }
 
-interface Props { initial?: Record<string, unknown>; onSaved?: () => void; }
+type Props = Readonly<{ initial?: Record<string, unknown>; onSaved?: () => void }>;
+
+// Stable React keys for id-less editable rows (UI-only; never sent to the API).
+let rowKeySeed = 0;
+const nextRowKey = () => `row-${rowKeySeed++}`;
+
+// First truthy matcher key from `kinds`, else `fallback`. Replaces nested ternaries.
+function pickKind(a: Record<string, unknown>, kinds: readonly string[], fallback: string): string {
+  return kinds.find((k) => a[k]) ?? fallback;
+}
 
 /* ── Constants ── */
 
@@ -80,20 +89,20 @@ function fromInit(init: Record<string, unknown>): StubFormData {
     inputEquals: ser((i as any).equals), inputContains: ser((i as any).contains),
     inputMatches: ser((i as any).matches), inputGlob: ser((i as any).glob),
     inputIgnoreArrayOrder: !!(i as any).ignoreArrayOrder,
-    inputAnyOf: ((i as any).anyOf || []).map((a: any) => {
-      const k = a.equals ? 'equals' : a.contains ? 'contains' : a.matches ? 'matches' : 'glob';
-      return { type: k, value: ser(a[k]), ignoreArrayOrder: !!a.ignoreArrayOrder };
+    inputAnyOf: ((i as any).anyOf || []).map((a: any, idx: number) => {
+      const k = pickKind(a, ['equals', 'contains', 'matches'], 'glob');
+      return { type: k, value: ser(a[k]), ignoreArrayOrder: !!a.ignoreArrayOrder, _k: `ia${idx}` };
     }),
-    inputsAlt: ((init.inputs as any[]) || []).map((a: any) => {
+    inputsAlt: ((init.inputs as any[]) || []).map((a: any, idx: number) => {
       // Preserve the matcher kind of each message (was previously flattened to equals).
-      const k = a.equals ? 'equals' : a.contains ? 'contains' : a.matches ? 'matches' : a.glob ? 'glob' : 'equals';
-      return { type: k, value: JSON.stringify(a[k] ?? {}, null, 2), ignoreArrayOrder: !!a.ignoreArrayOrder };
+      const k = pickKind(a, ['equals', 'contains', 'matches', 'glob'], 'equals');
+      return { type: k, value: JSON.stringify(a[k] ?? {}, null, 2), ignoreArrayOrder: !!a.ignoreArrayOrder, _k: `in${idx}` };
     }),
     headersEquals: ser((h as any).equals), headersContains: ser((h as any).contains),
     headersMatches: ser((h as any).matches),
-    headersAnyOf: ((h as any).anyOf || []).map((a: any) => {
-      const k = a.equals ? 'equals' : a.contains ? 'contains' : 'matches';
-      return { type: k, value: ser(a[k]) };
+    headersAnyOf: ((h as any).anyOf || []).map((a: any, idx: number) => {
+      const k = pickKind(a, ['equals', 'contains'], 'matches');
+      return { type: k, value: ser(a[k]), _k: `ha${idx}` };
     }),
     outputData: o.data !== undefined ? JSON.stringify(o.data, null, 2) : '{\n  \n}',
     outputStream: (o as any).stream ? JSON.stringify((o as any).stream, null, 2) : '',
@@ -101,8 +110,70 @@ function fromInit(init: Record<string, unknown>): StubFormData {
     outputDelay: (o as any).delay || '',
     outputHeaders: (o as any).headers ? JSON.stringify((o as any).headers, null, 2) : '{\n  \n}',
     outputDetails: (o as any).details ? JSON.stringify((o as any).details, null, 2) : '',
-    effects: e.map((x) => ({ action: x.action, id: x.id || '', stub: x.stub ? JSON.stringify(x.stub, null, 2) : '' })),
+    effects: e.map((x, idx) => ({ action: x.action, id: x.id || '', stub: x.stub ? JSON.stringify(x.stub, null, 2) : '', _k: `ef${idx}` })),
   };
+}
+
+const hasKeys = (v: unknown): boolean => !!v && Object.keys(v as object).length > 0;
+
+// Headers matcher (built before input, conventional order).
+function buildHeaders(f: StubFormData): Record<string, unknown> | undefined {
+  const hd: Record<string, unknown> = {};
+  const add = (k: string, v: unknown) => { if (hasKeys(v)) hd[k] = v; };
+  add('equals', parse(f.headersEquals));
+  add('contains', parse(f.headersContains));
+  add('matches', parse(f.headersMatches));
+  if (f.headersAnyOf.length) {
+    hd.anyOf = f.headersAnyOf.map((a) => ({ [a.type]: parse(a.value) })).filter((a) => Object.values(a)[0]);
+  }
+  return Object.keys(hd).length > 0 ? hd : undefined;
+}
+
+function buildInput(f: StubFormData): Record<string, unknown> {
+  const inp: Record<string, unknown> = {};
+  const add = (k: string, v: unknown) => { if (hasKeys(v)) inp[k] = v; };
+  if (f.inputIgnoreArrayOrder) inp.ignoreArrayOrder = true;
+  add('equals', parse(f.inputEquals));
+  add('contains', parse(f.inputContains));
+  add('matches', parse(f.inputMatches));
+  add('glob', parse(f.inputGlob));
+  if (f.inputAnyOf.length) {
+    inp.anyOf = f.inputAnyOf.map((a) => {
+      const it: Record<string, unknown> = { [a.type]: parse(a.value) };
+      if (a.ignoreArrayOrder) it.ignoreArrayOrder = true;
+      return it;
+    }).filter((a) => hasKeys(Object.values(a)[0]));
+  }
+  return inp;
+}
+
+// inputs[]: ordered request messages (client/bidi streaming) or alternative
+// matchers (unary). Each keeps its own matcher kind.
+function buildInputs(f: StubFormData): Record<string, unknown>[] {
+  return f.inputsAlt.map((a) => {
+    const v = parse(a.value);
+    if (!hasKeys(v)) return null;
+    return { [a.type || 'equals']: v, ...(a.ignoreArrayOrder ? { ignoreArrayOrder: true } : {}) };
+  }).filter((a): a is Record<string, unknown> => a !== null);
+}
+
+function buildOutput(f: StubFormData, outMode: 'data' | 'stream'): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (outMode === 'data') { const d = parse(f.outputData); if (d) out.data = d; }
+  if (outMode === 'stream') { const s = parse(f.outputStream); if (s) out.stream = s; }
+  const oh = parse(f.outputHeaders); if (hasKeys(oh)) out.headers = oh;
+  if (f.outputError) { out.error = f.outputError; out.code = f.outputCode; }
+  if (f.outputDelay) out.delay = f.outputDelay;
+  const dd = parse(f.outputDetails); if (dd) out.details = dd;
+  return Object.keys(out).length > 0 ? out : { data: {} };
+}
+
+function buildEffects(f: StubFormData): Record<string, unknown>[] {
+  return f.effects.map((e) => {
+    if (e.action === 'delete') return { action: 'delete', id: e.id };
+    const stub = parse(e.stub || '{}');
+    return { action: 'upsert', stub: stub || {} };
+  });
 }
 
 function buildBody(f: StubFormData, initId: string | undefined, outMode: 'data' | 'stream'): Record<string, unknown> {
@@ -113,62 +184,45 @@ function buildBody(f: StubFormData, initId: string | undefined, outMode: 'data' 
   body.priority = f.priority;
   body.options = { times: f.times };
 
-  // Headers matcher (before input, conventional order)
-  const hd: Record<string, unknown> = {};
-  addHd('equals', parse(f.headersEquals));
-  addHd('contains', parse(f.headersContains));
-  addHd('matches', parse(f.headersMatches));
-  if (f.headersAnyOf.length) {
-    hd.anyOf = f.headersAnyOf.map((a) => ({ [a.type]: parse(a.value) })).filter((a) => Object.values(a)[0]);
-  }
-  if (Object.keys(hd).length > 0) body.headers = hd;
+  const hd = buildHeaders(f);
+  if (hd) body.headers = hd;
 
-  const inp: Record<string, unknown> = {};
-  if (f.inputIgnoreArrayOrder) inp.ignoreArrayOrder = true;
-  addInp('equals', parse(f.inputEquals));
-  addInp('contains', parse(f.inputContains));
-  addInp('matches', parse(f.inputMatches));
-  addInp('glob', parse(f.inputGlob));
-  if (f.inputAnyOf.length) {
-    inp.anyOf = f.inputAnyOf.map((a) => {
-      const it: Record<string, unknown> = { [a.type]: parse(a.value) };
-      if (a.ignoreArrayOrder) it.ignoreArrayOrder = true;
-      return it;
-    }).filter((a) => { const v = Object.values(a)[0]; return v && Object.keys(v as object).length; });
-  }
+  const inp = buildInput(f);
   if (Object.keys(inp).length > (f.inputIgnoreArrayOrder ? 1 : 0)) body.input = inp;
   else if (!f.inputsAlt.length) body.input = { equals: {} };
 
-  // inputs[]: ordered request messages (client/bidi streaming) or alternative
-  // matchers (unary). Each keeps its own matcher kind.
-  const alts = f.inputsAlt.map((a) => {
-    const v = parse(a.value);
-    if (!v || !Object.keys(v as object).length) return null;
-    return { [a.type || 'equals']: v, ...(a.ignoreArrayOrder ? { ignoreArrayOrder: true } : {}) };
-  }).filter(Boolean);
+  const alts = buildInputs(f);
   if (alts.length > 0) body.inputs = alts;
 
-  const out: Record<string, unknown> = {};
-  if (outMode === 'data') { const d = parse(f.outputData); if (d) out.data = d; }
-  if (outMode === 'stream') { const s = parse(f.outputStream); if (s) out.stream = s; }
-  const oh = parse(f.outputHeaders); if (oh && Object.keys(oh as object).length) out.headers = oh;
-  if (f.outputError) { out.error = f.outputError; out.code = f.outputCode; }
-  if (f.outputDelay) out.delay = f.outputDelay;
-  const dd = parse(f.outputDetails); if (dd) out.details = dd;
-  body.output = Object.keys(out).length > 0 ? out : { data: {} };
+  body.output = buildOutput(f, outMode);
 
-  if (f.effects.length) {
-    body.effects = f.effects.map((e) => {
-      if (e.action === 'delete') return { action: 'delete', id: e.id };
-      const stub = parse(e.stub || '{}');
-      return { action: 'upsert', stub: stub || {} };
-    });
-  }
-
-  function addInp(k: string, v: unknown) { if (v && Object.keys(v as object).length) inp[k] = v; }
-  function addHd(k: string, v: unknown) { if (v && Object.keys(v as object).length) hd[k] = v; }
+  if (f.effects.length) body.effects = buildEffects(f);
 
   return body;
+}
+
+// Editors whose invalid JSON would be silently nulled by buildBody.
+function collectJsonErrors(f: StubFormData): string[] {
+  const out: string[] = [];
+  for (const [k, label] of JSON_FIELDS) if (isBadJson(f[k] as string)) out.push(label);
+  f.inputAnyOf.forEach((a, i) => { if (isBadJson(a.value)) out.push(`input anyOf #${i + 1}`); });
+  f.headersAnyOf.forEach((a, i) => { if (isBadJson(a.value)) out.push(`header anyOf #${i + 1}`); });
+  f.inputsAlt.forEach((a, i) => { if (isBadJson(a.value)) out.push(`alt input #${i + 1}`); });
+  return out;
+}
+
+// Preview pane body — extracted so the JSX stays a flat conditional (no nested ternary).
+function renderPreview(busy: boolean, error: string | null, yaml: string | null): ReactNode {
+  if (busy) {
+    return <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text-muted)', fontSize: 11 }}><Loader2 size={11} className="animate-spin" /> Validating…</span>;
+  }
+  if (error) {
+    return <span style={{ display: 'flex', alignItems: 'flex-start', gap: 5, color: 'var(--error)', fontSize: 11 }}><AlertCircle size={12} style={{ flexShrink: 0, marginTop: 1 }} /><span>{error}</span></span>;
+  }
+  if (yaml) {
+    return <span>{highlightYaml(yaml)}</span>;
+  }
+  return <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Fill in service/method to see preview</span>;
 }
 
 /* ── Component ── */
@@ -215,7 +269,7 @@ export function StubForm({ initial, onSaved }: Props) {
   useEffect(() => { initialFormRef.current = JSON.stringify(initial ? fromInit(initial) : empty()); }, [initial]);
   const dirty = JSON.stringify(f) !== initialFormRef.current;
   useEffect(() => {
-    const h = (e: BeforeUnloadEvent) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } };
+    const h = (e: BeforeUnloadEvent) => { if (dirty) e.preventDefault(); };
     window.addEventListener('beforeunload', h);
     return () => window.removeEventListener('beforeunload', h);
   }, [dirty]);
@@ -236,14 +290,7 @@ export function StubForm({ initial, onSaved }: Props) {
 
   // Catch invalid JSON in any editor BEFORE buildBody silently nulls it
   // (which would otherwise produce an unintended match-anything stub).
-  const jsonErrors = useMemo(() => {
-    const out: string[] = [];
-    for (const [k, label] of JSON_FIELDS) if (isBadJson(f[k] as string)) out.push(label);
-    f.inputAnyOf.forEach((a, i) => { if (isBadJson(a.value)) out.push(`input anyOf #${i + 1}`); });
-    f.headersAnyOf.forEach((a, i) => { if (isBadJson(a.value)) out.push(`header anyOf #${i + 1}`); });
-    f.inputsAlt.forEach((a, i) => { if (isBadJson(a.value)) out.push(`alt input #${i + 1}`); });
-    return out;
-  }, [f]);
+  const jsonErrors = useMemo(() => collectJsonErrors(f), [f]);
 
   const handleSubmit = async () => {
     if (jsonErrors.length > 0) { setErr(`Invalid JSON in: ${jsonErrors.join(', ')}`); return; }
@@ -286,6 +333,10 @@ export function StubForm({ initial, onSaved }: Props) {
     return toYaml(validJson);
   }, [validJson, validErr]);
 
+  const altCount = f.inputsAlt.length ? ` (${f.inputsAlt.length})` : '';
+  const sequenceLabel = isReqStreamMethod ? `Request message sequence${altCount}` : `Alternative matchers${altCount}`;
+  const previewBody = renderPreview(validBusy, validErr, yaml);
+
   /* ── Render ── */
 
   return (
@@ -294,9 +345,9 @@ export function StubForm({ initial, onSaved }: Props) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
-          <button onClick={leave} className="btn btn-ghost" style={{ fontSize: 11 }}><ArrowLeft size={13} /> Back</button>
+          <button type="button" onClick={leave} className="btn btn-ghost" style={{ fontSize: 11 }}><ArrowLeft size={13} /> Back</button>
           <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>{initId ? 'Edit Stub' : 'Create Stub'}</span>
-          <button onClick={handleSubmit} disabled={sub || !f.service || !f.method || jsonErrors.length > 0} className="btn btn-primary" style={{ fontSize: 11 }}>
+          <button type="button" onClick={handleSubmit} disabled={sub || !f.service || !f.method || jsonErrors.length > 0} className="btn btn-primary" style={{ fontSize: 11 }}>
             <Save size={12} /> {sub ? 'Saving…' : 'Save'}
           </button>
         </div>
@@ -336,7 +387,7 @@ export function StubForm({ initial, onSaved }: Props) {
             </label>
             <div style={{ flex: 1 }} />
             {methodSchema?.requestSchema && (
-              <button onClick={handleGenerate} className="btn" style={{ fontSize: 11, padding: '2px 7px' }}><Sparkles size={10} /> Generate</button>
+              <button type="button" onClick={handleGenerate} className="btn" style={{ fontSize: 11, padding: '2px 7px' }}><Sparkles size={10} /> Generate</button>
             )}
           </div>
           <Tabs modes={INPUT_MODES} mode={inpMode} onChange={setInpMode} />
@@ -347,14 +398,14 @@ export function StubForm({ initial, onSaved }: Props) {
         <Section label="Response">
           <div style={{ display: 'flex', gap: 3, marginBottom: 4, flexWrap: 'wrap' }}>
             {['data', 'stream'].map((m) => (
-              <button key={m} onClick={() => setOutMode(m as any)} className={`btn ${outMode === m ? 'btn-primary' : ''}`} style={{ fontSize: 11, padding: '2px 8px' }}>{m}</button>
+              <button type="button" key={m} onClick={() => setOutMode(m as any)} className={`btn ${outMode === m ? 'btn-primary' : ''}`} style={{ fontSize: 11, padding: '2px 8px' }}>{m}</button>
             ))}
             <div style={{ flex: 1 }} />
             {methodSchema?.responseSchema && (
-              <button onClick={handleGenerateResponse} className="btn" style={{ fontSize: 11, padding: '2px 8px' }}><Sparkles size={10} /> Generate</button>
+              <button type="button" onClick={handleGenerateResponse} className="btn" style={{ fontSize: 11, padding: '2px 8px' }}><Sparkles size={10} /> Generate</button>
             )}
-            <button onClick={() => patch({ outputError: f.outputError ? '' : 'error' })} className={`btn ${f.outputError ? 'btn-danger' : ''}`} style={{ fontSize: 11, padding: '2px 8px' }}>Error</button>
-            <button onClick={() => patch({ outputDelay: f.outputDelay ? '' : '500ms' })} className="btn" style={{ fontSize: 11, padding: '2px 8px' }}>Delay</button>
+            <button type="button" onClick={() => patch({ outputError: f.outputError ? '' : 'error' })} className={`btn ${f.outputError ? 'btn-danger' : ''}`} style={{ fontSize: 11, padding: '2px 8px' }}>Error</button>
+            <button type="button" onClick={() => patch({ outputDelay: f.outputDelay ? '' : '500ms' })} className="btn" style={{ fontSize: 11, padding: '2px 8px' }}>Delay</button>
           </div>
           {outMode === 'data' && <MonacoEditor value={f.outputData} onChange={(v) => patch({ outputData: v })} height={140} />}
           {outMode === 'stream' && <MonacoEditor value={f.outputStream} onChange={(v) => patch({ outputStream: v })} height={140} />}
@@ -388,7 +439,7 @@ export function StubForm({ initial, onSaved }: Props) {
         </Collapse>
 
         <Collapse
-          label={isReqStreamMethod ? `Request message sequence${f.inputsAlt.length ? ` (${f.inputsAlt.length})` : ''}` : `Alternative matchers${f.inputsAlt.length ? ` (${f.inputsAlt.length})` : ''}`}
+          label={sequenceLabel}
           defaultOpen={isReqStreamMethod && f.inputsAlt.length > 0}
         >
           <MessageSequenceEditor items={f.inputsAlt} onChange={(v) => patch({ inputsAlt: v })} streaming={isReqStreamMethod} />
@@ -398,8 +449,8 @@ export function StubForm({ initial, onSaved }: Props) {
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Side effects triggered on match.</div>
           {f.effects.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>None.</div>}
           {f.effects.map((e, i) => (
-            <div key={i} style={{ padding: 8, borderRadius: 5, border: '1px solid var(--border)', marginBottom: 4, position: 'relative' }}>
-              <button onClick={() => patch({ effects: f.effects.filter((_, j) => j !== i) })} className="btn btn-ghost" style={{ position: 'absolute', top: 4, right: 4, padding: '1px 5px' }}><X size={11} /></button>
+            <div key={e._k} style={{ padding: 8, borderRadius: 5, border: '1px solid var(--border)', marginBottom: 4, position: 'relative' }}>
+              <button type="button" onClick={() => patch({ effects: f.effects.filter((_, j) => j !== i) })} className="btn btn-ghost" style={{ position: 'absolute', top: 4, right: 4, padding: '1px 5px' }}><X size={11} /></button>
               <select value={e.action} onChange={(ev) => { const n = [...f.effects]; n[i] = { ...n[i], action: ev.target.value as any }; patch({ effects: n }); }} className="input" style={{ fontSize: 11, width: 90, marginBottom: 3 }}>
                 <option value="upsert">Upsert</option><option value="delete">Delete</option>
               </select>
@@ -407,11 +458,11 @@ export function StubForm({ initial, onSaved }: Props) {
               {e.action === 'upsert' && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 1 }}>Full stub JSON upserted on match.<MonacoEditor value={e.stub || ''} onChange={(v) => { const n = [...f.effects]; n[i] = { ...n[i], stub: v }; patch({ effects: n }); }} height={70} /></div>}
             </div>
           ))}
-          <button onClick={() => patch({ effects: [...f.effects, { action: 'upsert' }] })} className="btn btn-ghost" style={{ fontSize: 11 }}><Plus size={9} /> Add</button>
+          <button type="button" onClick={() => patch({ effects: [...f.effects, { action: 'upsert', _k: nextRowKey() }] })} className="btn btn-ghost" style={{ fontSize: 11 }}><Plus size={9} /> Add</button>
         </Collapse>
 
         {/* Bottom save */}
-        <button onClick={handleSubmit} disabled={sub || !f.service || !f.method || jsonErrors.length > 0} className="btn btn-primary" style={{ alignSelf: 'flex-start', fontSize: 11 }}>
+        <button type="button" onClick={handleSubmit} disabled={sub || !f.service || !f.method || jsonErrors.length > 0} className="btn btn-primary" style={{ alignSelf: 'flex-start', fontSize: 11 }}>
           <Save size={12} /> {sub ? 'Saving…' : 'Save Stub'}
         </button>
       </div>
@@ -421,23 +472,15 @@ export function StubForm({ initial, onSaved }: Props) {
         <div style={{ borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden', background: 'var(--bg)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
             <span style={{ flex: 1 }}>Preview</span>
-            {yaml && <button onClick={() => navigator.clipboard.writeText(yaml)} className="btn btn-ghost" style={{ fontSize: 11, padding: '1px 5px' }}><Copy size={9} /></button>}
+            {yaml && <button type="button" onClick={() => navigator.clipboard.writeText(yaml)} className="btn btn-ghost" style={{ fontSize: 11, padding: '1px 5px' }}><Copy size={9} /></button>}
           </div>
           <pre style={{ margin: 0, padding: 10, fontSize: 11, lineHeight: 1.5, fontFamily: 'var(--mono)', overflow: 'auto', maxHeight: 'calc(100vh - 140px)', background: 'var(--bg)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-            {validBusy ? (
-              <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text-muted)', fontSize: 11 }}><Loader2 size={11} className="animate-spin" /> Validating…</span>
-            ) : validErr ? (
-              <span style={{ display: 'flex', alignItems: 'flex-start', gap: 5, color: 'var(--error)', fontSize: 11 }}><AlertCircle size={12} style={{ flexShrink: 0, marginTop: 1 }} /><span>{validErr}</span></span>
-            ) : yaml ? (
-              <span>{highlightYaml(yaml)}</span>
-            ) : (
-              <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Fill in service/method to see preview</span>
-            )}
+            {previewBody}
           </pre>
         </div>
         {f.service && f.method && (
           <div style={{ marginTop: 6, display: 'flex', gap: 4 }}>
-            <button onClick={() => {
+            <button type="button" onClick={() => {
               const payload = (parse(f.inputEquals) ?? parse(f.inputContains) ?? parse(f.inputMatches) ?? {}) as unknown;
               const hdrs = (parse(f.headersEquals) ?? {}) as unknown;
               navigate(`/stubs/test?service=${encodeURIComponent(f.service)}&method=${encodeURIComponent(f.method)}&payload=${encodeURIComponent(JSON.stringify(payload, null, 2))}&headers=${encodeURIComponent(JSON.stringify(hdrs, null, 2))}`);
@@ -451,7 +494,7 @@ export function StubForm({ initial, onSaved }: Props) {
 
 /* ── Sub-components ── */
 
-function Section({ label, children }: { label?: string; children: React.ReactNode }) {
+function Section({ label, children }: Readonly<{ label?: string; children: React.ReactNode }>) {
   return (
     <div style={{ borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
       {label && <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{label}</div>}
@@ -460,39 +503,39 @@ function Section({ label, children }: { label?: string; children: React.ReactNod
   );
 }
 
-function Label({ children }: { children: React.ReactNode }) {
+function Label({ children }: Readonly<{ children: React.ReactNode }>) {
   return <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.2px', marginBottom: 1 }}>{children}</div>;
 }
 
 const lbl: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.2px' };
 
-function Collapse({ label, children, defaultOpen = false }: { label: string; children: React.ReactNode; defaultOpen?: boolean }) {
+function Collapse({ label, children, defaultOpen = false }: Readonly<{ label: string; children: React.ReactNode; defaultOpen?: boolean }>) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div style={{ borderRadius: 6, border: '1px solid var(--border)', background: open ? 'var(--bg-secondary)' : 'transparent', overflow: 'hidden' }}>
-      <div onClick={() => setOpen(!open)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(!open); } }} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', userSelect: 'none', padding: '6px 10px', background: 'var(--bg-secondary)' }}>
+      <button type="button" onClick={() => setOpen(!open)} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', userSelect: 'none', padding: '6px 10px', background: 'none', border: 'none', font: 'inherit', color: 'inherit', textAlign: 'left', width: '100%' }}>
         {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
         <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)' }}>{label}</span>
-      </div>
+      </button>
       {open && <div style={{ padding: '0 10px 8px' }}>{children}</div>}
     </div>
   );
 }
 
-function Tabs({ modes, mode, onChange }: { modes: readonly string[]; mode: string; onChange: (m: string) => void }) {
+function Tabs({ modes, mode, onChange }: Readonly<{ modes: readonly string[]; mode: string; onChange: (m: string) => void }>) {
   return (
     <div style={{ display: 'flex', gap: 2, marginBottom: 4, flexWrap: 'wrap' }}>
       {modes.map((m) => (
-        <button key={m} onClick={() => onChange(m)} className={`btn ${mode === m ? 'btn-primary' : ''}`} style={{ fontSize: 11, padding: '1px 8px' }}>{m}</button>
+        <button type="button" key={m} onClick={() => onChange(m)} className={`btn ${mode === m ? 'btn-primary' : ''}`} style={{ fontSize: 11, padding: '1px 8px' }}>{m}</button>
       ))}
     </div>
   );
 }
 
-function MatcherMode({ mode, value, onChange, prefix, anyOfItems, onAnyOfChange }: {
+function MatcherMode({ mode, value, onChange, prefix, anyOfItems, onAnyOfChange }: Readonly<{
   mode: string; value: StubFormData; onChange: (p: any) => void;
   prefix: 'input' | 'headers'; anyOfItems: any[]; onAnyOfChange: (v: any) => void;
-}) {
+}>) {
   const key = (k: string) => prefix === 'input'
     ? `input${k.charAt(0).toUpperCase() + k.slice(1)}`
     : `headers${k.charAt(0).toUpperCase() + k.slice(1)}`;
@@ -503,7 +546,7 @@ function MatcherMode({ mode, value, onChange, prefix, anyOfItems, onAnyOfChange 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {anyOfItems.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Add options below.</div>}
         {anyOfItems.map((item, i) => (
-          <div key={i} style={{ display: 'flex', gap: 3, alignItems: 'flex-start' }}>
+          <div key={item._k} style={{ display: 'flex', gap: 3, alignItems: 'flex-start' }}>
             <select value={item.type} onChange={(e) => { const n = [...anyOfItems]; n[i] = { ...n[i], type: e.target.value }; onAnyOfChange(n); }} className="input" style={{ width: 80, fontSize: 11, marginTop: 3 }}>
               {modes.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
@@ -511,10 +554,10 @@ function MatcherMode({ mode, value, onChange, prefix, anyOfItems, onAnyOfChange 
             {prefix === 'input' && (
               <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 1, color: 'var(--text-muted)', marginTop: 5, flexShrink: 0 }}><input type="checkbox" checked={item.ignoreArrayOrder} onChange={() => { const n = [...anyOfItems]; n[i] = { ...n[i], ignoreArrayOrder: !item.ignoreArrayOrder }; onAnyOfChange(n); }} /> order</label>
             )}
-            <button onClick={() => onAnyOfChange(anyOfItems.filter((_: any, j: number) => j !== i))} className="btn btn-ghost" style={{ padding: '1px 5px', marginTop: 1 }}><X size={11} /></button>
+            <button type="button" onClick={() => onAnyOfChange(anyOfItems.filter((_: any, j: number) => j !== i))} className="btn btn-ghost" style={{ padding: '1px 5px', marginTop: 1 }}><X size={11} /></button>
           </div>
         ))}
-        <button onClick={() => onAnyOfChange([...anyOfItems, { type: 'equals', value: '{\n  \n}', ignoreArrayOrder: false }])} className="btn btn-ghost" style={{ fontSize: 11, alignSelf: 'flex-start' }}><Plus size={9} /> Add</button>
+        <button type="button" onClick={() => onAnyOfChange([...anyOfItems, { type: 'equals', value: '{\n  \n}', ignoreArrayOrder: false, _k: nextRowKey() }])} className="btn btn-ghost" style={{ fontSize: 11, alignSelf: 'flex-start' }}><Plus size={9} /> Add</button>
       </div>
     );
   }

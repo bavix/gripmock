@@ -19,7 +19,7 @@ import type { CallRecord } from '../lib/types';
 
 const callOk = (c: CallRecord) => !c.code || c.code === 0;
 
-function MetaItem({ icon: Icon, label, value }: { icon: typeof Clock; label: string; value: string }) {
+function MetaItem({ icon: Icon, label, value }: Readonly<{ icon: typeof Clock; label: string; value: string }>) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
       <Icon size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
@@ -40,23 +40,23 @@ function fmtUptime(sec: number): string {
   return `${m}m`;
 }
 
-function Endpoint({ proto, addr }: { proto: string; addr: string }) {
+function Endpoint({ proto, addr }: Readonly<{ proto: string; addr: string }>) {
   const { copied, copy } = useCopy();
   // 0.0.0.0/empty host is not dialable from a browser — show localhost.
   const shown = addr.replace(/^(0\.0\.0\.0|\[::\]|):/, 'localhost:').replace(/^:/, 'localhost:');
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
       <span style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{proto}</span>
-      <code onClick={() => copy(shown)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copy(shown); } }} title="Click to copy"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: 'var(--text)', background: 'var(--bg-tertiary)', padding: '2px 8px', borderRadius: 4, userSelect: 'all' }}>
+      <button type="button" onClick={() => copy(shown)} title="Click to copy"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: 'var(--text)', background: 'var(--bg-tertiary)', border: 'none', padding: '2px 8px', borderRadius: 4, userSelect: 'all', textAlign: 'inherit' }}>
         {shown}
         {copied ? <CheckCircle2 size={11} style={{ color: colors.success }} /> : <Copy size={10} style={{ color: 'var(--text-muted)' }} />}
-      </code>
+      </button>
     </span>
   );
 }
 
-function LatencyStat({ label, value, warn }: { label: string; value: number; warn?: boolean }) {
+function LatencyStat({ label, value, warn }: Readonly<{ label: string; value: number; warn?: boolean }>) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}>
       <span style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{label}</span>
@@ -180,7 +180,7 @@ export function Dashboard() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
         {stats.map((s) => (
-          <div key={s.label} onClick={() => s.to && navigate(s.to)} role="button" tabIndex={0} onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && s.to) { e.preventDefault(); navigate(s.to); } }} className="card card-hover" style={{ cursor: 'pointer', padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button type="button" key={s.label} onClick={() => s.to && navigate(s.to)} className="card card-hover" style={{ cursor: 'pointer', padding: 14, display: 'flex', alignItems: 'center', gap: 12, font: 'inherit', color: 'inherit', textAlign: 'inherit', width: '100%' }}>
             <div style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${s.color}1e`, color: s.color, flexShrink: 0 }}>
               <s.icon size={18} />
             </div>
@@ -188,7 +188,7 @@ export function Dashboard() {
               <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.1 }}>{s.value}</div>
               <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{s.label}</div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -261,8 +261,8 @@ export function Dashboard() {
           {liveFeed.map((call, i) => {
             const ok = callOk(call);
             return (
-              <div key={i} onClick={() => call.stubId ? navigate(`/stubs/${call.stubId}`) : navigate('/history')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (call.stubId) { navigate(`/stubs/${call.stubId}`); } else { navigate('/history'); } } }} className="hover-row"
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', fontSize: 12.5, borderBottom: '1px solid var(--border)', borderLeft: `3px solid ${ok ? colors.success : colors.error}` }}>
+              <button type="button" key={i} onClick={() => call.stubId ? navigate(`/stubs/${call.stubId}`) : navigate('/history')} className="hover-row"
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', font: 'inherit', fontSize: 12.5, color: 'inherit', textAlign: 'inherit', width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', borderLeft: `3px solid ${ok ? colors.success : colors.error}` }}>
                 <span className="badge" style={{ background: ok ? 'var(--success-bg)' : 'var(--error-bg)', color: ok ? colors.success : colors.error, minWidth: 34, justifyContent: 'center' }}>{ok ? 'OK' : (call.code ?? 'ERR')}</span>
                 <span style={{ fontWeight: 500, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   <span style={{ color: 'var(--text-muted)' }}>{call.service}/</span>{call.method}
@@ -274,7 +274,7 @@ export function Dashboard() {
                   <span style={{ fontSize: 10.5, fontFamily: 'var(--mono)', color: call.elapsedMs > 500 ? colors.warning : 'var(--text-muted)', minWidth: 40, textAlign: 'right' }}>{call.elapsedMs}ms</span>
                 )}
                 <span style={{ fontSize: 11, color: 'var(--text-muted)', minWidth: 26, textAlign: 'right' }}>{ago(call.timestamp)}</span>
-              </div>
+              </button>
             );
           })}
         </div>

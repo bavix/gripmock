@@ -13,21 +13,26 @@ const YAML_COLORS: Record<string, string> = {
 // so user content can never become markup (React escapes text automatically).
 export function highlightYaml(yaml: string): ReactNode {
   const lines = yaml.split('\n');
-  return lines.map((line, i) => (
-    <Fragment key={i}>
-      {i > 0 && '\n'}
-      {renderLine(line)}
-    </Fragment>
-  ));
+  const seen = new Map<string, number>();
+  return lines.map((line, i) => {
+    const occ = seen.get(line) ?? 0;
+    seen.set(line, occ + 1);
+    return (
+      <Fragment key={`${occ}:${line}`}>
+        {i > 0 && '\n'}
+        {renderLine(line)}
+      </Fragment>
+    );
+  });
 }
 
 function renderLine(line: string): ReactNode {
-  const indent = line.match(/^\s*/)?.[0] ?? '';
+  const indent = /^\s*/.exec(line)?.[0] ?? '';
   const rest = line.slice(indent.length);
 
   if (!rest.trim()) return line;
 
-  const kvMatch = rest.match(/^([\w./@:-]+?)(:)(\s*)(.*)$/);
+  const kvMatch = /^([\w./@-]+)(:)(\s*)(.*)$/.exec(rest);
   if (kvMatch) {
     const [, key, , space, value] = kvMatch;
     return (
@@ -41,7 +46,7 @@ function renderLine(line: string): ReactNode {
     );
   }
 
-  const arrMatch = rest.match(/^(- )(.*)$/);
+  const arrMatch = /^(- )(.*)$/.exec(rest);
   if (arrMatch) {
     const [, , value] = arrMatch;
     return (
@@ -60,7 +65,7 @@ function renderLine(line: string): ReactNode {
 function colorYamlValue(value: string): ReactNode {
   if (!value) return '';
 
-  const strMatch = value.match(/^"((?:[^"\\]|\\.)*)"$/);
+  const strMatch = /^"((?:[^"\\]|\\.)*)"$/.exec(value);
   if (strMatch) {
     return <span style={{ color: YAML_COLORS.str }}>{`"${strMatch[1]}"`}</span>;
   }

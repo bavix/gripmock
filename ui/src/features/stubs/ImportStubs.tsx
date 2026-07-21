@@ -9,6 +9,17 @@ import type { Stub } from '../../lib/types';
 
 type Parsed = { stubs: Partial<Stub>[]; fileErrors: string[] };
 
+// Content-derived unique keys for id-less display lists (avoids array-index keys).
+function keyed<T>(arr: readonly T[], sig: (t: T) => string): ReadonlyArray<readonly [string, T]> {
+  const seen = new Map<string, number>();
+  return arr.map((t) => {
+    const s = sig(t);
+    const n = seen.get(s) ?? 0;
+    seen.set(s, n + 1);
+    return [`${s}#${n}`, t] as const;
+  });
+}
+
 // Parse .json/.yaml/.yml files into a flat stub array. YAML parser is
 // lazy-imported so js-yaml stays out of the entry chunk. Exported for tests.
 export async function parseFiles(files: File[]): Promise<Parsed> {
@@ -36,7 +47,7 @@ export async function parseFiles(files: File[]): Promise<Parsed> {
   return { stubs, fileErrors };
 }
 
-export function ImportStubs({ onDone }: { onDone: () => void }) {
+export function ImportStubs({ onDone }: Readonly<{ onDone: () => void }>) {
   const qc = useQueryClient();
   const toast = useToast();
   const [dragOver, setDragOver] = useState(false);
@@ -100,7 +111,7 @@ export function ImportStubs({ onDone }: { onDone: () => void }) {
 
       {fileErrors.length > 0 && (
         <div style={{ padding: '8px 12px', borderRadius: 'var(--radius)', background: 'var(--error-bg)', color: colors.error, fontSize: 12 }}>
-          {fileErrors.map((e, i) => <div key={i}>{e}</div>)}
+          {keyed(fileErrors, (e) => e).map(([key, e]) => <div key={key}>{e}</div>)}
         </div>
       )}
       {validationError && (
@@ -119,11 +130,11 @@ export function ImportStubs({ onDone }: { onDone: () => void }) {
             {!validationError && <span style={{ color: colors.success, display: 'inline-flex', alignItems: 'center', gap: 4, textTransform: 'none', letterSpacing: 0 }}><CheckCircle2 size={12} /> valid</span>}
           </div>
           <div style={{ maxHeight: 300, overflow: 'auto' }}>
-            {parsed.map((s, i) => {
+            {keyed(parsed, (s) => `${(s as Stub).service ?? ''}/${(s as Stub).method ?? ''}`).map(([key, s]) => {
               const stub = s as Stub;
               const out = outputKind(stub);
               return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
                   <FileJson size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                   <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stub.service || '?'}/{stub.method || '?'}</span>
                   {matcherTypes(stub).map((t) => <span key={t} className="badge" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>{t}</span>)}
@@ -134,8 +145,8 @@ export function ImportStubs({ onDone }: { onDone: () => void }) {
             })}
           </div>
           <div style={{ padding: 10, display: 'flex', gap: 8 }}>
-            <button onClick={doImport} disabled={busy || !!validationError} className="btn btn-primary"><Upload size={13} /> Import {parsed.length}</button>
-            <button onClick={() => { setParsed(null); setFileErrors([]); setValidationError(null); }} className="btn">Clear</button>
+            <button type="button" onClick={doImport} disabled={busy || !!validationError} className="btn btn-primary"><Upload size={13} /> Import {parsed.length}</button>
+            <button type="button" onClick={() => { setParsed(null); setFileErrors([]); setValidationError(null); }} className="btn">Clear</button>
           </div>
         </div>
       )}

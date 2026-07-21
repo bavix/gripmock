@@ -1,6 +1,6 @@
 function quoteStr(s: string): string {
   if (/^[a-zA-Z0-9_./@:\-+]+$/.test(s) && !/^(true|false|null|yes|no|\d+)$/.test(s)) return s;
-  return `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  return `"${s.replaceAll('\\', String.raw`\\`).replaceAll('"', '\\"')}"`;
 }
 
 function isEmpty(v: unknown): boolean {
@@ -40,7 +40,8 @@ function toYamlVal(val: unknown, indent: number): string {
     return val.map((v) => {
       const isObj = typeof v === 'object' && v !== null && !Array.isArray(v);
       const child = toYamlVal(v, indent + 1);
-      return `\n${pad}- ${isObj ? `\n${pad}  ${child.trim()}` : child.trimStart()}`;
+      const objChild = `\n${pad}  ${child.trim()}`;
+      return `\n${pad}- ${isObj ? objChild : child.trimStart()}`;
     }).join('');
   }
   if (typeof val === 'object') {
@@ -49,10 +50,11 @@ function toYamlVal(val: unknown, indent: number): string {
     return entries.map(([k, v]) => {
       const vStr = toYamlVal(v, indent + 1);
       const multi = typeof v === 'object' && v !== null;
-      return `\n${pad}${k}:${multi && vStr.startsWith('\n') ? vStr : ` ${vStr}`}`;
+      const inlineVal = ` ${vStr}`;
+      return `\n${pad}${k}:${multi && vStr.startsWith('\n') ? vStr : inlineVal}`;
     }).join('');
   }
-  return String(val);
+  return typeof val === 'object' ? JSON.stringify(val) : String(val);
 }
 
 export function toYaml(obj: unknown): string {

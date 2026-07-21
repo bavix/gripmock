@@ -31,7 +31,7 @@ function base(): string {
 }
 
 export function getApiUrl() { return base(); }
-export function setApiUrl(u: string) { try { localStorage.setItem(STORAGE_KEY, u); } catch {} }
+export function setApiUrl(u: string) { try { if (isValidBase(u)) localStorage.setItem(STORAGE_KEY, u); } catch {} }
 export function resetApiUrl() { try { localStorage.removeItem(STORAGE_KEY); } catch {} }
 
 // Shared transport: builds headers (session, content-type), issues the request,

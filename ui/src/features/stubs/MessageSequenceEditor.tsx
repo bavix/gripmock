@@ -5,9 +5,13 @@ export interface SequenceItem {
   type: string; // equals | contains | matches | glob
   value: string; // JSON text
   ignoreArrayOrder: boolean;
+  _k?: string; // stable React key (UI-only; ignored when the stub is built)
 }
 
 const KINDS = ['equals', 'contains', 'matches', 'glob'];
+
+let seqKeySeed = 0;
+const newSequenceItem = (): SequenceItem => ({ type: 'equals', value: '{\n  \n}', ignoreArrayOrder: false, _k: `seq-${seqKeySeed++}` });
 
 /**
  * Editor for a stub's `inputs[]`.
@@ -17,11 +21,11 @@ const KINDS = ['equals', 'contains', 'matches', 'glob'];
  * - unary/server-streaming → alternative matchers, any may match (OR).
  * The `streaming` flag only changes labels/ordering affordances — never the data.
  */
-export function MessageSequenceEditor({ items, onChange, streaming }: {
+export function MessageSequenceEditor({ items, onChange, streaming }: Readonly<{
   items: SequenceItem[];
   onChange: (items: SequenceItem[]) => void;
   streaming: boolean;
-}) {
+}>) {
   const set = (i: number, patch: Partial<SequenceItem>) => {
     const n = [...items]; n[i] = { ...n[i], ...patch }; onChange(n);
   };
@@ -40,7 +44,7 @@ export function MessageSequenceEditor({ items, onChange, streaming }: {
       </div>
       {items.length === 0 && <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>None.</div>}
       {items.map((item, i) => (
-        <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg)', overflow: 'hidden' }}>
+        <div key={item._k ?? `${item.type}:${item.value}`} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg)', overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderBottom: '1px solid var(--border)' }}>
             {streaming && (
               <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 18, height: 18, borderRadius: 5, background: 'var(--bg-tertiary)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 10.5 }}>{i + 1}</span>
@@ -54,16 +58,16 @@ export function MessageSequenceEditor({ items, onChange, streaming }: {
             <div style={{ flex: 1 }} />
             {streaming && (
               <>
-                <button onClick={() => move(i, -1)} disabled={i === 0} className="icon-btn" style={{ width: 22, height: 22 }} title="Move up" aria-label="Move message up"><ArrowUp size={12} /></button>
-                <button onClick={() => move(i, 1)} disabled={i === items.length - 1} className="icon-btn" style={{ width: 22, height: 22 }} title="Move down" aria-label="Move message down"><ArrowDown size={12} /></button>
+                <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="icon-btn" style={{ width: 22, height: 22 }} title="Move up" aria-label="Move message up"><ArrowUp size={12} /></button>
+                <button type="button" onClick={() => move(i, 1)} disabled={i === items.length - 1} className="icon-btn" style={{ width: 22, height: 22 }} title="Move down" aria-label="Move message down"><ArrowDown size={12} /></button>
               </>
             )}
-            <button onClick={() => onChange(items.filter((_, j) => j !== i))} className="icon-btn" style={{ width: 22, height: 22 }} title="Remove" aria-label="Remove message"><X size={12} /></button>
+            <button type="button" onClick={() => onChange(items.filter((_, j) => j !== i))} className="icon-btn" style={{ width: 22, height: 22 }} title="Remove" aria-label="Remove message"><X size={12} /></button>
           </div>
           <MonacoEditor value={item.value} onChange={(v) => set(i, { value: v })} height={80} />
         </div>
       ))}
-      <button onClick={() => onChange([...items, { type: 'equals', value: '{\n  \n}', ignoreArrayOrder: false }])} className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-start' }}>
+      <button type="button" onClick={() => onChange([...items, newSequenceItem()])} className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-start' }}>
         <Plus size={11} /> {streaming ? 'Add message' : 'Add alternative'}
       </button>
     </div>

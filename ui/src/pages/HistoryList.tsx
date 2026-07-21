@@ -79,10 +79,9 @@ export function HistoryList() {
     { id: 'stubId', header: 'Stub', accessorKey: 'stubId', cell: (info) => {
       const v = info.getValue() as string;
       return v
-        ? <code onClick={(e) => { e.stopPropagation(); navigate(`/stubs/${v}`); }}
-            role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/stubs/${v}`); } }}
+        ? <button type="button" onClick={(e) => { e.stopPropagation(); navigate(`/stubs/${v}`); }}
             title={`${v}\nOpen stub`} className="hover-row"
-            style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--accent-text)', cursor: 'pointer', padding: '1px 4px', borderRadius: 3 }}>{v.slice(0, 8)}</code>
+            style={{ font: 'inherit', fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--accent-text)', cursor: 'pointer', padding: '1px 4px', borderRadius: 3, background: 'none', border: 'none', textAlign: 'inherit' }}>{v.slice(0, 8)}</button>
         : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>no match</span>;
     }},
     { id: 'time', header: 'Time', accessorKey: 'timestamp', cell: (info) => (
@@ -144,7 +143,7 @@ export function HistoryList() {
             <div style={{ color: 'var(--text-muted)', display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
               <span>Status: <strong style={{ color: isOk(r) ? colors.success : colors.error }}>{isOk(r) ? 'OK' : `${codeName(r.code)} (${r.code})`}</strong></span>
               <span>Session: {r.session ? <code style={{ color: 'var(--accent-text)' }}>{r.session.slice(0, 16)}</code> : <span style={{ color: colors.success }}>Global</span>}</span>
-              <span>Stub: {r.stubId ? <code onClick={() => navigate(`/stubs/${r.stubId}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/stubs/${r.stubId}`); } }} style={{ color: 'var(--accent-text)', cursor: 'pointer' }}>{r.stubId.slice(0, 12)}</code> : 'no match'}</span>
+              <span>Stub: {r.stubId ? <button type="button" onClick={() => navigate(`/stubs/${r.stubId}`)} style={{ font: 'inherit', fontFamily: 'var(--mono)', color: 'var(--accent-text)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'inherit' }}>{r.stubId.slice(0, 12)}</button> : 'no match'}</span>
               <span>{new Date(r.timestamp).toLocaleString()}</span>
             </div>
 

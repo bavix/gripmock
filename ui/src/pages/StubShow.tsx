@@ -13,6 +13,20 @@ import { toYaml } from '../features/stubs/toYaml';
 import { stashClone } from '../lib/clone';
 import { FileCode } from 'lucide-react';
 import { useMemo } from 'react';
+import type { Stub, CallRecord } from '../lib/types';
+
+type Usage = { total: number; first: Date; last: Date } | null;
+
+function computeUsage(history: CallRecord[] | undefined, stub: Stub | undefined): Usage {
+  if (!history || !stub) return null;
+  const calls = history.filter((h) => h.stubId === stub.id);
+  if (calls.length === 0) return null;
+  return {
+    total: calls.length,
+    first: new Date(calls[calls.length - 1].timestamp),
+    last: new Date(calls[0].timestamp),
+  };
+}
 
 export function StubShow() {
   const { id } = useParams<{ id: string }>();
@@ -29,16 +43,7 @@ export function StubShow() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['stubs'] }); toast.show('Stub deleted'); navigate('/stubs'); },
   });
 
-  const usage = useMemo(() => {
-    if (!history || !stub) return null;
-    const calls = history.filter((h) => h.stubId === stub.id);
-    if (calls.length === 0) return null;
-    return {
-      total: calls.length,
-      first: new Date(calls[calls.length - 1].timestamp),
-      last: new Date(calls[0].timestamp),
-    };
-  }, [history, stub]);
+  const usage = useMemo(() => computeUsage(history, stub), [history, stub]);
 
   if (isLoading) return <div style={{ padding: 24, color: 'var(--text-muted)' }}>Loading...</div>;
   if (error || !stub) return <div style={{ padding: 24, color: 'var(--error)' }}>Stub not found.</div>;
@@ -48,35 +53,18 @@ export function StubShow() {
     toast.show('Copied to clipboard');
   };
 
-  const out = stub.output;
   const isFile = stub.source === 'file';
   const example = stubRequestExample(stub);
-  const inputExample = example.payload;
-  const peers = allStubs ? methodPeers(stub, allStubs) : [];
-  const shadows = allStubs ? shadowers(stub, allStubs) : [];
   const methodType = svcList?.find((s) => serviceRefMatches(stub.service, s.id, s.name))?.methods?.find((m) => m.name === stub.method)?.methodType;
   const stream = streamKind(methodType);
-  // Method-type-aware request/response model.
-  const reqMsgs = requestMessages(stub);
-  const resMsgs = responseMessages(stub);
-  const reqStream = isRequestStream(methodType) || (stub.inputs?.length ?? 0) > 0;
-  const resStream = isResponseStream(methodType) || (stub.output?.stream?.length ?? 0) > 0;
-  const isError = !!out.error || (out.code ?? 0) > 0;
-  const headerEntries = matcherEntries(stub.headers);
   const testHref = `/stubs/test?service=${encodeURIComponent(stub.service)}&method=${encodeURIComponent(stub.method)}&id=${encodeURIComponent(stub.id)}&payload=${encodeURIComponent(example.payload)}&headers=${encodeURIComponent(example.headers)}`;
 
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <button onClick={() => navigate('/stubs')} className="btn btn-ghost" style={{ fontSize: 12 }}><ArrowLeft size={14} /> Back</button>
-        <div style={{ flex: 1 }} />
-        {!isFile && <button onClick={() => navigate(`/stubs/${stub.id}/edit`)} className="btn"><Edit3 size={13} /> Edit</button>}
-        <button onClick={() => { stashClone(stub); navigate('/stubs/create?clone=1'); }} className="btn"><Files size={13} /> Clone</button>
-        <button onClick={() => { navigator.clipboard.writeText(toYaml(stub)); toast.show('YAML copied'); }} className="btn" title="Copy stub as YAML"><FileCode size={13} /> YAML</button>
-        <button onClick={() => navigate(testHref)} className="btn" title="Send this request and see which stub matches"><Play size={13} /> Test</button>
-        <button onClick={() => navigate(`/inspect?service=${encodeURIComponent(stub.service)}&method=${encodeURIComponent(stub.method)}&id=${encodeURIComponent(stub.id)}&payload=${encodeURIComponent(inputExample)}`)} className="btn" title="Diagnose why this stub matches or loses"><Bug size={13} /> Inspect</button>
-        {!isFile && <button onClick={() => { if (confirm('Delete this stub?')) del.mutate(); }} className="btn" style={{ color: colors.error }}><Trash2 size={13} /> Delete</button>}
-      </div>
+      <StubToolbar stub={stub} isFile={isFile} navigate={navigate} testHref={testHref} inputExample={example.payload}
+        onClone={() => { stashClone(stub); navigate('/stubs/create?clone=1'); }}
+        onYaml={() => { navigator.clipboard.writeText(toYaml(stub)); toast.show('YAML copied'); }}
+        onDelete={() => del.mutate()} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <span className="badge" style={{ background: `${stream.color}1e`, color: stream.color }} title={stream.full}>{stream.label}</span>
@@ -84,117 +72,168 @@ export function StubShow() {
         <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{stream.full}</span>
       </div>
 
-      <div className="card">
-        <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
-            <Hash size={12} />
-            <code style={{ color: 'var(--text)', cursor: 'pointer', fontSize: 11 }} onClick={copyId} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyId(); } }}>{stub.id}</code>
-            <Copy size={11} style={{ cursor: 'pointer', color: 'var(--text-muted)' }} onClick={copyId} />
-          </div>
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: 'var(--text-muted)' }}>
-            <span>Priority: <strong style={{ color: 'var(--text)' }}>{stub.priority}</strong></span>
-            <span>Times: <strong style={{ color: 'var(--text)' }}>{stub.options?.times ?? '∞'}</strong></span>
-            <span>Source: <strong style={{ color: 'var(--text)' }}>{stub.source || '—'}</strong></span>
-          </div>
-          {usage ? (
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 11, color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 2 }}>
-              <span>Matched <strong style={{ color: colors.success }}>{usage.total}</strong> times</span>
-              <span>First: <strong style={{ color: 'var(--text)' }}>{usage.first.toLocaleString()}</strong></span>
-              <span>Last: <strong style={{ color: 'var(--text)' }}>{usage.last.toLocaleString()}</strong></span>
-            </div>
-          ) : (
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 2 }}>
-              {stub.used
-                ? <span style={{ color: colors.success }}>Matched at least once (details beyond history retention)</span>
-                : 'Never matched'}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {peers.length > 0 && (
-        <div style={{ padding: '10px 12px', borderRadius: 'var(--radius-lg)', border: `1px solid ${shadows.length ? colors.warning + '55' : 'var(--border)'}`, background: shadows.length ? 'var(--warning-bg)' : 'var(--bg-secondary)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-            {shadows.length > 0 && <AlertTriangle size={14} style={{ color: colors.warning }} />}
-            <span className="section-title" style={{ color: shadows.length ? colors.warning : 'var(--text-muted)' }}>
-              {shadows.length > 0
-                ? `Possibly shadowed — ${shadows.length} higher-priority stub${shadows.length > 1 ? 's' : ''} on this method`
-                : `${peers.length} other stub${peers.length > 1 ? 's' : ''} on this method`}
-            </span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {peers.map((p) => {
-              const higher = p.priority > stub.priority;
-              return (
-                <div key={p.id} onClick={() => navigate(`/stubs/${p.id}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/stubs/${p.id}`); } }} className="hover-row"
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '3px 6px', borderRadius: 4, cursor: 'pointer' }}>
-                  {higher && <Trophy size={12} style={{ color: colors.warning }} />}
-                  <code style={{ color: 'var(--text-muted)', fontSize: 11 }}>{p.id.slice(0, 8)}</code>
-                  <span className="badge" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>P{p.priority}</span>
-                  <span style={{ color: 'var(--text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{higher ? 'evaluated before this' : 'evaluated after this'}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── REQUEST ── */}
-      <SectionCard
-        title={reqStream ? `Request stream · ${reqMsgs.length} message${reqMsgs.length === 1 ? '' : 's'}` : 'Request'}
-        hint={reqStream ? 'Client streams these messages; the stub matches them in order.' : (methodType ? stream.full : undefined)}
-        color={colors.accent}
-      >
-        {headerEntries.length > 0 && (
-          <div style={{ marginBottom: 10 }}>
-            <FieldLabel>Header matcher</FieldLabel>
-            <MatcherRules entries={headerEntries} />
-          </div>
-        )}
-        {reqMsgs.length === 0
-          ? <Empty>Matches any request payload — no input constraints.</Empty>
-          : reqMsgs.map((m, i) => (
-              <MessageBlock key={i} index={reqStream ? i + 1 : undefined} label={reqStream ? 'Message' : 'Input matcher'}>
-                {matcherEntries(m).length === 0
-                  ? <Empty>Matches anything.</Empty>
-                  : <MatcherRules entries={matcherEntries(m)} />}
-                {m.ignoreArrayOrder && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>· ignores array order</div>}
-              </MessageBlock>
-            ))}
-      </SectionCard>
-
-      {/* ── RESPONSE ── */}
-      <SectionCard
-        title={isError ? 'Error response' : resStream ? `Response stream · ${resMsgs.length} message${resMsgs.length === 1 ? '' : 's'}` : 'Response'}
-        hint={resStream && !isError ? 'Server streams these messages back in order.' : undefined}
-        color={isError ? colors.error : '#06b6d4'}
-      >
-        {isError ? (
-          <div style={{ padding: '9px 12px', borderRadius: 'var(--radius)', border: `1px solid ${colors.error}55`, background: 'var(--error-bg)', fontSize: 13 }}>
-            <strong style={{ color: colors.error }}>{grpcName(out.code)} </strong>
-            <span style={{ color: 'var(--text-muted)' }}>(code {out.code ?? 0})</span>
-            {out.error && <div style={{ marginTop: 4, color: 'var(--text)', fontFamily: 'var(--mono)', fontSize: 12 }}>{out.error}</div>}
-          </div>
-        ) : resMsgs.length === 0 ? (
-          <Empty>Empty response.</Empty>
-        ) : (
-          resMsgs.map((r, i) => (
-            <MessageBlock key={i} index={resStream ? i + 1 : undefined} label={resStream ? 'Message' : 'Data'}>
-              <pre className="json-block">{prettyJson(r) || JSON.stringify(r, null, 2)}</pre>
-            </MessageBlock>
-          ))
-        )}
-        {out.delay && <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 8 }}>Delay <code style={{ color: colors.warning, background: 'var(--warning-bg)', padding: '1px 6px', borderRadius: 3 }}>{out.delay}</code></div>}
-        {hasContent(out.headers) && <div style={{ marginTop: 8 }}><FieldLabel>Response headers</FieldLabel><pre className="json-block">{prettyJson(out.headers)}</pre></div>}
-        {hasContent(out.details) && <div style={{ marginTop: 8 }}><FieldLabel>Error details (protobuf Any)</FieldLabel><pre className="json-block">{prettyJson(out.details)}</pre></div>}
-      </SectionCard>
-
-      {stub.effects && stub.effects.length > 0 && (
-        <SectionCard title={`Effects · ${stub.effects.length}`} hint="Side effects applied on match." color={colors.warning}>
-          <pre className="json-block">{prettyJson(stub.effects)}</pre>
-        </SectionCard>
-      )}
+      <UsageMeta stub={stub} usage={usage} onCopyId={copyId} />
+      <PeersPanel stub={stub} allStubs={allStubs} navigate={navigate} />
+      <RequestSection stub={stub} methodType={methodType} stream={stream} />
+      <ResponseSection stub={stub} methodType={methodType} />
+      <EffectsSection stub={stub} />
     </div>
+  );
+}
+
+function StubToolbar({ stub, isFile, navigate, testHref, inputExample, onClone, onYaml, onDelete }: Readonly<{
+  stub: Stub; isFile: boolean; navigate: (p: string) => void; testHref: string; inputExample: string;
+  onClone: () => void; onYaml: () => void; onDelete: () => void;
+}>) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <button onClick={() => navigate('/stubs')} className="btn btn-ghost" style={{ fontSize: 12 }}><ArrowLeft size={14} /> Back</button>
+      <div style={{ flex: 1 }} />
+      {!isFile && <button onClick={() => navigate(`/stubs/${stub.id}/edit`)} className="btn"><Edit3 size={13} /> Edit</button>}
+      <button onClick={onClone} className="btn"><Files size={13} /> Clone</button>
+      <button onClick={onYaml} className="btn" title="Copy stub as YAML"><FileCode size={13} /> YAML</button>
+      <button onClick={() => navigate(testHref)} className="btn" title="Send this request and see which stub matches"><Play size={13} /> Test</button>
+      <button onClick={() => navigate(`/inspect?service=${encodeURIComponent(stub.service)}&method=${encodeURIComponent(stub.method)}&id=${encodeURIComponent(stub.id)}&payload=${encodeURIComponent(inputExample)}`)} className="btn" title="Diagnose why this stub matches or loses"><Bug size={13} /> Inspect</button>
+      {!isFile && <button onClick={() => { if (confirm('Delete this stub?')) onDelete(); }} className="btn" style={{ color: colors.error }}><Trash2 size={13} /> Delete</button>}
+    </div>
+  );
+}
+
+function UsageMeta({ stub, usage, onCopyId }: Readonly<{ stub: Stub; usage: Usage; onCopyId: () => void }>) {
+  return (
+    <div className="card">
+      <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
+          <Hash size={12} />
+          <button type="button" onClick={onCopyId} title="Copy ID" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'inherit' }}>
+            <code style={{ color: 'var(--text)', fontSize: 11 }}>{stub.id}</code>
+            <Copy size={11} style={{ color: 'var(--text-muted)' }} />
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: 'var(--text-muted)' }}>
+          <span>Priority: <strong style={{ color: 'var(--text)' }}>{stub.priority}</strong></span>
+          <span>Times: <strong style={{ color: 'var(--text)' }}>{stub.options?.times ?? '∞'}</strong></span>
+          <span>Source: <strong style={{ color: 'var(--text)' }}>{stub.source || '—'}</strong></span>
+        </div>
+        {usage ? (
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: 11, color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 2 }}>
+            <span>Matched <strong style={{ color: colors.success }}>{usage.total}</strong> times</span>
+            <span>First: <strong style={{ color: 'var(--text)' }}>{usage.first.toLocaleString()}</strong></span>
+            <span>Last: <strong style={{ color: 'var(--text)' }}>{usage.last.toLocaleString()}</strong></span>
+          </div>
+        ) : (
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 2 }}>
+            {stub.used
+              ? <span style={{ color: colors.success }}>Matched at least once (details beyond history retention)</span>
+              : 'Never matched'}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PeersPanel({ stub, allStubs, navigate }: Readonly<{ stub: Stub; allStubs?: Stub[]; navigate: (p: string) => void }>) {
+  const peers = allStubs ? methodPeers(stub, allStubs) : [];
+  const shadows = allStubs ? shadowers(stub, allStubs) : [];
+  if (peers.length === 0) return null;
+  return (
+    <div style={{ padding: '10px 12px', borderRadius: 'var(--radius-lg)', border: `1px solid ${shadows.length ? colors.warning + '55' : 'var(--border)'}`, background: shadows.length ? 'var(--warning-bg)' : 'var(--bg-secondary)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        {shadows.length > 0 && <AlertTriangle size={14} style={{ color: colors.warning }} />}
+        <span className="section-title" style={{ color: shadows.length ? colors.warning : 'var(--text-muted)' }}>
+          {shadows.length > 0
+            ? `Possibly shadowed — ${shadows.length} higher-priority stub${shadows.length > 1 ? 's' : ''} on this method`
+            : `${peers.length} other stub${peers.length > 1 ? 's' : ''} on this method`}
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {peers.map((p) => {
+          const higher = p.priority > stub.priority;
+          return (
+            <button type="button" key={p.id} onClick={() => navigate(`/stubs/${p.id}`)} className="hover-row"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, font: 'inherit', fontSize: 12, color: 'inherit', textAlign: 'inherit', width: '100%', padding: '3px 6px', borderRadius: 4, cursor: 'pointer', background: 'none', border: 'none' }}>
+              {higher && <Trophy size={12} style={{ color: colors.warning }} />}
+              <code style={{ color: 'var(--text-muted)', fontSize: 11 }}>{p.id.slice(0, 8)}</code>
+              <span className="badge" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>P{p.priority}</span>
+              <span style={{ color: 'var(--text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{higher ? 'evaluated before this' : 'evaluated after this'}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function RequestSection({ stub, methodType, stream }: Readonly<{ stub: Stub; methodType?: string; stream: ReturnType<typeof streamKind> }>) {
+  const reqMsgs = requestMessages(stub);
+  const reqStream = isRequestStream(methodType) || (stub.inputs?.length ?? 0) > 0;
+  const headerEntries = matcherEntries(stub.headers);
+  return (
+    <SectionCard
+      title={reqStream ? `Request stream · ${reqMsgs.length} message${reqMsgs.length === 1 ? '' : 's'}` : 'Request'}
+      hint={reqStream ? 'Client streams these messages; the stub matches them in order.' : (methodType ? stream.full : undefined)}
+      color={colors.accent}
+    >
+      {headerEntries.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <FieldLabel>Header matcher</FieldLabel>
+          <MatcherRules entries={headerEntries} />
+        </div>
+      )}
+      {reqMsgs.length === 0
+        ? <Empty>Matches any request payload — no input constraints.</Empty>
+        : reqMsgs.map((m, i) => (
+            <MessageBlock key={i} index={reqStream ? i + 1 : undefined} label={reqStream ? 'Message' : 'Input matcher'}>
+              {matcherEntries(m).length === 0
+                ? <Empty>Matches anything.</Empty>
+                : <MatcherRules entries={matcherEntries(m)} />}
+              {m.ignoreArrayOrder && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>· ignores array order</div>}
+            </MessageBlock>
+          ))}
+    </SectionCard>
+  );
+}
+
+function ResponseSection({ stub, methodType }: Readonly<{ stub: Stub; methodType?: string }>) {
+  const out = stub.output;
+  const resMsgs = responseMessages(stub);
+  const resStream = isResponseStream(methodType) || (stub.output?.stream?.length ?? 0) > 0;
+  const isError = !!out.error || (out.code ?? 0) > 0;
+  return (
+    <SectionCard
+      title={isError ? 'Error response' : resStream ? `Response stream · ${resMsgs.length} message${resMsgs.length === 1 ? '' : 's'}` : 'Response'}
+      hint={resStream && !isError ? 'Server streams these messages back in order.' : undefined}
+      color={isError ? colors.error : '#06b6d4'}
+    >
+      {isError ? (
+        <div style={{ padding: '9px 12px', borderRadius: 'var(--radius)', border: `1px solid ${colors.error}55`, background: 'var(--error-bg)', fontSize: 13 }}>
+          <strong style={{ color: colors.error }}>{grpcName(out.code)} </strong>
+          <span style={{ color: 'var(--text-muted)' }}>(code {out.code ?? 0})</span>
+          {out.error && <div style={{ marginTop: 4, color: 'var(--text)', fontFamily: 'var(--mono)', fontSize: 12 }}>{out.error}</div>}
+        </div>
+      ) : resMsgs.length === 0 ? (
+        <Empty>Empty response.</Empty>
+      ) : (
+        resMsgs.map((r, i) => (
+          <MessageBlock key={i} index={resStream ? i + 1 : undefined} label={resStream ? 'Message' : 'Data'}>
+            <pre className="json-block">{prettyJson(r) || JSON.stringify(r, null, 2)}</pre>
+          </MessageBlock>
+        ))
+      )}
+      {out.delay && <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 8 }}>Delay <code style={{ color: colors.warning, background: 'var(--warning-bg)', padding: '1px 6px', borderRadius: 3 }}>{out.delay}</code></div>}
+      {hasContent(out.headers) && <div style={{ marginTop: 8 }}><FieldLabel>Response headers</FieldLabel><pre className="json-block">{prettyJson(out.headers)}</pre></div>}
+      {hasContent(out.details) && <div style={{ marginTop: 8 }}><FieldLabel>Error details (protobuf Any)</FieldLabel><pre className="json-block">{prettyJson(out.details)}</pre></div>}
+    </SectionCard>
+  );
+}
+
+function EffectsSection({ stub }: Readonly<{ stub: Stub }>) {
+  if (!stub.effects || stub.effects.length === 0) return null;
+  return (
+    <SectionCard title={`Effects · ${stub.effects.length}`} hint="Side effects applied on match." color={colors.warning}>
+      <pre className="json-block">{prettyJson(stub.effects)}</pre>
+    </SectionCard>
   );
 }
 

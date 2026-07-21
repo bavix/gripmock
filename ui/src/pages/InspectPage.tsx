@@ -218,7 +218,7 @@ function banner(border: string, color: string): React.CSSProperties {
   return { padding: 10, borderRadius: 'var(--radius)', border: `1px solid ${border}`, background: `${color}12`, color, fontSize: 12.5 };
 }
 
-function ResultHeader({ result }: { result: InspectReport }) {
+function ResultHeader({ result }: Readonly<{ result: InspectReport }>) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
       {result.matchedStubId ? (
@@ -241,7 +241,7 @@ function ResultHeader({ result }: { result: InspectReport }) {
   );
 }
 
-function PipelineFlow({ stages }: { stages: InspectStage[] }) {
+function PipelineFlow({ stages }: Readonly<{ stages: InspectStage[] }>) {
   return (
     <div style={{ padding: 12, borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
       <div className="section-title" style={{ marginBottom: 10 }}>Filter pipeline</div>
@@ -265,12 +265,12 @@ function PipelineFlow({ stages }: { stages: InspectStage[] }) {
   );
 }
 
-function CandidateRow({ rank, candidate, selected, isTarget, onSelect }: { rank: number; candidate: InspectCandidate; selected: boolean; isTarget: boolean; onSelect: () => void }) {
+function CandidateRow({ rank, candidate, selected, isTarget, onSelect }: Readonly<{ rank: number; candidate: InspectCandidate; selected: boolean; isTarget: boolean; onSelect: () => void }>) {
   const excluded = (candidate.excludedBy?.length ?? 0) > 0;
   return (
-    <div onClick={onSelect} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); } }} className="hover-row" data-candidate-id={candidate.id}
+    <button type="button" onClick={onSelect} className="hover-row" data-candidate-id={candidate.id}
       style={{
-        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 'var(--radius)', cursor: 'pointer', fontSize: 12,
+        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 'var(--radius)', cursor: 'pointer', font: 'inherit', fontSize: 12, color: 'inherit', textAlign: 'inherit', width: '100%',
         border: `1px solid ${selected ? 'var(--accent)' : isTarget ? colors.warning : 'var(--border)'}`,
         background: selected ? 'var(--accent-bg)' : 'var(--bg-secondary)',
       }}>
@@ -286,49 +286,97 @@ function CandidateRow({ rank, candidate, selected, isTarget, onSelect }: { rank:
         : excluded
         ? <span className="chip" style={{ background: 'var(--error-bg)', color: colors.error }}>✕ {candidate.excludedBy!.join(', ')}</span>
         : <span className="chip" style={{ background: 'var(--warning-bg)', color: colors.warning }}>outranked</span>}
+    </button>
+  );
+}
+
+// Prefer the authoritative per-stage events (3 states: passed/failed/skipped);
+// fall back to the boolean checks when events are absent.
+type Check = { label: string; state: 'passed' | 'failed' | 'skipped'; reason: string };
+
+function computeHeaderDiff(candidate: InspectCandidate, stub: Stub | undefined, headersText: string): FieldRule[] | null {
+  if (candidate.headersMatched || !stub || !hasContent(stub.headers)) return null;
+  return mismatches(parseObject(headersText) as Record<string, unknown>, stub.headers as Record<string, unknown>);
+}
+
+// Streaming stubs keep the matcher in inputs[] (input is null) — diff msg #1.
+function computeInputDiff(candidate: InspectCandidate, stub: Stub | undefined, payloadText: string): FieldRule[] | null {
+  if (candidate.inputMatched || !stub) return null;
+  const parsed = parseObject(payloadText);
+  const payload = (Array.isArray(parsed) ? (parsed[0] ?? {}) : parsed) as Record<string, unknown>;
+  const matcher = hasContent(stub.input) ? stub.input : requestMessages(stub)[0];
+  return mismatches(payload, matcher);
+}
+
+function buildChecks(candidate: InspectCandidate): Check[] {
+  if (candidate.events && candidate.events.length > 0) {
+    return candidate.events.map((e) => ({
+      label: STAGE_LABEL[e.stage] ?? e.stage,
+      state: e.result === 'passed' ? 'passed' : e.result === 'skipped' ? 'skipped' : 'failed',
+      reason: e.reason && e.result !== 'passed' ? reasonText(e.reason) : '',
+    }));
+  }
+  return [
+    { label: 'Session scope', state: candidate.visibleBySession ? 'passed' : 'failed', reason: '' },
+    { label: 'Times limit', state: candidate.withinTimes ? 'passed' : 'failed', reason: '' },
+    { label: 'Header matcher', state: candidate.headersMatched ? 'passed' : 'failed', reason: '' },
+    { label: 'Input matcher', state: candidate.inputMatched ? 'passed' : 'failed', reason: '' },
+  ];
+}
+
+function computeVerdict(candidate: InspectCandidate, excluded: boolean): { color: string; text: string } {
+  if (candidate.matched) return { color: colors.success, text: 'Selected — this stub served the response.' };
+  if (excluded) return { color: colors.error, text: `Excluded at "${candidate.excludedBy!.join(', ')}" — did not qualify.` };
+  return { color: colors.warning, text: 'Qualified, but another stub was selected.' };
+}
+
+function checkIcon(state: Check['state']) {
+  if (state === 'passed') return <CheckCircle2 size={13} color={colors.success} style={{ flexShrink: 0, marginTop: 1 }} />;
+  if (state === 'skipped') return <MinusCircle size={13} color={'var(--text-muted)'} style={{ flexShrink: 0, marginTop: 1 }} />;
+  return <XCircle size={13} color={colors.error} style={{ flexShrink: 0, marginTop: 1 }} />;
+}
+
+function CriteriaList({ checks }: Readonly<{ checks: Check[] }>) {
+  return (
+    <div>
+      <div className="section-title" style={{ marginBottom: 4 }}>Criteria</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {checks.map((c, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12 }}>
+            {checkIcon(c.state)}
+            <span style={{ color: c.state === 'passed' ? 'var(--text)' : 'var(--text-muted)', minWidth: 120 }}>{c.label}</span>
+            {c.reason && <span style={{ color: c.state === 'skipped' ? 'var(--text-muted)' : colors.error, fontSize: 11.5 }}>{c.reason}</span>}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
-function Diagnosis({ candidate, winner, isTarget, navigate, stub, payloadText, headersText }: { candidate: InspectCandidate; winner: InspectCandidate | null; isTarget: boolean; navigate: (p: string) => void; stub?: Stub; payloadText: string; headersText: string }) {
+function OutrankedNote({ candidate, winner, outranked }: Readonly<{ candidate: InspectCandidate; winner: InspectCandidate | null; outranked: boolean }>) {
+  if (!outranked || !winner || winner.id === candidate.id) return null;
+  return (
+    <div style={{ padding: 10, borderRadius: 'var(--radius)', background: 'var(--warning-bg)', border: `1px solid ${colors.warning}40` }}>
+      <div style={{ fontWeight: 600, color: colors.warning, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
+        <Trophy size={13} /> Lost to {winner.id.slice(0, 8)}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{whyLost(candidate, winner)}</div>
+      <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 11.5 }}>
+        <Compare label="priority" a={candidate.priority} b={winner.priority} />
+        <Compare label="specificity" a={candidate.specificity} b={winner.specificity} />
+        <Compare label="score" a={+candidate.score.toFixed(3)} b={+winner.score.toFixed(3)} />
+      </div>
+    </div>
+  );
+}
+
+function Diagnosis({ candidate, winner, isTarget, navigate, stub, payloadText, headersText }: Readonly<{ candidate: InspectCandidate; winner: InspectCandidate | null; isTarget: boolean; navigate: (p: string) => void; stub?: Stub; payloadText: string; headersText: string }>) {
   const excluded = (candidate.excludedBy?.length ?? 0) > 0;
   const outranked = !candidate.matched && !excluded;
-
-  const headerDiff = useMemo(() => {
-    if (candidate.headersMatched || !stub || !hasContent(stub.headers)) return null;
-    return mismatches(parseObject(headersText) as Record<string, unknown>, stub.headers as Record<string, unknown>);
-  }, [candidate.headersMatched, stub, headersText]);
-
-  // Streaming stubs keep the matcher in inputs[] (input is null) — diff msg #1.
-  const diff = useMemo(() => {
-    if (candidate.inputMatched || !stub) return null;
-    const parsed = parseObject(payloadText);
-    const payload = (Array.isArray(parsed) ? (parsed[0] ?? {}) : parsed) as Record<string, unknown>;
-    const matcher = hasContent(stub.input) ? stub.input : requestMessages(stub)[0];
-    return mismatches(payload, matcher);
-  }, [candidate.inputMatched, stub, payloadText]);
-
-  // Prefer the authoritative per-stage events (3 states: passed/failed/skipped);
-  // fall back to the boolean checks when events are absent.
-  type Check = { label: string; state: 'passed' | 'failed' | 'skipped'; reason: string };
-  const checks: Check[] = candidate.events && candidate.events.length > 0
-    ? candidate.events.map((e) => ({
-        label: STAGE_LABEL[e.stage] ?? e.stage,
-        state: e.result === 'passed' ? 'passed' : e.result === 'skipped' ? 'skipped' : 'failed',
-        reason: e.reason && e.result !== 'passed' ? reasonText(e.reason) : '',
-      }))
-    : ([
-        { label: 'Session scope', state: candidate.visibleBySession ? 'passed' : 'failed', reason: '' },
-        { label: 'Times limit', state: candidate.withinTimes ? 'passed' : 'failed', reason: '' },
-        { label: 'Header matcher', state: candidate.headersMatched ? 'passed' : 'failed', reason: '' },
-        { label: 'Input matcher', state: candidate.inputMatched ? 'passed' : 'failed', reason: '' },
-      ] as Check[]);
-
-  const verdict = candidate.matched
-    ? { color: colors.success, text: 'Selected — this stub served the response.' }
-    : excluded
-    ? { color: colors.error, text: `Excluded at "${candidate.excludedBy!.join(', ')}" — did not qualify.` }
-    : { color: colors.warning, text: 'Qualified, but another stub was selected.' };
+  const headerDiff = useMemo(() => computeHeaderDiff(candidate, stub, headersText), [candidate.headersMatched, stub, headersText]);
+  const diff = useMemo(() => computeInputDiff(candidate, stub, payloadText), [candidate.inputMatched, stub, payloadText]);
+  const checks = buildChecks(candidate);
+  const verdict = computeVerdict(candidate, excluded);
 
   return (
     <Card style={{ borderColor: candidate.matched ? colors.success : isTarget ? colors.warning : 'var(--border)' }}>
@@ -351,41 +399,14 @@ function Diagnosis({ candidate, winner, isTarget, navigate, stub, payloadText, h
           <span>used <strong style={{ color: 'var(--text)' }}>{candidate.used}/{candidate.times || '∞'}</strong></span>
         </div>
 
-        <div>
-          <div className="section-title" style={{ marginBottom: 4 }}>Criteria</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {checks.map((c, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12 }}>
-                {c.state === 'passed'
-                  ? <CheckCircle2 size={13} color={colors.success} style={{ flexShrink: 0, marginTop: 1 }} />
-                  : c.state === 'skipped'
-                  ? <MinusCircle size={13} color={'var(--text-muted)'} style={{ flexShrink: 0, marginTop: 1 }} />
-                  : <XCircle size={13} color={colors.error} style={{ flexShrink: 0, marginTop: 1 }} />}
-                <span style={{ color: c.state === 'passed' ? 'var(--text)' : 'var(--text-muted)', minWidth: 120 }}>{c.label}</span>
-                {c.reason && <span style={{ color: c.state === 'skipped' ? 'var(--text-muted)' : colors.error, fontSize: 11.5 }}>{c.reason}</span>}
-              </div>
-            ))}
-          </div>
-        </div>
+        <CriteriaList checks={checks} />
 
         {headerDiff && <FieldMismatchList title="Header field mismatches" rows={headerDiff} />}
         {diff && <FieldMismatchList title="Input field mismatches" rows={diff} />}
 
         <StubDefinition stub={stub} candidate={candidate} />
 
-        {outranked && winner && winner.id !== candidate.id && (
-          <div style={{ padding: 10, borderRadius: 'var(--radius)', background: 'var(--warning-bg)', border: `1px solid ${colors.warning}40` }}>
-            <div style={{ fontWeight: 600, color: colors.warning, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Trophy size={13} /> Lost to {winner.id.slice(0, 8)}
-            </div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{whyLost(candidate, winner)}</div>
-            <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 11.5 }}>
-              <Compare label="priority" a={candidate.priority} b={winner.priority} />
-              <Compare label="specificity" a={candidate.specificity} b={winner.specificity} />
-              <Compare label="score" a={+candidate.score.toFixed(3)} b={+winner.score.toFixed(3)} />
-            </div>
-          </div>
-        )}
+        <OutrankedNote candidate={candidate} winner={winner} outranked={outranked} />
 
         <Button className="btn-sm" onClick={() => navigate(`/stubs/${candidate.id}`)} style={{ alignSelf: 'flex-start' }}>
           <Eye size={12} /> Open stub
@@ -395,7 +416,7 @@ function Diagnosis({ candidate, winner, isTarget, navigate, stub, payloadText, h
   );
 }
 
-function FieldMismatchList({ title, rows }: { title: string; rows: FieldRule[] }) {
+function FieldMismatchList({ title, rows }: Readonly<{ title: string; rows: FieldRule[] }>) {
   return (
     <div>
       <div className="section-title" style={{ marginBottom: 4 }}>{title}</div>
@@ -415,7 +436,7 @@ function FieldMismatchList({ title, rows }: { title: string; rows: FieldRule[] }
   );
 }
 
-function StubDefinition({ stub, candidate }: { stub?: Stub; candidate: InspectCandidate }) {
+function StubDefinition({ stub, candidate }: Readonly<{ stub?: Stub; candidate: InspectCandidate }>) {
   if (!stub) {
     return (
       <div>
@@ -471,7 +492,7 @@ function whyLost(c: InspectCandidate, w: InspectCandidate): string {
   return 'Tie-breaker resolved in the winner\'s favour (insertion order).';
 }
 
-function Compare({ label, a, b }: { label: string; a: number; b: number }) {
+function Compare({ label, a, b }: Readonly<{ label: string; a: number; b: number }>) {
   const win = b >= a;
   return (
     <span style={{ color: 'var(--text-muted)' }}>
