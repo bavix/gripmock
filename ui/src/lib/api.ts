@@ -10,8 +10,24 @@ export class ApiError extends Error {
   body?: Record<string, unknown>;
 }
 
+// The base URL may be user-configured (persisted in localStorage), so validate
+// it before it ever reaches fetch(): accept only well-formed http(s) URLs
+// (absolute, or relative resolved against the current origin); otherwise fall
+// back to the default base. Keeps normal behavior for every valid value.
+function isValidBase(u: string): boolean {
+  try {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const parsed = new URL(u, origin);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch { return false; }
+}
+
 function base(): string {
-  try { return localStorage.getItem(STORAGE_KEY) || DEFAULT_BASE; } catch { return DEFAULT_BASE; }
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored && isValidBase(stored)) return stored;
+  } catch {}
+  return DEFAULT_BASE;
 }
 
 export function getApiUrl() { return base(); }

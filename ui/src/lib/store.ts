@@ -17,7 +17,7 @@ export const useStore = create<AppState>()(
     (set) => ({
       theme: 'dark',
       setTheme: (theme) => {
-        document.documentElement.setAttribute('data-theme', theme);
+        document.documentElement.dataset.theme = theme;
         set({ theme });
       },
       session: null,
@@ -40,7 +40,7 @@ export const useStore = create<AppState>()(
     {
       name: 'gripmock-ui-store',
       partialize: (state) => ({ theme: state.theme, session: state.session, recentSessions: state.recentSessions, pinnedStubs: state.pinnedStubs }),
-      onRehydrateStorage: () => (state) => { if (state?.theme) document.documentElement.setAttribute('data-theme', state.theme); },
+      onRehydrateStorage: () => (state) => { if (state?.theme) document.documentElement.dataset.theme = state.theme; },
     },
   ),
 );

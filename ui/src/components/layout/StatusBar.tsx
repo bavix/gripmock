@@ -21,8 +21,22 @@ export function StatusBar() {
     refetchInterval: 10_000,
     retry: false,
   });
-  const ready = health.isError ? false : health.isSuccess ? true : dash?.ready;
-  const healthLabel = health.isError ? 'Server unreachable' : ready ? 'Ready' : ready === false ? 'Not ready' : 'Checking…';
+  let ready: boolean | undefined;
+  if (health.isError) ready = false;
+  else if (health.isSuccess) ready = true;
+  else ready = dash?.ready;
+
+  let healthLabel: string;
+  if (health.isError) healthLabel = 'Server unreachable';
+  else if (ready) healthLabel = 'Ready';
+  else if (ready === false) healthLabel = 'Not ready';
+  else healthLabel = 'Checking…';
+
+  let versionLabel = '?';
+  if (dash?.version) {
+    const versionPrefix = /^\d/.test(dash.version) ? 'v' : '';
+    versionLabel = `${versionPrefix}${dash.version}`;
+  }
 
   return (
     <footer style={{
@@ -30,7 +44,7 @@ export function StatusBar() {
       display: 'flex', alignItems: 'center', padding: '0 10px', gap: 10,
       fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-secondary)', flexShrink: 0,
     }}>
-      <span>{dash?.version ? `${/^\d/.test(dash.version) ? 'v' : ''}${dash.version}` : '?'}</span>
+      <span>{versionLabel}</span>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={healthLabel}>
         <HealthDot ready={ready} />
         {health.isError && <span style={{ color: colors.error }}>offline</span>}
@@ -53,11 +67,13 @@ export function StatusBar() {
   );
 }
 
-function HealthDot({ ready }: { ready?: boolean }) {
+function HealthDot({ ready }: Readonly<{ ready?: boolean }>) {
+  const readyColor = ready ? colors.success : colors.error;
+  const dotColor = ready === undefined ? '#64748b' : readyColor;
   return (
     <span style={{
       width: 6, height: 6, borderRadius: '50%', display: 'inline-block',
-      background: ready === undefined ? '#64748b' : (ready ? colors.success : colors.error),
+      background: dotColor,
     }} />
   );
 }

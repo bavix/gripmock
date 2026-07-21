@@ -23,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 400, textAlign: 'center' }}>
             {this.state.error.message}
           </div>
-          <button onClick={() => window.location.reload()} style={btn('default', 'sm')}>
+          <button type="button" onClick={() => window.location.reload()} style={btn('default', 'sm')}>
             <RefreshCw size={12} /> Reload
           </button>
         </div>

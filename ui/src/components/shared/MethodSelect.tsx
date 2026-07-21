@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useId } from 'react';
 import { useServices, useServiceMethods } from '../../hooks/useServices';
 import { Search, ChevronDown, Loader2 } from 'lucide-react';
 
@@ -9,7 +9,8 @@ interface MethodSelectProps {
   onMethodChange: (m: string) => void;
 }
 
-export function MethodSelect({ service, method, onServiceChange, onMethodChange }: MethodSelectProps) {
+export function MethodSelect({ service, method, onServiceChange, onMethodChange }: Readonly<MethodSelectProps>) {
+  const listboxId = useId();
   const { data: allServices } = useServices();
   const { data: serviceMethods, isFetching: methodsLoading } = useServiceMethods(service || null);
   const [open, setOpen] = useState(false);
@@ -77,7 +78,7 @@ export function MethodSelect({ service, method, onServiceChange, onMethodChange 
     <div ref={ref} style={{ position: 'relative' }}>
       <div
         onClick={() => setOpen((v) => !v)}
-        role="combobox" aria-expanded={open} aria-haspopup="listbox" aria-label="Service and method"
+        role="combobox" tabIndex={0} aria-expanded={open} aria-controls={listboxId} aria-haspopup="listbox" aria-label="Service and method"
         className="input"
         style={{
           display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
@@ -115,7 +116,7 @@ export function MethodSelect({ service, method, onServiceChange, onMethodChange 
             </div>
           </div>
 
-          <div ref={listRef} role="listbox" aria-label="Methods">
+          <div ref={listRef} id={listboxId} role="listbox" aria-label="Methods">
             {!allServices && (
               <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <Loader2 size={12} className="animate-spin" /> Loading...
@@ -145,7 +146,7 @@ export function MethodSelect({ service, method, onServiceChange, onMethodChange 
                   const isActive = flatIndex(g.id, m.name) === active;
                   return (
                     <div key={m.name} onClick={() => choose({ service: g.id, method: m.name })}
-                      role="option" aria-selected={isSelected}
+                      role="option" tabIndex={0} aria-selected={isSelected}
                       data-selected={isSelected} data-active={isActive}
                       onMouseEnter={() => setActive(flatIndex(g.id, m.name))}
                       style={{
@@ -171,7 +172,7 @@ export function MethodSelect({ service, method, onServiceChange, onMethodChange 
   );
 }
 
-function StreamBadge({ type }: { type: string }) {
+function StreamBadge({ type }: Readonly<{ type: string }>) {
   const cfg: Record<string, { label: string; color: string }> = {
     unary: { label: 'U', color: '#3b82f6' },
     client_streaming: { label: 'CS', color: '#f59e0b' },

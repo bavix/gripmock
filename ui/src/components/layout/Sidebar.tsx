@@ -17,7 +17,7 @@ const NAV = [
 // Visual separators after these routes group the nav.
 const SEP_AFTER = new Set(['/services', '/stubs/unused', '/verify']);
 
-export function Sidebar({ collapsed }: { collapsed: boolean }) {
+export function Sidebar({ collapsed }: Readonly<{ collapsed: boolean }>) {
   return (
     <nav style={{
       display: 'flex', flexDirection: 'column', gap: 2,

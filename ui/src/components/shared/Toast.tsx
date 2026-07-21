@@ -1,4 +1,4 @@
-import { useState, useCallback, createContext, useContext, type ReactNode } from 'react';
+import { useState, useCallback, useMemo, createContext, useContext, type ReactNode } from 'react';
 
 interface ToastItem {
   id: number;
@@ -19,14 +19,20 @@ let nextId = 0;
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
+  const dismiss = useCallback((id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
   const show = useCallback((message: string, action?: { label: string; onClick: () => void }) => {
     const id = nextId++;
     setToasts((prev) => [...prev, { id, message, action }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 5000);
-  }, []);
+    setTimeout(() => dismiss(id), 5000);
+  }, [dismiss]);
+
+  const value = useMemo(() => ({ show }), [show]);
 
   return (
-    <Ctx.Provider value={{ show }}>
+    <Ctx.Provider value={value}>
       {children}
       <div role="status" aria-live="polite" aria-atomic="true" style={{ position: 'fixed', bottom: 48, left: '50%', transform: 'translateX(-50%)', zIndex: 300, display: 'flex', flexDirection: 'column', gap: 6, pointerEvents: 'none' }}>
         {toasts.map((t) => (
@@ -40,7 +46,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           }}>
             <span>{t.message}</span>
             {t.action && (
-              <button onClick={() => { t.action?.onClick?.(); setToasts((prev) => prev.filter((x) => x.id !== t.id)); }}
+              <button type="button" onClick={() => { t.action?.onClick?.(); dismiss(t.id); }}
                 style={{ padding: '3px 8px', fontSize: 11, borderRadius: 4, border: '1px solid var(--accent)', background: 'transparent', color: colors.accent, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 {t.action.label}
               </button>

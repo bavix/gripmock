@@ -20,7 +20,7 @@ import { StubTestPage } from './pages/StubTestPage';
 export function App() {
   const theme = useStore((s) => s.theme);
   const setTheme = useStore((s) => s.setTheme);
-  useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
+  useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
   // Optional ?theme=light|dark override for shareable/embedded links.
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get('theme');

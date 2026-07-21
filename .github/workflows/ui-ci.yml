@@ -28,11 +28,11 @@ jobs:
           cache: npm
           cache-dependency-path: ui/package-lock.json
       - name: Install
-        run: npm ci
+        run: npm ci --ignore-scripts
       - name: Type-check
         run: npm run type-check
       - name: Lint
-        run: npx eslint src --no-fix --max-warnings 5
+        run: npm run lint:ci
       - name: Unit tests
         run: npm test
       - name: Build

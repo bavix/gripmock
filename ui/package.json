@@ -9,6 +9,7 @@
     "test": "vitest run",
     "type-check": "tsc --noEmit",
     "lint": "eslint --fix \"src/**/*.{js,jsx,ts,tsx}\"",
+    "lint:ci": "eslint src --no-fix --max-warnings 5",
     "format": "prettier --write ./src"
   },
   "dependencies": {

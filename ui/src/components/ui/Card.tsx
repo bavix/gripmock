@@ -7,19 +7,38 @@ interface CardProps {
   onClick?: () => void;
 }
 
-export function Card({ children, style, className, onClick }: CardProps) {
+export function Card({ children, style, className, onClick }: Readonly<CardProps>) {
   const cls = ['card', onClick ? 'card-clickable' : '', className ?? ''].filter(Boolean).join(' ');
-  return <div className={cls} style={style} onClick={onClick}>{children}</div>;
+  if (onClick) {
+    return (
+      <div
+        className={cls}
+        style={style}
+        role="button"
+        tabIndex={0}
+        onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onClick();
+          }
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+  return <div className={cls} style={style}>{children}</div>;
 }
 
-export function CardHeader({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+export function CardHeader({ children, style }: Readonly<{ children: ReactNode; style?: CSSProperties }>) {
   return <div className="card-header" style={style}>{children}</div>;
 }
 
-export function CardBody({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+export function CardBody({ children, style }: Readonly<{ children: ReactNode; style?: CSSProperties }>) {
   return <div className="card-body" style={style}>{children}</div>;
 }
 
-export function SectionTitle({ children, style }: { children: string; style?: CSSProperties }) {
+export function SectionTitle({ children, style }: Readonly<{ children: string; style?: CSSProperties }>) {
   return <div className="section-title" style={style}>{children}</div>;
 }

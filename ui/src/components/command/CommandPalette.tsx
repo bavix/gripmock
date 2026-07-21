@@ -95,24 +95,15 @@ export function CommandPalette() {
   const methodItems = items.filter((i) => i.kind === 'method');
   const stubItems = items.filter((i) => i.kind === 'stub');
 
-  const Row = ({ item, idx, children }: { item: Item; idx: number; children: React.ReactNode }) => (
-    <div data-idx={idx} id={`cmdk-opt-${idx}`} role="option" aria-selected={idx === active}
-      onClick={() => go(item)} onMouseEnter={() => setActive(idx)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 'var(--radius)',
-        cursor: 'pointer', fontSize: 13, background: idx === active ? 'var(--accent-bg)' : 'transparent',
-        color: idx === active ? 'var(--accent-text)' : 'var(--text)',
-      }}>
-      {children}
-    </div>
-  );
-
   return (
-    <div onClick={() => setOpen(false)} style={{
-      position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(6,10,20,0.55)',
-      display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh',
-    }}>
-      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Command palette" style={{
+    <div role="button" tabIndex={0} aria-label="Close command palette"
+      onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setOpen(false); } }}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(6,10,20,0.55)',
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '12vh',
+      }}>
+      <div role="dialog" aria-modal="true" aria-label="Command palette" style={{
         width: 560, maxWidth: '92vw', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-xl)',
         border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)', overflow: 'hidden',
       }}>
@@ -131,7 +122,7 @@ export function CommandPalette() {
             const idx = items.indexOf(item);
             const Icon = (item as Extract<Item, { kind: 'page' }>).icon;
             return (
-              <Row key={item.id} item={item} idx={idx}>
+              <Row key={item.id} item={item} idx={idx} active={active} onSelect={go} onHover={setActive}>
                 <Icon size={15} style={{ color: colors.accent, flexShrink: 0 }} />
                 <span style={{ flex: 1 }}>{(item as Extract<Item, { kind: 'page' }>).label}</span>
               </Row>
@@ -143,7 +134,7 @@ export function CommandPalette() {
             const idx = items.indexOf(item);
             const m = item as Extract<Item, { kind: 'method' }>;
             return (
-              <Row key={item.id} item={item} idx={idx}>
+              <Row key={item.id} item={item} idx={idx} active={active} onSelect={go} onHover={setActive}>
                 <Waypoints size={14} style={{ color: colors.accent, flexShrink: 0 }} />
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}><span style={{ color: 'var(--text-muted)' }}>{m.service}/</span>{m.method}</span>
                 <ArrowRight size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
@@ -156,7 +147,7 @@ export function CommandPalette() {
             const idx = items.indexOf(item);
             const s = (item as Extract<Item, { kind: 'stub' }>).stub;
             return (
-              <Row key={item.id} item={item} idx={idx}>
+              <Row key={item.id} item={item} idx={idx} active={active} onSelect={go} onHover={setActive}>
                 <Hash size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                 <code style={{ fontSize: 11, color: 'var(--text-muted)', flexShrink: 0 }}>{s.id.slice(0, 8)}</code>
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.service}/{s.method}</span>
@@ -178,6 +169,23 @@ export function CommandPalette() {
           <span style={hint}><span className="kbd">Esc</span> Close</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Row({ item, idx, active, onSelect, onHover, children }: Readonly<{
+  item: Item; idx: number; active: number;
+  onSelect: (item: Item) => void; onHover: (idx: number) => void; children: React.ReactNode;
+}>) {
+  return (
+    <div data-idx={idx} id={`cmdk-opt-${idx}`} role="option" aria-selected={idx === active} tabIndex={0}
+      onClick={() => onSelect(item)} onMouseEnter={() => onHover(idx)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 'var(--radius)',
+        cursor: 'pointer', fontSize: 13, background: idx === active ? 'var(--accent-bg)' : 'transparent',
+        color: idx === active ? 'var(--accent-text)' : 'var(--text)',
+      }}>
+      {children}
     </div>
   );
 }

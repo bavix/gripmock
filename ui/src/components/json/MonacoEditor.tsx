@@ -25,7 +25,7 @@ interface MonacoEditorProps {
   label?: string;
 }
 
-export function MonacoEditor({ value = '', onChange, readOnly = false, height = 200, label }: MonacoEditorProps) {
+export function MonacoEditor({ value = '', onChange, readOnly = false, height = 200, label }: Readonly<MonacoEditorProps>) {
   const [ready, setReady] = useState(false);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const theme = useStore((s) => s.theme);

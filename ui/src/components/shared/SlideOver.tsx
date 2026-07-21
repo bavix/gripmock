@@ -10,7 +10,7 @@ interface SlideOverProps {
   width?: string;
 }
 
-export function SlideOver({ open, onClose, title, children, width = '640px' }: SlideOverProps) {
+export function SlideOver({ open, onClose, title, children, width = '640px' }: Readonly<SlideOverProps>) {
   const ref = useFocusTrap<HTMLDivElement>(open, onClose);
 
   return (
@@ -18,7 +18,21 @@ export function SlideOver({ open, onClose, title, children, width = '640px' }: S
       position: 'fixed', inset: 0, zIndex: 150,
       pointerEvents: open ? 'auto' : 'none',
     }}>
-      {open && <div onClick={onClose} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)' }} />}
+      {open && (
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Close"
+          onClick={onClose}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onClose();
+            }
+          }}
+          style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.3)' }}
+        />
+      )}
 
       <div ref={ref} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} style={{
         position: 'absolute', top: 44, right: 0, bottom: 24,
@@ -36,7 +50,7 @@ export function SlideOver({ open, onClose, title, children, width = '640px' }: S
           flexShrink: 0, background: 'var(--bg-secondary)',
         }}>
           <span style={{ fontSize: 13, fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
-          <button onClick={onClose} className="btn btn-ghost" style={{ padding: '2px 6px' }} aria-label="Close"><X size={15} /></button>
+          <button type="button" onClick={onClose} className="btn btn-ghost" style={{ padding: '2px 6px' }} aria-label="Close"><X size={15} /></button>
         </div>
 
         <div style={{ flex: 1, overflow: 'auto', padding: 14 }}>

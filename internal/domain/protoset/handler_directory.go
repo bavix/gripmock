@@ -7,10 +7,12 @@ import (
 	"strings"
 )
 
+const protoExt = ".proto"
+
 type DirectoryHandler struct{}
 
 func (h *DirectoryHandler) CanHandle(raw string) bool {
-	if strings.HasSuffix(raw, ".proto") || strings.HasSuffix(raw, ".pb") || strings.HasSuffix(raw, ".protoset") {
+	if strings.HasSuffix(raw, protoExt) || strings.HasSuffix(raw, ".pb") || strings.HasSuffix(raw, ".protoset") {
 		return false
 	}
 
@@ -45,12 +47,12 @@ func (h *DirectoryHandler) Process(ctx context.Context, source *Source, processo
 		absPath, _ := filepath.Abs(pth)
 
 		switch ext {
-		case ".proto":
+		case protoExt:
 			seenProto[absPath] = true
 			processor.AddProtoFile(ctx, absPath)
 		case ".pb", ".protoset":
 			// Skip .pb/.protoset if a .proto with the same base name exists in the same dir
-			protoPath := absPath[:len(absPath)-len(ext)] + ".proto"
+			protoPath := absPath[:len(absPath)-len(ext)] + protoExt
 			if seenProto[protoPath] {
 				return nil
 			}
