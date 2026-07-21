@@ -151,7 +151,7 @@ function buildBody(f: StubFormData, initId: string | undefined, outMode: 'data' 
   const out: Record<string, unknown> = {};
   if (outMode === 'data') { const d = parse(f.outputData); if (d) out.data = d; }
   if (outMode === 'stream') { const s = parse(f.outputStream); if (s) out.stream = s; }
-  const oh = parse(f.outputHeaders); if (oh) out.headers = oh;
+  const oh = parse(f.outputHeaders); if (oh && Object.keys(oh as object).length) out.headers = oh;
   if (f.outputError) { out.error = f.outputError; out.code = f.outputCode; }
   if (f.outputDelay) out.delay = f.outputDelay;
   const dd = parse(f.outputDetails); if (dd) out.details = dd;

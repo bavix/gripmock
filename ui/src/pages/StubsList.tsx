@@ -78,6 +78,9 @@ export function StubsList({ filter }: Props) {
     [svcFilter, methodFilter, srcFilter, serverQ],
   );
   useEffect(() => { setPage(0); }, [filters]);
+  // Selection is scoped to the loaded page (bulk-delete filters the current page
+  // only) — drop it when the page changes so "N selected" never over-promises.
+  useEffect(() => { setSelected(new Set()); }, [page]);
 
   // Main view is server-paginated (thousands-scale). Used/unused endpoints
   // have no pagination — they keep the legacy full fetch.
