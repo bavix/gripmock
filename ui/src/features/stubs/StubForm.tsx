@@ -470,7 +470,7 @@ function Collapse({ label, children, defaultOpen = false }: { label: string; chi
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div style={{ borderRadius: 6, border: '1px solid var(--border)', background: open ? 'var(--bg-secondary)' : 'transparent', overflow: 'hidden' }}>
-      <div onClick={() => setOpen(!open)} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', userSelect: 'none', padding: '6px 10px', background: 'var(--bg-secondary)' }}>
+      <div onClick={() => setOpen(!open)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(!open); } }} style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', userSelect: 'none', padding: '6px 10px', background: 'var(--bg-secondary)' }}>
         {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
         <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)' }}>{label}</span>
       </div>

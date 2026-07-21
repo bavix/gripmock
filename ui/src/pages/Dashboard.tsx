@@ -47,7 +47,7 @@ function Endpoint({ proto, addr }: { proto: string; addr: string }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
       <span style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{proto}</span>
-      <code onClick={() => copy(shown)} title="Click to copy"
+      <code onClick={() => copy(shown)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copy(shown); } }} title="Click to copy"
         style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: 'var(--text)', background: 'var(--bg-tertiary)', padding: '2px 8px', borderRadius: 4, userSelect: 'all' }}>
         {shown}
         {copied ? <CheckCircle2 size={11} style={{ color: colors.success }} /> : <Copy size={10} style={{ color: 'var(--text-muted)' }} />}
@@ -180,7 +180,7 @@ export function Dashboard() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
         {stats.map((s) => (
-          <div key={s.label} onClick={() => s.to && navigate(s.to)} className="card card-hover" style={{ cursor: 'pointer', padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div key={s.label} onClick={() => s.to && navigate(s.to)} role="button" tabIndex={0} onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && s.to) { e.preventDefault(); navigate(s.to); } }} className="card card-hover" style={{ cursor: 'pointer', padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${s.color}1e`, color: s.color, flexShrink: 0 }}>
               <s.icon size={18} />
             </div>
@@ -261,7 +261,7 @@ export function Dashboard() {
           {liveFeed.map((call, i) => {
             const ok = callOk(call);
             return (
-              <div key={i} onClick={() => call.stubId ? navigate(`/stubs/${call.stubId}`) : navigate('/history')} className="hover-row"
+              <div key={i} onClick={() => call.stubId ? navigate(`/stubs/${call.stubId}`) : navigate('/history')} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (call.stubId) { navigate(`/stubs/${call.stubId}`); } else { navigate('/history'); } } }} className="hover-row"
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', fontSize: 12.5, borderBottom: '1px solid var(--border)', borderLeft: `3px solid ${ok ? colors.success : colors.error}` }}>
                 <span className="badge" style={{ background: ok ? 'var(--success-bg)' : 'var(--error-bg)', color: ok ? colors.success : colors.error, minWidth: 34, justifyContent: 'center' }}>{ok ? 'OK' : (call.code ?? 'ERR')}</span>
                 <span style={{ fontWeight: 500, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

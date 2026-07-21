@@ -268,7 +268,7 @@ function PipelineFlow({ stages }: { stages: InspectStage[] }) {
 function CandidateRow({ rank, candidate, selected, isTarget, onSelect }: { rank: number; candidate: InspectCandidate; selected: boolean; isTarget: boolean; onSelect: () => void }) {
   const excluded = (candidate.excludedBy?.length ?? 0) > 0;
   return (
-    <div onClick={onSelect} className="hover-row" data-candidate-id={candidate.id}
+    <div onClick={onSelect} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); } }} className="hover-row" data-candidate-id={candidate.id}
       style={{
         display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 'var(--radius)', cursor: 'pointer', fontSize: 12,
         border: `1px solid ${selected ? 'var(--accent)' : isTarget ? colors.warning : 'var(--border)'}`,

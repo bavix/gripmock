@@ -106,7 +106,7 @@ function MethodBlock({ method, serviceId, navigate, stubCount }: { method: Metho
 
   return (
     <div className="card">
-      <div onClick={() => setExpanded(!expanded)} className="card-header hover-row" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', textTransform: 'none', letterSpacing: 0 }}>
+      <div onClick={() => setExpanded(!expanded)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(!expanded); } }} className="card-header hover-row" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', textTransform: 'none', letterSpacing: 0 }}>
         {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{method.name}</span>
         <span className="badge" style={badgeStyle(method.methodType)}>{method.methodType === 'unary' ? 'U' : method.methodType === 'server_streaming' ? 'SS' : method.methodType === 'client_streaming' ? 'CS' : 'BD'}</span>

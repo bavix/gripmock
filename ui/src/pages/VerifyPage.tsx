@@ -162,7 +162,7 @@ export function VerifyPage() {
                     {actualCalls.slice(0, 20).map((c, i) => {
                       const ok = !c.code || c.code === 0;
                       return (
-                        <div key={i} onClick={() => c.stubId && navigate(`/stubs/${c.stubId}`)}
+                        <div key={i} onClick={() => c.stubId && navigate(`/stubs/${c.stubId}`)} role="button" tabIndex={0} onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && c.stubId) { e.preventDefault(); navigate(`/stubs/${c.stubId}`); } }}
                           style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, padding: '3px 6px', borderRadius: 4, cursor: c.stubId ? 'pointer' : 'default', borderLeft: `2px solid ${ok ? colors.success : colors.error}`, background: 'var(--bg)' }}>
                           <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>{new Date(c.timestamp).toLocaleTimeString()}</span>
                           <span style={{ color: ok ? colors.success : colors.error, fontWeight: 600 }}>{ok ? 'OK' : `err ${c.code}`}</span>

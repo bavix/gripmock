@@ -269,6 +269,7 @@ function makeColumns(selected: Set<string>, setSelected: (fn: (prev: Set<string>
     ), size: 32 },
     { id: 'id', header: 'ID', accessorKey: 'id', cell: (info) => (
       <span style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer' }} title={info.getValue() as string}
+        role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigator.clipboard.writeText(info.getValue() as string); } }}
         onClick={() => navigator.clipboard.writeText(info.getValue() as string)}>{(info.getValue() as string)?.slice(0, 8)}</span>
     )},
     { id: 'type', header: 'Type', cell: (info) => (
@@ -478,7 +479,7 @@ function StubCard({ stub, onDelete, expandedId, setExpandedId, navigate, methodT
   const inTitle = reqMsgs.length ? (prettyJson(firstMatcher) || undefined) : undefined;
   return (
     <div style={{ borderRadius: 8, border: `1px solid ${expanded ? color : 'var(--border)'}`, borderLeft: `3px solid ${color}`, background: expanded ? `${color}05` : 'var(--bg-secondary)', overflow: 'hidden' }}>
-      <div onClick={() => setExpandedId(expanded ? null : stub.id)} style={{ padding: '8px 10px', cursor: 'pointer' }}>
+      <div onClick={() => setExpandedId(expanded ? null : stub.id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedId(expanded ? null : stub.id); } }} style={{ padding: '8px 10px', cursor: 'pointer' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <code style={{ fontSize: 11, color: 'var(--text-muted)' }} title={stub.id}>{stub.id.slice(0, 8)}</code>
           <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 3, background: '#64748b18', color: '#64748b', fontWeight: 500 }}>{stub.source || '—'}</span>
@@ -511,7 +512,7 @@ function StubCard({ stub, onDelete, expandedId, setExpandedId, navigate, methodT
 function CopyableId({ id }: { id: string }) {
   const { copied, copy } = useCopy();
   return (
-    <code onClick={() => copy(id)} title="Click to copy"
+    <code onClick={() => copy(id)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copy(id); } }} title="Click to copy"
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--text-primary)', background: 'var(--bg-tertiary)', padding: '3px 8px', borderRadius: 4, userSelect: 'all', wordBreak: 'break-all', lineHeight: 1.4 }}>
       {id}
       {copied

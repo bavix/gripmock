@@ -88,7 +88,7 @@ export function StubShow() {
         <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-muted)' }}>
             <Hash size={12} />
-            <code style={{ color: 'var(--text)', cursor: 'pointer', fontSize: 11 }} onClick={copyId}>{stub.id}</code>
+            <code style={{ color: 'var(--text)', cursor: 'pointer', fontSize: 11 }} onClick={copyId} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyId(); } }}>{stub.id}</code>
             <Copy size={11} style={{ cursor: 'pointer', color: 'var(--text-muted)' }} onClick={copyId} />
           </div>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', color: 'var(--text-muted)' }}>
@@ -126,7 +126,7 @@ export function StubShow() {
             {peers.map((p) => {
               const higher = p.priority > stub.priority;
               return (
-                <div key={p.id} onClick={() => navigate(`/stubs/${p.id}`)} className="hover-row"
+                <div key={p.id} onClick={() => navigate(`/stubs/${p.id}`)} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/stubs/${p.id}`); } }} className="hover-row"
                   style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, padding: '3px 6px', borderRadius: 4, cursor: 'pointer' }}>
                   {higher && <Trophy size={12} style={{ color: colors.warning }} />}
                   <code style={{ color: 'var(--text-muted)', fontSize: 11 }}>{p.id.slice(0, 8)}</code>
