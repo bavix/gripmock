@@ -6,6 +6,15 @@ const (
 )
 
 const (
+	headerContentType = "Content-Type"
+
+	contentTypeJSON         = "application/json"
+	contentTypeProto        = "application/proto"
+	contentTypeConnectJSON  = "application/connect+json"
+	contentTypeConnectProto = "application/connect+proto"
+)
+
+const (
 	LogFieldService     = "service"
 	LogFieldMethod      = "method"
 	LogFieldPeerAddress = "peer.address"

@@ -119,7 +119,7 @@ func (g *GRPCWebGateway) handleUnary(mocker *grpcMocker, a *grpcwebAdapter) {
 	}
 
 	resp, err := handleUnaryCore(a.ctx, a, data, mocker,
-		a.req.Header.Get("Content-Type"),
+		a.req.Header.Get(headerContentType),
 		isGRPCWebJSONContentType,
 		func(st *status.Status) {
 			a.writeErrorStatus(normalizeHealthError(st, mocker.serviceName))
@@ -183,19 +183,19 @@ func (grpcwebResponse) WriteSuccess(w http.ResponseWriter, r *http.Request) {
 }
 
 func isGRPCWebJSONContentType(ct string) bool {
-	return ct == "application/json" || ct == grpcwebContentTypeJSON
+	return ct == contentTypeJSON || ct == grpcwebContentTypeJSON
 }
 
 func setGRPCWebContentType(w http.ResponseWriter, r *http.Request) {
-	if isGRPCWebJSONContentType(r.Header.Get("Content-Type")) {
-		w.Header().Set("Content-Type", grpcwebContentTypeJSON)
+	if isGRPCWebJSONContentType(r.Header.Get(headerContentType)) {
+		w.Header().Set(headerContentType, grpcwebContentTypeJSON)
 	} else {
-		w.Header().Set("Content-Type", grpcwebContentTypeProto)
+		w.Header().Set(headerContentType, grpcwebContentTypeProto)
 	}
 }
 
 func writeGRPCWebError(w http.ResponseWriter, code codes.Code, msg string) {
-	w.Header().Set("Content-Type", grpcwebContentTypeProto)
+	w.Header().Set(headerContentType, grpcwebContentTypeProto)
 	w.WriteHeader(http.StatusOK)
 	writeGRPCWebTrailers(w, code, msg)
 }
@@ -295,7 +295,7 @@ func (a *grpcwebAdapter) SendMsg(m any) error {
 		return nil
 	}
 
-	ct := a.req.Header.Get("Content-Type")
+	ct := a.req.Header.Get(headerContentType)
 
 	data, err := a.encodeMessage(msg, ct)
 	if err != nil {
@@ -325,7 +325,7 @@ func (a *grpcwebAdapter) RecvMsg(m any) error {
 		return io.EOF
 	}
 
-	ct := a.req.Header.Get("Content-Type")
+	ct := a.req.Header.Get(headerContentType)
 
 	frame, err := readConnectFrame(a.req.Body)
 	if err != nil {
