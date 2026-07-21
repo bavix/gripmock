@@ -10,28 +10,38 @@ export class ApiError extends Error {
   body?: Record<string, unknown>;
 }
 
-// The base URL may be user-configured (persisted in localStorage), so validate
-// it before it ever reaches fetch(): accept only well-formed http(s) URLs
-// (absolute, or relative resolved against the current origin); otherwise fall
-// back to the default base. Keeps normal behavior for every valid value.
-function isValidBase(u: string): boolean {
+// The base URL may be user-configured (persisted in localStorage), so it is
+// treated as untrusted. Re-parse it through the URL constructor and hand back
+// only the constructor's own normalized output (never the raw input): accept
+// http(s) origins, resolve relative values against the current origin, and drop
+// any trailing slash so path concatenation stays clean. Anything malformed or
+// non-http(s) yields null and falls back to the default base.
+function normalizeBase(u: string): string | null {
   try {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
     const parsed = new URL(u, origin);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch { return false; }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    return parsed.href.replace(/\/$/, '');
+  } catch { return null; }
 }
 
 function base(): string {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored && isValidBase(stored)) return stored;
+    if (stored) {
+      const normalized = normalizeBase(stored);
+      if (normalized) return normalized;
+    }
   } catch {}
   return DEFAULT_BASE;
 }
 
 export function getApiUrl() { return base(); }
-export function setApiUrl(u: string) { try { if (isValidBase(u)) localStorage.setItem(STORAGE_KEY, u); } catch {} }
+export function setApiUrl(u: string) {
+  const normalized = normalizeBase(u);
+  if (!normalized) return;
+  try { localStorage.setItem(STORAGE_KEY, normalized); } catch {}
+}
 export function resetApiUrl() { try { localStorage.removeItem(STORAGE_KEY); } catch {} }
 
 // Shared transport: builds headers (session, content-type), issues the request,
