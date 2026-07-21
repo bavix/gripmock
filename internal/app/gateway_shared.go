@@ -66,6 +66,7 @@ func recordCall(
 		Session:   session,
 		Code:      code,
 		Error:     errMsg,
+		ElapsedMS: time.Since(ts).Milliseconds(),
 		Timestamp: ts,
 		Requests:  requests,
 		Responses: responses,

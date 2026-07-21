@@ -27,3 +27,20 @@ func TestTrackerExpiredAndForget(t *testing.T) {
 	require.Equal(t, []string{"A"}, expired)
 	require.Equal(t, []string{"B"}, expiredAfterForget)
 }
+
+func TestTrackerIDs(t *testing.T) {
+	t.Parallel()
+
+	tracker := session.NewTracker()
+	require.Empty(t, tracker.IDs())
+
+	now := time.Now()
+	tracker.Touch("Z", now)
+	tracker.Touch("A", now)
+	tracker.Touch("", now) // empty ignored
+
+	require.Equal(t, []string{"A", "Z"}, tracker.IDs())
+
+	tracker.Forget("A")
+	require.Equal(t, []string{"Z"}, tracker.IDs())
+}

@@ -17,6 +17,11 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
+const (
+	errMsgProcessTemplates = "failed to process dynamic templates"
+	errMsgConvertToDynamic = "failed to convert response to dynamic message"
+)
+
 func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 	queryBidi := m.newQueryBidi(stream.Context())
 
@@ -202,7 +207,7 @@ func (m *grpcMocker) prepareBidiOutput(stub *stuber.Stub, templateData template.
 	outputDataCopy := deepCopyAny(stub.Output.Data)
 	if dataMap, ok := outputDataCopy.(map[string]any); ok {
 		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
-			return stuber.Output{}, errors.Wrap(err, "failed to process dynamic templates")
+			return stuber.Output{}, errors.Wrap(err, errMsgProcessTemplates)
 		}
 
 		outputDataCopy = dataMap
@@ -282,7 +287,7 @@ func (m *grpcMocker) sendBidiResponses(
 	}
 	if dataMap, ok := outputDataCopy.(map[string]any); ok {
 		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
-			return errors.Wrap(err, "failed to process dynamic templates")
+			return errors.Wrap(err, errMsgProcessTemplates)
 		}
 
 		outputDataCopy = dataMap
@@ -290,7 +295,7 @@ func (m *grpcMocker) sendBidiResponses(
 
 	outputMsg, err := m.newOutputMessage(outputDataCopy)
 	if err != nil {
-		return errors.Wrap(err, "failed to convert response to dynamic message")
+		return errors.Wrap(err, errMsgConvertToDynamic)
 	}
 
 	return sendStreamMessage(stream, outputMsg)
@@ -376,12 +381,12 @@ func (m *grpcMocker) sendClientStreamResponses(
 			RequestID:    stub.ID.String(),
 		}
 		if err := m.templateEngine.ProcessMap(streamDataCopy, templateData); err != nil {
-			return errors.Wrap(err, "failed to process dynamic templates")
+			return errors.Wrap(err, errMsgProcessTemplates)
 		}
 
 		outputMsg, err := m.newOutputMessage(streamDataCopy)
 		if err != nil {
-			return errors.Wrap(err, "failed to convert response to dynamic message")
+			return errors.Wrap(err, errMsgConvertToDynamic)
 		}
 
 		if err := sendStreamMessage(stream, outputMsg); err != nil {
@@ -416,7 +421,7 @@ func (m *grpcMocker) sendServerStreamResponses(
 
 		outputMsg, err := m.newOutputMessage(streamDataCopy)
 		if err != nil {
-			return errors.Wrap(err, "failed to convert response to dynamic message")
+			return errors.Wrap(err, errMsgConvertToDynamic)
 		}
 
 		if err := sendStreamMessage(stream, outputMsg); err != nil {

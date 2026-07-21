@@ -1,22 +1,15 @@
 {
   "name": "gripmock",
-  "version": "1.0.0",
-  "description": "Package documentation",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/bavix/gripmock.git"
-  },
-  "author": "Maxim Babichev",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/bavix/gripmock/issues"
-  },
-  "homepage": "https://bavix.github.io/gripmock/",
+  "private": true,
+  "workspaces": [
+    "ui"
+  ],
   "scripts": {
-    "docs:dev": "vitepress dev docs",
+    "build": "npm run build:ui && npm run docs:build",
+    "build:ui": "npm run build --workspace=ui",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs",
-    "build": "vitepress build docs"
+    "docs:dev": "vitepress dev docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
     "vitepress": "^2.0.0-alpha.18"

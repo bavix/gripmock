@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
+	"github.com/bavix/gripmock/v3/internal/infra/session"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -401,6 +402,23 @@ func (s *RestServerExtendedTestSuite) TestSessionsList() {
 	err := json.Unmarshal(w.Body.Bytes(), &payload)
 	s.Require().NoError(err)
 	s.Equal([]string{"a", "b"}, payload["sessions"])
+
+	// A session seen only via a live call (request tracker) also surfaces,
+	// unioned with the stub-scoped ones.
+	session.Touch("z-live-session")
+
+	defer session.Forget("z-live-session")
+
+	req = httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/sessions", nil)
+	w = httptest.NewRecorder()
+	s.server.SessionsList(w, req)
+	s.Require().Equal(http.StatusOK, w.Code)
+
+	payload = map[string][]string{}
+	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &payload))
+	s.Contains(payload["sessions"], "z-live-session")
+	s.Contains(payload["sessions"], "a")
+	s.Contains(payload["sessions"], "b")
 }
 
 func (s *RestServerExtendedTestSuite) TestDashboardInfo() {

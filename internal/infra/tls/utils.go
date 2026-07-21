@@ -149,11 +149,11 @@ func (t TLSConfig) LoadCA() (*x509.CertPool, error) {
 }
 
 func (t TLSConfig) Validate() error {
-	if certFile := strings.TrimSpace(t.CertFile); certFile == "" {
+	if strings.TrimSpace(t.CertFile) == "" {
 		return ErrCertRequired
 	}
 
-	if keyFile := strings.TrimSpace(t.KeyFile); keyFile == "" {
+	if strings.TrimSpace(t.KeyFile) == "" {
 		return ErrKeyRequired
 	}
 
