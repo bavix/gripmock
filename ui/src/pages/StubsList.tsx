@@ -479,28 +479,28 @@ function StubCard({ stub, onDelete, expandedId, setExpandedId, navigate, methodT
   return (
     <div style={{ borderRadius: 8, border: `1px solid ${expanded ? color : 'var(--border)'}`, borderLeft: `3px solid ${color}`, background: expanded ? `${color}05` : 'var(--bg-secondary)', overflow: 'hidden' }}>
       <button type="button" onClick={() => setExpandedId(expanded ? null : stub.id)} style={{ padding: '8px 10px', cursor: 'pointer', display: 'block', width: '100%', background: 'none', border: 'none', font: 'inherit', color: 'inherit', textAlign: 'inherit' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <code style={{ fontSize: 11, color: 'var(--text-muted)' }} title={stub.id}>{stub.id.slice(0, 8)}</code>
           <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 3, background: '#64748b18', color: '#64748b', fontWeight: 500 }}>{stub.source || '—'}</span>
-        </div>
-        <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
+        </span>
+        <span style={{ fontSize: 12, fontWeight: 600, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
           <StreamTag methodType={methodType} />
           <span>{stub.service}/{stub.method}</span>
-        </div>
-        <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--text-muted)', marginTop: 4, flexWrap: 'wrap' }}>
+        </span>
+        <span style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--text-muted)', marginTop: 4, flexWrap: 'wrap' }}>
           <span>Prio <strong style={{ color: 'var(--text-secondary)' }}>{stub.priority}</strong></span>
           <span>Times <strong style={{ color: 'var(--text-secondary)' }}>{stub.options?.times ?? '∞'}</strong></span>
           {reqMsgs.length > 1 && <span style={{ color: 'var(--accent-text)' }}>{reqMsgs.length} req msgs</span>}
           {resMsgs.length > 1 && <span style={{ color: '#06b6d4' }}>{resMsgs.length} resp msgs</span>}
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'monospace', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={inTitle}>
+        </span>
+        <span style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'monospace', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={inTitle}>
           <span style={{ color: 'var(--text-muted)' }}>{reqMsgs.length > 1 ? 'req[0] ' : 'in '}</span>{inPreview}
-        </div>
-        <div style={{ display: 'flex', gap: 4, marginTop: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+        </span>
+        <span style={{ display: 'flex', gap: 4, marginTop: 5, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, padding: '1px 6px', borderRadius: 4, fontWeight: 500, background: `${out.color}18`, color: out.color }}>{out.label}</span>
           {types.map((t) => <span key={t} style={{ fontSize: 11, padding: '1px 5px', borderRadius: 3, fontWeight: 600, background: `${MATCHER_COLORS[t] || '#64748b'}18`, color: MATCHER_COLORS[t] || '#64748b' }}>{t}</span>)}
           {hasHeaders && <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 3, fontWeight: 600, background: '#06b6d418', color: '#06b6d4' }}>headers</span>}
-        </div>
+        </span>
       </button>
       {expanded && <div style={{ borderTop: '1px solid var(--border)', padding: 10 }}><ExpandedContent stub={stub} navigate={navigate} onDelete={onDelete} methodType={methodType} /></div>}
     </div>

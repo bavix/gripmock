@@ -181,13 +181,13 @@ export function Dashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 10 }}>
         {stats.map((s) => (
           <button type="button" key={s.label} onClick={() => s.to && navigate(s.to)} className="card card-hover" style={{ cursor: 'pointer', padding: 14, display: 'flex', alignItems: 'center', gap: 12, font: 'inherit', color: 'inherit', textAlign: 'inherit', width: '100%' }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${s.color}1e`, color: s.color, flexShrink: 0 }}>
+            <span style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${s.color}1e`, color: s.color, flexShrink: 0 }}>
               <s.icon size={18} />
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.1 }}>{s.value}</div>
-              <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{s.label}</div>
-            </div>
+            </span>
+            <span style={{ display: 'block', minWidth: 0 }}>
+              <span style={{ display: 'block', fontSize: 24, fontWeight: 700, lineHeight: 1.1 }}>{s.value}</span>
+              <span style={{ display: 'block', fontSize: 11.5, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{s.label}</span>
+            </span>
           </button>
         ))}
       </div>
