@@ -78,6 +78,7 @@ export function MethodSelect({ service, method, onServiceChange, onMethodChange 
     <div ref={ref} style={{ position: 'relative' }}>
       <div
         onClick={() => setOpen((v) => !v)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen((v) => !v); } }}
         role="combobox" tabIndex={0} aria-expanded={open} aria-controls={listboxId} aria-haspopup="listbox" aria-label="Service and method"
         className="input"
         style={{
@@ -146,6 +147,7 @@ export function MethodSelect({ service, method, onServiceChange, onMethodChange 
                   const isActive = flatIndex(g.id, m.name) === active;
                   return (
                     <div key={m.name} onClick={() => choose({ service: g.id, method: m.name })}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose({ service: g.id, method: m.name }); } }}
                       role="option" tabIndex={0} aria-selected={isSelected}
                       data-selected={isSelected} data-active={isActive}
                       onMouseEnter={() => setActive(flatIndex(g.id, m.name))}
