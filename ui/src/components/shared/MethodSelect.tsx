@@ -151,6 +151,7 @@ export function MethodSelect({ service, method, onServiceChange, onMethodChange 
                       role="option" tabIndex={0} aria-selected={isSelected}
                       data-selected={isSelected} data-active={isActive}
                       onMouseEnter={() => setActive(flatIndex(g.id, m.name))}
+                      onFocus={() => setActive(flatIndex(g.id, m.name))}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 6,
                         padding: '6px 10px', fontSize: 12, cursor: 'pointer',

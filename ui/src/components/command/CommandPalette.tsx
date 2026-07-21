@@ -179,7 +179,7 @@ function Row({ item, idx, active, onSelect, onHover, children }: Readonly<{
 }>) {
   return (
     <div data-idx={idx} id={`cmdk-opt-${idx}`} role="option" aria-selected={idx === active} tabIndex={0}
-      onClick={() => onSelect(item)} onMouseEnter={() => onHover(idx)}
+      onClick={() => onSelect(item)} onMouseEnter={() => onHover(idx)} onFocus={() => onHover(idx)}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(item); } }}
       style={{
         display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 'var(--radius)',
