@@ -63,7 +63,7 @@ export function useSmartSearch() {
       // Mode 1: by ID
       if (isUuid(trimmed)) {
         try {
-          const stub = await api.get<SearchMatch>(`/stubs/${trimmed}`);
+          const stub = await api.get<SearchMatch>(`/stubs/${encodeURIComponent(trimmed)}`);
           return { mode: 'id', query, results: [stub], matched: stub };
         } catch {
           return { mode: 'id', query, results: [], error: 'Stub not found by this ID' };
