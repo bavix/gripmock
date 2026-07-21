@@ -23,7 +23,7 @@ require (
 	github.com/klauspost/compress v1.19.0
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/oapi-codegen/runtime v1.6.0
-	github.com/prometheus/client_golang v1.23.2
+	github.com/prometheus/client_golang v1.24.0
 	github.com/rs/zerolog v1.35.1
 	github.com/samber/lo v1.53.0
 	github.com/spf13/cast v1.10.0
