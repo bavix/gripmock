@@ -2,6 +2,7 @@ package app
 
 import (
 	"slices"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -10,11 +11,22 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-func filterMCPStubs(stubs []*stuber.Stub, service, method, sessionID string) []*stuber.Stub {
+// mcpStubListFilter mirrors the REST GET /stubs filters. Session filtering keeps
+// the MCP "visible" semantics (session-scoped + global stubs), unlike the REST
+// list which buckets by exact session — the MCP tools serve request-time lookups.
+type mcpStubListFilter struct {
+	service string
+	method  string
+	session string
+	source  string
+	query   string
+}
+
+func filterMCPStubs(stubs []*stuber.Stub, f mcpStubListFilter) []*stuber.Stub {
 	filtered := make([]*stuber.Stub, 0, len(stubs))
 
 	for _, stub := range stubs {
-		if !mcpStubMatchesFilters(stub, service, method, sessionID) {
+		if !mcpStubMatchesFilters(stub, f) {
 			continue
 		}
 
@@ -24,16 +36,34 @@ func filterMCPStubs(stubs []*stuber.Stub, service, method, sessionID string) []*
 	return filtered
 }
 
-func mcpStubMatchesFilters(stub *stuber.Stub, service, method, sessionID string) bool {
-	if service != "" && stub.Service != service {
+func mcpStubMatchesFilters(stub *stuber.Stub, f mcpStubListFilter) bool {
+	if f.service != "" && stub.Service != f.service {
 		return false
 	}
 
-	if method != "" && stub.Method != method {
+	if f.method != "" && stub.Method != f.method {
 		return false
 	}
 
-	return stubVisibleForSession(stub.Session, sessionID)
+	if f.source != "" && stub.Source != f.source {
+		return false
+	}
+
+	if f.query != "" && !mcpStubMatchesQuery(stub, f.query) {
+		return false
+	}
+
+	return stubVisibleForSession(stub.Session, f.session)
+}
+
+// mcpStubMatchesQuery is the case-insensitive substring match over
+// service/method/ID, identical to stuber.ListOptions.Query.
+func mcpStubMatchesQuery(stub *stuber.Stub, query string) bool {
+	q := strings.ToLower(query)
+
+	return strings.Contains(strings.ToLower(stub.Service), q) ||
+		strings.Contains(strings.ToLower(stub.Method), q) ||
+		strings.Contains(strings.ToLower(stub.ID.String()), q)
 }
 
 func validateMCPStringSlice(values []string, key string) ([]string, error) {
@@ -233,14 +263,30 @@ func buildDebugHints(h *RestServer, serviceFound, methodFound bool, method strin
 	return hints
 }
 
+// filterHistory returns the most-recent `limit` records (tail). It is the
+// offset-0 case of filterHistoryWindow.
 func filterHistory(h *RestServer, opts history.FilterOpts, limit int) []rest.CallRecord {
+	records, _ := filterHistoryWindow(h, opts, limit, 0)
+
+	return records
+}
+
+// filterHistoryWindow mirrors the REST GET /history windowing so MCP clients can
+// paginate large histories: total is the full filtered count; ?limit returns the
+// most recent N and ?offset skips the N newest first. Returns (page, total).
+func filterHistoryWindow(h *RestServer, opts history.FilterOpts, limit, offset int) ([]rest.CallRecord, int) {
 	if h.history == nil {
-		return []rest.CallRecord{}
+		return []rest.CallRecord{}, 0
 	}
 
 	calls := h.history.Filter(opts)
-	if limit > 0 && len(calls) > limit {
-		calls = calls[len(calls)-limit:]
+	total := len(calls)
+
+	if limit > 0 {
+		off := max(offset, 0)
+		end := max(len(calls)-off, 0)
+		start := max(end-limit, 0)
+		calls = calls[start:end]
 	}
 
 	out := make([]rest.CallRecord, len(calls))
@@ -248,7 +294,7 @@ func filterHistory(h *RestServer, opts history.FilterOpts, limit int) []rest.Cal
 		out[i] = historyCallRecordToRest(c)
 	}
 
-	return out
+	return out, total
 }
 
 func mcpIntArg(args map[string]any, key string, defaultValue int) (int, error) {

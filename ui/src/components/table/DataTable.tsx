@@ -1,7 +1,7 @@
-import { useState, useCallback, Fragment, type ReactNode, type CSSProperties } from 'react';
+import { useState, useCallback, useEffect, useMemo, Fragment, type ReactNode, type CSSProperties } from 'react';
 import {
   useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel,
-  getFilteredRowModel, flexRender, type ColumnDef, type SortingState,
+  flexRender, type ColumnDef, type SortingState,
   type VisibilityState, type Row, type Table, type SortDirection,
 } from '@tanstack/react-table';
 import { ChevronDown, ChevronUp, ChevronsUpDown, ChevronRight } from 'lucide-react';
@@ -172,6 +172,12 @@ export function DataTable<T = any>({
   const [density, setDensity] = useState<Density>(extDensity || 'normal');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Sync when the parent changes the controlled density after mount (the initial
+  // useState seed only reads it once).
+  useEffect(() => {
+    if (extDensity) setDensity(extDensity);
+  }, [extDensity]);
+
   const expandCol: ColumnDef<T> | undefined = renderExpanded ? {
     id: '_exp',
     header: '',
@@ -195,7 +201,6 @@ export function DataTable<T = any>({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     ...(manualPagination
       ? {
           manualPagination: true,
@@ -214,6 +219,13 @@ export function DataTable<T = any>({
   }, [density, onDensityChange]);
 
   const rows = table.getRowModel().rows;
+
+  // Collapse the expanded row when its id is no longer present (data reloaded,
+  // filtered, or paged) so the expansion never sticks to a different record.
+  const rowIds = useMemo(() => new Set(rows.map((r) => r.id)), [rows]);
+  useEffect(() => {
+    if (expandedId !== null && !rowIds.has(expandedId)) setExpandedId(null);
+  }, [rowIds, expandedId]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

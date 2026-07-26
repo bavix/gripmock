@@ -506,6 +506,59 @@ func (s *RestServerTestSuite) TestMcpMessageHistoryTools() {
 	s.Len(errorRecords, 1)
 }
 
+func (s *RestServerTestSuite) TestMCPHistoryListPagination() {
+	// Oldest→newest insertion order: M0, M1, M2.
+	server := s.newRestServerWithHistory(
+		history.CallRecord{Service: "svc", Method: "M0"},
+		history.CallRecord{Service: "svc", Method: "M1"},
+		history.CallRecord{Service: "svc", Method: "M2"},
+	)
+
+	// Newest two, no offset.
+	page1 := s.mcpStructuredContent(s.mcpToolCall(server, 1, "history_list", map[string]any{
+		"service": "svc", "limit": 2,
+	}))
+	// Window shifted one older via offset.
+	page2 := s.mcpStructuredContent(s.mcpToolCall(server, 2, "history_list", map[string]any{
+		"service": "svc", "limit": 2, "offset": 1,
+	}))
+
+	// total reflects the full filtered set regardless of the page window.
+	s.Require().InDelta(float64(3), page1["total"], 0)
+	s.Require().InDelta(float64(3), page2["total"], 0)
+
+	recs1, ok := page1["records"].([]any)
+	s.Require().True(ok)
+	s.Require().Len(recs1, 2)
+	s.Require().Equal("M1", recordMethod(recs1[0]))
+	s.Require().Equal("M2", recordMethod(recs1[1]))
+
+	recs2, ok := page2["records"].([]any)
+	s.Require().True(ok)
+	s.Require().Len(recs2, 2)
+	s.Require().Equal("M0", recordMethod(recs2[0]))
+	s.Require().Equal("M1", recordMethod(recs2[1]))
+}
+
+func recordMethod(record any) string {
+	return mapStrField(record, "method")
+}
+
+func mapStrField(v any, key string) string {
+	s, _ := mapField(v, key).(string)
+
+	return s
+}
+
+func mapField(v any, key string) any {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	return m[key]
+}
+
 func (s *RestServerTestSuite) TestMcpToolsListIncludesExpandedSurface() {
 	response := s.mcpCallOK(s.server, map[string]any{"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": map[string]any{}})
 
@@ -699,12 +752,23 @@ func (s *RestServerTestSuite) TestMcpRuntimeToolsHaveHandlers() {
 	handlers := mcpToolHandlers(s.server)
 	tools := mcpusecase.ListRuntimeTools()
 
+	toolNames := make(map[string]struct{}, len(tools))
+
 	for _, tool := range tools {
 		name, ok := tool["name"].(string)
 		s.Require().True(ok)
 
+		toolNames[name] = struct{}{}
+
 		_, exists := handlers[name]
 		s.True(exists, "missing handler for runtime tool: %s", name)
+	}
+
+	// Reverse: every registered handler must be exposed as a runtime tool,
+	// otherwise it is dead code unreachable through the MCP surface.
+	for name := range handlers {
+		_, exists := toolNames[name]
+		s.True(exists, "handler registered for unknown/unexposed tool: %s", name)
 	}
 }
 

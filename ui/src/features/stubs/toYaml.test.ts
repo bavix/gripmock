@@ -39,4 +39,30 @@ describe('toYaml', () => {
     expect(y).toContain('n: 0');
     expect(y).toContain('f: false');
   });
+
+  it('quotes numeric-looking strings so they survive round-trip as strings', () => {
+    for (const v of ['-5', '3.14', '1e10', '+7', '.5', '0x1F', '0o17', '0b101', '.inf', '-.nan']) {
+      expect(toYaml({ v }), `value ${v}`).toContain(`"${v}"`);
+    }
+  });
+
+  it('quotes YAML 1.1 boolean/null-looking strings (case-insensitive)', () => {
+    for (const v of ['on', 'off', 'On', 'OFF', 'yes', 'No', 'True', 'FALSE', 'Null', 'y', 'N', '~']) {
+      expect(toYaml({ v }), `value ${v}`).toContain(`"${v}"`);
+    }
+  });
+
+  it('quotes keys with spaces or YAML-special chars (regression)', () => {
+    // A raw key with a space produced invalid YAML in the preview.
+    expect(toYaml({ 'user name': 1 })).toBe('"user name": 1');
+    expect(toYaml({ 'a{b': 1 })).toBe('"a{b": 1');
+    // Plain keys stay unquoted.
+    expect(toYaml({ user_id: 1 })).toBe('user_id: 1');
+  });
+
+  it('leaves genuine non-scalar strings unquoted', () => {
+    expect(toYaml({ v: '1.2.3' })).toBe('v: 1.2.3');
+    expect(toYaml({ v: 'GetProduct' })).toBe('v: GetProduct');
+    expect(toYaml({ v: 'pkg.Svc/Method' })).toBe('v: pkg.Svc/Method');
+  });
 });

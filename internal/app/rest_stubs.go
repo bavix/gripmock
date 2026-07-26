@@ -3,6 +3,7 @@ package app
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
@@ -153,13 +154,14 @@ func (h *RestServer) ListStubs(w http.ResponseWriter, r *http.Request, params re
 
 func listOptionsFromParams(params rest.ListStubsParams) stuber.ListOptions {
 	options := stuber.ListOptions{
-		Source:  stringFromPtr(params.Source),
-		Service: stringFromPtr(params.Service),
-		Method:  stringFromPtr(params.Method),
-		Query:   stringFromPtr(params.Q),
-		Sort:    stringFromPtr(params.Sort),
-		Limit:   intFromPtr(params.Limit),
-		Offset:  intFromPtr(params.Offset),
+		Source:   stringFromPtr(params.Source),
+		Service:  stringFromPtr(params.Service),
+		Method:   stringFromPtr(params.Method),
+		Query:    stringFromPtr(params.Q),
+		Matchers: parseMatcherKinds(stringFromPtr(params.Matcher)),
+		Sort:     stringFromPtr(params.Sort),
+		Limit:    intFromPtr(params.Limit),
+		Offset:   intFromPtr(params.Offset),
 	}
 
 	if params.Session != nil {
@@ -168,6 +170,29 @@ func listOptionsFromParams(params rest.ListStubsParams) stuber.ListOptions {
 	}
 
 	return options
+}
+
+// parseMatcherKinds splits a comma-separated matcher filter into known kinds,
+// dropping unknown tokens. Empty input yields no filter.
+func parseMatcherKinds(s string) []string {
+	if s == "" {
+		return nil
+	}
+
+	valid := map[string]struct{}{
+		"equals": {}, "contains": {}, "matches": {}, "glob": {}, "anyOf": {},
+	}
+
+	var out []string
+
+	for part := range strings.SplitSeq(s, ",") {
+		kind := strings.TrimSpace(part)
+		if _, ok := valid[kind]; ok {
+			out = append(out, kind)
+		}
+	}
+
+	return out
 }
 
 // PurgeStubs removes all stubs.

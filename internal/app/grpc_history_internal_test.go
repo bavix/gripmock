@@ -5,6 +5,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -234,6 +236,48 @@ func TestHistoryBidiStream11(t *testing.T) {
 	require.Equal(t, stub.ID, calls[0].StubID)
 	require.Len(t, calls[0].Requests, 1)
 	require.Len(t, calls[0].Responses, 1)
+}
+
+// Regression: recordBidiStream hardcoded codes.Unknown for every error, so a
+// bidi stub returning a configured Output.Code was recorded with the wrong code.
+func TestHistoryBidiStreamRecordsConfiguredErrorCode(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMockerWithRecorder(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+
+	notFound := codes.NotFound
+	stub := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: testServiceName,
+		Method:  testMethodName,
+		Input:   stuber.InputData{Contains: map[string]any{}},
+		Inputs:  []stuber.InputData{{Contains: map[string]any{}}},
+		Output:  stuber.Output{Error: "boom", Code: &notFound},
+	}
+	mocker.budgerigar.PutMany(stub)
+
+	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
+	stream := &mockFullServerStream{
+		ctx:              t.Context(),
+		sentMessages:     make([]*dynamicpb.Message, 0),
+		receivedMessages: []*dynamicpb.Message{inputMsg},
+		recvMsgLimit:     1,
+	}
+
+	err := mocker.handleBidiStream(stream)
+	require.Error(t, err)
+	require.Equal(t, codes.NotFound, status.Code(err))
+
+	recorder, ok := mocker.recorder.(*history.MemoryStore)
+	require.True(t, ok, testRecorderShouldBeMemoryStore)
+
+	calls := recorder.Filter(history.FilterOpts{})
+	require.Len(t, calls, 1)
+	require.Equal(t, uint32(codes.NotFound), calls[0].Code, "must record the configured code, not Unknown")
 }
 
 func TestHistoryServerStreamWithError(t *testing.T) {

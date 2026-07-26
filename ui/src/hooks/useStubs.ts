@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { nextPageOffset } from '../lib/pagination';
 import type { Stub } from '../lib/types';
 
 export function useStubs(params?: { service?: string; method?: string; source?: string }) {
@@ -15,6 +16,8 @@ export interface StubListFilters {
   source?: string;
   q?: string;
   sort?: string;
+  // Comma-separated matcher kinds (equals,contains,matches,glob,anyOf) — server-side OR.
+  matcher?: string;
 }
 
 const clean = (f: StubListFilters): Record<string, string | undefined> => ({
@@ -23,6 +26,7 @@ const clean = (f: StubListFilters): Record<string, string | undefined> => ({
   source: f.source || undefined,
   q: f.q || undefined,
   sort: f.sort || undefined,
+  matcher: f.matcher || undefined,
 });
 
 // One page of stubs with the server-side total (X-Total-Count).
@@ -46,11 +50,8 @@ export function useInfiniteStubs(f: StubListFilters, pageSize = 60) {
       api.getWithMeta<Stub[]>('/stubs', { ...cf, limit: String(pageSize), offset: String(pageParam) }),
     initialPageParam: 0,
     getNextPageParam: (last, pages) => {
-      // Stop on an empty page — guards against an offset loop if `total` shrank
-      // mid-scroll (concurrent deletes) while loaded never catches up.
-      if (last.data.length === 0) return undefined;
       const loaded = pages.reduce((n, p) => n + p.data.length, 0);
-      return loaded < last.total ? loaded : undefined;
+      return nextPageOffset(last.data.length, loaded, pages[0]?.total ?? last.total);
     },
   });
 }
@@ -61,14 +62,6 @@ export function useStub(id: string) {
     queryFn: () => api.get<Stub>(`/stubs/${id}`),
     enabled: !!id,
   });
-}
-
-export function useUsedStubs() {
-  return useQuery({ queryKey: ['stubs', 'used'], queryFn: () => api.get<Stub[]>('/stubs/used') });
-}
-
-export function useUnusedStubs() {
-  return useQuery({ queryKey: ['stubs', 'unused'], queryFn: () => api.get<Stub[]>('/stubs/unused') });
 }
 
 export function useCreateStub() {

@@ -121,9 +121,10 @@ func (h *RestServer) ListHistory(w http.ResponseWriter, r *http.Request, params 
 	}
 
 	calls := h.history.Filter(history.FilterOpts{
-		Session: muxmiddleware.FromRequest(r),
-		Service: stringFromPtr(params.Service),
-		Method:  stringFromPtr(params.Method),
+		Session:   muxmiddleware.FromRequest(r),
+		Service:   stringFromPtr(params.Service),
+		Method:    stringFromPtr(params.Method),
+		ErrorOnly: params.Error != nil && *params.Error,
 	})
 
 	w.Header().Set("X-Total-Count", strconv.Itoa(len(calls)))

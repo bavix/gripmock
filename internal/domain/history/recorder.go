@@ -40,6 +40,9 @@ type FilterOpts struct {
 	Service string
 	Method  string
 	Session string
+
+	// ErrorOnly keeps only calls that ended with a non-OK gRPC status.
+	ErrorOnly bool
 }
 
 // Reader provides read access to recorded calls.
@@ -105,8 +108,13 @@ func NewMemoryStore(limitBytes int64, opts ...MemoryStoreOption) *MemoryStore {
 
 // Record implements Recorder.
 func (s *MemoryStore) Record(call CallRecord) {
+	// The store must OWN its message maps: callers may reuse/mutate the maps they
+	// passed. Redaction already deep-copies every map, so only the non-redacting
+	// path needs an explicit clone (truncation shares non-truncated maps).
 	if len(s.redactKeys) > 0 {
 		call = redactRecord(call, s.redactKeys)
+	} else {
+		call = cloneRecordMessages(call)
 	}
 
 	if s.messageMaxBytes > 0 {
@@ -120,21 +128,46 @@ func (s *MemoryStore) Record(call CallRecord) {
 	s.calls = append(s.calls, call)
 	s.currentBytes += sz
 
-	for s.limitBytes > 0 && s.currentBytes > s.limitBytes && len(s.calls) > 0 {
+	// Keep at least the newest record: if a single call alone exceeds limitBytes,
+	// evicting it too would silently drop the most recent (and only) record.
+	for s.limitBytes > 0 && s.currentBytes > s.limitBytes && len(s.calls) > 1 {
 		evicted := s.calls[0]
 		s.calls = s.calls[1:]
 		s.currentBytes -= estimateRecordSize(evicted)
 	}
 }
 
-const fallbackRecordSize = 1024
+// Clear removes all recorded calls, resetting the store to empty in place.
+// The store pointer stays valid, so a running server holding this recorder
+// keeps writing into the same (now-empty) store.
+func (s *MemoryStore) Clear() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-//nolint:gochecknoglobals
-var truncatedMarker = map[string]any{"_truncated": true}
+	s.calls = nil
+	s.currentBytes = 0
+}
+
+const fallbackRecordSize = 1024
 
 const redactedValue = "[REDACTED]"
 
+// freshTruncatedMarker returns a new marker map per call. A shared global would
+// be aliased into every truncated record, so any consumer mutating it would
+// corrupt all of them.
+func freshTruncatedMarker() map[string]any {
+	return map[string]any{"_truncated": true}
+}
+
+// redactRecord strips configured secret keys from ALL message fields. Real
+// callers populate the plural Requests/Responses (the primary fields the UI and
+// API read); the deprecated singular Request/Response mirror the first message.
+// Redacting only the singular fields (the previous behavior) left every stored
+// message — including Requests[0], which aliases the same map — unredacted.
 func redactRecord(c CallRecord, keys map[string]struct{}) CallRecord {
+	c.Requests = redactMaps(c.Requests, keys)
+	c.Responses = redactMaps(c.Responses, keys)
+
 	if c.Request != nil {
 		c.Request = redactMap(c.Request, keys)
 	}
@@ -143,7 +176,79 @@ func redactRecord(c CallRecord, keys map[string]struct{}) CallRecord {
 		c.Response = redactMap(c.Response, keys)
 	}
 
+	// Keep the deprecated singular fields consistent with the redacted slices.
+	if len(c.Requests) > 0 {
+		c.Request = c.Requests[0]
+	}
+
+	if len(c.Responses) > 0 {
+		c.Response = c.Responses[0]
+	}
+
 	return c
+}
+
+// cloneRecordMessages deep-copies the message maps so the stored record does not
+// alias caller-owned maps (which the caller may mutate or reuse afterwards).
+func cloneRecordMessages(c CallRecord) CallRecord {
+	c.Request = cloneMap(c.Request)
+	c.Response = cloneMap(c.Response)
+	c.Requests = cloneMaps(c.Requests)
+	c.Responses = cloneMaps(c.Responses)
+
+	return c
+}
+
+// mapEach applies fn to each message map, returning a new slice. A nil/empty
+// input is returned unchanged. Shared by the clone/redact/truncate passes.
+func mapEach(ms []map[string]any, fn func(map[string]any) map[string]any) []map[string]any {
+	if len(ms) == 0 {
+		return ms
+	}
+
+	out := make([]map[string]any, len(ms))
+	for i, m := range ms {
+		out[i] = fn(m)
+	}
+
+	return out
+}
+
+func cloneMaps(ms []map[string]any) []map[string]any {
+	return mapEach(ms, cloneMap)
+}
+
+func cloneMap(m map[string]any) map[string]any {
+	if m == nil {
+		return nil
+	}
+
+	out := make(map[string]any, len(m))
+	for k, v := range m {
+		out[k] = cloneValue(v)
+	}
+
+	return out
+}
+
+func cloneValue(v any) any {
+	switch t := v.(type) {
+	case map[string]any:
+		return cloneMap(t)
+	case []any:
+		out := make([]any, len(t))
+		for i, e := range t {
+			out[i] = cloneValue(e)
+		}
+
+		return out
+	default:
+		return t
+	}
+}
+
+func redactMaps(ms []map[string]any, keys map[string]struct{}) []map[string]any {
+	return mapEach(ms, func(m map[string]any) map[string]any { return redactMap(m, keys) })
 }
 
 func redactMap(m map[string]any, keys map[string]struct{}) map[string]any {
@@ -212,20 +317,43 @@ func asSlice(v any) []any {
 	return nil
 }
 
+// truncateRecord replaces any message exceeding maxBytes with a marker. It must
+// cover the plural Requests/Responses (the primary fields); truncating only the
+// deprecated singular fields left the size guard dead for the real data path.
 func truncateRecord(c CallRecord, maxBytes int64) CallRecord {
+	c.Requests = truncateMaps(c.Requests, maxBytes)
+	c.Responses = truncateMaps(c.Responses, maxBytes)
+
 	if c.Request != nil {
-		if b, err := json.Marshal(c.Request); err == nil && int64(len(b)) > maxBytes {
-			c.Request = truncatedMarker
-		}
+		c.Request = truncateMessage(c.Request, maxBytes)
 	}
 
 	if c.Response != nil {
-		if b, err := json.Marshal(c.Response); err == nil && int64(len(b)) > maxBytes {
-			c.Response = truncatedMarker
-		}
+		c.Response = truncateMessage(c.Response, maxBytes)
+	}
+
+	// Keep the deprecated singular fields consistent with the truncated slices.
+	if len(c.Requests) > 0 {
+		c.Request = c.Requests[0]
+	}
+
+	if len(c.Responses) > 0 {
+		c.Response = c.Responses[0]
 	}
 
 	return c
+}
+
+func truncateMaps(ms []map[string]any, maxBytes int64) []map[string]any {
+	return mapEach(ms, func(m map[string]any) map[string]any { return truncateMessage(m, maxBytes) })
+}
+
+func truncateMessage(m map[string]any, maxBytes int64) map[string]any {
+	if b, err := json.Marshal(m); err == nil && int64(len(b)) > maxBytes {
+		return freshTruncatedMarker()
+	}
+
+	return m
 }
 
 func estimateRecordSize(c CallRecord) int64 {
@@ -257,6 +385,8 @@ func (s *MemoryStore) Filter(opts FilterOpts) []CallRecord {
 
 // FilterSeq returns an iterator over records matching FilterOpts.
 // Single pass, no intermediate allocations. Lock held during iteration.
+//
+//nolint:cyclop
 func (s *MemoryStore) FilterSeq(opts FilterOpts) iter.Seq[CallRecord] {
 	return func(yield func(CallRecord) bool) {
 		s.mu.RLock()
@@ -272,6 +402,10 @@ func (s *MemoryStore) FilterSeq(opts FilterOpts) iter.Seq[CallRecord] {
 			}
 
 			if opts.Session != "" && c.Session != "" && c.Session != opts.Session {
+				continue
+			}
+
+			if opts.ErrorOnly && c.Code == 0 && c.Error == "" {
 				continue
 			}
 

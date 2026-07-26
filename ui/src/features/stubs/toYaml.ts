@@ -1,6 +1,33 @@
-function quoteStr(s: string): string {
-  if (/^[a-zA-Z0-9_./@:\-+]+$/.test(s) && !/^(true|false|null|yes|no|\d+)$/.test(s)) return s;
+// A bare string is safe to emit unquoted only if it has no YAML-special
+// characters AND would not be re-parsed as a non-string scalar (number,
+// boolean, null) on load. Otherwise it must be quoted, or a round-trip through
+// the server silently changes its type (e.g. "-5" → -5, "on" → true).
+const YAML_NUMERIC = /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/;
+const YAML_HEX_OCT_BIN = /^[-+]?0(x[0-9a-f]+|o[0-7]+|b[01]+)$/i;
+const YAML_BOOL_NULL = /^(y|n|yes|no|on|off|true|false|null|~)$/i;
+const YAML_INF_NAN = /^[-+]?\.(inf|nan)$/i;
+
+function looksLikeScalar(s: string): boolean {
+  return YAML_NUMERIC.test(s) || YAML_HEX_OCT_BIN.test(s) || YAML_BOOL_NULL.test(s) || YAML_INF_NAN.test(s);
+}
+
+const PLAIN = /^[a-zA-Z0-9_./@:\-+]+$/;
+
+function dquote(s: string): string {
   return `"${s.replaceAll('\\', String.raw`\\`).replaceAll('"', '\\"')}"`;
+}
+
+function quoteStr(s: string): string {
+  if (PLAIN.test(s) && !looksLikeScalar(s)) return s;
+  return dquote(s);
+}
+
+// Keys only need quoting for structurally-unsafe characters (spaces, YAML
+// specials). Unlike values they are not subject to scalar coercion here, so a
+// numeric- or boolean-looking key stays unquoted (matches user expectation).
+function quoteKey(s: string): string {
+  if (PLAIN.test(s)) return s;
+  return dquote(s);
 }
 
 function isEmpty(v: unknown): boolean {
@@ -51,7 +78,9 @@ function toYamlVal(val: unknown, indent: number): string {
       const vStr = toYamlVal(v, indent + 1);
       const multi = typeof v === 'object' && v !== null;
       const inlineVal = ` ${vStr}`;
-      return `\n${pad}${k}:${multi && vStr.startsWith('\n') ? vStr : inlineVal}`;
+      // Keys need the same quoting as scalar values — a key with a space, colon
+      // or YAML-special char emitted raw produces invalid YAML.
+      return `\n${pad}${quoteKey(k)}:${multi && vStr.startsWith('\n') ? vStr : inlineVal}`;
     }).join('');
   }
   return typeof val === 'object' ? JSON.stringify(val) : String(val);

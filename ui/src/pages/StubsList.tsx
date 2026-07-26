@@ -8,12 +8,13 @@ import { api } from '../lib/api';
 import { useCreateStub, useInfiniteStubs, useStubsPage, type StubListFilters } from '../hooks/useStubs';
 import { useCopy } from '../hooks/useCopy';
 import { useServices } from '../hooks/useServices';
-import { useSmartSearch } from '../hooks/useSearch';
+import { useSmartSearch, isUuid } from '../hooks/useSearch';
 import { btn, colors } from '../lib/theme';
 import type { Stub } from '../lib/types';
 import { compactPreview, prettyJson, matcherTypes, MATCHER_COLORS, outputKind, stubRequestExample, streamKind, hasContent, requestMessages, responseMessages, matcherEntries } from '../lib/stub';
 import { stashClone } from '../lib/clone';
 import { DataTable } from '../components/table/DataTable';
+import { stubCountLabel } from './stubCount';
 import { useToast } from '../components/shared/Toast';
 import type { ColumnDef } from '@tanstack/react-table';
 
@@ -74,8 +75,12 @@ export function StubsList({ filter }: Props) {
   const [serverQ, setServerQ] = useState(searchText.trim());
   const [page, setPage] = useState(0);
   const filters: StubListFilters = useMemo(
-    () => ({ service: svcFilter, method: methodFilter, source: srcFilter, q: serverQ }),
-    [svcFilter, methodFilter, srcFilter, serverQ],
+    () => ({
+      service: svcFilter, method: methodFilter, source: srcFilter, q: serverQ,
+      // Matcher chips filter server-side on the main (paginated) view.
+      matcher: activeMatchers.size > 0 ? [...activeMatchers].join(',') : undefined,
+    }),
+    [svcFilter, methodFilter, srcFilter, serverQ, activeMatchers],
   );
   useEffect(() => { setPage(0); }, [filters]);
   // Selection is scoped to the loaded page (bulk-delete filters the current page
@@ -149,17 +154,21 @@ export function StubsList({ filter }: Props) {
     return m;
   }, [svcList]);
   const hasFilters = !!(svcFilter || methodFilter || srcFilter || activeMatchers.size > 0 || searchText);
+  // The main (paginated) view filters matchers server-side, so its counts and
+  // pagination stay server-driven. Only the legacy used/unused endpoints (no
+  // matcher param) fall back to client-side matcher filtering over loaded items.
+  const clientFiltered = !isMain && activeMatchers.size > 0;
 
-  // Residual client-side filtering over the LOADED items: matcher-kind chips
-  // everywhere; text/service/method too on legacy (unpaginated) views.
+  // Residual client-side filtering over the LOADED items: matcher-kind chips on
+  // legacy views only; text/service/method too on legacy (unpaginated) views.
   const filtered = useMemo(() => {
     if (!all) return [];
     return all.filter((s) => {
+      if (isMain) return true;
       if (activeMatchers.size > 0) {
         const types = matcherTypes(s);
         if (![...activeMatchers].some((t) => types.includes(t))) return false;
       }
-      if (isMain) return true;
       if (svcFilter && s.service !== svcFilter) return false;
       if (methodFilter && s.method !== methodFilter) return false;
       if (srcFilter && s.source !== srcFilter) return false;
@@ -175,6 +184,8 @@ export function StubsList({ filter }: Props) {
 
   const smartSearch = useSmartSearch();
   const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Monotonic token: a slower earlier smart search must not overwrite a newer one.
+  const searchSeq = useRef(0);
 
   const handleSearchChange = (value: string) => {
     setSearchText(value);
@@ -182,7 +193,7 @@ export function StubsList({ filter }: Props) {
     clearTimeout(searchTimer.current);
 
     const trimmed = value.trim();
-    const isUUID = /^[0-9a-f]{8,}$/i.test(trimmed.replace(/-/g, ''));
+    const isUUID = isUuid(trimmed);
     const hasJSON = trimmed.includes('{') && trimmed.includes('}');
     const hasEndpoint = trimmed.includes('/') || trimmed.includes('.');
     const smart = trimmed.length >= 3 && (isUUID || hasJSON || (hasEndpoint && trimmed.length > 5));
@@ -191,12 +202,18 @@ export function StubsList({ filter }: Props) {
     searchTimer.current = setTimeout(async () => {
       setServerQ(trimmed.length >= 2 ? trimmed : '');
       if (!smart) return;
+      const seq = ++searchSeq.current;
       setSmartSearching(true);
       try {
         const result = await smartSearch.search(trimmed);
-        if (result.results.length > 0) setSmartResults({ results: result.results as any, query: trimmed });
-      } catch {}
-      setSmartSearching(false);
+        if (seq !== searchSeq.current) return; // a newer search superseded this one
+        if (result.error) toast.show(`Search: ${result.error}`);
+        else if (result.results.length > 0) setSmartResults({ results: result.results, query: trimmed });
+      } catch (err) {
+        if (seq !== searchSeq.current) return;
+        toast.show(`Search failed: ${(err as Error).message}`);
+      }
+      if (seq === searchSeq.current) setSmartSearching(false);
     }, 300);
   };
 
@@ -210,7 +227,7 @@ export function StubsList({ filter }: Props) {
 
   const shared = (
     <>
-      <CardsHeader total={total} shownCount={filtered.length} filters={filters} filter={filter} viewMode={viewMode} setViewMode={setViewMode} navigate={navigate} onDeleteAllUnused={() => bulkDelete(filtered)} unusedCount={filter === 'unused' ? filtered.length : 0} />
+      <CardsHeader total={total} shownCount={shownCards.length} clientFiltered={clientFiltered} filters={filters} filter={filter} viewMode={viewMode} setViewMode={setViewMode} navigate={navigate} onDeleteAllUnused={() => bulkDelete(filtered)} unusedCount={filter === 'unused' ? filtered.length : 0} />
       <SearchRow searchText={searchText} setSearchText={setSearchText} showFilters={showFilters} setShowFilters={setShowFilters} hasFilters={hasFilters} onSmartSearch={handleSearchChange} smartSearching={smartSearching} />
       <MatcherChips activeMatchers={activeMatchers} toggleMatcher={toggleMatcher} setActiveMatchers={setActiveMatchers} />
       {showFilters && <FilterRow svcFilter={svcFilter} setSvcFilter={setSvcFilter} methodFilter={methodFilter} setMethodFilter={setMethodFilter} srcFilter={srcFilter} setSrcFilter={setSrcFilter} services={services} methodsByService={methodsByService} />}
@@ -255,8 +272,8 @@ export function StubsList({ filter }: Props) {
             style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, border: '1px solid var(--error)', background: `${colors.error}10`, color: colors.error, cursor: 'pointer' }}>Delete {selected.size}</button>
         </div>
       )}
-      <DataTable data={filtered} columns={columns} loading={isLoading} emptyMessage={isLoading ? 'Loading...' : 'No stubs'}
-        manualPagination={isMain} rowCount={isMain ? total : undefined} pageIndex={page} pageSize={TABLE_PAGE} onPageChange={setPage}
+      <DataTable data={filtered} columns={columns} loading={isLoading} getRowId={(s) => s.id} emptyMessage={isLoading ? 'Loading...' : 'No stubs'}
+        manualPagination={isMain && !clientFiltered} rowCount={isMain && !clientFiltered ? total : undefined} pageIndex={page} pageSize={TABLE_PAGE} onPageChange={setPage}
         renderExpanded={(stub: Stub) => <ExpandedContent stub={stub} navigate={navigate} onDelete={(s) => deleteMut.mutate(s)} methodType={mtOf(stub)} />} />
     </div>
   );
@@ -318,8 +335,8 @@ async function exportAll(filters: StubListFilters, filter: string | undefined) {
   downloadStubs(stubs ?? [], filter ? `stubs-${filter}` : 'stubs');
 }
 
-function CardsHeader({ total, shownCount, filters, filter, viewMode, setViewMode, navigate, onDeleteAllUnused, unusedCount }: {
-  total: number; shownCount: number; filters: StubListFilters; filter?: string;
+function CardsHeader({ total, shownCount, clientFiltered, filters, filter, viewMode, setViewMode, navigate, onDeleteAllUnused, unusedCount }: {
+  total: number; shownCount: number; clientFiltered: boolean; filters: StubListFilters; filter?: string;
   viewMode: string; setViewMode: (v: 'cards'|'table') => void; navigate: (p: string) => void;
   onDeleteAllUnused: () => void; unusedCount: number;
 }) {
@@ -329,7 +346,7 @@ function CardsHeader({ total, shownCount, filters, filter, viewMode, setViewMode
       <h1>
         {filter === 'used' ? 'Used Stubs' : filter === 'unused' ? 'Unused Stubs' : 'Stubs'}
         <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>
-          {shownCount < total ? `(${shownCount} of ${total})` : `(${total})`}
+          {stubCountLabel(shownCount, total, clientFiltered)}
         </span>
       </h1>
       <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>

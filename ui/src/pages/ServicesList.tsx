@@ -68,7 +68,7 @@ export function ServicesList() {
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search service or method…" className="input" />
       </div>
 
-      <DataTable data={filtered} columns={columns} loading={isLoading} emptyMessage="No services found"
+      <DataTable data={filtered} columns={columns} loading={isLoading} getRowId={(svc) => svc.id} emptyMessage="No services found"
         renderExpanded={(svc: Service) => (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12 }}>
             <div style={{ color: 'var(--text-muted)', fontSize: 12, padding: '0 2px', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

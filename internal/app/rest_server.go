@@ -25,6 +25,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/build"
 	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
 // Extender defines the interface for extending stub functionality.
@@ -44,6 +45,7 @@ type RestServer struct {
 	restDescriptors *descriptors.Registry
 	mcpHandler      http.Handler
 	errorFormatter  *ErrorFormatter
+	templateEngine  *template.Engine
 	ports           ServerPorts
 }
 
@@ -96,6 +98,9 @@ func NewRestServer(
 		validator:       v,
 		restDescriptors: r,
 		errorFormatter:  e,
+		// Built once with the server's lifetime context and reused for mock_call
+		// response rendering, so no context is fabricated per request.
+		templateEngine: template.New(ctx, nil),
 	}
 
 	go func() {

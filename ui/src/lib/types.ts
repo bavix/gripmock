@@ -152,13 +152,6 @@ export interface Dashboard {
   historyErrors: number;
 }
 
-export interface SearchResponse {
-  headers?: Record<string, string>;
-  data?: unknown;
-  error?: string;
-  code?: number;
-}
-
 export interface InspectRequest {
   service: string;
   method: string;
@@ -209,10 +202,4 @@ export interface InspectCandidateEvent {
   stage: string;
   result: string;
   reason: string;
-}
-
-export interface VerifyRequest {
-  service: string;
-  method: string;
-  expectedCount: number;
 }

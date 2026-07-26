@@ -68,8 +68,6 @@ func (e *Engine) Render(tmpl string, data Data) (result string, err error) {
 		return "", nil
 	}
 
-	tmpl = unescapeTemplateQuotes(tmpl)
-
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("template execution panic: %v", r) //nolint:err113
@@ -91,9 +89,9 @@ func (e *Engine) Render(tmpl string, data Data) (result string, err error) {
 		return result, exec(cached)
 	}
 
-	parsed, err := template.New("dynamic").Funcs(e.funcs).Parse(tmpl)
+	parsed, err := e.parseTemplate(tmpl)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse template: %w", err)
+		return "", err
 	}
 
 	e.cache.Add(tmpl, parsed)
@@ -156,9 +154,12 @@ func unescapeQuotesInString(s string) string {
 	return result
 }
 
-// IsTemplateString checks if a string contains template syntax.
+// IsTemplateString checks if a string contains template syntax. The closing
+// delimiter must appear AFTER the opening one — "a }} b {{ c" is not a template.
 func IsTemplateString(s string) bool {
-	return strings.Contains(s, "{{") && strings.Contains(s, "}}")
+	_, after, found := strings.Cut(s, "{{")
+
+	return found && strings.Contains(after, "}}")
 }
 
 // HasTemplatesInHeaders checks if the headers contain any template strings.
@@ -179,6 +180,29 @@ func (e *Engine) ProcessHeaders(headers map[string]string, templateData Data) er
 // ProcessError processes error template.
 func (e *Engine) ProcessError(errorStr string, templateData Data) (string, error) {
 	return processErrorField(errorStr, templateData, e)
+}
+
+// parseTemplate parses tmpl, falling back to an unescaped form only when the raw
+// template fails to parse. This preserves JSON-escaped templates (where \" reached
+// the engine literally) WITHOUT corrupting legitimate escaped quotes inside a
+// template string literal such as {{ eq .X "a\"b" }}, which parses as-is.
+func (e *Engine) parseTemplate(tmpl string) (*template.Template, error) {
+	parsed, err := template.New("dynamic").Funcs(e.funcs).Parse(tmpl)
+	if err == nil {
+		return parsed, nil
+	}
+
+	unescaped := unescapeTemplateQuotes(tmpl)
+	if unescaped == tmpl {
+		return nil, fmt.Errorf("failed to parse template: %w", err)
+	}
+
+	reparsed, reErr := template.New("dynamic").Funcs(e.funcs).Parse(unescaped)
+	if reErr != nil {
+		return nil, fmt.Errorf("failed to parse template: %w", err)
+	}
+
+	return reparsed, nil
 }
 
 func processMapTemplates(data map[string]any, templateData Data, engine *Engine, depth int) error {

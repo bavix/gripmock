@@ -137,35 +137,43 @@ func (s *searcher) processStubsParallel(query Query, stubs []*Stub) (*Result, er
 
 func (s *searcher) processChunk(query Query, chunkStubs []*Stub) chunkOutcome {
 	var (
-		bestMatch   rankedMatch
-		mostSimilar scoredStub
+		matches     []rankedMatch
+		mostSimilar similarCandidate
 	)
 
+	// Collect EVERY match in the chunk (not just the top one) so reservation
+	// can fall through to a lower-ranked alternative when the best match's
+	// Times budget is exhausted — matching the sequential path's behaviour.
 	for _, stub := range chunkStubs {
 		ranked, matched := s.evaluateRankedMatch(query, stub)
-		if matched && betterRanked(bestMatch, ranked) {
-			bestMatch = ranked
+		if matched {
+			matches = append(matches, ranked)
 		}
 
-		mostSimilar = pickHigherScore(mostSimilar, scoredStub{stub: stub, score: ranked.totalScore})
+		// Rank "similar" with the SAME criteria as the sequential path
+		// (specificity, then fewer fields, then score) — a bare score compare
+		// would pick a different fallback across the parallel threshold.
+		candidate := s.buildSimilarCandidateFromRanked(stub, ranked)
+		if betterSimilar(mostSimilar, candidate) {
+			mostSimilar = candidate
+		}
 	}
 
-	return chunkOutcome{bestMatch: bestMatch, mostSimilar: mostSimilar}
+	return chunkOutcome{matches: matches, mostSimilar: mostSimilar}
 }
 
-func collectChunkResults(results chan chunkOutcome, numChunks int) ([]rankedMatch, scoredStub) {
-	var (
-		bestMatches = make([]rankedMatch, 0, numChunks)
-		bestSimilar scoredStub
-	)
+func collectChunkResults(results chan chunkOutcome, numChunks int) ([]rankedMatch, similarCandidate) {
+	bestMatches := make([]rankedMatch, 0, numChunks)
+
+	var bestSimilar similarCandidate
 
 	for range numChunks {
 		result := <-results
-		if result.bestMatch.stub != nil {
-			bestMatches = append(bestMatches, result.bestMatch)
-		}
+		bestMatches = append(bestMatches, result.matches...)
 
-		bestSimilar = pickHigherScore(bestSimilar, result.mostSimilar)
+		if betterSimilar(bestSimilar, result.mostSimilar) {
+			bestSimilar = result.mostSimilar
+		}
 	}
 
 	return bestMatches, bestSimilar

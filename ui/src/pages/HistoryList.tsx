@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useInfiniteHistory } from '../hooks/useHistory';
+import { useInfiniteHistory, useHistoryErrorCount } from '../hooks/useHistory';
 import { useStore } from '../lib/store';
 import { Search, Copy, Fingerprint, Globe, Bug, ExternalLink } from 'lucide-react';
 import { colors } from '../lib/theme';
@@ -29,11 +29,14 @@ function grpcurl(r: CallRecord): string {
 export function HistoryList() {
   const navigate = useNavigate();
   const session = useStore((s) => s.session);
-  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteHistory(100, 10_000);
   const [sp] = useSearchParams();
   const [search, setSearch] = useState(sp.get('q') || '');
   const [sessionTab, setSessionTab] = useState('all');
   const [statusTab, setStatusTab] = useState<'all' | 'ok' | 'err'>('all');
+  // The Errors tab pulls an error-only feed from the server, so it covers ALL
+  // errors, not just the ones in already-loaded pages.
+  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteHistory(100, 10_000, statusTab === 'err');
+  const errorTotal = useHistoryErrorCount(10_000).data ?? 0;
 
   const total = data?.pages[0]?.total ?? 0;
   // Flatten loaded pages and sort newest-first (windows arrive oldest-first).
@@ -55,7 +58,8 @@ export function HistoryList() {
     });
   }, [history, search, sessionTab, statusTab, session]);
 
-  const errorCount = useMemo(() => (history ?? []).filter((h) => !isOk(h)).length, [history]);
+  // Server-wide error total (not just loaded pages) for an honest badge.
+  const errorCount = errorTotal;
 
   const tab = (active: boolean): React.CSSProperties => ({
     padding: '5px 11px', fontSize: 12, borderRadius: 'var(--radius-sm)', cursor: 'pointer', whiteSpace: 'nowrap',
@@ -137,7 +141,9 @@ export function HistoryList() {
         </div>
       )}
 
-      <DataTable data={filtered} columns={columns} loading={isLoading} emptyMessage="No calls recorded yet"
+      <DataTable data={filtered} columns={columns} loading={isLoading}
+        getRowId={(r) => `${r.timestamp}|${r.service}|${r.method}|${r.stubId ?? ''}|${r.code}`}
+        emptyMessage="No calls recorded yet"
         renderExpanded={(r: CallRecord) => (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
             <div style={{ color: 'var(--text-muted)', display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>

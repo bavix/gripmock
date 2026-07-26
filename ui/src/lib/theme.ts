@@ -14,20 +14,6 @@ export const colors = {
   warningBg: 'rgba(217,119,6,0.14)',
 } as const;
 
-export const css = {
-  flexCenter: { display: 'flex', alignItems: 'center', justifyContent: 'center' } as const,
-  flexBetween: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' } as const,
-  truncate: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const,
-  mono: { fontFamily: 'var(--mono)' } as const,
-  label: { fontSize: 11, fontWeight: 650, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' } as CSSProperties,
-  sectionHeader: { fontSize: 11, fontWeight: 650, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.6px' } as CSSProperties,
-  badge: (bg: string, fg: string): CSSProperties => ({
-    display: 'inline-flex', alignItems: 'center', gap: 4,
-    fontSize: 11, fontWeight: 600, padding: '1px 7px', borderRadius: 5,
-    background: bg, color: fg,
-  }),
-};
-
 // Mirrors the .btn CSS class so `style={btn(...)}` call-sites match `className="btn"`.
 export function btn(variant: 'primary' | 'danger' | 'ghost' | 'default' = 'default', size: 'sm' | 'md' = 'md'): CSSProperties {
   const pad = size === 'sm' ? { padding: '4px 9px' } : { padding: '6px 12px' };
@@ -45,9 +31,3 @@ export function btn(variant: 'primary' | 'danger' | 'ghost' | 'default' = 'defau
   if (variant === 'ghost') return { ...base, background: 'transparent', color: 'var(--text-secondary)', borderColor: 'transparent' };
   return { ...base, background: 'var(--bg-elevated)', color: 'var(--text)' };
 }
-
-export const inputStyle: CSSProperties = {
-  padding: '7px 11px', fontSize: 13, borderRadius: 'var(--radius)',
-  border: '1px solid var(--border-strong)', background: 'var(--bg)',
-  color: 'var(--text)', outline: 'none',
-};

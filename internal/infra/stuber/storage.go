@@ -175,57 +175,37 @@ func (s *storage) findAll(left, right string) (iter.Seq[*Stub], error) {
 	}, nil
 }
 
-// posByPN attempts to resolve IDs for a given left and right name pair.
-// It first tries to resolve the full left name with the right name, and then
-// attempts to resolve using a truncated version of the left name if necessary.
-// Returns error if service or method is not found - this is part of the public contract.
-//
-// Parameters:
-// - left: The left name for matching (service name).
-// - right: The right name for matching (method name).
-//
-// Returns:
-// - []uint64: A slice of resolved ID pairs.
-// - error: ErrLeftNotFound (service not found) or ErrRightNotFound (method not found).
+// posByPN resolves ID pairs for a service/method name pair, trying the full
+// service name first and then the package-truncated form. Returns
+// ErrLeftNotFound (service) or ErrRightNotFound (method) — part of the contract.
 func (s *storage) posByPN(left, right string) ([]uint64, error) {
-	// Initialize a slice to store the resolved IDs.
 	var resolvedIDs []uint64
 
-	// Track the last error for reporting
 	var lastErr error
 
-	// Attempt to resolve the full left name with the right name.
 	id, err := s.posByN(left, right)
 	if err == nil {
-		// Append the resolved ID to the slice.
 		resolvedIDs = append(resolvedIDs, id)
 	} else {
 		lastErr = err
 	}
 
-	// Check for a potential truncation point in the left name.
+	// Retry with the package prefix stripped (e.g. pkg.Svc → Svc).
 	if dotIndex := strings.LastIndex(left, "."); dotIndex != -1 {
 		truncatedLeft := left[dotIndex+1:]
 
-		// Attempt to resolve the truncated left name with the right name.
 		id, err := s.posByN(truncatedLeft, right)
 		if err == nil {
-			// Append the resolved ID to the slice.
 			resolvedIDs = append(resolvedIDs, id)
 		} else if errors.Is(err, ErrRightNotFound) && len(resolvedIDs) == 0 {
-			// Return an error if the right name was not found
-			// and no IDs were resolved (even with truncated name).
 			return nil, err
 		}
 	}
 
-	// Return an error if no IDs were resolved.
 	if len(resolvedIDs) == 0 {
-		// Return the original error if we have it.
 		return nil, lastErr
 	}
 
-	// Return the resolved IDs.
 	return resolvedIDs, nil
 }
 

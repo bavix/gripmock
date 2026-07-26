@@ -14,10 +14,10 @@ build-ui:
 test:
 	go test -race -cover ./...
 
-lint:
+lint: lint-clean
 	$(GOLANGCI_LINT) run --color always
 
-lint-fix:
+lint-fix: lint-clean
 	$(GOLANGCI_LINT) run --color always --fix
 
 lint-clean:

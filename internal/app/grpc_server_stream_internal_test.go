@@ -231,6 +231,41 @@ func TestHandleServerStreamWithError(t *testing.T) {
 	require.Contains(t, err.Error(), "test error")
 }
 
+func TestHandleServerStreamRendersErrorTemplate(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMocker(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+
+	stream := createTestStream(t, mocker)
+
+	id := uuid.New()
+	stub := &stuber.Stub{
+		ID:      id,
+		Service: testServiceName,
+		Method:  testMethodName,
+		Input: stuber.InputData{
+			Contains: map[string]any{},
+		},
+		Output: stuber.Output{
+			Stream: []any{
+				map[string]any{"message": "test"},
+			},
+			Error: "boom {{.StubID}}",
+		},
+	}
+
+	mocker.budgerigar.PutMany(stub)
+
+	err := mocker.handleServerStream(stream)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), id.String())
+	require.NotContains(t, err.Error(), "{{")
+}
+
 func TestHandleServerStreamEOF(t *testing.T) {
 	t.Parallel()
 
@@ -317,7 +352,7 @@ func TestHandleNonArrayStreamDataSendsMessages(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub)
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output)
 	require.NoError(t, err)
 	require.Len(t, stream.sentMessages, 1)
 }
@@ -341,7 +376,7 @@ func TestHandleNonArrayStreamDataWithDelay(t *testing.T) {
 	}
 
 	start := time.Now()
-	err := mocker.handleNonArrayStreamData(stream, stub)
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output)
 	duration := time.Since(start)
 
 	require.NoError(t, err)
@@ -367,7 +402,7 @@ func TestHandleNonArrayStreamDataWithTemplates(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub)
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output)
 	require.NoError(t, err)
 	require.Len(t, stream.sentMessages, 1)
 }
@@ -392,7 +427,7 @@ func TestHandleNonArrayStreamDataContextCancelled(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub)
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output)
 	require.Error(t, err)
 	require.ErrorIs(t, err, context.Canceled)
 }
@@ -415,9 +450,153 @@ func TestHandleNonArrayStreamDataWithError(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub)
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "test error")
+}
+
+// Regression: handleNonArrayStreamData used found.Output (raw) for the error,
+// so an error template rendered by the caller was ignored. It must honor the
+// templated outputToUse the caller passes in.
+func TestHandleNonArrayStreamDataUsesTemplatedError(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMocker(t)
+	stream := &mockFullServerStream{
+		ctx:          t.Context(),
+		sentMessages: make([]*dynamicpb.Message, 0),
+		recvMsgLimit: 0,
+	}
+
+	stub := &stuber.Stub{
+		ID: uuid.New(),
+		Output: stuber.Output{
+			Data:  map[string]any{"message": "test"},
+			Error: "{{.Request.name}}-RAW", // un-rendered original
+		},
+	}
+
+	rendered := stub.Output
+	rendered.Error = "RENDERED-ERROR" // what the caller produced
+
+	err := mocker.handleNonArrayStreamData(stream, stub, rendered)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "RENDERED-ERROR")
+	require.NotContains(t, err.Error(), "RAW")
+}
+
+func TestSendClientStreamResponseRendersErrorTemplate(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMocker(t)
+	stream := &mockFullServerStream{
+		ctx:          t.Context(),
+		sentMessages: make([]*dynamicpb.Message, 0),
+	}
+
+	id := uuid.New()
+	stub := &stuber.Stub{
+		ID: id,
+		Output: stuber.Output{
+			Data:  map[string]any{"message": "ok"},
+			Error: "boom {{.StubID}}",
+		},
+	}
+
+	err := mocker.sendClientStreamResponse(stream, stub, []map[string]any{{"id": "1"}}, time.Now())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), id.String())
+	require.NotContains(t, err.Error(), "{{")
+}
+
+func TestSendClientStreamResponseRendersHeaderTemplate(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMocker(t)
+	stream := &mockFullServerStream{
+		ctx:          t.Context(),
+		sentMessages: make([]*dynamicpb.Message, 0),
+	}
+
+	id := uuid.New()
+	stub := &stuber.Stub{
+		ID: id,
+		Output: stuber.Output{
+			Data:    map[string]any{"message": "ok"},
+			Headers: map[string]string{"x-stub": "{{.StubID}}"},
+		},
+	}
+
+	err := mocker.sendClientStreamResponse(stream, stub, []map[string]any{{"id": "1"}}, time.Now())
+	require.NoError(t, err)
+	require.NotNil(t, stream.headers)
+	require.Equal(t, id.String(), stream.headers.Get("x-stub")[0])
+	require.Len(t, stream.sentMessages, 1)
+}
+
+// Regression: handleOutputError ran before setResponseHeadersAny, so an error
+// status closed the stream with trailers before headers were sent. Headers must
+// be set even on the error path (matching handleUnary).
+func TestSendClientStreamResponseSetsHeadersOnError(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMocker(t)
+	stream := &mockFullServerStream{
+		ctx:          t.Context(),
+		sentMessages: make([]*dynamicpb.Message, 0),
+	}
+
+	id := uuid.New()
+	stub := &stuber.Stub{
+		ID: id,
+		Output: stuber.Output{
+			Data:    map[string]any{"message": "ok"},
+			Headers: map[string]string{"x-stub": "{{.StubID}}"},
+			Error:   "boom",
+		},
+	}
+
+	err := mocker.sendClientStreamResponse(stream, stub, []map[string]any{{"id": "1"}}, time.Now())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "boom")
+	require.NotNil(t, stream.headers, "headers must be sent before the error trailer")
+	require.Equal(t, id.String(), stream.headers.Get("x-stub")[0])
+}
+
+// Regression: applyEffects was skipped when an error status was configured
+// because handleOutputError returned early. Effects are independent of response
+// disposition and must run on the error path too (matching handleUnary).
+func TestSendClientStreamResponseAppliesEffectsOnError(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMocker(t)
+
+	victim := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: "svc",
+		Method:  "M",
+		Output:  stuber.Output{Data: map[string]any{"x": float64(1)}},
+	}
+	mocker.budgerigar.PutMany(victim)
+
+	stream := &mockFullServerStream{
+		ctx:          t.Context(),
+		sentMessages: make([]*dynamicpb.Message, 0),
+	}
+
+	stub := &stuber.Stub{
+		ID: uuid.New(),
+		Output: stuber.Output{
+			Data:  map[string]any{"message": "ok"},
+			Error: "boom",
+		},
+		Effects: []stuber.Effect{{Action: stuber.EffectActionDelete, ID: victim.ID.String()}},
+	}
+
+	err := mocker.sendClientStreamResponse(stream, stub, []map[string]any{{"id": "1"}}, time.Now())
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "boom")
+	require.Nil(t, mocker.budgerigar.FindByID(victim.ID), "delete effect must run despite error status")
 }
 
 func TestReceiveStreamMessageSuccess(t *testing.T) {

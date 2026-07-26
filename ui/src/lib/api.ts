@@ -83,7 +83,15 @@ function qs(params?: Record<string, string | undefined>): string {
 // GET that also returns the X-Total-Count header (server-side pagination).
 async function requestWithMeta<T>(path: string): Promise<{ data: T; total: number }> {
   const res = await sendRequest(path);
-  const data = (await res.json()) as T;
+  // Guard empty/204 bodies so res.json() doesn't throw a SyntaxError and reject
+  // the whole page/infinite query — yield an empty result instead.
+  let data: T;
+  if (res.status === 204 || res.headers.get('content-length') === '0') {
+    data = undefined as T;
+  } else {
+    const text = await res.text();
+    data = (text ? JSON.parse(text) : undefined) as T;
+  }
   // Fall back to the loaded length when the header is missing OR malformed
   // (a NaN/0-from-null total would silently stop infinite pagination).
   const fallback = Array.isArray(data) ? data.length : 0;

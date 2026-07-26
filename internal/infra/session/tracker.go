@@ -35,6 +35,33 @@ func (t *Tracker) Forget(sessionID string) {
 	t.mu.Unlock()
 }
 
+// ForgetIfExpired atomically forgets the session only if it is still expired
+// (last seen at or before now-ttl), returning whether it was forgotten. This
+// closes the TOCTOU window in the GC: a session re-touched after the expiry
+// snapshot was taken keeps a fresh lastSeen, so it is NOT forgotten and its
+// stubs/history are preserved.
+func (t *Tracker) ForgetIfExpired(sessionID string, now time.Time, ttl time.Duration) bool {
+	if sessionID == "" {
+		return false
+	}
+
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	seenAt, ok := t.lastSeen[sessionID]
+	if !ok {
+		return false
+	}
+
+	if ttl > 0 && now.Sub(seenAt) < ttl {
+		return false // re-touched since the snapshot — keep it
+	}
+
+	delete(t.lastSeen, sessionID)
+
+	return true
+}
+
 // IDs returns all currently-tracked session IDs, sorted.
 func (t *Tracker) IDs() []string {
 	t.mu.RLock()
@@ -75,6 +102,10 @@ func Touch(sessionID string) {
 
 func Forget(sessionID string) {
 	defaultTracker.Forget(sessionID)
+}
+
+func ForgetIfExpired(sessionID string, now time.Time, ttl time.Duration) bool {
+	return defaultTracker.ForgetIfExpired(sessionID, now, ttl)
 }
 
 // IDs returns all session IDs seen by the default tracker, sorted.

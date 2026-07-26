@@ -103,7 +103,12 @@ export function InspectPage() {
 
   useEffect(() => {
     if (autoRan.current) return;
-    if (params.get('service') && params.get('method')) { autoRan.current = true; handleInspect(); }
+    // Only auto-run when the seeded payload/headers are valid JSON — otherwise
+    // we'd silently inspect with dropped input and show a misleading "no match".
+    if (params.get('service') && params.get('method') && !payloadErr && !headersErr) {
+      autoRan.current = true;
+      handleInspect();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

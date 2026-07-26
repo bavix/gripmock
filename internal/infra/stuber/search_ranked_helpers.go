@@ -1,6 +1,9 @@
 package stuber
 
-import "slices"
+import (
+	"bytes"
+	"slices"
+)
 
 type rankedMatch struct {
 	stub        *Stub
@@ -10,13 +13,8 @@ type rankedMatch struct {
 }
 
 type chunkOutcome struct {
-	bestMatch   rankedMatch
-	mostSimilar scoredStub
-}
-
-type scoredStub struct {
-	stub  *Stub
-	score float64
+	matches     []rankedMatch
+	mostSimilar similarCandidate
 }
 
 type similarCandidate struct {
@@ -91,15 +89,11 @@ func compareRankedMatches(a, b rankedMatch) int {
 		return 1
 	}
 
-	return 0
-}
-
-func betterRanked(current, candidate rankedMatch) bool {
-	if current.stub == nil {
-		return true
-	}
-
-	return compareRankedMatches(candidate, current) < 0
+	// Final deterministic tiebreak by stub ID. Without it fully-tied stubs keep
+	// input order, but SortFunc is unstable and the parallel path concatenates
+	// chunk matches in goroutine-completion order — so the sequential and
+	// parallel searches could reserve DIFFERENT stubs for the same query.
+	return bytes.Compare(a.stub.ID[:], b.stub.ID[:])
 }
 
 func sortRankedMatches(matches []rankedMatch) {
@@ -107,18 +101,18 @@ func sortRankedMatches(matches []rankedMatch) {
 }
 
 func countStubFields(stub *Stub) int {
-	count := len(stub.Input.Equals) + len(stub.Input.Contains) + len(stub.Input.Matches)
-	count += len(stub.Headers.Equals) + len(stub.Headers.Contains) + len(stub.Headers.Matches)
+	count := len(stub.Input.Equals) + len(stub.Input.Contains) + len(stub.Input.Matches) + len(stub.Input.Glob)
+	count += len(stub.Headers.Equals) + len(stub.Headers.Contains) + len(stub.Headers.Matches) + len(stub.Headers.Glob)
 
 	for _, input := range stub.Inputs {
-		count += len(input.Equals) + len(input.Contains) + len(input.Matches)
+		count += len(input.Equals) + len(input.Contains) + len(input.Matches) + len(input.Glob)
 		count += countAnyOfFields(input.AnyOf)
 	}
 
 	count += countAnyOfFields(stub.Input.AnyOf)
 
 	for _, alt := range stub.Headers.AnyOf {
-		count += len(alt.Equals) + len(alt.Contains) + len(alt.Matches)
+		count += len(alt.Equals) + len(alt.Contains) + len(alt.Matches) + len(alt.Glob)
 	}
 
 	return count
@@ -128,16 +122,8 @@ func countAnyOfFields(anyOf []AnyOfElement) int {
 	var n int
 
 	for _, alt := range anyOf {
-		n += len(alt.Equals) + len(alt.Contains) + len(alt.Matches)
+		n += len(alt.Equals) + len(alt.Contains) + len(alt.Matches) + len(alt.Glob)
 	}
 
 	return n
-}
-
-func pickHigherScore(current, candidate scoredStub) scoredStub {
-	if current.stub == nil || candidate.score > current.score {
-		return candidate
-	}
-
-	return current
 }

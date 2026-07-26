@@ -34,8 +34,12 @@ const wktSamples: Record<string, () => unknown> = {
   'google.rpc.BadRequest': () => ({ fieldViolations: [{ field: 'fieldName', description: 'must not be empty' }] }),
 };
 
-export function generateSample(schema: ProtoMessageSchema | null | undefined): Record<string, unknown> {
-  if (!schema?.fields?.length) return {};
+// Depth cap so a self-referential message schema (a field of its own type, e.g.
+// a tree/linked-list proto) can't recurse forever and blow the stack.
+const MAX_DEPTH = 8;
+
+export function generateSample(schema: ProtoMessageSchema | null | undefined, depth = 0): Record<string, unknown> {
+  if (!schema?.fields?.length || depth >= MAX_DEPTH) return {};
   const result: Record<string, unknown> = {};
   const usedOneofs = new Set<string>();
 
@@ -44,35 +48,35 @@ export function generateSample(schema: ProtoMessageSchema | null | undefined): R
       if (usedOneofs.has(field.oneof)) continue;
       usedOneofs.add(field.oneof);
     }
-    const value = generateField(field);
+    const value = generateField(field, depth);
     if (value !== undefined) result[field.jsonName || field.name] = value;
   }
   return result;
 }
 
-function generateField(field: ProtoFieldSchema): unknown {
+function generateField(field: ProtoFieldSchema, depth: number): unknown {
   if (field.cardinality === 'repeated') {
-    if (field.map) return generateMap(field);
-    return [generateSingle(field), generateSingle(field)];
+    if (field.map) return generateMap(field, depth);
+    return [generateSingle(field, depth), generateSingle(field, depth)];
   }
-  return generateSingle(field);
+  return generateSingle(field, depth);
 }
 
-function generateMap(field: ProtoFieldSchema): Record<string, unknown> {
+function generateMap(field: ProtoFieldSchema, depth: number): Record<string, unknown> {
   const key = field.mapKeyKind === 'int64' || field.mapKeyKind === 'uint64' ? '1' : 'key1';
-  return { [key]: generateByKind(field.mapValueKind || 'string', field.mapValueTypeName, null) };
+  return { [key]: generateByKind(field.mapValueKind || 'string', field.mapValueTypeName, null, depth) };
 }
 
-function generateSingle(field: ProtoFieldSchema): unknown {
-  return generateByKind(field.kind, field.typeName, field);
+function generateSingle(field: ProtoFieldSchema, depth: number): unknown {
+  return generateByKind(field.kind, field.typeName, field, depth);
 }
 
-function generateByKind(kind: string, typeName?: string, field?: ProtoFieldSchema | null): unknown {
+function generateByKind(kind: string, typeName: string | undefined, field: ProtoFieldSchema | null | undefined, depth: number): unknown {
   if (typeName) {
     if (wktSamples[typeName]) return wktSamples[typeName]();
     if (field?.enumValues?.length) return field.enumValues.find((v) => v !== 'UNSPECIFIED' && v !== 'UNKNOWN') || field.enumValues[0];
     if (!typeName.startsWith('google.')) {
-      if (field?.message) return generateSample(field.message);
+      if (field?.message) return generateSample(field.message, depth + 1);
       return { [`${typeName.split('.').pop() || 'value'}`]: '...' };
     }
   }

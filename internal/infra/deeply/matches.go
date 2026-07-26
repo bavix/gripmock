@@ -34,50 +34,29 @@ func mapDeepMatches(expect, actual any, compare cmp) bool {
 	})
 }
 
-// regexMatch checks if the expected regular expression matches the actual string.
-// It returns true if the regular expression matches the string, false otherwise.
-//
-// Parameters:
-// expect: The expected regular expression. This can be of any type, but it is
-//
-//	converted to a string before being used as the regular expression.
-//
-// actual: The actual string to be matched. This should be a string, but it is
-//
-//	first converted to a string before being matched.
-//
-// Returns:
-// A boolean value indicating whether the regular expression matches the string.
-// If there is an error converting the expected or actual values to strings, or if
-// there is an error matching the regular expression with the string, the function
-// logs the error and returns false.
+// regexMatch reports whether the expected string, used as a regular expression,
+// matches the actual value (stringified). Non-string inputs or a bad pattern
+// return false; a pattern error is logged.
 func regexMatch(expect, actual any) bool {
-	// If actual is a boolean, return false.
 	if _, ok := actual.(bool); ok {
 		return false
 	}
 
-	// Convert the expected and actual values to string.
 	var (
-		expectedStr, expectedStringOk = expect.(string)        // Expected regular expression as a string.
-		actualStr, actualStringErr    = cast.ToStringE(actual) // Actual string to be matched.
+		expectedStr, expectedStringOk = expect.(string)
+		actualStr, actualStringErr    = cast.ToStringE(actual)
 	)
 
-	// If the values are not string, return false.
 	if !expectedStringOk || actualStringErr != nil {
 		return false
 	}
 
-	// Match the regular expression with the string.
 	match, err := regexp.MatchString(expectedStr, actualStr)
 	if err != nil {
-		// If there is an error matching the regular expression with the string,
-		// log the error and return false.
 		log.Printf("Error on matching regex %s with %s error:%v\n", expect, actual, err)
 
 		return false
 	}
 
-	// Return the result of the match.
 	return match
 }

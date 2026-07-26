@@ -6,6 +6,56 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Regression: unescapeTemplateQuotes ran unconditionally and stripped \" inside
+// every {{...}}, corrupting a legitimate escaped quote in a string literal. It
+// must now only apply as a fallback when the raw template fails to parse.
+func TestRenderPreservesEscapedQuoteInLiteral(t *testing.T) {
+	t.Parallel()
+
+	engine := New(t.Context(), nil)
+
+	// The string literal "a\"b" is valid template syntax and parses as-is to a"b.
+	// The old unconditional unescape stripped the \" to "a"b" → parse error.
+	out, err := engine.Render(`{{ printf "%s" "a\"b" }}`, Data{})
+	require.NoError(t, err)
+	require.Equal(t, `a"b`, out)
+}
+
+// IsTemplateString must require the closing delimiter to come AFTER the opening.
+func TestIsTemplateStringDelimiterOrder(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, IsTemplateString("Hello {{.Request.name}}"))
+	require.False(t, IsTemplateString("a }} b {{ c"), "closing before opening is not a template")
+	require.False(t, IsTemplateString("no delimiters"))
+	require.False(t, IsTemplateString(""), "empty string")
+	require.False(t, IsTemplateString("{{ unterminated"), "opening only")
+}
+
+// The unescape fallback only fires when the raw template fails to parse: a
+// JSON-escaped template (\" reached the engine literally) must still render.
+func TestRenderUnescapeFallback(t *testing.T) {
+	t.Parallel()
+
+	engine := New(t.Context(), nil)
+
+	out, err := engine.Render(`{{ printf "%s" \"x\" }}`, Data{})
+	require.NoError(t, err)
+	require.Equal(t, "x", out)
+}
+
+// normalizeArgs boundary behavior: a single slice arg is spread (so sum/extract
+// work), multi-arg and single non-slice args pass through untouched.
+func TestNormalizeArgs(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, []any{1, 2, 3}, normalizeArgs([]any{[]any{1, 2, 3}}), "single []any spread")
+	require.Equal(t, []any{1.0, 2.0}, normalizeArgs([]any{[]float64{1, 2}}), "single []float64 spread to []any")
+	require.Equal(t, []any{1, 2}, normalizeArgs([]any{1, 2}), "multi-arg unchanged")
+	require.Equal(t, []any{5}, normalizeArgs([]any{5}), "single non-slice unchanged")
+	require.Empty(t, normalizeArgs([]any{}), "empty unchanged")
+}
+
 //nolint:funlen
 func TestEngineRender(t *testing.T) {
 	t.Parallel()

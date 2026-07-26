@@ -343,6 +343,15 @@ paths:
           required: false
           schema:
             type: string
+        - name: matcher
+          in: query
+          description: >-
+            Filter by matcher kind(s) present on the stub input. Comma-separated
+            for OR semantics (e.g. "glob,anyOf"). Valid kinds: equals, contains,
+            matches, glob, anyOf.
+          required: false
+          schema:
+            type: string
         - name: limit
           in: query
           description: Maximum number of returned stubs
@@ -606,6 +615,12 @@ paths:
           required: false
           schema:
             type: string
+        - name: error
+          in: query
+          required: false
+          description: When true, return only calls that ended with a gRPC error
+          schema:
+            type: boolean
       responses:
         '200':
           description: List of recorded calls

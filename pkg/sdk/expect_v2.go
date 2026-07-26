@@ -52,6 +52,17 @@ func (b *expectationBase) init(srv *Server, fullMethod string) {
 	b.method = method
 }
 
+// mustNotBeCommitted panics if a configuration method is chained AFTER a
+// terminal method (Return/ReturnError/SendStream/Run) already registered the
+// stub — at that point the setter would silently no-op (a false-pass footgun).
+// NextWillReturn/Send are intentionally post-terminal and do not call this.
+func (b *expectationBase) mustNotBeCommitted(method string) {
+	if b.committed {
+		panic("gripmock: ." + method + "() must be called before the terminal method " +
+			"(Return/ReturnError/SendStream/Run); chaining it after has no effect")
+	}
+}
+
 func mergeInputHeader(a, b stuber.InputHeader) stuber.InputHeader {
 	a.Equals = mergeStrAny(a.Equals, b.Equals)
 	a.Contains = mergeStrAny(a.Contains, b.Contains)
@@ -91,12 +102,15 @@ func newUnaryExpectation(srv *Server, fullMethod string) *UnaryExpectation {
 //
 // For header matching use WithHeader(sdk.Contains("key", "val")).
 func (e *UnaryExpectation) Match(matches ...any) *UnaryExpectation {
+	e.mustNotBeCommitted("Match")
 	e.matchers = append(e.matchers, compileMatchArgs(matches...)...)
 
 	return e
 }
 
 func (e *UnaryExpectation) WithHeader(headers ...Matcher) *UnaryExpectation {
+	e.mustNotBeCommitted("WithHeader")
+
 	for _, h := range headers {
 		e.headers = mergeInputHeader(e.headers, h.compileHeader())
 	}
@@ -209,24 +223,28 @@ func (e *UnaryExpectation) fixFirstUnlimited() {
 }
 
 func (e *UnaryExpectation) Once() *UnaryExpectation {
+	e.mustNotBeCommitted("Once")
 	e.times = 1
 
 	return e
 }
 
 func (e *UnaryExpectation) Twice() *UnaryExpectation {
+	e.mustNotBeCommitted("Twice")
 	e.times = 2
 
 	return e
 }
 
 func (e *UnaryExpectation) Times(n int) *UnaryExpectation {
+	e.mustNotBeCommitted("Times")
 	e.times = n
 
 	return e
 }
 
 func (e *UnaryExpectation) Priority(n int) *UnaryExpectation {
+	e.mustNotBeCommitted("Priority")
 	e.priority = n
 
 	return e
@@ -234,6 +252,7 @@ func (e *UnaryExpectation) Priority(n int) *UnaryExpectation {
 
 // Session isolates this stub to a specific session (X-Gripmock-Session header).
 func (e *UnaryExpectation) Session(id string) *UnaryExpectation {
+	e.mustNotBeCommitted("Session")
 	e.session = id
 
 	return e
@@ -307,12 +326,15 @@ func newServerStreamExpectation(srv *Server, fullMethod string) *ServerStreamExp
 
 // Match accepts key-value pairs (shorthand for Equals on payload) or Matcher values.
 func (e *ServerStreamExpectation) Match(matches ...any) *ServerStreamExpectation {
+	e.mustNotBeCommitted("Match")
 	e.matchers = append(e.matchers, compileMatchArgs(matches...)...)
 
 	return e
 }
 
 func (e *ServerStreamExpectation) WithHeader(headers ...Matcher) *ServerStreamExpectation {
+	e.mustNotBeCommitted("WithHeader")
+
 	for _, h := range headers {
 		e.headers = mergeInputHeader(e.headers, h.compileHeader())
 	}
@@ -361,12 +383,14 @@ func (e *ServerStreamExpectation) SendStream(items ...any) *ServerStreamBuilder 
 }
 
 func (e *ServerStreamExpectation) Times(n int) *ServerStreamExpectation {
+	e.mustNotBeCommitted("Times")
 	e.times = n
 
 	return e
 }
 
 func (e *ServerStreamExpectation) Priority(n int) *ServerStreamExpectation {
+	e.mustNotBeCommitted("Priority")
 	e.priority = n
 
 	return e
@@ -480,12 +504,15 @@ func newClientStreamExpectation(srv *Server, fullMethod string) *ClientStreamExp
 
 // Match accepts key-value pairs (shorthand for Equals on payload) or Matcher values.
 func (e *ClientStreamExpectation) Match(matches ...any) *ClientStreamExpectation {
+	e.mustNotBeCommitted("Match")
 	e.matchers = append(e.matchers, compileMatchArgs(matches...)...)
 
 	return e
 }
 
 func (e *ClientStreamExpectation) WithHeader(headers ...Matcher) *ClientStreamExpectation {
+	e.mustNotBeCommitted("WithHeader")
+
 	for _, h := range headers {
 		e.headers = mergeInputHeader(e.headers, h.compileHeader())
 	}
@@ -497,6 +524,8 @@ func (e *ClientStreamExpectation) WithHeader(headers ...Matcher) *ClientStreamEx
 //
 // Deprecated: use Match(sdk.Contains(...)) instead.
 func (e *ClientStreamExpectation) WithFirstPayload(inputs ...Matcher) *ClientStreamExpectation {
+	e.mustNotBeCommitted("WithFirstPayload")
+
 	e.matchOnFirst = true
 	for _, m := range inputs {
 		e.matchers = append(e.matchers, m.compilePayload())
@@ -521,12 +550,14 @@ func (e *ClientStreamExpectation) ReturnError(code codes.Code, msg string) *Clie
 }
 
 func (e *ClientStreamExpectation) Times(n int) *ClientStreamExpectation {
+	e.mustNotBeCommitted("Times")
 	e.times = n
 
 	return e
 }
 
 func (e *ClientStreamExpectation) Priority(n int) *ClientStreamExpectation {
+	e.mustNotBeCommitted("Priority")
 	e.priority = n
 
 	return e
@@ -576,6 +607,8 @@ func newBidiExpectation(srv *Server, fullMethod string) *BidirectionalExpectatio
 }
 
 func (e *BidirectionalExpectation) WithHeader(headers ...Matcher) *BidirectionalExpectation {
+	e.mustNotBeCommitted("WithHeader")
+
 	for _, h := range headers {
 		e.headers = mergeInputHeader(e.headers, h.compileHeader())
 	}
@@ -606,12 +639,14 @@ func (e *BidirectionalExpectation) Run(fn BidirectionalHandler) *BidirectionalEx
 }
 
 func (e *BidirectionalExpectation) Times(n int) *BidirectionalExpectation {
+	e.mustNotBeCommitted("Times")
 	e.times = n
 
 	return e
 }
 
 func (e *BidirectionalExpectation) Priority(n int) *BidirectionalExpectation {
+	e.mustNotBeCommitted("Priority")
 	e.priority = n
 
 	return e

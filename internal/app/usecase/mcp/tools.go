@@ -28,6 +28,7 @@ const (
 	ToolSchemaStub      = "schema_stub"
 
 	ToolStubsUpsert      = "stubs_upsert"
+	ToolStubsValidate    = "stubs_validate"
 	ToolStubsList        = "stubs_list"
 	ToolStubsGet         = "stubs_get"
 	ToolStubsDelete      = "stubs_delete"
@@ -35,6 +36,7 @@ const (
 	ToolStubsPurge       = "stubs_purge"
 	ToolStubsSearch      = "stubs_search"
 	ToolStubsInspect     = "stubs_inspect"
+	ToolMockCall         = "mock_call"
 	ToolStubsUsed        = "stubs_used"
 	ToolStubsUnused      = "stubs_unused"
 )
@@ -71,6 +73,7 @@ func ListRuntimeTools() []map[string]any {
 
 	return append(tools,
 		stubsUpsertTool(),
+		stubsValidateTool(),
 		stubsListTool(),
 		stubsGetTool(),
 		stubsDeleteTool(),
@@ -80,6 +83,7 @@ func ListRuntimeTools() []map[string]any {
 		stubsInspectTool(),
 		stubsUsedTool(),
 		stubsUnusedTool(),
+		mockCallTool(),
 	)
 }
 
@@ -223,6 +227,7 @@ func historyListTool() map[string]any {
 		"method":  stringProp(),
 		"session": stringProp(),
 		"limit":   nonNegativeIntegerProp(),
+		"offset":  nonNegativeIntegerProp(),
 	}))
 }
 
@@ -284,9 +289,46 @@ func stubsListTool() map[string]any {
 		"service": stringProp(),
 		"method":  stringProp(),
 		"session": stringProp(),
-		"limit":   nonNegativeIntegerProp(),
-		"offset":  nonNegativeIntegerProp(),
+		"source":  stringProp(),
+		"q": map[string]any{
+			"type":        "string",
+			"description": "Case-insensitive substring matched against service, method and stub ID",
+		},
+		"sort":   stubSortProp(),
+		"limit":  nonNegativeIntegerProp(),
+		"offset": nonNegativeIntegerProp(),
 	}))
+}
+
+func stubSortProp() map[string]any {
+	return map[string]any{
+		"type":        "string",
+		"description": "Sort order (default priority_desc)",
+		"enum":        []string{"priority_desc", "priority_asc", "service_asc", "method_asc"},
+	}
+}
+
+func stubsValidateTool() map[string]any {
+	return map[string]any{
+		"name":        ToolStubsValidate,
+		"description": "Validate one or many stubs without persisting (dry-run); returns normalized stubs or a validation error",
+		"inputSchema": map[string]any{
+			"type": "object",
+			"required": []string{
+				"stubs",
+			},
+			"properties": map[string]any{
+				"session": map[string]any{"type": "string"},
+				"stubs": map[string]any{
+					"description": "Stub object or array of stub objects",
+					"oneOf": []map[string]any{
+						{"type": "object", "additionalProperties": true},
+						{"type": "array", "items": map[string]any{"type": "object", "additionalProperties": true}},
+					},
+				},
+			},
+		},
+	}
 }
 
 func stubsGetTool() map[string]any {
@@ -345,6 +387,34 @@ func stubsSearchTool() map[string]any {
 	return map[string]any{
 		"name":        ToolStubsSearch,
 		"description": "Search a matching stub by request payload",
+		"inputSchema": map[string]any{
+			"type": "object",
+			"required": []string{
+				"service",
+				"method",
+				"payload",
+			},
+			"properties": map[string]any{
+				"service": map[string]any{"type": "string"},
+				"method":  map[string]any{"type": "string"},
+				"session": map[string]any{"type": "string"},
+				"headers": map[string]any{"type": "object", "additionalProperties": true},
+				"payload": map[string]any{"type": "object", "additionalProperties": true},
+				"input": map[string]any{
+					"type":  "array",
+					"items": map[string]any{"type": "object", "additionalProperties": true},
+				},
+			},
+		},
+	}
+}
+
+func mockCallTool() map[string]any {
+	return map[string]any{
+		"name": ToolMockCall,
+		"description": "Execute a mock call: match a stub for service/method/payload, render its templated response as the gRPC data " +
+			"plane would, record it to history, and return the response with its status code. Protobuf shape validation and stub " +
+			"effects are not applied (use the gateway endpoint for a fully faithful call).",
 		"inputSchema": map[string]any{
 			"type": "object",
 			"required": []string{

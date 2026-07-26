@@ -24,6 +24,11 @@ type ListOptions struct {
 	// service, method and ID. Empty means no text filter.
 	Query string
 
+	// Matchers keeps only stubs whose input declares at least one of the given
+	// matcher kinds (equals/contains/matches/glob/anyOf) — OR semantics. Empty
+	// means no matcher-kind filter.
+	Matchers []string
+
 	Session    string
 	SessionSet bool
 
@@ -44,6 +49,7 @@ func (b *Budgerigar) List(options ListOptions) ([]*Stub, int) {
 	return filtered, total
 }
 
+//nolint:cyclop
 func filterStubs(stubs iter.Seq[*Stub], options ListOptions) []*Stub {
 	seq := stubs
 
@@ -84,12 +90,58 @@ func filterStubs(stubs iter.Seq[*Stub], options ListOptions) []*Stub {
 		})
 	}
 
+	if len(options.Matchers) > 0 {
+		kinds := options.Matchers
+		seq = whereStubs(seq, func(stub *Stub) bool {
+			for _, kind := range kinds {
+				if stubHasMatcherKind(stub, kind) {
+					return true
+				}
+			}
+
+			return false
+		})
+	}
+
 	filtered := slices.Collect(seq)
 	if filtered == nil {
 		return []*Stub{}
 	}
 
 	return filtered
+}
+
+// stubHasMatcherKind reports whether the stub's input (unary Input, stream
+// Inputs, or their AnyOf alternatives) declares the given matcher kind.
+func stubHasMatcherKind(stub *Stub, kind string) bool {
+	if inputHasKind(stub.Input, kind) {
+		return true
+	}
+
+	for _, in := range stub.Inputs {
+		if inputHasKind(in, kind) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func inputHasKind(in InputData, kind string) bool {
+	switch kind {
+	case "equals":
+		return len(in.Equals) > 0
+	case "contains":
+		return len(in.Contains) > 0
+	case "matches":
+		return len(in.Matches) > 0
+	case "glob":
+		return len(in.Glob) > 0
+	case "anyOf":
+		return len(in.AnyOf) > 0
+	default:
+		return false
+	}
 }
 
 func whereStubs(seq iter.Seq[*Stub], keep func(*Stub) bool) iter.Seq[*Stub] {
@@ -115,6 +167,14 @@ func paginateStubs(stubs []*Stub, options ListOptions) []*Stub {
 	}
 
 	return stubs
+}
+
+// SortStubs sorts an already-materialized stub slice in place using the same
+// modes as List (ListSort* constants). Exposed for callers that filter stubs
+// outside the storage iterator (e.g. the MCP used/unused sets) yet want ordering
+// consistent with the REST /stubs listing.
+func SortStubs(stubs []*Stub, mode string) {
+	sortStubs(stubs, mode)
 }
 
 func sortStubs(stubs []*Stub, mode string) {

@@ -378,6 +378,7 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 	return found, nil
 }
 
+//nolint:cyclop,funlen
 func (m *grpcMocker) sendClientStreamResponse(
 	stream grpc.ServerStream,
 	found *stuber.Stub,
@@ -388,15 +389,7 @@ func (m *grpcMocker) sendClientStreamResponse(
 		return err
 	}
 
-	if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
-		return err
-	}
-
-	if err := m.setResponseHeadersAny(stream.Context(), stream, found.Output.Headers); err != nil {
-		return errors.Wrap(err, "failed to set headers")
-	}
-
-	outputDataCopy := deepCopyAny(found.Output.Data)
+	outputToUse := found.Output
 
 	headers := make(map[string]any)
 	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
@@ -419,6 +412,34 @@ func (m *grpcMocker) sendClientStreamResponse(
 		StubID:       found.ID.String(),
 		RequestID:    found.ID.String(),
 	}
+
+	if template.HasTemplatesInHeaders(outputToUse.Headers) {
+		headersCopy := deepCopyStringMap(outputToUse.Headers)
+		if err := m.templateEngine.ProcessHeaders(headersCopy, templateData); err != nil {
+			return errors.Wrap(err, "failed to process header templates")
+		}
+
+		outputToUse.Headers = headersCopy
+	}
+
+	if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
+		errorStr, err := m.templateEngine.ProcessError(outputToUse.Error, templateData)
+		if err != nil {
+			return errors.Wrap(err, "failed to process error template")
+		}
+
+		outputToUse.Error = errorStr
+	}
+
+	// Headers must be sent before any trailer — an error status closes the stream
+	// with trailers, so setting headers afterwards fails. Effects are independent
+	// of response disposition and must run even on the error path, matching
+	// handleUnary. Therefore: headers, then data render + effects, then error.
+	if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
+		return errors.Wrap(err, "failed to set headers")
+	}
+
+	outputDataCopy := deepCopyAny(outputToUse.Data)
 	if dataMap, ok := outputDataCopy.(map[string]any); ok {
 		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
 			return errors.Wrap(err, "failed to process dynamic templates")
@@ -428,6 +449,10 @@ func (m *grpcMocker) sendClientStreamResponse(
 	}
 
 	m.applyEffects(stream.Context(), found, templateData)
+
+	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil { //nolint:wrapcheck
+		return err
+	}
 
 	outputMsg, err := m.newOutputMessage(outputDataCopy)
 	if err != nil {

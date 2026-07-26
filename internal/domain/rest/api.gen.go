@@ -526,6 +526,9 @@ type ListHistoryParams struct {
 	Offset  *int    `form:"offset,omitempty" json:"offset,omitempty"`
 	Service *string `form:"service,omitempty" json:"service,omitempty"`
 	Method  *string `form:"method,omitempty" json:"method,omitempty"`
+
+	// Error When true, return only calls that ended with a gRPC error
+	Error *bool `form:"error,omitempty" json:"error,omitempty"`
 }
 
 // ListStubsParams defines parameters for ListStubs.
@@ -544,6 +547,9 @@ type ListStubsParams struct {
 
 	// Q Case-insensitive substring search over service, method and stub ID
 	Q *string `form:"q,omitempty" json:"q,omitempty"`
+
+	// Matcher Filter by matcher kind(s) present on the stub input. Comma-separated for OR semantics (e.g. "glob,anyOf"). Valid kinds: equals, contains, matches, glob, anyOf.
+	Matcher *string `form:"matcher,omitempty" json:"matcher,omitempty"`
 
 	// Limit Maximum number of returned stubs
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
@@ -1105,6 +1111,19 @@ func (siw *ServerInterfaceWrapper) ListHistory(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// ------------- Optional query parameter "error" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "error", r.URL.Query(), &params.Error, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "error"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "error", Err: err})
+		}
+		return
+	}
+
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListHistory(w, r, params)
 	}))
@@ -1341,6 +1360,19 @@ func (siw *ServerInterfaceWrapper) ListStubs(w http.ResponseWriter, r *http.Requ
 			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "q"})
 		} else {
 			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "q", Err: err})
+		}
+		return
+	}
+
+	// ------------- Optional query parameter "matcher" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "matcher", r.URL.Query(), &params.Matcher, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "matcher"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "matcher", Err: err})
 		}
 		return
 	}

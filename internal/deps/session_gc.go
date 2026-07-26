@@ -50,14 +50,18 @@ func cleanupExpiredSessions(ctx context.Context, now time.Time, ttl time.Duratio
 	logger := zerolog.Ctx(ctx)
 
 	for _, sessionID := range expired {
+		// Atomically re-check + forget: if the session was re-touched after the
+		// Expired() snapshot, skip it so we don't delete its just-added data.
+		if !session.ForgetIfExpired(sessionID, now, ttl) {
+			continue
+		}
+
 		deletedStubs := bg.DeleteSession(sessionID)
 		deletedHistory := 0
 
 		if hs != nil {
 			deletedHistory = hs.DeleteSession(sessionID)
 		}
-
-		session.Forget(sessionID)
 
 		if deletedStubs > 0 || deletedHistory > 0 {
 			logger.Debug().

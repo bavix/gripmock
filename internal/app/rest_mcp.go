@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	stderrors "errors"
-	"maps"
 	"net/http"
 	"strings"
 
@@ -121,65 +120,62 @@ func callMCPToolDispatch(h *RestServer, name string, args map[string]any) (map[s
 	return result, err
 }
 
-func mcpToolHandlers(h *RestServer) map[string]mcpusecase.ToolHandler {
-	handlers := map[string]mcpusecase.ToolHandler{}
+// mcpToolFunc is the shared shape of every MCP tool implementation.
+type mcpToolFunc func(*RestServer, map[string]any) (map[string]any, error)
 
-	mergeMCPToolHandlers(handlers, mcpGeneralToolHandlers(h))
-	mergeMCPToolHandlers(handlers, mcpServicesToolHandlers(h))
-	mergeMCPToolHandlers(handlers, mcpStubsToolHandlers(h))
+// bindTool adapts an (h, args) tool function to the arg-only ToolHandler the
+// dispatcher expects, capturing the server.
+func bindTool(h *RestServer, fn mcpToolFunc) mcpusecase.ToolHandler {
+	return func(args map[string]any) (map[string]any, error) {
+		return fn(h, args)
+	}
+}
+
+func mcpToolHandlers(h *RestServer) map[string]mcpusecase.ToolHandler {
+	funcs := map[string]mcpToolFunc{
+		// general
+		mcpusecase.ToolHealthLiveness:  mcpHealthLiveness,
+		mcpusecase.ToolHealthReadiness: mcpHealthReadiness,
+		mcpusecase.ToolHealthStatus:    mcpHealthStatus,
+		mcpusecase.ToolDashboard:       mcpDashboard,
+		mcpusecase.ToolOverview:        mcpDashboardOverview,
+		mcpusecase.ToolInfo:            mcpDashboardInfo,
+		mcpusecase.ToolSessionsList:    mcpSessionsList,
+		mcpusecase.ToolGripmockInfo:    mcpGripmockInfo,
+		mcpusecase.ToolReflectInfo:     mcpReflectInfo,
+		mcpusecase.ToolReflectSources:  mcpReflectSources,
+		mcpusecase.ToolDescriptorsAdd:  mcpDescriptorsAdd,
+		mcpusecase.ToolDescriptorsList: mcpDescriptorsList,
+		mcpusecase.ToolHistoryList:     mcpHistoryList,
+		mcpusecase.ToolHistoryErrors:   mcpHistoryErrors,
+		mcpusecase.ToolVerifyCalls:     mcpVerifyCalls,
+		mcpusecase.ToolDebugCall:       mcpDebugCall,
+		mcpusecase.ToolSchemaStub:      mcpSchemaStub,
+		// services
+		mcpusecase.ToolServicesList:    mcpServicesList,
+		mcpusecase.ToolServicesGet:     mcpServicesGet,
+		mcpusecase.ToolServicesMethods: mcpServicesMethods,
+		mcpusecase.ToolServicesMethod:  mcpServicesMethod,
+		mcpusecase.ToolServicesDelete:  mcpServicesDelete,
+		// stubs
+		mcpusecase.ToolStubsUpsert:      mcpStubsUpsert,
+		mcpusecase.ToolStubsValidate:    mcpStubsValidate,
+		mcpusecase.ToolStubsList:        mcpStubsList,
+		mcpusecase.ToolStubsGet:         mcpStubsGet,
+		mcpusecase.ToolStubsDelete:      mcpStubsDelete,
+		mcpusecase.ToolStubsBatchDelete: mcpStubsBatchDelete,
+		mcpusecase.ToolStubsPurge:       mcpStubsPurge,
+		mcpusecase.ToolStubsSearch:      mcpStubsSearch,
+		mcpusecase.ToolStubsInspect:     mcpStubsInspect,
+		mcpusecase.ToolStubsUsed:        mcpStubsUsed,
+		mcpusecase.ToolStubsUnused:      mcpStubsUnused,
+		mcpusecase.ToolMockCall:         mcpMockCall,
+	}
+
+	handlers := make(map[string]mcpusecase.ToolHandler, len(funcs))
+	for name, fn := range funcs {
+		handlers[name] = bindTool(h, fn)
+	}
 
 	return handlers
-}
-
-func mcpGeneralToolHandlers(h *RestServer) map[string]mcpusecase.ToolHandler {
-	return map[string]mcpusecase.ToolHandler{
-		mcpusecase.ToolHealthLiveness:  func(toolArgs map[string]any) (map[string]any, error) { return mcpHealthLiveness(h, toolArgs) },
-		mcpusecase.ToolHealthReadiness: func(toolArgs map[string]any) (map[string]any, error) { return mcpHealthReadiness(h, toolArgs) },
-		mcpusecase.ToolHealthStatus:    func(toolArgs map[string]any) (map[string]any, error) { return mcpHealthStatus(h, toolArgs) },
-		mcpusecase.ToolDashboard:       func(toolArgs map[string]any) (map[string]any, error) { return mcpDashboard(h, toolArgs) },
-		mcpusecase.ToolOverview:        func(toolArgs map[string]any) (map[string]any, error) { return mcpDashboardOverview(h, toolArgs) },
-		mcpusecase.ToolInfo:            func(toolArgs map[string]any) (map[string]any, error) { return mcpDashboardInfo(h, toolArgs) },
-		mcpusecase.ToolSessionsList:    func(toolArgs map[string]any) (map[string]any, error) { return mcpSessionsList(h, toolArgs) },
-		mcpusecase.ToolGripmockInfo:    func(toolArgs map[string]any) (map[string]any, error) { return mcpGripmockInfo(h, toolArgs) },
-		mcpusecase.ToolReflectInfo:     func(toolArgs map[string]any) (map[string]any, error) { return mcpReflectInfo(h, toolArgs) },
-		mcpusecase.ToolReflectSources:  func(toolArgs map[string]any) (map[string]any, error) { return mcpReflectSources(h, toolArgs) },
-		mcpusecase.ToolDescriptorsAdd:  func(toolArgs map[string]any) (map[string]any, error) { return mcpDescriptorsAdd(h, toolArgs) },
-		mcpusecase.ToolDescriptorsList: func(toolArgs map[string]any) (map[string]any, error) { return mcpDescriptorsList(h, toolArgs) },
-		mcpusecase.ToolHistoryList:     func(toolArgs map[string]any) (map[string]any, error) { return mcpHistoryList(h, toolArgs) },
-		mcpusecase.ToolHistoryErrors:   func(toolArgs map[string]any) (map[string]any, error) { return mcpHistoryErrors(h, toolArgs) },
-		mcpusecase.ToolVerifyCalls:     func(toolArgs map[string]any) (map[string]any, error) { return mcpVerifyCalls(h, toolArgs) },
-		mcpusecase.ToolDebugCall:       func(toolArgs map[string]any) (map[string]any, error) { return mcpDebugCall(h, toolArgs) },
-		mcpusecase.ToolSchemaStub:      func(toolArgs map[string]any) (map[string]any, error) { return mcpSchemaStub(h, toolArgs) },
-	}
-}
-
-func mcpServicesToolHandlers(h *RestServer) map[string]mcpusecase.ToolHandler {
-	return map[string]mcpusecase.ToolHandler{
-		mcpusecase.ToolServicesList:    func(toolArgs map[string]any) (map[string]any, error) { return mcpServicesList(h, toolArgs) },
-		mcpusecase.ToolServicesGet:     func(toolArgs map[string]any) (map[string]any, error) { return mcpServicesGet(h, toolArgs) },
-		mcpusecase.ToolServicesMethods: func(toolArgs map[string]any) (map[string]any, error) { return mcpServicesMethods(h, toolArgs) },
-		mcpusecase.ToolServicesMethod:  func(toolArgs map[string]any) (map[string]any, error) { return mcpServicesMethod(h, toolArgs) },
-		mcpusecase.ToolServicesDelete:  func(toolArgs map[string]any) (map[string]any, error) { return mcpServicesDelete(h, toolArgs) },
-	}
-}
-
-func mcpStubsToolHandlers(h *RestServer) map[string]mcpusecase.ToolHandler {
-	return map[string]mcpusecase.ToolHandler{
-		mcpusecase.ToolStubsUpsert: func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsUpsert(h, toolArgs) },
-		mcpusecase.ToolStubsList:   func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsList(h, toolArgs) },
-		mcpusecase.ToolStubsGet:    func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsGet(h, toolArgs) },
-		mcpusecase.ToolStubsDelete: func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsDelete(h, toolArgs) },
-		mcpusecase.ToolStubsBatchDelete: func(toolArgs map[string]any) (map[string]any, error) {
-			return mcpStubsBatchDelete(h, toolArgs)
-		},
-		mcpusecase.ToolStubsPurge:   func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsPurge(h, toolArgs) },
-		mcpusecase.ToolStubsSearch:  func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsSearch(h, toolArgs) },
-		mcpusecase.ToolStubsInspect: func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsInspect(h, toolArgs) },
-		mcpusecase.ToolStubsUsed:    func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsUsed(h, toolArgs) },
-		mcpusecase.ToolStubsUnused:  func(toolArgs map[string]any) (map[string]any, error) { return mcpStubsUnused(h, toolArgs) },
-	}
-}
-
-func mergeMCPToolHandlers(dst map[string]mcpusecase.ToolHandler, src map[string]mcpusecase.ToolHandler) {
-	maps.Copy(dst, src)
 }

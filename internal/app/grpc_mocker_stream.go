@@ -186,6 +186,15 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		outputToUse.Headers = headersCopy
 	}
 
+	if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
+		errorStr, err := m.templateEngine.ProcessError(outputToUse.Error, templateData)
+		if err != nil {
+			return errors.Wrap(err, "failed to process error template")
+		}
+
+		outputToUse.Error = errorStr
+	}
+
 	if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
 		return errors.Wrap(err, "failed to set headers")
 	}
@@ -237,7 +246,7 @@ func (m *grpcMocker) handleServerStreamOutput(
 	outputToUse stuber.Output,
 	requestTime time.Time,
 ) error {
-	err := m.handleNonArrayStreamData(stream, found)
+	err := m.handleNonArrayStreamData(stream, found, outputToUse)
 	if err != nil {
 		return err
 	}
@@ -345,8 +354,10 @@ func (m *grpcMocker) handleStreamElement(
 }
 
 //nolint:cyclop,funlen
-func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *stuber.Stub) error {
-	if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil {
+func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *stuber.Stub, outputToUse stuber.Output) error {
+	// Use outputToUse (templated headers/error already rendered by the caller),
+	// not found.Output — otherwise an error template is emitted unrendered.
+	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil {
 		return err
 	}
 

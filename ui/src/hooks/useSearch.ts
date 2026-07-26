@@ -1,22 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
 import { api } from '../lib/api';
-
-export interface SearchMatch {
-  id: string;
-  service: string;
-  method: string;
-  priority: number;
-  input?: Record<string, unknown>;
-  output?: Record<string, unknown>;
-  source?: string;
-  score?: number;
-}
+import type { Stub, InspectReport } from '../lib/types';
 
 export interface SmartSearchResult {
-  mode: 'id' | 'endpoint' | 'payload' | 'unknown';
   query: string;
-  results: SearchMatch[];
-  matched?: SearchMatch;
+  results: Stub[];
   error?: string;
 }
 
@@ -50,52 +38,55 @@ export function extractServiceMethod(query: string): { service?: string; method?
 }
 
 export function useSmartSearch() {
-  const searchMut = useMutation({
-    mutationFn: (req: { service?: string; method?: string; data?: Record<string, unknown> }) =>
-      api.post<{ id?: string; service: string; method: string; data?: unknown }>('/stubs/search', req),
+  // /stubs/inspect resolves WHICH stub actually matches a payload; the candidate
+  // set is scoped by service+method, so payload search needs an endpoint too.
+  const inspectMut = useMutation({
+    mutationFn: (req: { service: string; method: string; input?: Record<string, unknown>[] }) =>
+      api.post<InspectReport>('/stubs/inspect', req),
   });
 
   return {
+    // Returns full Stub[] so the caller can render real stub cards. Empty
+    // results with no error means "not resolvable here" — the caller keeps the
+    // server-side substring filter (serverQ) as the fallback.
     search: async (query: string): Promise<SmartSearchResult> => {
       const trimmed = query.trim();
-      if (!trimmed) return { mode: 'unknown', query, results: [] };
+      if (!trimmed) return { query, results: [] };
 
-      // Mode 1: by ID
+      // Mode 1: by ID — direct stub lookup.
       if (isUuid(trimmed)) {
         try {
-          const stub = await api.get<SearchMatch>(`/stubs/${encodeURIComponent(trimmed)}`);
-          return { mode: 'id', query, results: [stub], matched: stub };
+          const stub = await api.get<Stub>(`/stubs/${encodeURIComponent(trimmed)}`);
+          return { query, results: [stub] };
         } catch {
-          return { mode: 'id', query, results: [], error: 'Stub not found by this ID' };
+          return { query, results: [], error: 'Stub not found by this ID' };
         }
       }
 
-      // Mode 2: by payload (JSON detected)
       const payload = extractPayload(trimmed);
       const { service, method } = extractServiceMethod(trimmed);
 
-      if (payload || (service && method)) {
+      // Mode 2/3: endpoint (service/method), optionally narrowed by a payload.
+      if (service && method) {
         try {
-          const res = await searchMut.mutateAsync({ service, method, data: payload });
-          // The response format depends on the API
-          return { mode: 'payload', query, results: res as any, matched: (res as any).id ? (res as any) : undefined };
+          const stubs = await api.get<Stub[]>('/stubs', { service, method });
+          if (!payload) return { query, results: stubs };
+
+          // Ask the matcher which of those stubs the payload actually hits.
+          const report = await inspectMut.mutateAsync({ service, method, input: [payload] });
+          const matchedIds = new Set((report.candidates ?? []).filter((c) => c.matched).map((c) => c.id));
+          if (report.matchedStubId) matchedIds.add(report.matchedStubId);
+          const matched = stubs.filter((s) => matchedIds.has(s.id));
+          // No match → show the endpoint's stubs so the user sees the candidates.
+          return { query, results: matched.length ? matched : stubs };
         } catch (err) {
-          return { mode: 'payload', query, results: [], error: (err as Error).message };
+          return { query, results: [], error: (err as Error).message };
         }
       }
 
-      // Mode 3: by endpoint (service/method pattern)
-      if (service || method) {
-        try {
-          const stubs = await api.get<SearchMatch[]>('/stubs', { service, method });
-          return { mode: 'endpoint', query, results: stubs };
-        } catch (err) {
-          return { mode: 'endpoint', query, results: [], error: (err as Error).message };
-        }
-      }
-
-      return { mode: 'unknown', query, results: [] };
+      // Payload without an endpoint can't be inspected (no method to scope
+      // candidates) — defer to the server substring filter.
+      return { query, results: [] };
     },
-    isSearching: searchMut.isPending,
   };
 }

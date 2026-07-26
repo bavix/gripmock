@@ -1,5 +1,6 @@
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { nextPageOffset } from '../lib/pagination';
 import type { CallRecord } from '../lib/types';
 
 export function useHistory(refetchInterval = 0) {
@@ -32,18 +33,32 @@ export function useRecentHistory(limit = 20, refetchInterval = 0) {
 }
 
 // Paged history (newest first) with load-more. Each page skips `offset` newest
-// records; X-Total-Count bounds how far back we can go.
-export function useInfiniteHistory(pageSize = 100, refetchInterval = 0) {
+// records; X-Total-Count bounds how far back we can go. When errorOnly is set the
+// server returns only errored calls, so the Errors tab covers ALL errors — not
+// just those in already-loaded pages.
+export function useInfiniteHistory(pageSize = 100, refetchInterval = 0, errorOnly = false) {
   return useInfiniteQuery({
-    queryKey: ['history', 'infinite', pageSize],
+    queryKey: ['history', 'infinite', pageSize, errorOnly],
     queryFn: ({ pageParam }) =>
-      api.getWithMeta<CallRecord[]>('/history', { limit: String(pageSize), offset: String(pageParam) }),
+      api.getWithMeta<CallRecord[]>('/history', {
+        limit: String(pageSize), offset: String(pageParam),
+        ...(errorOnly ? { error: 'true' } : {}),
+      }),
     initialPageParam: 0,
     getNextPageParam: (last, pages) => {
-      if (last.data.length === 0) return undefined; // stop on empty page (see useInfiniteStubs)
       const loaded = pages.reduce((n, p) => n + p.data.length, 0);
-      return loaded < last.total ? loaded : undefined;
+      return nextPageOffset(last.data.length, loaded, pages[0]?.total ?? last.total);
     },
+    refetchInterval,
+  });
+}
+
+// Accurate server-wide error count via X-Total-Count of an error-only query,
+// without loading any records (limit=1). Used for the honest "N errors" badge.
+export function useHistoryErrorCount(refetchInterval = 0) {
+  return useQuery({
+    queryKey: ['history', 'errorCount'],
+    queryFn: async () => (await api.getWithMeta<CallRecord[]>('/history', { error: 'true', limit: '1' })).total,
     refetchInterval,
   });
 }
