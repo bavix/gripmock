@@ -134,6 +134,34 @@ func TestListMatcherKindFilter(t *testing.T) {
 	require.Equal(t, 3, allTotal)
 }
 
+// Regression: fastMatchStream's condition check omitted AnyOf (same class as the
+// glob gap), so a stream stub element carrying only an anyOf matcher was treated
+// as condition-less and never matched.
+func TestAnyOfOnlyStreamStubMatches(t *testing.T) {
+	t.Parallel()
+
+	s := stuber.NewBudgerigar()
+	id := uuid.New()
+	s.PutMany(&stuber.Stub{
+		ID: id, Service: "s", Method: "m",
+		Inputs: []stuber.InputData{{AnyOf: []stuber.AnyOfElement{
+			{Equals: map[string]any{"name": "alice"}},
+			{Equals: map[string]any{"name": "bob"}},
+		}}},
+		Output: stuber.Output{Data: map[string]any{"ok": true}},
+	})
+
+	res, err := s.FindByQuery(stuber.Query{Service: "s", Method: "m", Input: []map[string]any{{"name": "bob"}}})
+	require.NoError(t, err)
+	require.NotNil(t, res.Found(), "anyOf-only stream stub must match")
+	require.Equal(t, id, res.Found().ID)
+
+	// A value in neither alternative must not match.
+	miss, err := s.FindByQuery(stuber.Query{Service: "s", Method: "m", Input: []map[string]any{{"name": "zoe"}}})
+	require.NoError(t, err)
+	require.Nil(t, miss.Found())
+}
+
 // Regression: compareRankedMatches returned 0 for fully-tied stubs with no final
 // tiebreak. With an unstable sort and the parallel path assembling matches in
 // goroutine-completion order, the winner was nondeterministic and could differ

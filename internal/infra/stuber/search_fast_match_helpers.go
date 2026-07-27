@@ -2,14 +2,27 @@ package stuber
 
 import "slices"
 
-// inputHasConditions reports whether an input element carries any matcher
-// (including glob and anyOf, which the older per-field checks omitted).
+// inputHasConditions reports whether an input element carries a real matcher
+// requirement. AnyOf counts only when at least one alternative actually declares
+// a field matcher — an anyOf of empty alternatives imposes no requirement.
 func inputHasConditions(e InputData) bool {
 	return len(e.Equals) > 0 ||
 		len(e.Contains) > 0 ||
 		len(e.Matches) > 0 ||
 		len(e.Glob) > 0 ||
-		len(e.AnyOf) > 0
+		slices.ContainsFunc(e.AnyOf, anyOfElementHasFields)
+}
+
+// anyOfElementHasFields reports whether an alternative sets any matcher entries
+// (len-based: an empty {} matcher is not a requirement).
+func anyOfElementHasFields(alt AnyOfElement) bool {
+	return len(alt.Equals) > 0 || len(alt.Contains) > 0 || len(alt.Matches) > 0 || len(alt.Glob) > 0
+}
+
+// anyOfElementDeclares reports whether an alternative declares any matcher map
+// (nil-based: an empty {} still counts as a declaration).
+func anyOfElementDeclares(alt AnyOfElement) bool {
+	return alt.Equals != nil || alt.Contains != nil || alt.Matches != nil || alt.Glob != nil
 }
 
 // fastMatchV2 is an ultra-optimized version of matchV2.
@@ -143,11 +156,12 @@ func (s *searcher) fastMatchInput(queryData map[string]any, stubInput InputData)
 //nolint:cyclop
 func (s *searcher) fastMatchStream(queryStream []map[string]any, stubStream []InputData) bool {
 	// A stub element "declares" a matcher when the map is non-nil (even if empty:
-	// an empty {} means "explicitly matches empty input"). Glob must be included
-	// here too, else a glob-only stream stub is treated as having no conditions
-	// and never matches.
+	// an empty {} means "explicitly matches empty input"). Glob and AnyOf count
+	// too — for AnyOf only when some alternative actually declares a matcher, so a
+	// glob- or anyOf-only stream stub is recognized while an empty anyOf is not.
 	declaresMatcher := func(e InputData) bool {
-		return e.Equals != nil || e.Contains != nil || e.Matches != nil || e.Glob != nil
+		return e.Equals != nil || e.Contains != nil || e.Matches != nil || e.Glob != nil ||
+			slices.ContainsFunc(e.AnyOf, anyOfElementDeclares)
 	}
 
 	if !slices.ContainsFunc(stubStream, declaresMatcher) {
@@ -155,14 +169,10 @@ func (s *searcher) fastMatchStream(queryStream []map[string]any, stubStream []In
 	}
 
 	// Fast path: empty query stream. A stub matches only if no element REQUIRES
-	// fields (len-based, so an empty {} matcher still matches empty input). Glob
-	// with entries requires fields just like equals/contains/matches.
+	// fields (an empty {} matcher still matches empty input). Reuse
+	// inputHasConditions so the len-based kind list stays a single source of truth.
 	if len(queryStream) == 0 {
-		requiresFields := func(e InputData) bool {
-			return len(e.Equals) > 0 || len(e.Contains) > 0 || len(e.Matches) > 0 || len(e.Glob) > 0
-		}
-
-		return !slices.ContainsFunc(stubStream, requiresFields)
+		return !slices.ContainsFunc(stubStream, inputHasConditions)
 	}
 
 	// Fast path: single element
