@@ -25,7 +25,7 @@ func (m *grpcMocker) proxyServerStream(stream grpc.ServerStream, route *proxyrou
 	return m.proxyServerStreamWithRequest(stream, route, req, capture)
 }
 
-//nolint:cyclop,funlen,gocognit
+//nolint:cyclop,funlen
 func (m *grpcMocker) proxyServerStreamWithRequest(
 	stream grpc.ServerStream,
 	route *proxyroutes.Route,
@@ -116,13 +116,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 		}
 	}
 
-	if trailer := clientStream.Trailer(); len(trailer) > 0 {
-		if _, ok := stream.(*grpcwebAdapter); !ok {
-			if t := ssmFilterMD(trailer); len(t) > 0 {
-				stream.SetTrailer(t)
-			}
-		}
-	}
+	forwardUpstreamTrailer(stream, clientStream)
 
 	if capture {
 		m.recordCapturedStub(
@@ -222,13 +216,7 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 		return err
 	}
 
-	if trailer := clientStream.Trailer(); len(trailer) > 0 {
-		if _, ok := stream.(*grpcwebAdapter); !ok {
-			if t := ssmFilterMD(trailer); len(t) > 0 {
-				stream.SetTrailer(t)
-			}
-		}
-	}
+	forwardUpstreamTrailer(stream, clientStream)
 
 	if err = stream.SendMsg(resp); err != nil {
 		return err
@@ -254,7 +242,7 @@ func (m *grpcMocker) proxyBidiStream(stream grpc.ServerStream, route *proxyroute
 	return m.proxyBidiStreamWithRequests(stream, route, nil, capture)
 }
 
-//nolint:cyclop,funlen
+//nolint:funlen
 func (m *grpcMocker) proxyBidiStreamWithRequests(
 	stream grpc.ServerStream,
 	route *proxyroutes.Route,
@@ -303,13 +291,7 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 		bidiCancel()
 	}
 
-	if trailer := clientStream.Trailer(); len(trailer) > 0 {
-		if _, ok := stream.(*grpcwebAdapter); !ok {
-			if t := ssmFilterMD(trailer); len(t) > 0 {
-				stream.SetTrailer(t)
-			}
-		}
-	}
+	forwardUpstreamTrailer(stream, clientStream)
 
 	if capture {
 		requests, responses := state.Snapshot()
@@ -445,6 +427,19 @@ func (m *grpcMocker) forwardBidiResponses(
 			trySendErr(errCh, err)
 
 			return
+		}
+	}
+}
+
+// forwardUpstreamTrailer copies the upstream client-stream trailer onto the
+// downstream server stream (filtered), skipping the gRPC-web adapter which
+// handles trailers itself.
+func forwardUpstreamTrailer(stream grpc.ServerStream, clientStream grpc.ClientStream) {
+	if trailer := clientStream.Trailer(); len(trailer) > 0 {
+		if _, ok := stream.(*grpcwebAdapter); !ok {
+			if t := ssmFilterMD(trailer); len(t) > 0 {
+				stream.SetTrailer(t)
+			}
 		}
 	}
 }

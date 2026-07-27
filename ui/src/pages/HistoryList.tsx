@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { byTimestampDesc } from '../lib/format';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInfiniteHistory, useHistoryErrorCount } from '../hooks/useHistory';
 import { useStore } from '../lib/store';
@@ -6,19 +7,11 @@ import { Search, Copy, Fingerprint, Globe, Bug, ExternalLink } from 'lucide-reac
 import { colors } from '../lib/theme';
 import { DataTable } from '../components/table/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
-import type { CallRecord } from '../lib/types';
+import { type CallRecord, isCallOk } from '../lib/types';
+import { grpcCodeName } from '../lib/grpc';
+import { inspectLink } from '../lib/stub';
+import { CallStatusBadge } from '../components/shared/CallStatusBadge';
 
-// Success when there is no gRPC error code (API omits code 0 on success).
-const isOk = (r: CallRecord) => !r.code || r.code === 0;
-
-// gRPC status code → canonical name.
-const GRPC_CODE: Record<number, string> = {
-  0: 'OK', 1: 'Canceled', 2: 'Unknown', 3: 'InvalidArgument', 4: 'DeadlineExceeded',
-  5: 'NotFound', 6: 'AlreadyExists', 7: 'PermissionDenied', 8: 'ResourceExhausted',
-  9: 'FailedPrecondition', 10: 'Aborted', 11: 'OutOfRange', 12: 'Unimplemented',
-  13: 'Internal', 14: 'Unavailable', 15: 'DataLoss', 16: 'Unauthenticated',
-};
-const codeName = (c?: number) => (c == null ? '' : GRPC_CODE[c] ?? String(c));
 
 function grpcurl(r: CallRecord): string {
   const msgs = r.requests?.length ? r.requests : (r.request ? [r.request] : [{}]);
@@ -42,7 +35,7 @@ export function HistoryList() {
   // Flatten loaded pages and sort newest-first (windows arrive oldest-first).
   const history = useMemo(() => {
     const rows = data?.pages.flatMap((p) => p.data) ?? [];
-    return rows.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return rows.sort(byTimestampDesc);
   }, [data]);
 
   const filtered = useMemo(() => {
@@ -50,16 +43,13 @@ export function HistoryList() {
     return history.filter((h) => {
       if (sessionTab === 'mine' && h.session !== session) return false;
       if (sessionTab === 'global' && h.session) return false;
-      if (statusTab === 'ok' && !isOk(h)) return false;
-      if (statusTab === 'err' && isOk(h)) return false;
+      if (statusTab === 'ok' && !isCallOk(h)) return false;
+      if (statusTab === 'err' && isCallOk(h)) return false;
       if (!search) return true;
       const q = search.toLowerCase();
       return [h.service, h.method, h.stubId, h.error].some((f) => f?.toLowerCase().includes(q));
     });
   }, [history, search, sessionTab, statusTab, session]);
-
-  // Server-wide error total (not just loaded pages) for an honest badge.
-  const errorCount = errorTotal;
 
   const tab = (active: boolean): React.CSSProperties => ({
     padding: '5px 11px', fontSize: 12, borderRadius: 'var(--radius-sm)', cursor: 'pointer', whiteSpace: 'nowrap',
@@ -71,12 +61,12 @@ export function HistoryList() {
 
   const inspectCall = (r: CallRecord) => {
     const payload = r.requests?.[0] ?? r.request ?? {};
-    navigate(`/inspect?service=${encodeURIComponent(r.service ?? '')}&method=${encodeURIComponent(r.method ?? '')}&payload=${encodeURIComponent(JSON.stringify(payload))}`);
+    navigate(inspectLink({ service: r.service, method: r.method, payload: JSON.stringify(payload) }));
   };
 
   const columns = useMemo<ColumnDef<CallRecord>[]>(() => [
     { id: '_bar', header: '', cell: (info) => (
-      <span style={{ display: 'inline-block', width: 3, height: 18, borderRadius: 2, background: isOk(info.row.original) ? colors.success : colors.error }} />
+      <span style={{ display: 'inline-block', width: 3, height: 18, borderRadius: 2, background: isCallOk(info.row.original) ? colors.success : colors.error }} />
     ), size: 6 },
     { id: 'service', header: 'Service', accessorKey: 'service', cell: (info) => <span style={{ fontWeight: 500 }}>{info.getValue() as string}</span> },
     { id: 'method', header: 'Method', accessorKey: 'method' },
@@ -97,12 +87,7 @@ export function HistoryList() {
         ? <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: ms > 500 ? colors.warning : 'var(--text-secondary)' }}>{ms} ms</span>
         : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>;
     }},
-    { id: 'status', header: 'Status', cell: (info) => {
-      const r = info.row.original;
-      return isOk(r)
-        ? <span className="badge" style={{ background: 'var(--success-bg)', color: colors.success }}>OK</span>
-        : <span className="badge" style={{ background: 'var(--error-bg)', color: colors.error }} title={r.error || ''}>{codeName(r.code)}</span>;
-    }},
+    { id: 'status', header: 'Status', cell: (info) => <CallStatusBadge call={info.row.original} /> },
     { id: 'cp', header: '', cell: (info) => (
       <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(grpcurl(info.row.original)); }}
         className="icon-btn" style={{ width: 24, height: 24 }} title="Copy grpcurl"><Copy size={12} /></button>
@@ -111,7 +96,7 @@ export function HistoryList() {
 
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <h1>History <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 400 }}>({history.length < total ? `${history.length} of ${total}` : total}{errorCount > 0 ? ` · ${errorCount} errors` : ''})</span></h1>
+      <h1>History <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 400 }}>({history.length < total ? `${history.length} of ${total}` : total}{errorTotal > 0 ? ` · ${errorTotal} errors` : ''})</span></h1>
 
       <div className="toolbar">
         <div className="search" style={{ flex: '1 1 220px', minWidth: 160 }}>
@@ -123,7 +108,7 @@ export function HistoryList() {
           <button style={tab(statusTab === 'all')} onClick={() => setStatusTab('all')}>All</button>
           <button style={tab(statusTab === 'ok')} onClick={() => setStatusTab('ok')}>OK</button>
           <button style={tab(statusTab === 'err')} onClick={() => setStatusTab('err')}>
-            Errors{errorCount > 0 && <span style={{ color: colors.error }}>{errorCount}</span>}
+            Errors{errorTotal > 0 && <span style={{ color: colors.error }}>{errorTotal}</span>}
           </button>
         </div>
 
@@ -147,13 +132,13 @@ export function HistoryList() {
         renderExpanded={(r: CallRecord) => (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
             <div style={{ color: 'var(--text-muted)', display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span>Status: <strong style={{ color: isOk(r) ? colors.success : colors.error }}>{isOk(r) ? 'OK' : `${codeName(r.code)} (${r.code})`}</strong></span>
+              <span>Status: <strong style={{ color: isCallOk(r) ? colors.success : colors.error }}>{isCallOk(r) ? 'OK' : `${grpcCodeName(r.code)} (${r.code})`}</strong></span>
               <span>Session: {r.session ? <code style={{ color: 'var(--accent-text)' }}>{r.session.slice(0, 16)}</code> : <span style={{ color: colors.success }}>Global</span>}</span>
               <span>Stub: {r.stubId ? <button type="button" onClick={() => navigate(`/stubs/${r.stubId}`)} style={{ font: 'inherit', fontFamily: 'var(--mono)', color: 'var(--accent-text)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'inherit' }}>{r.stubId.slice(0, 12)}</button> : 'no match'}</span>
               <span>{new Date(r.timestamp).toLocaleString()}</span>
             </div>
 
-            {!isOk(r) && r.error && (
+            {!isCallOk(r) && r.error && (
               <div style={{ padding: '7px 10px', borderRadius: 'var(--radius)', background: 'var(--error-bg)', border: `1px solid ${colors.error}40`, color: colors.error, fontSize: 12, fontFamily: 'var(--mono)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                 {r.error}
               </div>

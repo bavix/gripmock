@@ -11,7 +11,7 @@ func IsDefaultValue(value any) bool {
 	}
 
 	if v, ok := value.(string); ok {
-		return v == "" || hasSuffixIgnoreCase(v, "_UNSPECIFIED")
+		return v == "" || strings.HasSuffix(v, "_UNSPECIFIED")
 	}
 
 	return isZeroReflectValue(reflect.ValueOf(value))
@@ -43,8 +43,4 @@ func isZeroReflectValue(value reflect.Value) bool {
 	default:
 		return false
 	}
-}
-
-func hasSuffixIgnoreCase(s, suffix string) bool {
-	return strings.HasSuffix(s, suffix)
 }

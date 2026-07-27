@@ -5,7 +5,7 @@ import { useServices, useServiceMethod } from '../hooks/useServices';
 import { useStubs } from '../hooks/useStubs';
 import { useDescriptors } from '../hooks/useDescriptors';
 import { api } from '../lib/api';
-import { serviceRefMatches } from '../lib/stub';
+import { serviceRefMatches, streamKind } from '../lib/stub';
 import { useToast } from '../components/shared/Toast';
 import { Search, ChevronDown, ChevronRight, Loader2, Plus, History, Trash2 } from 'lucide-react';
 import { colors } from '../lib/theme';
@@ -111,7 +111,7 @@ function MethodBlock({ method, serviceId, navigate, stubCount }: Readonly<{ meth
           style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, cursor: 'pointer', background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', textAlign: 'inherit', textTransform: 'none', letterSpacing: 0 }}>
           {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
           <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)' }}>{method.name}</span>
-          <span className="badge" style={badgeStyle(method.methodType)}>{method.methodType === 'unary' ? 'U' : method.methodType === 'server_streaming' ? 'SS' : method.methodType === 'client_streaming' ? 'CS' : 'BD'}</span>
+          <span className="badge" style={badgeStyle(method.methodType)} title={streamKind(method.methodType).full}>{streamKind(method.methodType).label}</span>
           {stubCount > 0
             ? <span className="badge" style={{ background: 'var(--success-bg)', color: colors.success }} title="stubs covering this method">{stubCount} stub{stubCount > 1 ? 's' : ''}</span>
             : <span className="badge" style={{ background: 'var(--error-bg)', color: colors.error }} title="no stubs — this method is uncovered">no stubs</span>}
@@ -203,7 +203,7 @@ function RepeatedBadge() { return <span className="chip" style={{ background: '#
 function RequiredBadge() { return <span className="chip" style={{ background: '#3b82f618', color: '#3b82f6', fontSize: 11 }}>required</span>; }
 function OneofBadge({ label }: Readonly<{ label: string }>) { return <span className="chip" style={{ background: '#a855f718', color: '#a855f7', fontSize: 11 }}>oneof: {label}</span>; }
 
-const badgeStyle = (type: string) => {
-  const m: Record<string, string> = { unary: '#3b82f6', client_streaming: '#f59e0b', server_streaming: '#a855f7', bidi_streaming: '#ef4444' };
-  return { background: `${m[type] || '#64748b'}18`, color: m[type] || '#64748b', fontWeight: 700, fontSize: 11 };
+const badgeStyle = (type?: string) => {
+  const { color } = streamKind(type);
+  return { background: `${color}18`, color, fontWeight: 700, fontSize: 11 };
 };

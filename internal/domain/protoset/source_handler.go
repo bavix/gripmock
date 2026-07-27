@@ -1,6 +1,22 @@
 package protoset
 
-import "context"
+import (
+	"context"
+	"path/filepath"
+)
+
+// resolveSourceImportPath resolves source.Path to an absolute path and registers
+// its directory as an import path, returning the absolute file path.
+func resolveSourceImportPath(ctx context.Context, source *Source, processor SourceProcessor) (string, error) {
+	absPath, err := filepath.Abs(source.Path)
+	if err != nil {
+		return "", err
+	}
+
+	processor.AddImportPath(ctx, filepath.Dir(absPath))
+
+	return absPath, nil
+}
 
 type SourceProcessor interface {
 	AddProtoFile(ctx context.Context, filePath string)

@@ -8,7 +8,9 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-func mcpStubsUpsert(h *RestServer, args map[string]any) (map[string]any, error) {
+// decodeAndValidateMCPStubs decodes the "stubs" arg, applies the session, and
+// validates each stub — the shared preamble of upsert and validate.
+func decodeAndValidateMCPStubs(h *RestServer, args map[string]any) ([]*stuber.Stub, error) {
 	rawStubs, ok := args["stubs"]
 	if !ok || rawStubs == nil {
 		return nil, mcpRequiredArgError("stubs")
@@ -27,6 +29,15 @@ func mcpStubsUpsert(h *RestServer, args map[string]any) (map[string]any, error) 
 		if err = h.validateStub(stub); err != nil {
 			return nil, mcpInvalidArgErrorWithCause(err.Error(), err)
 		}
+	}
+
+	return stubs, nil
+}
+
+func mcpStubsUpsert(h *RestServer, args map[string]any) (map[string]any, error) {
+	stubs, err := decodeAndValidateMCPStubs(h, args)
+	if err != nil {
+		return nil, err
 	}
 
 	ids := h.budgerigar.PutMany(stubs...)
@@ -38,24 +49,9 @@ func mcpStubsUpsert(h *RestServer, args map[string]any) (map[string]any, error) 
 // REST POST /stubs/validate endpoint. Returns the normalized stubs (nil IDs
 // stripped) so an agent can preview exactly what an upsert would store.
 func mcpStubsValidate(h *RestServer, args map[string]any) (map[string]any, error) {
-	rawStubs, ok := args["stubs"]
-	if !ok || rawStubs == nil {
-		return nil, mcpRequiredArgError("stubs")
-	}
-
-	stubs, err := decodeMCPStubsArg(rawStubs)
+	stubs, err := decodeAndValidateMCPStubs(h, args)
 	if err != nil {
 		return nil, err
-	}
-
-	sessionID, _ := args["session"].(string)
-
-	for _, stub := range stubs {
-		stub.Session = sessionID
-
-		if err = h.validateStub(stub); err != nil {
-			return nil, mcpInvalidArgErrorWithCause(err.Error(), err)
-		}
 	}
 
 	normalized, err := normalizeMCPStubs(stubs)

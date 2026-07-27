@@ -21,17 +21,24 @@ export function extractPayload(query: string): Record<string, unknown> | undefin
   return undefined;
 }
 
+// A gRPC endpoint token: dotted proto identifiers, optionally "/Method". This
+// rejects JSON payloads (braces, quotes, colons) whose dotted values — hostnames,
+// versions, dotted keys — would otherwise be misread as a service.method.
+const ENDPOINT_TOKEN = /^[A-Za-z_][A-Za-z0-9_.]*(?:\/[A-Za-z_][A-Za-z0-9_]*)?$/;
+
 export function extractServiceMethod(query: string): { service?: string; method?: string } {
-  const parts = query.split(/\s+/);
-  for (const p of parts) {
-    if (p.includes('/') || p.includes('.')) {
-      const segments = p.split('/');
-      if (segments.length === 2) return { service: segments[0], method: segments[1] };
-      const dotSegments = p.split('.');
-      if (dotSegments.length >= 2) {
-        const method = dotSegments.pop()!;
-        return { service: dotSegments.join('.'), method };
-      }
+  // Drop any JSON payload segment first so its contents can't leak into the token scan.
+  const withoutPayload = query.replace(/\{.*\}/s, ' ');
+  for (const p of withoutPayload.split(/\s+/)) {
+    if (!ENDPOINT_TOKEN.test(p)) continue;
+
+    const segments = p.split('/');
+    if (segments.length === 2 && segments[1]) return { service: segments[0], method: segments[1] };
+
+    const dotSegments = p.split('.');
+    if (dotSegments.length >= 2) {
+      const method = dotSegments.pop()!;
+      return { service: dotSegments.join('.'), method };
     }
   }
   return {};

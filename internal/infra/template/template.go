@@ -162,9 +162,15 @@ func IsTemplateString(s string) bool {
 	return found && strings.Contains(after, "}}")
 }
 
-// HasTemplatesInHeaders checks if the headers contain any template strings.
+// HasTemplatesInHeaders reports whether any header value contains a template.
 func HasTemplatesInHeaders(headers map[string]string) bool {
-	return hasTemplatesInHeaders(headers)
+	for _, value := range headers {
+		if IsTemplateString(value) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // ProcessMap processes templates in a map recursively.
@@ -294,14 +300,4 @@ func processArrayTemplates(arr []any, templateData Data, engine *Engine, depth i
 	}
 
 	return nil
-}
-
-func hasTemplatesInHeaders(headers map[string]string) bool {
-	for _, value := range headers {
-		if IsTemplateString(value) {
-			return true
-		}
-	}
-
-	return false
 }

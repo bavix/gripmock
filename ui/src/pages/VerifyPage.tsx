@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { byTimestampDesc } from '../lib/format';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { MethodSelect } from '../components/shared/MethodSelect';
 import { useVerify } from '../hooks/useVerify';
@@ -6,7 +7,7 @@ import { useScopedHistory } from '../hooks/useHistory';
 import { useDashboard } from '../hooks/useDashboard';
 import { AlertTriangle } from 'lucide-react';
 import type { ApiError } from '../lib/api';
-import type { CallRecord } from '../lib/types';
+import { type CallRecord, isCallOk } from '../lib/types';
 import { useStore } from '../lib/store';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -47,7 +48,7 @@ function ActualCalls({ calls, navigate }: Readonly<{ calls: CallRecord[]; naviga
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 160, overflow: 'auto' }}>
       {calls.slice(0, 20).map((c, i) => {
-        const ok = !c.code || c.code === 0;
+        const ok = isCallOk(c);
         return (
           <button type="button" key={i} onClick={() => c.stubId && navigate(`/stubs/${c.stubId}`)}
             style={{ display: 'flex', alignItems: 'center', gap: 8, font: 'inherit', fontSize: 11.5, color: 'inherit', textAlign: 'inherit', width: '100%', padding: '3px 6px', borderRadius: 4, cursor: c.stubId ? 'pointer' : 'default', border: 'none', borderLeft: `2px solid ${ok ? colors.success : colors.error}`, background: 'var(--bg)' }}>
@@ -143,7 +144,7 @@ export function VerifyPage() {
   const { data: scoped } = useScopedHistory(service, method, !!result);
   const actualCalls = useMemo(() => {
     if (!result || !scoped) return [];
-    return [...scoped].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return [...scoped].sort(byTimestampDesc);
   }, [result, scoped]);
 
   const handleVerify = async () => {

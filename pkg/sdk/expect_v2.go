@@ -69,6 +69,10 @@ func mergeInputHeader(a, b stuber.InputHeader) stuber.InputHeader {
 	a.Matches = mergeStrAny(a.Matches, b.Matches)
 	a.Glob = mergeStrAny(a.Glob, b.Glob)
 
+	if len(b.AnyOf) > 0 {
+		a.AnyOf = append(a.AnyOf, b.AnyOf...)
+	}
+
 	return a
 }
 

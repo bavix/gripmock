@@ -2,7 +2,6 @@ package protoset
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 )
 
@@ -17,12 +16,11 @@ func (h *DescriptorHandler) Parse(raw string) (*Source, error) {
 }
 
 func (h *DescriptorHandler) Process(ctx context.Context, source *Source, processor SourceProcessor) error {
-	absPath, err := filepath.Abs(source.Path)
+	absPath, err := resolveSourceImportPath(ctx, source, processor)
 	if err != nil {
 		return err
 	}
 
-	processor.AddImportPath(ctx, filepath.Dir(absPath))
 	processor.AddDescriptorFile(ctx, absPath)
 
 	return nil

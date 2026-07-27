@@ -115,7 +115,7 @@ func (m *grpcMocker) processBidiStreamMessage(
 		return wrappedErr
 	}
 
-	if err := m.delay(stream.Context(), stub.Output.Delay); err != nil {
+	if err := delayResponse(stream.Context(), stub.Output.Delay); err != nil {
 		return err
 	}
 
@@ -137,17 +137,7 @@ func (m *grpcMocker) sendBidiResponse(
 		headers = processHeaders(md)
 	}
 
-	td := template.Data{
-		Request:      requestData,
-		Headers:      headers,
-		MessageIndex: bidiResult.GetMessageIndex(),
-		RequestTime:  requestTime,
-		Timestamp:    requestTime,
-		State:        make(map[string]any),
-		Requests:     []any{requestData},
-		StubID:       stub.ID.String(),
-		RequestID:    stub.ID.String(),
-	}
+	td := newTemplateData(requestData, headers, bidiResult.GetMessageIndex(), requestTime, []any{requestData}, stub.ID.String())
 
 	outputToUse, err := m.prepareBidiOutput(stub, td)
 	if err != nil {
@@ -353,7 +343,7 @@ func (m *grpcMocker) sendClientStreamResponses(
 			delayDelay = d
 		}
 
-		if err := m.delay(stream.Context(), delayDelay); err != nil {
+		if err := delayResponse(stream.Context(), delayDelay); err != nil {
 			return err
 		}
 
@@ -388,7 +378,7 @@ func (m *grpcMocker) sendServerStreamResponses(
 			}
 
 			if delayDelay != 0 {
-				if err := m.delay(stream.Context(), delayDelay); err != nil {
+				if err := delayResponse(stream.Context(), delayDelay); err != nil {
 					return err
 				}
 			}

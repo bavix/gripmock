@@ -3,6 +3,8 @@ import { Fingerprint, Globe } from 'lucide-react';
 import { useStore } from '../../lib/store';
 import { api } from '../../lib/api';
 import { colors } from '../../lib/theme';
+import { HealthDot } from '../shared/HealthDot';
+import { versionLabel } from '../../lib/format';
 import type { Dashboard } from '../../lib/types';
 
 export function StatusBar() {
@@ -32,11 +34,7 @@ export function StatusBar() {
   else if (ready === false) healthLabel = 'Not ready';
   else healthLabel = 'Checking…';
 
-  let versionLabel = '?';
-  if (dash?.version) {
-    const versionPrefix = /^\d/.test(dash.version) ? 'v' : '';
-    versionLabel = `${versionPrefix}${dash.version}`;
-  }
+  const vlabel = dash?.version ? versionLabel(dash.version) : '?';
 
   return (
     <footer style={{
@@ -44,7 +42,7 @@ export function StatusBar() {
       display: 'flex', alignItems: 'center', padding: '0 10px', gap: 10,
       fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg-secondary)', flexShrink: 0,
     }}>
-      <span>{versionLabel}</span>
+      <span>{vlabel}</span>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }} title={healthLabel}>
         <HealthDot ready={ready} />
         {health.isError && <span style={{ color: colors.error }}>offline</span>}
@@ -64,16 +62,5 @@ export function StatusBar() {
         </span>
       )}
     </footer>
-  );
-}
-
-function HealthDot({ ready }: Readonly<{ ready?: boolean }>) {
-  const readyColor = ready ? colors.success : colors.error;
-  const dotColor = ready === undefined ? '#64748b' : readyColor;
-  return (
-    <span style={{
-      width: 6, height: 6, borderRadius: '50%', display: 'inline-block',
-      background: dotColor,
-    }} />
   );
 }

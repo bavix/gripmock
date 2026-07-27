@@ -126,6 +126,9 @@ export interface CallRecord {
   elapsedMs?: number;
 }
 
+// A call succeeded when it carries no non-zero gRPC status code.
+export const isCallOk = (c: Pick<CallRecord, 'code'>): boolean => !c.code || c.code === 0;
+
 export interface Dashboard {
   appName: string;
   version: string;

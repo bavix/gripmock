@@ -100,20 +100,12 @@ func (m *grpcMocker) proxyRoute() *proxyroutes.Route {
 	return m.proxies.RouteByMethod(m.fullMethod)
 }
 
-func (m *grpcMocker) sessionFromContext(ctx context.Context) string {
-	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		return sessionFromMetadata(md)
-	}
-
-	return ""
-}
-
 func (m *grpcMocker) newCaptureRequestContext(ctx context.Context) captureRequestContext {
 	md, _ := metadata.FromIncomingContext(ctx)
 
 	return captureRequestContext{
 		headers:   requestHeadersFromMetadata(md),
-		sessionID: m.sessionFromContext(ctx),
+		sessionID: sessionFromContext(ctx),
 	}
 }
 

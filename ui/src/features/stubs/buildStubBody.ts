@@ -18,15 +18,6 @@ export interface StubFormData {
 
 export const INPUT_MODES = ['equals', 'contains', 'matches', 'glob', 'anyOf'] as const;
 export const HEADER_MODES = ['equals', 'contains', 'matches', 'anyOf'] as const;
-export const GRPC_CODES = [
-  { value: 0, label: 'OK' }, { value: 1, label: 'Canceled' }, { value: 2, label: 'Unknown' },
-  { value: 3, label: 'InvalidArgument' }, { value: 4, label: 'DeadlineExceeded' }, { value: 5, label: 'NotFound' },
-  { value: 6, label: 'AlreadyExists' }, { value: 7, label: 'PermissionDenied' }, { value: 8, label: 'ResourceExhausted' },
-  { value: 9, label: 'FailedPrecondition' }, { value: 10, label: 'Aborted' }, { value: 11, label: 'OutOfRange' },
-  { value: 12, label: 'Unimplemented' }, { value: 13, label: 'Internal' }, { value: 14, label: 'Unavailable' },
-  { value: 15, label: 'DataLoss' }, { value: 16, label: 'Unauthenticated' },
-];
-
 // First truthy matcher key from `kinds`, else `fallback`. Replaces nested ternaries.
 export function pickKind(a: Record<string, unknown>, kinds: readonly string[], fallback: string): string {
   return kinds.find((k) => a[k]) ?? fallback;

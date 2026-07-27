@@ -13,8 +13,9 @@ import { toYaml } from './toYaml';
 import { generateSample } from './generateSample';
 import { highlightYaml } from './highlightYaml';
 import { parse } from './buildStubOutput';
+import { GRPC_CODES } from '../../lib/grpc';
 import {
-  type StubFormData, INPUT_MODES, HEADER_MODES, GRPC_CODES,
+  type StubFormData, INPUT_MODES, HEADER_MODES,
   empty, fromInit, buildBody, collectJsonErrors,
 } from './buildStubBody';
 
@@ -226,7 +227,7 @@ export function StubForm({ initial, onSaved }: Props) {
           {outMode === 'stream' && <MonacoEditor value={f.outputStream} onChange={(v) => patch({ outputStream: v })} height={140} />}
 
           {f.outputError && (
-            <div style={{ marginTop: 6, padding: 8, borderRadius: 5, border: '1px solid var(--error)', background: 'var(--errorBg)' }}>
+            <div style={{ marginTop: 6, padding: 8, borderRadius: 5, border: '1px solid var(--error)', background: 'var(--error-bg)' }}>
               <div style={{ display: 'flex', gap: 8 }}>
                 <div><Label>Code</Label><select value={f.outputCode} onChange={(e) => patch({ outputCode: Number(e.target.value) })} className="input" style={{ width: 160, marginTop: 1, fontSize: 11 }}>
                   {GRPC_CODES.map((c) => <option key={c.value} value={c.value}>{c.label} ({c.value})</option>)}

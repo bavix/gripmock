@@ -1,4 +1,4 @@
-import type { CallRecord } from '../../lib/types';
+import { type CallRecord, isCallOk } from '../../lib/types';
 
 export interface Bucket {
   /** Bucket start, ms since epoch. */
@@ -9,7 +9,6 @@ export interface Bucket {
   errors: number;
 }
 
-const isOk = (c: CallRecord) => !c.code || c.code === 0;
 
 export interface LatencyStats {
   count: number; // records that carried an elapsedMs
@@ -54,7 +53,7 @@ export function bucketCalls(records: CallRecord[], bucketMs = 60_000, now = Date
     if (ts < oldest) oldest = ts;
     const key = Math.floor(ts / bucketMs) * bucketMs;
     const b = counts.get(key) ?? { ok: 0, errors: 0 };
-    if (isOk(r)) b.ok++; else b.errors++;
+    if (isCallOk(r)) b.ok++; else b.errors++;
     counts.set(key, b);
   }
 

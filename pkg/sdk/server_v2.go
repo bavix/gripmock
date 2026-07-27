@@ -215,6 +215,19 @@ func (s *Server) embeddedVerify(ec []expectedCall) error {
 
 //nolint:funcorder
 func (s *Server) remoteVerify(ctx context.Context, ec []expectedCall) error {
+	// Count PER STUB (by recorded StubID), identical to embeddedVerify. A
+	// per-method /api/verify would mis-count multiple stubs sharing one method
+	// (Once + Twice) and NextWillReturn chains, diverging from the embedded path.
+	calls, err := (&remoteHistory{mock: s.remote}).AllContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	counts := make(map[uuid.UUID]int)
+	for _, rec := range calls {
+		counts[rec.StubID]++
+	}
+
 	var errs []error
 
 	for _, e := range ec {
@@ -222,13 +235,12 @@ func (s *Server) remoteVerify(ctx context.Context, ec []expectedCall) error {
 			continue
 		}
 
-		client := s.remote.apiWithContext(ctx)
-		if err := client.VerifyMethodCalled(e.service, e.method, e.times); err != nil { //nolint:contextcheck
+		if got := counts[e.stubID]; got != e.times {
 			errs = append(errs, &ExpectationNotMetError{
 				Service:  e.service,
 				Method:   e.method,
 				Expected: e.times,
-				Actual:   0,
+				Actual:   got,
 			})
 		}
 	}

@@ -38,6 +38,12 @@ const wktSamples: Record<string, () => unknown> = {
 // a tree/linked-list proto) can't recurse forever and blow the stack.
 const MAX_DEPTH = 8;
 
+// Prefer a meaningful enum value for samples over the zero/placeholder member,
+// which is conventionally named *_UNSPECIFIED / *_UNKNOWN (proto style guide).
+function firstMeaningfulEnum(values: string[]): string {
+  return values.find((v) => !/(?:^|_)(UNSPECIFIED|UNKNOWN)$/.test(v)) ?? values[0];
+}
+
 export function generateSample(schema: ProtoMessageSchema | null | undefined, depth = 0): Record<string, unknown> {
   if (!schema?.fields?.length || depth >= MAX_DEPTH) return {};
   const result: Record<string, unknown> = {};
@@ -74,13 +80,13 @@ function generateSingle(field: ProtoFieldSchema, depth: number): unknown {
 function generateByKind(kind: string, typeName: string | undefined, field: ProtoFieldSchema | null | undefined, depth: number): unknown {
   if (typeName) {
     if (wktSamples[typeName]) return wktSamples[typeName]();
-    if (field?.enumValues?.length) return field.enumValues.find((v) => v !== 'UNSPECIFIED' && v !== 'UNKNOWN') || field.enumValues[0];
+    if (field?.enumValues?.length) return firstMeaningfulEnum(field.enumValues);
     if (!typeName.startsWith('google.')) {
       if (field?.message) return generateSample(field.message, depth + 1);
       return { [`${typeName.split('.').pop() || 'value'}`]: '...' };
     }
   }
-  if (field?.enumValues?.length) return field.enumValues.find((v) => v !== 'UNSPECIFIED' && v !== 'UNKNOWN') || field.enumValues[0];
+  if (field?.enumValues?.length) return firstMeaningfulEnum(field.enumValues);
   switch (kind) {
     case 'string': return 'sample';
     case 'int32': case 'int64': case 'sint32': case 'sint64':

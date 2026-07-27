@@ -3,6 +3,16 @@ import type { Stub, StubInput } from './types';
 export const isRequestStream = (t?: string) => t === 'client_streaming' || t === 'bidi_streaming';
 export const isResponseStream = (t?: string) => t === 'server_streaming' || t === 'bidi_streaming';
 
+// Deep-link into the Inspect page pre-filled with a service/method/payload (and
+// optionally the stub id) to diagnose why a stub matches or loses.
+export function inspectLink(p: { service?: string; method?: string; payload?: string; id?: string }): string {
+  const q = new URLSearchParams({ service: p.service ?? '', method: p.method ?? '' });
+  if (p.id) q.set('id', p.id);
+  q.set('payload', p.payload ?? '');
+
+  return `/inspect?${q.toString()}`;
+}
+
 // Ordered request-message matchers. Client/bidi streaming use `inputs[]` (the
 // sequence of streamed messages); unary/server-streaming use the single `input`.
 export function requestMessages(stub: Stub): StubInput[] {

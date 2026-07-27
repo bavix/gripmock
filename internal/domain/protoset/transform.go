@@ -130,8 +130,6 @@ func newConfigure(ctx context.Context, imports []string, paths []string, remoteC
 
 	err := p.process(ctx, paths)
 	if err != nil {
-		_ = p.Cleanup()
-
 		return nil, errors.Wrap(err, "failed to create configuration")
 	}
 

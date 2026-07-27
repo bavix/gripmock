@@ -2,12 +2,46 @@ package stuber
 
 // searchOptimized performs ultra-fast search with minimal allocations.
 func (s *searcher) searchOptimized(query Query) (*Result, error) {
+	// Internal stubs (the gripmock health status) live in a separate index and
+	// are matched ONLY by the gRPC health service, which sets the flag. They are
+	// invisible to every user-facing surface (list/get/search/inspect/verify/MCP).
+	if query.allowsInternalStubs() {
+		if result := s.matchInternalStubs(query); result != nil {
+			return result, nil
+		}
+	}
+
 	candidates, err := s.resolveSearchCandidates(query)
 	if err != nil {
 		return nil, err
 	}
 
 	return s.processStubs(query, candidates)
+}
+
+// matchInternalStubs searches ONLY the reserved internal storage. It returns a
+// result when an internal stub matches, or nil to fall through to user stubs.
+func (s *searcher) matchInternalStubs(query Query) *Result {
+	if s.internalStorage == nil {
+		return nil
+	}
+
+	seq, err := s.internalStorage.FindAllAvailable(query.Service, query.Method, query.Session)
+	if err != nil {
+		return nil
+	}
+
+	candidates := collectStubs(seq)
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	result, err := s.processStubs(query, candidates)
+	if err != nil || result == nil || result.Found() == nil {
+		return nil
+	}
+
+	return result
 }
 
 func (s *searcher) resolveSearchCandidates(query Query) ([]*Stub, error) {
@@ -135,29 +169,10 @@ func (s *searcher) processStubsParallel(query Query, stubs []*Stub) (*Result, er
 	return s.resultFromRankedAndSimilar(query, bestMatches, mostSimilar.stub)
 }
 
+// processChunk runs the sequential candidate collection over one chunk, so the
+// parallel path uses identical match/similar criteria as the sequential path.
 func (s *searcher) processChunk(query Query, chunkStubs []*Stub) chunkOutcome {
-	var (
-		matches     []rankedMatch
-		mostSimilar similarCandidate
-	)
-
-	// Collect EVERY match in the chunk (not just the top one) so reservation
-	// can fall through to a lower-ranked alternative when the best match's
-	// Times budget is exhausted — matching the sequential path's behaviour.
-	for _, stub := range chunkStubs {
-		ranked, matched := s.evaluateRankedMatch(query, stub)
-		if matched {
-			matches = append(matches, ranked)
-		}
-
-		// Rank "similar" with the SAME criteria as the sequential path
-		// (specificity, then fewer fields, then score) — a bare score compare
-		// would pick a different fallback across the parallel threshold.
-		candidate := s.buildSimilarCandidateFromRanked(stub, ranked)
-		if betterSimilar(mostSimilar, candidate) {
-			mostSimilar = candidate
-		}
-	}
+	matches, mostSimilar := s.collectSequentialCandidates(query, chunkStubs)
 
 	return chunkOutcome{matches: matches, mostSimilar: mostSimilar}
 }

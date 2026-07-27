@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
 	"github.com/bavix/gripmock/v3/internal/app"
+	"github.com/bavix/gripmock/v3/internal/config"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/infra/httputil"
 	infraTLS "github.com/bavix/gripmock/v3/internal/infra/tls"
@@ -26,6 +28,10 @@ import (
 const (
 	maxBodyCapture      = 4 << 10 // 4 KiB
 	grpcFrameHeaderSize = 5       // 1 flag byte + 4 byte length (gRPC/gRPC-Web)
+
+	frameFlagData      = 0x00 // data frame (gRPC/gRPC-Web/Connect)
+	frameFlagGRPCUnset = 0x01 // gRPC uncompressed-data flag variant
+	frameFlagEndStream = 0x02 // Connect end_stream frame
 )
 
 const (
@@ -115,12 +121,17 @@ func (b *Builder) newGatewayServer(ctx context.Context, router *mux.Router) *htt
 // gatewayTLSConfig maps gateway TLS settings from config into the infra TLS
 // config, honoring GATEWAY_TLS_MIN_VERSION.
 func (b *Builder) gatewayTLSConfig() infraTLS.TLSConfig {
+	return toInfraTLS(b.config.GatewayTLS)
+}
+
+// toInfraTLS maps a config TLS section into the infra TLS config.
+func toInfraTLS(c config.TLSConfig) infraTLS.TLSConfig {
 	return infraTLS.TLSConfig{
-		CertFile:   b.config.GatewayTLS.CertFile,
-		KeyFile:    b.config.GatewayTLS.KeyFile,
-		ClientAuth: b.config.GatewayTLS.ClientAuth,
-		CAFile:     b.config.GatewayTLS.CAFile,
-		MinVersion: b.config.GatewayTLS.MinVersion,
+		CertFile:   c.CertFile,
+		KeyFile:    c.KeyFile,
+		ClientAuth: c.ClientAuth,
+		CAFile:     c.CAFile,
+		MinVersion: c.MinVersion,
 	}
 }
 
@@ -278,26 +289,18 @@ func buildMetadata(h http.Header) map[string]any {
 	return m
 }
 
-// stripGRPCFrame removes the leading 5-byte gRPC frame header from a
-// data frame (flag 0x00 or 0x01) and truncates the payload to the
-// declared frame length. Any trailing frames (e.g. trailers) are cut
-// off, leaving only the actual content (JSON/proto).
-//
-// Raw bodies (e.g. curl with application/json) start with 0x7B ('{')
-// and are returned unchanged.
-func stripGRPCFrame(data string) string {
-	if len(data) < grpcFrameHeaderSize {
+// stripFrame removes a 5-byte length-prefixed envelope header (1 flag byte +
+// 4-byte big-endian length) and truncates the payload to the declared length,
+// cutting off trailing frames. Data whose flag byte is not in allowedFlags
+// (e.g. raw JSON starting with '{' 0x7B or '[' 0x5B) is returned unchanged.
+func stripFrame(data string, headerSize int, allowedFlags ...byte) string {
+	if len(data) < headerSize || !slices.Contains(allowedFlags, data[0]) {
 		return data
 	}
 
-	if data[0] != 0x00 && data[0] != 0x01 {
-		return data
-	}
-
-	// declared = bytes 1-5 as big-endian uint32.
 	declared := int(data[1])<<24 | int(data[2])<<16 | int(data[3])<<8 | int(data[4])
 
-	payload := data[grpcFrameHeaderSize:]
+	payload := data[headerSize:]
 	if declared < len(payload) {
 		payload = payload[:declared]
 	}
@@ -305,30 +308,14 @@ func stripGRPCFrame(data string) string {
 	return payload
 }
 
-// stripConnectFrame removes ConnectRPC envelope framing from log payloads.
-// Connect envelopes are 5 bytes: 1 flag byte + 4 byte big-endian length.
-// We skip the header and return only the payload up to the declared length.
-// Raw bodies (JSON without framing) are returned unchanged.
+// stripGRPCFrame strips gRPC/gRPC-Web framing (data flag 0x00 or 0x01).
+func stripGRPCFrame(data string) string {
+	return stripFrame(data, grpcFrameHeaderSize, frameFlagData, frameFlagGRPCUnset)
+}
+
+// stripConnectFrame strips ConnectRPC envelope framing (data 0x00 or end_stream 0x02).
 func stripConnectFrame(data string) string {
-	if len(data) < app.ConnectEnvelopeHeaderSize {
-		return data
-	}
-
-	// Connect envelopes start with flag byte 0x00 (data) or 0x02 (end_stream).
-	// JSON starts with 0x7B ('{') or 0x5B ('[').
-	if data[0] != 0x00 && data[0] != 0x02 {
-		return data
-	}
-
-	declared := int(data[1])<<24 | int(data[2])<<16 | int(data[3])<<8 | int(data[4])
-
-	// Skip remaining envelope frames by returning the first payload.
-	payload := data[app.ConnectEnvelopeHeaderSize:]
-	if declared < len(payload) {
-		payload = payload[:declared]
-	}
-
-	return payload
+	return stripFrame(data, app.ConnectEnvelopeHeaderSize, frameFlagData, frameFlagEndStream)
 }
 
 // isTextBody returns true when the content-type suggests a text-based

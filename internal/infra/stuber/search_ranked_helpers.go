@@ -29,7 +29,7 @@ func (s *searcher) buildSimilarCandidateFromRanked(stub *Stub, ranked rankedMatc
 		stub:        stub,
 		score:       ranked.totalScore,
 		specificity: ranked.specificity,
-		fieldCount:  countStubFields(stub),
+		fieldCount:  ranked.fieldCount,
 	}
 }
 
@@ -50,7 +50,14 @@ func betterSimilar(current, candidate similarCandidate) bool {
 		return candidate.fieldCount < current.fieldCount
 	}
 
-	return candidate.score > current.score
+	if candidate.score != current.score {
+		return candidate.score > current.score
+	}
+
+	// Deterministic tiebreak by stub ID (mirrors compareRankedMatches) so the
+	// sequential and parallel paths pick the same Similar stub on a full tie —
+	// the parallel path merges chunk candidates in goroutine-completion order.
+	return bytes.Compare(candidate.stub.ID[:], current.stub.ID[:]) < 0
 }
 
 func (s *searcher) rankedMatchFor(query Query, stub *Stub) rankedMatch {

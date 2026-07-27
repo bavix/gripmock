@@ -10,6 +10,7 @@ import { api } from '../lib/api';
 import { useServiceMethod } from '../hooks/useServices';
 import { generateSample } from '../features/stubs/generateSample';
 import { stashClone } from '../lib/clone';
+import { inspectLink } from '../lib/stub';
 
 export function StubTestPage() {
   const navigate = useNavigate();
@@ -119,7 +120,7 @@ export function StubTestPage() {
               </Button>
             )}
             {service && method && (
-              <Button onClick={() => navigate(`/inspect?service=${encodeURIComponent(service)}&method=${encodeURIComponent(method)}&payload=${encodeURIComponent(payload)}`)}>
+              <Button onClick={() => navigate(inspectLink({ service, method, payload }))}>
                 <Bug size={12} /> Inspect
               </Button>
             )}
@@ -157,7 +158,7 @@ export function StubTestPage() {
                 <pre style={jsonBlock}>{result.error}</pre>
                 <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                   <Button onClick={createFromRequest}><Plus size={12} /> Create stub from this request</Button>
-                  <Button onClick={() => navigate(`/inspect?service=${encodeURIComponent(service)}&method=${encodeURIComponent(method)}&payload=${encodeURIComponent(payload)}`)}><Bug size={12} /> Inspect ranking</Button>
+                  <Button onClick={() => navigate(inspectLink({ service, method, payload }))}><Bug size={12} /> Inspect ranking</Button>
                 </div>
               </div>
             )}

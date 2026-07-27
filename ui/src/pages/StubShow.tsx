@@ -7,8 +7,9 @@ import { useToast } from '../components/shared/Toast';
 import { api } from '../lib/api';
 import { ArrowLeft, Edit3, Copy, Play, Hash, Bug, Trash2, Files, AlertTriangle, Trophy } from 'lucide-react';
 import { colors } from '../lib/theme';
+import { grpcCodeName } from '../lib/grpc';
 import { prettyJson, methodPeers, shadowers, stubRequestExample, streamKind, serviceRefMatches,
-  requestMessages, responseMessages, isRequestStream, isResponseStream, matcherEntries, hasContent, MATCHER_COLORS } from '../lib/stub';
+  requestMessages, responseMessages, isRequestStream, isResponseStream, matcherEntries, hasContent, MATCHER_COLORS, inspectLink } from '../lib/stub';
 import { toYaml } from '../features/stubs/toYaml';
 import { stashClone } from '../lib/clone';
 import { FileCode } from 'lucide-react';
@@ -93,7 +94,7 @@ function StubToolbar({ stub, isFile, navigate, testHref, inputExample, onClone, 
       <button onClick={onClone} className="btn"><Files size={13} /> Clone</button>
       <button onClick={onYaml} className="btn" title="Copy stub as YAML"><FileCode size={13} /> YAML</button>
       <button onClick={() => navigate(testHref)} className="btn" title="Send this request and see which stub matches"><Play size={13} /> Test</button>
-      <button onClick={() => navigate(`/inspect?service=${encodeURIComponent(stub.service)}&method=${encodeURIComponent(stub.method)}&id=${encodeURIComponent(stub.id)}&payload=${encodeURIComponent(inputExample)}`)} className="btn" title="Diagnose why this stub matches or loses"><Bug size={13} /> Inspect</button>
+      <button onClick={() => navigate(inspectLink({ service: stub.service, method: stub.method, id: stub.id, payload: inputExample }))} className="btn" title="Diagnose why this stub matches or loses"><Bug size={13} /> Inspect</button>
       {!isFile && <button onClick={() => { if (confirm('Delete this stub?')) onDelete(); }} className="btn" style={{ color: colors.error }}><Trash2 size={13} /> Delete</button>}
     </div>
   );
@@ -208,7 +209,7 @@ function ResponseSection({ stub, methodType }: Readonly<{ stub: Stub; methodType
     >
       {isError ? (
         <div style={{ padding: '9px 12px', borderRadius: 'var(--radius)', border: `1px solid ${colors.error}55`, background: 'var(--error-bg)', fontSize: 13 }}>
-          <strong style={{ color: colors.error }}>{grpcName(out.code)} </strong>
+          <strong style={{ color: colors.error }}>{grpcCodeName(out.code)} </strong>
           <span style={{ color: 'var(--text-muted)' }}>(code {out.code ?? 0})</span>
           {out.error && <div style={{ marginTop: 4, color: 'var(--text)', fontFamily: 'var(--mono)', fontSize: 12 }}>{out.error}</div>}
         </div>
@@ -237,8 +238,6 @@ function EffectsSection({ stub }: Readonly<{ stub: Stub }>) {
   );
 }
 
-const GRPC_NAMES: Record<number, string> = { 0: 'OK', 1: 'Canceled', 2: 'Unknown', 3: 'InvalidArgument', 4: 'DeadlineExceeded', 5: 'NotFound', 6: 'AlreadyExists', 7: 'PermissionDenied', 8: 'ResourceExhausted', 9: 'FailedPrecondition', 10: 'Aborted', 11: 'OutOfRange', 12: 'Unimplemented', 13: 'Internal', 14: 'Unavailable', 15: 'DataLoss', 16: 'Unauthenticated' };
-const grpcName = (c?: number) => GRPC_NAMES[c ?? 0] ?? `code ${c}`;
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <div className="section-title" style={{ marginBottom: 4 }}>{children}</div>;

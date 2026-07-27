@@ -23,6 +23,17 @@ func TestInputHasConditions(t *testing.T) {
 	require.True(t, inputHasConditions(withReal), "one real alternative counts")
 }
 
+func TestFastRankStreamEmptyQueryHonorsGlobAnyOf(t *testing.T) {
+	t.Parallel()
+
+	s := newSearcher()
+	empty := []map[string]any{}
+
+	require.InDelta(t, 0, s.fastRankStream(empty, []InputData{{Glob: map[string]any{"name": "x*"}}}), 0)
+	require.InDelta(t, 0, s.fastRankStream(empty, []InputData{{AnyOf: []AnyOfElement{{Equals: map[string]any{"a": 1}}}}}), 0)
+	require.InDelta(t, 1, s.fastRankStream(empty, []InputData{{}}), 0)
+}
+
 func TestAnyOfElementChecks(t *testing.T) {
 	t.Parallel()
 

@@ -58,11 +58,11 @@ func TestInternalHealthStubsAreHiddenFromPublicCollections(t *testing.T) {
 	require.Empty(t, s.Used())
 	require.Empty(t, s.Unused())
 
-	result, err := s.FindByQuery(stuber.Query{
+	result, err := s.FindByQuery(stuber.WithInternalStubs(stuber.Query{
 		Service: "grpc.health.v1.Health",
 		Method:  "Check",
 		Input:   []map[string]any{{"service": "gripmock"}},
-	})
+	}))
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.NotNil(t, result.Found())
@@ -104,11 +104,11 @@ func TestInternalHealthWatchStatusTransition(t *testing.T) {
 
 	s := stuber.NewBudgerigar()
 
-	query := stuber.Query{
+	query := stuber.WithInternalStubs(stuber.Query{
 		Service: "grpc.health.v1.Health",
 		Method:  "Watch",
 		Input:   []map[string]any{{"service": "gripmock"}},
-	}
+	})
 
 	before, err := s.FindByQuery(query)
 	require.NoError(t, err)
@@ -140,11 +140,11 @@ func TestInternalHealthCheckStatusTransition(t *testing.T) {
 
 	s := stuber.NewBudgerigar()
 
-	query := stuber.Query{
+	query := stuber.WithInternalStubs(stuber.Query{
 		Service: "grpc.health.v1.Health",
 		Method:  "Check",
 		Input:   []map[string]any{{"service": "gripmock"}},
-	}
+	})
 
 	before, err := s.FindByQuery(query)
 	require.NoError(t, err)

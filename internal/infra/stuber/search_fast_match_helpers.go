@@ -129,8 +129,10 @@ func (s *searcher) fastMatchInput(queryData map[string]any, stubInput InputData)
 		return !inputHasConditions(stubInput)
 	}
 
-	// Skip single-condition fast paths when AnyOf is present — fall through to full matchInput.
-	if len(stubInput.AnyOf) == 0 {
+	// Skip single-condition fast paths when AnyOf or Glob is present — either would
+	// be silently dropped here, so fall through to the full matchInput which ANDs
+	// every matcher kind (glob included).
+	if len(stubInput.AnyOf) == 0 && len(stubInput.Glob) == 0 {
 		// Ultra-fast path: equals only (most common case)
 		if len(stubInput.Equals) > 0 && len(stubInput.Contains) == 0 && len(stubInput.Matches) == 0 {
 			return equals(stubInput.Equals, queryData, stubInput.IgnoreArrayOrder)
@@ -208,8 +210,9 @@ func (s *searcher) fastRankInput(queryData map[string]any, stubInput InputData) 
 		return 0
 	}
 
-	// Fast path: equals only
-	if len(stubInput.Equals) > 0 && len(stubInput.Contains) == 0 && len(stubInput.Matches) == 0 {
+	// Fast path: equals only (Glob/AnyOf absent — otherwise glob/anyOf rank is dropped).
+	if len(stubInput.Equals) > 0 && len(stubInput.Contains) == 0 && len(stubInput.Matches) == 0 &&
+		len(stubInput.Glob) == 0 && len(stubInput.AnyOf) == 0 {
 		if equals(stubInput.Equals, queryData, stubInput.IgnoreArrayOrder) {
 			return 1.0
 		}
@@ -236,16 +239,15 @@ func (s *searcher) fastRankStreamBroadcast(queryStream []map[string]any, pattern
 
 // fastRankStream is an ultra-optimized version of rankStreamElements.
 func (s *searcher) fastRankStream(queryStream []map[string]any, stubStream []InputData) float64 {
-	// Fast path: empty query stream
+	// Fast path: empty query stream — a stub ranks 1.0 only if no element requires
+	// fields. Mirror fastMatchStream (glob/anyOf included) so match and rank agree;
+	// otherwise a glob-/anyOf-only stub that does NOT match still scores a perfect 1.0.
 	if len(queryStream) == 0 {
-		// Check if all stub stream elements can handle empty input
-		for _, stubElement := range stubStream {
-			if len(stubElement.Equals) > 0 || len(stubElement.Contains) > 0 || len(stubElement.Matches) > 0 {
-				return 0
-			}
+		if slices.ContainsFunc(stubStream, inputHasConditions) {
+			return 0
 		}
 
-		return 1.0 // Perfect match for empty input
+		return 1.0
 	}
 
 	// Fast path: single element

@@ -11,7 +11,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/dynamicpb"
 
-	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/infra/session"
 )
 
@@ -93,33 +92,13 @@ func (m *grpcMocker) recordCall(
 
 	recordedResponses := make([]map[string]any, 0, len(responses))
 	for _, r := range responses {
-		if m, ok := r.(map[string]any); ok {
-			recordedResponses = append(recordedResponses, m)
+		if rm, ok := r.(map[string]any); ok {
+			recordedResponses = append(recordedResponses, rm)
 		}
 	}
 
-	rec := history.CallRecord{
-		Service:   m.fullServiceName,
-		Method:    m.methodName,
-		Session:   sessionFromContext(ctx),
-		Requests:  requests,
-		Responses: recordedResponses,
-		Error:     errMsg,
-		Code:      code,
-		StubID:    stubID,
-		ElapsedMS: time.Since(timestamp).Milliseconds(),
-		Timestamp: timestamp,
-	}
-
-	if len(requests) > 0 {
-		rec.Request = requests[0]
-	}
-
-	if len(recordedResponses) > 0 {
-		rec.Response = recordedResponses[0]
-	}
-
-	m.recorder.Record(rec)
+	recordCall(m.recorder, m.fullServiceName, m.methodName, sessionFromContext(ctx),
+		stubID, code, timestamp, requests, recordedResponses, errMsg)
 }
 
 func processHeaders(md metadata.MD) map[string]any {

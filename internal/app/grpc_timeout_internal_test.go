@@ -15,14 +15,11 @@ import (
 func TestGrpcMockerDelayRespectsContextTimeout(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
-	m := &grpcMocker{}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
 	defer cancel()
 
 	// Act
-	err := m.delay(ctx, types.Duration(200*time.Millisecond))
+	err := delayResponse(ctx, types.Duration(200*time.Millisecond))
 
 	// Assert
 	require.Error(t, err)
@@ -32,14 +29,11 @@ func TestGrpcMockerDelayRespectsContextTimeout(t *testing.T) {
 func TestGrpcMockerDelayCompletesBeforeTimeout(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
-	m := &grpcMocker{}
-
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
 	// Act
-	err := m.delay(ctx, types.Duration(5*time.Millisecond))
+	err := delayResponse(ctx, types.Duration(5*time.Millisecond))
 
 	// Assert
 	require.NoError(t, err)

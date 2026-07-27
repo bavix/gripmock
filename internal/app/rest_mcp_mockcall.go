@@ -90,17 +90,7 @@ func mcpRenderMockResponse(
 		firstRequest = input[0]
 	}
 
-	templateData := template.Data{
-		Request:      firstRequest,
-		Headers:      headers,
-		MessageIndex: 0,
-		RequestTime:  requestTime,
-		Timestamp:    requestTime,
-		State:        make(map[string]any),
-		Requests:     requests,
-		StubID:       found.ID.String(),
-		RequestID:    found.ID.String(),
-	}
+	templateData := newTemplateData(firstRequest, headers, 0, requestTime, requests, found.ID.String())
 
 	// Reuse the server's engine (built with the server's context at startup) —
 	// no context is created per request.

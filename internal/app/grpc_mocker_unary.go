@@ -116,9 +116,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 
 	result, err := m.budgerigar.FindByQuery(query)
 
-	// Handle both error and nil result cases with unified error formatting
 	if err != nil || (result != nil && result.Found() == nil) {
-		// Create empty result if we don't have one (error case)
 		if result == nil {
 			result = &stuber.Result{}
 		}
@@ -128,7 +126,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 
 	found := result.Found()
 
-	if err := m.delay(ctx, found.Output.Delay); err != nil {
+	if err := delayResponse(ctx, found.Output.Delay); err != nil {
 		return nil, err
 	}
 
@@ -140,17 +138,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 		headers = processHeaders(md)
 	}
 
-	templateData := template.Data{
-		Request:      requestData,
-		Headers:      headers,
-		MessageIndex: 0,
-		RequestTime:  requestTime,
-		Timestamp:    requestTime,
-		State:        make(map[string]any),
-		Requests:     []any{requestData},
-		StubID:       found.ID.String(),
-		RequestID:    found.ID.String(),
-	}
+	templateData := newTemplateData(requestData, headers, 0, requestTime, []any{requestData}, found.ID.String())
 
 	outputDataCopy := deepCopyAny(outputToUse.Data)
 
@@ -348,7 +336,6 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 	result, foundErr := m.tryV2API(messages, md)
 
 	if foundErr != nil || result == nil || result.Found() == nil {
-		// Build query for error formatting
 		query := stuber.Query{
 			Service:       m.fullServiceName,
 			Method:        m.methodName,
@@ -360,7 +347,6 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 			query.Session = sessionFromMetadata(md)
 		}
 
-		// Create empty result if we don't have one
 		if result == nil {
 			result = &stuber.Result{}
 		}
@@ -385,7 +371,7 @@ func (m *grpcMocker) sendClientStreamResponse(
 	messages []map[string]any,
 	requestTime time.Time,
 ) error {
-	if err := m.delay(stream.Context(), found.Output.Delay); err != nil {
+	if err := delayResponse(stream.Context(), found.Output.Delay); err != nil {
 		return err
 	}
 
@@ -401,17 +387,7 @@ func (m *grpcMocker) sendClientStreamResponse(
 		requestsAny[i] = msg
 	}
 
-	templateData := template.Data{
-		Request:      nil,
-		Headers:      headers,
-		MessageIndex: 0,
-		RequestTime:  requestTime,
-		Timestamp:    requestTime,
-		State:        make(map[string]any),
-		Requests:     requestsAny,
-		StubID:       found.ID.String(),
-		RequestID:    found.ID.String(),
-	}
+	templateData := newTemplateData(nil, headers, 0, requestTime, requestsAny, found.ID.String())
 
 	if template.HasTemplatesInHeaders(outputToUse.Headers) {
 		headersCopy := deepCopyStringMap(outputToUse.Headers)

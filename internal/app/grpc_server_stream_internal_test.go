@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -352,7 +353,7 @@ func TestHandleNonArrayStreamDataSendsMessages(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output)
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now())
 	require.NoError(t, err)
 	require.Len(t, stream.sentMessages, 1)
 }
@@ -376,7 +377,7 @@ func TestHandleNonArrayStreamDataWithDelay(t *testing.T) {
 	}
 
 	start := time.Now()
-	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output)
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now())
 	duration := time.Since(start)
 
 	require.NoError(t, err)
@@ -402,9 +403,38 @@ func TestHandleNonArrayStreamDataWithTemplates(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output)
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now())
 	require.NoError(t, err)
 	require.Len(t, stream.sentMessages, 1)
+}
+
+// Regression: a server-stream stub with non-array output.data left its template
+// unrendered. The client half-closes after one message, so the function's second
+// RecvMsg returns EOF and the render was skipped — the caller's already-captured
+// request must be used instead.
+func TestHandleNonArrayStreamDataRendersFromCapturedRequest(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMocker(t)
+	stream := &mockFullServerStream{
+		ctx:          t.Context(),
+		sentMessages: make([]*dynamicpb.Message, 0),
+		recvMsgLimit: 0, // client already half-closed → RecvMsg returns EOF
+	}
+
+	stub := &stuber.Stub{
+		ID:     uuid.New(),
+		Output: stuber.Output{Data: map[string]any{"message": "Hello, {{.Request.name}}!"}},
+	}
+
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{"name": "Bob"}, time.Now())
+	require.NoError(t, err)
+	require.Len(t, stream.sentMessages, 1)
+
+	body, err := protojson.Marshal(stream.sentMessages[0])
+	require.NoError(t, err)
+	require.Contains(t, string(body), "Hello, Bob!")
+	require.NotContains(t, string(body), "{{")
 }
 
 func TestHandleNonArrayStreamDataContextCancelled(t *testing.T) {
@@ -427,7 +457,7 @@ func TestHandleNonArrayStreamDataContextCancelled(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output)
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now())
 	require.Error(t, err)
 	require.ErrorIs(t, err, context.Canceled)
 }
@@ -450,7 +480,7 @@ func TestHandleNonArrayStreamDataWithError(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output)
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "test error")
 }
@@ -479,7 +509,7 @@ func TestHandleNonArrayStreamDataUsesTemplatedError(t *testing.T) {
 	rendered := stub.Output
 	rendered.Error = "RENDERED-ERROR" // what the caller produced
 
-	err := mocker.handleNonArrayStreamData(stream, stub, rendered)
+	err := mocker.handleNonArrayStreamData(stream, stub, rendered, map[string]any{}, time.Now())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "RENDERED-ERROR")
 	require.NotContains(t, err.Error(), "RAW")

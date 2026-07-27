@@ -65,4 +65,12 @@ describe('toYaml', () => {
     expect(toYaml({ v: 'GetProduct' })).toBe('v: GetProduct');
     expect(toYaml({ v: 'pkg.Svc/Method' })).toBe('v: pkg.Svc/Method');
   });
+
+  it('quotes scalars/keys starting with a reserved YAML indicator (regression)', () => {
+    // protobuf Any uses the key "@type"; a bare leading @ is invalid YAML.
+    expect(toYaml({ '@type': 'x' })).toBe('"@type": x');
+    expect(toYaml({ v: '@handle' })).toBe('v: "@handle"');
+    // A reserved char mid-string stays unquoted.
+    expect(toYaml({ v: 'user@host' })).toBe('v: user@host');
+  });
 });

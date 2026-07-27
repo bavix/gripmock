@@ -5,6 +5,8 @@ import { useStore } from '../../lib/store';
 import { api, getApiUrl, setApiUrl, resetApiUrl } from '../../lib/api';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { colors, btn } from '../../lib/theme';
+import { HealthDot } from '../shared/HealthDot';
+import { versionLabel } from '../../lib/format';
 import type { Dashboard } from '../../lib/types';
 
 interface TopBarProps {
@@ -53,7 +55,7 @@ export function TopBar({ onToggleSidebar }: Readonly<TopBarProps>) {
       <FlaskConical size={16} color={colors.accent} />
       <span style={{ fontWeight: 600, fontSize: 13 }}>GripMock</span>
       {dash?.version && (
-        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{/^\d/.test(dash.version) ? 'v' : ''}{dash.version}</span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>{versionLabel(dash.version)}</span>
       )}
 
       <HealthDot ready={dash?.ready} />
@@ -146,17 +148,6 @@ export function TopBar({ onToggleSidebar }: Readonly<TopBarProps>) {
         </div>
       )}
     </header>
-  );
-}
-
-function HealthDot({ ready }: Readonly<{ ready?: boolean }>) {
-  const readyColor = ready ? colors.success : colors.error;
-  const dotColor = ready === undefined ? '#64748b' : readyColor;
-  return (
-    <span style={{
-      width: 6, height: 6, borderRadius: '50%', display: 'inline-block',
-      background: dotColor,
-    }} />
   );
 }
 

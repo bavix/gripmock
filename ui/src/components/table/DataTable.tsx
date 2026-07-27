@@ -192,6 +192,10 @@ export function DataTable<T = any>({
   const table = useReactTable({
     data, columns: allCols,
     getRowId: getRowId ? ((row) => getRowId(row)) : ((_row, index) => String(index)),
+    // With server-side pagination the table holds only one page, so a client sort
+    // would reorder just that page while presenting itself as a global sort. Turn
+    // interactive sorting off in that mode rather than mislead.
+    enableSorting: !manualPagination,
     state: {
       sorting, columnVisibility: internalVisibility,
       ...(manualPagination ? { pagination: { pageIndex, pageSize } } : {}),

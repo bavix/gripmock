@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { byTimestampDesc, versionLabel } from '../lib/format';
 import { useMemo, lazy, Suspense } from 'react';
 import { useDashboard } from '../hooks/useDashboard';
 import { useRecentHistory } from '../hooks/useHistory';
@@ -15,9 +16,9 @@ import {
   Clock, Plus, Search, CheckCircle2, ShieldCheck, Copy, Plug,
   WifiOff, RefreshCw, FlaskConical, Cpu, Users, FileUp, ArrowRight, Timer,
 } from 'lucide-react';
-import type { CallRecord } from '../lib/types';
+import { isCallOk } from '../lib/types';
+import { CallStatusBadge } from '../components/shared/CallStatusBadge';
 
-const callOk = (c: CallRecord) => !c.code || c.code === 0;
 
 function MetaItem({ icon: Icon, label, value }: Readonly<{ icon: typeof Clock; label: string; value: string }>) {
   return (
@@ -83,7 +84,7 @@ export function Dashboard() {
 
   const liveFeed = useMemo(() => {
     if (!history) return [];
-    return [...history].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return [...history].sort(byTimestampDesc);
   }, [history]);
 
   // Method coverage now comes from the server (scales to thousands of stubs;
@@ -125,7 +126,7 @@ export function Dashboard() {
 
   const uptime = fmtUptime(dash.uptimeSeconds);
   const usedPct = dash.totalStubs > 0 ? Math.round((dash.usedStubs / dash.totalStubs) * 100) : 0;
-  const vlabel = `${/^\d/.test(dash.version) ? 'v' : ''}${dash.version}`;
+  const vlabel = versionLabel(dash.version);
 
   const stats: { icon: typeof Layers; label: string; value: number; color: string; to?: string }[] = [
     { icon: Layers, label: 'Services', value: dash.totalServices, color: colors.accent, to: '/services' },
@@ -259,11 +260,11 @@ export function Dashboard() {
             </div>
           )}
           {liveFeed.map((call, i) => {
-            const ok = callOk(call);
+            const ok = isCallOk(call);
             return (
               <button type="button" key={i} onClick={() => call.stubId ? navigate(`/stubs/${call.stubId}`) : navigate('/history')} className="hover-row"
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', font: 'inherit', fontSize: 12.5, color: 'inherit', textAlign: 'inherit', width: '100%', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', borderLeft: `3px solid ${ok ? colors.success : colors.error}` }}>
-                <span className="badge" style={{ background: ok ? 'var(--success-bg)' : 'var(--error-bg)', color: ok ? colors.success : colors.error, minWidth: 34, justifyContent: 'center' }}>{ok ? 'OK' : (call.code ?? 'ERR')}</span>
+                <CallStatusBadge call={call} style={{ minWidth: 34, justifyContent: 'center' }} />
                 <span style={{ fontWeight: 500, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   <span style={{ color: 'var(--text-muted)' }}>{call.service}/</span>{call.method}
                 </span>

@@ -1,6 +1,7 @@
 package stuber
 
 import (
+	"bytes"
 	"iter"
 	"slices"
 	"sort"
@@ -178,30 +179,54 @@ func SortStubs(stubs []*Stub, mode string) {
 }
 
 func sortStubs(stubs []*Stub, mode string) {
+	// Every mode ends in an ID tiebreak so the order is a TOTAL order. Input comes
+	// from values(), which ranges a Go map (random order each call); without the
+	// tiebreak, stubs tying on the sort key keep that random order and pagination
+	// duplicates/drops rows across independently-sorted pages.
+	byID := func(i, j int) bool {
+		return bytes.Compare(stubs[i].ID[:], stubs[j].ID[:]) < 0
+	}
+
 	less := func(i, j int) bool {
-		return stubs[i].Priority > stubs[j].Priority
+		if stubs[i].Priority != stubs[j].Priority {
+			return stubs[i].Priority > stubs[j].Priority
+		}
+
+		return byID(i, j)
 	}
 
 	switch mode {
 	case ListSortPriorityAsc:
 		less = func(i, j int) bool {
-			return stubs[i].Priority < stubs[j].Priority
+			if stubs[i].Priority != stubs[j].Priority {
+				return stubs[i].Priority < stubs[j].Priority
+			}
+
+			return byID(i, j)
 		}
 	case ListSortServiceAsc:
 		less = func(i, j int) bool {
-			if stubs[i].Service == stubs[j].Service {
-				return stubs[i].Method < stubs[j].Method
-			}
-
-			return stubs[i].Service < stubs[j].Service
-		}
-	case ListSortMethodAsc:
-		less = func(i, j int) bool {
-			if stubs[i].Method == stubs[j].Method {
+			if stubs[i].Service != stubs[j].Service {
 				return stubs[i].Service < stubs[j].Service
 			}
 
-			return stubs[i].Method < stubs[j].Method
+			if stubs[i].Method != stubs[j].Method {
+				return stubs[i].Method < stubs[j].Method
+			}
+
+			return byID(i, j)
+		}
+	case ListSortMethodAsc:
+		less = func(i, j int) bool {
+			if stubs[i].Method != stubs[j].Method {
+				return stubs[i].Method < stubs[j].Method
+			}
+
+			if stubs[i].Service != stubs[j].Service {
+				return stubs[i].Service < stubs[j].Service
+			}
+
+			return byID(i, j)
 		}
 	}
 

@@ -44,16 +44,21 @@ func TestRenderUnescapeFallback(t *testing.T) {
 	require.Equal(t, "x", out)
 }
 
-// normalizeArgs boundary behavior: a single slice arg is spread (so sum/extract
-// work), multi-arg and single non-slice args pass through untouched.
-func TestNormalizeArgs(t *testing.T) {
+// Regression: a global normalizeArgs wrapper spread a single array argument into
+// positional args for EVERY builtin, so unary helpers like json/upper got only
+// the first element. Array-spread now lives inside the math aggregates only.
+func TestArrayArgHandling(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, []any{1, 2, 3}, normalizeArgs([]any{[]any{1, 2, 3}}), "single []any spread")
-	require.Equal(t, []any{1.0, 2.0}, normalizeArgs([]any{[]float64{1, 2}}), "single []float64 spread to []any")
-	require.Equal(t, []any{1, 2}, normalizeArgs([]any{1, 2}), "multi-arg unchanged")
-	require.Equal(t, []any{5}, normalizeArgs([]any{5}), "single non-slice unchanged")
-	require.Empty(t, normalizeArgs([]any{}), "empty unchanged")
+	engine := New(t.Context(), nil)
+
+	sum, err := engine.Render(`{{ sum .Request.nums }}`, Data{Request: map[string]any{"nums": []any{1, 2, 3}}})
+	require.NoError(t, err)
+	require.Equal(t, "6", sum, "aggregate must flatten a single array arg")
+
+	arr, err := engine.Render(`{{ json .Request.items }}`, Data{Request: map[string]any{"items": []any{"a", "b", "c"}}})
+	require.NoError(t, err)
+	require.Equal(t, `["a","b","c"]`, arr, "unary helper must receive the whole array")
 }
 
 //nolint:funlen

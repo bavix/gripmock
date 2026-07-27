@@ -11,7 +11,9 @@ function looksLikeScalar(s: string): boolean {
   return YAML_NUMERIC.test(s) || YAML_HEX_OCT_BIN.test(s) || YAML_BOOL_NULL.test(s) || YAML_INF_NAN.test(s);
 }
 
-const PLAIN = /^[a-zA-Z0-9_./@:\-+]+$/;
+// A plain scalar may not START with a reserved YAML indicator (`@`, `:` here),
+// though those chars are fine mid-string — so the first char uses a narrower set.
+const PLAIN = /^[a-zA-Z0-9_./\-+][a-zA-Z0-9_./@:\-+]*$/;
 
 function dquote(s: string): string {
   return `"${s.replaceAll('\\', String.raw`\\`).replaceAll('"', '\\"')}"`;

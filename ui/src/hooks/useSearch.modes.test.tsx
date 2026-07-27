@@ -82,6 +82,17 @@ describe('useSmartSearch.search', () => {
     expect(mockApi.post).not.toHaveBeenCalled();
   });
 
+  it('JSON payload whose values contain dots is NOT parsed as an endpoint (regression)', async () => {
+    // A dotted value (hostname/version) inside a JSON payload must not be split
+    // into service.method and fire bogus /stubs + /stubs/inspect calls + a toast.
+    const r = await runSearch()('{"host":"example.com","v":"1.2.3"}');
+
+    expect(r.results).toEqual([]);
+    expect(r.error).toBeUndefined();
+    expect(mockApi.get).not.toHaveBeenCalled();
+    expect(mockApi.post).not.toHaveBeenCalled();
+  });
+
   it('endpoint fetch failure → error surfaced', async () => {
     mockApi.get.mockRejectedValueOnce(new Error('boom'));
 

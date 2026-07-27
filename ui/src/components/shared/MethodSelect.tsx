@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useId } from 'react';
 import { useServices, useServiceMethods } from '../../hooks/useServices';
 import { Search, ChevronDown, Loader2 } from 'lucide-react';
+import { streamKind } from '../../lib/stub';
 
 interface MethodSelectProps {
   service: string;
@@ -27,11 +28,12 @@ export function MethodSelect({ service, method, onServiceChange, onMethodChange 
 
   useEffect(() => { if (open) { setSearch(''); setTimeout(() => inputRef.current?.focus(), 50); } }, [open]);
 
+  const scrollListItemIntoView = (selector: string) =>
+    listRef.current?.querySelector(selector)?.scrollIntoView({ block: 'nearest' });
+
   // Scroll to selected item when dropdown opens
   useEffect(() => {
-    if (!open || !listRef.current) return;
-    const selected = listRef.current.querySelector('[data-selected="true"]');
-    if (selected) selected.scrollIntoView({ block: 'nearest' });
+    if (open) scrollListItemIntoView('[data-selected="true"]');
   }, [open]);
 
   // Show methods from the service list. For the selected service, merge in
@@ -70,8 +72,7 @@ export function MethodSelect({ service, method, onServiceChange, onMethodChange 
     else if (e.key === 'Escape') { e.preventDefault(); setOpen(false); }
   };
   useEffect(() => {
-    if (!open) return;
-    listRef.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' });
+    if (open) scrollListItemIntoView('[data-active="true"]');
   }, [active, open]);
 
   return (
@@ -176,12 +177,6 @@ export function MethodSelect({ service, method, onServiceChange, onMethodChange 
 }
 
 function StreamBadge({ type }: Readonly<{ type: string }>) {
-  const cfg: Record<string, { label: string; color: string }> = {
-    unary: { label: 'U', color: '#3b82f6' },
-    client_streaming: { label: 'CS', color: '#f59e0b' },
-    server_streaming: { label: 'SS', color: '#a855f7' },
-    bidi_streaming: { label: 'BD', color: '#ef4444' },
-  };
-  const c = cfg[type] || { label: '?', color: 'var(--text-muted)' };
-  return <span style={{ fontSize: 11, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: `${c.color}18`, color: c.color }}>{c.label}</span>;
+  const { label, full, color } = streamKind(type);
+  return <span title={full} style={{ fontSize: 11, padding: '1px 5px', borderRadius: 3, fontWeight: 700, background: `${color}18`, color }}>{label}</span>;
 }

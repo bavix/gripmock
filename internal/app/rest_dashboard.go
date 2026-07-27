@@ -129,14 +129,18 @@ func (h *RestServer) ListHistory(w http.ResponseWriter, r *http.Request, params 
 
 	w.Header().Set("X-Total-Count", strconv.Itoa(len(calls)))
 
-	// ?limit=N returns the most recent N; ?offset=M skips the M newest first.
-	// offset=0 (default) preserves the legacy tail behavior.
+	// ?offset=M skips the M newest records; ?limit=N then keeps the most recent N
+	// of what remains. offset is honored even without a limit; offset=0 + no limit
+	// preserves the legacy "return everything" behavior.
+	offset := max(intFromPtr(params.Offset), 0)
+	end := max(len(calls)-offset, 0)
+	start := 0
+
 	if limit := intFromPtr(params.Limit); limit > 0 {
-		offset := max(intFromPtr(params.Offset), 0)
-		end := max(len(calls)-offset, 0)
-		start := max(end-limit, 0)
-		calls = calls[start:end]
+		start = max(end-limit, 0)
 	}
+
+	calls = calls[start:end]
 
 	out := make(rest.HistoryList, len(calls))
 	for i, c := range calls {

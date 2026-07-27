@@ -5,13 +5,9 @@ import type { CSSProperties } from 'react';
 // class-based styling stay visually consistent.
 export const colors = {
   accent: '#5570e6',
-  accentHover: '#3f57d4',
   success: '#1fa650',
-  successBg: 'rgba(31,166,80,0.14)',
   error: '#e5484d',
-  errorBg: 'rgba(229,72,77,0.14)',
   warning: '#d97706',
-  warningBg: 'rgba(217,119,6,0.14)',
 } as const;
 
 // Mirrors the .btn CSS class so `style={btn(...)}` call-sites match `className="btn"`.

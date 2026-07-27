@@ -36,6 +36,25 @@ describe('generateSample', () => {
     expect(() => generateSample(a)).not.toThrow();
   });
 
+  it('skips the *_UNSPECIFIED / *_UNKNOWN placeholder enum member (regression)', () => {
+    const schema: ProtoMessageSchema = {
+      typeName: 'pkg.M',
+      fields: [
+        field({ name: 'status', jsonName: 'status', kind: 'enum', typeName: 'pkg.Status', enumValues: ['STATUS_UNSPECIFIED', 'STATUS_ACTIVE'] }),
+        field({ name: 'kind', jsonName: 'kind', kind: 'enum', typeName: 'pkg.Kind', enumValues: ['KIND_UNKNOWN', 'KIND_A'] }),
+      ],
+    };
+    expect(generateSample(schema)).toEqual({ status: 'STATUS_ACTIVE', kind: 'KIND_A' });
+  });
+
+  it('falls back to the first enum value when all are placeholders', () => {
+    const schema: ProtoMessageSchema = {
+      typeName: 'pkg.M',
+      fields: [field({ name: 's', jsonName: 's', kind: 'enum', typeName: 'pkg.S', enumValues: ['S_UNSPECIFIED'] })],
+    };
+    expect(generateSample(schema)).toEqual({ s: 'S_UNSPECIFIED' });
+  });
+
   it('still generates plain scalar fields', () => {
     const schema: ProtoMessageSchema = {
       typeName: 'pkg.M',

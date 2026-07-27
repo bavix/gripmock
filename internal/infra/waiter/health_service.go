@@ -46,6 +46,12 @@ func (s *Service) Ping(ctx context.Context, service string) (ServingStatus, erro
 func (s *Service) WaitForReady(ctx context.Context, timeout, interval time.Duration, service string) error {
 	deadline := time.Now().Add(timeout)
 
+	// time.NewTicker panics on a non-positive interval; a caller-supplied 0/negative
+	// ping interval falls back to a tight-but-safe poll instead of crashing.
+	if interval <= 0 {
+		interval = time.Millisecond
+	}
+
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 

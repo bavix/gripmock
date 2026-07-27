@@ -20,9 +20,7 @@ func Functions(ctx context.Context, reg pkgplugins.Registry) map[string]any {
 		if typed, ok := fn.(pkgplugins.Func); ok && typed != nil {
 			fn := typed
 			out[name] = func(args ...any) (any, error) {
-				callArgs := normalizeArgs(args)
-
-				return fn(ctx, callArgs...)
+				return fn(ctx, args...)
 			}
 
 			continue
@@ -32,24 +30,4 @@ func Functions(ctx context.Context, reg pkgplugins.Registry) map[string]any {
 	}
 
 	return out
-}
-
-func normalizeArgs(args []any) []any {
-	if len(args) != 1 {
-		return args
-	}
-
-	switch v := args[0].(type) {
-	case []any:
-		return v
-	case []float64:
-		out := make([]any, len(v))
-		for i, val := range v {
-			out[i] = val
-		}
-
-		return out
-	default:
-		return args
-	}
 }

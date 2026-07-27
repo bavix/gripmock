@@ -29,11 +29,13 @@ func (s *mockableHealthServer) findStub(ctx context.Context, method, service str
 }
 
 func newHealthQuery(method, service string) stuber.Query {
-	return stuber.Query{
+	// The health service is the ONLY caller allowed to match the reserved internal
+	// gripmock health stubs; every other query keeps them hidden.
+	return stuber.WithInternalStubs(stuber.Query{
 		Service: HealthServiceFullName,
 		Method:  method,
 		Input: []map[string]any{{
 			"service": service,
 		}},
-	}
+	})
 }
