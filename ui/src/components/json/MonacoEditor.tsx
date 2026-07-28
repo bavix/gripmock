@@ -1,5 +1,5 @@
 import { useRef, useCallback, useEffect, useState } from 'react';
-import Editor, { type OnMount } from '@monaco-editor/react';
+import Editor, { loader, type OnMount } from '@monaco-editor/react';
 import { useStore } from '../../lib/store';
 
 let configured = false;
@@ -14,6 +14,13 @@ async function configureWorkers() {
         return label === 'json' ? new jw() : new ew();
       },
     };
+    // Bundle monaco locally; without this the loader fetches it from cdn.jsdelivr.net
+    // at runtime and the editor breaks in offline/air-gapped environments.
+    // edcore.main + json contribution only — the root/editor.main entries would
+    // also pull css/html/ts languages and their workers (~2MB extra in the binary).
+    const monaco = await import('monaco-editor/esm/vs/editor/edcore.main.js');
+    await import('monaco-editor/esm/vs/language/json/monaco.contribution.js');
+    loader.config({ monaco });
   } catch (e) { console.error('Monaco workers init failed:', e); }
 }
 

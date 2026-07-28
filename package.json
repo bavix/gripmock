@@ -13,5 +13,10 @@
   },
   "dependencies": {
     "vitepress": "^2.0.0-alpha.18"
+  },
+  "overrides": {
+    "monaco-editor": {
+      "dompurify": "^3.4.12"
+    }
   }
 }
