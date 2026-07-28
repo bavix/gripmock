@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GRPCTESTIFY_VERSION: "1.8.10"
+  GRPCTESTIFY_VERSION: "1.9.1"
   GO_VERSION: "1.26"
 
 jobs:
@@ -132,7 +132,7 @@ jobs:
           trap cleanup EXIT
           if ! GRPC_PORT="$grpc_port" HTTP_PORT="$http_port" "$bin" check --timeout=60s --silent; then
             printf 'Smoke check failed on ports grpc=%s http=%s\n' "$grpc_port" "$http_port"
-            printf '---- gripmock server log ----\n'
+            printf '%s\n' '---- gripmock server log ----'
             cat "$RUNNER_TEMP/gripmock.log"
             exit 1
           fi

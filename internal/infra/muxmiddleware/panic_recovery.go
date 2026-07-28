@@ -20,7 +20,6 @@ func PanicRecoveryMiddleware(next http.Handler) http.Handler {
 					Str("path", r.URL.Path).
 					Msg("Panic recovered in HTTP handler")
 
-				// Return 500 Internal Server Error
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			}
 		}()

@@ -11,18 +11,8 @@ import (
 // Ranker is a function type used to rank matches between two values.
 type ranker func(expect, actual any) float64
 
-// RankMatch calculates a match score between expected and actual values.
-//
-// This function uses recursive matching for maps and slices and assesses
-// the match for other types. The final score is the cumulative result of
-// matches for maps, slices, and other values.
-//
-// Parameters:
-//   - expected: The expected value.
-//   - actual: The actual value.
-//
-// Returns:
-//   - A float64 representing the cumulative match score.
+// RankMatch calculates a cumulative match score between expected and actual
+// values, recursing into maps and slices and scoring other types directly.
 func RankMatch(expected, actual any) float64 {
 	return rankMatchWithDepth(expected, actual, 0)
 }
@@ -34,71 +24,46 @@ func rankMatchWithDepth(expected, actual any, depth int) float64 {
 		return 0
 	}
 
-	// Special case handling for empty maps.
+	// An empty expected map matches anything weakly.
 	if value, ok := expected.(map[string]any); ok && len(value) == 0 {
 		return 0.1 //nolint:mnd
 	}
 
-	// Calculate the match score for non-collection types.
 	score := rank(expected, actual)
 
-	// Include scores from slice comparisons.
 	score += slicesRankMatch(expected, actual, func(e, a any) float64 {
 		return rankMatchWithDepth(e, a, depth+1)
 	})
 
-	// Include scores from map comparisons.
 	score += mapRankMatch(expected, actual, func(e, a any) float64 {
 		return rankMatchWithDepth(e, a, depth+1)
 	})
 
-	// Return the total match score.
 	return score
 }
 
-// rank is a function that ranks the matches between two strings.
-//
-// It compares two strings and returns a float64 representing the match score.
-// The function first checks if the actual value is a boolean and returns 0 if it is.
-// Then it converts the expected and actual values to strings. If the values are not
-// strings or if there is an error converting them to strings, the function checks
-// if the values are deeply equal and returns the corresponding match score.
-// If the strings are equal, the function returns the full match score.
-// Next, the function tries to compile the expected string as a regular expression
-// and finds the first match in the actual string. If a match is found, the function
-// calculates the match score based on the length of the match. If no match is found,
-// the function calculates the match score based on the Levenshtein distance
-// between the two strings.
-//
-// Parameters:
-// - expect: The expected string.
-// - actual: The actual string.
-//
-// Returns:
-// - The match score between the expected and actual strings.
+// rank scores a match between two values. Non-strings compare by deep equality;
+// strings compare exactly, then by regex (when the expected string contains
+// metacharacters), then by normalized Levenshtein distance.
 func rank(expect, actual any) float64 {
-	// Check if the actual value is a boolean and return 0 if it is.
 	if _, ok := actual.(bool); ok {
 		return 0
 	}
 
-	// Convert the expected and actual values to strings.
 	var (
 		expectedStr, expectedStringOk = expect.(string)
 		actualStr, actualStringErr    = cast.ToStringE(actual)
 	)
 
-	// If the values are not strings or if there is an error converting them to strings,
-	// check if the values are deeply equal and return the corresponding match score.
+	// Non-string values fall back to deep equality.
 	if !expectedStringOk || actualStringErr != nil {
 		if reflect.DeepEqual(expect, actual) {
-			return 1 // Full match.
+			return 1
 		}
 
-		return 0 // No match.
+		return 0
 	}
 
-	// If the strings are equal, return the full match score.
 	if expectedStr == actualStr {
 		return 1
 	}
@@ -114,83 +79,49 @@ func rank(expect, actual any) float64 {
 
 	if compile != nil {
 		results := compile.FindStringIndex(actualStr)
-
-		// If a match is found, calculate the match score based on the length of
-		// the match.
 		if len(results) == 2 && len(actualStr) > 0 {
 			return float64(results[1]-results[0]) / float64(len(actualStr))
 		}
 	}
 
-	// If no match is found, calculate the match score based on the Levenshtein
-	// distance between the two strings.
+	// No regex match: score by Levenshtein distance.
 	return distance(expectedStr, actualStr)
 }
 
-// mapRankMatch calculates the match score between two maps.
-//
-// It iterates over the keys of the left map and finds the corresponding key in
-// the right map. If a match is found, it calculates the match score between
-// the values of the keys and adds it to the total score. It marks the keys
-// that have been matched to avoid duplicate matches. The function returns the
-// total score divided by the maximum number of keys in the two maps.
-//
-// Parameters:
-//   - expect: The expected map.
-//   - actual: The actual map.
-//   - compare: The ranker function used to compare values.
-//
-// Returns:
-//   - The match score between the expected and actual maps.
+// mapRankMatch scores a match between two maps by summing per-key compare scores
+// (each right key matched at most once) and normalizing by the larger key count.
 //
 //nolint:cyclop
 func mapRankMatch(expect, actual any, compare ranker) float64 {
-	// Check if the types of the expected and actual values are the same.
-	// If they are not, return 0.
 	if reflect.TypeOf(expect) != reflect.TypeOf(actual) {
 		return 0
 	}
 
-	// Check if the types of the expected and actual values are nil.
-	// If they are, return 1.
 	if reflect.TypeOf(expect) == nil {
 		return 1
 	}
 
-	// Check if the expected value is a map.
-	// If it is not, return 0.
 	if reflect.TypeOf(expect).Kind() != reflect.Map {
 		return 0
 	}
 
-	// Convert the expected and actual values to reflect.Value.
 	left := reflect.ValueOf(expect)
 	right := reflect.ValueOf(actual)
 
-	// Initialize the total score.
 	var res float64
 
-	// Calculate the maximum number of keys in the two maps.
 	total := max(left.Len(), right.Len())
 
-	// Create a map to keep track of the keys that have been matched.
 	marked := make(map[reflect.Value]bool, total)
 
-	// Iterate over the keys of the left map.
 	for _, k := range left.MapKeys() {
-		// If the corresponding key exists in the right map, calculate the match
-		// score between the values and add it to the total score.
-		// Mark the key as matched.
 		if right.MapIndex(k).IsValid() {
 			res += compare(left.MapIndex(k).Interface(), right.MapIndex(k).Interface())
 			marked[right.MapIndex(k)] = true
 		}
 	}
 
-	// Iterate over the keys of the right map.
-	// If a key has not been marked as matched, calculate the match score between
-	// the corresponding values in the left and right maps and add it to the total
-	// score.
+	// Score right-only keys not already matched from the left.
 	for _, k := range right.MapKeys() {
 		if _, ok := marked[k]; ok {
 			continue
@@ -201,70 +132,47 @@ func mapRankMatch(expect, actual any, compare ranker) float64 {
 		}
 	}
 
-	// If the total score is 0 and the maximum number of keys is 0, return 1.
 	if res == 0 && total == 0 {
 		return 1
 	}
 
-	// Return the total score divided by the maximum number of keys.
 	return res / float64(total)
 }
 
-// slicesRankMatch is a function that calculates the match score between two
-// slices or maps. It takes the expected and actual values and a ranker
-// function that compares two values and returns a match score between 0 and 1.
-//
-// The ranker function is called for each pair of values in the slices or maps,
-// and the match scores are accumulated. The function returns the accumulated
-// match score divided by the maximum number of values in the slices or maps.
-//
-// If the types of the expected and actual values are not equal, the function
-// returns 0. If either the expected or actual value is nil, the function
-// returns 1. If the types of the expected and actual values are not slice or
-// map, the function returns 0.
-//
-// The ranker function is called for each pair of values in the slices or maps,
-// and the match scores are accumulated. The function returns the accumulated
-// match score divided by the maximum number of values in the slices or maps.
-//
-// The function uses a marked algorithm to avoid redundant comparisons.
+// slicesRankMatch scores a match between two slices: each expected element is
+// greedily paired with the best unused actual element (compare), and the summed
+// score is normalized by the longer length. Type-mismatched or non-slice inputs
+// score 0; two nil inputs score 1.
 //
 //nolint:cyclop
 func slicesRankMatch(expect, actual any, compare ranker) float64 {
-	// Check if the types of the expected and actual values are equal.
 	if reflect.TypeOf(expect) != reflect.TypeOf(actual) {
 		return 0
 	}
 
-	// If both values are nil, return 1.
 	if reflect.TypeOf(expect) == nil {
 		return 1
 	}
 
-	// Convert the expected and actual values to reflect.Value.
 	a := reflect.ValueOf(expect)
 	b := reflect.ValueOf(actual)
 
-	// If the types of the expected and actual values are not slice, return 0.
 	if a.Kind() != reflect.Slice || b.Kind() != reflect.Slice {
 		return 0
 	}
 
-	var res float64 // Initialize the total score.
+	var res float64
 
-	marked := make(map[int]struct{}, b.Len()) // Create a map to keep track of the keys that have been marked as matched.
+	// marked tracks right-slice indices already consumed by a left element, so
+	// each right element is matched at most once.
+	marked := make(map[int]struct{}, b.Len())
 
-	// Iterate over the values of the left slice.
 	for i := range a.Len() {
-		// Iterate over the values of the right slice.
 		for j := range b.Len() {
-			// Skip the value if it has already been marked as matched.
 			if _, ok := marked[j]; ok {
 				continue
 			}
 
-			// Calculate the match score between the values of the indices and
-			// add it to the total score if the result is not 0.
 			if result := compare(a.Index(i).Interface(), b.Index(j).Interface()); result != 0 {
 				res += result
 				marked[j] = struct{}{}
@@ -272,28 +180,17 @@ func slicesRankMatch(expect, actual any, compare ranker) float64 {
 		}
 	}
 
-	total := max(a.Len(), b.Len()) // Calculate the maximum number of values in the two slices.
+	total := max(a.Len(), b.Len())
 
-	// If the total score is 0 and the maximum number of values is 0, return 1.
 	if res == 0 && total == 0 {
 		return 1
 	}
 
-	// Return the total score divided by the maximum number of values.
 	return res / float64(total)
 }
 
-// distance calculates the Levenshtein distance between two strings.
-// It returns a float64 representing the distance normalized by the length of the
-// longer string.
-//
-// The Levenshtein distance is a measure of the number of single-character edits
-// needed to transform one string into another, such as insertion, deletion, or
-// substitution.
-//
-// Parameters:
-// - s: The first string.
-// - t: The second string.
+// distance returns the Levenshtein similarity of two strings, normalized by the
+// longer string's length (1.0 = identical, 0.0 = fully different).
 func distance(s, t string) float64 {
 	// Fast path for identical strings
 	if s == t {

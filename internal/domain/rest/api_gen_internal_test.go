@@ -104,6 +104,12 @@ func (m *mockServer) AddStub(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (m *mockServer) ValidateStub(w http.ResponseWriter, _ *http.Request) {
+	m.called["ValidateStub"] = true
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func (m *mockServer) ListDescriptors(w http.ResponseWriter, _ *http.Request) {
 	m.called["ListDescriptors"] = true
 
@@ -152,7 +158,7 @@ func (m *mockServer) ListUsedStubs(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (m *mockServer) ListHistory(w http.ResponseWriter, _ *http.Request) {
+func (m *mockServer) ListHistory(w http.ResponseWriter, _ *http.Request, _ ListHistoryParams) {
 	m.called["ListHistory"] = true
 
 	_ = json.NewEncoder(w).Encode(HistoryList{}) //nolint:errchkjson
@@ -204,6 +210,7 @@ func TestHandlerRoutes(t *testing.T) {
 		{http.MethodDelete, "/stubs", "PurgeStubs"},
 		{http.MethodGet, "/stubs", "ListStubs"},
 		{http.MethodPost, "/stubs", "AddStub"},
+		{http.MethodPost, "/stubs/validate", "ValidateStub"},
 		{http.MethodGet, "/descriptors", "ListDescriptors"},
 		{http.MethodPost, "/descriptors", "AddDescriptors"},
 		{http.MethodDelete, "/services/myservice", "DeleteService"},

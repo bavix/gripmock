@@ -6,7 +6,7 @@ extended.DesignService/GetThemeColor
   "themeId": "dark_theme"
 }
 
---- RESPONSE ---
+--- RESPONSE tolerance=0.001 ---
 {
   "color": {
     "alpha": 0.8,

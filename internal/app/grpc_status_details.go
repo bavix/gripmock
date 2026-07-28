@@ -6,7 +6,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/goccy/go-json"
-	_ "google.golang.org/genproto/googleapis/rpc/errdetails"
+	_ "google.golang.org/genproto/googleapis/rpc/errdetails" // registers errdetails message types for status detail unmarshalling
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -102,7 +102,7 @@ func detailMessage(detail map[string]any, resolver protodesc.Resolver) (proto.Me
 	if value, hasValue := payload["value"]; hasValue && len(payload) == 1 {
 		valueData, marshalErr := json.Marshal(value)
 		if marshalErr == nil {
-			if fallbackErr := protojson.Unmarshal(valueData, msg); fallbackErr == nil {
+			if protojson.Unmarshal(valueData, msg) == nil {
 				return msg, nil
 			}
 		}

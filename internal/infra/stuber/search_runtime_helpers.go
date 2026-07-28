@@ -2,12 +2,46 @@ package stuber
 
 // searchOptimized performs ultra-fast search with minimal allocations.
 func (s *searcher) searchOptimized(query Query) (*Result, error) {
+	// Internal stubs (the gripmock health status) live in a separate index and
+	// are matched ONLY by the gRPC health service, which sets the flag. They are
+	// invisible to every user-facing surface (list/get/search/inspect/verify/MCP).
+	if query.allowsInternalStubs() {
+		if result := s.matchInternalStubs(query); result != nil {
+			return result, nil
+		}
+	}
+
 	candidates, err := s.resolveSearchCandidates(query)
 	if err != nil {
 		return nil, err
 	}
 
 	return s.processStubs(query, candidates)
+}
+
+// matchInternalStubs searches ONLY the reserved internal storage. It returns a
+// result when an internal stub matches, or nil to fall through to user stubs.
+func (s *searcher) matchInternalStubs(query Query) *Result {
+	if s.internalStorage == nil {
+		return nil
+	}
+
+	seq, err := s.internalStorage.FindAllAvailable(query.Service, query.Method, query.Session)
+	if err != nil {
+		return nil
+	}
+
+	candidates := collectStubs(seq)
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	result, err := s.processStubs(query, candidates)
+	if err != nil || result == nil || result.Found() == nil {
+		return nil
+	}
+
+	return result
 }
 
 func (s *searcher) resolveSearchCandidates(query Query) ([]*Stub, error) {
@@ -135,37 +169,26 @@ func (s *searcher) processStubsParallel(query Query, stubs []*Stub) (*Result, er
 	return s.resultFromRankedAndSimilar(query, bestMatches, mostSimilar.stub)
 }
 
+// processChunk runs the sequential candidate collection over one chunk, so the
+// parallel path uses identical match/similar criteria as the sequential path.
 func (s *searcher) processChunk(query Query, chunkStubs []*Stub) chunkOutcome {
-	var (
-		bestMatch   rankedMatch
-		mostSimilar scoredStub
-	)
+	matches, mostSimilar := s.collectSequentialCandidates(query, chunkStubs)
 
-	for _, stub := range chunkStubs {
-		ranked, matched := s.evaluateRankedMatch(query, stub)
-		if matched && betterRanked(bestMatch, ranked) {
-			bestMatch = ranked
-		}
-
-		mostSimilar = pickHigherScore(mostSimilar, scoredStub{stub: stub, score: ranked.totalScore})
-	}
-
-	return chunkOutcome{bestMatch: bestMatch, mostSimilar: mostSimilar}
+	return chunkOutcome{matches: matches, mostSimilar: mostSimilar}
 }
 
-func collectChunkResults(results chan chunkOutcome, numChunks int) ([]rankedMatch, scoredStub) {
-	var (
-		bestMatches = make([]rankedMatch, 0, numChunks)
-		bestSimilar scoredStub
-	)
+func collectChunkResults(results chan chunkOutcome, numChunks int) ([]rankedMatch, similarCandidate) {
+	bestMatches := make([]rankedMatch, 0, numChunks)
+
+	var bestSimilar similarCandidate
 
 	for range numChunks {
 		result := <-results
-		if result.bestMatch.stub != nil {
-			bestMatches = append(bestMatches, result.bestMatch)
-		}
+		bestMatches = append(bestMatches, result.matches...)
 
-		bestSimilar = pickHigherScore(bestSimilar, result.mostSimilar)
+		if betterSimilar(bestSimilar, result.mostSimilar) {
+			bestSimilar = result.mostSimilar
+		}
 	}
 
 	return bestMatches, bestSimilar

@@ -270,11 +270,11 @@ func (r *Registry) Close() {
 
 func (r *Route) WithTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
 	if r == nil || r.Source == nil {
-		return ctx, func() {}
+		return ctx, func() { /* no cancel: no timeout was applied */ }
 	}
 
 	if _, hasDeadline := ctx.Deadline(); hasDeadline || r.Source.ReflectTimeout <= 0 {
-		return ctx, func() {}
+		return ctx, func() { /* no cancel: no timeout was applied */ }
 	}
 
 	return context.WithTimeout(ctx, r.Source.ReflectTimeout)

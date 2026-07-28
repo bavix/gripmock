@@ -47,6 +47,10 @@ type Stub struct {
 	Source              string        `json:"source,omitempty"`                                             // Stub source.
 	Handler             StreamHandler `json:"-"`                                                            // Custom stream handler.
 	MatchOnFirstMessage bool          `json:"matchOnFirstMessage,omitempty"`                                // Match on first msg only.
+
+	// Used is a response-only decoration set by list handlers (whether the
+	// stub has matched at least once). Ignored on input.
+	Used bool `json:"used,omitempty"`
 }
 
 // StreamHandler processes a bidirectional stream directly.

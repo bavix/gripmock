@@ -66,8 +66,7 @@ func UnaryInterceptor(logger *zerolog.Logger) grpc.UnaryServerInterceptor {
 		_ *grpc.UnaryServerInfo, // The server info.
 		handler grpc.UnaryHandler, // The handler function for the request.
 	) (any, error) {
-		// Add the logger to the context and call the handler.
-		// The logger can be accessed using grpc.GetLogger(ctx).
+		// The handler reads the logger back via zerolog.Ctx(ctx).
 		return handler(logger.WithContext(innerCtx), req)
 	}
 }

@@ -21,7 +21,6 @@ import (
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
-	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
 func (m *grpcMocker) convertToMap(msg proto.Message) map[string]any {
@@ -119,10 +118,6 @@ func (m *grpcMocker) newQueryBidi(ctx context.Context) stuber.QueryBidi {
 	return query
 }
 
-func (m *grpcMocker) delay(ctx context.Context, delayDur types.Duration) error {
-	return delayResponse(ctx, delayDur)
-}
-
 //nolint:cyclop,funlen
 func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	inputMsg := dynamicpb.NewMessage(m.inputDesc)
@@ -153,7 +148,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 
 	found := result.Found()
 
-	if err := m.delay(stream.Context(), found.Output.Delay); err != nil {
+	if err := delayResponse(stream.Context(), found.Output.Delay); err != nil {
 		return err
 	}
 
@@ -165,17 +160,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		headers = processHeaders(md)
 	}
 
-	templateData := template.Data{
-		Request:      requestData,
-		Headers:      headers,
-		MessageIndex: 0,
-		RequestTime:  requestTime,
-		Timestamp:    requestTime,
-		State:        make(map[string]any),
-		Requests:     []any{requestData},
-		StubID:       found.ID.String(),
-		RequestID:    found.ID.String(),
-	}
+	templateData := newTemplateData(requestData, headers, 0, requestTime, []any{requestData}, found.ID.String())
 
 	if template.HasTemplatesInHeaders(outputToUse.Headers) {
 		headersCopy := deepCopyStringMap(outputToUse.Headers)
@@ -184,6 +169,15 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		}
 
 		outputToUse.Headers = headersCopy
+	}
+
+	if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
+		errorStr, err := m.templateEngine.ProcessError(outputToUse.Error, templateData)
+		if err != nil {
+			return errors.Wrap(err, "failed to process error template")
+		}
+
+		outputToUse.Error = errorStr
 	}
 
 	if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
@@ -237,7 +231,7 @@ func (m *grpcMocker) handleServerStreamOutput(
 	outputToUse stuber.Output,
 	requestTime time.Time,
 ) error {
-	err := m.handleNonArrayStreamData(stream, found)
+	err := m.handleNonArrayStreamData(stream, found, outputToUse, requestData, requestTime)
 	if err != nil {
 		return err
 	}
@@ -306,7 +300,7 @@ func (m *grpcMocker) handleStreamElement(
 		delay = d
 	}
 
-	if err := m.delay(stream.Context(), delay); err != nil {
+	if err := delayResponse(stream.Context(), delay); err != nil {
 		return err
 	}
 
@@ -317,17 +311,7 @@ func (m *grpcMocker) handleStreamElement(
 		headers = processHeaders(md)
 	}
 
-	templateData := template.Data{
-		Request:      requestData,
-		Headers:      headers,
-		MessageIndex: i,
-		RequestTime:  requestTime,
-		Timestamp:    requestTime,
-		State:        make(map[string]any),
-		Requests:     []any{requestData},
-		StubID:       found.ID.String(),
-		RequestID:    found.ID.String(),
-	}
+	templateData := newTemplateData(requestData, headers, i, requestTime, []any{requestData}, found.ID.String())
 	if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
 		return errors.Wrap(err, "failed to process dynamic templates")
 	}
@@ -345,8 +329,16 @@ func (m *grpcMocker) handleStreamElement(
 }
 
 //nolint:cyclop,funlen
-func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *stuber.Stub) error {
-	if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil {
+func (m *grpcMocker) handleNonArrayStreamData(
+	stream grpc.ServerStream,
+	found *stuber.Stub,
+	outputToUse stuber.Output,
+	requestData map[string]any,
+	requestTime time.Time,
+) error {
+	// Use outputToUse (templated headers/error already rendered by the caller),
+	// not found.Output — otherwise an error template is emitted unrendered.
+	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil {
 		return err
 	}
 
@@ -359,40 +351,36 @@ func (m *grpcMocker) handleNonArrayStreamData(stream grpc.ServerStream, found *s
 		default:
 		}
 
-		if err := m.delay(stream.Context(), found.Output.Delay); err != nil {
+		if err := delayResponse(stream.Context(), found.Output.Delay); err != nil {
 			return err
 		}
 
 		outputDataCopy := deepCopyAny(found.Output.Data)
 
+		// Render against the request the caller already consumed. A server-stream
+		// client half-closes after one message, so a fresh RecvMsg here returns
+		// EOF and would otherwise leave the data template unrendered; only a genuine
+		// follow-up message (bidi-like) overrides the captured request.
+		msgData, msgTime := requestData, requestTime
+
 		inputMsg := dynamicpb.NewMessage(m.inputDesc)
 		if err := stream.RecvMsg(inputMsg); err == nil {
-			requestTime := time.Now()
-			requestData := m.convertToMap(inputMsg)
+			msgData = m.convertToMap(inputMsg)
+			msgTime = time.Now()
+		}
 
-			headers := make(map[string]any)
-			if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
-				headers = processHeaders(md)
+		headers := make(map[string]any)
+		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+			headers = processHeaders(md)
+		}
+
+		templateData := newTemplateData(msgData, headers, 0, msgTime, []any{msgData}, found.ID.String())
+		if dataMap, ok := outputDataCopy.(map[string]any); ok {
+			if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
+				return errors.Wrap(err, "failed to process dynamic templates")
 			}
 
-			templateData := template.Data{
-				Request:      requestData,
-				Headers:      headers,
-				MessageIndex: 0,
-				RequestTime:  requestTime,
-				Timestamp:    requestTime,
-				State:        make(map[string]any),
-				Requests:     []any{requestData},
-				StubID:       found.ID.String(),
-				RequestID:    found.ID.String(),
-			}
-			if dataMap, ok := outputDataCopy.(map[string]any); ok {
-				if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
-					return errors.Wrap(err, "failed to process dynamic templates")
-				}
-
-				outputDataCopy = dataMap
-			}
+			outputDataCopy = dataMap
 		}
 
 		outputMsg, err := m.newOutputMessage(outputDataCopy)

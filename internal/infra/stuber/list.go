@@ -1,9 +1,11 @@
 package stuber
 
 import (
+	"bytes"
 	"iter"
 	"slices"
 	"sort"
+	"strings"
 )
 
 const (
@@ -18,6 +20,15 @@ type ListOptions struct {
 	Source  string
 	Service string
 	Method  string
+
+	// Query is a case-insensitive substring matched against the stub's
+	// service, method and ID. Empty means no text filter.
+	Query string
+
+	// Matchers keeps only stubs whose input declares at least one of the given
+	// matcher kinds (equals/contains/matches/glob/anyOf) — OR semantics. Empty
+	// means no matcher-kind filter.
+	Matchers []string
 
 	Session    string
 	SessionSet bool
@@ -39,6 +50,7 @@ func (b *Budgerigar) List(options ListOptions) ([]*Stub, int) {
 	return filtered, total
 }
 
+//nolint:cyclop
 func filterStubs(stubs iter.Seq[*Stub], options ListOptions) []*Stub {
 	seq := stubs
 
@@ -70,12 +82,67 @@ func filterStubs(stubs iter.Seq[*Stub], options ListOptions) []*Stub {
 		})
 	}
 
+	if options.Query != "" {
+		q := strings.ToLower(options.Query)
+		seq = whereStubs(seq, func(stub *Stub) bool {
+			return strings.Contains(strings.ToLower(stub.Service), q) ||
+				strings.Contains(strings.ToLower(stub.Method), q) ||
+				strings.Contains(strings.ToLower(stub.ID.String()), q)
+		})
+	}
+
+	if len(options.Matchers) > 0 {
+		kinds := options.Matchers
+		seq = whereStubs(seq, func(stub *Stub) bool {
+			for _, kind := range kinds {
+				if stubHasMatcherKind(stub, kind) {
+					return true
+				}
+			}
+
+			return false
+		})
+	}
+
 	filtered := slices.Collect(seq)
 	if filtered == nil {
 		return []*Stub{}
 	}
 
 	return filtered
+}
+
+// stubHasMatcherKind reports whether the stub's input (unary Input, stream
+// Inputs, or their AnyOf alternatives) declares the given matcher kind.
+func stubHasMatcherKind(stub *Stub, kind string) bool {
+	if inputHasKind(stub.Input, kind) {
+		return true
+	}
+
+	for _, in := range stub.Inputs {
+		if inputHasKind(in, kind) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func inputHasKind(in InputData, kind string) bool {
+	switch kind {
+	case "equals":
+		return len(in.Equals) > 0
+	case "contains":
+		return len(in.Contains) > 0
+	case "matches":
+		return len(in.Matches) > 0
+	case "glob":
+		return len(in.Glob) > 0
+	case "anyOf":
+		return len(in.AnyOf) > 0
+	default:
+		return false
+	}
 }
 
 func whereStubs(seq iter.Seq[*Stub], keep func(*Stub) bool) iter.Seq[*Stub] {
@@ -103,31 +170,63 @@ func paginateStubs(stubs []*Stub, options ListOptions) []*Stub {
 	return stubs
 }
 
+// SortStubs sorts an already-materialized stub slice in place using the same
+// modes as List (ListSort* constants). Exposed for callers that filter stubs
+// outside the storage iterator (e.g. the MCP used/unused sets) yet want ordering
+// consistent with the REST /stubs listing.
+func SortStubs(stubs []*Stub, mode string) {
+	sortStubs(stubs, mode)
+}
+
 func sortStubs(stubs []*Stub, mode string) {
+	// Every mode ends in an ID tiebreak so the order is a TOTAL order. Input comes
+	// from values(), which ranges a Go map (random order each call); without the
+	// tiebreak, stubs tying on the sort key keep that random order and pagination
+	// duplicates/drops rows across independently-sorted pages.
+	byID := func(i, j int) bool {
+		return bytes.Compare(stubs[i].ID[:], stubs[j].ID[:]) < 0
+	}
+
 	less := func(i, j int) bool {
-		return stubs[i].Priority > stubs[j].Priority
+		if stubs[i].Priority != stubs[j].Priority {
+			return stubs[i].Priority > stubs[j].Priority
+		}
+
+		return byID(i, j)
 	}
 
 	switch mode {
 	case ListSortPriorityAsc:
 		less = func(i, j int) bool {
-			return stubs[i].Priority < stubs[j].Priority
+			if stubs[i].Priority != stubs[j].Priority {
+				return stubs[i].Priority < stubs[j].Priority
+			}
+
+			return byID(i, j)
 		}
 	case ListSortServiceAsc:
 		less = func(i, j int) bool {
-			if stubs[i].Service == stubs[j].Service {
-				return stubs[i].Method < stubs[j].Method
-			}
-
-			return stubs[i].Service < stubs[j].Service
-		}
-	case ListSortMethodAsc:
-		less = func(i, j int) bool {
-			if stubs[i].Method == stubs[j].Method {
+			if stubs[i].Service != stubs[j].Service {
 				return stubs[i].Service < stubs[j].Service
 			}
 
-			return stubs[i].Method < stubs[j].Method
+			if stubs[i].Method != stubs[j].Method {
+				return stubs[i].Method < stubs[j].Method
+			}
+
+			return byID(i, j)
+		}
+	case ListSortMethodAsc:
+		less = func(i, j int) bool {
+			if stubs[i].Method != stubs[j].Method {
+				return stubs[i].Method < stubs[j].Method
+			}
+
+			if stubs[i].Service != stubs[j].Service {
+				return stubs[i].Service < stubs[j].Service
+			}
+
+			return byID(i, j)
 		}
 	}
 

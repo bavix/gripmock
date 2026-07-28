@@ -13,6 +13,11 @@ import (
 const (
 	// RequestInternalFlag is a feature flag for internal requests.
 	RequestInternalFlag features.Flag = iota
+
+	// MatchInternalStubsFlag allows a query to match the reserved internal stubs
+	// (the gripmock health status). It is set ONLY by the gRPC health service so
+	// internal stubs stay invisible to user-facing search/inspect/list/MCP.
+	MatchInternalStubsFlag
 )
 
 // queryJSON is used for JSON unmarshaling to support both "data" (legacy) and "input" formats.
@@ -96,6 +101,15 @@ func (q *Query) RequestInternal() bool {
 	return q.toggles.Has(RequestInternalFlag)
 }
 
+// WithInternalStubs returns a copy of the query allowed to match internal stubs.
+// Only the gRPC health service sets this; everyone else keeps internal stubs
+// hidden (list/get/search/inspect/verify/MCP never see them).
+func WithInternalStubs(q Query) Query {
+	q.toggles |= features.New(MatchInternalStubsFlag)
+
+	return q
+}
+
 // Data returns the first input element for backward compatibility with legacy unary API.
 // Returns nil if Input is empty.
 func (q *Query) Data() map[string]any {
@@ -104,6 +118,12 @@ func (q *Query) Data() map[string]any {
 	}
 
 	return q.Input[0]
+}
+
+// allowsInternalStubs reports whether this query may match the reserved internal
+// stubs (gripmock health status). Off for every user-facing query.
+func (q *Query) allowsInternalStubs() bool {
+	return q.toggles.Has(MatchInternalStubsFlag)
 }
 
 // QueryBidi represents a query for bidirectional streaming.

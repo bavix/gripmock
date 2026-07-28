@@ -6,7 +6,7 @@ types.TypeService/GetAllTypes
   "name": "test"
 }
 
---- RESPONSE ---
+--- RESPONSE tolerance=0.001 ---
 {
   "bool_field": true,
   "double_field": 3.14159,

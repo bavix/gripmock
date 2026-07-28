@@ -111,7 +111,7 @@ func (g *ConnectRPCGateway) handleUnary(mocker *grpcMocker, a *httpStreamAdapter
 	}
 
 	resp, err := handleUnaryCore(a.ctx, a, body, mocker,
-		a.req.Header.Get("Content-Type"),
+		a.req.Header.Get(headerContentType),
 		isJSONContentType,
 		func(st *status.Status) {
 			a.writeErrorStatus(normalizeHealthError(st, mocker.serviceName))
@@ -133,7 +133,7 @@ func (g *ConnectRPCGateway) writeError(w http.ResponseWriter, code codes.Code, m
 		Details: []map[string]any{},
 	})
 
-	w.Header().Set("Content-Type", "application/connect+json")
+	w.Header().Set(headerContentType, contentTypeConnectJSON)
 	w.WriteHeader(ErrorCodeToHTTPStatus(code))
 	_, _ = w.Write(body)
 }
@@ -148,25 +148,25 @@ func (connectResponse) WriteError(w http.ResponseWriter, r *http.Request, code c
 		Details: []map[string]any{},
 	})
 
-	w.Header().Set("Content-Type", "application/connect+json")
+	w.Header().Set(headerContentType, contentTypeConnectJSON)
 	w.WriteHeader(ErrorCodeToHTTPStatus(code))
 	_, _ = w.Write(body)
 }
 
 func (connectResponse) WriteSuccess(w http.ResponseWriter, r *http.Request) {
-	ct := r.Header.Get("Content-Type")
+	ct := r.Header.Get(headerContentType)
 	if isJSONContentType(ct) {
-		w.Header().Set("Content-Type", "application/connect+json")
+		w.Header().Set(headerContentType, contentTypeConnectJSON)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("{}"))
 	} else {
-		w.Header().Set("Content-Type", "application/connect+proto")
+		w.Header().Set(headerContentType, contentTypeConnectProto)
 		w.WriteHeader(http.StatusOK)
 	}
 }
 
 func isJSONContentType(ct string) bool {
-	return ct == "application/json" || ct == "application/connect+json"
+	return ct == contentTypeJSON || ct == contentTypeConnectJSON
 }
 
 type httpStreamAdapter struct {
@@ -183,7 +183,7 @@ func (a *httpStreamAdapter) SendMsg(m any) error {
 		return nil
 	}
 
-	ct := a.req.Header.Get("Content-Type")
+	ct := a.req.Header.Get(headerContentType)
 
 	data, err := a.encodeMessage(msg, ct)
 	if err != nil {
@@ -225,7 +225,7 @@ func (a *httpStreamAdapter) RecvMsg(m any) error {
 		return io.EOF
 	}
 
-	ct := a.req.Header.Get("Content-Type")
+	ct := a.req.Header.Get(headerContentType)
 
 	if a.streaming {
 		return a.recvStreamingMessage(msg, ct)
@@ -239,16 +239,16 @@ func (a *httpStreamAdapter) sendHeader() {
 		a.mu.Lock()
 		defer a.mu.Unlock()
 
-		ct := a.req.Header.Get("Content-Type")
+		ct := a.req.Header.Get(headerContentType)
 		switch {
 		case a.streaming && isJSONContentType(ct):
-			a.w.Header().Set("Content-Type", "application/connect+json")
+			a.w.Header().Set(headerContentType, contentTypeConnectJSON)
 		case a.streaming:
-			a.w.Header().Set("Content-Type", "application/connect+proto")
+			a.w.Header().Set(headerContentType, contentTypeConnectProto)
 		case isJSONContentType(ct):
-			a.w.Header().Set("Content-Type", "application/json")
+			a.w.Header().Set(headerContentType, contentTypeJSON)
 		default:
-			a.w.Header().Set("Content-Type", "application/proto")
+			a.w.Header().Set(headerContentType, contentTypeProto)
 		}
 
 		a.w.WriteHeader(http.StatusOK)
@@ -269,7 +269,7 @@ func (a *httpStreamAdapter) recvStreamingMessage(msg proto.Message, ct string) e
 	// endpoint: treat the entire body as a single stream message.
 	// This matches gRPC-Web behaviour and improves interop with clients
 	// that do not frame every message when they only send one.
-	if ct == "application/json" || ct == "application/proto" {
+	if ct == contentTypeJSON || ct == contentTypeProto {
 		data, err := io.ReadAll(a.req.Body)
 		if err != nil {
 			return err
@@ -328,7 +328,7 @@ func (a *httpStreamAdapter) writeBody(code codes.Code, body []byte) {
 
 		_ = writeConnectFrame(a.w, body, true)
 	} else {
-		a.w.Header().Set("Content-Type", "application/connect+json")
+		a.w.Header().Set(headerContentType, contentTypeConnectJSON)
 		a.w.WriteHeader(ErrorCodeToHTTPStatus(code))
 		_, _ = a.w.Write(body)
 	}

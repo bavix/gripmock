@@ -20,6 +20,15 @@ func startServer(ctx context.Context, o *options) (Mock, error) { //nolint:iretu
 		return runRemote(ctx, o)
 	}
 
+	if len(o.protoPaths) > 0 {
+		fds, err := compileProtoFiles(ctx, o.protoPaths)
+		if err != nil {
+			return nil, err
+		}
+
+		o.appendDescriptorFiles(fds.GetFile())
+	}
+
 	if len(o.descriptorFiles) == 0 && o.mockFromAddr == "" {
 		return nil, ErrDescriptorsRequired
 	}

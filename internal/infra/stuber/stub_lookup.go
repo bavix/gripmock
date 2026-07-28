@@ -127,7 +127,7 @@ func (l *searcherSessionFallbackServiceLookup) LookupServiceAvailable(service, m
 
 func (l *searcherSessionFallbackMethodLookup) LookupMethodAvailable(method string) iter.Seq[*Stub] {
 	if !l.searcher.storage.hasMethodAvailable(method, l.session) {
-		return func(func(*Stub) bool) {}
+		return func(func(*Stub) bool) { /* empty sequence: no stubs available for this method */ }
 	}
 
 	return l.searcher.filterNotExhaustedSeq(l.searcher.storage.findByMethodAvailable(method, l.session), l.session)

@@ -2,18 +2,12 @@ package stuber
 
 import "github.com/google/uuid"
 
-// upsert inserts the given stub values into the searcher. If a stub value
-// already exists with the same key, it is updated.
-//
-// The function returns a slice of UUIDs representing the keys of the
-// inserted or updated values.
+// upsert inserts or updates stub values by ID.
 func (s *searcher) upsert(values ...*Stub) []uuid.UUID {
 	return s.storage.upsert(values...)
 }
 
-// del deletes the stub values with the given UUIDs from the searcher.
-//
-// Returns the number of stub values that were successfully deleted.
+// del deletes stubs by ID, returning the number removed.
 func (s *searcher) del(ids ...uuid.UUID) int {
 	if len(ids) == 0 {
 		return 0
@@ -54,17 +48,12 @@ func (s *searcher) delBySession(session string) int {
 	return s.storage.delBySession(session)
 }
 
-// findByID retrieves the stub value associated with the given ID from the
-// searcher.
-//
-// Returns a pointer to the Stub struct associated with the given ID, or nil
-// if not found.
+// findByID returns the stub with the given ID, or nil.
 func (s *searcher) findByID(id uuid.UUID) *Stub {
 	return s.storage.findByID(id)
 }
 
-// findBy retrieves all Stub values that match the given service and method
-// from the searcher, sorted by score in descending order.
+// findBy returns all stubs matching the service and method.
 func (s *searcher) findBy(service, method string) ([]*Stub, error) {
 	seq, err := s.storage.findAll(service, method)
 	if err != nil {
@@ -74,29 +63,21 @@ func (s *searcher) findBy(service, method string) ([]*Stub, error) {
 	return collectStubs(seq), nil
 }
 
-// clear resets the searcher.
-//
-// It clears the stubUsed map and calls the storage clear method.
+// clear resets call counts, lookup cache and storage.
 func (s *searcher) clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Clear the stubCallCount map.
 	s.stubCallCount = make(map[callCountKey]int)
 
-	// Clear lookup cache.
 	s.lookupMu.Lock()
 	s.lookupCache = make(map[string]*searcherLookup)
 	s.lookupMu.Unlock()
 
-	// Clear the storage.
 	s.storage.clear()
 }
 
-// all returns all Stub values stored in the searcher.
-//
-// Returns:
-// - []*Stub: The Stub values stored in the searcher.
+// all returns every stored stub.
 func (s *searcher) all() []*Stub {
 	return collectStubs(s.storage.values())
 }
@@ -105,10 +86,7 @@ func (s *searcher) sessions() []string {
 	return s.storage.sessionsList()
 }
 
-// used returns all Stub values that have been used by the searcher.
-//
-// Returns:
-// - []*Stub: The Stub values that have been used by the searcher.
+// used returns all stubs that have matched at least once.
 func (s *searcher) used() []*Stub {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -126,13 +104,12 @@ func (s *searcher) used() []*Stub {
 	return collectStubs(s.storage.findByIDs(seq))
 }
 
-// unused returns all Stub values that have not been used by the searcher (in any session).
+// unused returns all stubs never matched in any session.
 func (s *searcher) unused() []*Stub {
 	s.mu.RLock()
 	usedIDs := s.collectUsedIDs()
 	s.mu.RUnlock()
 
-	// Collect unused stubs in a single pass
 	var unused []*Stub
 
 	for stub := range s.storage.values() {
@@ -144,14 +121,7 @@ func (s *searcher) unused() []*Stub {
 	return unused
 }
 
-// find retrieves the Stub value associated with the given Query from the searcher.
-//
-// Parameters:
-// - query: The Query used to search for a Stub value.
-//
-// Returns:
-// - *Result: The Result containing the found Stub value (if any), or nil.
-// - error: An error if the search fails.
+// find resolves a Query to a Result (by ID, or optimized service/method search).
 func (s *searcher) find(query Query) (*Result, error) {
 	if query.ID != nil {
 		return s.searchByID(query)

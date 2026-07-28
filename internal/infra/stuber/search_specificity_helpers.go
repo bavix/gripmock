@@ -39,11 +39,13 @@ func (s *searcher) calcSpecificityUnary(stubInput InputData, queryData map[strin
 	specificity := countMatcherKeys(stubInput.Equals, fieldExistsWithNonDefaultValue)
 	specificity += countMatcherKeys(stubInput.Contains, fieldExistsWithNonDefaultValue)
 	specificity += countMatcherKeys(stubInput.Matches, fieldExistsWithNonDefaultValue)
+	specificity += countMatcherKeys(stubInput.Glob, fieldExistsWithNonDefaultValue)
 
 	for _, alt := range stubInput.AnyOf {
 		specificity += countMatcherKeys(alt.Equals, fieldExistsWithNonDefaultValue)
 		specificity += countMatcherKeys(alt.Contains, fieldExistsWithNonDefaultValue)
 		specificity += countMatcherKeys(alt.Matches, fieldExistsWithNonDefaultValue)
+		specificity += countMatcherKeys(alt.Glob, fieldExistsWithNonDefaultValue)
 	}
 
 	return specificity

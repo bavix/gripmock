@@ -270,3 +270,27 @@ func TestStubWatcherTestSuite(t *testing.T) {
 	t.Parallel()
 	suite.Run(t, new(StubWatcherTestSuite))
 }
+
+// Regression: stopAll called t.Stop() on armed timers without balancing their
+// wg.Add, so wg.Wait deadlocked whenever a debounce timer was pending (or a path
+// was re-modified within the debounce window). stopAll must return promptly.
+func TestDebouncerStopAllDoesNotHangWithPendingTimers(t *testing.T) {
+	t.Parallel()
+
+	ch := make(chan string, 1)
+	d := newDebouncer(ch)
+
+	d.add("a")
+	d.add("b")
+	d.add("a") // re-add stops the first "a" timer (must be wg-balanced)
+
+	done := make(chan struct{})
+
+	go func() { d.stopAll(); close(done) }()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("stopAll hung — wg.Wait deadlocked on stopped timers")
+	}
+}

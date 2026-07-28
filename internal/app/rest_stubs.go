@@ -3,6 +3,7 @@ package app
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
@@ -85,22 +86,82 @@ func (h *RestServer) ListUnusedStubs(w http.ResponseWriter, r *http.Request) {
 	h.writeResponse(r.Context(), w, h.budgerigar.Unused())
 }
 
+// ValidateStub dry-runs validation over the posted stubs without persisting them.
+func (h *RestServer) ValidateStub(w http.ResponseWriter, r *http.Request) {
+	byt, err := httputil.RequestBody(r)
+	if err != nil {
+		h.responseError(r.Context(), w, err)
+
+		return
+	}
+
+	var inputs []*stuber.Stub
+
+	if err := jsondecoder.UnmarshalSlice(byt, &inputs); err != nil {
+		h.responseError(r.Context(), w, err)
+
+		return
+	}
+
+	for _, stub := range inputs {
+		if err := h.validateStub(stub); err != nil {
+			h.validationError(r.Context(), w, err)
+
+			return
+		}
+	}
+
+	raw, err := json.Marshal(inputs)
+	if err != nil {
+		h.responseError(r.Context(), w, err)
+
+		return
+	}
+
+	var result []map[string]any
+	if err := json.Unmarshal(raw, &result); err != nil {
+		h.responseError(r.Context(), w, err)
+
+		return
+	}
+
+	zeroID := uuid.Nil.String()
+	for i := range result {
+		if id, ok := result[i]["id"]; ok && id == zeroID {
+			delete(result[i], "id")
+		}
+	}
+
+	h.writeResponse(r.Context(), w, result)
+}
+
 // ListStubs returns all stubs, optionally filtered by source.
 func (h *RestServer) ListStubs(w http.ResponseWriter, r *http.Request, params rest.ListStubsParams) {
 	stubs, total := h.budgerigar.List(listOptionsFromParams(params))
 	w.Header().Set("X-Total-Count", strconv.Itoa(total))
 
-	h.writeResponse(r.Context(), w, stubs)
+	// Decorate shallow copies with the used flag — storage stays untouched.
+	usedIDs := h.budgerigar.UsedIDs()
+	out := make([]stuber.Stub, len(stubs))
+
+	for i, s := range stubs {
+		out[i] = *s
+		_, out[i].Used = usedIDs[s.ID]
+	}
+
+	h.writeResponse(r.Context(), w, out)
 }
 
 func listOptionsFromParams(params rest.ListStubsParams) stuber.ListOptions {
 	options := stuber.ListOptions{
-		Source:  stringFromPtr(params.Source),
-		Service: stringFromPtr(params.Service),
-		Method:  stringFromPtr(params.Method),
-		Sort:    stringFromPtr(params.Sort),
-		Limit:   intFromPtr(params.Limit),
-		Offset:  intFromPtr(params.Offset),
+		Source:   stringFromPtr(params.Source),
+		Service:  stringFromPtr(params.Service),
+		Method:   stringFromPtr(params.Method),
+		Query:    stringFromPtr(params.Q),
+		Matchers: parseMatcherKinds(stringFromPtr(params.Matcher)),
+		Sort:     stringFromPtr(params.Sort),
+		Limit:    intFromPtr(params.Limit),
+		Offset:   intFromPtr(params.Offset),
 	}
 
 	if params.Session != nil {
@@ -109,6 +170,29 @@ func listOptionsFromParams(params rest.ListStubsParams) stuber.ListOptions {
 	}
 
 	return options
+}
+
+// parseMatcherKinds splits a comma-separated matcher filter into known kinds,
+// dropping unknown tokens. Empty input yields no filter.
+func parseMatcherKinds(s string) []string {
+	if s == "" {
+		return nil
+	}
+
+	valid := map[string]struct{}{
+		"equals": {}, "contains": {}, "matches": {}, "glob": {}, "anyOf": {},
+	}
+
+	var out []string
+
+	for part := range strings.SplitSeq(s, ",") {
+		kind := strings.TrimSpace(part)
+		if _, ok := valid[kind]; ok {
+			out = append(out, kind)
+		}
+	}
+
+	return out
 }
 
 // PurgeStubs removes all stubs.

@@ -41,10 +41,6 @@ func newProcessor(initialImports []string, remoteClient RemoteClient) *processor
 	}
 }
 
-func (p *processor) Cleanup() error {
-	return nil
-}
-
 //nolint:funcorder
 func (p *processor) process(ctx context.Context, paths []string) error {
 	logger := zerolog.Ctx(ctx)

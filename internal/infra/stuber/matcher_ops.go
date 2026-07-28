@@ -48,7 +48,9 @@ func globMatch(expected map[string]any, actual any) bool {
 	}
 
 	for key, pattern := range expected {
-		actualValue, exists := actualMap[key]
+		// Use the same snake_case/camelCase key resolution as equals, so a glob
+		// keyed user_id matches a query field serialized as userId.
+		actualValue, exists := findValueWithVariations(actualMap, key)
 		if !exists {
 			return false
 		}

@@ -2,6 +2,29 @@ package stuber
 
 import "slices"
 
+// inputHasConditions reports whether an input element carries a real matcher
+// requirement. AnyOf counts only when at least one alternative actually declares
+// a field matcher — an anyOf of empty alternatives imposes no requirement.
+func inputHasConditions(e InputData) bool {
+	return len(e.Equals) > 0 ||
+		len(e.Contains) > 0 ||
+		len(e.Matches) > 0 ||
+		len(e.Glob) > 0 ||
+		slices.ContainsFunc(e.AnyOf, anyOfElementHasFields)
+}
+
+// anyOfElementHasFields reports whether an alternative sets any matcher entries
+// (len-based: an empty {} matcher is not a requirement).
+func anyOfElementHasFields(alt AnyOfElement) bool {
+	return len(alt.Equals) > 0 || len(alt.Contains) > 0 || len(alt.Matches) > 0 || len(alt.Glob) > 0
+}
+
+// anyOfElementDeclares reports whether an alternative declares any matcher map
+// (nil-based: an empty {} still counts as a declaration).
+func anyOfElementDeclares(alt AnyOfElement) bool {
+	return alt.Equals != nil || alt.Contains != nil || alt.Matches != nil || alt.Glob != nil
+}
+
 // fastMatchV2 is an ultra-optimized version of matchV2.
 //
 //nolint:cyclop
@@ -28,8 +51,9 @@ func (s *searcher) fastMatchV2(query Query, stub *Stub) bool {
 	// Handle Input (unary) - stub uses Input
 	// Stub with no input conditions matches any query (including empty)
 	if len(query.Input) == 0 {
-		// Empty query - check if stub can handle empty input
-		return len(stub.Input.Equals) == 0 && len(stub.Input.Contains) == 0 && len(stub.Input.Matches) == 0
+		// Empty query - a stub matches only if it has no input conditions at all
+		// (glob/anyOf included, else a glob-only stub falsely matches empty input).
+		return !inputHasConditions(stub.Input)
 	}
 
 	if len(query.Input) == 1 {
@@ -102,11 +126,13 @@ func (s *searcher) fastRankV2(query Query, stub *Stub) float64 {
 func (s *searcher) fastMatchInput(queryData map[string]any, stubInput InputData) bool {
 	// Fast path: empty query
 	if len(queryData) == 0 {
-		return len(stubInput.Equals) == 0 && len(stubInput.Contains) == 0 && len(stubInput.Matches) == 0 && len(stubInput.AnyOf) == 0
+		return !inputHasConditions(stubInput)
 	}
 
-	// Skip single-condition fast paths when AnyOf is present — fall through to full matchInput.
-	if len(stubInput.AnyOf) == 0 {
+	// Skip single-condition fast paths when AnyOf or Glob is present — either would
+	// be silently dropped here, so fall through to the full matchInput which ANDs
+	// every matcher kind (glob included).
+	if len(stubInput.AnyOf) == 0 && len(stubInput.Glob) == 0 {
 		// Ultra-fast path: equals only (most common case)
 		if len(stubInput.Equals) > 0 && len(stubInput.Contains) == 0 && len(stubInput.Matches) == 0 {
 			return equals(stubInput.Equals, queryData, stubInput.IgnoreArrayOrder)
@@ -131,31 +157,24 @@ func (s *searcher) fastMatchInput(queryData map[string]any, stubInput InputData)
 //
 //nolint:cyclop
 func (s *searcher) fastMatchStream(queryStream []map[string]any, stubStream []InputData) bool {
-	// Check if stub has any input matching conditions
-	hasConditions := false
-
-	for _, stubElement := range stubStream {
-		if stubElement.Equals != nil || stubElement.Contains != nil || stubElement.Matches != nil {
-			hasConditions = true
-
-			break
-		}
+	// A stub element "declares" a matcher when the map is non-nil (even if empty:
+	// an empty {} means "explicitly matches empty input"). Glob and AnyOf count
+	// too — for AnyOf only when some alternative actually declares a matcher, so a
+	// glob- or anyOf-only stream stub is recognized while an empty anyOf is not.
+	declaresMatcher := func(e InputData) bool {
+		return e.Equals != nil || e.Contains != nil || e.Matches != nil || e.Glob != nil ||
+			slices.ContainsFunc(e.AnyOf, anyOfElementDeclares)
 	}
 
-	if !hasConditions {
+	if !slices.ContainsFunc(stubStream, declaresMatcher) {
 		return false // Stub has no input matching conditions
 	}
 
-	// Fast path: empty query stream
+	// Fast path: empty query stream. A stub matches only if no element REQUIRES
+	// fields (an empty {} matcher still matches empty input). Reuse
+	// inputHasConditions so the len-based kind list stays a single source of truth.
 	if len(queryStream) == 0 {
-		// Check if all stub stream elements can handle empty input
-		for _, stubElement := range stubStream {
-			if len(stubElement.Equals) > 0 || len(stubElement.Contains) > 0 || len(stubElement.Matches) > 0 {
-				return false
-			}
-		}
-
-		return true
+		return !slices.ContainsFunc(stubStream, inputHasConditions)
 	}
 
 	// Fast path: single element
@@ -182,16 +201,18 @@ func (s *searcher) fastMatchStream(queryStream []map[string]any, stubStream []In
 func (s *searcher) fastRankInput(queryData map[string]any, stubInput InputData) float64 {
 	// Fast path: empty query
 	if len(queryData) == 0 {
-		// Check if stub can handle empty input
-		if len(stubInput.Equals) == 0 && len(stubInput.Contains) == 0 && len(stubInput.Matches) == 0 {
+		// Check if stub can handle empty input (glob/anyOf included, else a
+		// non-matching glob/anyOf-only stub scores a spurious perfect 1.0).
+		if !inputHasConditions(stubInput) {
 			return 1.0 // Perfect match for empty input
 		}
 
 		return 0
 	}
 
-	// Fast path: equals only
-	if len(stubInput.Equals) > 0 && len(stubInput.Contains) == 0 && len(stubInput.Matches) == 0 {
+	// Fast path: equals only (Glob/AnyOf absent — otherwise glob/anyOf rank is dropped).
+	if len(stubInput.Equals) > 0 && len(stubInput.Contains) == 0 && len(stubInput.Matches) == 0 &&
+		len(stubInput.Glob) == 0 && len(stubInput.AnyOf) == 0 {
 		if equals(stubInput.Equals, queryData, stubInput.IgnoreArrayOrder) {
 			return 1.0
 		}
@@ -218,16 +239,15 @@ func (s *searcher) fastRankStreamBroadcast(queryStream []map[string]any, pattern
 
 // fastRankStream is an ultra-optimized version of rankStreamElements.
 func (s *searcher) fastRankStream(queryStream []map[string]any, stubStream []InputData) float64 {
-	// Fast path: empty query stream
+	// Fast path: empty query stream — a stub ranks 1.0 only if no element requires
+	// fields. Mirror fastMatchStream (glob/anyOf included) so match and rank agree;
+	// otherwise a glob-/anyOf-only stub that does NOT match still scores a perfect 1.0.
 	if len(queryStream) == 0 {
-		// Check if all stub stream elements can handle empty input
-		for _, stubElement := range stubStream {
-			if len(stubElement.Equals) > 0 || len(stubElement.Contains) > 0 || len(stubElement.Matches) > 0 {
-				return 0
-			}
+		if slices.ContainsFunc(stubStream, inputHasConditions) {
+			return 0
 		}
 
-		return 1.0 // Perfect match for empty input
+		return 1.0
 	}
 
 	// Fast path: single element

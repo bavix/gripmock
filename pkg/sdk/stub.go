@@ -238,6 +238,8 @@ func Merge(inputs ...Matcher) Matcher {
 }
 
 // mergeInputData combines multiple InputData values (internal helper).
+//
+//nolint:cyclop
 func mergeInputData(inputs ...stuber.InputData) stuber.InputData {
 	out := stuber.InputData{}
 
@@ -268,6 +270,18 @@ func mergeInputData(inputs ...stuber.InputData) stuber.InputData {
 			}
 
 			maps.Copy(out.Matches, in.Matches)
+		}
+
+		if len(in.Glob) > 0 {
+			if out.Glob == nil {
+				out.Glob = make(map[string]any, len(in.Glob))
+			}
+
+			maps.Copy(out.Glob, in.Glob)
+		}
+
+		if len(in.AnyOf) > 0 {
+			out.AnyOf = append(out.AnyOf, in.AnyOf...)
 		}
 	}
 

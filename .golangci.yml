@@ -15,6 +15,10 @@ linters:
     - wrapcheck  # too strict for this project - requires wrapping all errors
     - gomoddirectives  # allow local replace for pkg/plugins
     - goconst # too strict for this project - requires big refactoring
+  exclusions:
+    generated: strict  # skip *.gen.go (oapi-codegen) entirely
+    paths:
+      - node_modules  # third-party JS deps ship stray Go files
   settings:
     lll:
       tab-width: 1

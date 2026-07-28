@@ -17,13 +17,23 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
+const (
+	errMsgProcessTemplates = "failed to process dynamic templates"
+	errMsgConvertToDynamic = "failed to convert response to dynamic message"
+)
+
+//nolint:funlen
 func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 	queryBidi := m.newQueryBidi(stream.Context())
 
-	// Check for custom handler
+	// Check for a custom handler on ANY matching stub, not just stubs[0] —
+	// FindBy ordering is not guaranteed, so a handler on a later stub would
+	// otherwise be silently ignored.
 	stubs, _ := m.budgerigar.FindBy(queryBidi.Service, queryBidi.Method)
-	if len(stubs) > 0 && stubs[0].Handler != nil {
-		return stubs[0].Handler(stream.Context(), stream)
+	for _, st := range stubs {
+		if st.Handler != nil {
+			return st.Handler(stream.Context(), stream)
+		}
 	}
 
 	bidiResult, err := m.budgerigar.FindByQueryBidi(queryBidi)
@@ -57,13 +67,13 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 
 		err := receiveStreamMessage(recordingStream, inputMsg)
 		if errors.Is(err, io.EOF) {
-			m.recordBidiStream(recordingStream, bidiResult, requestTime, "")
+			m.recordBidiStream(recordingStream, bidiResult, requestTime, nil)
 
 			return nil
 		}
 
 		if err != nil {
-			m.recordBidiStream(recordingStream, bidiResult, requestTime, err.Error())
+			m.recordBidiStream(recordingStream, bidiResult, requestTime, err)
 
 			if status.Code(err) == codes.NotFound {
 				return newBidiStreamFallbackError(err, []*dynamicpb.Message{inputMsg})
@@ -73,7 +83,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 		}
 
 		if err := m.processBidiStreamMessage(recordingStream, bidiResult, inputMsg); err != nil {
-			m.recordBidiStream(recordingStream, bidiResult, requestTime, err.Error())
+			m.recordBidiStream(recordingStream, bidiResult, requestTime, err)
 
 			return err
 		}
@@ -92,13 +102,20 @@ func (m *grpcMocker) processBidiStreamMessage(
 	if err != nil {
 		wrappedErr := errors.Wrap(err, "failed to process bidirectional message")
 		if errors.Is(err, stuber.ErrStubNotFound) {
+			// Once mock responses have been emitted for earlier messages, do NOT
+			// fall back to the proxy — replaying only the failing message upstream
+			// would interleave a mock response with a proxied one on one stream.
+			if rec, ok := stream.(*bidiRecordingStream); ok && len(rec.getResponses()) > 0 {
+				return status.Error(codes.NotFound, wrappedErr.Error())
+			}
+
 			return newBidiStreamFallbackError(wrappedErr, []*dynamicpb.Message{inputMsg})
 		}
 
 		return wrappedErr
 	}
 
-	if err := m.delay(stream.Context(), stub.Output.Delay); err != nil {
+	if err := delayResponse(stream.Context(), stub.Output.Delay); err != nil {
 		return err
 	}
 
@@ -120,17 +137,7 @@ func (m *grpcMocker) sendBidiResponse(
 		headers = processHeaders(md)
 	}
 
-	td := template.Data{
-		Request:      requestData,
-		Headers:      headers,
-		MessageIndex: bidiResult.GetMessageIndex(),
-		RequestTime:  requestTime,
-		Timestamp:    requestTime,
-		State:        make(map[string]any),
-		Requests:     []any{requestData},
-		StubID:       stub.ID.String(),
-		RequestID:    stub.ID.String(),
-	}
+	td := newTemplateData(requestData, headers, bidiResult.GetMessageIndex(), requestTime, []any{requestData}, stub.ID.String())
 
 	outputToUse, err := m.prepareBidiOutput(stub, td)
 	if err != nil {
@@ -153,22 +160,28 @@ func (m *grpcMocker) sendBidiResponse(
 		recStream.setStubID(stub.ID)
 	}
 
-	return m.sendBidiResponses(stream, outputToUse, stub, bidiResult.GetMessageIndex(), requestTime)
+	return m.sendBidiResponses(stream, outputToUse, stub, bidiResult.GetMessageIndex())
 }
 
 func (m *grpcMocker) recordBidiStream(
 	stream *bidiRecordingStream,
 	_ *stuber.BidiResult,
 	requestTime time.Time,
-	errMsg string,
+	callErr error,
 ) {
 	if m.recorder == nil {
 		return
 	}
 
+	// Derive the real gRPC status code from the error (a configured Output.Error
+	// /Output.Code arrives as a status error), rather than hardcoding Unknown.
 	code := uint32(codes.OK)
-	if errMsg != "" {
-		code = uint32(codes.Unknown)
+
+	errMsg := ""
+
+	if callErr != nil {
+		code = uint32(status.Code(callErr))
+		errMsg = callErr.Error()
 	}
 
 	requests := stream.getRequests()
@@ -183,6 +196,7 @@ func (m *grpcMocker) recordBidiStream(
 		Code:      code,
 		Error:     errMsg,
 		StubID:    stream.getStubID(),
+		ElapsedMS: time.Since(requestTime).Milliseconds(),
 		Timestamp: requestTime,
 	}
 
@@ -202,7 +216,7 @@ func (m *grpcMocker) prepareBidiOutput(stub *stuber.Stub, templateData template.
 	outputDataCopy := deepCopyAny(stub.Output.Data)
 	if dataMap, ok := outputDataCopy.(map[string]any); ok {
 		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
-			return stuber.Output{}, errors.Wrap(err, "failed to process dynamic templates")
+			return stuber.Output{}, errors.Wrap(err, errMsgProcessTemplates)
 		}
 
 		outputDataCopy = dataMap
@@ -256,41 +270,17 @@ func (m *grpcMocker) sendBidiResponses(
 	output stuber.Output,
 	stub *stuber.Stub,
 	messageIndex int,
-	requestTime time.Time,
 ) error {
 	if len(output.Stream) > 0 {
-		return m.sendStreamResponses(stream, output, stub, messageIndex, requestTime)
+		return m.sendStreamResponses(stream, output, stub, messageIndex)
 	}
 
-	outputDataCopy := deepCopyAny(output.Data)
-
-	headers := make(map[string]any)
-	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
-		headers = processHeaders(md)
-	}
-
-	templateData := template.Data{
-		Request:      nil,
-		Headers:      headers,
-		MessageIndex: messageIndex,
-		RequestTime:  requestTime,
-		Timestamp:    requestTime,
-		State:        make(map[string]any),
-		Requests:     []any{},
-		StubID:       stub.ID.String(),
-		RequestID:    stub.ID.String(),
-	}
-	if dataMap, ok := outputDataCopy.(map[string]any); ok {
-		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
-			return errors.Wrap(err, "failed to process dynamic templates")
-		}
-
-		outputDataCopy = dataMap
-	}
-
-	outputMsg, err := m.newOutputMessage(outputDataCopy)
+	// output.Data was already rendered by prepareBidiOutput with the correct
+	// request/index context. Re-rendering here (with an empty Request/State)
+	// would reinterpret any literal {{...}} in the result and degrade templates.
+	outputMsg, err := m.newOutputMessage(output.Data)
 	if err != nil {
-		return errors.Wrap(err, "failed to convert response to dynamic message")
+		return errors.Wrap(err, errMsgConvertToDynamic)
 	}
 
 	return sendStreamMessage(stream, outputMsg)
@@ -301,22 +291,20 @@ func (m *grpcMocker) sendStreamResponses(
 	output stuber.Output,
 	stub *stuber.Stub,
 	messageIndex int,
-	requestTime time.Time,
 ) error {
 	if stub.IsClientStream() {
-		return m.sendClientStreamResponses(stream, output, stub, messageIndex, requestTime)
+		return m.sendClientStreamResponses(stream, output, stub, messageIndex)
 	}
 
 	return m.sendServerStreamResponses(stream, output)
 }
 
-//nolint:cyclop,funlen
+//nolint:cyclop
 func (m *grpcMocker) sendClientStreamResponses(
 	stream grpc.ServerStream,
 	output stuber.Output,
 	stub *stuber.Stub,
 	messageIndex int,
-	requestTime time.Time,
 ) error {
 	streamLen := len(output.Stream)
 	if streamLen == 0 {
@@ -355,33 +343,15 @@ func (m *grpcMocker) sendClientStreamResponses(
 			delayDelay = d
 		}
 
-		if err := m.delay(stream.Context(), delayDelay); err != nil {
+		if err := delayResponse(stream.Context(), delayDelay); err != nil {
 			return err
 		}
 
-		headers := make(map[string]any)
-		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
-			headers = processHeaders(md)
-		}
-
-		templateData := template.Data{
-			Request:      nil,
-			Headers:      headers,
-			MessageIndex: messageIndex,
-			RequestTime:  requestTime,
-			Timestamp:    requestTime,
-			State:        make(map[string]any),
-			Requests:     []any{},
-			StubID:       stub.ID.String(),
-			RequestID:    stub.ID.String(),
-		}
-		if err := m.templateEngine.ProcessMap(streamDataCopy, templateData); err != nil {
-			return errors.Wrap(err, "failed to process dynamic templates")
-		}
-
+		// Stream elements were already rendered once by prepareBidiOutput with the
+		// correct request context; do not re-render with an empty context here.
 		outputMsg, err := m.newOutputMessage(streamDataCopy)
 		if err != nil {
-			return errors.Wrap(err, "failed to convert response to dynamic message")
+			return errors.Wrap(err, errMsgConvertToDynamic)
 		}
 
 		if err := sendStreamMessage(stream, outputMsg); err != nil {
@@ -408,7 +378,7 @@ func (m *grpcMocker) sendServerStreamResponses(
 			}
 
 			if delayDelay != 0 {
-				if err := m.delay(stream.Context(), delayDelay); err != nil {
+				if err := delayResponse(stream.Context(), delayDelay); err != nil {
 					return err
 				}
 			}
@@ -416,7 +386,7 @@ func (m *grpcMocker) sendServerStreamResponses(
 
 		outputMsg, err := m.newOutputMessage(streamDataCopy)
 		if err != nil {
-			return errors.Wrap(err, "failed to convert response to dynamic message")
+			return errors.Wrap(err, errMsgConvertToDynamic)
 		}
 
 		if err := sendStreamMessage(stream, outputMsg); err != nil {

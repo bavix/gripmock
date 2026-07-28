@@ -63,8 +63,19 @@ func (b *EffectBuilder) Build() *Effect {
 		"service": b.stub.Service,
 		"method":  b.stub.Method,
 	}
+
+	output := map[string]any{}
 	if data, ok := b.stub.Output.Data.(map[string]any); ok && len(data) > 0 {
-		stubData["output"] = map[string]any{"data": b.stub.Output.Data}
+		output["data"] = b.stub.Output.Data
+	}
+
+	if b.stub.Output.Code != nil {
+		output["code"] = uint32(*b.stub.Output.Code)
+		output["error"] = b.stub.Output.Error
+	}
+
+	if len(output) > 0 {
+		stubData["output"] = output
 	}
 
 	if len(b.matcher.Equals) > 0 {

@@ -148,9 +148,8 @@ func (br *BidiResult) removeStubFromMatchingByIndex(index int) {
 // findBidi retrieves a BidiResult for bidirectional streaming with the given QueryBidi.
 // For bidirectional streaming, each message is treated as a separate unary request.
 func (s *searcher) findBidi(query QueryBidi) (*BidiResult, error) {
-	// Check if the QueryBidi has an ID field
+	// ID-based queries can't use bidi streaming — fall back to regular search.
 	if query.ID != nil {
-		// For ID-based queries, we can't use bidirectional streaming - fallback to regular search
 		return s.searchByIDBidi(query)
 	}
 
@@ -170,7 +169,6 @@ func (s *searcher) searchByIDBidi(query QueryBidi) (*BidiResult, error) {
 
 	lookup, found := s.lookupVisibleByID(query.Session, *query.ID)
 	if found == nil {
-		// Return an error if the Stub value is not found
 		return nil, ErrServiceNotFound
 	}
 

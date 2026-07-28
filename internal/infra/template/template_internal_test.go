@@ -6,6 +6,61 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Regression: unescapeTemplateQuotes ran unconditionally and stripped \" inside
+// every {{...}}, corrupting a legitimate escaped quote in a string literal. It
+// must now only apply as a fallback when the raw template fails to parse.
+func TestRenderPreservesEscapedQuoteInLiteral(t *testing.T) {
+	t.Parallel()
+
+	engine := New(t.Context(), nil)
+
+	// The string literal "a\"b" is valid template syntax and parses as-is to a"b.
+	// The old unconditional unescape stripped the \" to "a"b" → parse error.
+	out, err := engine.Render(`{{ printf "%s" "a\"b" }}`, Data{})
+	require.NoError(t, err)
+	require.Equal(t, `a"b`, out)
+}
+
+// IsTemplateString must require the closing delimiter to come AFTER the opening.
+func TestIsTemplateStringDelimiterOrder(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, IsTemplateString("Hello {{.Request.name}}"))
+	require.False(t, IsTemplateString("a }} b {{ c"), "closing before opening is not a template")
+	require.False(t, IsTemplateString("no delimiters"))
+	require.False(t, IsTemplateString(""), "empty string")
+	require.False(t, IsTemplateString("{{ unterminated"), "opening only")
+}
+
+// The unescape fallback only fires when the raw template fails to parse: a
+// JSON-escaped template (\" reached the engine literally) must still render.
+func TestRenderUnescapeFallback(t *testing.T) {
+	t.Parallel()
+
+	engine := New(t.Context(), nil)
+
+	out, err := engine.Render(`{{ printf "%s" \"x\" }}`, Data{})
+	require.NoError(t, err)
+	require.Equal(t, "x", out)
+}
+
+// Regression: a global normalizeArgs wrapper spread a single array argument into
+// positional args for EVERY builtin, so unary helpers like json/upper got only
+// the first element. Array-spread now lives inside the math aggregates only.
+func TestArrayArgHandling(t *testing.T) {
+	t.Parallel()
+
+	engine := New(t.Context(), nil)
+
+	sum, err := engine.Render(`{{ sum .Request.nums }}`, Data{Request: map[string]any{"nums": []any{1, 2, 3}}})
+	require.NoError(t, err)
+	require.Equal(t, "6", sum, "aggregate must flatten a single array arg")
+
+	arr, err := engine.Render(`{{ json .Request.items }}`, Data{Request: map[string]any{"items": []any{"a", "b", "c"}}})
+	require.NoError(t, err)
+	require.Equal(t, `["a","b","c"]`, arr, "unary helper must receive the whole array")
+}
+
 //nolint:funlen
 func TestEngineRender(t *testing.T) {
 	t.Parallel()

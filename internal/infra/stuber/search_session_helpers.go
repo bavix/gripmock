@@ -34,7 +34,7 @@ func (s *searcher) filterExhaustedStubs(stubs []*Stub, session string) []*Stub {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	filtered := stubs[:0]
+	filtered := make([]*Stub, 0, len(stubs))
 	for _, stub := range stubs {
 		if s.notExhausted(stub, session) {
 			filtered = append(filtered, stub)
@@ -74,7 +74,7 @@ func (s *searcher) notExhausted(stub *Stub, session string) bool {
 // Session empty: only global stubs (stub.Session == "").
 // Session non-empty: global stubs + stubs for that session.
 func filterBySession(stubs []*Stub, session string) []*Stub {
-	filtered := stubs[:0]
+	filtered := make([]*Stub, 0, len(stubs))
 	for _, stub := range stubs {
 		if isStubVisibleForSession(stub.Session, session) {
 			filtered = append(filtered, stub)

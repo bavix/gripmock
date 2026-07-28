@@ -20,7 +20,6 @@ func newEngine(reg plugins.Registry) *engine {
 }
 
 func (e *engine) Execute(ctx context.Context, name string, data []byte) ([]byte, error) {
-	// Check if data contains template markers
 	if !containsTemplateMarkers(data) {
 		return data, nil
 	}
@@ -98,9 +97,7 @@ func getFunctions(ctx context.Context, reg plugins.Registry) template.FuncMap {
 	for name, fn := range raw {
 		if typed, ok := fn.(plugins.Func); ok && typed != nil {
 			out[name] = func(args ...any) (any, error) {
-				callArgs := normalizeArgs(args)
-
-				return typed(ctx, callArgs...)
+				return typed(ctx, args...)
 			}
 
 			continue
@@ -110,27 +107,6 @@ func getFunctions(ctx context.Context, reg plugins.Registry) template.FuncMap {
 	}
 
 	return out
-}
-
-// normalizeArgs normalizes arguments for template functions.
-func normalizeArgs(args []any) []any {
-	if len(args) != 1 {
-		return args
-	}
-
-	switch v := args[0].(type) {
-	case []any:
-		return v
-	case []float64:
-		out := make([]any, len(v))
-		for i, val := range v {
-			out[i] = val
-		}
-
-		return out
-	default:
-		return args
-	}
 }
 
 // executeStaticTemplate executes a static template function at load time.
@@ -197,11 +173,11 @@ func isNumericOrJSON(s string) bool {
 	if s == "" {
 		return false
 	}
-	// Check if it's a JSON object/array
+
 	if strings.HasPrefix(s, "{") || strings.HasPrefix(s, "[") {
 		return true
 	}
-	// Check if it's a number
+
 	return strings.Contains(s, ".") || strings.HasPrefix(s, "-")
 }
 

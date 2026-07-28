@@ -345,13 +345,18 @@ func mcpHistoryList(h *RestServer, args map[string]any) (map[string]any, error) 
 		return nil, err
 	}
 
-	records := filterHistory(h, history.FilterOpts{
+	offset, err := mcpIntArg(args, "offset", 0)
+	if err != nil {
+		return nil, err
+	}
+
+	records, total := filterHistoryWindow(h, history.FilterOpts{
 		Service: service,
 		Method:  method,
 		Session: session,
-	}, limit)
+	}, limit, offset)
 
-	return map[string]any{"records": records}, nil
+	return map[string]any{"records": records, "total": total}, nil
 }
 
 func mcpHistoryErrors(h *RestServer, args map[string]any) (map[string]any, error) {

@@ -188,3 +188,37 @@ func newListSortPaginateFixture() *Budgerigar {
 
 	return b
 }
+
+func TestBudgerigarListQueryFilter(t *testing.T) {
+	t.Parallel()
+
+	b := NewBudgerigar()
+	b.PutMany(
+		&Stub{Service: "ecommerce.EcommerceService", Method: "GetProduct", Input: InputData{}, Output: Output{}},
+		&Stub{Service: "ecommerce.EcommerceService", Method: "CreateOrder", Input: InputData{}, Output: Output{}},
+		&Stub{Service: "grpc.health.v1.Health", Method: "Check", Input: InputData{}, Output: Output{}},
+	)
+
+	// Case-insensitive match on method.
+	stubs, total := b.List(ListOptions{Query: "getprod"})
+	require.Equal(t, 1, total)
+	require.Equal(t, "GetProduct", stubs[0].Method)
+
+	// Match on service substring.
+	_, total = b.List(ListOptions{Query: "ECOMMERCE"})
+	require.Equal(t, 2, total)
+
+	// Match by stub ID prefix.
+	all, _ := b.List(ListOptions{})
+	id := all[0].ID.String()
+	_, total = b.List(ListOptions{Query: id[:8]})
+	require.Equal(t, 1, total)
+
+	// No match.
+	_, total = b.List(ListOptions{Query: "nope-nothing"})
+	require.Equal(t, 0, total)
+
+	// Query composes with other filters.
+	_, total = b.List(ListOptions{Query: "ecommerce", Method: "CreateOrder"})
+	require.Equal(t, 1, total)
+}

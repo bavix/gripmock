@@ -58,6 +58,10 @@ type Config struct {
 	Gateway    ServerConfig `envPrefix:"GATEWAY_"`
 	GatewayTLS TLSConfig    `envPrefix:"GATEWAY_TLS_"`
 
+	// CORS configuration (applied to REST API).
+	CORSAllowedOrigins []string `env:"CORS_ALLOWED_ORIGINS" envDefault:"*"`
+	CORSAllowedMethods []string `env:"CORS_ALLOWED_METHODS" envDefault:"GET,POST,DELETE,PATCH"`
+
 	// OpenTelemetry configuration.
 	OTel OTelConfig `envPrefix:"OTEL_"`
 

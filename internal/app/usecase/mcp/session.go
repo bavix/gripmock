@@ -24,7 +24,8 @@ func ToolUsesSession(toolName string) bool {
 	switch toolName {
 	case ToolDashboard, ToolOverview, ToolInfo, ToolHistoryList, ToolHistoryErrors, ToolVerifyCalls, ToolDebugCall:
 		return true
-	case ToolStubsUpsert, ToolStubsList, ToolStubsPurge, ToolStubsSearch, ToolStubsInspect, ToolStubsUsed, ToolStubsUnused:
+	case ToolStubsUpsert, ToolStubsValidate, ToolStubsList, ToolStubsPurge,
+		ToolStubsSearch, ToolStubsInspect, ToolStubsUsed, ToolStubsUnused, ToolMockCall:
 		return true
 	default:
 		return false

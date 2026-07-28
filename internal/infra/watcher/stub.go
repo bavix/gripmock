@@ -28,12 +28,16 @@ type debouncer struct {
 	mu     sync.Mutex
 	timers map[string]*time.Timer
 	output chan<- string
+	done   chan struct{}
+	closed bool
+	wg     sync.WaitGroup
 }
 
 func newDebouncer(output chan<- string) *debouncer {
 	return &debouncer{
 		timers: make(map[string]*time.Timer),
 		output: output,
+		done:   make(chan struct{}),
 	}
 }
 
@@ -41,28 +45,69 @@ func (d *debouncer) add(path string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	if t, ok := d.timers[path]; ok {
-		t.Stop()
+	if d.closed {
+		return
 	}
 
+	// Stop() == true means the old timer's callback will NOT run, so balance its
+	// wg.Add here — otherwise stopAll's wg.Wait would block forever on it.
+	if t, ok := d.timers[path]; ok {
+		if t.Stop() {
+			d.wg.Done()
+		}
+	}
+
+	d.wg.Add(1)
 	d.timers[path] = time.AfterFunc(100*time.Millisecond, func() { //nolint:mnd
+		defer d.wg.Done()
+
 		d.mu.Lock()
 		delete(d.timers, path)
+		closed := d.closed
 		d.mu.Unlock()
 
-		d.output <- path
+		if closed {
+			return
+		}
+
+		// Select on done so a fired timer never blocks (no consumer) or sends
+		// after shutdown; stopAll closes done and waits for in-flight sends
+		// before the output channel is closed, so this can never send on a
+		// closed channel.
+		select {
+		case d.output <- path:
+		case <-d.done:
+		}
 	})
 }
 
+// stopAll signals shutdown, stops pending timers, and blocks until every
+// in-flight timer callback has returned — so the caller may safely close the
+// output channel afterwards.
 func (d *debouncer) stopAll() {
 	d.mu.Lock()
-	defer d.mu.Unlock()
 
+	if d.closed {
+		d.mu.Unlock()
+
+		return
+	}
+
+	d.closed = true
+	close(d.done)
+
+	// Balance the wg.Add of every timer stopped before firing (its callback, and
+	// thus its wg.Done, will never run) so wg.Wait can't deadlock.
 	for _, t := range d.timers {
-		t.Stop()
+		if t.Stop() {
+			d.wg.Done()
+		}
 	}
 
 	d.timers = make(map[string]*time.Timer)
+	d.mu.Unlock()
+
+	d.wg.Wait()
 }
 
 func NewStubWatcher(
@@ -117,6 +162,10 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 	d := newDebouncer(ch)
 
 	go func() {
+		// Registered first, so it runs LAST — only after stopAll has stopped
+		// every timer and drained in-flight sends, guaranteeing no timer
+		// callback sends on ch after it is closed.
+		defer close(ch)
 		defer func() {
 			if r := recover(); r != nil {
 				zerolog.Ctx(ctx).
@@ -131,7 +180,6 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 				zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to close file watcher")
 			}
 		}()
-		defer close(ch)
 
 		for {
 			select {

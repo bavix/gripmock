@@ -89,6 +89,7 @@ func TestListRuntimeToolsContainsStubAndInspectTools(t *testing.T) {
 
 	expected := map[string]struct{}{
 		mcpusecase.ToolStubsUpsert:      {},
+		mcpusecase.ToolStubsValidate:    {},
 		mcpusecase.ToolStubsList:        {},
 		mcpusecase.ToolStubsGet:         {},
 		mcpusecase.ToolStubsDelete:      {},
@@ -98,6 +99,7 @@ func TestListRuntimeToolsContainsStubAndInspectTools(t *testing.T) {
 		mcpusecase.ToolStubsInspect:     {},
 		mcpusecase.ToolStubsUsed:        {},
 		mcpusecase.ToolStubsUnused:      {},
+		mcpusecase.ToolMockCall:         {},
 	}
 
 	seen := make(map[string]struct{}, len(tools))

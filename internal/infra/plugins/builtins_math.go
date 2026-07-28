@@ -71,7 +71,7 @@ func mathFuncs() map[string]any {
 		"sub": subtract,
 		"div": divide,
 		"mod": modulo,
-		"sum": sum,
+		"sum": add,
 		"mul": product,
 		"avg": average,
 		"min": minValue,
@@ -192,20 +192,6 @@ func modulo(values ...any) float64 {
 	return math.Mod(nums[0], nums[1])
 }
 
-func sum(values ...any) float64 {
-	nums, ok := convertAllToFloat64(values...)
-	if !ok {
-		return 0
-	}
-
-	total := 0.0
-	for _, v := range nums {
-		total += v
-	}
-
-	return total
-}
-
 func product(values ...any) float64 {
 	nums, ok := convertAllToFloat64(values...)
 	if !ok {
@@ -243,7 +229,7 @@ func minValue(values ...any) float64 {
 	minVal := nums[0]
 
 	for _, v := range nums[1:] {
-		minVal = minFloat(minVal, v)
+		minVal = min(minVal, v)
 	}
 
 	return minVal
@@ -258,13 +244,29 @@ func maxValue(values ...any) float64 {
 	maxVal := nums[0]
 
 	for _, v := range nums[1:] {
-		maxVal = maxFloat(maxVal, v)
+		maxVal = max(maxVal, v)
 	}
 
 	return maxVal
 }
 
 func convertAllToFloat64(values ...any) ([]float64, bool) {
+	// A single slice argument (e.g. {{ sum .Numbers }}) is flattened, so the math
+	// helpers accept either an array OR spread scalars ({{ sum 1 2 3 }}). This
+	// keeps the array-spread behavior local to the aggregates instead of a global
+	// wrapper that would corrupt unary helpers like {{ json .arr }}.
+	if len(values) == 1 {
+		switch v := values[0].(type) {
+		case []any:
+			values = v
+		case []float64:
+			nums := make([]float64, len(v))
+			copy(nums, v)
+
+			return nums, true
+		}
+	}
+
 	nums := make([]float64, 0, len(values))
 	for _, v := range values {
 		if f, ok := convertToFloat64(v); ok {
@@ -275,20 +277,4 @@ func convertAllToFloat64(values ...any) ([]float64, bool) {
 	}
 
 	return nums, true
-}
-
-func minFloat(a, b float64) float64 {
-	if a < b {
-		return a
-	}
-
-	return b
-}
-
-func maxFloat(a, b float64) float64 {
-	if a > b {
-		return a
-	}
-
-	return b
 }

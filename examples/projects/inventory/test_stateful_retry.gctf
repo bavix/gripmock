@@ -51,7 +51,6 @@ inventory.InventoryService/GetResourceDecorationByIPsStream
   "ips_to_decorations": {
     "10.0.0.1": {
       "decoration": "web-frontend",
-      
       //   "environment": "production"
     }
   }

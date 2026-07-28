@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -1041,6 +1042,58 @@ func TestWithHeaderMatch(t *testing.T) {
 	ctx := metadata.NewOutgoingContext(t.Context(), metadata.Pairs("token", "secret"))
 	require.NoError(t, srv.Conn().Invoke(ctx, "/test.Greeter/SayHello", in, out))
 	require.Equal(t, "authorized", out.Get(d.out.Fields().ByName("message")).String())
+}
+
+// Regression: mergeInputHeader dropped AnyOf, so WithHeader(AnyOf(...)) compiled
+// to an empty header matcher that matched every request regardless of headers.
+func TestWithHeaderAnyOfRejectsNonMatching(t *testing.T) {
+	t.Parallel()
+
+	srv, fds := newServer(t)
+	defer func() { _ = srv.Close() }()
+
+	srv.ExpectUnary("/test.Greeter/SayHello").
+		Match("name", "auth").
+		WithHeader(sdk.AnyOf(sdk.Equals("x-env", "prod"), sdk.Equals("x-env", "staging"))).
+		Return("message", "authorized")
+
+	d := resolveDesc(t, fds, "test.HelloRequest", "test.HelloReply")
+	in := dynamicpb.NewMessage(d.in)
+	in.Set(d.in.Fields().ByName("name"), protoreflect.ValueOfString("auth"))
+
+	prodCtx := metadata.NewOutgoingContext(t.Context(), metadata.Pairs("x-env", "prod"))
+	out := dynamicpb.NewMessage(d.out)
+	require.NoError(t, srv.Conn().Invoke(prodCtx, "/test.Greeter/SayHello", in, out))
+	require.Equal(t, "authorized", out.Get(d.out.Fields().ByName("message")).String())
+
+	devCtx := metadata.NewOutgoingContext(t.Context(), metadata.Pairs("x-env", "dev"))
+	require.Error(t, srv.Conn().Invoke(devCtx, "/test.Greeter/SayHello", in, dynamicpb.NewMessage(d.out)),
+		"WithHeader(AnyOf(prod, staging)) must not match x-env=dev")
+}
+
+// Regression: EffectBuilder.Build serialized only Output.Data, so an
+// Upsert(...).ReturnError(...) effect lost its code/error and the upserted stub
+// returned an empty success instead of the intended gRPC error.
+func TestUpsertEffectReturnError(t *testing.T) {
+	t.Parallel()
+
+	srv, fds := newServer(t)
+	defer func() { _ = srv.Close() }()
+
+	srv.ExpectUnary("/test.Greeter/SayHello").
+		Match("name", "trigger").
+		Effect(sdk.Upsert("test.Greeter", "SayHello").
+			Match("name", "victim").
+			ReturnError(codes.NotFound, "gone").
+			Build()).
+		Return("message", "triggered")
+
+	require.Equal(t, "triggered", getMsg(t, sayHello(t, srv, fds, "trigger")))
+
+	err := sayHelloErr(t, srv, fds, "victim")
+	require.Error(t, err)
+	require.Equal(t, codes.NotFound, status.Code(err), "upserted ReturnError effect must carry the code")
+	require.Equal(t, "gone", status.Convert(err).Message())
 }
 
 func TestDeleteStubEffect(t *testing.T) {

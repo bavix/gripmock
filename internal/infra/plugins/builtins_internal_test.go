@@ -504,8 +504,8 @@ func TestSum(t *testing.T) {
 	validArgs := []any{1, 2, 3, 4, 5}
 
 	// Act
-	validResult := sum(validArgs...)
-	emptyResult := sum()
+	validResult := add(validArgs...)
+	emptyResult := add()
 
 	// Assert
 	require.InDelta(t, 15.0, validResult, 0.001)
@@ -643,8 +643,8 @@ func TestMinFloat(t *testing.T) {
 	a2, b2 := 3.0, 2.0
 
 	// Act
-	result1 := minFloat(a1, b1)
-	result2 := minFloat(a2, b2)
+	result1 := min(a1, b1)
+	result2 := min(a2, b2)
 
 	// Assert
 	require.InDelta(t, 1.0, result1, 0.001)
@@ -659,8 +659,8 @@ func TestMaxFloat(t *testing.T) {
 	a2, b2 := 3.0, 2.0
 
 	// Act
-	result1 := maxFloat(a1, b1)
-	result2 := maxFloat(a2, b2)
+	result1 := max(a1, b1)
+	result2 := max(a2, b2)
 
 	// Assert
 	require.InDelta(t, 2.0, result1, 0.001)

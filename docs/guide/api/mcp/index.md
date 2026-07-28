@@ -31,8 +31,21 @@ Use `tools/list` to discover runtime tool metadata. Current tool surface:
 - descriptors: `descriptors_add`, `descriptors_list`
 - services: `services_list`, `services_get`, `services_methods`, `services_method`, `services_delete`
 - history/verify/debug: `history_list`, `history_errors`, `verify_calls`, `debug_call`
-- stubs: `stubs_upsert`, `stubs_list`, `stubs_get`, `stubs_delete`, `stubs_batch_delete`, `stubs_purge`, `stubs_search`, `stubs_inspect`, `stubs_used`, `stubs_unused`
+- stubs: `stubs_upsert`, `stubs_validate`, `stubs_list`, `stubs_get`, `stubs_delete`, `stubs_batch_delete`, `stubs_purge`, `stubs_search`, `stubs_inspect`, `stubs_used`, `stubs_unused`
+- invoke: `mock_call`
 - schema: `schema_stub`
+
+### Listing & pagination
+
+`stubs_list`, `stubs_used` and `stubs_unused` accept `service`, `method`, `session`, `source`, `q` (case-insensitive substring over service/method/id), `sort` (`priority_desc` default, `priority_asc`, `service_asc`, `method_asc`), plus `limit`/`offset`. Each response includes `total` — the filtered count before pagination — and every stub carries a `used` flag. `history_list` likewise accepts `limit`/`offset` and returns `total`.
+
+### Dry-run validation
+
+`stubs_validate` runs the same validation as `stubs_upsert` without persisting, returning the normalized stubs (or a JSON-RPC invalid-params error). Use it to preview exactly what an upsert would store.
+
+### Mock invocation
+
+`mock_call` matches a stub for `service`/`method`/`payload`, renders its templated response (data, headers, error) exactly as the gRPC data plane would, records the call to history, and returns the response with its status `code`/`codeName`. Protobuf shape validation and stub effects are **not** applied — for a fully faithful call (including those), invoke the gateway endpoint `POST /{service}/{method}`.
 
 ## JSON-RPC examples
 
@@ -115,6 +128,28 @@ Call tool (`stubs_inspect`):
           "to_unit": "KILOGRAMS"
         }
       ]
+    }
+  }
+}
+```
+
+Call tool (`mock_call`):
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 13,
+  "method": "tools/call",
+  "params": {
+    "name": "mock_call",
+    "arguments": {
+      "service": "unitconverter.v1.UnitConversionService",
+      "method": "ConvertWeight",
+      "payload": {
+        "value": 1,
+        "from_unit": "POUNDS",
+        "to_unit": "KILOGRAMS"
+      }
     }
   }
 }

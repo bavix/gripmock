@@ -116,9 +116,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 
 	result, err := m.budgerigar.FindByQuery(query)
 
-	// Handle both error and nil result cases with unified error formatting
 	if err != nil || (result != nil && result.Found() == nil) {
-		// Create empty result if we don't have one (error case)
 		if result == nil {
 			result = &stuber.Result{}
 		}
@@ -128,7 +126,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 
 	found := result.Found()
 
-	if err := m.delay(ctx, found.Output.Delay); err != nil {
+	if err := delayResponse(ctx, found.Output.Delay); err != nil {
 		return nil, err
 	}
 
@@ -140,17 +138,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 		headers = processHeaders(md)
 	}
 
-	templateData := template.Data{
-		Request:      requestData,
-		Headers:      headers,
-		MessageIndex: 0,
-		RequestTime:  requestTime,
-		Timestamp:    requestTime,
-		State:        make(map[string]any),
-		Requests:     []any{requestData},
-		StubID:       found.ID.String(),
-		RequestID:    found.ID.String(),
-	}
+	templateData := newTemplateData(requestData, headers, 0, requestTime, []any{requestData}, found.ID.String())
 
 	outputDataCopy := deepCopyAny(outputToUse.Data)
 
@@ -348,7 +336,6 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 	result, foundErr := m.tryV2API(messages, md)
 
 	if foundErr != nil || result == nil || result.Found() == nil {
-		// Build query for error formatting
 		query := stuber.Query{
 			Service:       m.fullServiceName,
 			Method:        m.methodName,
@@ -360,7 +347,6 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 			query.Session = sessionFromMetadata(md)
 		}
 
-		// Create empty result if we don't have one
 		if result == nil {
 			result = &stuber.Result{}
 		}
@@ -378,25 +364,18 @@ func (m *grpcMocker) tryFindStub(stream grpc.ServerStream, messages []map[string
 	return found, nil
 }
 
+//nolint:cyclop,funlen
 func (m *grpcMocker) sendClientStreamResponse(
 	stream grpc.ServerStream,
 	found *stuber.Stub,
 	messages []map[string]any,
 	requestTime time.Time,
 ) error {
-	if err := m.delay(stream.Context(), found.Output.Delay); err != nil {
+	if err := delayResponse(stream.Context(), found.Output.Delay); err != nil {
 		return err
 	}
 
-	if err := m.handleOutputError(stream.Context(), stream, found.Output); err != nil { //nolint:wrapcheck
-		return err
-	}
-
-	if err := m.setResponseHeadersAny(stream.Context(), stream, found.Output.Headers); err != nil {
-		return errors.Wrap(err, "failed to set headers")
-	}
-
-	outputDataCopy := deepCopyAny(found.Output.Data)
+	outputToUse := found.Output
 
 	headers := make(map[string]any)
 	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
@@ -408,17 +387,35 @@ func (m *grpcMocker) sendClientStreamResponse(
 		requestsAny[i] = msg
 	}
 
-	templateData := template.Data{
-		Request:      nil,
-		Headers:      headers,
-		MessageIndex: 0,
-		RequestTime:  requestTime,
-		Timestamp:    requestTime,
-		State:        make(map[string]any),
-		Requests:     requestsAny,
-		StubID:       found.ID.String(),
-		RequestID:    found.ID.String(),
+	templateData := newTemplateData(nil, headers, 0, requestTime, requestsAny, found.ID.String())
+
+	if template.HasTemplatesInHeaders(outputToUse.Headers) {
+		headersCopy := deepCopyStringMap(outputToUse.Headers)
+		if err := m.templateEngine.ProcessHeaders(headersCopy, templateData); err != nil {
+			return errors.Wrap(err, "failed to process header templates")
+		}
+
+		outputToUse.Headers = headersCopy
 	}
+
+	if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
+		errorStr, err := m.templateEngine.ProcessError(outputToUse.Error, templateData)
+		if err != nil {
+			return errors.Wrap(err, "failed to process error template")
+		}
+
+		outputToUse.Error = errorStr
+	}
+
+	// Headers must be sent before any trailer — an error status closes the stream
+	// with trailers, so setting headers afterwards fails. Effects are independent
+	// of response disposition and must run even on the error path, matching
+	// handleUnary. Therefore: headers, then data render + effects, then error.
+	if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
+		return errors.Wrap(err, "failed to set headers")
+	}
+
+	outputDataCopy := deepCopyAny(outputToUse.Data)
 	if dataMap, ok := outputDataCopy.(map[string]any); ok {
 		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
 			return errors.Wrap(err, "failed to process dynamic templates")
@@ -428,6 +425,10 @@ func (m *grpcMocker) sendClientStreamResponse(
 	}
 
 	m.applyEffects(stream.Context(), found, templateData)
+
+	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil { //nolint:wrapcheck
+		return err
+	}
 
 	outputMsg, err := m.newOutputMessage(outputDataCopy)
 	if err != nil {

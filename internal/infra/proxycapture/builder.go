@@ -91,6 +91,34 @@ func ResponseHeaders(head metadata.MD, tail metadata.MD) map[string]string {
 	return out
 }
 
+// buildProxyStub assembles the common proxy-captured stub skeleton and applies
+// the call error. clearData drops Output.Data when the call failed (true for
+// data-carrying responses, false for streamed ones).
+func buildProxyStub(
+	service, method, session string,
+	requestHeaders map[string]any,
+	input stuber.InputData,
+	inputs []stuber.InputData,
+	output stuber.Output,
+	callErr error,
+	clearData bool,
+) *stuber.Stub {
+	stub := &stuber.Stub{
+		Service: service,
+		Method:  method,
+		Session: session,
+		Source:  stuber.SourceProxy,
+		Headers: stuber.InputHeader{Equals: requestHeaders},
+		Input:   input,
+		Inputs:  inputs,
+		Output:  output,
+	}
+
+	applyStatusError(&stub.Output, callErr, clearData)
+
+	return stub
+}
+
 func BuildUnaryStub(
 	service string,
 	method string,
@@ -101,19 +129,9 @@ func BuildUnaryStub(
 	responseHeaders map[string]string,
 	callErr error,
 ) *stuber.Stub {
-	stub := &stuber.Stub{
-		Service: service,
-		Method:  method,
-		Session: session,
-		Source:  stuber.SourceProxy,
-		Headers: stuber.InputHeader{Equals: requestHeaders},
-		Input:   stuber.InputData{Equals: request},
-		Output:  stuber.Output{Data: response, Headers: responseHeaders},
-	}
-
-	applyStatusError(&stub.Output, callErr, true)
-
-	return stub
+	return buildProxyStub(service, method, session, requestHeaders,
+		stuber.InputData{Equals: request}, nil,
+		stuber.Output{Data: response, Headers: responseHeaders}, callErr, true)
 }
 
 func BuildServerStreamStub(
@@ -126,19 +144,9 @@ func BuildServerStreamStub(
 	responseHeaders map[string]string,
 	callErr error,
 ) *stuber.Stub {
-	stub := &stuber.Stub{
-		Service: service,
-		Method:  method,
-		Session: session,
-		Source:  stuber.SourceProxy,
-		Headers: stuber.InputHeader{Equals: requestHeaders},
-		Input:   stuber.InputData{Equals: request},
-		Output:  stuber.Output{Stream: toStreamOutput(responses), Headers: responseHeaders},
-	}
-
-	applyStatusError(&stub.Output, callErr, false)
-
-	return stub
+	return buildProxyStub(service, method, session, requestHeaders,
+		stuber.InputData{Equals: request}, nil,
+		stuber.Output{Stream: toStreamOutput(responses), Headers: responseHeaders}, callErr, false)
 }
 
 func BuildClientStreamStub(
@@ -151,19 +159,9 @@ func BuildClientStreamStub(
 	responseHeaders map[string]string,
 	callErr error,
 ) *stuber.Stub {
-	stub := &stuber.Stub{
-		Service: service,
-		Method:  method,
-		Session: session,
-		Source:  stuber.SourceProxy,
-		Headers: stuber.InputHeader{Equals: requestHeaders},
-		Inputs:  toInputs(requests),
-		Output:  stuber.Output{Data: response, Headers: responseHeaders},
-	}
-
-	applyStatusError(&stub.Output, callErr, true)
-
-	return stub
+	return buildProxyStub(service, method, session, requestHeaders,
+		stuber.InputData{}, toInputs(requests),
+		stuber.Output{Data: response, Headers: responseHeaders}, callErr, true)
 }
 
 func BuildBidiStub(
@@ -176,19 +174,9 @@ func BuildBidiStub(
 	responseHeaders map[string]string,
 	callErr error,
 ) *stuber.Stub {
-	stub := &stuber.Stub{
-		Service: service,
-		Method:  method,
-		Session: session,
-		Source:  stuber.SourceProxy,
-		Headers: stuber.InputHeader{Equals: requestHeaders},
-		Inputs:  toInputs(requests),
-		Output:  stuber.Output{Stream: toStreamOutputFromMaps(responses), Headers: responseHeaders},
-	}
-
-	applyStatusError(&stub.Output, callErr, false)
-
-	return stub
+	return buildProxyStub(service, method, session, requestHeaders,
+		stuber.InputData{}, toInputs(requests),
+		stuber.Output{Stream: toStreamOutputFromMaps(responses), Headers: responseHeaders}, callErr, false)
 }
 
 func toInputs(requests []map[string]any) []stuber.InputData {

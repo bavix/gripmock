@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 
 	"github.com/bavix/gripmock/v3/internal/domain/history"
@@ -56,6 +57,7 @@ type Server struct {
 type expectedCall struct {
 	service string
 	method  string
+	stubID  uuid.UUID
 	times   int
 }
 
@@ -181,13 +183,24 @@ func (s *Server) ExpectationsWereMetContext(ctx context.Context) error {
 func (s *Server) embeddedVerify(ec []expectedCall) error {
 	var errs []error
 
+	// Count matched calls PER STUB (by the recorded StubID), not per method.
+	// A stub can only match up to its Times budget, so an EXACT check is
+	// well-defined and consistent with the remote /api/verify contract
+	// (rest_dashboard.go: actual != expected). Per-method counting would break
+	// multiple stubs sharing one method (Once + Twice) and NextWillReturn
+	// chains, where the method is hit more times than any single Times(n).
+	counts := make(map[uuid.UUID]int)
+	for _, rec := range s.recorder.All() {
+		counts[rec.StubID]++
+	}
+
 	for _, e := range ec {
 		if e.times == 0 {
 			continue
 		}
 
-		got := len(s.recorder.FilterByMethod(e.service, e.method))
-		if got < e.times {
+		got := counts[e.stubID]
+		if got != e.times {
 			errs = append(errs, &ExpectationNotMetError{
 				Service:  e.service,
 				Method:   e.method,
@@ -202,6 +215,19 @@ func (s *Server) embeddedVerify(ec []expectedCall) error {
 
 //nolint:funcorder
 func (s *Server) remoteVerify(ctx context.Context, ec []expectedCall) error {
+	// Count PER STUB (by recorded StubID), identical to embeddedVerify. A
+	// per-method /api/verify would mis-count multiple stubs sharing one method
+	// (Once + Twice) and NextWillReturn chains, diverging from the embedded path.
+	calls, err := (&remoteHistory{mock: s.remote}).AllContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	counts := make(map[uuid.UUID]int)
+	for _, rec := range calls {
+		counts[rec.StubID]++
+	}
+
 	var errs []error
 
 	for _, e := range ec {
@@ -209,13 +235,12 @@ func (s *Server) remoteVerify(ctx context.Context, ec []expectedCall) error {
 			continue
 		}
 
-		client := s.remote.apiWithContext(ctx)
-		if err := client.VerifyMethodCalled(e.service, e.method, e.times); err != nil { //nolint:contextcheck
+		if got := counts[e.stubID]; got != e.times {
 			errs = append(errs, &ExpectationNotMetError{
 				Service:  e.service,
 				Method:   e.method,
 				Expected: e.times,
-				Actual:   0,
+				Actual:   got,
 			})
 		}
 	}
@@ -274,7 +299,13 @@ func (s *Server) Reset() {
 
 	if s.budgerigar != nil {
 		s.budgerigar.Clear()
-		s.recorder = &InMemoryRecorder{}
+	}
+
+	// Clear the recorder in place — the running server holds this same pointer,
+	// so swapping it would leave the server writing into an orphaned store while
+	// Called/History/verify read the fresh empty one.
+	if s.recorder != nil {
+		s.recorder.Clear()
 	}
 }
 
@@ -309,6 +340,7 @@ func (s *Server) trackExpectation(stub *stuber.Stub) {
 		s.expectations = append(s.expectations, expectedCall{
 			service: stub.Service,
 			method:  stub.Method,
+			stubID:  stub.ID,
 			times:   stub.Options.Times,
 		})
 	}

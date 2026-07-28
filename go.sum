@@ -11,8 +11,6 @@ github.com/aymanbagabas/go-osc52/v2 v2.0.1 h1:HwpRHbFMcZLEVr42D4p7XBqjyuxQH5SMiE
 github.com/aymanbagabas/go-osc52/v2 v2.0.1/go.mod h1:uYgXzlJ7ZpABp8OJ+exZzJJhRNQ2ASbcXHWsFqH8hp8=
 github.com/bavix/features v1.0.4 h1:rQj1eXmH2uaOEi2qE6NsotNAq+GBdNzZcEPGKApagGU=
 github.com/bavix/features v1.0.4/go.mod h1:qO+vPz+rN/P0ycka2qNvHhmcGufLRbQQ6xHV6npi0Ws=
-github.com/bavix/gripmock-ui v1.2.0 h1:lYCPCgb+2wIFZ9GdjYFCkfYHht5DszWEGB6NvVKiC5U=
-github.com/bavix/gripmock-ui v1.2.0/go.mod h1:XEH4YYEKL+wEDtONntoWm6JxjbVWzl7XtDYztUTBfeA=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/bmatcuk/doublestar v1.1.1/go.mod h1:UD6OnuiIn0yFxxA2le/rnRU1G4RaI4UvFv1sNto9p6w=

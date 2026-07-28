@@ -1,7 +1,6 @@
 package stuber
 
 import (
-	"errors"
 	"iter"
 
 	"github.com/google/uuid"
@@ -43,83 +42,12 @@ func (s *storageWithInternal) Internal() InternalStubStorage {
 	return s.internal
 }
 
-// findAllAvailable wraps to include internal stubs.
-func (s *storageWithInternal) findAllAvailable(service, method, session string) (iter.Seq[*Stub], error) {
-	internalSeq, internalErr := s.internal.FindAllAvailable(service, method, session)
-	if internalErr != nil && !shouldIgnoreInternalLookupErr(internalErr) {
-		return nil, internalErr
-	}
-
-	if internalErr != nil {
-		internalSeq = nil
-	}
-
-	externalSeq, externalErr := s.storage.findAllAvailable(service, method, session)
-	if externalErr != nil && internalSeq == nil {
-		return nil, externalErr
-	}
-
-	if externalErr != nil {
-		externalSeq = nil
-	}
-
-	return chainSeq(internalSeq, externalSeq), nil
-}
-
-func shouldIgnoreInternalLookupErr(err error) bool {
-	return errors.Is(err, ErrLeftNotFound) || errors.Is(err, ErrRightNotFound)
-}
-
-func chainSeq(first, second iter.Seq[*Stub]) iter.Seq[*Stub] {
-	return func(yield func(*Stub) bool) {
-		if !yieldSeq(first, yield) {
-			return
-		}
-
-		yieldSeq(second, yield)
-	}
-}
-
-func yieldSeq(seq iter.Seq[*Stub], yield func(*Stub) bool) bool {
-	if seq == nil {
-		return true
-	}
-
-	for stub := range seq {
-		if !yield(stub) {
-			return false
-		}
-	}
-
-	return true
-}
-
-// findByMethodAvailable wraps to include internal stubs.
-func (s *storageWithInternal) findByMethodAvailable(method, session string) iter.Seq[*Stub] {
-	return func(yield func(*Stub) bool) {
-		// First yield internal stubs
-		for stub := range s.internal.FindByMethodAvailable(method, session) {
-			if !yield(stub) {
-				return
-			}
-		}
-		// Then yield external stubs
-		for stub := range s.storage.findByMethodAvailable(method, session) {
-			if !yield(stub) {
-				return
-			}
-		}
-	}
-}
-
-// hasMethodAvailable checks internal + external.
-func (s *storageWithInternal) hasMethodAvailable(method, session string) bool {
-	if s.internal.HasMethodAvailable(method, session) {
-		return true
-	}
-
-	return s.storage.hasMethodAvailable(method, session)
-}
+// findAllAvailable, findByMethodAvailable and hasMethodAvailable are intentionally
+// NOT overridden here: they promote to the embedded external *storage, so the
+// general search never sees internal stubs. Internal stubs (the gripmock health
+// status) are a separate index consulted ONLY by searcher.matchInternalStubs,
+// which the gRPC health service reaches via Query.WithInternalStubs(). This keeps
+// internal state invisible to list/get/search/inspect/verify/MCP.
 
 // findByID returns stub by ID from external storage only.
 // Internal stubs are hidden from direct ID lookup to prevent collisions with user stubs.

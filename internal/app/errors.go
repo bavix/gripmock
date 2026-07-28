@@ -31,7 +31,6 @@ var (
 	ErrInvalidFileDescriptorSet     = stderrors.New("invalid FileDescriptorSet")
 	ErrRegisterDescriptorFile       = stderrors.New("failed to register descriptor file")
 
-	ErrMCPInvalidRequest  = stderrors.New("mcp invalid request")
 	ErrMCPInvalidArgument = stderrors.New("mcp invalid argument")
 	ErrMCPToolNotFound    = stderrors.New("mcp tool not found")
 )
