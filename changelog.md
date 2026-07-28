@@ -1,5 +1,19 @@
 # Changelog
 
+## v3.18.0 - 2026-07-28
+
+### What's Changed
+
+* UI v2 by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/914
+* chore(deps): bump github.com/klauspost/compress from 1.19.0 to 1.19.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/916
+* chore(deps): bump sourcemeta/jsonschema from 16.2.0 to 16.3.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/918
+* chore(deps): bump github.com/prometheus/client_golang from 1.23.2 to 1.24.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/919
+* chore(deps): bump the npm_and_yarn group across 1 directory with 4 updates by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/921
+* chore(deps): bump brace-expansion from 5.0.4 to 5.0.8 in /ui in the npm_and_yarn group across 1 directory by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/922
+* chore(deps): bump the npm_and_yarn group across 1 directory with 2 updates by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/920
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.17.3...v3.18.0
+
 ## v3.17.3 - 2026-07-19
 
 ### What's Changed
