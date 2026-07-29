@@ -1,0 +1,1 @@
+import{n as e}from"./chunk-rolldown-runtime-QTnfLwEv.js";var t=e({default:()=>n});function n(e){return new Worker(`/assets/editor.worker-tytyn86m.js`,{name:e?.name})}var r=e({default:()=>i});function i(e){return new Worker(`/assets/json.worker-Oa9UrkKE.js`,{name:e?.name})}export{t as n,r as t};
