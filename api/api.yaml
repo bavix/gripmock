@@ -997,6 +997,12 @@ components:
           items:
             type: object
             additionalProperties: true
+        responseHeaders:
+          type: object
+          description: Normalized response metadata (header+trailer) the call answered with
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
         code:
           type: integer
           description: gRPC status code (e.g., 0 for OK, 5 for NotFound)

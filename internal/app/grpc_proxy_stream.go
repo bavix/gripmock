@@ -25,20 +25,42 @@ func (m *grpcMocker) proxyServerStream(stream grpc.ServerStream, route *proxyrou
 	return m.proxyServerStreamWithRequest(stream, route, req, capture)
 }
 
-//nolint:cyclop,funlen
+//nolint:cyclop,funlen,nonamedreturns
 func (m *grpcMocker) proxyServerStreamWithRequest(
 	stream grpc.ServerStream,
 	route *proxyroutes.Route,
 	req *dynamicpb.Message,
 	capture bool,
-) error {
+) (err error) {
 	startTime := time.Now()
 
-	proxyCtx, cancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
+	desc := &grpc.StreamDesc{ServerStreams: true, ClientStreams: false}
+
+	proxyCtx, cancel := route.WithStreamTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()), desc)
 	defer cancel()
 
-	desc := &grpc.StreamDesc{ServerStreams: true, ClientStreams: false}
-	clientStream, err := route.Conn.NewStream(proxyCtx, desc, m.fullMethod) //nolint:wsl_v5
+	historyEnabled := m.recorder != nil
+
+	var (
+		requestData      map[string]any
+		historyResponses []map[string]any
+		clientStream     grpc.ClientStream
+	)
+
+	if capture || historyEnabled {
+		requestData = m.convertToMap(req)
+	}
+
+	// Single record point: covers setup failures, mid-stream errors on either
+	// side, and clean completion alike (named return err).
+	if historyEnabled {
+		defer func() {
+			m.recordProxyCall(stream.Context(), startTime, []map[string]any{requestData},
+				historyResponses, responseHeadersFromClientStream(clientStream), err)
+		}()
+	}
+
+	clientStream, err = route.Conn.NewStream(proxyCtx, desc, m.fullMethod)
 	if err != nil {
 		return err
 	}
@@ -59,7 +81,6 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 
 	responses := make([]any, 0, proxyMessagesInitCap)
 	captureCtx := m.newCaptureRequestContext(stream.Context())
-	requestData := m.convertToMap(req)
 	recordDelay := route.Source.RecordDelay
 	recorded := false
 
@@ -71,6 +92,8 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 		err = clientStream.RecvMsg(resp)
 
 		if errors.Is(err, io.EOF) {
+			err = nil
+
 			break
 		}
 
@@ -94,19 +117,16 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 
 		now := time.Now()
 
-		if recordDelay && capture {
-			entry := messageToAny(resp)
-			if m, ok := entry.(map[string]any); ok {
-				m[stuber.GripMockKey] = map[string]any{
-					"delay": now.Sub(lastMsgTime).String(),
-				}
-				responses = append(responses, m)
-				recorded = true
-			} else {
-				responses = append(responses, entry)
-			}
-		} else {
-			responses = append(responses, messageToAny(resp))
+		// Convert once per message; the capture and history buffers share the
+		// map except when capture mutates it with the delay marker.
+		if capture || historyEnabled {
+			var marked bool
+
+			responses, historyResponses, marked = bufferProxyStreamMessage(
+				responses, historyResponses, messageToAny(resp),
+				capture, historyEnabled, recordDelay, now.Sub(lastMsgTime),
+			)
+			recorded = recorded || marked
 		}
 
 		lastMsgTime = now
@@ -157,31 +177,49 @@ func (m *grpcMocker) proxyClientStream(stream grpc.ServerStream, route *proxyrou
 	return m.proxyClientStreamWithRequests(stream, route, requestsToForward, capture)
 }
 
-//nolint:cyclop,funlen
+//nolint:cyclop,funlen,nonamedreturns
 func (m *grpcMocker) proxyClientStreamWithRequests(
 	stream grpc.ServerStream,
 	route *proxyroutes.Route,
 	requestsToForward []*dynamicpb.Message,
 	capture bool,
-) error {
+) (err error) {
 	startTime := time.Now()
-
-	proxyCtx, cancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
-	defer cancel()
 
 	desc := &grpc.StreamDesc{ServerStreams: false, ClientStreams: true}
 
-	clientStream, err := route.Conn.NewStream(proxyCtx, desc, m.fullMethod)
+	proxyCtx, cancel := route.WithStreamTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()), desc)
+	defer cancel()
+
+	historyEnabled := m.recorder != nil
+	bookkeeping := capture || historyEnabled
+	requests := make([]map[string]any, 0, proxyMessagesInitCap)
+
+	var (
+		historyResponses []map[string]any
+		clientStream     grpc.ClientStream
+	)
+
+	// Single record point for every exit path (named return err).
+	if historyEnabled {
+		defer func() {
+			m.recordProxyCall(stream.Context(), startTime, requests, historyResponses,
+				responseHeadersFromClientStream(clientStream), err)
+		}()
+	}
+
+	clientStream, err = route.Conn.NewStream(proxyCtx, desc, m.fullMethod)
 	if err != nil {
 		return err
 	}
 
-	requests := make([]map[string]any, 0, proxyMessagesInitCap)
 	captureCtx := m.newCaptureRequestContext(stream.Context())
 	recordDelay := route.Source.RecordDelay
 
 	for _, req := range requestsToForward {
-		requests = append(requests, m.convertToMap(req))
+		if bookkeeping {
+			requests = append(requests, m.convertToMap(req))
+		}
 
 		if err = clientStream.SendMsg(req); err != nil {
 			return err
@@ -218,6 +256,15 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 
 	forwardUpstreamTrailer(stream, clientStream)
 
+	var respEntry any
+	if bookkeeping {
+		respEntry = messageToAny(resp)
+
+		if respMap, ok := respEntry.(map[string]any); ok && historyEnabled {
+			historyResponses = append(historyResponses, respMap)
+		}
+	}
+
 	if err = stream.SendMsg(resp); err != nil {
 		return err
 	}
@@ -227,7 +274,7 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 			func() *stuber.Stub {
 				return proxycapture.BuildClientStreamStub(
 					m.fullServiceName, m.methodName, captureCtx.sessionID,
-					requests, captureCtx.headers, messageToAny(resp),
+					requests, captureCtx.headers, respEntry,
 					responseHeadersFromClientStream(clientStream), nil,
 				)
 			},
@@ -242,28 +289,37 @@ func (m *grpcMocker) proxyBidiStream(stream grpc.ServerStream, route *proxyroute
 	return m.proxyBidiStreamWithRequests(stream, route, nil, capture)
 }
 
-//nolint:funlen
+//nolint:funlen,nonamedreturns
 func (m *grpcMocker) proxyBidiStreamWithRequests(
 	stream grpc.ServerStream,
 	route *proxyroutes.Route,
 	prefetchedRequests []*dynamicpb.Message,
 	capture bool,
-) error {
+) (err error) {
 	startTime := time.Now()
-
-	proxyCtx, proxyCancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
-	defer proxyCancel()
 
 	desc := &grpc.StreamDesc{ServerStreams: true, ClientStreams: true}
 
-	clientStream, err := route.Conn.NewStream(proxyCtx, desc, m.fullMethod)
-	if err != nil {
-		return err
-	}
+	proxyCtx, proxyCancel := route.WithStreamTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()), desc)
+	defer proxyCancel()
 
 	state := NewStreamCaptureState()
 	state.startTime = startTime
 	state.recordDelay = capture && route.Source.RecordDelay
+
+	var clientStream grpc.ClientStream
+
+	// Single record point for every exit path, including NewStream failure.
+	if m.recorder != nil {
+		defer func() {
+			m.recordBidiProxyHistory(stream, clientStream, startTime, state, err)
+		}()
+	}
+
+	clientStream, err = route.Conn.NewStream(proxyCtx, desc, m.fullMethod)
+	if err != nil {
+		return err
+	}
 
 	captureCtx := m.newCaptureRequestContext(stream.Context())
 
@@ -295,20 +351,11 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 
 	if capture {
 		requests, responses := state.Snapshot()
-
 		needGlobalDelay := route.Source.RecordDelay && !state.HasTimedResponses()
 		m.captureBidiResult(clientStream, captureCtx, requests, responses, firstErr, secondErr, needGlobalDelay, time.Since(startTime))
 	}
 
-	if firstErr != nil {
-		return firstErr
-	}
-
-	if secondErr != nil {
-		return secondErr
-	}
-
-	return nil
+	return selectCaptureError(firstErr, secondErr)
 }
 
 func trySendErr(ch chan<- error, err error) {
@@ -442,4 +489,70 @@ func forwardUpstreamTrailer(stream grpc.ServerStream, clientStream grpc.ClientSt
 			}
 		}
 	}
+}
+
+// bufferProxyStreamMessage appends one converted upstream message to the
+// capture and history buffers. The buffers share the map except when capture
+// mutates it with the delay marker (history then keeps a clean copy). Returns
+// marked=true when a delay marker was written.
+func bufferProxyStreamMessage(
+	responses []any,
+	historyResponses []map[string]any,
+	entry any,
+	capture, historyEnabled, recordDelay bool,
+	delay time.Duration,
+) ([]any, []map[string]any, bool) {
+	entryMap, isMap := entry.(map[string]any)
+	marked := false
+
+	if historyEnabled && isMap && len(historyResponses) < maxHistoryStreamMsgs {
+		if capture && recordDelay {
+			historyResponses = append(historyResponses, deepCopyMapAny(entryMap))
+		} else {
+			historyResponses = append(historyResponses, entryMap)
+		}
+	}
+
+	if capture {
+		if recordDelay && isMap {
+			entryMap[stuber.GripMockKey] = map[string]any{"delay": delay.String()}
+			marked = true
+		}
+
+		responses = append(responses, entry)
+	}
+
+	return responses, historyResponses, marked
+}
+
+// recordBidiProxyHistory writes a proxied bidi call into history with the
+// capture-delay markers stripped from response copies. Snapshots the capture
+// state itself so callers pay nothing when history is disabled.
+func (m *grpcMocker) recordBidiProxyHistory(
+	stream grpc.ServerStream,
+	clientStream grpc.ClientStream,
+	startTime time.Time,
+	state *StreamCaptureState,
+	callErr error,
+) {
+	if m.recorder == nil {
+		return
+	}
+
+	requests, responses := state.Snapshot()
+
+	historyResponses := make([]map[string]any, 0, min(len(responses), maxHistoryStreamMsgs))
+
+	for _, r := range responses {
+		if len(historyResponses) == maxHistoryStreamMsgs {
+			break
+		}
+
+		clean := deepCopyMapAny(r)
+		stuber.ExtractGripMockDelay(clean)
+		historyResponses = append(historyResponses, clean)
+	}
+
+	m.recordProxyCall(stream.Context(), startTime, requests, historyResponses,
+		responseHeadersFromClientStream(clientStream), callErr)
 }

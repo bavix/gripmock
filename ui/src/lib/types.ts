@@ -121,6 +121,7 @@ export interface CallRecord {
   requests?: Record<string, unknown>[];
   response?: Record<string, unknown>;
   responses?: Record<string, unknown>[];
+  responseHeaders?: Record<string, string>;
   code: number;
   error?: string;
   elapsedMs?: number;

@@ -3,13 +3,15 @@ import { byTimestampDesc } from '../lib/format';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInfiniteHistory, useHistoryErrorCount } from '../hooks/useHistory';
 import { useStore } from '../lib/store';
-import { Search, Copy, Fingerprint, Globe, Bug, ExternalLink } from 'lucide-react';
+import { Search, Copy, Fingerprint, Globe, Bug, ExternalLink, Plus } from 'lucide-react';
 import { colors } from '../lib/theme';
 import { DataTable } from '../components/table/DataTable';
 import type { ColumnDef } from '@tanstack/react-table';
 import { type CallRecord, isCallOk } from '../lib/types';
 import { grpcCodeName } from '../lib/grpc';
 import { inspectLink } from '../lib/stub';
+import { stashClone } from '../lib/clone';
+import { stubFromCall } from '../features/stubs/stubFromCall';
 import { CallStatusBadge } from '../components/shared/CallStatusBadge';
 
 
@@ -155,9 +157,17 @@ export function HistoryList() {
               </div>
             </div>
 
+            {r.responseHeaders && Object.keys(r.responseHeaders).length > 0 && (
+              <div>
+                <div className="section-title" style={{ marginBottom: 3 }}>Response headers</div>
+                <pre className="json-block">{JSON.stringify(r.responseHeaders, null, 2)}</pre>
+              </div>
+            )}
+
             <div style={{ display: 'flex', gap: 6 }}>
               <button onClick={() => inspectCall(r)} className="btn btn-sm"><Bug size={12} /> Inspect this call</button>
               {r.stubId && <button onClick={() => navigate(`/stubs/${r.stubId}`)} className="btn btn-sm"><ExternalLink size={12} /> Open stub</button>}
+              <button onClick={() => { stashClone(stubFromCall(r)); navigate('/stubs/create?clone=1'); }} className="btn btn-sm"><Plus size={12} /> Create stub from call</button>
               <button onClick={() => navigator.clipboard.writeText(grpcurl(r))} className="btn btn-sm"><Copy size={12} /> Copy grpcurl</button>
             </div>
           </div>

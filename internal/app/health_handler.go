@@ -218,7 +218,10 @@ func (s *mockableHealthServer) proxyWatch(
 	stream healthgrpc.Health_WatchServer,
 	route *proxyroutes.Route,
 ) error {
-	proxyCtx, cancel := route.WithTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()))
+	proxyCtx, cancel := route.WithStreamTimeout(
+		proxyroutes.ForwardIncomingMetadata(stream.Context()),
+		&grpc.StreamDesc{ServerStreams: true},
+	)
 	defer cancel()
 
 	startTime := time.Now()

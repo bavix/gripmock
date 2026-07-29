@@ -280,6 +280,18 @@ func (r *Route) WithTimeout(ctx context.Context) (context.Context, context.Cance
 	return context.WithTimeout(ctx, r.Source.ReflectTimeout)
 }
 
+// WithStreamTimeout applies the route timeout only to streams that cannot
+// outlive a single request-response exchange. Server-streaming (and bidi)
+// calls may legitimately stay open past any per-call timeout, so the context
+// is returned unchanged for them.
+func (r *Route) WithStreamTimeout(ctx context.Context, desc *grpc.StreamDesc) (context.Context, context.CancelFunc) {
+	if desc != nil && desc.ServerStreams {
+		return ctx, func() { /* no cancel: no timeout was applied */ }
+	}
+
+	return r.WithTimeout(ctx)
+}
+
 func ForwardIncomingMetadata(ctx context.Context) context.Context {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok || len(md) == 0 {

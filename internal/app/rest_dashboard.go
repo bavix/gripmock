@@ -150,16 +150,8 @@ func (h *RestServer) ListHistory(w http.ResponseWriter, r *http.Request, params 
 	h.writeResponse(r.Context(), w, out)
 }
 
-func historyCallRecordToRest(c history.CallRecord) rest.CallRecord {
-	r := rest.CallRecord{
-		Service: new(c.Service),
-		Method:  new(c.Method),
-	}
-
-	if c.StubID != uuid.Nil {
-		r.StubId = &c.StubID
-	}
-
+// restCallMessages maps request/response payloads and headers onto the REST record.
+func restCallMessages(c history.CallRecord, r *rest.CallRecord) {
 	if len(c.Requests) > 0 {
 		r.Requests = &c.Requests
 		r.Request = &c.Requests[0]
@@ -173,6 +165,23 @@ func historyCallRecordToRest(c history.CallRecord) rest.CallRecord {
 	} else if c.Response != nil {
 		r.Response = &c.Response
 	}
+
+	if len(c.ResponseHeaders) > 0 {
+		r.ResponseHeaders = c.ResponseHeaders
+	}
+}
+
+func historyCallRecordToRest(c history.CallRecord) rest.CallRecord {
+	r := rest.CallRecord{
+		Service: new(c.Service),
+		Method:  new(c.Method),
+	}
+
+	if c.StubID != uuid.Nil {
+		r.StubId = &c.StubID
+	}
+
+	restCallMessages(c, &r)
 
 	if c.Error != "" {
 		r.Error = &c.Error

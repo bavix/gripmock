@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"iter"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -22,10 +23,14 @@ type CallRecord struct {
 	Requests  []map[string]any `json:"requests,omitempty"`  // For streaming calls with multiple messages.
 	Response  map[string]any   `json:"response,omitempty"`  // Deprecated: use Responses.
 	Responses []map[string]any `json:"responses,omitempty"` // For streaming calls with multiple messages.
-	Code      uint32           `json:"code,omitempty"`      // gRPC status code (e.g., codes.OK, codes.NotFound).
-	Error     string           `json:"error,omitempty"`
-	ElapsedMS int64            `json:"elapsedMs,omitempty"` // Handler duration in milliseconds.
-	Timestamp time.Time        `json:"timestamp"`
+	// ResponseHeaders holds normalized response metadata (header+trailer) the
+	// call answered with — a stub's Output.Headers or an upstream's metadata
+	// when the call was proxied. Used to prefill stubs from recorded traffic.
+	ResponseHeaders map[string]string `json:"responseHeaders,omitempty"`
+	Code            uint32            `json:"code,omitempty"` // gRPC status code (e.g., codes.OK, codes.NotFound).
+	Error           string            `json:"error,omitempty"`
+	ElapsedMS       int64             `json:"elapsedMs,omitempty"` // Handler duration in milliseconds.
+	Timestamp       time.Time         `json:"timestamp"`
 }
 
 // Recorder records gRPC calls for inspection and verification.
@@ -167,6 +172,7 @@ func freshTruncatedMarker() map[string]any {
 func redactRecord(c CallRecord, keys map[string]struct{}) CallRecord {
 	c.Requests = redactMaps(c.Requests, keys)
 	c.Responses = redactMaps(c.Responses, keys)
+	c.ResponseHeaders = redactStringMap(c.ResponseHeaders, keys)
 
 	if c.Request != nil {
 		c.Request = redactMap(c.Request, keys)
@@ -195,8 +201,29 @@ func cloneRecordMessages(c CallRecord) CallRecord {
 	c.Response = cloneMap(c.Response)
 	c.Requests = cloneMaps(c.Requests)
 	c.Responses = cloneMaps(c.Responses)
+	c.ResponseHeaders = maps.Clone(c.ResponseHeaders)
 
 	return c
+}
+
+// redactStringMap clones the header map, replacing values whose keys are
+// configured for redaction (headers can carry tokens and cookies too).
+func redactStringMap(m map[string]string, keys map[string]struct{}) map[string]string {
+	if m == nil {
+		return nil
+	}
+
+	out := make(map[string]string, len(m))
+
+	for k, v := range m {
+		if _, redact := keys[strings.ToLower(k)]; redact {
+			out[k] = redactedValue
+		} else {
+			out[k] = v
+		}
+	}
+
+	return out
 }
 
 // mapEach applies fn to each message map, returning a new slice. A nil/empty

@@ -7,8 +7,8 @@ async function configureWorkers() {
   if (configured) return;
   configured = true;
   try {
-    const ew = (await import('monaco-editor/esm/vs/editor/editor.worker.js?worker')).default;
-    const jw = (await import('monaco-editor/esm/vs/language/json/json.worker.js?worker')).default;
+    const ew = (await import('monaco-editor/editor/editor.worker.js?worker')).default;
+    const jw = (await import('monaco-editor/languages/features/json/json.worker.js?worker')).default;
     (self as any).MonacoEnvironment = {
       getWorker(_: string, label: string) {
         return label === 'json' ? new jw() : new ew();
@@ -16,10 +16,13 @@ async function configureWorkers() {
     };
     // Bundle monaco locally; without this the loader fetches it from cdn.jsdelivr.net
     // at runtime and the editor breaks in offline/air-gapped environments.
-    // edcore.main + json contribution only — the root/editor.main entries would
-    // also pull css/html/ts languages and their workers (~2MB extra in the binary).
-    const monaco = await import('monaco-editor/esm/vs/editor/edcore.main.js');
-    await import('monaco-editor/esm/vs/language/json/monaco.contribution.js');
+    // editor.api + register.all + json register only (monaco 0.56 layout;
+    // the esm/vs/* deep paths and edcore.main are gone) — the editor.main entry
+    // would also pull every language definition and the css/html/ts workers
+    // (~2MB extra in the binary).
+    const monaco = await import('monaco-editor/editor/editor.api.js');
+    await import('monaco-editor/features/register.all.js');
+    await import('monaco-editor/languages/features/json/register.js');
     loader.config({ monaco });
   } catch (e) { console.error('Monaco workers init failed:', e); }
 }
