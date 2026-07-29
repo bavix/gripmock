@@ -24,7 +24,7 @@
     "react": "^19.2",
     "react-dom": "^19.2",
     "react-router-dom": "^7.6.0",
-    "recharts": "^2.15.0",
+    "recharts": "^3.10.1",
     "tailwindcss": "^4.3.0",
     "typescript": "^6.0",
     "vite": "^8.1",
