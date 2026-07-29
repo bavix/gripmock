@@ -40,7 +40,7 @@
     "@types/react": "^19.2",
     "@types/react-dom": "^19.2",
     "@typescript-eslint/eslint-plugin": "^8.64.0",
-    "@typescript-eslint/parser": "^8.64.0",
+    "@typescript-eslint/parser": "^8.65.0",
     "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1",
     "eslint-plugin-react-hooks": "^7.0",
