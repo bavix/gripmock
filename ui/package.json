@@ -22,7 +22,7 @@
     "lucide-react": "^1.24.0",
     "monaco-editor": "^0.55.0",
     "react": "^19.2",
-    "react-dom": "^19.2",
+    "react-dom": "^19.2.8",
     "react-router-dom": "^7.6.0",
     "recharts": "^2.15.0",
     "tailwindcss": "^4.3.0",
