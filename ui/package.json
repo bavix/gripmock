@@ -17,7 +17,7 @@
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/react-query": "^5.101.0",
     "@tanstack/react-table": "^8.21.0",
-    "@vitejs/plugin-react": "^6.0",
+    "@vitejs/plugin-react": "^6.0.4",
     "js-yaml": "^5.2.2",
     "lucide-react": "^1.24.0",
     "monaco-editor": "^0.55.0",
