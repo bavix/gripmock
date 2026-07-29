@@ -20,7 +20,7 @@
     "@vitejs/plugin-react": "^6.0",
     "js-yaml": "^5.2.2",
     "lucide-react": "^1.24.0",
-    "monaco-editor": "^0.55.0",
+    "monaco-editor": "^0.56.0",
     "react": "^19.2",
     "react-dom": "^19.2",
     "react-router-dom": "^7.6.0",
