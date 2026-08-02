@@ -252,7 +252,7 @@ func (s *mockableHealthServer) proxyWatch(
 				stream.SetTrailer(trailer)
 			}
 
-			respHeaders := responseHeadersFromMetadata(nil, clientStream.Trailer())
+			respHeaders := responseHeadersFromClientStream(clientStream)
 			s.captureProxyHealthStub(
 				stream.Context(), req, healthMethodWatch,
 				nil, responses, recvErr, respHeaders, route, time.Since(startTime),

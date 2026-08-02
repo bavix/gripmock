@@ -1,10 +1,13 @@
 package app
 
 import (
+	"context"
+	"errors"
 	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -168,6 +171,51 @@ func TestProtoToJSON(t *testing.T) {
 		got := protoToJSON(msg)
 		require.NotNil(t, got)
 		require.Contains(t, string(got), "hello")
+	})
+}
+
+var errFakeStreamBroken = errors.New("stream broken")
+
+type fakeClientStream struct {
+	header    metadata.MD
+	headerErr error
+	trailer   metadata.MD
+}
+
+func (s *fakeClientStream) Header() (metadata.MD, error) { return s.header, s.headerErr }
+func (s *fakeClientStream) Trailer() metadata.MD         { return s.trailer }
+func (s *fakeClientStream) CloseSend() error             { return nil }
+func (s *fakeClientStream) Context() context.Context     { return context.Background() }
+func (s *fakeClientStream) SendMsg(any) error            { return nil }
+func (s *fakeClientStream) RecvMsg(any) error            { return nil }
+
+func TestResponseHeadersFromClientStream(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil stream", func(t *testing.T) {
+		t.Parallel()
+
+		require.Nil(t, responseHeadersFromClientStream(nil))
+	})
+
+	t.Run("header and trailer merged", func(t *testing.T) {
+		t.Parallel()
+
+		got := responseHeadersFromClientStream(&fakeClientStream{
+			header:  metadata.Pairs("x-header", "h"),
+			trailer: metadata.Pairs("x-trailer", "t"),
+		})
+		require.Equal(t, map[string]string{"x-header": "h", "x-trailer": "t"}, got)
+	})
+
+	t.Run("header error falls back to trailer", func(t *testing.T) {
+		t.Parallel()
+
+		got := responseHeadersFromClientStream(&fakeClientStream{
+			headerErr: errFakeStreamBroken,
+			trailer:   metadata.Pairs("x-trailer", "t"),
+		})
+		require.Equal(t, map[string]string{"x-trailer": "t"}, got)
 	})
 }
 
