@@ -195,11 +195,20 @@ func buildDescriptorSet(services map[string][]string) *descriptorpb.FileDescript
 	return &descriptorpb.FileDescriptorSet{File: []*descriptorpb.FileDescriptorProto{file}}
 }
 
-func TestMultiProxyWithLocalDescriptorsSharedBehavior(t *testing.T) {
+func TestMultiProxyWithLocalDescriptorsResolvesPerSource(t *testing.T) {
 	t.Parallel()
 
-	client := &fakeRemoteClient{failAll: true}
+	client := &fakeRemoteClient{sets: map[string]*descriptorpb.FileDescriptorSet{
+		"upstream1:4111": buildDescriptorSet(map[string][]string{
+			"greeter": {"SayHello"},
+		}),
+		"upstream2:4222": buildDescriptorSet(map[string][]string{
+			"orders": {"CreateOrder"},
+		}),
+	}}
 
+	// Shared local descriptors carry no per-upstream attribution, so with
+	// more than one proxy each source is resolved via reflection.
 	local := []*descriptorpb.FileDescriptorSet{
 		buildDescriptorSet(map[string][]string{
 			"greeter": {"SayHello"},
@@ -219,7 +228,7 @@ func TestMultiProxyWithLocalDescriptorsSharedBehavior(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(r.Close)
 
-	require.Equal(t, 0, client.calls)
+	require.Equal(t, 2, client.calls)
 
 	greeterRoute := r.RouteByMethod("/greeter/SayHello")
 	require.NotNil(t, greeterRoute)
@@ -227,7 +236,7 @@ func TestMultiProxyWithLocalDescriptorsSharedBehavior(t *testing.T) {
 
 	ordersRoute := r.RouteByMethod("/orders/CreateOrder")
 	require.NotNil(t, ordersRoute)
-	require.Equal(t, "upstream1:4111", ordersRoute.Source.ReflectAddress)
+	require.Equal(t, "upstream2:4222", ordersRoute.Source.ReflectAddress)
 }
 
 func TestMultiProxyWithoutLocalDescriptorsUsesReflection(t *testing.T) {
@@ -599,35 +608,35 @@ func TestWithStreamTimeoutSkipsServerStreams(t *testing.T) {
 
 	route := &Route{Source: &protosetdom.Source{ReflectTimeout: time.Second}}
 
-	// Server-streaming (and bidi) calls may outlive any per-call timeout:
+	// Streaming calls of any kind may outlive a per-call timeout:
 	// the context must come back without a deadline.
 	for _, desc := range []*grpc.StreamDesc{
 		{ServerStreams: true, ClientStreams: false},
 		{ServerStreams: true, ClientStreams: true},
+		{ServerStreams: false, ClientStreams: true},
 	} {
 		ctx, cancel := route.WithStreamTimeout(context.Background(), desc)
 		t.Cleanup(cancel)
 
 		_, hasDeadline := ctx.Deadline()
-		require.False(t, hasDeadline, "server-streaming call must not get a deadline")
+		require.False(t, hasDeadline, "streaming call must not get a deadline")
 	}
 }
 
-func TestWithStreamTimeoutAppliesToNonServerStreams(t *testing.T) {
+func TestWithStreamTimeoutAppliesToNonStreams(t *testing.T) {
 	t.Parallel()
 
 	route := &Route{Source: &protosetdom.Source{ReflectTimeout: time.Second}}
 
 	for _, desc := range []*grpc.StreamDesc{
 		nil,
-		{ServerStreams: false, ClientStreams: true},
 		{ServerStreams: false, ClientStreams: false},
 	} {
 		ctx, cancel := route.WithStreamTimeout(context.Background(), desc)
 		t.Cleanup(cancel)
 
 		_, hasDeadline := ctx.Deadline()
-		require.True(t, hasDeadline, "non-server-streaming call must keep the route timeout")
+		require.True(t, hasDeadline, "non-streaming call must keep the route timeout")
 	}
 }
 

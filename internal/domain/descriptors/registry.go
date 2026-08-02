@@ -12,6 +12,7 @@ import (
 type Registry struct {
 	mu    sync.RWMutex
 	files map[string]protoreflect.FileDescriptor // path -> file
+	gen   uint64                                 // bumped on every mutation; lets consumers cache derived views
 }
 
 // NewRegistry creates an empty registry.
@@ -25,6 +26,7 @@ func (r *Registry) Register(fd protoreflect.FileDescriptor) {
 	defer r.mu.Unlock()
 
 	r.files[fd.Path()] = fd
+	r.gen++
 }
 
 // UnregisterByPath removes a file by path.
@@ -34,6 +36,7 @@ func (r *Registry) UnregisterByPath(path string) bool {
 
 	if _, ok := r.files[path]; ok {
 		delete(r.files, path)
+		r.gen++
 
 		return true
 	}
@@ -54,6 +57,7 @@ func (r *Registry) UnregisterByService(serviceID string) int {
 		for i := range services.Len() {
 			if string(services.Get(i).FullName()) == serviceID {
 				delete(r.files, path)
+				r.gen++
 
 				removed++
 
@@ -63,6 +67,14 @@ func (r *Registry) UnregisterByService(serviceID string) int {
 	}
 
 	return removed
+}
+
+// Generation returns a counter that changes on every mutation.
+func (r *Registry) Generation() uint64 {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	return r.gen
 }
 
 // RangeFiles calls f for each registered file.
