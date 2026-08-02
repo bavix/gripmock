@@ -110,6 +110,9 @@ type CallRecord struct {
 	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
 	Response *map[string]any `json:"response,omitempty"`
 
+	// ResponseHeaders Normalized response metadata (header+trailer) the call answered with
+	ResponseHeaders map[string]string `json:"responseHeaders,omitempty"`
+
 	// Responses Response messages for streaming calls (server stream, bidi stream)
 	Responses *[]map[string]any `json:"responses,omitempty"`
 	Service   *string           `json:"service,omitempty"`

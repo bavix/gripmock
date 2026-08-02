@@ -19,7 +19,7 @@ export interface StubFormData {
 export const INPUT_MODES = ['equals', 'contains', 'matches', 'glob', 'anyOf'] as const;
 export const HEADER_MODES = ['equals', 'contains', 'matches', 'anyOf'] as const;
 // First truthy matcher key from `kinds`, else `fallback`. Replaces nested ternaries.
-export function pickKind(a: Record<string, unknown>, kinds: readonly string[], fallback: string): string {
+function pickKind(a: Record<string, unknown>, kinds: readonly string[], fallback: string): string {
   return kinds.find((k) => a[k]) ?? fallback;
 }
 
@@ -33,14 +33,14 @@ export function empty(): StubFormData {
   };
 }
 
-export function isBadJson(s: string): boolean {
+function isBadJson(s: string): boolean {
   const t = (s ?? '').trim();
   if (!t || t === '{}' || t === '[]') return false;
   try { JSON.parse(t); return false; } catch { return true; }
 }
 
 // Editors read by buildBody that must contain valid JSON.
-export const JSON_FIELDS: [keyof StubFormData, string][] = [
+const JSON_FIELDS: [keyof StubFormData, string][] = [
   ['inputEquals', 'input equals'], ['inputContains', 'input contains'], ['inputMatches', 'input matches'], ['inputGlob', 'input glob'],
   ['headersEquals', 'headers equals'], ['headersContains', 'headers contains'], ['headersMatches', 'headers matches'],
   ['outputData', 'response data'], ['outputStream', 'response stream'], ['outputHeaders', 'response headers'], ['outputDetails', 'error details'],

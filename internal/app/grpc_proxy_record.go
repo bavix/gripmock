@@ -1,8 +1,11 @@
 package app
 
 import (
+	"context"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -52,6 +55,33 @@ func sanitizeCapturedStreamError(err error, hasResponses bool) error {
 	}
 
 	return err
+}
+
+// recordProxyCall writes a proxied call into history (stubID is Nil — no stub
+// served it). Runs for every proxy mode so real upstream traffic is inspectable
+// and can seed new stubs. Health probes are excluded: periodic Check/Watch
+// traffic would evict real calls from the bounded history store.
+func (m *grpcMocker) recordProxyCall(
+	ctx context.Context,
+	startTime time.Time,
+	requests, responses []map[string]any,
+	respHeaders map[string]string,
+	callErr error,
+) {
+	if m.recorder == nil || strings.HasPrefix(m.fullMethod, healthServicePrefix) {
+		return
+	}
+
+	code := uint32(codes.OK)
+	errMsg := ""
+
+	if callErr != nil {
+		code = uint32(status.Code(callErr))
+		errMsg = callErr.Error()
+	}
+
+	recordCall(m.recorder, m.fullServiceName, m.methodName, sessionFromContext(ctx),
+		uuid.Nil, code, startTime, requests, responses, respHeaders, errMsg)
 }
 
 func (m *grpcMocker) recordCapturedStub(

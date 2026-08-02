@@ -19,7 +19,10 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-const healthCheckFullMethod = "/grpc.health.v1.Health/Check"
+const (
+	healthCheckFullMethod = "/grpc.health.v1.Health/Check"
+	healthServicePrefix   = "/grpc.health.v1.Health/"
+)
 
 // grpcWebTrailerAdder allows the unary proxy to attach upstream gRPC trailers
 // to the gRPC-Web trailers frame so they reach @trailer assertions.
@@ -80,7 +83,34 @@ func (m *grpcMocker) proxyUnary(
 		m.recordUnaryStub(ctx, req, resp, route, header, trailer, err, elapsed)
 	}
 
+	m.recordUnaryProxyHistory(ctx, startTime, req, resp, header, trailer, err)
+
 	return resp, err
+}
+
+func (m *grpcMocker) recordUnaryProxyHistory(
+	ctx context.Context,
+	startTime time.Time,
+	req, resp *dynamicpb.Message,
+	header, trailer metadata.MD,
+	callErr error,
+) {
+	// Guard before converting: with history disabled the proto-to-map
+	// round-trips below would be pure waste on the hot proxy path.
+	if m.recorder == nil || strings.HasPrefix(m.fullMethod, healthServicePrefix) {
+		return
+	}
+
+	var responses []map[string]any
+
+	if callErr == nil {
+		if respData := m.convertToMap(resp); respData != nil {
+			responses = append(responses, respData)
+		}
+	}
+
+	m.recordProxyCall(ctx, startTime, []map[string]any{m.convertToMap(req)},
+		responses, responseHeadersFromMetadata(header, trailer), callErr)
 }
 
 func (m *grpcMocker) proxyHealthCheck(

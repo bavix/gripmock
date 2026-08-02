@@ -178,7 +178,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 
 	if err := m.handleOutputError(ctx, stream, outputToUse); err != nil {
 		code := status.Code(err)
-		m.recordCall(ctx, found.ID, uint32(code), requestTime, []map[string]any{requestData}, nil, err.Error())
+		m.recordCall(ctx, found.ID, uint32(code), requestTime, []map[string]any{requestData}, nil, outputToUse.Headers, err.Error())
 		outputToUse.Error = err.Error()
 
 		return nil, err //nolint:wrapcheck
@@ -189,7 +189,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 		return nil, err //nolint:wrapcheck
 	}
 
-	m.recordCall(ctx, found.ID, uint32(codes.OK), requestTime, []map[string]any{requestData}, []any{outputDataCopy}, "")
+	m.recordCall(ctx, found.ID, uint32(codes.OK), requestTime, []map[string]any{requestData}, []any{outputDataCopy}, outputToUse.Headers, "")
 
 	return outputMsg, nil
 }
@@ -437,7 +437,7 @@ func (m *grpcMocker) sendClientStreamResponse(
 
 	err = stream.SendMsg(outputMsg)
 	if err == nil {
-		m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime, messages, []any{outputDataCopy}, "")
+		m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime, messages, []any{outputDataCopy}, outputToUse.Headers, "")
 	}
 
 	return err

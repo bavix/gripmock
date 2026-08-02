@@ -123,5 +123,9 @@ func responseHeadersFromClientStream(clientStream grpc.ClientStream) map[string]
 		return nil
 	}
 
-	return responseHeadersFromMetadata(nil, clientStream.Trailer())
+	// Header() is non-blocking here: the helper only runs after the client
+	// stream has terminated, so the metadata (or its error) is already cached.
+	header, _ := clientStream.Header()
+
+	return responseHeadersFromMetadata(header, clientStream.Trailer())
 }

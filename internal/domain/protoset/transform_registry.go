@@ -133,7 +133,16 @@ func registerGlobalFileOnce(
 		return nil
 	}
 
-	err := protoregistry.GlobalFiles.RegisterFile(file)
+	conflict, err := registerGlobalFile(file)
+	if conflict {
+		zerolog.Ctx(ctx).Warn().
+			Str("name", fileName).
+			Str("path", filePath).
+			Msg("Descriptor conflicts with existing symbols; skipping")
+
+		return nil
+	}
+
 	if err != nil {
 		return errors.Wrapf(err, "failed to register file %s", filePath)
 	}

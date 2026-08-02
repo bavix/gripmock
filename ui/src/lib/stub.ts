@@ -29,7 +29,7 @@ export function responseMessages(stub: Stub): unknown[] {
   return [];
 }
 
-export type MatcherKind = 'equals' | 'contains' | 'matches' | 'glob' | 'anyOf';
+type MatcherKind = 'equals' | 'contains' | 'matches' | 'glob' | 'anyOf';
 export interface MatcherEntry { kind: MatcherKind; value: unknown; }
 
 export function matcherEntries(m?: StubInput | Record<string, unknown>): MatcherEntry[] {

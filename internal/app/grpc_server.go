@@ -88,6 +88,9 @@ type GRPCServer struct {
 	maxNestingDepth uint32
 	validator       *validator.Validate
 	errorFormatter  *ErrorFormatter
+
+	resolverOnce sync.Once
+	dynResolver  *dynamicDescriptorResolver
 }
 
 type grpcMocker struct {
@@ -198,7 +201,8 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 		sources = s.params.Sources()
 	}
 
-	if s.params != nil && s.params.HasProxyBindings() {
+	hasBindings := s.params != nil && s.params.HasProxyBindings()
+	if hasBindings {
 		descriptors, s.proxies, err = s.buildProxiesWithBindings(ctx, imports)
 	} else {
 		descriptors, s.proxies, err = s.buildProxiesFromSources(ctx, imports, protoPaths, sources)
@@ -213,20 +217,21 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 		s.registerProxyDescriptors(ctx)
 	}
 
-	if len(protoPaths) > 0 {
-		nonProxyDescriptors, err := protosetdom.Build(ctx, imports, protoPaths, s.remoteClient)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to build descriptors")
-		}
+	if hasBindings {
+		// The bindings branch compiled only per-binding sources and already
+		// includes proxies.Files() in descriptors; protoPaths still need a
+		// build here. The from-sources branch compiled protoPaths+sources
+		// but lacks the reflection-fetched proxy descriptors.
+		if len(protoPaths) > 0 {
+			nonProxyDescriptors, err := protosetdom.Build(ctx, imports, protoPaths, s.remoteClient)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to build descriptors")
+			}
 
-		descriptors = append(descriptors, nonProxyDescriptors...)
-	}
-
-	if s.proxies != nil {
-		proxyFiles := s.proxies.Files()
-		if len(proxyFiles) > 0 {
-			descriptors = append(descriptors, proxyFiles...)
+			descriptors = append(descriptors, nonProxyDescriptors...)
 		}
+	} else if s.proxies != nil {
+		descriptors = append(descriptors, s.proxies.Files()...)
 	}
 
 	if s.waiter != nil {

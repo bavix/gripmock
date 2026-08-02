@@ -37,10 +37,31 @@ func sessionFromContext(ctx context.Context) string {
 type bidiRecordingStream struct {
 	grpc.ServerStream
 
-	requests  []map[string]any
-	responses []map[string]any
-	stubID    uuid.UUID
-	maxItems  int
+	requests    []map[string]any
+	responses   []map[string]any
+	respHeader  metadata.MD
+	respTrailer metadata.MD
+	stubID      uuid.UUID
+	maxItems    int
+	// recordHeaders gates metadata interception: without a recorder the
+	// merged maps would never be read.
+	recordHeaders bool
+}
+
+func (s *bidiRecordingStream) SetHeader(md metadata.MD) error {
+	if s.recordHeaders && len(md) > 0 {
+		s.respHeader = metadata.Join(s.respHeader, md)
+	}
+
+	return s.ServerStream.SetHeader(md)
+}
+
+func (s *bidiRecordingStream) SetTrailer(md metadata.MD) {
+	if s.recordHeaders && len(md) > 0 {
+		s.respTrailer = metadata.Join(s.respTrailer, md)
+	}
+
+	s.ServerStream.SetTrailer(md)
 }
 
 func (s *bidiRecordingStream) RecvMsg(m any) error {
@@ -69,6 +90,10 @@ func (s *bidiRecordingStream) SendMsg(m any) error {
 	return nil
 }
 
+func (s *bidiRecordingStream) getResponseHeaders() map[string]string {
+	return responseHeadersFromMetadata(s.respHeader, s.respTrailer)
+}
+
 func (s *bidiRecordingStream) getRequests() []map[string]any { return s.requests }
 
 func (s *bidiRecordingStream) getResponses() []map[string]any { return s.responses }
@@ -84,6 +109,7 @@ func (m *grpcMocker) recordCall(
 	timestamp time.Time,
 	requests []map[string]any,
 	responses []any,
+	respHeaders map[string]string,
 	errMsg string,
 ) {
 	if m.recorder == nil || len(requests) == 0 {
@@ -98,7 +124,7 @@ func (m *grpcMocker) recordCall(
 	}
 
 	recordCall(m.recorder, m.fullServiceName, m.methodName, sessionFromContext(ctx),
-		stubID, code, timestamp, requests, recordedResponses, errMsg)
+		stubID, code, timestamp, requests, recordedResponses, respHeaders, errMsg)
 }
 
 func processHeaders(md metadata.MD) map[string]any {

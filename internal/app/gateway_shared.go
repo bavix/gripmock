@@ -53,6 +53,7 @@ func recordCall(
 	code uint32,
 	ts time.Time,
 	requests, responses []map[string]any,
+	respHeaders map[string]string,
 	errMsg string,
 ) {
 	if recorder == nil {
@@ -60,16 +61,17 @@ func recordCall(
 	}
 
 	rec := history.CallRecord{
-		StubID:    stubID,
-		Service:   service,
-		Method:    method,
-		Session:   session,
-		Code:      code,
-		Error:     errMsg,
-		ElapsedMS: time.Since(ts).Milliseconds(),
-		Timestamp: ts,
-		Requests:  requests,
-		Responses: responses,
+		StubID:          stubID,
+		Service:         service,
+		Method:          method,
+		Session:         session,
+		Code:            code,
+		Error:           errMsg,
+		ElapsedMS:       time.Since(ts).Milliseconds(),
+		Timestamp:       ts,
+		Requests:        requests,
+		Responses:       responses,
+		ResponseHeaders: respHeaders,
 	}
 
 	if len(requests) > 0 {
@@ -217,7 +219,7 @@ func (h *gatewayHandler) handleWithoutDescriptor(
 
 		notFoundMsg := h.errorFormatter.FormatStubNotFoundError(query, result).Error()
 		recordCall(h.recorder, serviceName, methodName, query.Session, uuid.Nil, uint32(codes.NotFound),
-			requestTime, []map[string]any{emptyInput}, nil, notFoundMsg)
+			requestTime, []map[string]any{emptyInput}, nil, nil, notFoundMsg)
 		resp.WriteError(w, r, codes.NotFound, notFoundMsg)
 
 		return
@@ -228,7 +230,7 @@ func (h *gatewayHandler) handleWithoutDescriptor(
 	if err := delayResponse(r.Context(), found.Output.Delay); err != nil {
 		st, _ := status.FromError(err)
 		recordCall(h.recorder, serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
-			requestTime, []map[string]any{emptyInput}, nil, st.Message())
+			requestTime, []map[string]any{emptyInput}, nil, nil, st.Message())
 		resp.WriteError(w, r, st.Code(), st.Message())
 
 		return
@@ -238,7 +240,7 @@ func (h *gatewayHandler) handleWithoutDescriptor(
 
 	if st := outputStatusBase(outputToUse); st != nil {
 		recordCall(h.recorder, serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
-			requestTime, []map[string]any{emptyInput}, nil, st.Message())
+			requestTime, []map[string]any{emptyInput}, nil, nil, st.Message())
 		resp.WriteError(w, r, st.Code(), st.Message())
 
 		return
@@ -246,7 +248,7 @@ func (h *gatewayHandler) handleWithoutDescriptor(
 
 	if outputToUse.Data != nil {
 		recordCall(h.recorder, serviceName, methodName, query.Session, found.ID, uint32(codes.Unimplemented),
-			requestTime, []map[string]any{emptyInput}, nil,
+			requestTime, []map[string]any{emptyInput}, nil, nil,
 			"proto descriptor required to encode non-empty output for "+serviceName+"/"+methodName)
 		resp.WriteError(w, r, codes.Unimplemented,
 			"proto descriptor required to encode non-empty output for "+serviceName+"/"+methodName)
@@ -261,7 +263,7 @@ func (h *gatewayHandler) handleWithoutDescriptor(
 	resp.WriteSuccess(w, r)
 
 	recordCall(h.recorder, serviceName, methodName, query.Session, found.ID, uint32(codes.OK),
-		requestTime, []map[string]any{emptyInput}, []map[string]any{{}}, "")
+		requestTime, []map[string]any{emptyInput}, []map[string]any{{}}, outputToUse.Headers, "")
 }
 
 // collectFieldMaskNames returns a set of JSON field names that are

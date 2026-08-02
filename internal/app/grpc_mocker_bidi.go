@@ -54,10 +54,11 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 	}
 
 	recordingStream := &bidiRecordingStream{
-		ServerStream: stream,
-		requests:     make([]map[string]any, 0, bidiRecordingStreamInitCap),
-		responses:    make([]map[string]any, 0, bidiRecordingStreamResponsesCap),
-		maxItems:     maxHistoryStreamMsgs,
+		ServerStream:  stream,
+		requests:      make([]map[string]any, 0, bidiRecordingStreamInitCap),
+		responses:     make([]map[string]any, 0, bidiRecordingStreamResponsesCap),
+		maxItems:      maxHistoryStreamMsgs,
+		recordHeaders: m.recorder != nil,
 	}
 
 	requestTime := time.Now()
@@ -73,7 +74,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 		}
 
 		if err != nil {
-			m.recordBidiStream(recordingStream, bidiResult, requestTime, err)
+			m.recordBidiStreamUnlessProxied(recordingStream, bidiResult, requestTime, err)
 
 			if status.Code(err) == codes.NotFound {
 				return newBidiStreamFallbackError(err, []*dynamicpb.Message{inputMsg})
@@ -83,7 +84,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 		}
 
 		if err := m.processBidiStreamMessage(recordingStream, bidiResult, inputMsg); err != nil {
-			m.recordBidiStream(recordingStream, bidiResult, requestTime, err)
+			m.recordBidiStreamUnlessProxied(recordingStream, bidiResult, requestTime, err)
 
 			return err
 		}
@@ -163,6 +164,22 @@ func (m *grpcMocker) sendBidiResponse(
 	return m.sendBidiResponses(stream, outputToUse, stub, bidiResult.GetMessageIndex())
 }
 
+// recordBidiStreamUnlessProxied records the failed bidi exchange unless the
+// proxy will retry the call — then the proxy leg owns the history record and
+// pre-recording the NotFound here would double-count it.
+func (m *grpcMocker) recordBidiStreamUnlessProxied(
+	stream *bidiRecordingStream,
+	bidiResult *stuber.BidiResult,
+	requestTime time.Time,
+	callErr error,
+) {
+	if m.proxyFallbackWillServe(callErr) {
+		return
+	}
+
+	m.recordBidiStream(stream, bidiResult, requestTime, callErr)
+}
+
 func (m *grpcMocker) recordBidiStream(
 	stream *bidiRecordingStream,
 	_ *stuber.BidiResult,
@@ -188,16 +205,17 @@ func (m *grpcMocker) recordBidiStream(
 	responses := stream.getResponses()
 
 	rec := history.CallRecord{
-		Service:   m.fullServiceName,
-		Method:    m.methodName,
-		Session:   sessionFromContext(stream.Context()),
-		Requests:  requests,
-		Responses: responses,
-		Code:      code,
-		Error:     errMsg,
-		StubID:    stream.getStubID(),
-		ElapsedMS: time.Since(requestTime).Milliseconds(),
-		Timestamp: requestTime,
+		Service:         m.fullServiceName,
+		Method:          m.methodName,
+		Session:         sessionFromContext(stream.Context()),
+		Requests:        requests,
+		Responses:       responses,
+		ResponseHeaders: stream.getResponseHeaders(),
+		Code:            code,
+		Error:           errMsg,
+		StubID:          stream.getStubID(),
+		ElapsedMS:       time.Since(requestTime).Milliseconds(),
+		Timestamp:       requestTime,
 	}
 
 	if len(requests) > 0 {

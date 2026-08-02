@@ -24,7 +24,7 @@ export interface StubInput {
   anyOf?: StubInputAnyOfElement[];
 }
 
-export interface StubInputAnyOfElement {
+interface StubInputAnyOfElement {
   ignoreArrayOrder?: boolean;
   equals?: Record<string, unknown>;
   contains?: Record<string, unknown>;
@@ -32,20 +32,20 @@ export interface StubInputAnyOfElement {
   glob?: Record<string, string>;
 }
 
-export interface StubHeaders {
+interface StubHeaders {
   equals?: Record<string, string>;
   contains?: Record<string, string>;
   matches?: Record<string, string>;
   anyOf?: StubHeadersAnyOfElement[];
 }
 
-export interface StubHeadersAnyOfElement {
+interface StubHeadersAnyOfElement {
   equals?: Record<string, string>;
   contains?: Record<string, string>;
   matches?: Record<string, string>;
 }
 
-export interface StubOutput {
+interface StubOutput {
   data?: unknown;
   stream?: unknown[];
   headers?: Record<string, string>;
@@ -55,16 +55,16 @@ export interface StubOutput {
   delay?: string;
 }
 
-export interface StubOutputDetail {
+interface StubOutputDetail {
   type: string;
   [key: string]: unknown;
 }
 
-export interface StubOptions {
+interface StubOptions {
   times?: number;
 }
 
-export interface StubEffect {
+interface StubEffect {
   action: 'upsert' | 'delete';
   id?: string;
   stub?: Partial<Stub>;
@@ -121,6 +121,7 @@ export interface CallRecord {
   requests?: Record<string, unknown>[];
   response?: Record<string, unknown>;
   responses?: Record<string, unknown>[];
+  responseHeaders?: Record<string, string>;
   code: number;
   error?: string;
   elapsedMs?: number;
@@ -201,7 +202,7 @@ export interface InspectCandidate {
   events?: InspectCandidateEvent[];
 }
 
-export interface InspectCandidateEvent {
+interface InspectCandidateEvent {
   stage: string;
   result: string;
   reason: string;

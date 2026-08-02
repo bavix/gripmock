@@ -195,7 +195,8 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 			return err
 		}
 
-		m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime, []map[string]any{requestData}, []any{outputToUse.Data}, "")
+		m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime,
+			[]map[string]any{requestData}, []any{outputToUse.Data}, outputToUse.Headers, "")
 
 		return nil
 	}
@@ -219,7 +220,8 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		}
 	}
 
-	m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime, []map[string]any{requestData}, streamResponses, "")
+	m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime,
+		[]map[string]any{requestData}, streamResponses, outputToUse.Headers, "")
 
 	return nil
 }
@@ -236,7 +238,8 @@ func (m *grpcMocker) handleServerStreamOutput(
 		return err
 	}
 
-	m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime, []map[string]any{requestData}, []any{outputToUse.Data}, "")
+	m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime,
+		[]map[string]any{requestData}, []any{outputToUse.Data}, outputToUse.Headers, "")
 
 	return nil
 }

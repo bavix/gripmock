@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"strings"
+	"sync"
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog"
@@ -97,7 +98,7 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 		templateEngine:     templateEngine,
 		errorFormatter:     s.errorFormatter,
 		recorder:           s.recorder,
-		descriptorResolver: &dynamicDescriptorResolver{static: protoregistry.GlobalFiles, dynamic: s.descriptors},
+		descriptorResolver: s.globalResolver(),
 		proxies:            s.proxies,
 		validator:          s.validator,
 		maxNestingDepth:    s.maxNestingDepth,
@@ -134,37 +135,11 @@ func (s *GRPCServer) findMethodDescriptor(serviceName, methodName string) (proto
 		return method, nil
 	}
 
-	var found protoreflect.MethodDescriptor
-
-	s.descriptors.RangeFiles(func(file protoreflect.FileDescriptor) bool {
-		services := file.Services()
-		for i := range services.Len() {
-			service := services.Get(i)
-			if string(service.FullName()) != serviceName {
-				continue
-			}
-
-			methods := service.Methods()
-			for j := range methods.Len() {
-				method := methods.Get(j)
-				if string(method.Name()) != methodName {
-					continue
-				}
-
-				found = method
-
-				return false
-			}
-		}
-
-		return true
-	})
-
-	if found == nil {
-		return nil, errors.Errorf("unknown service/method: %s/%s", serviceName, methodName)
+	if method := findMethodInFiles(s.descriptors, serviceName, methodName); method != nil {
+		return method, nil
 	}
 
-	return found, nil
+	return nil, errors.Errorf("unknown service/method: %s/%s", serviceName, methodName)
 }
 
 func findMethodInGlobalFiles(serviceName, methodName string) protoreflect.MethodDescriptor { //nolint:ireturn
@@ -211,14 +186,12 @@ func (s *GRPCServer) setupHealthCheck(server *grpc.Server, descResolver *protore
 
 	provider := &dynamicServiceInfoProvider{base: server, registry: s.descriptors}
 
-	var staticResolver protodesc.Resolver = protoregistry.GlobalFiles
+	resolver := s.globalResolver()
 	if descResolver != nil {
-		staticResolver = descResolver
-	}
-
-	resolver := &dynamicDescriptorResolver{
-		static:  staticResolver,
-		dynamic: s.descriptors,
+		resolver = &dynamicDescriptorResolver{
+			static:  descResolver,
+			dynamic: s.descriptors,
+		}
 	}
 
 	reflectionSvr := reflection.NewServerV1(reflection.ServerOptions{
@@ -262,9 +235,24 @@ func (p *dynamicServiceInfoProvider) GetServiceInfo() map[string]grpc.ServiceInf
 	return result
 }
 
+// globalResolver returns the shared GlobalFiles-backed resolver so its
+// dynamic-registry cache is reused across requests instead of being rebuilt
+// per allocation.
+func (s *GRPCServer) globalResolver() *dynamicDescriptorResolver {
+	s.resolverOnce.Do(func() {
+		s.dynResolver = &dynamicDescriptorResolver{static: protoregistry.GlobalFiles, dynamic: s.descriptors}
+	})
+
+	return s.dynResolver
+}
+
 type dynamicDescriptorResolver struct {
 	static  protodesc.Resolver
 	dynamic *descriptors.Registry
+
+	mu        sync.Mutex
+	cached    *protoregistry.Files
+	cachedGen uint64
 }
 
 func (r *dynamicDescriptorResolver) FindFileByPath(path string) (protoreflect.FileDescriptor, error) { //nolint:ireturn
@@ -280,6 +268,17 @@ func (r *dynamicDescriptorResolver) dynamicFiles() *protoregistry.Files {
 		return nil
 	}
 
+	// Generation is read before the rebuild: a registry mutation racing the
+	// RangeFiles below leaves cachedGen stale, so the next call rebuilds.
+	gen := r.dynamic.Generation()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.cached != nil && r.cachedGen == gen {
+		return r.cached
+	}
+
 	reg := new(protoregistry.Files)
 
 	r.dynamic.RangeFiles(func(file protoreflect.FileDescriptor) bool {
@@ -287,6 +286,9 @@ func (r *dynamicDescriptorResolver) dynamicFiles() *protoregistry.Files {
 
 		return true
 	})
+
+	r.cached = reg
+	r.cachedGen = gen
 
 	return reg
 }
@@ -407,6 +409,8 @@ func (s *GRPCServer) createGrpcMocker(
 		resolver = reg
 	}
 
+	fullMethod := fmt.Sprintf("/%s/%s", serviceDesc.ServiceName, method.GetName())
+
 	return &grpcMocker{
 		budgerigar:         s.budgerigar,
 		templateEngine:     templateEngine,
@@ -423,12 +427,12 @@ func (s *GRPCServer) createGrpcMocker(
 		fullServiceName: serviceDesc.ServiceName,
 		serviceName:     svc.GetName(),
 		methodName:      method.GetName(),
-		fullMethod:      fmt.Sprintf("/%s/%s", serviceDesc.ServiceName, method.GetName()),
+		fullMethod:      fullMethod,
 
 		serverStream: method.GetServerStreaming(),
 		clientStream: method.GetClientStreaming(),
 
-		strictServiceMatch: s.proxies != nil && s.proxies.RouteByMethod(fmt.Sprintf("/%s/%s", serviceDesc.ServiceName, method.GetName())) != nil,
+		strictServiceMatch: s.proxies != nil && s.proxies.RouteByMethod(fullMethod) != nil,
 	}
 }
 

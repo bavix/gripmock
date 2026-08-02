@@ -31,6 +31,15 @@ func (captureBehavior) proxyOnly() bool            { return false }
 func (captureBehavior) captureMiss() bool          { return true }
 func (captureBehavior) canFallback(err error) bool { return status.Code(err) == codes.NotFound }
 
+// proxyFallbackWillServe reports whether the given stub-matching error will be
+// retried through the proxy by streamHandler (mirrors its behavior+canFallback
+// check). When true, the proxy leg owns the call's history record.
+func (m *grpcMocker) proxyFallbackWillServe(err error) bool {
+	behavior := newProxyBehavior(m.proxyRoute())
+
+	return behavior != nil && behavior.canFallback(err)
+}
+
 //nolint:ireturn
 func newProxyBehavior(route *proxyroutes.Route) proxyBehavior {
 	if route == nil {

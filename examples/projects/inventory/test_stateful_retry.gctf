@@ -7,7 +7,6 @@ links:
   - https://github.com/bavix/gripmock/issues/827
 
 // First call - returns error (simulated transient failure)
-
 --- ENDPOINT ---
 inventory.InventoryService/GetResourceDecorationByIPsStream
 
