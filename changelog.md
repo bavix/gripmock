@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.18.1 - 2026-08-02
+
+### What's Changed
+
+* Proxy and Streaming Enhancements & UI and Dashboard Updates by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/936
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.18.0...v3.18.1
+
 ## v3.18.0 - 2026-07-28
 
 ### What's Changed
