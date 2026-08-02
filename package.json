@@ -1,22 +1,14 @@
 {
   "name": "gripmock",
   "private": true,
-  "workspaces": [
-    "ui"
-  ],
   "scripts": {
     "build": "npm run build:ui && npm run docs:build",
-    "build:ui": "npm run build --workspace=ui",
+    "build:ui": "npm --prefix ui ci && npm --prefix ui run build",
     "docs:build": "vitepress build docs",
     "docs:dev": "vitepress dev docs",
     "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
     "vitepress": "^2.0.0-alpha.18"
-  },
-  "overrides": {
-    "monaco-editor": {
-      "dompurify": "^3.4.12"
-    }
   }
 }
