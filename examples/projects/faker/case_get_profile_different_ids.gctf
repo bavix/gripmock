@@ -2,7 +2,6 @@
 tags: [faker]
 
 // First call: id=12345
-
 --- ENDPOINT ---
 example.UserService/GetProfile
 
@@ -33,5 +32,5 @@ example.UserService/GetProfile
 }
 
 --- ASSERTS ---
-!@empty(.account_id)
+@has_value(.account_id)
 .account_id != first_account_id
