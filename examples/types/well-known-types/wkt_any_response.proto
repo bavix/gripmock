@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+
+package wkt;
+
+// Service that returns google.protobuf.Any in the response,
+// used to test @type resolution with custom message types.
+service AnyResponseService {
+  rpc GetWrapped(GetWrappedRequest) returns (GetWrappedResponse) {}
+}
+
+message GetWrappedRequest {
+  string name = 1;
+}
+
+message GetWrappedResponse {
+  string name = 1;
+  bool done = 2;
+  google.protobuf.Any result = 3;
+}
+
+// A custom message type to be packed into the Any field.
+message CustomResult {
+  string value = 1;
+  int32 code = 2;
+}
