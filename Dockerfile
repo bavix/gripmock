@@ -32,6 +32,6 @@ COPY --from=builder /usr/local/bin/gripmock /usr/local/bin/gripmock
 EXPOSE 4770 4771
 
 HEALTHCHECK --start-interval=1s --start-period=30s \
-    CMD gripmock check --silent
+    CMD ["/usr/local/bin/gripmock", "check", "--silent"]
 
 ENTRYPOINT ["/usr/local/bin/gripmock"]
