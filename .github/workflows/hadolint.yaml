@@ -10,11 +10,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
       - name: Run hadolint
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@v3.4.0
         with:
           dockerfile: Dockerfile
 
       - name: Run hadolint (builder)
-        uses: hadolint/hadolint-action@v3.3.0
+        uses: hadolint/hadolint-action@v3.4.0
         with:
           dockerfile: Dockerfile.builder
