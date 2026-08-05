@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/reflect/protodesc"
 
+	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -125,5 +126,5 @@ func parseStringHealthStatus(value string) (healthgrpc.HealthCheckResponse_Servi
 }
 
 func statusFromHealthOutput(output stuber.Output, resolver protodesc.Resolver) (*status.Status, error) {
-	return statusFromOutputWithDetails(output, resolver)
+	return statusFromOutputWithDetails(output, protosetinfra.NewTypeResolver(resolver))
 }

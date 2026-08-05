@@ -1,0 +1,21 @@
+--- META ---
+name: Any with unknown @type
+summary: Verify an unresolvable @type in google.protobuf.Any fails the call instead of silently dropping the payload
+tags: [wkt, any]
+
+--- ENDPOINT ---
+wkt.AnyResponseService/GetWrapped
+
+--- REQUEST ---
+{
+  "name": "unknown"
+}
+
+--- ERROR partial ---
+{
+  "code": 2
+}
+
+--- ASSERTS ---
+.message | contains("unable to resolve")
+.message | contains("type.googleapis.com/wkt.MissingResult")

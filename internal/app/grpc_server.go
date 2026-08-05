@@ -12,7 +12,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	"google.golang.org/grpc"
 	_ "google.golang.org/grpc/encoding/gzip" // registers the gzip compressor for gRPC
-	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	protoloc "github.com/bavix/gripmock/v3/internal/domain/proto"
 	protosetdom "github.com/bavix/gripmock/v3/internal/domain/protoset"
+	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
@@ -94,13 +94,13 @@ type GRPCServer struct {
 }
 
 type grpcMocker struct {
-	budgerigar         *stuber.Budgerigar
-	templateEngine     *template.Engine
-	errorFormatter     *ErrorFormatter
-	recorder           history.Recorder
-	descriptorResolver protodesc.Resolver
-	proxies            *proxyroutes.Registry
-	validator          *validator.Validate
+	budgerigar     *stuber.Budgerigar
+	templateEngine *template.Engine
+	errorFormatter *ErrorFormatter
+	recorder       history.Recorder
+	typeResolver   *protosetinfra.TypeResolver
+	proxies        *proxyroutes.Registry
+	validator      *validator.Validate
 
 	inputDesc  protoreflect.MessageDescriptor
 	outputDesc protoreflect.MessageDescriptor

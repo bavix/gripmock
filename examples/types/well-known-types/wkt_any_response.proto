@@ -24,4 +24,5 @@ message GetWrappedResponse {
 message CustomResult {
   string value = 1;
   int32 code = 2;
+  int64 amount = 3;
 }

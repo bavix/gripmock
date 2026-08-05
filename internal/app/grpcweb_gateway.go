@@ -275,14 +275,15 @@ type grpcwebAdapter struct {
 	trailerExtra []string
 }
 
-func newGRPCWebAdapter(r *http.Request, w http.ResponseWriter, _ *grpcMocker) *grpcwebAdapter {
+func newGRPCWebAdapter(r *http.Request, w http.ResponseWriter, mocker *grpcMocker) *grpcwebAdapter {
 	ctx := httpHeadersToGRPCContext(r.Context(), r.Header)
 
 	return &grpcwebAdapter{
 		baseStreamAdapter: baseStreamAdapter{
-			ctx: ctx,
-			req: r,
-			w:   w,
+			ctx:          ctx,
+			req:          r,
+			w:            w,
+			typeResolver: mocker.typeResolver,
 		},
 	}
 }
@@ -351,11 +352,11 @@ func (a *grpcwebAdapter) sendHeader() {
 }
 
 func (a *grpcwebAdapter) decodeMessage(data []byte, msg proto.Message, ct string) error {
-	return decodeMessageData(data, msg, ct, isGRPCWebJSONContentType)
+	return decodeMessageData(data, msg, ct, isGRPCWebJSONContentType, a.typeResolver)
 }
 
 func (a *grpcwebAdapter) encodeMessage(msg proto.Message, ct string) ([]byte, error) {
-	return encodeMessageData(msg, ct, isGRPCWebJSONContentType)
+	return encodeMessageData(msg, ct, isGRPCWebJSONContentType, a.typeResolver)
 }
 
 func (a *grpcwebAdapter) setTrailerExtra(lines ...string) {

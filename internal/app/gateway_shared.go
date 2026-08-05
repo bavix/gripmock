@@ -24,6 +24,7 @@ import (
 
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
+	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
@@ -88,6 +89,8 @@ func recordCall(
 type baseStreamAdapter struct {
 	req *http.Request
 	w   http.ResponseWriter
+
+	typeResolver *protosetinfra.TypeResolver
 
 	mu             sync.Mutex
 	sendHeaderOnce sync.Once
@@ -167,10 +170,10 @@ func (h *gatewayHandler) buildMocker(r *http.Request, service, method, fullMetho
 		templateEngine: template.New(r.Context(), nil),
 		errorFormatter: h.errorFormatter,
 		recorder:       h.recorder,
-		descriptorResolver: &dynamicDescriptorResolver{
+		typeResolver: protosetinfra.NewTypeResolver(&dynamicDescriptorResolver{
 			static:  protoregistry.GlobalFiles,
 			dynamic: h.descriptors,
-		},
+		}),
 		proxies:            proxies,
 		validator:          h.validator,
 		fullServiceName:    service,
@@ -401,12 +404,18 @@ func normalizeHealthError(st *status.Status, serviceName string) *status.Status 
 	return st
 }
 
-func decodeMessageData(data []byte, msg proto.Message, ct string, isJSONType func(string) bool) error {
+func decodeMessageData(
+	data []byte,
+	msg proto.Message,
+	ct string,
+	isJSONType func(string) bool,
+	resolver *protosetinfra.TypeResolver,
+) error {
 	if isJSONType(ct) {
 		// Preprocess FieldMask fields (accept {"paths": [...]} format)
 		normalized := normalizeFieldMaskJSON(data, msg)
 
-		return protojson.Unmarshal(normalized, msg)
+		return protojson.UnmarshalOptions{Resolver: resolver}.Unmarshal(normalized, msg)
 	}
 
 	return proto.Unmarshal(data, msg)
@@ -422,19 +431,10 @@ func handleUnaryCore(
 	writeError func(*status.Status),
 ) (any, error) {
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	if isJSONType(contentType) {
-		normalized := normalizeFieldMaskJSON(data, inputMsg)
-		if err := protojson.Unmarshal(normalized, inputMsg); err != nil {
-			writeError(status.New(codes.InvalidArgument, "failed to unmarshal: "+err.Error()))
+	if err := decodeMessageData(data, inputMsg, contentType, isJSONType, mocker.typeResolver); err != nil {
+		writeError(status.New(codes.InvalidArgument, "failed to unmarshal: "+err.Error()))
 
-			return nil, err
-		}
-	} else {
-		if err := proto.Unmarshal(data, inputMsg); err != nil {
-			writeError(status.New(codes.InvalidArgument, "failed to unmarshal: "+err.Error()))
-
-			return nil, err
-		}
+		return nil, err
 	}
 
 	resp, err := mocker.handleUnaryWithProxy(ctx, stream, inputMsg)
@@ -448,10 +448,16 @@ func handleUnaryCore(
 	return resp, nil
 }
 
-func encodeMessageData(msg proto.Message, ct string, isJSONType func(string) bool) ([]byte, error) {
+func encodeMessageData(
+	msg proto.Message,
+	ct string,
+	isJSONType func(string) bool,
+	resolver *protosetinfra.TypeResolver,
+) ([]byte, error) {
 	if isJSONType(ct) {
 		return protojson.MarshalOptions{
 			UseProtoNames: true,
+			Resolver:      resolver,
 		}.Marshal(msg)
 	}
 

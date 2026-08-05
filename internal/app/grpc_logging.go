@@ -15,6 +15,8 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+
+	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
 )
 
 // LogUnaryInterceptor logs unary gRPC calls.
@@ -122,6 +124,7 @@ func protoToJSON(msg any) []byte {
 		EmitUnpopulated: false,
 		UseProtoNames:   true,
 		Indent:          "",
+		Resolver:        protosetinfra.NewTypeResolver(nil),
 	}
 
 	data, err := marshaller.Marshal(message)

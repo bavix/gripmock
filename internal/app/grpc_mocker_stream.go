@@ -17,9 +17,6 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protodesc"
-	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/dynamicpb"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
@@ -408,50 +405,6 @@ func (m *grpcMocker) handleNonArrayStreamData(
 	}
 }
 
-// descriptorTypeResolver adapts a protodesc.Resolver to protoregistry.MessageTypeResolver
-// so that protojson can resolve custom @type URLs in google.protobuf.Any fields
-// using types loaded from .pb descriptors at runtime.
-type descriptorTypeResolver struct {
-	resolver protodesc.Resolver
-}
-
-func (r *descriptorTypeResolver) FindMessageByName(name protoreflect.FullName) (protoreflect.MessageType, error) {
-	desc, err := r.resolver.FindDescriptorByName(name)
-	if err != nil {
-		return nil, err
-	}
-
-	msgDesc, ok := desc.(protoreflect.MessageDescriptor)
-	if !ok {
-		return nil, protoregistry.NotFound
-	}
-
-	return dynamicpb.NewMessageType(msgDesc), nil
-}
-
-func (r *descriptorTypeResolver) FindMessageByURL(url string) (protoreflect.MessageType, error) {
-	// Extract the full name from the URL (everything after the last '/')
-	name := protoreflect.FullName(url)
-	if idx := len(url) - 1; idx >= 0 {
-		for i := idx; i >= 0; i-- {
-			if url[i] == '/' {
-				name = protoreflect.FullName(url[i+1:])
-				break
-			}
-		}
-	}
-
-	return r.FindMessageByName(name)
-}
-
-func (r *descriptorTypeResolver) FindExtensionByName(field protoreflect.FullName) (protoreflect.ExtensionType, error) {
-	return nil, protoregistry.NotFound //nolint:wrapcheck
-}
-
-func (r *descriptorTypeResolver) FindExtensionByNumber(message protoreflect.FullName, field protoreflect.FieldNumber) (protoreflect.ExtensionType, error) {
-	return nil, protoregistry.NotFound //nolint:wrapcheck
-}
-
 func (m *grpcMocker) newOutputMessage(data any) (*dynamicpb.Message, error) {
 	pooled, _ := jsonBufferPool.Get().(*bytes.Buffer)
 	if pooled == nil {
@@ -479,10 +432,7 @@ func (m *grpcMocker) newOutputMessage(data any) (*dynamicpb.Message, error) {
 
 	jsonBytes := pooled.Bytes()
 
-	unmarshalOpts := protojson.UnmarshalOptions{}
-	if m.descriptorResolver != nil {
-		unmarshalOpts.Resolver = &descriptorTypeResolver{resolver: m.descriptorResolver}
-	}
+	unmarshalOpts := protojson.UnmarshalOptions{Resolver: m.typeResolver}
 
 	if err := unmarshalOpts.Unmarshal(jsonBytes, msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON into dynamic message: %w (json=%s)", err, string(jsonBytes))
