@@ -3,6 +3,8 @@ package protoset
 import (
 	"strings"
 
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -22,6 +24,22 @@ func NewTypeResolver(resolver protodesc.Resolver) *TypeResolver {
 	}
 
 	return &TypeResolver{resolver: resolver}
+}
+
+func GlobalTypeResolver() *TypeResolver {
+	return globalTypeResolver
+}
+
+func (r *TypeResolver) Marshal(message proto.Message) ([]byte, error) {
+	return protojson.MarshalOptions{Resolver: r}.Marshal(message)
+}
+
+func (r *TypeResolver) MarshalProtoNames(message proto.Message) ([]byte, error) {
+	return protojson.MarshalOptions{UseProtoNames: true, Resolver: r}.Marshal(message)
+}
+
+func (r *TypeResolver) Unmarshal(data []byte, message proto.Message) error {
+	return protojson.UnmarshalOptions{Resolver: r}.Unmarshal(data, message)
 }
 
 func ParseTypeURL(typeURL string) protoreflect.FullName {

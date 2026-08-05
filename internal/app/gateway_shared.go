@@ -16,7 +16,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -371,7 +370,7 @@ func serializeErrorStatus(st *status.Status) connectError {
 
 	details := make([]map[string]any, 0, len(sp.GetDetails()))
 	if len(sp.GetDetails()) > 0 {
-		statusData, err := protojson.MarshalOptions{UseProtoNames: false}.Marshal(sp)
+		statusData, err := protosetinfra.GlobalTypeResolver().Marshal(sp)
 		if err == nil {
 			var statusObj map[string]any
 			if err := json.Unmarshal(statusData, &statusObj); err == nil {
@@ -415,7 +414,7 @@ func decodeMessageData(
 		// Preprocess FieldMask fields (accept {"paths": [...]} format)
 		normalized := normalizeFieldMaskJSON(data, msg)
 
-		return protojson.UnmarshalOptions{Resolver: resolver}.Unmarshal(normalized, msg)
+		return resolver.Unmarshal(normalized, msg)
 	}
 
 	return proto.Unmarshal(data, msg)
@@ -455,10 +454,7 @@ func encodeMessageData(
 	resolver *protosetinfra.TypeResolver,
 ) ([]byte, error) {
 	if isJSONType(ct) {
-		return protojson.MarshalOptions{
-			UseProtoNames: true,
-			Resolver:      resolver,
-		}.Marshal(msg)
+		return resolver.MarshalProtoNames(msg)
 	}
 
 	return proto.Marshal(msg)

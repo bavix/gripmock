@@ -14,11 +14,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
+	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
@@ -374,7 +374,7 @@ func (a *grpcwebAdapter) writeErrorStatus(st *status.Status) {
 
 	// gRPC-Web unary errors: write a data frame with the full google.rpc.Status
 	// (including @type-annotated details), then a trailers frame.
-	statusJSON, _ := protojson.MarshalOptions{UseProtoNames: false}.Marshal(st.Proto())
+	statusJSON, _ := protosetinfra.GlobalTypeResolver().Marshal(st.Proto())
 	if len(statusJSON) > 0 {
 		writeDataFrame(a.w, statusJSON)
 	}
