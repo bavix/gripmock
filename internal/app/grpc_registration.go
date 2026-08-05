@@ -98,7 +98,7 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 		templateEngine:     templateEngine,
 		errorFormatter:     s.errorFormatter,
 		recorder:           s.recorder,
-		descriptorResolver: s.globalResolver(),
+		typeResolver:       protosetinfra.NewTypeResolver(s.globalResolver()),
 		proxies:            s.proxies,
 		validator:          s.validator,
 		maxNestingDepth:    s.maxNestingDepth,
@@ -412,14 +412,14 @@ func (s *GRPCServer) createGrpcMocker(
 	fullMethod := fmt.Sprintf("/%s/%s", serviceDesc.ServiceName, method.GetName())
 
 	return &grpcMocker{
-		budgerigar:         s.budgerigar,
-		templateEngine:     templateEngine,
-		errorFormatter:     s.errorFormatter,
-		recorder:           s.recorder,
-		descriptorResolver: resolver,
-		proxies:            s.proxies,
-		validator:          s.validator,
-		maxNestingDepth:    s.maxNestingDepth,
+		budgerigar:      s.budgerigar,
+		templateEngine:  templateEngine,
+		errorFormatter:  s.errorFormatter,
+		recorder:        s.recorder,
+		typeResolver:    protosetinfra.NewTypeResolver(resolver),
+		proxies:         s.proxies,
+		validator:       s.validator,
+		maxNestingDepth: s.maxNestingDepth,
 
 		inputDesc:  inputDesc,
 		outputDesc: outputDesc,

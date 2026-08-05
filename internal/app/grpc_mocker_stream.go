@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/dynamicpb"
 
@@ -431,7 +430,8 @@ func (m *grpcMocker) newOutputMessage(data any) (*dynamicpb.Message, error) {
 	msg := dynamicpb.NewMessage(m.outputDesc)
 
 	jsonBytes := pooled.Bytes()
-	if err := protojson.Unmarshal(jsonBytes, msg); err != nil {
+
+	if err := m.typeResolver.Unmarshal(jsonBytes, msg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON into dynamic message: %w (json=%s)", err, string(jsonBytes))
 	}
 

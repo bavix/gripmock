@@ -7,9 +7,9 @@ import (
 
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	"github.com/bavix/gripmock/v3/internal/infra/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -18,7 +18,7 @@ func MessageToMap(message proto.Message) map[string]any {
 		return nil
 	}
 
-	encoded, err := protojson.Marshal(message)
+	encoded, err := protoset.GlobalTypeResolver().Marshal(message)
 	if err != nil {
 		return nil
 	}
@@ -43,7 +43,7 @@ func MessageToAny(message proto.Message) any {
 		return nil
 	}
 
-	encoded, err := protojson.Marshal(message)
+	encoded, err := protoset.GlobalTypeResolver().Marshal(message)
 	if err != nil {
 		return nil
 	}

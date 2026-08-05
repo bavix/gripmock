@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: AnyResponseService
+  method: GetWrapped
+  input:
+    equals:
+      name: "custom"
+  output:
+    data:
+      name: "custom"
+      done: true
+      result:
+        "@type": "type.googleapis.com/wkt.CustomResult"
+        value: "completed"
+        code: 42
+        amount: 9007199254740993
+
+- service: AnyResponseService
+  method: GetWrapped
+  input:
+    equals:
+      name: "well-known"
+  output:
+    data:
+      name: "well-known"
+      done: true
+      result:
+        "@type": "type.googleapis.com/google.protobuf.StringValue"
+        value: "hello-wkt"
+
+- service: AnyResponseService
+  method: GetWrapped
+  input:
+    equals:
+      name: "unknown"
+  output:
+    data:
+      name: "unknown"
+      done: true
+      result:
+        "@type": "type.googleapis.com/wkt.MissingResult"
+        value: "nope"

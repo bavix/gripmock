@@ -75,9 +75,10 @@ func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	adapter := &httpStreamAdapter{
 		baseStreamAdapter: baseStreamAdapter{
-			ctx: r.Context(),
-			req: r,
-			w:   w,
+			ctx:          r.Context(),
+			req:          r,
+			w:            w,
+			typeResolver: mocker.typeResolver,
 		},
 		streaming: mocker.serverStream || mocker.clientStream,
 	}
@@ -301,11 +302,11 @@ func (a *httpStreamAdapter) recvStreamingMessage(msg proto.Message, ct string) e
 }
 
 func (a *httpStreamAdapter) decodeMessage(data []byte, msg proto.Message, ct string) error {
-	return decodeMessageData(data, msg, ct, isJSONContentType)
+	return decodeMessageData(data, msg, ct, isJSONContentType, a.typeResolver)
 }
 
 func (a *httpStreamAdapter) encodeMessage(msg proto.Message, ct string) ([]byte, error) {
-	return encodeMessageData(msg, ct, isJSONContentType)
+	return encodeMessageData(msg, ct, isJSONContentType, a.typeResolver)
 }
 
 func (a *httpStreamAdapter) writeError(code codes.Code, msg string) {

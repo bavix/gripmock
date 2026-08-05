@@ -14,11 +14,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
+	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
@@ -275,14 +275,15 @@ type grpcwebAdapter struct {
 	trailerExtra []string
 }
 
-func newGRPCWebAdapter(r *http.Request, w http.ResponseWriter, _ *grpcMocker) *grpcwebAdapter {
+func newGRPCWebAdapter(r *http.Request, w http.ResponseWriter, mocker *grpcMocker) *grpcwebAdapter {
 	ctx := httpHeadersToGRPCContext(r.Context(), r.Header)
 
 	return &grpcwebAdapter{
 		baseStreamAdapter: baseStreamAdapter{
-			ctx: ctx,
-			req: r,
-			w:   w,
+			ctx:          ctx,
+			req:          r,
+			w:            w,
+			typeResolver: mocker.typeResolver,
 		},
 	}
 }
@@ -351,11 +352,11 @@ func (a *grpcwebAdapter) sendHeader() {
 }
 
 func (a *grpcwebAdapter) decodeMessage(data []byte, msg proto.Message, ct string) error {
-	return decodeMessageData(data, msg, ct, isGRPCWebJSONContentType)
+	return decodeMessageData(data, msg, ct, isGRPCWebJSONContentType, a.typeResolver)
 }
 
 func (a *grpcwebAdapter) encodeMessage(msg proto.Message, ct string) ([]byte, error) {
-	return encodeMessageData(msg, ct, isGRPCWebJSONContentType)
+	return encodeMessageData(msg, ct, isGRPCWebJSONContentType, a.typeResolver)
 }
 
 func (a *grpcwebAdapter) setTrailerExtra(lines ...string) {
@@ -373,7 +374,7 @@ func (a *grpcwebAdapter) writeErrorStatus(st *status.Status) {
 
 	// gRPC-Web unary errors: write a data frame with the full google.rpc.Status
 	// (including @type-annotated details), then a trailers frame.
-	statusJSON, _ := protojson.MarshalOptions{UseProtoNames: false}.Marshal(st.Proto())
+	statusJSON, _ := protosetinfra.GlobalTypeResolver().Marshal(st.Proto())
 	if len(statusJSON) > 0 {
 		writeDataFrame(a.w, statusJSON)
 	}

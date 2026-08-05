@@ -1,0 +1,24 @@
+--- META ---
+name: Any with custom @type
+summary: Verify gripmock resolves a custom message type packed into a google.protobuf.Any response field
+tags: [wkt, any]
+
+--- ENDPOINT ---
+wkt.AnyResponseService/GetWrapped
+
+--- REQUEST ---
+{
+  "name": "custom"
+}
+
+--- RESPONSE ---
+{
+  "done": true,
+  "name": "custom",
+  "result": {
+    "@type": "type.googleapis.com/wkt.CustomResult",
+    "amount": "9007199254740993",
+    "code": 42,
+    "value": "completed"
+  }
+}

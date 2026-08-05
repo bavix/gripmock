@@ -1,0 +1,22 @@
+--- META ---
+name: Any with well-known @type
+summary: Verify well-known types still resolve inside google.protobuf.Any once a custom type resolver is installed
+tags: [wkt, any]
+
+--- ENDPOINT ---
+wkt.AnyResponseService/GetWrapped
+
+--- REQUEST ---
+{
+  "name": "well-known"
+}
+
+--- RESPONSE ---
+{
+  "done": true,
+  "name": "well-known",
+  "result": {
+    "@type": "type.googleapis.com/google.protobuf.StringValue",
+    "value": "hello-wkt"
+  }
+}
