@@ -1,5 +1,18 @@
 # Changelog
 
+## v3.18.2 - 2026-08-05
+
+### What's Changed
+
+* fix: resolve custom [@type](https://github.com/type) in google.protobuf.Any stub responses by [@ds-yongningbi](https://github.com/ds-yongningbi) in https://github.com/bavix/gripmock/pull/940
+* chore(deps): bump sourcemeta/jsonschema from 16.3.0 to 16.4.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/939
+
+### New Contributors
+
+* [@ds-yongningbi](https://github.com/ds-yongningbi) made their first contribution in https://github.com/bavix/gripmock/pull/940
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.18.1...v3.18.2
+
 ## v3.18.1 - 2026-08-02
 
 ### What's Changed
