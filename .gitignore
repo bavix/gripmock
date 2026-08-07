@@ -14,3 +14,9 @@ plugins/*.so
 
 DEV-3.5.md
 test/bench/
+bench/gripmock-bench
+bench/stubs.json
+bench/stubs-startup.json
+bench/names.csv
+bench/results/
+bench/results-*/

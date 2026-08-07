@@ -2,204 +2,59 @@ package stuber
 
 import (
 	"bytes"
-	"container/heap"
-	"log"
 	"slices"
 
 	"github.com/google/uuid"
 )
 
-// yieldSortedValues yields values sorted by score in descending order,
-// minimizing memory allocations and maximizing iterator usage.
+// yieldSortedValues yields the stubs for the given indexes in priority order.
+//
+// Every per-(index, session) bucket is kept sorted at write time, so this
+// merges already-sorted sequences instead of collecting and re-sorting the
+// whole set on each call.
 func (s *storage) yieldSortedValues(indexes []uint64, yield func(*Stub) bool) {
-	s.yieldSortedValuesOptimized(indexes, yield)
-}
-
-// yieldSortedValuesOptimized is an ultra-optimized version with minimal allocations.
-func (s *storage) yieldSortedValuesOptimized(indexes []uint64, yield func(*Stub) bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if s.tryYieldSingleItem(indexes, yield) {
-		return
-	}
-
-	totalItems := s.countItemsFast(indexes)
-	if totalItems <= smallItemsThreshold {
-		s.yieldSmallItemsSorted(indexes, totalItems, yield)
-
-		return
-	}
-
-	s.yieldSortedValuesHeap(indexes, yield)
-}
-
-func (s *storage) tryYieldSingleItem(indexes []uint64, yield func(*Stub) bool) bool {
-	if len(indexes) != 1 {
-		return false
-	}
-
-	m, exists := s.items[indexes[0]]
-	if !exists || len(m) != 1 {
-		return false
-	}
-
-	for _, v := range m {
-		if !yield(v) {
-			return true
-		}
-	}
-
-	return true
-}
-
-func (s *storage) yieldSmallItemsSorted(indexes []uint64, totalItems int, yield func(*Stub) bool) {
-	items := make([]*Stub, 0, totalItems)
-	for _, index := range indexes {
-		if m, exists := s.items[index]; exists {
-			for _, v := range m {
-				items = append(items, v)
-			}
-		}
-	}
-
-	sortSmallItemsByPriority(items)
-
-	for _, v := range items {
-		if !yield(v) {
+	for _, stub := range mergeSortedParts(s.sortedParts(indexes)) {
+		if !yield(stub) {
 			return
 		}
 	}
 }
 
-func sortSmallItemsByPriority(items []*Stub) {
-	switch len(items) {
-	case twoItemsThreshold:
-		if items[0].Priority < items[1].Priority {
-			items[0], items[1] = items[1], items[0]
-		}
-	case smallItemsThreshold:
-		if items[0].Priority < items[1].Priority {
-			items[0], items[1] = items[1], items[0]
-		}
-
-		if items[1].Priority < items[2].Priority {
-			items[1], items[2] = items[2], items[1]
-		}
-
-		if items[0].Priority < items[1].Priority {
-			items[0], items[1] = items[1], items[0]
-		}
-	}
-}
-
-// sortItem represents a stub with its score for sorting.
-type sortItem struct {
-	stub  *Stub
-	score int
-}
-
-// countItemsFast provides ultra-fast counting of items without collecting them.
-func (s *storage) countItemsFast(indexes []uint64) int {
-	total := 0
+// sortedParts collects the sorted stub slices held for the given indexes,
+// across every session.
+func (s *storage) sortedParts(indexes []uint64) [][]*Stub {
+	var parts [][]*Stub
 
 	for _, index := range indexes {
-		if m, exists := s.items[index]; exists {
-			total += len(m)
-		}
-	}
-
-	return total
-}
-
-// scoreHeap implements heap.Interface for sorting by score.
-type scoreHeap []sortItem
-
-func (h *scoreHeap) Len() int           { return len(*h) }
-func (h *scoreHeap) Less(i, j int) bool { return (*h)[i].score > (*h)[j].score }
-func (h *scoreHeap) Swap(i, j int)      { (*h)[i], (*h)[j] = (*h)[j], (*h)[i] }
-func (h *scoreHeap) Push(x any) {
-	item, ok := x.(sortItem)
-	if !ok {
-		log.Printf("[gripmock] scoreHeap.Push: expected sortItem, got %T", x)
-
-		return
-	}
-
-	*h = append(*h, item)
-}
-
-func (h *scoreHeap) Pop() any {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-
-	return x
-}
-
-// yieldSortedValuesHeap uses heap-based sorting for O(N log N) performance.
-//
-//nolint:cyclop,gocognit
-func (s *storage) yieldSortedValuesHeap(indexes []uint64, yield func(*Stub) bool) {
-	// Fast path: single index with multiple values
-	//nolint:nestif
-	if len(indexes) == 1 {
-		if m, exists := s.items[indexes[0]]; exists {
-			// Use slice-based sorting for small collections (faster than heap)
-			if len(m) <= smallCollectionThreshold {
-				items := make([]sortItem, 0, len(m))
-				for _, v := range m {
-					items = append(items, sortItem{stub: v, score: v.Priority})
-				}
-
-				slices.SortFunc(items, func(a, b sortItem) int { return b.score - a.score }) // descending
-
-				for _, item := range items {
-					if !yield(item.stub) {
-						return
-					}
-				}
-
-				return
+		for _, stubs := range s.itemSorted[index] {
+			if len(stubs) > 0 {
+				parts = append(parts, stubs)
 			}
 		}
 	}
 
-	// Use heap for complex cases
-	h := &scoreHeap{}
-	heap.Init(h)
+	return parts
+}
 
-	// Pre-allocate heap capacity for better performance
-	totalItems := s.countItemsFast(indexes)
-	if totalItems > 0 {
-		*h = make(scoreHeap, 0, totalItems)
+// mergeSortedParts merges pre-sorted slices into one sorted slice. A single
+// part is returned as-is, so the common case copies nothing.
+func mergeSortedParts(parts [][]*Stub) []*Stub {
+	switch len(parts) {
+	case 0:
+		return nil
+	case 1:
+		return parts[0]
 	}
 
-	// Collect elements in heap
-	for _, index := range indexes {
-		if m, exists := s.items[index]; exists {
-			for _, v := range m {
-				heap.Push(h, sortItem{stub: v, score: v.Priority})
-			}
-		}
+	merged := parts[0]
+	for _, part := range parts[1:] {
+		merged = mergeSortedStubs(merged, part)
 	}
 
-	// Extract elements in descending score order
-	for h.Len() > 0 {
-		x := heap.Pop(h)
-
-		item, ok := x.(sortItem)
-		if !ok {
-			log.Printf("[gripmock] scoreHeap.Pop: expected sortItem, got %T", x)
-
-			continue
-		}
-
-		if !yield(item.stub) {
-			return
-		}
-	}
+	return merged
 }
 
 func sortedCopy(stubs []*Stub) []*Stub {
@@ -222,38 +77,68 @@ func removeSortedStubByID(stubs []*Stub, id uuid.UUID) []*Stub {
 	return stubs
 }
 
+// collectAvailableSorted returns available stubs across indexes/session in
+// priority+ID order. Each source bucket is already sorted (storage.upsert
+// sorts touched buckets once, at write time), so the common case -- a single
+// index and no session -- returns the stored bucket directly with no copy or
+// sort. Rarer multi-bucket cases (package-prefix fallback matched both index
+// forms, or a session combined with the global bucket) merge the already-
+// sorted sources in O(total) instead of re-sorting from scratch.
 func collectAvailableSorted(indexBuckets map[uint64]map[string][]*Stub, indexes []uint64, session string) []*Stub {
 	if len(indexes) == 0 {
 		return nil
 	}
 
-	var total int
+	var parts [][]*Stub
 
 	for _, index := range indexes {
 		buckets := indexBuckets[index]
 
-		total += len(buckets[""])
+		if global := buckets[""]; len(global) > 0 {
+			parts = append(parts, global)
+		}
+
 		if session != "" {
-			total += len(buckets[session])
+			if sessionStubs := buckets[session]; len(sessionStubs) > 0 {
+				parts = append(parts, sessionStubs)
+			}
 		}
 	}
 
-	if total == 0 {
+	switch len(parts) {
+	case 0:
 		return nil
+	case 1:
+		return parts[0]
+	default:
+		merged := parts[0]
+		for _, part := range parts[1:] {
+			merged = mergeSortedStubs(merged, part)
+		}
+
+		return merged
 	}
+}
 
-	result := make([]*Stub, 0, total)
+// mergeSortedStubs merges two slices already sorted by
+// compareStubsByPriorityAndID into one sorted slice.
+func mergeSortedStubs(a, b []*Stub) []*Stub {
+	result := make([]*Stub, 0, len(a)+len(b))
 
-	for _, index := range indexes {
-		buckets := indexBuckets[index]
+	var i, j int
 
-		result = append(result, buckets[""]...)
-		if session != "" {
-			result = append(result, buckets[session]...)
+	for i < len(a) && j < len(b) {
+		if compareStubsByPriorityAndID(a[i], b[j]) <= 0 {
+			result = append(result, a[i])
+			i++
+		} else {
+			result = append(result, b[j])
+			j++
 		}
 	}
 
-	slices.SortFunc(result, compareStubsByPriorityAndID)
+	result = append(result, a[i:]...)
+	result = append(result, b[j:]...)
 
 	return result
 }

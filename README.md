@@ -523,6 +523,8 @@ Mode guides:
 
 ![Image size benchmark](docs/public/bench/image-size.svg)
 ![Startup readiness benchmark](docs/public/bench/startup-ready.svg)
+![Memory benchmark](docs/public/bench/memory-usage.svg)
+![p99 latency benchmark](docs/public/bench/latency-p99.svg)
 ![Latency percentiles benchmark](docs/public/bench/latency-percentiles.svg)
 ![Throughput benchmark](docs/public/bench/throughput-rps.svg)
 

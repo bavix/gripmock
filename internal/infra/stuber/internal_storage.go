@@ -20,6 +20,7 @@ type stubStorage interface {
 	findByMethodAvailable(method, session string) iter.Seq[*Stub]
 	hasMethodAvailable(method, session string) bool
 	findAllAvailable(service, method, session string) (iter.Seq[*Stub], error)
+	indexedCandidates(indexes []uint64, queryData map[string]any) ([]*Stub, bool)
 	posByPN(left, right string) ([]uint64, error)
 	values() iter.Seq[*Stub]
 	sessionsList() []string

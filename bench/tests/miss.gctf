@@ -1,0 +1,23 @@
+--- META ---
+name: Worst case -- no stub can match, so every stub is examined
+tags: [bench, miss]
+
+--- BENCH ---
+warmup: 3s
+latency_percentiles: p50,p75,p90,p95,p99,p99.9
+
+--- ENDPOINT ---
+helloworld.Greeter/SayHello
+
+--- PROTO ---
+files: ../proto/service.proto
+import_paths: ../proto
+
+--- REQUEST ---
+{
+  "name": "no-such-stub-ever"
+}
+
+--- ERROR partial ---
+{
+}

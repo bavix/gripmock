@@ -20,6 +20,10 @@ func (s *storage) upsert(values ...*Stub) []uuid.UUID {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// itemSorted buckets touched by this call are appended to unsorted below
+	// and sorted exactly once, after the loop -- see resortTouched.
+	touched := make(map[uint64]map[string]struct{}, len(values))
+
 	// Process all values in a single pass (direct field access for performance)
 	for i, v := range values {
 		results[i] = v.ID
@@ -32,19 +36,47 @@ func (s *storage) upsert(values ...*Stub) []uuid.UUID {
 		rightID := s.id(v.Method)
 		index := s.pos(leftID, rightID)
 
-		if s.items[index] == nil {
-			s.items[index] = make(map[uuid.UUID]*Stub, 1)
-		}
-
-		s.items[index][v.ID] = v
 		s.upsertSessionIndex(s.itemSorted, index, v.Session, v)
+		s.indexStub(index, v)
 		s.upsertMethodSessionIndex(rightID, v.Session, v)
 		s.incrementSession(v.Session)
 		s.itemsByID[v.ID] = v
 		s.lefts[leftID] = struct{}{}
+
+		markTouched(touched, index, v.Session)
 	}
 
+	s.resortTouched(touched)
+
 	return results
+}
+
+// markTouched records that (index, session) received an unsorted append and
+// needs a sort pass before it's next read.
+func markTouched(touched map[uint64]map[string]struct{}, index uint64, session string) {
+	sessions, ok := touched[index]
+	if !ok {
+		sessions = make(map[string]struct{}, 1)
+		touched[index] = sessions
+	}
+
+	sessions[session] = struct{}{}
+}
+
+// resortTouched sorts each (index, session) bucket touched by the current
+// upsert call exactly once, instead of on every subsequent read. Must be
+// called while still holding s.mu (write lock).
+func (s *storage) resortTouched(touched map[uint64]map[string]struct{}) {
+	for index, sessions := range touched {
+		buckets := s.itemSorted[index]
+		if buckets == nil {
+			continue
+		}
+
+		for session := range sessions {
+			slices.SortFunc(buckets[session], compareStubsByPriorityAndID)
+		}
+	}
 }
 
 // del deletes the Stub values with the given UUIDs from the storage.
@@ -94,15 +126,8 @@ func (s *storage) delBySession(session string) int {
 func (s *storage) removeStubIndexes(stub *Stub) {
 	pos := s.pos(s.id(stub.Service), s.id(stub.Method))
 
-	if m, exists := s.items[pos]; exists {
-		delete(m, stub.ID)
-
-		if len(m) == 0 {
-			delete(s.items, pos)
-		}
-	}
-
 	s.removeSessionIndex(s.itemSorted, pos, stub.Session, stub.ID)
+	s.deindexStub(pos, stub)
 	methodID := s.id(stub.Method)
 	s.removeMethodSessionIndex(methodID, stub.Session, stub.ID)
 	s.decrementSession(stub.Session)

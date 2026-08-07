@@ -525,6 +525,8 @@ Upstream modes は reflection ソース上で動作し、ランタイムの動�
 
 ![イメージサイズベンチマーク](docs/public/bench/image-size.svg)
 ![起動準備完了ベンチマーク](docs/public/bench/startup-ready.svg)
+![メモリベンチマーク](docs/public/bench/memory-usage.svg)
+![p99 latency benchmark](docs/public/bench/latency-p99.svg)
 ![レイテンシ百分位ベンチマーク](docs/public/bench/latency-percentiles.svg)
 ![スループットベンチマーク](docs/public/bench/throughput-rps.svg)
 

@@ -12,11 +12,6 @@ type rankedMatch struct {
 	fieldCount  int
 }
 
-type chunkOutcome struct {
-	matches     []rankedMatch
-	mostSimilar similarCandidate
-}
-
 type similarCandidate struct {
 	stub        *Stub
 	score       float64
@@ -67,12 +62,6 @@ func (s *searcher) rankedMatchFor(query Query, stub *Stub) rankedMatch {
 		totalScore:  s.scoreWithPriority(query, stub),
 		fieldCount:  countStubFields(stub),
 	}
-}
-
-func (s *searcher) evaluateRankedMatch(query Query, stub *Stub) (rankedMatch, bool) {
-	ranked := s.rankedMatchFor(query, stub)
-
-	return ranked, s.fastMatchV2(query, stub)
 }
 
 func compareRankedMatches(a, b rankedMatch) int {

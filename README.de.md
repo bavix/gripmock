@@ -525,6 +525,8 @@ Modusanleitungen:
 
 ![Bildgrößen-Benchmark](docs/public/bench/image-size.svg)
 ![Startbereitschafts-Benchmark](docs/public/bench/startup-ready.svg)
+![Speicher-Benchmark](docs/public/bench/memory-usage.svg)
+![p99 latency benchmark](docs/public/bench/latency-p99.svg)
 ![Latenz-Perzentil-Benchmark](docs/public/bench/latency-percentiles.svg)
 ![Durchsatz-Benchmark](docs/public/bench/throughput-rps.svg)
 

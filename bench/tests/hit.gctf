@@ -1,0 +1,27 @@
+--- META ---
+name: Greeter load test across the full generated stub set
+tags: [bench]
+
+--- BENCH ---
+warmup: 3s
+latency_percentiles: p50,p75,p90,p95,p99,p99.9
+sources:
+  - name: names
+    file: ../names.csv
+
+--- ENDPOINT ---
+helloworld.Greeter/SayHello
+
+--- PROTO ---
+files: ../proto/service.proto
+import_paths: ../proto
+
+--- REQUEST ---
+{
+  "name": "{{names.name}}"
+}
+
+--- RESPONSE ---
+{
+  "message": "Hello, {{names.name}}!"
+}

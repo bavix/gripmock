@@ -4,7 +4,10 @@ title: Performance Comparison
 
 # Performance Comparison
 
-This page contains architecture and benchmark comparison details.
+GripMock compared against the original `tokopedia/gripmock`. Every number on
+this page is produced by the benchmark in
+[`bench/`](https://github.com/bavix/gripmock/tree/master/bench) and can be
+regenerated from a checkout.
 
 ## Runtime Architecture
 
@@ -21,53 +24,168 @@ This page contains architecture and benchmark comparison details.
 - No generated child gRPC server process
 - No internal gRPC->HTTP hop for stub lookup in request path
 
-## Benchmark Source
+## Reproducing
 
-All metrics are generated from the internal benchmark pipeline and published here as summarized results and charts.
+Requires Docker and [grpctestify](https://github.com/gripmock/grpctestify-rust):
 
-The benchmark suite source will be published separately after final cleanup and stabilization.
+```bash
+brew install gripmock/tap/grpctestify   # or: cargo install grpctestify
+```
 
-Latest measured highlights (example run):
+From a checkout:
 
-- Stub dataset loaded into both runtimes before GHZ: **5000 stubs** (same dataset, same matching key format)
+```bash
+make bench        # measure, then regenerate every chart below
+make bench-run    # measure only, writes bench/results/
+make bench-chart  # redraw charts from the last measurement
+```
 
-- Image size (compressed layers):
-  - `bavix/gripmock` amd64: **16.55 MB**, `tkpd/gripmock` amd64: **226.29 MB** (**92.69% smaller**)
-  - `bavix/gripmock` arm64: **16.02 MB**, `tkpd/gripmock` arm64: **219.90 MB** (**92.71% smaller**)
-- Startup readiness (both gRPC + HTTP ready):
-  - simple proto: **0.398s vs 1.265s** (**68.54% faster**)
-  - wkt proto: **0.477s vs 1.398s** (**65.88% faster**)
-  - average: **0.438s vs 1.331s** (**67.14% faster**)
-- GHZ unary (`Greeter/SayHello`, 30s, concurrency 20):
-  - RPS: **2349.19 vs 1256.09** (**87.02% higher**)
-  - avg latency: **8.394ms vs 15.859ms** (**47.07% lower**)
-  - p75 latency: **10.119ms vs 16.899ms** (**40.12% lower**)
-  - p95 latency: **17.259ms vs 19.047ms** (**9.38% lower**)
+A different stub count or a different pair of versions:
 
-Pull-time metric is environment-sensitive (registry/CDN/cache conditions) and should be interpreted with caution.
+```bash
+BENCH_COUNT=10000 make bench-run
+BAVIX_IMAGE=bavix/gripmock:3.18.3 make bench-run
+```
+
+Sources: [`bench/run.sh`](https://github.com/bavix/gripmock/blob/master/bench/run.sh)
+drives the measurement, [`bench/tests/`](https://github.com/bavix/gripmock/tree/master/bench/tests)
+holds the scenarios, [`bench/chart.go`](https://github.com/bavix/gripmock/blob/master/bench/chart.go)
+renders the SVGs.
+
+Everything is configurable through the environment:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `BAVIX_IMAGE` | `bavix/gripmock:3.18.3` | image under test |
+| `TKPD_IMAGE` | `tkpd/gripmock:v1.14` | image under test |
+| `BENCH_COUNT` | `500000` | stubs generated |
+| `BENCH_STARTUP_RUNS` | `1000` | start/stop cycles for the startup measurement |
+| `BENCH_CONCURRENCY_LEVELS` | `1,10,20,50` | concurrency sweep |
+| `BENCH_DURATION` | `30s` | load duration at the highest level |
+| `BENCH_SWEEP_DURATION` | `10s` | load duration at the other levels |
+| `BENCH_SCENARIOS` | `hit miss` | scenarios from `bench/tests/` to run |
+| `BENCH_RESULTS_DIR` | `results` | where JSON output is written |
+
+## Method
+
+Both servers receive identical treatment: the same generated `stubs.json`
+(byte for byte, both accept the schema), the same proto, the same container
+limits, and the same grpctestify invocation. They run one at a time, never
+concurrently.
+
+Two scenarios, both defined in `bench/tests/`:
+
+- `hit.gctf` — the request matches a stub. Requests are driven from
+  `names.csv`, one row per stub, in shuffled order with a fixed seed. Shuffling
+  matters: an engine that scans stubs and stops at the first match answers
+  request N after N comparisons, so asking in insertion order would measure
+  request ordering rather than lookup cost.
+- `miss.gctf` — no stub can match, so both implementations examine every stub
+  before returning an error. The expectation is `ERROR partial {}`: the two
+  engines return different status codes and messages for this case, and
+  asserting the failure itself keeps one scenario file valid for both.
+
+### Docker and native
+
+Both implementations are benchmarked in Docker, under the same CPU and memory
+limits, so the head-to-head numbers compare engines rather than packaging.
+
+GripMock is additionally benchmarked as a native process, shown as
+`bavix/gripmock (native)`. It ships as a single static binary: the container
+image is `alpine` plus that binary, and nothing else is required at runtime.
+`tokopedia/gripmock` has no equivalent mode — its image is built from
+`golang:1.23-alpine` and installs `protoc`, `protoc-gen-go` and
+`protoc-gen-go-grpc`, because it generates and compiles a gRPC server from the
+proto when it starts. Running it outside a container means installing that
+toolchain first.
+
+The native process is given `GOMAXPROCS=2` to match the 2 CPUs granted to each
+container. It still avoids the container network path, which is where most of
+the remaining difference comes from.
+
+Startup is measured separately, with a single stub loaded, as the time from
+`docker run` until `helloworld.Greeter` answers gRPC reflection. It therefore
+reports how quickly the server begins serving, not how quickly it parses a
+dataset. A TCP probe would not work here — docker-proxy binds the published
+port when the container is created, before anything inside listens — and
+reflection merely responding is also too early, because GripMock registers its
+health service before the mocked one.
+
+Latency is reported as avg, p50, p95 and p99. p75 and p90 fall between
+neighbours that already bracket them. p99.9 needs roughly 1000 requests before
+it stops describing a single slow outlier, which a fixed-duration run does not
+always reach; it stays in the JSON output.
+
+A run is rejected rather than charted if the container stops mid-measurement,
+if any request fails at the transport level, or if the outcome disagrees with
+the scenario (every request must match in `hit`, none in `miss`).
+
+## Environment
+
+The published charts were measured on:
+
+| | |
+| --- | --- |
+| Machine | Apple M1 Pro, 8 cores, 16 GB RAM |
+| OS | macOS 26.5.2 |
+| Docker | 29.4.0 |
+| Container limits | 2 CPUs, 4 GiB per container |
+| grpctestify | v1.9.4 |
+| Go | go1.26.5 |
+| jq | jq-1.8.2 |
+| GripMock | `bavix/gripmock:3.18.3`, built from this working tree |
+| GripMock (native) | same tree built as a host binary, `GOMAXPROCS=2` |
+| tokopedia/gripmock | `tkpd/gripmock:v1.14` |
+| Stub counts | 500, 1000, 10 000, 100 000, 500 000 |
+| Concurrency levels | 1, 10, 20, 50 |
+| Load duration | 10 s per level, 30 s at the highest |
+| Startup samples | 20 container starts per engine |
+
+Absolute values depend on the machine. The shape of the curves does not.
+Image pull times are not measured; they depend on registry and CDN conditions.
+
+Compressed image size is read from the registry manifest, so it is charted
+only when both tags are published. For the last released pair it is 19.13 MB
+(amd64) and 18.45 MB (arm64) for `bavix/gripmock:3.18.2`, against 226.29 MB
+and 219.90 MB for `tkpd/gripmock:v1.14`.
 
 ## Charts
 
-### Image size benchmark
+### Throughput, matching request
 
-Shows compressed Docker image size on amd64 and arm64.
+Peak requests per second across the concurrency sweep, by stub count.
 
-![Image size benchmark](/bench/image-size.svg)
+![Throughput benchmark](/bench/throughput-rps.svg)
 
-### Startup readiness benchmark
+### Throughput, no matching stub
 
-Shows time to full readiness (both gRPC and HTTP endpoints available).
+The same sweep for requests no stub can satisfy, where both implementations
+examine every stub before giving up.
 
-![Startup readiness benchmark](/bench/startup-ready.svg)
+![Throughput on miss](/bench/throughput-miss.svg)
 
-### Latency percentiles benchmark
+### p99 latency
 
-Shows request latency distribution across avg, p75, p95, and p99.
+Tail latency at the highest concurrency level, by stub count.
+
+![p99 latency benchmark](/bench/latency-p99.svg)
+
+### Latency distribution
+
+Drawn at a small stub count, where both implementations are still within the
+same range and the shape of the distribution stays visible.
 
 ![Latency percentiles benchmark](/bench/latency-percentiles.svg)
 
-### Throughput benchmark
+### Memory
 
-Shows achieved requests per second under the benchmark load profile.
+Container resident memory with the stub set loaded, read before any request.
 
-![Throughput benchmark](/bench/throughput-rps.svg)
+![Memory benchmark](/bench/memory-usage.svg)
+
+### Startup
+
+Time until the service answers gRPC reflection with one stub loaded, as
+min/avg/max over repeated container starts.
+
+![Startup readiness benchmark](/bench/startup-ready.svg)
