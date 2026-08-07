@@ -19,5 +19,4 @@ import_paths: ../proto
 }
 
 --- ERROR partial ---
-{
-}
+{}
