@@ -523,12 +523,20 @@ Guías de modos:
 
 ## 📊 Gráficos de benchmark
 
+Con 500 stubs, 4 CPU por contenedor. Método y cifras completas: [Performance Comparison](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
+
+|  | bavix | tokopedia |
+| --- | --- | --- |
+| Rendimiento | 24 284 req/s | 5 600 req/s |
+| Latencia p99 | 11 ms | 26 ms |
+| Inicio, promedio | 0.43 s | 2.29 s |
+| Tamaño de imagen, amd64 | 19.13 MB | 226.29 MB |
+
 ![Benchmark de tamaño de imagen](docs/public/bench/image-size.svg)
 ![Benchmark de preparación de inicio](docs/public/bench/startup-ready.svg)
 ![Benchmark de memoria](docs/public/bench/memory-usage.svg)
-![p99 latency benchmark](docs/public/bench/latency-p99.svg)
 ![Benchmark de percentiles de latencia](docs/public/bench/latency-percentiles.svg)
-![Benchmark de rendimiento](docs/public/bench/throughput-rps.svg)
+![Benchmark de rendimiento](docs/public/bench/throughput-equals.svg)
 
 ## 🔗 Recursos útiles
 

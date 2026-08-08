@@ -1,5 +1,7 @@
 package stuber
 
+import "regexp/syntax"
+
 // The equals index turns the common "one stub per input value" setup from a
 // full scan of every stub registered for a service/method into a map lookup.
 //
@@ -20,7 +22,8 @@ package stuber
 // all. Using a single, deterministic key keeps each stub in exactly one
 // bucket, so a lookup never returns the same stub twice.
 func indexKeyFor(stub *Stub) (string, string, bool) {
-	if !isIndexableInput(stub) {
+	fields, pattern, ok := indexableFields(stub)
+	if !ok {
 		return "", "", false
 	}
 
@@ -28,10 +31,19 @@ func indexKeyFor(stub *Stub) (string, string, bool) {
 
 	first := true
 
-	for k, v := range stub.Input.Equals {
+	for k, v := range fields {
 		s, isString := v.(string)
 		if !isString {
 			return "", "", false
+		}
+
+		if pattern {
+			literal, isLiteral := anchoredLiteral(s)
+			if !isLiteral {
+				return "", "", false
+			}
+
+			s = literal
 		}
 
 		if first || k < key {
@@ -42,20 +54,61 @@ func indexKeyFor(stub *Stub) (string, string, bool) {
 	return key, value, true
 }
 
-// isIndexableInput reports whether a stub's input is a plain equals block --
-// the only shape the index can reason about exactly.
-func isIndexableInput(stub *Stub) bool {
-	if stub.Inputs != nil {
-		return false
+func anchoredLiteral(pattern string) (string, bool) {
+	parsed, err := syntax.Parse(pattern, syntax.Perl)
+	if err != nil {
+		return "", false
 	}
 
-	in := stub.Input
+	parsed = parsed.Simplify()
+	if parsed.Op != syntax.OpConcat || len(parsed.Sub) < 3 {
+		return "", false
+	}
 
-	return len(in.Equals) > 0 &&
-		len(in.Contains) == 0 &&
-		len(in.Matches) == 0 &&
-		len(in.Glob) == 0 &&
-		len(in.AnyOf) == 0
+	subs := parsed.Sub
+	if subs[0].Op != syntax.OpBeginText || subs[len(subs)-1].Op != syntax.OpEndText {
+		return "", false
+	}
+
+	var literal []rune
+
+	for _, sub := range subs[1 : len(subs)-1] {
+		if sub.Op != syntax.OpLiteral || sub.Flags&syntax.FoldCase != 0 {
+			return "", false
+		}
+
+		literal = append(literal, sub.Rune...)
+	}
+
+	if len(literal) == 0 {
+		return "", false
+	}
+
+	return string(literal), true
+}
+
+// isIndexableInput reports whether a stub's input is a plain equals block --
+// the only shape the index can reason about exactly.
+func indexableFields(stub *Stub) (map[string]any, bool, bool) {
+	in := stub.Input
+	if stub.Inputs != nil || len(in.Glob) > 0 || len(in.AnyOf) > 0 {
+		return nil, false, false
+	}
+
+	switch {
+	case len(in.Matches) > 0:
+		if len(in.Equals) > 0 || len(in.Contains) > 0 {
+			return nil, false, false
+		}
+
+		return in.Matches, true, true
+	case len(in.Equals) > 0:
+		return in.Equals, false, true
+	case len(in.Contains) > 0:
+		return in.Contains, false, true
+	}
+
+	return nil, false, false
 }
 
 // indexStub adds a stub to the per-(service, method) equals index, or to the
@@ -135,6 +188,7 @@ func (s *storage) indexedCandidates(indexes []uint64, queryData map[string]any) 
 	var (
 		candidates []*Stub
 		usable     bool
+		spellings  [3]string
 	)
 
 	for _, index := range indexes {
@@ -157,7 +211,7 @@ func (s *storage) indexedCandidates(indexes []uint64, queryData map[string]any) 
 			// findValueWithVariations, so a stub key K matches query key Q
 			// when Q is K, camelCase(K) or snake_case(K). Probing those three
 			// forms of Q covers every K that could have matched.
-			for _, key := range keyVariations(queryKey) {
+			for _, key := range keyVariations(queryKey, &spellings) {
 				candidates = append(candidates, byField[key][value]...)
 			}
 		}
@@ -170,17 +224,33 @@ func (s *storage) indexedCandidates(indexes []uint64, queryData map[string]any) 
 	return candidates, true
 }
 
-// keyVariations returns the stub-side key spellings that a query key can
-// resolve to, without duplicates.
-func keyVariations(queryKey string) []string {
-	variations := [3]string{queryKey, toSnakeCase(queryKey), toCamelCase(queryKey)}
-	unique := variations[:1]
+// keyVariations fills dst with the distinct stub-side spellings a query key can
+// resolve to and returns the filled prefix. The caller owns dst so probing a
+// query costs no allocation.
+func keyVariations(queryKey string, dst *[3]string) []string {
+	dst[0] = queryKey
+	filled := 1
 
-	for _, candidate := range variations[1:] {
-		if candidate != "" && candidate != variations[0] && (len(unique) < 2 || candidate != unique[1]) {
-			unique = append(unique, candidate)
+	for _, candidate := range [2]string{toSnakeCase(queryKey), toCamelCase(queryKey)} {
+		if candidate == "" {
+			continue
+		}
+
+		duplicate := false
+
+		for i := range filled {
+			if dst[i] == candidate {
+				duplicate = true
+
+				break
+			}
+		}
+
+		if !duplicate {
+			dst[filled] = candidate
+			filled++
 		}
 	}
 
-	return unique
+	return dst[:filled]
 }

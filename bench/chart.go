@@ -41,9 +41,13 @@ func runChart() {
 	}
 
 	renderScalingCharts(counts, outDir)
-	renderMissChart(counts, outDir)
+	renderScenarioChart(counts, outDir, "miss", "throughput-miss.svg",
+		"Throughput vs Stub Count -- No Match",
+		"Peak requests/sec when no stub can match, so every stub is examined")
+	renderMatcherChart(counts[0], outDir)
+	renderCPUChart(counts, outDir)
 	renderStartupChart(counts[0], outDir)
-	renderLatencyChart(latencyDetailCount(counts), outDir)
+	renderLatencyChart(counts[0], outDir)
 	renderImageSizeChart(counts[len(counts)-1], outDir)
 
 	log.Printf("wrote charts to %s", outDir)
@@ -53,7 +57,7 @@ func renderScalingCharts(counts []int, outDir string) {
 	labels := make([]string, len(counts))
 	metrics := map[string][3][]float64{}
 
-	for _, key := range []string{"rps", "p99", "memory"} {
+	for _, key := range []string{"rps", "memory"} {
 		metrics[key] = [3][]float64{make([]float64, len(counts)), make([]float64, len(counts)), make([]float64, len(counts))}
 	}
 
@@ -63,26 +67,17 @@ func renderScalingCharts(counts []int, outDir string) {
 
 		for k, engine := range engines {
 			m := readJSON[meta](filepath.Join(dir, engine+"-meta.json"))
-			r := readJSON[benchReport](filepath.Join(dir, engine+"-hit.json"))
 
-			metrics["rps"][k][i] = peakRPS(filepath.Join(dir, engine+"-hit-throughput.json"))
-			metrics["p99"][k][i] = r.latencyMs(99)
+			metrics["rps"][k][i] = peakRPS(filepath.Join(dir, engine+"-equals-throughput.json"))
 			metrics["memory"][k][i] = m.MemoryMB
 		}
 	}
 
-	write(filepath.Join(outDir, "throughput-rps.svg"), renderChart(
+	write(filepath.Join(outDir, "throughput-equals.svg"), renderChart(
 		"Throughput vs Stub Count",
 		"Peak requests/sec across the concurrency sweep. Higher is better",
 		labels, newSeries(metrics["rps"][0], metrics["rps"][1], metrics["rps"][2]),
 		func(v float64) string { return fmt.Sprintf("%.0f", v) },
-	))
-
-	write(filepath.Join(outDir, "latency-p99.svg"), renderChart(
-		"p99 Latency vs Stub Count",
-		"Tail latency at the highest concurrency level. Lower is better",
-		labels, newSeries(metrics["p99"][0], metrics["p99"][1], metrics["p99"][2]),
-		func(v float64) string { return fmt.Sprintf("%.1f ms", v) },
 	))
 
 	write(filepath.Join(outDir, "memory-usage.svg"), renderChart(
@@ -94,7 +89,7 @@ func renderScalingCharts(counts []int, outDir string) {
 
 }
 
-func renderMissChart(counts []int, outDir string) {
+func renderScenarioChart(counts []int, outDir, scenario, file, title, subtitle string) {
 	labels := make([]string, len(counts))
 	vals := [3][]float64{make([]float64, len(counts)), make([]float64, len(counts)), make([]float64, len(counts))}
 
@@ -103,37 +98,74 @@ func renderMissChart(counts []int, outDir string) {
 		labels[i] = humanCount(count)
 
 		for k, engine := range engines {
-			vals[k][i] = peakRPS(filepath.Join(dir, engine+"-miss-throughput.json"))
+			vals[k][i] = peakRPS(filepath.Join(dir, engine+"-"+scenario+"-throughput.json"))
 		}
 	}
 
-	write(filepath.Join(outDir, "throughput-miss.svg"), renderChart(
-		"Throughput vs Stub Count -- No Match",
-		"Peak requests/sec when no stub can match, so every stub is examined",
+	write(filepath.Join(outDir, file), renderChart(
+		title, subtitle,
 		labels, newSeries(vals[0], vals[1], vals[2]),
 		func(v float64) string { return fmt.Sprintf("%.0f", v) },
 	))
 }
 
-func latencyDetailCount(counts []int) int {
-	const preferred = 1000
+// renderCPUChart draws throughput per core. Raw consumption is not comparable
+// on its own -- an engine serving far more requests is expected to consume
+// more -- so the work done is divided out.
+func renderCPUChart(counts []int, outDir string) {
+	labels := make([]string, len(counts))
+	perCore := [3][]float64{}
 
-	best := counts[0]
-	for _, count := range counts {
-		if abs(count-preferred) < abs(best-preferred) {
-			best = count
+	for k := range engines {
+		perCore[k] = make([]float64, len(counts))
+	}
+
+	for i, count := range counts {
+		dir := fmt.Sprintf("results-%d", count)
+		labels[i] = humanCount(count)
+
+		for k, engine := range engines {
+			u, ok := readJSONOpt[usage](filepath.Join(dir, engine+"-equals-usage.json"))
+			if !ok {
+				log.Printf("skipping the CPU chart: no usage samples for %s at %s stubs", engine, humanCount(count))
+
+				return
+			}
+
+			if cores := u.CPUAvg / 100; cores > 0 {
+				perCore[k][i] = peakRPS(filepath.Join(dir, engine+"-equals-throughput.json")) / cores
+			}
 		}
 	}
 
-	return best
+	write(filepath.Join(outDir, "efficiency-cpu.svg"), renderChart(
+		"CPU Efficiency",
+		"Requests per second delivered per CPU core consumed. Higher is better",
+		labels, newSeries(perCore[0], perCore[1], perCore[2]),
+		func(v float64) string { return fmt.Sprintf("%.0f", v) },
+	))
 }
 
-func abs(n int) int {
-	if n < 0 {
-		return -n
+func renderMatcherChart(count int, outDir string) {
+	dir := fmt.Sprintf("results-%d", count)
+	scenarios := []string{"equals", "contains", "matches"}
+
+	var vals [3][]float64
+
+	for k, engine := range engines {
+		vals[k] = make([]float64, len(scenarios))
+		for i, scenario := range scenarios {
+			vals[k][i] = peakRPS(filepath.Join(dir, engine+"-"+scenario+"-throughput.json"))
+		}
 	}
 
-	return n
+	write(filepath.Join(outDir, "matcher-kinds.svg"), renderChart(
+		"Matcher Kinds",
+		fmt.Sprintf("Peak requests/sec at %s stubs, by the matcher every stub is written with. Higher is better", humanCount(count)),
+		[]string{"equals", "contains", "matches"},
+		newSeries(vals[0], vals[1], vals[2]),
+		func(v float64) string { return fmt.Sprintf("%.0f", v) },
+	))
 }
 
 func renderLatencyChart(count int, outDir string) {
@@ -143,14 +175,14 @@ func renderLatencyChart(count int, outDir string) {
 	var vals [3][]float64
 
 	for k, engine := range engines {
-		r := readJSON[benchReport](filepath.Join(dir, engine+"-hit.json"))
+		r := readJSON[benchReport](filepath.Join(dir, engine+"-equals.json"))
 		vals[k] = []float64{
 			float64(r.Summary.AverageNs) / 1e6,
 			r.latencyMs(50), r.latencyMs(95), r.latencyMs(99),
 		}
 	}
 
-	bavixReport := readJSON[benchReport](filepath.Join(dir, "bavix-hit.json"))
+	bavixReport := readJSON[benchReport](filepath.Join(dir, "bavix-equals.json"))
 
 	write(filepath.Join(outDir, "latency-percentiles.svg"), renderChart(
 		"Latency Distribution",
@@ -183,7 +215,11 @@ func renderStartupChart(count int, outDir string) {
 }
 
 func renderImageSizeChart(count int, outDir string) {
-	dir := fmt.Sprintf("results-%d", count)
+	dir := "results-size"
+	if _, err := os.Stat(filepath.Join(dir, "bavix-meta.json")); err != nil {
+		dir = fmt.Sprintf("results-%d", count)
+	}
+
 	bavixMeta := readJSON[meta](filepath.Join(dir, "bavix-meta.json"))
 	tkpdMeta := readJSON[meta](filepath.Join(dir, "tkpd-meta.json"))
 
@@ -196,7 +232,7 @@ func renderImageSizeChart(count int, outDir string) {
 
 	write(filepath.Join(outDir, "image-size.svg"), renderChart(
 		"Docker Image Size (Compressed)",
-		"Smaller image means faster pull and less CI overhead",
+		fmt.Sprintf("%s vs %s, compressed layers from the registry manifest", bavixMeta.Image, tkpdMeta.Image),
 		[]string{"linux/amd64", "linux/arm64"},
 		[]series{
 			{id: "bavix", label: "bavix/gripmock", from: "#34d399", to: "#059669", value: "#86efac", legend: "#d1fae5",
@@ -216,6 +252,23 @@ func comparableSizes(a, b map[string]float64) bool {
 	}
 
 	return true
+}
+
+// readJSONOpt returns the zero value when the file is absent, for artefacts a
+// results directory may predate.
+func readJSONOpt[T any](path string) (T, bool) {
+	var v T
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return v, false
+	}
+
+	if err := json.Unmarshal(data, &v); err != nil {
+		log.Fatalf("parse %s: %v", path, err)
+	}
+
+	return v, true
 }
 
 func readJSON[T any](path string) T {
@@ -246,7 +299,19 @@ type series struct {
 	values []float64
 }
 
-func renderChart(title, subtitle string, categories []string, all []series, format func(float64) string) string {
+// axis maps a value to a fraction of the plot height. It is deliberately
+// linear: a bar reads as length from zero, so proportions on the page match
+// proportions in the data. A log axis would make a value a thousand times
+// smaller look merely a third shorter.
+type axis struct {
+	max float64
+}
+
+// minVisible keeps a bar for a very small value from vanishing entirely, so
+// its printed figure still has something to sit on.
+const minVisible = 0.005
+
+func newAxis(all []series) axis {
 	maxVal := 0.0
 
 	for _, s := range all {
@@ -255,11 +320,36 @@ func renderChart(title, subtitle string, categories []string, all []series, form
 		}
 	}
 
-	if maxVal == 0 {
-		maxVal = 1
+	if maxVal <= 0 {
+		return axis{max: 1}
 	}
 
-	scaleMax := maxVal * 1.2
+	return axis{max: maxVal * 1.2}
+}
+
+// fraction returns where value sits on the axis, in [0, 1].
+func (a axis) fraction(value float64) float64 {
+	if value <= 0 {
+		return 0
+	}
+
+	return max(minVisible, value/a.max)
+}
+
+// ticks returns the gridline values from the top of the axis down.
+func (a axis) ticks() []float64 {
+	const steps = 5
+
+	values := make([]float64, 0, steps+1)
+	for i := range steps + 1 {
+		values = append(values, a.max*float64(steps-i)/steps)
+	}
+
+	return values
+}
+
+func renderChart(title, subtitle string, categories []string, all []series, format func(float64) string) string {
+	scale := newAxis(all)
 
 	var b strings.Builder
 
@@ -276,34 +366,17 @@ func renderChart(title, subtitle string, categories []string, all []series, form
 	fmt.Fprintf(&b, `<text x="90" y="44" fill="#f9fafb" font-size="28" font-family="%s" font-weight="700">%s</text>`+"\n", fontFamily, escape(title))
 	fmt.Fprintf(&b, `<text x="90" y="70" fill="#9ca3af" font-size="16" font-family="%s">%s</text>`+"\n", fontFamily, escape(subtitle))
 
-	for i := 0; i <= 5; i++ {
-		y := plotTop + float64(i)*(plotHeight/5)
-		val := scaleMax * float64(5-i) / 5
+	gridlines := scale.ticks()
+
+	for i, value := range gridlines {
+		y := plotTop + float64(i)*(plotHeight/float64(len(gridlines)-1))
 
 		fmt.Fprintf(&b, `<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="#1f2937" stroke-width="1"/>`+"\n", plotLeft, y, plotRight, y)
-		fmt.Fprintf(&b, `<text x="%.1f" y="%.1f" text-anchor="end" fill="#9ca3af" font-size="12" font-family="%s">%.1f</text>`+"\n", plotLeft-10, y+5, fontFamily, val)
+		fmt.Fprintf(&b, `<text x="%.1f" y="%.1f" text-anchor="end" fill="#9ca3af" font-size="12" font-family="%s">%s</text>`+"\n",
+			plotLeft-10, y+5, fontFamily, format(value))
 	}
 
-	slot := plotWidth / float64(len(categories))
-	count := float64(len(all))
-	width := min(barWidth, (slot-barGap*(count+1))/count)
-	group := width*count + barGap*(count-1)
-	margin := (slot - group) / 2
-
-	for i, cat := range categories {
-		slotStart := plotLeft + float64(i)*slot + margin
-
-		for k, s := range all {
-			x := slotStart + float64(k)*(width+barGap)
-			h := (s.values[i] / scaleMax) * plotHeight
-			y := plotBottom - h
-
-			fmt.Fprintf(&b, `<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="url(#%s)" rx="8"/>`+"\n", x, y, width, h, s.id)
-			fmt.Fprintf(&b, `<text x="%.1f" y="%.1f" text-anchor="middle" fill="%s" font-size="11" font-family="%s">%s</text>`+"\n", x+width/2, y-8, s.value, fontFamily, format(s.values[i]))
-		}
-
-		fmt.Fprintf(&b, `<text x="%.1f" y="498" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="%s">%s</text>`+"\n", slotStart+group/2, fontFamily, escape(cat))
-	}
+	drawBars(&b, scale, categories, all, format)
 
 	for k, s := range all {
 		x := 90 + float64(k)*220
@@ -322,6 +395,31 @@ func newSeries(bavix, native, tkpd []float64) []series {
 		{id: "bavix", label: "bavix/gripmock (Docker)", from: "#34d399", to: "#059669", value: "#86efac", legend: "#d1fae5", values: bavix},
 		{id: "native", label: "bavix/gripmock (native)", from: "#60a5fa", to: "#2563eb", value: "#bfdbfe", legend: "#dbeafe", values: native},
 		{id: "tkpd", label: "tkpd/gripmock (Docker)", from: "#f59e0b", to: "#d97706", value: "#fcd34d", legend: "#fef3c7", values: tkpd},
+	}
+}
+
+// drawBars encodes each value as length from the axis floor. That reading only
+// holds on a linear axis, where the floor is zero.
+func drawBars(b *strings.Builder, scale axis, categories []string, all []series, format func(float64) string) {
+	slot := plotWidth / float64(len(categories))
+	count := float64(len(all))
+	width := min(barWidth, (slot-barGap*(count+1))/count)
+	group := width*count + barGap*(count-1)
+	margin := (slot - group) / 2
+
+	for i, cat := range categories {
+		slotStart := plotLeft + float64(i)*slot + margin
+
+		for k, s := range all {
+			x := slotStart + float64(k)*(width+barGap)
+			h := scale.fraction(s.values[i]) * plotHeight
+			y := plotBottom - h
+
+			fmt.Fprintf(b, `<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="url(#%s)" rx="8"/>`+"\n", x, y, width, h, s.id)
+			fmt.Fprintf(b, `<text x="%.1f" y="%.1f" text-anchor="middle" fill="%s" font-size="11" font-family="%s">%s</text>`+"\n", x+width/2, y-8, s.value, fontFamily, format(s.values[i]))
+		}
+
+		fmt.Fprintf(b, `<text x="%.1f" y="498" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="%s">%s</text>`+"\n", slotStart+group/2, fontFamily, escape(cat))
 	}
 }
 
@@ -365,7 +463,7 @@ func sweepDirs() []int {
 			continue
 		}
 
-		if _, err := os.Stat(filepath.Join(entry, "bavix-hit-throughput.json")); err != nil {
+		if _, err := os.Stat(filepath.Join(entry, "bavix-equals-throughput.json")); err != nil {
 			continue
 		}
 

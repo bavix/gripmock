@@ -9,52 +9,38 @@
 <text x="90" y="44" fill="#f9fafb" font-size="28" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif" font-weight="700">Memory vs Stub Count</text>
 <text x="90" y="70" fill="#9ca3af" font-size="16" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">Resident memory with the stub set loaded</text>
 <line x1="90.0" y1="90.0" x2="1060.0" y2="90.0" stroke="#1f2937" stroke-width="1"/>
-<text x="80.0" y="95.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">1114.3</text>
+<text x="80.0" y="95.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">1225 MB</text>
 <line x1="90.0" y1="166.0" x2="1060.0" y2="166.0" stroke="#1f2937" stroke-width="1"/>
-<text x="80.0" y="171.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">891.5</text>
+<text x="80.0" y="171.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">980 MB</text>
 <line x1="90.0" y1="242.0" x2="1060.0" y2="242.0" stroke="#1f2937" stroke-width="1"/>
-<text x="80.0" y="247.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">668.6</text>
+<text x="80.0" y="247.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">735 MB</text>
 <line x1="90.0" y1="318.0" x2="1060.0" y2="318.0" stroke="#1f2937" stroke-width="1"/>
-<text x="80.0" y="323.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">445.7</text>
+<text x="80.0" y="323.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">490 MB</text>
 <line x1="90.0" y1="394.0" x2="1060.0" y2="394.0" stroke="#1f2937" stroke-width="1"/>
-<text x="80.0" y="399.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">222.9</text>
+<text x="80.0" y="399.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">245 MB</text>
 <line x1="90.0" y1="470.0" x2="1060.0" y2="470.0" stroke="#1f2937" stroke-width="1"/>
-<text x="80.0" y="475.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.0</text>
-<rect x="102.0" y="420.0" width="48.7" height="50.0" fill="url(#bavix)" rx="8"/>
-<text x="126.3" y="412.0" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">146 MB</text>
-<rect x="162.7" y="410.3" width="48.7" height="59.7" fill="url(#native)" rx="8"/>
-<text x="187.0" y="402.3" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">175 MB</text>
-<rect x="223.3" y="424.8" width="48.7" height="45.2" fill="url(#tkpd)" rx="8"/>
-<text x="247.7" y="416.8" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">132 MB</text>
-<text x="187.0" y="498" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">500</text>
-<rect x="296.0" y="419.9" width="48.7" height="50.1" fill="url(#bavix)" rx="8"/>
-<text x="320.3" y="411.9" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">147 MB</text>
-<rect x="356.7" y="409.1" width="48.7" height="60.9" fill="url(#native)" rx="8"/>
-<text x="381.0" y="401.1" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">179 MB</text>
-<rect x="417.3" y="424.5" width="48.7" height="45.5" fill="url(#tkpd)" rx="8"/>
-<text x="441.7" y="416.5" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">134 MB</text>
-<text x="381.0" y="498" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">1k</text>
-<rect x="490.0" y="415.4" width="48.7" height="54.6" fill="url(#bavix)" rx="8"/>
-<text x="514.3" y="407.4" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">160 MB</text>
-<rect x="550.7" y="404.4" width="48.7" height="65.6" fill="url(#native)" rx="8"/>
-<text x="575.0" y="396.4" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">192 MB</text>
-<rect x="611.3" y="420.3" width="48.7" height="49.7" fill="url(#tkpd)" rx="8"/>
-<text x="635.7" y="412.3" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">146 MB</text>
+<text x="80.0" y="475.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0 MB</text>
+<rect x="155.7" y="422.3" width="56.0" height="47.7" fill="url(#bavix)" rx="8"/>
+<text x="183.7" y="414.3" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">154 MB</text>
+<rect x="223.7" y="413.2" width="56.0" height="56.8" fill="url(#native)" rx="8"/>
+<text x="251.7" y="405.2" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">183 MB</text>
+<rect x="291.7" y="448.0" width="56.0" height="22.0" fill="url(#tkpd)" rx="8"/>
+<text x="319.7" y="440.0" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">71 MB</text>
+<text x="251.7" y="498" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">500</text>
+<rect x="479.0" y="418.3" width="56.0" height="51.7" fill="url(#bavix)" rx="8"/>
+<text x="507.0" y="410.3" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">167 MB</text>
+<rect x="547.0" y="407.3" width="56.0" height="62.7" fill="url(#native)" rx="8"/>
+<text x="575.0" y="399.3" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">202 MB</text>
+<rect x="615.0" y="442.5" width="56.0" height="27.5" fill="url(#tkpd)" rx="8"/>
+<text x="643.0" y="434.5" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">89 MB</text>
 <text x="575.0" y="498" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">10k</text>
-<rect x="684.0" y="358.0" width="48.7" height="112.0" fill="url(#bavix)" rx="8"/>
-<text x="708.3" y="350.0" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">328 MB</text>
-<rect x="744.7" y="347.2" width="48.7" height="122.8" fill="url(#native)" rx="8"/>
-<text x="769.0" y="339.2" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">360 MB</text>
-<rect x="805.3" y="374.6" width="48.7" height="95.4" fill="url(#tkpd)" rx="8"/>
-<text x="829.7" y="366.6" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">280 MB</text>
-<text x="769.0" y="498" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">100k</text>
-<rect x="878.0" y="160.1" width="48.7" height="309.9" fill="url(#bavix)" rx="8"/>
-<text x="902.3" y="152.1" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">909 MB</text>
-<rect x="938.7" y="153.3" width="48.7" height="316.7" fill="url(#native)" rx="8"/>
-<text x="963.0" y="145.3" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">929 MB</text>
-<rect x="999.3" y="215.2" width="48.7" height="254.8" fill="url(#tkpd)" rx="8"/>
-<text x="1023.7" y="207.2" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">747 MB</text>
-<text x="963.0" y="498" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">500k</text>
+<rect x="802.3" y="162.4" width="56.0" height="307.6" fill="url(#bavix)" rx="8"/>
+<text x="830.3" y="154.4" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">992 MB</text>
+<rect x="870.3" y="153.3" width="56.0" height="316.7" fill="url(#native)" rx="8"/>
+<text x="898.3" y="145.3" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">1021 MB</text>
+<rect x="938.3" y="221.3" width="56.0" height="248.7" fill="url(#tkpd)" rx="8"/>
+<text x="966.3" y="213.3" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">802 MB</text>
+<text x="898.3" y="498" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">500k</text>
 <rect x="90" y="514" width="14" height="14" fill="url(#bavix)" rx="3"/>
 <text x="112" y="526" fill="#d1fae5" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">bavix/gripmock (Docker)</text>
 <rect x="310" y="514" width="14" height="14" fill="url(#native)" rx="3"/>

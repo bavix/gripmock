@@ -299,3 +299,77 @@ func TestEqualsIndexClearEmptiesIt(t *testing.T) {
 	_, err := s.FindByQuery(indexQuery(map[string]any{"name": "ann"}))
 	require.Error(t, err)
 }
+
+func containsStub(value, message string) *stuber.Stub {
+	return &stuber.Stub{
+		ID:      uuid.New(),
+		Service: "Greeter",
+		Method:  "SayHello",
+		Input:   stuber.InputData{Contains: map[string]any{"name": value}},
+		Output:  stuber.Output{Data: map[string]any{"message": message}},
+	}
+}
+
+func matchesStub(pattern, message string) *stuber.Stub {
+	return &stuber.Stub{
+		ID:      uuid.New(),
+		Service: "Greeter",
+		Method:  "SayHello",
+		Input:   stuber.InputData{Matches: map[string]any{"name": pattern}},
+		Output:  stuber.Output{Data: map[string]any{"message": message}},
+	}
+}
+
+func TestEqualsIndexContainsStub(t *testing.T) {
+	t.Parallel()
+
+	s := newBudgerigar()
+	fill(s, 300)
+	s.PutMany(containsStub("ann", "contained"))
+
+	result, err := s.FindByQuery(indexQuery(map[string]any{"name": "ann"}))
+	require.NoError(t, err)
+	require.NotNil(t, result.Found())
+	require.Equal(t, "contained", message(t, result.Found()))
+}
+
+func TestEqualsIndexAnchoredRegexStub(t *testing.T) {
+	t.Parallel()
+
+	s := newBudgerigar()
+	fill(s, 300)
+	s.PutMany(matchesStub("^ann$", "anchored"))
+
+	result, err := s.FindByQuery(indexQuery(map[string]any{"name": "ann"}))
+	require.NoError(t, err)
+	require.NotNil(t, result.Found())
+	require.Equal(t, "anchored", message(t, result.Found()))
+}
+
+func TestEqualsIndexUnanchoredRegexStillMatchesSubstring(t *testing.T) {
+	t.Parallel()
+
+	s := newBudgerigar()
+	fill(s, 300)
+	s.PutMany(matchesStub("ann", "substring"))
+
+	// An unanchored pattern matches any value containing it, so it must never
+	// be indexed as the literal "ann".
+	result, err := s.FindByQuery(indexQuery(map[string]any{"name": "joanna"}))
+	require.NoError(t, err)
+	require.NotNil(t, result.Found())
+	require.Equal(t, "substring", message(t, result.Found()))
+}
+
+func TestEqualsIndexRegexWithMetacharacters(t *testing.T) {
+	t.Parallel()
+
+	s := newBudgerigar()
+	fill(s, 300)
+	s.PutMany(matchesStub("^an[n]$", "class"))
+
+	result, err := s.FindByQuery(indexQuery(map[string]any{"name": "ann"}))
+	require.NoError(t, err)
+	require.NotNil(t, result.Found())
+	require.Equal(t, "class", message(t, result.Found()))
+}

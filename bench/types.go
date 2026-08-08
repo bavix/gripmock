@@ -48,3 +48,10 @@ func (r benchReport) latencyMs(percentile float64) float64 {
 	}
 	return 0
 }
+
+type usage struct {
+	CPUAvg    float64 `json:"cpu_avg"`
+	MemPeakMB float64 `json:"mem_peak_mb"`
+	MemAvgMB  float64 `json:"mem_avg_mb"`
+	Samples   int     `json:"samples"`
+}

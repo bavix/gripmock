@@ -1,9 +1,9 @@
 package deeply
 
 import (
+	"fmt"
 	"log"
 	"reflect"
-	"regexp"
 
 	"github.com/spf13/cast"
 )
@@ -15,7 +15,34 @@ func MatchesIgnoreArrayOrder(expect, actual any) bool {
 	return mapDeepMatches(expect, actual, MatchesIgnoreArrayOrder) ||
 		slicesDeepMatchesIgnoreOrder(expect, actual, MatchesIgnoreArrayOrder) ||
 		regexMatch(expect, actual) ||
-		reflect.DeepEqual(expect, actual)
+		(!structural(expect) && reflect.DeepEqual(expect, actual))
+}
+
+func stringify(value any) (string, bool) {
+	switch v := value.(type) {
+	case string:
+		return v, true
+	case nil:
+		return "", true
+	case bool:
+		return cast.ToString(v), true
+	case []byte:
+		return string(v), true
+	case int, int8, int16, int32, int64,
+		uint, uint8, uint16, uint32, uint64,
+		float32, float64:
+		return cast.ToString(v), true
+	case fmt.Stringer:
+		return v.String(), true
+	case error:
+		return v.Error(), true
+	}
+
+	if reflected := reflect.ValueOf(value); reflected.Kind() == reflect.String {
+		return reflected.String(), true
+	}
+
+	return "", false
 }
 
 // slicesDeepMatchesIgnoreOrder compares slices allowing actual to be same length or longer.
@@ -38,25 +65,32 @@ func mapDeepMatches(expect, actual any, compare cmp) bool {
 // matches the actual value (stringified). Non-string inputs or a bad pattern
 // return false; a pattern error is logged.
 func regexMatch(expect, actual any) bool {
-	if _, ok := actual.(bool); ok {
+	if _, isBool := actual.(bool); isBool {
 		return false
 	}
 
-	var (
-		expectedStr, expectedStringOk = expect.(string)
-		actualStr, actualStringErr    = cast.ToStringE(actual)
-	)
-
-	if !expectedStringOk || actualStringErr != nil {
+	expectedStr, ok := expect.(string)
+	if !ok {
 		return false
 	}
 
-	match, err := regexp.MatchString(expectedStr, actualStr)
+	actualStr, ok := stringify(actual)
+	if !ok {
+		return false
+	}
+
+	if !canMatch(expectedStr, actualStr) {
+		return false
+	}
+
+	compiled, err := compileRegex(expectedStr)
 	if err != nil {
 		log.Printf("Error on matching regex %s with %s error:%v\n", expect, actual, err)
 
 		return false
 	}
+
+	match := compiled.MatchString(actualStr)
 
 	return match
 }

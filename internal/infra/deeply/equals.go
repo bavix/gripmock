@@ -14,5 +14,5 @@ func EqualsIgnoreArrayOrder(expect, actual any) bool {
 		slicesDeepCompare(expect, actual, EqualsIgnoreArrayOrder, func(aLen, bLen int) bool {
 			return aLen == bLen
 		}) ||
-		reflect.DeepEqual(expect, actual)
+		(!structural(expect) && reflect.DeepEqual(expect, actual))
 }

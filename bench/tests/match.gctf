@@ -1,5 +1,5 @@
 --- META ---
-name: Greeter load test across the full generated stub set
+name: Greeter request that resolves to a stub
 tags: [bench]
 
 --- BENCH ---

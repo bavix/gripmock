@@ -27,28 +27,45 @@ func shuffle(order []int) {
 	}
 }
 
-func generateDataset(count int, stubsPath, csvPath string) error {
-	type stub struct {
-		Service string `json:"service"`
-		Method  string `json:"method"`
-		Input   struct {
-			Equals map[string]string `json:"equals"`
-		} `json:"input"`
-		Output struct {
-			Data map[string]string `json:"data"`
-		} `json:"output"`
-	}
+type stub struct {
+	Service string `json:"service"`
+	Method  string `json:"method"`
+	Input   struct {
+		Equals   map[string]string `json:"equals,omitempty"`
+		Contains map[string]string `json:"contains,omitempty"`
+		Matches  map[string]string `json:"matches,omitempty"`
+	} `json:"input"`
+	Output struct {
+		Data map[string]string `json:"data"`
+	} `json:"output"`
+}
 
+func generateDataset(count int, base, csvPath string) error {
 	stubs := make([]stub, count)
+	contains := make([]stub, count)
+	patterns := make([]stub, count)
 	order := make([]int, count)
 
 	for i := range count {
 		name := fmt.Sprintf("user-%06d", i)
 
-		s := stub{Service: "Greeter", Method: "SayHello"}
-		s.Input.Equals = map[string]string{"name": name}
-		s.Output.Data = map[string]string{"message": fmt.Sprintf("Hello, %s!", name)}
-		stubs[i] = s
+		data := map[string]string{"message": fmt.Sprintf("Hello, %s!", name)}
+
+		e := stub{Service: "Greeter", Method: "SayHello"}
+		e.Input.Equals = map[string]string{"name": name}
+		e.Output.Data = data
+		stubs[i] = e
+
+		c := stub{Service: "Greeter", Method: "SayHello"}
+		c.Input.Contains = map[string]string{"name": name}
+		c.Output.Data = data
+		contains[i] = c
+
+		m := stub{Service: "Greeter", Method: "SayHello"}
+		m.Input.Matches = map[string]string{"name": regexFor(name)}
+		m.Output.Data = data
+		patterns[i] = m
+
 		order[i] = i
 	}
 
@@ -76,15 +93,34 @@ func generateDataset(count int, stubsPath, csvPath string) error {
 		return fmt.Errorf("flush csv: %w", err)
 	}
 
-	stubsFile, err := os.Create(stubsPath)
-	if err != nil {
-		return fmt.Errorf("create %s: %w", stubsPath, err)
+	for path, set := range map[string][]stub{
+		base + "-equals.json":   stubs,
+		base + "-contains.json": contains,
+		base + "-matches.json":  patterns,
+	} {
+		if err := writeStubs(path, set); err != nil {
+			return err
+		}
 	}
-	defer func() { _ = stubsFile.Close() }()
 
-	enc := json.NewEncoder(stubsFile)
-	if err := enc.Encode(stubs); err != nil {
-		return fmt.Errorf("encode stubs: %w", err)
+	return nil
+}
+
+func regexFor(name string) string {
+	last := len(name) - 1
+
+	return "^" + name[:last] + "[" + name[last:] + "]$"
+}
+
+func writeStubs(path string, set []stub) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", path, err)
+	}
+	defer func() { _ = f.Close() }()
+
+	if err := json.NewEncoder(f).Encode(set); err != nil {
+		return fmt.Errorf("encode %s: %w", path, err)
 	}
 
 	return nil

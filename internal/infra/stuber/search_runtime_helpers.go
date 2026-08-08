@@ -33,39 +33,68 @@ func (s *searcher) searchOptimized(query Query) (*Result, error) {
 	return s.processStubs(query, candidates)
 }
 
-// searchIndexed tries to answer the query from the equals index. It returns a
-// result only on a positive match: with no match the "similar" stub reported
-// to the user has to be chosen from every registered stub, not just the
-// narrowed set, so the caller redoes the search over the full candidate list.
 func (s *searcher) searchIndexed(query Query) *Result {
-	visible := s.visibleIndexedCandidates(query)
-	if len(visible) == 0 {
+	visible, ok := s.visibleIndexedCandidates(query)
+	if !ok {
 		return nil
 	}
 
-	result, err := s.processStubs(query, visible)
-	if err != nil || result == nil || result.Found() == nil {
+	if len(visible) > 0 {
+		if result, err := s.processStubs(query, visible); err == nil && result != nil && result.Found() != nil {
+			return result
+		}
+	}
+
+	similar := s.bestSimilarStub(query)
+	if similar == nil {
 		return nil
 	}
 
-	return result
+	return &Result{similar: similar}
 }
 
-// visibleIndexedCandidates narrows the candidate set through the equals index
-// and drops stubs hidden from, or already exhausted for, this session.
-func (s *searcher) visibleIndexedCandidates(query Query) []*Stub {
-	if len(query.Input) != 1 {
-		return nil
-	}
-
-	indexes, err := s.storage.posByPN(query.Service, query.Method)
+func (s *searcher) bestSimilarStub(query Query) *Stub {
+	seq, err := s.storage.findAllAvailable(query.Service, query.Method, query.Session)
 	if err != nil {
 		return nil
 	}
 
+	var (
+		best    similarCandidate
+		scanned int
+	)
+
+	for stub := range seq {
+		if !s.isVisibleAndNotExhausted(stub, query.Session) {
+			continue
+		}
+
+		if candidate := s.buildSimilarCandidateFromRanked(stub, s.rankedMatchFor(query, stub)); betterSimilar(best, candidate) {
+			best = candidate
+		}
+
+		scanned++
+		if scanned == similarScanLimit {
+			break
+		}
+	}
+
+	return best.stub
+}
+
+func (s *searcher) visibleIndexedCandidates(query Query) ([]*Stub, bool) {
+	if len(query.Input) != 1 {
+		return nil, false
+	}
+
+	indexes, err := s.storage.posByPN(query.Service, query.Method)
+	if err != nil {
+		return nil, false
+	}
+
 	candidates, ok := s.storage.indexedCandidates(indexes, query.Input[0])
 	if !ok {
-		return nil
+		return nil, false
 	}
 
 	visible := candidates[:0]
@@ -76,7 +105,7 @@ func (s *searcher) visibleIndexedCandidates(query Query) []*Stub {
 		}
 	}
 
-	return visible
+	return visible, true
 }
 
 // matchInternalStubs searches ONLY the reserved internal storage. It returns a
@@ -191,10 +220,14 @@ func (s *searcher) collectSequentialCandidates(query Query, stubs []*Stub) []ran
 	return matches
 }
 
-// bestSimilarCandidate scores every stub to find the closest non-matching one.
-// Only reached when no stub matched the query (the error path).
+const similarScanLimit = 1000
+
 func (s *searcher) bestSimilarCandidate(query Query, stubs []*Stub) similarCandidate {
 	var best similarCandidate
+
+	if len(stubs) > similarScanLimit {
+		stubs = stubs[:similarScanLimit]
+	}
 
 	for _, stub := range stubs {
 		candidate := s.buildSimilarCandidateFromRanked(stub, s.rankedMatchFor(query, stub))
