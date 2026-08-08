@@ -1,5 +1,20 @@
 # Changelog
 
+## v3.18.3 - 2026-08-08
+
+### What's Changed
+
+* fix hadolint by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/941
+* chore(deps): bump hadolint/hadolint-action from 3.3.0 to 3.4.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/938
+* chore(deps): bump sourcemeta/jsonschema from 16.4.0 to 16.5.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/942
+* chore(deps): bump go.opentelemetry.io/otel/sdk from 1.44.0 to 1.45.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/943
+* chore(deps): bump go.opentelemetry.io/otel/sdk/metric from 1.44.0 to 1.45.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/947
+* chore(deps): bump go.opentelemetry.io/otel/exporters/prometheus from 0.66.0 to 0.67.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/945
+* chore(deps): bump go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc from 1.44.0 to 1.45.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/948
+* perf: optimize latency by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/949
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.18.2...v3.18.3
+
 ## v3.18.2 - 2026-08-05
 
 ### What's Changed
