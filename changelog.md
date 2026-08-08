@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.18.4 - 2026-08-08
+
+### What's Changed
+
+* build order by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/950
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.18.3...v3.18.4
+
 ## v3.18.3 - 2026-08-08
 
 ### What's Changed
