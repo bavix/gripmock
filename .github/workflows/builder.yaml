@@ -145,18 +145,18 @@ jobs:
           username: ${{ secrets.DOCKERHUB_LOGIN }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Push runtime manifest list
-        working-directory: /tmp/digests/runtime
-        run: |
-          docker buildx imagetools create \
-            --annotation "index:org.opencontainers.image.description=gRPC Mock Server" \
-            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< '${{ steps.meta.outputs.json }}') \
-            $(printf "ghcr.io/bavix/gripmock@sha256:%s " *)
-
       - name: Push builder manifest list
         working-directory: /tmp/digests/builder
         run: |
           docker buildx imagetools create \
             --annotation "index:org.opencontainers.image.description=gRPC Mock Server Builder" \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< '${{ steps.meta_builder.outputs.json }}') \
+            $(printf "ghcr.io/bavix/gripmock@sha256:%s " *)
+
+      - name: Push runtime manifest list
+        working-directory: /tmp/digests/runtime
+        run: |
+          docker buildx imagetools create \
+            --annotation "index:org.opencontainers.image.description=gRPC Mock Server" \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< '${{ steps.meta.outputs.json }}') \
             $(printf "ghcr.io/bavix/gripmock@sha256:%s " *)
