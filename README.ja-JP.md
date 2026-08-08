@@ -523,10 +523,20 @@ Upstream modes は reflection ソース上で動作し、ランタイムの動�
 
 ## 📊 ベンチマークチャート
 
+スタブ 500 件、コンテナあたり 4 CPU。詳細な手法と数値: [Performance Comparison](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
+
+|  | bavix | tokopedia |
+| --- | --- | --- |
+| スループット | 24 284 req/s | 5 600 req/s |
+| p99 レイテンシ | 11 ms | 26 ms |
+| 起動、平均 | 0.43 s | 2.29 s |
+| イメージサイズ、amd64 | 19.13 MB | 226.29 MB |
+
 ![イメージサイズベンチマーク](docs/public/bench/image-size.svg)
 ![起動準備完了ベンチマーク](docs/public/bench/startup-ready.svg)
+![メモリベンチマーク](docs/public/bench/memory-usage.svg)
 ![レイテンシ百分位ベンチマーク](docs/public/bench/latency-percentiles.svg)
-![スループットベンチマーク](docs/public/bench/throughput-rps.svg)
+![スループットベンチマーク](docs/public/bench/throughput-equals.svg)
 
 ## 🔗 便利なリソース
 

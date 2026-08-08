@@ -523,10 +523,20 @@ Upstream modes 叠加在 reflection sources 之上，定义运行时行为：
 
 ## 📊 基准图表
 
+500 个桩，每个容器 4 CPU。完整方法与数据: [Performance Comparison](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
+
+|  | bavix | tokopedia |
+| --- | --- | --- |
+| 吞吐量 | 24 284 req/s | 5 600 req/s |
+| p99 延迟 | 11 ms | 26 ms |
+| 启动，平均 | 0.43 s | 2.29 s |
+| 镜像大小，amd64 | 19.13 MB | 226.29 MB |
+
 ![Image size benchmark](docs/public/bench/image-size.svg)
 ![Startup readiness benchmark](docs/public/bench/startup-ready.svg)
+![Memory benchmark](docs/public/bench/memory-usage.svg)
 ![Latency percentiles benchmark](docs/public/bench/latency-percentiles.svg)
-![Throughput benchmark](docs/public/bench/throughput-rps.svg)
+![Throughput benchmark](docs/public/bench/throughput-equals.svg)
 
 ## 🔗 有用资源
 

@@ -2,10 +2,6 @@ package deeply
 
 import (
 	"reflect"
-	"regexp"
-	"strings"
-
-	"github.com/spf13/cast"
 )
 
 // Ranker is a function type used to rank matches between two values.
@@ -52,12 +48,12 @@ func rank(expect, actual any) float64 {
 
 	var (
 		expectedStr, expectedStringOk = expect.(string)
-		actualStr, actualStringErr    = cast.ToStringE(actual)
+		actualStr, actualStringOk     = stringify(actual)
 	)
 
 	// Non-string values fall back to deep equality.
-	if !expectedStringOk || actualStringErr != nil {
-		if reflect.DeepEqual(expect, actual) {
+	if !expectedStringOk || !actualStringOk {
+		if deepEqual(expect, actual) {
 			return 1
 		}
 
@@ -68,31 +64,54 @@ func rank(expect, actual any) float64 {
 		return 1
 	}
 
-	// Only attempt regex matching if the expected string contains
-	// metacharacters — otherwise skip the expensive Compile call.
-	const regexMeta = `\^$.*+?[]{}|()`
-
-	var compile *regexp.Regexp
-	if strings.ContainsAny(expectedStr, regexMeta) {
-		compile, _ = regexp.Compile(expectedStr)
-	}
-
-	if compile != nil {
-		results := compile.FindStringIndex(actualStr)
-		if len(results) == 2 && len(actualStr) > 0 {
-			return float64(results[1]-results[0]) / float64(len(actualStr))
-		}
+	if score, ok := regexScore(expectedStr, actualStr); ok {
+		return score
 	}
 
 	// No regex match: score by Levenshtein distance.
 	return distance(expectedStr, actualStr)
 }
 
+// regexScore scores how much of subject the pattern covers, or reports false
+// when the pattern holds no metacharacters, cannot match, or fails to compile.
+func regexScore(pattern, subject string) (float64, bool) {
+	if !hasRegexMeta(pattern) || !canMatch(pattern, subject) {
+		return 0, false
+	}
+
+	compiled, err := compileRegex(pattern)
+	if err != nil {
+		return 0, false
+	}
+
+	results := compiled.FindStringIndex(subject)
+	if len(results) != 2 || len(subject) == 0 {
+		return 0, false
+	}
+
+	return float64(results[1]-results[0]) / float64(len(subject)), true
+}
+
 // mapRankMatch scores a match between two maps by summing per-key compare scores
-// (each right key matched at most once) and normalizing by the larger key count.
-//
-//nolint:cyclop
+// over the keys both maps share, normalized by the larger key count.
 func mapRankMatch(expect, actual any, compare ranker) float64 {
+	if left, ok := expect.(map[string]any); ok {
+		right, isMap := actual.(map[string]any)
+		if !isMap {
+			return 0
+		}
+
+		var res float64
+
+		for key, value := range left {
+			if other, exists := right[key]; exists {
+				res += compare(value, other)
+			}
+		}
+
+		return normalizeRank(res, max(len(left), len(right)))
+	}
+
 	if reflect.TypeOf(expect) != reflect.TypeOf(actual) {
 		return 0
 	}
@@ -110,33 +129,21 @@ func mapRankMatch(expect, actual any, compare ranker) float64 {
 
 	var res float64
 
-	total := max(left.Len(), right.Len())
-
-	marked := make(map[reflect.Value]bool, total)
-
-	for _, k := range left.MapKeys() {
-		if right.MapIndex(k).IsValid() {
-			res += compare(left.MapIndex(k).Interface(), right.MapIndex(k).Interface())
-			marked[right.MapIndex(k)] = true
+	for iter := left.MapRange(); iter.Next(); {
+		if other := right.MapIndex(iter.Key()); other.IsValid() {
+			res += compare(iter.Value().Interface(), other.Interface())
 		}
 	}
 
-	// Score right-only keys not already matched from the left.
-	for _, k := range right.MapKeys() {
-		if _, ok := marked[k]; ok {
-			continue
-		}
+	return normalizeRank(res, max(left.Len(), right.Len()))
+}
 
-		if left.MapIndex(k).IsValid() {
-			res += compare(left.MapIndex(k).Interface(), right.MapIndex(k).Interface())
-		}
-	}
-
-	if res == 0 && total == 0 {
+func normalizeRank(score float64, total int) float64 {
+	if total == 0 {
 		return 1
 	}
 
-	return res / float64(total)
+	return score / float64(total)
 }
 
 // slicesRankMatch scores a match between two slices: each expected element is

@@ -32,6 +32,14 @@ plugins:
 semgrep:
 	docker run --rm -v $$(pwd):/src bavix/semgrep:master semgrep scan --error --config=p/golang -f /semgrep-go
 
+bench-run:
+	cd bench && ./run.sh
+
+bench-chart:
+	cd bench && go run .
+
+bench: bench-run bench-chart
+
 # Override to pin a specific codegen version, e.g. make gen-rest OAPI_CODEGEN=...@v2.5.0
 OAPI_CODEGEN ?= github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 

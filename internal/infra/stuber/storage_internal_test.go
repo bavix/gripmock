@@ -42,7 +42,7 @@ func TestAdd(t *testing.T) {
 	s.upsert(stub1, stub2, stub3, stub4, stub5, stub6)
 
 	// Assert
-	require.Len(t, s.items, 5)
+	require.Len(t, s.itemSorted, 5)
 	require.Len(t, s.itemsByID, 6)
 }
 
@@ -58,7 +58,7 @@ func TestUpdate(t *testing.T) {
 	s.upsert(initialStub)
 
 	// Assert
-	require.Len(t, s.items, 1)
+	require.Len(t, s.itemSorted, 1)
 	require.Len(t, s.itemsByID, 1)
 
 	v := s.findByID(id)
@@ -72,7 +72,7 @@ func TestUpdate(t *testing.T) {
 	s.upsert(updatedStub)
 
 	// Assert
-	require.Len(t, s.items, 1)
+	require.Len(t, s.itemSorted, 1)
 	require.Len(t, s.itemsByID, 1)
 
 	v = s.findByID(id)
@@ -98,7 +98,7 @@ func TestFindByID(t *testing.T) {
 		newTestStubWithID(id, "Greeter1", "SayHello3", 0),
 	)
 
-	require.Len(t, s.items, 6)
+	require.Len(t, s.itemSorted, 6)
 	require.Len(t, s.itemsByID, 7)
 
 	val := s.findByID(id)
@@ -198,19 +198,19 @@ func TestDelete(t *testing.T) {
 	)
 
 	require.Equal(t, 0, s.del())
-	require.Len(t, s.items, 3)
+	require.Len(t, s.itemSorted, 3)
 	require.Len(t, s.itemsByID, 3)
 
 	require.Equal(t, 1, s.del(id1))
-	require.Len(t, s.items, 2)
+	require.Len(t, s.itemSorted, 2)
 	require.Len(t, s.itemsByID, 2)
 
 	require.Equal(t, 2, s.del(id2, id3))
-	require.Empty(t, s.items)
+	require.Empty(t, s.itemSorted)
 	require.Empty(t, s.itemsByID)
 
 	require.Equal(t, 0, s.del(id1, id2, id3))
-	require.Empty(t, s.items)
+	require.Empty(t, s.itemSorted)
 	require.Empty(t, s.itemsByID)
 }
 
@@ -279,14 +279,14 @@ func TestClear(t *testing.T) {
 		newTestStub("Greeter2", "SayHello2", 0),
 	)
 
-	require.Len(t, s.items, 2)
+	require.Len(t, s.itemSorted, 2)
 	require.Len(t, s.itemsByID, 2)
 	require.Len(t, s.lefts, 2)
 
 	// Clear storage
 	s.clear()
 
-	require.Empty(t, s.items)
+	require.Empty(t, s.itemSorted)
 	require.Empty(t, s.itemsByID)
 	require.Empty(t, s.lefts)
 }

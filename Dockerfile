@@ -4,18 +4,20 @@ ARG version
 ARG commit
 ARG date
 
-COPY . /gripmock-src
-
 WORKDIR /gripmock-src
 
 #hadolint ignore=DL3018
-RUN apk add --no-cache binutils \
-    && go build -o /usr/local/bin/gripmock -ldflags "-X 'github.com/bavix/gripmock/v3/internal/infra/build.Version=${version:-dev}' -X 'github.com/bavix/gripmock/v3/internal/infra/build.Commit=${commit:-unknown}' -X 'github.com/bavix/gripmock/v3/internal/infra/build.Date=${date:-}' -s -w" . \
-    && strip /usr/local/bin/gripmock \
-    && apk del binutils \
-    && rm -rf /root/.cache /go/pkg /tmp/* /var/cache/*
+RUN apk add --no-cache binutils
 
-RUN chmod +x /usr/local/bin/gripmock
+# Module download is its own layer so a source-only change reuses it.
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN go build -o /usr/local/bin/gripmock -ldflags "-X 'github.com/bavix/gripmock/v3/internal/infra/build.Version=${version:-dev}' -X 'github.com/bavix/gripmock/v3/internal/infra/build.Commit=${commit:-unknown}' -X 'github.com/bavix/gripmock/v3/internal/infra/build.Date=${date:-}' -s -w" . \
+    && strip /usr/local/bin/gripmock \
+    && chmod +x /usr/local/bin/gripmock
 
 FROM alpine:3.24
 

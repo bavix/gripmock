@@ -19,17 +19,21 @@ func equals(expected map[string]any, actual any, orderIgnore bool) bool {
 	}
 
 	for key, expectedValue := range expected {
-		actualValue, exists := findValueWithVariations(actualMap, key)
-		if !exists {
-			return false
-		}
-
-		if !compareFieldValue(expectedValue, actualValue, orderIgnore) {
+		if !equalsField(key, expectedValue, actualMap, orderIgnore) {
 			return false
 		}
 	}
 
 	return true
+}
+
+func equalsField(key string, expectedValue any, actualMap map[string]any, orderIgnore bool) bool {
+	actualValue, exists := findValueWithVariations(actualMap, key)
+	if !exists {
+		return false
+	}
+
+	return compareFieldValue(expectedValue, actualValue, orderIgnore)
 }
 
 func compareFieldValue(expected, actual any, orderIgnore bool) bool {

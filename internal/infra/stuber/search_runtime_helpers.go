@@ -1,5 +1,7 @@
 package stuber
 
+import "runtime"
+
 // searchOptimized performs ultra-fast search with minimal allocations.
 func (s *searcher) searchOptimized(query Query) (*Result, error) {
 	// Internal stubs (the gripmock health status) live in a separate index and
@@ -11,12 +13,99 @@ func (s *searcher) searchOptimized(query Query) (*Result, error) {
 		}
 	}
 
+	// Fast path: ask the equals index for the handful of stubs that could
+	// match, instead of walking every stub registered for this service and
+	// method. It only ever narrows the set, so a hit here is the same answer
+	// the full scan would have produced; anything else falls through below.
+	if result := s.searchIndexed(query); result != nil {
+		return result, nil
+	}
+
 	candidates, err := s.resolveSearchCandidates(query)
 	if err != nil {
 		return nil, err
 	}
 
+	// candidates comes from the pool and is only read during processStubs --
+	// the Result keeps *Stub pointers, never the slice itself.
+	defer releaseStubs(candidates)
+
 	return s.processStubs(query, candidates)
+}
+
+func (s *searcher) searchIndexed(query Query) *Result {
+	visible, ok := s.visibleIndexedCandidates(query)
+	if !ok {
+		return nil
+	}
+
+	if len(visible) > 0 {
+		if result, err := s.processStubs(query, visible); err == nil && result != nil && result.Found() != nil {
+			return result
+		}
+	}
+
+	similar := s.bestSimilarStub(query)
+	if similar == nil {
+		return nil
+	}
+
+	return &Result{similar: similar}
+}
+
+func (s *searcher) bestSimilarStub(query Query) *Stub {
+	seq, err := s.storage.findAllAvailable(query.Service, query.Method, query.Session)
+	if err != nil {
+		return nil
+	}
+
+	var (
+		best    similarCandidate
+		scanned int
+	)
+
+	for stub := range seq {
+		if !s.isVisibleAndNotExhausted(stub, query.Session) {
+			continue
+		}
+
+		if candidate := s.buildSimilarCandidateFromRanked(stub, s.rankedMatchFor(query, stub)); betterSimilar(best, candidate) {
+			best = candidate
+		}
+
+		scanned++
+		if scanned == similarScanLimit {
+			break
+		}
+	}
+
+	return best.stub
+}
+
+func (s *searcher) visibleIndexedCandidates(query Query) ([]*Stub, bool) {
+	if len(query.Input) != 1 {
+		return nil, false
+	}
+
+	indexes, err := s.storage.posByPN(query.Service, query.Method)
+	if err != nil {
+		return nil, false
+	}
+
+	candidates, ok := s.storage.indexedCandidates(indexes, query.Input[0])
+	if !ok {
+		return nil, false
+	}
+
+	visible := candidates[:0]
+
+	for _, stub := range candidates {
+		if s.isVisibleAndNotExhausted(stub, query.Session) {
+			visible = append(visible, stub)
+		}
+	}
+
+	return visible, true
 }
 
 // matchInternalStubs searches ONLY the reserved internal storage. It returns a
@@ -49,7 +138,7 @@ func (s *searcher) resolveSearchCandidates(query Query) ([]*Stub, error) {
 
 	stubs, err := lookup.LookupServiceAvailable(query.Service, query.Method)
 	if err == nil {
-		return collectStubs(stubs), nil
+		return collectStubsPooled(stubs), nil
 	}
 
 	if query.StrictService {
@@ -60,8 +149,10 @@ func (s *searcher) resolveSearchCandidates(query Query) ([]*Stub, error) {
 		return nil, ErrStubNotFound
 	}
 
-	candidates := collectStubs(lookup.LookupMethodAvailable(query.Method))
+	candidates := collectStubsPooled(lookup.LookupMethodAvailable(query.Method))
 	if len(candidates) == 0 {
+		releaseStubs(candidates)
+
 		return nil, ErrStubNotFound
 	}
 
@@ -89,10 +180,14 @@ func (s *searcher) processStubs(query Query, stubs []*Stub) (*Result, error) {
 
 // processStubsSequential processes stubs sequentially (original logic).
 func (s *searcher) processStubsSequential(query Query, stubs []*Stub) (*Result, error) {
-	matches, best := s.collectSequentialCandidates(query, stubs)
+	matches := s.collectSequentialCandidates(query, stubs)
 	sortRankedMatches(matches)
 
-	return s.resultFromRankedAndSimilar(query, matches, best.stub)
+	// The similar stub is only reported when no match can be reserved, so its
+	// (expensive) full-scan search runs lazily.
+	return s.resultFromRankedMatches(query, matches, func() *Stub {
+		return s.bestSimilarCandidate(query, stubs).stub
+	})
 }
 
 func (s *searcher) processSingleStub(query Query, stub *Stub) (*Result, error) {
@@ -103,26 +198,46 @@ func (s *searcher) processSingleStub(query Query, stub *Stub) (*Result, error) {
 	return &Result{similar: stub}, nil
 }
 
-func (s *searcher) collectSequentialCandidates(query Query, stubs []*Stub) ([]rankedMatch, similarCandidate) {
-	var (
-		matches []rankedMatch
-		best    similarCandidate
-	)
+// collectSequentialCandidates ranks the stubs matching the query.
+//
+// Ranking a stub (specificity + score + field count) is far more expensive than
+// testing whether it matches at all, and the ranking of a non-matching stub is
+// only ever read to choose the `similar` stub reported when nothing matched.
+// So the cheap boolean test runs over every candidate here, and ranking runs
+// only over the (normally tiny) matched subset; the similar-stub pass is
+// deferred to bestSimilarCandidate and skipped entirely on the happy path.
+// With a large stub set under one service/method this avoids scoring hundreds
+// of thousands of stubs on every successful request.
+func (s *searcher) collectSequentialCandidates(query Query, stubs []*Stub) []rankedMatch {
+	var matches []rankedMatch
 
 	for _, stub := range stubs {
-		ranked, matched := s.evaluateRankedMatch(query, stub)
-
-		candidate := s.buildSimilarCandidateFromRanked(stub, ranked)
-		if matched {
-			matches = append(matches, ranked)
+		if s.fastMatchV2(query, stub) {
+			matches = append(matches, s.rankedMatchFor(query, stub))
 		}
+	}
+
+	return matches
+}
+
+const similarScanLimit = 1000
+
+func (s *searcher) bestSimilarCandidate(query Query, stubs []*Stub) similarCandidate {
+	var best similarCandidate
+
+	if len(stubs) > similarScanLimit {
+		stubs = stubs[:similarScanLimit]
+	}
+
+	for _, stub := range stubs {
+		candidate := s.buildSimilarCandidateFromRanked(stub, s.rankedMatchFor(query, stub))
 
 		if betterSimilar(best, candidate) {
 			best = candidate
 		}
 	}
 
-	return matches, best
+	return best
 }
 
 func (s *searcher) reserveFirstRankedMatch(query Query, matches []rankedMatch) *Stub {
@@ -135,61 +250,70 @@ func (s *searcher) reserveFirstRankedMatch(query Query, matches []rankedMatch) *
 	return nil
 }
 
-func (s *searcher) resultFromRankedAndSimilar(query Query, matches []rankedMatch, similar *Stub) (*Result, error) {
+// resultFromRankedMatches reserves the best ranked match, falling back to the
+// closest similar stub. similarFn is only invoked on that fallback path, so
+// callers can skip computing it while a match looks reservable.
+func (s *searcher) resultFromRankedMatches(query Query, matches []rankedMatch, similarFn func() *Stub) (*Result, error) {
 	if found := s.reserveFirstRankedMatch(query, matches); found != nil {
 		return &Result{found: found}, nil
 	}
 
-	if similar != nil {
+	if similar := similarFn(); similar != nil {
 		return &Result{similar: similar}, nil
 	}
 
 	return nil, ErrStubNotFound
 }
 
-// processStubsParallel processes stubs in parallel using goroutines.
+// processStubsParallel processes stubs in parallel using goroutines. The
+// worker count is capped at GOMAXPROCS: a fixed small chunk size (e.g. 50)
+// spawns one goroutine per chunk regardless of total candidate count, which
+// at large stub counts (hundreds of thousands) fans out into thousands of
+// goroutines per request -- goroutine/channel overhead then dominates over
+// the actual matching work, especially under concurrent requests competing
+// for the same limited CPUs.
 func (s *searcher) processStubsParallel(query Query, stubs []*Stub) (*Result, error) {
-	const chunkSize = 50
+	chunkSize := parallelChunkSize(len(stubs))
 
 	numChunks := (len(stubs) + chunkSize - 1) / chunkSize
-	results := make(chan chunkOutcome, numChunks)
+	results := make(chan []rankedMatch, numChunks)
 
 	for i := range numChunks {
 		start := i * chunkSize
 
 		end := min(start+chunkSize, len(stubs))
 		go func(chunkStubs []*Stub) {
-			results <- s.processChunk(query, chunkStubs)
+			results <- s.collectSequentialCandidates(query, chunkStubs)
 		}(stubs[start:end])
 	}
 
-	bestMatches, mostSimilar := collectChunkResults(results, numChunks)
+	bestMatches := collectChunkResults(results, numChunks)
 	sortRankedMatches(bestMatches)
 
-	return s.resultFromRankedAndSimilar(query, bestMatches, mostSimilar.stub)
+	// Same lazy similar-stub search as the sequential path.
+	return s.resultFromRankedMatches(query, bestMatches, func() *Stub {
+		return s.bestSimilarCandidate(query, stubs).stub
+	})
 }
 
-// processChunk runs the sequential candidate collection over one chunk, so the
-// parallel path uses identical match/similar criteria as the sequential path.
-func (s *searcher) processChunk(query Query, chunkStubs []*Stub) chunkOutcome {
-	matches, mostSimilar := s.collectSequentialCandidates(query, chunkStubs)
+// parallelChunkSize returns a chunk size that caps the number of goroutines
+// spawned by processStubsParallel at GOMAXPROCS, so goroutine count scales
+// with available CPUs instead of candidate count.
+func parallelChunkSize(numStubs int) int {
+	workers := max(runtime.GOMAXPROCS(0), 1)
+	chunkSize := (numStubs + workers - 1) / workers
 
-	return chunkOutcome{matches: matches, mostSimilar: mostSimilar}
+	return max(chunkSize, 1)
 }
 
-func collectChunkResults(results chan chunkOutcome, numChunks int) ([]rankedMatch, similarCandidate) {
+func collectChunkResults(results chan []rankedMatch, numChunks int) []rankedMatch {
+	// Matches are normally a tiny fraction of the candidates, so start empty
+	// and let append size it; pre-allocating per chunk would over-allocate.
 	bestMatches := make([]rankedMatch, 0, numChunks)
 
-	var bestSimilar similarCandidate
-
 	for range numChunks {
-		result := <-results
-		bestMatches = append(bestMatches, result.matches...)
-
-		if betterSimilar(bestSimilar, result.mostSimilar) {
-			bestSimilar = result.mostSimilar
-		}
+		bestMatches = append(bestMatches, <-results...)
 	}
 
-	return bestMatches, bestSimilar
+	return bestMatches
 }

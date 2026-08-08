@@ -13,12 +13,6 @@ import (
 )
 
 const (
-	// smallCollectionThreshold is the threshold for using simple sorting instead of heap.
-	smallCollectionThreshold = 10
-	// smallItemsThreshold is the threshold for using simple sorting instead of heap.
-	smallItemsThreshold = 3
-	// twoItemsThreshold is the threshold for two items case.
-	twoItemsThreshold = 2
 	// stringCacheSize is the maximum number of string hashes to cache.
 	stringCacheSize = 10000
 )
@@ -36,14 +30,14 @@ var ErrRightNotFound = errors.New("right not found")
 // Fields:
 // - mu: Ensures safe concurrent access to the storage.
 // - lefts: A map that tracks unique left values by their hashed IDs.
-// - items: Stores items by a composite key of hashed left and right IDs.
 // - itemsByID: Provides quick access to items by their unique UUIDs.
 type storage struct {
 	mu           sync.RWMutex
 	lefts        map[uint32]struct{}
 	methodSorted map[uint32]map[string][]*Stub
-	items        map[uint64]map[uuid.UUID]*Stub
 	itemSorted   map[uint64]map[string][]*Stub
+	equalsIndex  map[uint64]map[string]map[string][]*Stub
+	unindexed    map[uint64][]*Stub
 	itemsByID    map[uuid.UUID]*Stub
 	sessions     map[string]int
 	stringCache  *lru.Cache[string, uint32]
@@ -56,8 +50,9 @@ func newStorage() *storage {
 	return &storage{
 		lefts:        make(map[uint32]struct{}),
 		methodSorted: make(map[uint32]map[string][]*Stub),
-		items:        make(map[uint64]map[uuid.UUID]*Stub),
 		itemSorted:   make(map[uint64]map[string][]*Stub),
+		equalsIndex:  make(map[uint64]map[string]map[string][]*Stub),
+		unindexed:    make(map[uint64][]*Stub),
 		itemsByID:    make(map[uuid.UUID]*Stub),
 		sessions:     make(map[string]int),
 		stringCache:  cache,
@@ -71,8 +66,9 @@ func (s *storage) clear() {
 
 	s.lefts = make(map[uint32]struct{})
 	s.methodSorted = make(map[uint32]map[string][]*Stub)
-	s.items = make(map[uint64]map[uuid.UUID]*Stub)
 	s.itemSorted = make(map[uint64]map[string][]*Stub)
+	s.equalsIndex = make(map[uint64]map[string]map[string][]*Stub)
+	s.unindexed = make(map[uint64][]*Stub)
 	s.itemsByID = make(map[uuid.UUID]*Stub)
 	s.sessions = make(map[string]int)
 }
@@ -264,7 +260,7 @@ func (s *storage) posByN(leftName, rightName string) (uint64, error) {
 	rightID := s.id(rightName)
 	key := s.pos(leftID, rightID)
 
-	if _, exists := s.items[key]; !exists {
+	if _, exists := s.itemSorted[key]; !exists {
 		return 0, ErrRightNotFound
 	}
 
