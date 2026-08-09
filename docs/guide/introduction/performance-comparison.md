@@ -6,7 +6,7 @@ title: Performance Comparison
 
 `bavix/gripmock` against the original `tokopedia/gripmock`. Every number comes
 from [`bench/`](https://github.com/bavix/gripmock/tree/master/bench).
-Full run: 26 minutes.
+Full run: 29 minutes.
 
 ## Runtime architecture
 
@@ -25,18 +25,18 @@ Peak requests per second.
 
 | Stubs | Scenario | bavix | bavix native | tokopedia |
 | --- | --- | --- | --- | --- |
-| 500 | equals | 24 284 | 26 777 | 5 600 |
-| 500 | contains | 24 242 | 26 518 | 5 594 |
-| 500 | matches | 24 023 | 26 409 | 936 |
-| 500 | miss | 13 867 | 15 237 | 3 762 |
-| 10 000 | equals | 23 947 | 26 627 | 393 |
-| 10 000 | contains | 24 272 | 26 623 | 368 |
-| 10 000 | matches | 23 375 | 25 968 | 34 |
-| 10 000 | miss | 10 032 | 10 681 | 159 |
-| 500 000 | equals | 25 032 | 27 177 | 31 |
-| 500 000 | contains | 24 391 | 27 523 | 31 |
-| 500 000 | matches | 22 619 | 24 838 | 1 |
-| 500 000 | miss | 10 472 | 11 260 | 4 |
+| 500 | equals | 29 804 | 36 751 | 6 221 |
+| 500 | contains | 29 579 | 36 069 | 6 191 |
+| 500 | matches | 28 955 | 35 924 | 986 |
+| 500 | miss | 15 914 | 18 685 | 4 091 |
+| 10 000 | equals | 29 386 | 36 174 | 383 |
+| 10 000 | contains | 29 419 | 37 407 | 330 |
+| 10 000 | matches | 28 621 | 34 591 | 32 |
+| 10 000 | miss | 11 220 | 12 637 | 135 |
+| 500 000 | equals | 30 527 | 38 609 | 32 |
+| 500 000 | contains | 30 265 | 37 624 | 31 |
+| 500 000 | matches | 27 626 | 33 534 | 1 |
+| 500 000 | miss | 11 536 | 12 879 | 4 |
 
 `bavix/gripmock` resolves a request through an index covering all three
 matcher kinds, including regular expressions that reduce to an anchored
@@ -46,8 +46,8 @@ literal. `tokopedia/gripmock` scans the stub list.
 
 ![Throughput, no matching stub](/bench/throughput-miss.svg)
 
-Matcher kinds at 500 stubs. `tokopedia/gripmock` drops from 5 600 to 936 req/s
-on regular expressions; `bavix/gripmock` drops from 24 284 to 24 023:
+Matcher kinds at 500 stubs. `tokopedia/gripmock` drops from 6 221 to 986 req/s
+on regular expressions; `bavix/gripmock` drops from 29 804 to 28 955:
 
 ![Throughput by matcher kind](/bench/matcher-kinds.svg)
 
@@ -57,9 +57,9 @@ At 500 stubs, concurrency 100:
 
 | | avg | p50 | p95 | p99 |
 | --- | --- | --- | --- | --- |
-| bavix | 4.08 ms | 3.64 ms | 8.01 ms | 11.01 ms |
-| bavix native | 3.70 ms | 3.24 ms | 7.54 ms | 10.86 ms |
-| tokopedia | 17.84 ms | 17.84 ms | 24.82 ms | 26.10 ms |
+| bavix | 3.33 ms | 2.91 ms | 6.75 ms | 9.44 ms |
+| bavix native | 2.69 ms | 2.30 ms | 5.69 ms | 8.18 ms |
+| tokopedia | 16.06 ms | 16.10 ms | 22.90 ms | 24.08 ms |
 
 ![Latency distribution](/bench/latency-percentiles.svg)
 
@@ -67,32 +67,32 @@ p99 against stub count, and the same call without queueing at concurrency 1:
 
 | Stubs | bavix p99 | bavix native p99 | tokopedia p99 | tokopedia at c=1 |
 | --- | --- | --- | --- | --- |
-| 500 | 11 ms | 10 ms | 26 ms | 0.86 ms |
-| 10 000 | 11 ms | 10 ms | 576 ms | 8.58 ms |
-| 500 000 | 10 ms | 10 ms | 3518 ms | 93.32 ms |
+| 500 | 9 ms | 8 ms | 24 ms | 0.80 ms |
+| 10 000 | 10 ms | 8 ms | 552 ms | 8.72 ms |
+| 500 000 | 9 ms | 8 ms | 3485 ms | 85.98 ms |
 
-`bavix/gripmock` answers in 0.37 ms at concurrency 1, at every stub count.
+`bavix/gripmock` answers in 0.20 ms at concurrency 1, at every stub count.
 
 ### CPU and memory
 
 | Stubs | | CPU avg | Requests/s per core | At rest | Peak under load |
 | --- | --- | --- | --- | --- | --- |
-| 500 | bavix | 352 % | 6 891 | 154 MB | 776 MB |
-| 500 | bavix native | 366 % | 7 310 | 183 MB | 718 MB |
-| 500 | tokopedia | 380 % | 1 476 | 71 MB | 113 MB |
-| 10 000 | bavix | 350 % | 6 842 | 167 MB | 787 MB |
-| 10 000 | bavix native | 366 % | 7 267 | 202 MB | 749 MB |
-| 10 000 | tokopedia | 158 % | 249 | 89 MB | 145 MB |
-| 500 000 | bavix | 342 % | 7 317 | 992 MB | 2414 MB |
-| 500 000 | bavix native | 366 % | 7 434 | 1021 MB | 2416 MB |
-| 500 000 | tokopedia | 228 % | 14 | 802 MB | 1064 MB |
+| 500 | bavix | 348 % | 8 564 | 153 MB | 795 MB |
+| 500 | bavix native | 355 % | 10 352 | 184 MB | 730 MB |
+| 500 | tokopedia | 338 % | 1 841 | 71 MB | 108 MB |
+| 10 000 | bavix | 348 % | 8 439 | 166 MB | 936 MB |
+| 10 000 | bavix native | 356 % | 10 167 | 201 MB | 794 MB |
+| 10 000 | tokopedia | 155 % | 247 | 84 MB | 135 MB |
+| 500 000 | bavix | 336 % | 9 088 | 989 MB | 2522 MB |
+| 500 000 | bavix native | 350 % | 11 028 | 1025 MB | 2520 MB |
+| 500 000 | tokopedia | 230 % | 14 | 800 MB | 1057 MB |
 
 All three saturate the four CPUs granted to them. Per core `bavix/gripmock`
-delivers 4.7 times more requests at 500 stubs and 520 times more at 500 000.
+delivers 4.7 times more requests at 500 stubs and 649 times more at 500 000.
 
 Memory per 1000 requests/s, `bavix/gripmock` against `tokopedia/gripmock`:
-32.0 MB against 20.2 MB at 500 stubs, 32.9 MB against 368.9 MB at 10 000,
-96.4 MB against 33 671 MB at 500 000.
+26.7 MB against 17.4 MB at 500 stubs, 31.9 MB against 352.5 MB at 10 000,
+82.6 MB against 33 031 MB at 500 000.
 
 ![CPU efficiency](/bench/efficiency-cpu.svg)
 
@@ -105,9 +105,9 @@ each.
 
 | | min | avg | max |
 | --- | --- | --- | --- |
-| bavix | 0.369 s | 0.430 s | 0.507 s |
-| bavix native | 0.172 s | 0.177 s | 0.214 s |
-| tokopedia | 1.743 s | 2.285 s | 3.337 s |
+| bavix | 0.347 s | 0.399 s | 0.453 s |
+| bavix native | 0.169 s | 0.174 s | 0.228 s |
+| tokopedia | 1.577 s | 2.205 s | 3.418 s |
 
 ![Startup readiness](/bench/startup-ready.svg)
 
@@ -117,7 +117,7 @@ Compressed layers from the registry manifest, read from published tags.
 
 | | linux/amd64 | linux/arm64 |
 | --- | --- | --- |
-| `bavix/gripmock:3.18.2` | 19.13 MB | 18.45 MB |
+| `bavix/gripmock:3.18.4` | 19.17 MB | 18.49 MB |
 | `tkpd/gripmock:v1.14` | 226.29 MB | 219.90 MB |
 
 ![Image size](/bench/image-size.svg)
@@ -140,9 +140,13 @@ limits, the same client invocation, one at a time.
   status codes for an unmatched request.
 - A level stops at `BENCH_REQUESTS` or its time cap, whichever comes first.
 - A run is rejected if the container stops mid-measurement, if any request
-  fails at the transport level, or if the outcome disagrees with the scenario.
-  All 72 measurements passed. Throughput derived from measured latency and
+  fails at the transport level, if the outcome disagrees with the scenario, or
+  if the load generator reports that it was itself the bottleneck. All 72
+  measurements passed. Throughput derived from measured latency and
   concurrency agrees with the reported figure within 1 % in every row.
+- Every report carries the generator's own CPU accounting, so a figure can be
+  audited rather than taken on trust. The client held 2.3 of the host's 12
+  cores at the fastest row and never raised `generator_limited`.
 - Startup is measured from `docker run` until `helloworld.Greeter` answers
   reflection. docker-proxy binds the published port at container creation, and
   the health service is registered before the mocked one, so neither a TCP
@@ -158,47 +162,59 @@ limits, the same client invocation, one at a time.
 
 ### Calibration
 
-Measured before choosing the settings, on this host:
+`make bench-calibrate` measures the settings the run holds fixed. On this host:
 
 | | | |
 | --- | --- | --- |
-| Environment ceiling | 31 000 req/s | unconstrained server, one stub, flat from concurrency 50 to 400 |
-| 2 CPUs | 13 915 req/s | 45 % of ceiling |
-| 4 CPUs | 22 003 req/s | 71 % of ceiling — chosen |
-| 6 CPUs | 25 492 req/s | 82 % of ceiling |
-| Concurrency 50 | 18 209 req/s | p99 4 ms |
-| Concurrency 100 | 18 925 req/s | p99 9 ms — chosen |
-| Concurrency 200 | 19 413 req/s | p99 20 ms |
-| Concurrency 800 | 19 757 req/s | p99 70 ms |
-| 50 000 req/level | 2.0 s window | 9.8 % spread over repeats |
-| 150 000 req/level | 6.0 s window | 5.3 % spread |
-| 300 000 req/level | 12.2 s window | 2.0 % spread — chosen |
-| 1 connection | | 14.4 % client CPU per 1000 req/s |
-| 8 connections | | 8.8 % client CPU per 1000 req/s — chosen |
+| Client floor | 78 904 req/s | the same document against a no-op target inside the generator |
+| 2 CPUs | 19 218 req/s | p99 14.8 ms |
+| 4 CPUs | 29 907 req/s | p99 9.4 ms — chosen |
+| 6 CPUs | 38 535 req/s | p99 7.8 ms |
+| Concurrency 100 | 30 170 req/s | p99 10 ms — chosen |
+| Concurrency 200 | 29 575 req/s | p99 20 ms |
+| Concurrency 400 | 29 909 req/s | p99 39 ms |
+| Concurrency 800 | 29 553 req/s | p99 72 ms |
+| 50 000 req/level | 1.8 s window | 3.6 % spread over repeats |
+| 150 000 req/level | 5.3 s window | 1.2 % spread |
+| 300 000 req/level | 10.6 s window | 0.7 % spread — chosen |
+| 1 connection | 29 480 req/s | 7.1 % client CPU per 1000 req/s |
+| 8 connections | 28 308 req/s | 7.9 % client CPU per 1000 req/s — chosen |
+
+The client floor is not a ceiling for a real run: the no-op target lives inside
+the generator, so both ends share the same cores and the same CPU counter. Read
+it as what the document costs before an engine is involved — 2.6 times the
+fastest measured engine row, which is why no row here is generator-bound.
+
+Throughput is flat from concurrency 100 to 800 while p99 grows sevenfold, so
+concurrency 100 is the last level that buys anything. CPU scales close to
+linearly across 2, 4 and 6 CPUs; 4 keeps the engine inside half the host and
+leaves the rest to the client.
 
 The run refuses to start unless the host has at least twice `BENCH_CPUS` cores
-and is idle. The same measurement returns 22 078 req/s on an idle machine and
-8 023 while an unrelated job holds five of twelve threads.
+and is idle, because an unrelated job competing for CPU moves the figures by
+tens of percent.
 
 ## Reproducing
 
 Requires Docker, Go and [grpctestify](https://github.com/gripmock/grpctestify-rust)
-v1.9.5 or newer.
+v1.10.0 or newer.
 
 ```bash
-make bench        # measure, then regenerate every chart
-make bench-run    # measure only, writes bench/results-<count>/
-make bench-chart  # redraw charts from the last measurement
+make bench            # measure, then regenerate every chart
+make bench-run        # measure only, writes bench/results-<count>/
+make bench-chart      # redraw charts from the last measurement
+make bench-calibrate  # re-measure the settings, writes bench/results-calibration/
 ```
 
 [`bench/run.sh`](https://github.com/bavix/gripmock/blob/master/bench/run.sh)
-drives the measurement, [`bench/tests/`](https://github.com/bavix/gripmock/tree/master/bench/tests)
+drives both the measurement and the calibration,
+[`bench/tests/`](https://github.com/bavix/gripmock/tree/master/bench/tests)
 holds the scenarios, [`bench/chart.go`](https://github.com/bavix/gripmock/blob/master/bench/chart.go)
 renders the SVGs.
 
 | Variable | Default |
 | --- | --- |
-| `BAVIX_IMAGE` | `bavix/gripmock:3.18.3` |
+| `BAVIX_IMAGE` | `bavix/gripmock:3.18.4` |
 | `TKPD_IMAGE` | `tkpd/gripmock:v1.14` |
 | `BENCH_COUNTS` | `500 10000 500000` |
 | `BENCH_SCENARIOS` | `equals contains matches miss` |
@@ -222,22 +238,28 @@ renders the SVGs.
 | OS | Debian GNU/Linux 12 (bookworm), kernel 6.1.0-44-amd64 |
 | Architecture | x86_64; both images linux/amd64, nothing emulated |
 | Docker | 29.4.1 |
-| Go | go1.26.5 |
+| Go | go1.26.2 |
 | jq | jq-1.6 |
-| grpctestify | v1.9.5 |
-| bavix | `bavix/gripmock:3.18.3`, built from this tree |
+| grpctestify | v1.10.0 |
+| bavix | `bavix/gripmock:3.18.4`, built from this tree |
 | bavix native | same tree as a host binary, `GOMAXPROCS=4` |
 | tokopedia | `tkpd/gripmock:v1.14` |
 | Container limits | 4 CPUs, 8 GiB |
-| Run time | 26.4 min |
+| Run time | 29 min |
 
 ## Known deviations
 
-- `bavix/gripmock` reports 24 284 req/s at 500 stubs and 25 032 at 500 000 —
-  faster with more stubs, by about 3 %, reproduced across three sweeps.
+- `bavix/gripmock` reports 29 804 req/s at 500 stubs and 30 527 at 500 000 —
+  faster with more stubs, by about 2 %, reproduced across three sweeps.
   Unexplained. At 500 stubs each stub is matched thousands of times per run
   against a handful at 500 000.
-- The Docker build runs 9 to 11 % below the native process in every throughput
-  row. `tokopedia/gripmock` has no native mode; it compiles a gRPC server from
-  the proto at startup.
+- The Docker build runs 19 to 23 % below the native process in every throughput
+  row. Under grpctestify v1.9.5 the same gap read 9 to 11 %: the client was
+  then the slower half of the pair, and it compressed the difference.
+  `tokopedia/gripmock` has no native mode; it compiles a gRPC server from the
+  proto at startup.
+- A single client connection reaches 4 % more throughput than eight, at lower
+  client CPU per request. The run still uses eight, because one HTTP/2
+  connection multiplexes every stream through one flow-control window and that
+  is a property of the client, not of the engine under test.
 - Image pull times are not measured.

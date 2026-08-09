@@ -15,6 +15,7 @@ plugins/*.so
 DEV-3.5.md
 test/bench/
 bench/gripmock-bench
+bench/bin/
 bench/stubs*.json
 bench/names.csv
 bench/results/
