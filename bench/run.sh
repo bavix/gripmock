@@ -7,9 +7,10 @@ STARTUP_RUNS="${BENCH_STARTUP_RUNS:-50}"
 CONCURRENCY_LEVELS="${BENCH_CONCURRENCY_LEVELS:-1,100}"
 DURATION="${BENCH_DURATION:-30s}"
 SWEEP_DURATION="${BENCH_SWEEP_DURATION:-10s}"  # also the cap for engines too slow to reach BENCH_REQUESTS
-BAVIX_IMAGE="${BAVIX_IMAGE:-bavix/gripmock:3.18.3}"
+BAVIX_IMAGE="${BAVIX_IMAGE:-bavix/gripmock:3.18.4}"
 TKPD_IMAGE="${TKPD_IMAGE:-tkpd/gripmock:v1.14}"
-NATIVE_BIN="${BENCH_NATIVE_BIN:-/tmp/gripmock-native}"
+BIN_DIR="${BENCH_BIN_DIR:-$PWD/bin}"
+NATIVE_BIN="$BIN_DIR/gripmock"
 NATIVE_GRPC_PORT=45770
 NATIVE_HTTP_PORT=45771
 NATIVE_GATEWAY_PORT=45769
@@ -18,9 +19,9 @@ CPUS="${BENCH_CPUS:-4}"
 MEMORY="${BENCH_MEMORY:-8g}"
 CONNECTIONS="${BENCH_CONNECTIONS:-8}"
 REQUEST_TIMEOUT="${BENCH_REQUEST_TIMEOUT:-180s}"
-# 300000 requests puts the fast engines in a ~12 s window, where repeated
-# measurements of the same point stay within 2 %. At 50000 the window drops
-# to 2 s and the spread grows to 10 %, which is noise, not signal.
+# 300000 requests puts the fast engines in a ~11 s window, where repeated
+# measurements of the same point stay within 1 %. At 50000 the window drops
+# to 2 s and the spread grows to 4 %, which is noise, not signal.
 REQUESTS="${BENCH_REQUESTS:-300000}"
 WARMUP="${BENCH_WARMUP:-1s}"
 
@@ -29,7 +30,7 @@ SERVICE=helloworld.Greeter
 STUBS_BASE=stubs
 CSV_FILE=names.csv
 STARTUP_BASE=stubs-startup
-GEN_BIN=/tmp/gripmock-bench-gen
+GEN_BIN="$BIN_DIR/gripmock-bench-gen"
 
 scenario_stubs() {
     case "$1" in
@@ -84,6 +85,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "building binaries"
+mkdir -p "$BIN_DIR"
 (cd .. && go build -o "$NATIVE_BIN" .)
 go build -o "$GEN_BIN" .
 
@@ -275,7 +277,7 @@ verify_stubs() {
 }
 
 check_report() {
-    local name="$1" scenario="$2" level="$3" report="$4" dist ok total
+    local name="$1" scenario="$2" level="$3" report="$4" dist ok total limited
 
     if [[ ! -s "$report" ]]; then
         echo "[$name/$scenario] concurrency=$level: no benchmark report written" >&2
@@ -285,6 +287,16 @@ check_report() {
     dist="$(jq -c '.error_distribution' "$report")"
     if [[ "$dist" != "{}" ]]; then
         echo "[$name/$scenario] concurrency=$level: transport failures: $dist" >&2
+        return 1
+    fi
+
+    # The load generator scores its own CPU against the host's. A run it was
+    # holding back measures the client, not the engine, so it is not a result.
+    limited="$(jq -r '.client_cost.generator_limited // false' "$report")"
+    if [[ "$limited" == "true" ]]; then
+        echo "[$name/$scenario] concurrency=$level: the load generator was the bottleneck," \
+             "$(jq -r '.client_cost.cores_used' "$report") of" \
+             "$(jq -r '.client_cost.host_cores' "$report") cores spent in the client" >&2
         return 1
     fi
 
@@ -414,28 +426,167 @@ run_engine() {
         >"$RESULTS/$name-meta.json"
 }
 
-declare -A SIZE_CACHE=(
-    [bavix]="$(image_size_mb "$BAVIX_IMAGE")"
-    [native]='{}'
-    [tkpd]="$(image_size_mb "$TKPD_IMAGE")"
-)
+measure() {
+    declare -A SIZE_CACHE=(
+        [bavix]="$(image_size_mb "$BAVIX_IMAGE")"
+        [native]='{}'
+        [tkpd]="$(image_size_mb "$TKPD_IMAGE")"
+    )
 
-STARTUP_RUNS_CONFIGURED="$STARTUP_RUNS"
+    local configured_startup_runs="$STARTUP_RUNS"
 
-for COUNT in $COUNTS; do
-    RESULTS="results-$COUNT"
+    for COUNT in $COUNTS; do
+        RESULTS="results-$COUNT"
+        mkdir -p "$RESULTS"
+
+        echo "=== $COUNT stubs -> $RESULTS/"
+        "$GEN_BIN" gen "$COUNT" "$STUBS_BASE" "$CSV_FILE"
+
+        run_engine bavix "$BAVIX_IMAGE"
+        run_engine native native
+        run_engine tkpd "$TKPD_IMAGE"
+
+        STARTUP_RUNS=0
+    done
+
+    STARTUP_RUNS="$configured_startup_runs"
+
+    echo "done -> results-*/"
+}
+
+# Everything below measures the settings the run above holds fixed: what the
+# host and the load generator can reach, how much of it a container gets per
+# CPU granted, where concurrency stops buying throughput, how wide the spread
+# is at a given request count, and what a connection costs the client.
+CAL_STUBS="${CAL_STUBS:-500}"
+CAL_DURATION="${CAL_DURATION:-10s}"
+CAL_CPU_LEVELS="${CAL_CPU_LEVELS:-2 4 6}"
+CAL_CONCURRENCY_START="${CAL_CONCURRENCY_START:-100}"
+CAL_CONCURRENCY_END="${CAL_CONCURRENCY_END:-800}"
+CAL_CONCURRENCY_STEP="${CAL_CONCURRENCY_STEP:-100}"
+CAL_WINDOW_COUNTS="${CAL_WINDOW_COUNTS:-50000 150000 300000}"
+CAL_WINDOW_REPEATS="${CAL_WINDOW_REPEATS:-3}"
+CAL_CONNECTION_LEVELS="${CAL_CONNECTION_LEVELS:-1 8}"
+
+# cal_bench runs one measurement and echoes "rps p99_ms client_cpu_percent".
+# Client CPU is the generator's own accounting, not the host's.
+cal_bench() {
+    local port="$1" report="$2"
+    shift 2
+
+    GRPCTESTIFY_ADDRESS="127.0.0.1:$port" grpctestify bench tests/match.gctf \
+        --max-duration "$CAL_DURATION" \
+        --warmup "$WARMUP" \
+        --request-timeout "$REQUEST_TIMEOUT" \
+        --log-format json \
+        --log-output "$report" "$@" >/dev/null
+
+    jq -r '[.summary.rps_observed,
+            ((.latency_distribution[] | select(.percentile == 99) | .latency_ns) / 1e6),
+            (.client_cost.cores_used * 100)] | @tsv' "$report"
+}
+
+cal_record() {
+    jq -c -n --arg group "$1" --arg point "$2" --argjson rps "$3" \
+        --argjson p99_ms "$4" --argjson client_cpu_percent "$5" \
+        '{group: $group, point: $point, rps: $rps, p99_ms: $p99_ms,
+          client_cpu_percent: $client_cpu_percent}' >>"$RESULTS/calibration.jsonl"
+}
+
+calibrate() {
+    local cpus level requests rps p99 cpu lo hi sum i cid grpc http
+
+    RESULTS=results-calibration
     mkdir -p "$RESULTS"
+    : >"$RESULTS/calibration.jsonl"
 
-    echo "=== $COUNT stubs -> $RESULTS/"
+    COUNT="$CAL_STUBS"
     "$GEN_BIN" gen "$COUNT" "$STUBS_BASE" "$CSV_FILE"
 
-    run_engine bavix "$BAVIX_IMAGE"
-    run_engine native native
-    run_engine tkpd "$TKPD_IMAGE"
+    # --calibrate answers the document against a no-op target inside the client
+    # itself. Both ends then share the host, so the figure is not a ceiling for
+    # a real run -- it is what this document costs before an engine is involved.
+    echo "=== client floor: no-op target inside the load generator"
+    read -r rps p99 cpu < <(cal_bench 0 "$RESULTS/client-floor.json" \
+        --calibrate --requests "$REQUESTS" --concurrency 100 --connections "$CONNECTIONS")
+    printf '  %10.0f req/s  p99 %6.2f ms  client %5.0f %% CPU\n' "$rps" "$p99" "$cpu"
+    cal_record floor "no-op target" "$rps" "$p99" "$cpu"
 
-    STARTUP_RUNS=0
-done
+    echo "=== CPU limit: container, $COUNT stubs, concurrency 100"
+    for cpus in $CAL_CPU_LEVELS; do
+        CPUS="$cpus"
+        read -r cid grpc http < <(start_engine "$BAVIX_IMAGE" "$STUBS_BASE-equals.json")
+        CURRENT_CID="$cid"
+        read -r rps p99 cpu < <(cal_bench "$grpc" "$RESULTS/cpus-$cpus.json" \
+            --requests "$REQUESTS" --concurrency 100 --connections "$CONNECTIONS")
+        printf '  %-2s CPUs %10.0f req/s  p99 %6.2f ms\n' "$cpus" "$rps" "$p99"
+        cal_record cpus "$cpus CPUs" "$rps" "$p99" "$cpu"
+        docker rm -f "$cid" >/dev/null
+        CURRENT_CID=""
+    done
+    CPUS="${BENCH_CPUS:-4}"
 
-STARTUP_RUNS="$STARTUP_RUNS_CONFIGURED"
+    read -r cid grpc http < <(start_engine "$BAVIX_IMAGE" "$STUBS_BASE-equals.json")
+    CURRENT_CID="$cid"
 
-echo "done -> results-*/"
+    # One process walks the whole concurrency ladder and reports a row per
+    # level, so the levels share a server, a warmup and a connection pool.
+    echo "=== concurrency: container at $CPUS CPUs, $COUNT stubs"
+    GRPCTESTIFY_ADDRESS="127.0.0.1:$grpc" grpctestify bench tests/match.gctf \
+        --concurrency "$CAL_CONCURRENCY_START" \
+        --concurrency-schedule step \
+        --concurrency-start "$CAL_CONCURRENCY_START" \
+        --concurrency-end "$CAL_CONCURRENCY_END" \
+        --concurrency-step "$CAL_CONCURRENCY_STEP" \
+        --concurrency-step-duration "$CAL_DURATION" \
+        --connections "$CONNECTIONS" \
+        --warmup "$WARMUP" \
+        --request-timeout "$REQUEST_TIMEOUT" \
+        --log-format json \
+        --log-output "$RESULTS/concurrency-sweep.json" >/dev/null
+
+    jq -r '.levels[] | [.concurrency, .summary.rps_observed,
+            ((.latency_distribution[] | select(.percentile == 99) | .latency_ns) / 1e6)] | @tsv' \
+        "$RESULTS/concurrency-sweep.json" \
+        | while read -r level rps p99; do
+            printf '  concurrency %-4s %10.0f req/s  p99 %6.2f ms\n' "$level" "$rps" "$p99"
+            cal_record concurrency "concurrency $level" "$rps" "$p99" 0
+        done
+
+    echo "=== measurement window: $CAL_WINDOW_REPEATS repeats per request count"
+    for requests in $CAL_WINDOW_COUNTS; do
+        lo=""; hi=""; sum=0
+        for ((i = 1; i <= CAL_WINDOW_REPEATS; i++)); do
+            read -r rps p99 cpu < <(cal_bench "$grpc" "$RESULTS/window-$requests-$i.json" \
+                --requests "$requests" --concurrency 100 --connections "$CONNECTIONS")
+            cal_record window "$requests req, repeat $i" "$rps" "$p99" "$cpu"
+            lo="$(awk -v a="$lo" -v b="$rps" 'BEGIN{print (a == "" || b < a) ? b : a}')"
+            hi="$(awk -v a="$hi" -v b="$rps" 'BEGIN{print (a == "" || b > a) ? b : a}')"
+            sum="$(awk -v s="$sum" -v b="$rps" 'BEGIN{print s + b}')"
+        done
+        awk -v n="$requests" -v lo="$lo" -v hi="$hi" -v s="$sum" -v r="$CAL_WINDOW_REPEATS" \
+            'BEGIN{printf "  %-7s req/level  %.0f req/s avg  %.1f %% spread\n",
+                   n, s/r, (hi - lo) * 100 / (s/r)}'
+    done
+
+    echo "=== connections: what the client spends per 1000 req/s"
+    for level in $CAL_CONNECTION_LEVELS; do
+        read -r rps p99 cpu < <(cal_bench "$grpc" "$RESULTS/connections-$level.json" \
+            --requests "$REQUESTS" --concurrency 100 --connections "$level")
+        awk -v c="$level" -v r="$rps" -v cpu="$cpu" \
+            'BEGIN{printf "  %-2s connections %10.0f req/s  %.1f %% client CPU per 1000 req/s\n",
+                   c, r, cpu * 1000 / r}'
+        cal_record connections "$level connections" "$rps" "$p99" "$cpu"
+    done
+
+    docker rm -f "$cid" >/dev/null
+    CURRENT_CID=""
+
+    echo "done -> $RESULTS/"
+}
+
+case "${1:-measure}" in
+    measure)   measure ;;
+    calibrate) calibrate ;;
+    *) echo "usage: ${BASH_SOURCE[0]##*/} [measure|calibrate]" >&2; exit 2 ;;
+esac

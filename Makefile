@@ -38,6 +38,9 @@ bench-run:
 bench-chart:
 	cd bench && go run .
 
+bench-calibrate:
+	cd bench && ./run.sh calibrate
+
 bench: bench-run bench-chart
 
 # Override to pin a specific codegen version, e.g. make gen-rest OAPI_CODEGEN=...@v2.5.0

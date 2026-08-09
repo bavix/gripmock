@@ -9,37 +9,37 @@
 <text x="90" y="44" fill="#f9fafb" font-size="28" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif" font-weight="700">Startup Time</text>
 <text x="90" y="70" fill="#9ca3af" font-size="16" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">Until the service answers gRPC reflection, one stub loaded, over 50 runs</text>
 <line x1="90.0" y1="90.0" x2="1060.0" y2="90.0" stroke="#1f2937" stroke-width="1"/>
-<text x="80.0" y="95.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">4.00 s</text>
+<text x="80.0" y="95.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">4.10 s</text>
 <line x1="90.0" y1="166.0" x2="1060.0" y2="166.0" stroke="#1f2937" stroke-width="1"/>
-<text x="80.0" y="171.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">3.20 s</text>
+<text x="80.0" y="171.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">3.28 s</text>
 <line x1="90.0" y1="242.0" x2="1060.0" y2="242.0" stroke="#1f2937" stroke-width="1"/>
-<text x="80.0" y="247.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">2.40 s</text>
+<text x="80.0" y="247.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">2.46 s</text>
 <line x1="90.0" y1="318.0" x2="1060.0" y2="318.0" stroke="#1f2937" stroke-width="1"/>
-<text x="80.0" y="323.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">1.60 s</text>
+<text x="80.0" y="323.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">1.64 s</text>
 <line x1="90.0" y1="394.0" x2="1060.0" y2="394.0" stroke="#1f2937" stroke-width="1"/>
-<text x="80.0" y="399.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.80 s</text>
+<text x="80.0" y="399.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.82 s</text>
 <line x1="90.0" y1="470.0" x2="1060.0" y2="470.0" stroke="#1f2937" stroke-width="1"/>
 <text x="80.0" y="475.0" text-anchor="end" fill="#9ca3af" font-size="12" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.00 s</text>
-<rect x="155.7" y="435.0" width="56.0" height="35.0" fill="url(#bavix)" rx="8"/>
-<text x="183.7" y="427.0" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.37 s</text>
-<rect x="223.7" y="453.7" width="56.0" height="16.3" fill="url(#native)" rx="8"/>
-<text x="251.7" y="445.7" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.17 s</text>
-<rect x="291.7" y="304.6" width="56.0" height="165.4" fill="url(#tkpd)" rx="8"/>
-<text x="319.7" y="296.6" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">1.74 s</text>
+<rect x="155.7" y="437.9" width="56.0" height="32.1" fill="url(#bavix)" rx="8"/>
+<text x="183.7" y="429.9" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.35 s</text>
+<rect x="223.7" y="454.3" width="56.0" height="15.7" fill="url(#native)" rx="8"/>
+<text x="251.7" y="446.3" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.17 s</text>
+<rect x="291.7" y="323.9" width="56.0" height="146.1" fill="url(#tkpd)" rx="8"/>
+<text x="319.7" y="315.9" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">1.58 s</text>
 <text x="251.7" y="498" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">min</text>
-<rect x="479.0" y="429.2" width="56.0" height="40.8" fill="url(#bavix)" rx="8"/>
-<text x="507.0" y="421.2" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.43 s</text>
-<rect x="547.0" y="453.2" width="56.0" height="16.8" fill="url(#native)" rx="8"/>
-<text x="575.0" y="445.2" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.18 s</text>
-<rect x="615.0" y="253.2" width="56.0" height="216.8" fill="url(#tkpd)" rx="8"/>
-<text x="643.0" y="245.2" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">2.29 s</text>
+<rect x="479.0" y="433.0" width="56.0" height="37.0" fill="url(#bavix)" rx="8"/>
+<text x="507.0" y="425.0" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.40 s</text>
+<rect x="547.0" y="453.9" width="56.0" height="16.1" fill="url(#native)" rx="8"/>
+<text x="575.0" y="445.9" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.17 s</text>
+<rect x="615.0" y="265.7" width="56.0" height="204.3" fill="url(#tkpd)" rx="8"/>
+<text x="643.0" y="257.7" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">2.21 s</text>
 <text x="575.0" y="498" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">avg</text>
-<rect x="802.3" y="421.9" width="56.0" height="48.1" fill="url(#bavix)" rx="8"/>
-<text x="830.3" y="413.9" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.51 s</text>
-<rect x="870.3" y="449.7" width="56.0" height="20.3" fill="url(#native)" rx="8"/>
-<text x="898.3" y="441.7" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.21 s</text>
+<rect x="802.3" y="428.0" width="56.0" height="42.0" fill="url(#bavix)" rx="8"/>
+<text x="830.3" y="420.0" text-anchor="middle" fill="#86efac" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.45 s</text>
+<rect x="870.3" y="448.9" width="56.0" height="21.1" fill="url(#native)" rx="8"/>
+<text x="898.3" y="440.9" text-anchor="middle" fill="#bfdbfe" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">0.23 s</text>
 <rect x="938.3" y="153.3" width="56.0" height="316.7" fill="url(#tkpd)" rx="8"/>
-<text x="966.3" y="145.3" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">3.34 s</text>
+<text x="966.3" y="145.3" text-anchor="middle" fill="#fcd34d" font-size="11" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">3.42 s</text>
 <text x="898.3" y="498" text-anchor="middle" fill="#e5e7eb" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">max</text>
 <rect x="90" y="514" width="14" height="14" fill="url(#bavix)" rx="3"/>
 <text x="112" y="526" fill="#d1fae5" font-size="13" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif">bavix/gripmock (Docker)</text>
