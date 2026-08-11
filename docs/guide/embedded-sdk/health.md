@@ -11,7 +11,7 @@ GripMock supports stubbing the standard gRPC health service:
 - `grpc.health.v1.Health/Check` — unary health status
 - `grpc.health.v1.Health/Watch` — streaming health status (useful for testing health transitions)
 
-This allows you to test client behavior for dependency health transitions (for example `NOT_SERVING -> SERVING`).
+Use it to test how a client reacts to a dependency changing health state, for example `NOT_SERVING -> SERVING`.
 
 ## Protected service: gripmock
 
@@ -144,7 +144,7 @@ You can add a delay before individual stream messages using `Delay`:
 srv.ExpectServerStream("/grpc.health.v1.Health/Watch").
     Match("service", "examples.health.watch").
     SendStream(
-        Delay(10*time.Millisecond, "status", "NOT_SERVING"),
+        sdk.Delay(10*time.Millisecond, "status", "NOT_SERVING"),
         map[string]any{"status": "SERVING"},
     )
 ```

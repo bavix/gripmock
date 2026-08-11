@@ -2,7 +2,7 @@
 
 GripMock has an official GitHub Action: [`bavix/gripmock-action`](https://github.com/bavix/gripmock-action).
 
-It is designed for CI/CD workflows and handles the full lifecycle for you:
+It handles the full lifecycle:
 
 - Downloads GripMock from GitHub Releases (`latest` or pinned version)
 - Starts GripMock in background
@@ -94,11 +94,12 @@ Example:
   run: go test ./... -v
 ```
 
-## Recommendations
+## Notes
 
-- Pin `version` in CI for reproducible runs
-- Keep `wait: true` (default) to avoid race conditions in tests
-- Use `log-file` output for debugging failed startup in CI logs
+Pin `version` rather than tracking `latest`, or a GripMock release changes your
+CI without a commit. Leave `wait` at its default `true`: with it off, the action
+returns before `/api/health/readiness` answers and the first test races the
+server. On a failed startup, the `log-file` output holds the reason.
 
 Full action API (inputs/outputs):
 

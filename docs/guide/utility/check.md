@@ -26,7 +26,7 @@ Wait up to 30 seconds:
 gripmock check --timeout 30s
 ```
 
-Check more aggressively every 100ms:
+Poll every 100ms instead of the default interval:
 
 ```bash
 gripmock check --timeout 10s --interval 100ms

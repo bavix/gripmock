@@ -10,9 +10,9 @@
 
 **Languages:** English | [简体中文](README.zh-CN.md) | [日本語](README.ja-JP.md) | [Deutsch](README.de.md) | [Español](README.es.md)
 
-**The fastest and most reliable gRPC mock server** for testing and development.
+A gRPC mock server for testing and development.
 
-GripMock creates a mock server from your `.proto` files or compiled `.pb` descriptors, making gRPC testing simple and efficient. Perfect for end-to-end testing, development environments, and CI/CD pipelines.
+GripMock builds a mock server from your `.proto` files or a compiled `.pb` descriptor: 29 804 req/s and a 0.4 s cold start from a 19 MB image ([benchmark](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)).
 
 ![greeter](https://raw.githubusercontent.com/bavix/.github/master/svgs/gripmock-greeter.gif)
 
@@ -43,24 +43,14 @@ GripMock creates a mock server from your `.proto` files or compiled `.pb` descri
 
 **[Full Documentation](https://bavix.github.io/gripmock)** - Complete guide with examples
 
-- **Descriptor API (`/api/descriptors`)**: runtime loading of compiled proto descriptors (`.pb`) with validated curl workflow: [docs](https://bavix.github.io/gripmock/guide/api/descriptors)
-- **Upstream Modes (Experimental)**: `proxy`, `replay`, `capture` with practical rollout guidance: [docs](https://bavix.github.io/gripmock/guide/modes)
-- **Embedded SDK (Experimental)**: in-process testing with `sdk.NewServer`, `Match()`, `Return()`, and verification: [docs](https://bavix.github.io/gripmock/guide/embedded-sdk)
-- **Faker Reference**: built-in faker key-by-key catalog with examples: [docs](https://bavix.github.io/gripmock/guide/stubs/faker)
-- **OpenTelemetry + Metrics**: tracing env vars and `/metrics` behavior: [docs](https://bavix.github.io/gripmock/guide/introduction/advanced-usage)
-- **GitHub Actions (CI/CD)**: official workflow action to download, start, wait for readiness, and stop GripMock automatically: [docs](https://bavix.github.io/gripmock/guide/ci-cd/github-actions)
-
-## 🧬 Project Evolution
-
-GripMock started as a fork of [tokopedia/gripmock](https://github.com/tokopedia/gripmock), and then evolved into an independent, fully rewritten project.
-
-Today GripMock is an independent runtime focused on practical testing workflows:
-
-- Native in-process architecture (no runtime code generation)
-- Flexible descriptor sources and runtime operations (hot stubs + descriptors API)
-- Production-style testing features (streaming, templates, upstream modes, plugins, SDK, MCP)
-
-For architecture details and benchmark methodology, see: [Performance Comparison](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
+Deep dives on the newer surfaces:
+[Descriptor API](https://bavix.github.io/gripmock/guide/api/descriptors) ·
+[Upstream Modes (Experimental)](https://bavix.github.io/gripmock/guide/modes) ·
+[Embedded SDK (Experimental)](https://bavix.github.io/gripmock/guide/embedded-sdk) ·
+[Faker Reference](https://bavix.github.io/gripmock/guide/stubs/faker) ·
+[OpenTelemetry + Metrics](https://bavix.github.io/gripmock/guide/introduction/advanced-usage) ·
+[GitHub Actions](https://bavix.github.io/gripmock/guide/ci-cd/github-actions) ·
+[Performance Comparison](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
 
 ## 🖥️ Web Interface
 
@@ -98,7 +88,7 @@ docker pull bavix/gripmock
 For plugin builds, use the paired builder image:
 
 ```bash
-docker pull bavix/gripmock:v3.17.2-builder
+docker pull bavix/gripmock:3.18.4-builder
 ```
 
 #### Go Install
@@ -220,7 +210,7 @@ More examples and full inputs/outputs: [GitHub Actions guide](https://bavix.gith
 
 ## 📖 Examples
 
-Check out our comprehensive examples in the [`examples`](https://github.com/bavix/gripmock/tree/master/examples) folder:
+The [`examples`](https://github.com/bavix/gripmock/tree/master/examples) folder covers:
 
 - **Streaming** - Server, client, and bidirectional streaming
 - **File Uploads** - Test chunked file uploads
@@ -355,7 +345,7 @@ output:
 
 ## 🔍 Input Matching
 
-GripMock supports four powerful matching strategies:
+Four matching strategies, combinable in one stub — see [Matching Logic](https://bavix.github.io/gripmock/guide/matcher/logic) for how they compose:
 
 ### 1. Exact Match (`equals`)
 ```yaml
@@ -394,12 +384,21 @@ input:
 ### REST API Endpoints
 
 - `GET /api/stubs` - List all stubs
-- `POST /api/descriptors` - Load protobuf descriptor set (`FileDescriptorSet`) at runtime
-- `POST /api/stubs` - Add new stub
-- `POST /api/stubs/search` - Find matching stub
+- `POST /api/stubs` - Add or update stubs
 - `DELETE /api/stubs` - Clear all stubs
+- `DELETE /api/stubs/{uuid}` - Delete one stub
+- `POST /api/stubs/batchDelete` - Delete several stubs by ID
+- `POST /api/stubs/search` - Find the stub a request would hit
+- `POST /api/stubs/validate` - Validate stubs without storing them
+- `POST /api/stubs/inspect` - Explain why a request matches or misses
+- `GET /api/stubs/used` / `GET /api/stubs/unused` - Matched and never-matched stubs
+- `POST /api/descriptors` - Load a `FileDescriptorSet` at runtime
+- `GET /api/history` - Recorded calls
+- `POST /api/verify` - Assert call counts
 - `GET /api/health/liveness` - Health check
 - `GET /api/health/readiness` - Readiness check
+
+Full reference: [OpenAPI](https://bavix.github.io/gripmock-openapi/).
 
 ### Example API Usage
 
@@ -446,7 +445,7 @@ method: MyMethod
 
 ## 🌐 BSR Integration
 
-GripMock supports simplified integration with Buf Schema Registry:
+A BSR module reference can be passed straight to GripMock in place of a `.proto` path:
 
 ### Configuration
 
@@ -527,10 +526,11 @@ At 500 stubs, 4 CPUs per container. Full method and numbers: [Performance Compar
 
 |  | bavix | tokopedia |
 | --- | --- | --- |
-| Throughput | 24 284 req/s | 5 600 req/s |
-| p99 latency | 11 ms | 26 ms |
-| Startup, avg | 0.43 s | 2.29 s |
-| Image size, amd64 | 19.13 MB | 226.29 MB |
+| Throughput | 29 804 req/s | 6 221 req/s |
+| p99 latency | 9.44 ms | 24.08 ms |
+| Startup, avg | 0.399 s | 2.205 s |
+| Image size, amd64 | 19.17 MB | 226.29 MB |
+| Image size, arm64 | 18.49 MB | 219.90 MB |
 
 ![Image size benchmark](docs/public/bench/image-size.svg)
 ![Startup readiness benchmark](docs/public/bench/startup-ready.svg)
@@ -540,19 +540,15 @@ At 500 stubs, 4 CPUs per container. Full method and numbers: [Performance Compar
 
 ## 🔗 Useful Resources
 
-- 📖 **[Documentation](https://bavix.github.io/gripmock)** - Complete guides and examples
-- 🧪 **[Testing gRPC with Testcontainers](https://medium.com/skyro-tech/testing-grpc-client-with-mock-server-and-testcontainers-f51cb8a6be9a)** - Article by [@AndrewIISM](https://github.com/AndrewIISM)
-- 📋 **[JSON Schema](https://bavix.github.io/gripmock/schema/stub.json)** - Stub validation schema
-- 🔗 **[OpenAPI](https://bavix.github.io/gripmock-openapi/)** - REST API documentation
+- **[Documentation](https://bavix.github.io/gripmock)** - Complete guides and examples
+- **[Testing gRPC with Testcontainers](https://medium.com/skyro-tech/testing-grpc-client-with-mock-server-and-testcontainers-f51cb8a6be9a)** - Article by [@AndrewIISM](https://github.com/AndrewIISM)
+- **[JSON Schema](https://bavix.github.io/gripmock/schema/stub.json)** - Stub validation schema
+- **[OpenAPI](https://bavix.github.io/gripmock-openapi/)** - REST API documentation
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+See the [Contributing Guide](CONTRIBUTING.md). Changes to gRPC behaviour need integration tests in `.gctf` format.
 
 ## 📄 License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
----
-
-**Made with ❤️ by the GripMock community**
+MIT — see [LICENSE](LICENSE).

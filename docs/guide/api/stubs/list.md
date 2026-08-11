@@ -61,12 +61,12 @@ curl http://127.0.0.1:4771/api/stubs
 | `id`     | `string` | Unique identifier for the stub (UUID format).                              |
 | `service`| `string` | Name of the gRPC service (e.g., `Gripmock`).                              |
 | `method` | `string` | Name of the gRPC method (e.g., `SayHello`).                               |
-| `headers`| `object` | Header matching rules (`equals`, `contains`, `matches`).                  |
-| `input`  | `object` | Input matching criteria (`equals`, `contains`, `matches`, `ignoreArrayOrder`). |
+| `headers`| `object` | Header matching rules (`equals`, `contains`, `matches`, `glob`, `anyOf`). |
+| `input`  | `object` | Input matching criteria (`equals`, `contains`, `matches`, `glob`, `anyOf`, `ignoreArrayOrder`). |
 | `output` | `object` | Response configuration, including `data`, `error`, and gRPC status `code`.|  
 
 ## Behavior
-- **Comprehensive List**: Returns **all stubs**, including both used and unused ones.  
+- **Scope**: Returns **all stubs**, used and unused alike.  
 - **Order**: The order of stubs is not guaranteed.  
 - **No Side Effects**: Fetching the list does **not** mark stubs as "used".  
 
@@ -112,7 +112,3 @@ curl http://127.0.0.1:4771/api/stubs
 For complete schema details, see:
 - [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
 - [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)
-
----
-
-This endpoint is essential for debugging and verifying stub configurations during test setup.

@@ -10,13 +10,10 @@ Upstream modes define how GripMock handles requests when reflection sources are 
 - `replay`: local stubs first, upstream fallback on real matcher miss.
 - `capture`: replay behavior plus automatic recording of upstream misses.
 
-## Why this matters
-
-For a typical Order Service rollout, modes let you move in predictable stages:
-
-1. Start with `proxy` to route all traffic through GripMock and inspect real calls.
-2. Move to `replay` when you have initial stubs and still need upstream fallback.
-3. Use `capture` to accelerate coverage and transition away from live dependency.
+The three are meant to be walked in order: `proxy` first, to see what the real
+calls look like; `replay` once you have stubs but still need the upstream for
+the gaps; `capture` to fill those gaps automatically and stop depending on the
+live service.
 
 ## Reflection vs mode
 

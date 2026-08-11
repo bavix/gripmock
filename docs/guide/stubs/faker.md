@@ -4,28 +4,21 @@ title: Faker Reference
 
 # Faker Reference <VersionTag version="v3.10.0" />
 
-Built-in faker generates realistic dynamic values directly in stub templates.
+The built-in faker generates values inside stub templates. Keys are written
+`faker.DOMAIN.METHOD` and used as <code v-pre>{{faker.DOMAIN.METHOD}}</code>.
+Each evaluation produces a new value.
 
-## How It Works
+## 1. Person
 
-Faker is available as template object:
-
-- **Key**: `faker.DOMAIN.METHOD`
-- **Template usage**: <code v-pre>{{faker.DOMAIN.METHOD}}</code>
-- **Result**: generated at runtime for each evaluation
-
-## 1. Person Domain
-
-### Keys
-- Key: `faker.Person.FirstName` - Example: `Emma`
-- Key: `faker.Person.LastName` - Example: `Johnson`
-- Key: `faker.Person.Name` - Example: `Dr. Emma Johnson`
-- Key: `faker.Person.Prefix` - Example: `Dr.`
-- Key: `faker.Person.Suffix` - Example: `Jr.`
-- Key: `faker.Person.Gender` - Example: `female`
-- Key: `faker.Person.Age` - Example: `34`
-
-### Stub Example
+| Key | Example |
+| --- | --- |
+| `faker.Person.FirstName` | `Emma` |
+| `faker.Person.LastName` | `Johnson` |
+| `faker.Person.Name` | `Dr. Emma Johnson` |
+| `faker.Person.Prefix` | `Dr.` |
+| `faker.Person.Suffix` | `Jr.` |
+| `faker.Person.Gender` | `female` |
+| `faker.Person.Age` | `34` |
 
 ::: v-pre
 ```yaml
@@ -38,15 +31,14 @@ output:
 ```
 :::
 
-## 2. Contact Domain
+## 2. Contact
 
-### Keys
-- Key: `faker.Contact.Email` - Example: `john.smith@example.org`
-- Key: `faker.Contact.Phone` - Example: `+1 202-555-0141`
-- Key: `faker.Contact.Username` - Example: `silent-river-42`
-- Key: `faker.Contact.URL` - Example: `https://api.demo-app.io/users/42`
-
-### Stub Example
+| Key | Example |
+| --- | --- |
+| `faker.Contact.Email` | `john.smith@example.org` |
+| `faker.Contact.Phone` | `+1 202-555-0141` |
+| `faker.Contact.Username` | `silent-river-42` |
+| `faker.Contact.URL` | `https://api.demo-app.io/users/42` |
 
 ::: v-pre
 ```yaml
@@ -59,21 +51,20 @@ output:
 ```
 :::
 
-## 3. Geo Domain
+## 3. Geo
 
-### Keys
-- Key: `faker.Geo.Country` - Example: `United States`
-- Key: `faker.Geo.CountryCode` - Example: `US`
-- Key: `faker.Geo.City` - Example: `San Francisco`
-- Key: `faker.Geo.State` - Example: `California`
-- Key: `faker.Geo.StateCode` - Example: `CA`
-- Key: `faker.Geo.Zip` - Example: `94107`
-- Key: `faker.Geo.Street` - Example: `127 Market St`
-- Key: `faker.Geo.Latitude` - Example: `37.7749`
-- Key: `faker.Geo.Longitude` - Example: `-122.4194`
-- Key: `faker.Geo.TimeZone` - Example: `America/Los_Angeles`
-
-### Stub Example
+| Key | Example |
+| --- | --- |
+| `faker.Geo.Country` | `United States` |
+| `faker.Geo.CountryCode` | `US` |
+| `faker.Geo.City` | `San Francisco` |
+| `faker.Geo.State` | `California` |
+| `faker.Geo.StateCode` | `CA` |
+| `faker.Geo.Zip` | `94107` |
+| `faker.Geo.Street` | `127 Market St` |
+| `faker.Geo.Latitude` | `37.7749` |
+| `faker.Geo.Longitude` | `-122.4194` |
+| `faker.Geo.TimeZone` | `America/Los_Angeles` |
 
 ::: v-pre
 ```yaml
@@ -86,19 +77,18 @@ output:
 ```
 :::
 
-## 4. Network Domain
+## 4. Network
 
-### Keys
-- Key: `faker.Network.DomainName` - Example: `customer-api.example.net`
-- Key: `faker.Network.DomainSuffix` - Example: `net`
-- Key: `faker.Network.IPv4` - Example: `192.168.14.22`
-- Key: `faker.Network.IPv6` - Example: `2001:db8:85a3::8a2e:370:7334`
-- Key: `faker.Network.MAC` - Example: `3a:8f:52:9d:11:be`
-- Key: `faker.Network.UserAgent` - Example: `Mozilla/5.0 (...)`
-- Key: `faker.Network.HTTPMethod` - Example: `PATCH`
-- Key: `faker.Network.HTTPStatusCode` - Example: `409`
-
-### Stub Example
+| Key | Example |
+| --- | --- |
+| `faker.Network.DomainName` | `customer-api.example.net` |
+| `faker.Network.DomainSuffix` | `net` |
+| `faker.Network.IPv4` | `192.168.14.22` |
+| `faker.Network.IPv6` | `2001:db8:85a3::8a2e:370:7334` |
+| `faker.Network.MAC` | `3a:8f:52:9d:11:be` |
+| `faker.Network.UserAgent` | `Mozilla/5.0 (...)` |
+| `faker.Network.HTTPMethod` | `PATCH` |
+| `faker.Network.HTTPStatusCode` | `409` |
 
 ::: v-pre
 ```yaml
@@ -110,16 +100,15 @@ output:
 ```
 :::
 
-## 5. Company Domain
+## 5. Company
 
-### Keys
-- Key: `faker.Company.Company` - Example: `Acme Digital Labs`
-- Key: `faker.Company.CompanySuffix` - Example: `LLC`
-- Key: `faker.Company.JobTitle` - Example: `Senior Platform Engineer`
-- Key: `faker.Company.JobLevel` - Example: `Senior`
-- Key: `faker.Company.JobDescriptor` - Example: `Lead`
-
-### Stub Example
+| Key | Example |
+| --- | --- |
+| `faker.Company.Company` | `Acme Digital Labs` |
+| `faker.Company.CompanySuffix` | `LLC` |
+| `faker.Company.JobTitle` | `Senior Platform Engineer` |
+| `faker.Company.JobLevel` | `Senior` |
+| `faker.Company.JobDescriptor` | `Lead` |
 
 ::: v-pre
 ```yaml
@@ -131,17 +120,16 @@ output:
 ```
 :::
 
-## 6. Commerce Domain
+## 6. Commerce
 
-### Keys
-- Key: `faker.Commerce.ProductName` - Example: `Wireless Noise-Canceling Headphones`
-- Key: `faker.Commerce.ProductCategory` - Example: `Electronics`
-- Key: `faker.Commerce.ProductDescription` - Example: `Compact over-ear headphones with active noise cancellation.`
-- Key: `faker.Commerce.CurrencyLong` - Example: `US Dollar`
-- Key: `faker.Commerce.CurrencyShort` - Example: `USD`
-- Key: `faker.Commerce.Price 10 500` - Example: `249.99`
-
-### Stub Example
+| Key | Example |
+| --- | --- |
+| `faker.Commerce.ProductName` | `Wireless Noise-Canceling Headphones` |
+| `faker.Commerce.ProductCategory` | `Electronics` |
+| `faker.Commerce.ProductDescription` | `Compact over-ear headphones with active noise cancellation.` |
+| `faker.Commerce.CurrencyLong` | `US Dollar` |
+| `faker.Commerce.CurrencyShort` | `USD` |
+| `faker.Commerce.Price 10 500` | `249.99` |
 
 ::: v-pre
 ```yaml
@@ -153,17 +141,16 @@ output:
 ```
 :::
 
-## 7. Text Domain
+## 7. Text
 
-### Keys
-- Key: `faker.Text.Word` - Example: `spectrum`
-- Key: `faker.Text.Sentence 8` - Example: `Service health remains stable under peak request load.`
-- Key: `faker.Text.Paragraph 2` - Example: `Two short random paragraphs for testing long fields.`
-- Key: `faker.Text.Phrase` - Example: `blue horizon`
-- Key: `faker.Text.Quote` - Example: `Small steps every day build strong systems.`
-- Key: `faker.Text.Question` - Example: `Can we safely retry this request?`
-
-### Stub Example
+| Key | Example |
+| --- | --- |
+| `faker.Text.Word` | `spectrum` |
+| `faker.Text.Sentence 8` | `Service health remains stable under peak request load.` |
+| `faker.Text.Paragraph 2` | `Two short random paragraphs for testing long fields.` |
+| `faker.Text.Phrase` | `blue horizon` |
+| `faker.Text.Quote` | `Small steps every day build strong systems.` |
+| `faker.Text.Question` | `Can we safely retry this request?` |
 
 ::: v-pre
 ```yaml
@@ -175,21 +162,20 @@ output:
 ```
 :::
 
-## 8. DateTime Domain
+## 8. DateTime
 
-### Keys
-- Key: `faker.DateTime.Date` - Example: `2026-02-17T10:24:51.123456789Z`
-- Key: `faker.DateTime.PastDate` - Example: `2021-08-03T14:12:11.987654321Z`
-- Key: `faker.DateTime.FutureDate` - Example: `2028-11-29T07:53:02.456789012Z`
-- Key: `faker.DateTime.Year` - Example: `2027`
-- Key: `faker.DateTime.Month` - Example: `9`
-- Key: `faker.DateTime.Day` - Example: `18`
-- Key: `faker.DateTime.Hour` - Example: `16`
-- Key: `faker.DateTime.Minute` - Example: `42`
-- Key: `faker.DateTime.Second` - Example: `5`
-- Key: `faker.DateTime.WeekDay` - Example: `Tuesday`
-
-### Stub Example
+| Key | Example |
+| --- | --- |
+| `faker.DateTime.Date` | `2026-02-17T10:24:51.123456789Z` |
+| `faker.DateTime.PastDate` | `2021-08-03T14:12:11.987654321Z` |
+| `faker.DateTime.FutureDate` | `2028-11-29T07:53:02.456789012Z` |
+| `faker.DateTime.Year` | `2027` |
+| `faker.DateTime.Month` | `9` |
+| `faker.DateTime.Day` | `18` |
+| `faker.DateTime.Hour` | `16` |
+| `faker.DateTime.Minute` | `42` |
+| `faker.DateTime.Second` | `5` |
+| `faker.DateTime.WeekDay` | `Tuesday` |
 
 ::: v-pre
 ```yaml
@@ -201,22 +187,19 @@ output:
 ```
 :::
 
-## 9. Number Domain <VersionTag version="v3.16.1" />
+## 9. Number <VersionTag version="v3.16.1" />
 
-The Number domain generates random numeric values — useful for counters, limits, prices, and range validation.
-
-### Keys
-- Key: `faker.Number.Int` - Example: `7249581`
-- Key: `faker.Number.IntN 100` - Example: `73`
-- Key: `faker.Number.IntRange 10 50` - Example: `27`
-- Key: `faker.Number.Int32` - Example: `17249581`
-- Key: `faker.Number.Int64` - Example: `38942174958123`
-- Key: `faker.Number.Float32` - Example: `0.7425`
-- Key: `faker.Number.Float32Range 1.5 9.5` - Example: `4.23`
-- Key: `faker.Number.Float64` - Example: `0.123456789`
-- Key: `faker.Number.Float64Range 100.0 999.0` - Example: `567.89`
-
-### Stub Example
+| Key | Example |
+| --- | --- |
+| `faker.Number.Int` | `7249581` |
+| `faker.Number.IntN 100` | `73` |
+| `faker.Number.IntRange 10 50` | `27` |
+| `faker.Number.Int32` | `17249581` |
+| `faker.Number.Int64` | `38942174958123` |
+| `faker.Number.Float32` | `0.7425` |
+| `faker.Number.Float32Range 1.5 9.5` | `4.23` |
+| `faker.Number.Float64` | `0.123456789` |
+| `faker.Number.Float64Range 100.0 999.0` | `567.89` |
 
 ::: v-pre
 ```yaml
@@ -229,19 +212,16 @@ output:
 ```
 :::
 
-## 10. Identity Domain
+## 10. Identity
 
-### Keys
-- Key: `faker.Identity.UUID` - Example: `3f8b6a6e-3f34-41e2-a06f-e6a8b8db7a4d`
-- Key: `faker.Identity.SSN` - Example: `513-84-3901`
-- Key: `faker.Identity.EIN` - Example: `26-9182736`
+| Key | Example |
+| --- | --- |
+| `faker.Identity.UUID` | `3f8b6a6e-3f34-41e2-a06f-e6a8b8db7a4d` |
+| `faker.Identity.SSN` | `513-84-3901` |
+| `faker.Identity.EIN` | `26-9182736` |
 
-### Definitions
-- SSN = US Social Security Number (personal tax/identity number).
-- EIN = US Employer Identification Number (business tax identifier).
-- Values are synthetic test data only.
-
-### Stub Example
+SSN is a US Social Security Number, EIN a US Employer Identification Number.
+Both are synthetic here — never treat a generated value as a real identifier.
 
 ::: v-pre
 ```yaml
@@ -253,12 +233,11 @@ output:
 ```
 :::
 
-## Best Practices
+## Assertions
 
-- Use faker for realism, not for strict deterministic snapshots.
-- Validate format/range instead of exact values in assertions.
-- Never store or expose generated identity-like values as real user data.
-- Mix faker with request-bound values when traceability is needed.
+Faker values change on every evaluation, so assert on format or range rather
+than on an exact value. Where a test needs to trace a response back to its
+request, mix in a request-bound field: <code v-pre>{{.Request.id}}</code>.
 
 ## Full Stub Example
 
@@ -293,9 +272,5 @@ output:
 ```
 :::
 
-## Thanks
-
-GripMock built-in faker is powered by the excellent open-source library
+Values come from
 [`github.com/brianvoe/gofakeit/v7`](https://github.com/brianvoe/gofakeit).
-
-Huge thanks to the library author and contributors.

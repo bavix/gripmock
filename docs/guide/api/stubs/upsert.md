@@ -101,7 +101,7 @@ curl -X POST -d '[
   - If `id` is provided and exists, the stub is **updated**.  
 - **Input Matching**:  
   - `equals`: Exact match for fields.  
-  - `contains`: Partial match (substring).  
+  - `contains`: Subset match — the request must carry at least the listed keys and values.  
   - `matches`: Regex match.  
 - **Output**:  
   - `data`: Must align with your protobuf `Reply` message structure.  
@@ -127,5 +127,3 @@ curl -X POST -d '[
 For complete schema details, see:
 - [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
 - [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)
-
-This endpoint is critical for dynamically managing stubs during testing.

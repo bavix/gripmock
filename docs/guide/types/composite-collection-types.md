@@ -16,8 +16,8 @@ enum Status {
 
 ### Key Features
 - **Default Value**: The first enum value **MUST be 0** (default in proto3).
-- **JSON Mapping**: Enums are serialized as **strings** in JSON (e.g., `"ACTIVE"`), not integers.
-- **Unknown Values**: If an unknown enum value is received, it is treated as `UNKNOWN` (proto3).
+- **JSON Mapping**: protojson emits enums as strings (`"ACTIVE"`) but accepts either the string or the number on input.
+- **Unknown Values**: proto3 enums are open — an unrecognized number is preserved as that number, not coerced to the zero value.
 
 ### Example: Enum in a Service
 **Proto File (`composite_enum.proto`):**
@@ -82,7 +82,7 @@ message ListRequest {
 ### Key Features
 - **Order Preservation**: Elements are ordered and can be duplicated.
 - **Empty Lists**: Serialized as empty arrays in JSON (`[]`), not `null`.
-- **Memory Efficiency**: Use `repeated` instead of `bytes` for structured data.
+- **Type Safety**: Use `repeated` rather than a packed `bytes` blob for structured data — the fields stay introspectable.
 
 ### Example: Repeated Strings
 **Proto File (`composite_repeated.proto`):**

@@ -1,6 +1,6 @@
 # Input Matching Rules <VersionTag version="v2.0.0" />
 
-GripMock provides powerful input matching capabilities to control stub responses. Use **equals**, **contains**, **matches**, **glob**, and **anyOf** rules to create precise request matching patterns that work with the `data` field in gRPC requests.
+A stub selects requests by their body fields, using **equals**, **contains**, **matches**, **glob** and **anyOf**. These apply to the `data` field of a gRPC request.
 
 For the formal composition rules (AND/OR logic, `anyOf` semantics, `ignoreArrayOrder` scoping), see [Matching Logic](./logic).
 
@@ -24,7 +24,7 @@ For the formal composition rules (AND/OR logic, `anyOf` semantics, `ignoreArrayO
 
 ### 1. Exact Match (`equals`)
 
-Matches **exact field names and values** (case-sensitive). Perfect for precise request matching.
+Matches **exact field names and values**, case-sensitive.
 
 **Example:**
 ```yaml
@@ -71,7 +71,7 @@ output:
         environment: "staging"
 ```
 
-Request `{"ips": ["10.0.3.2", "10.0.3.1"], ...}` will **not** match — array order differs.
+Request `{"ips": ["10.64.0.2", "10.64.0.1"], ...}` will **not** match — same elements, different order. Set `ignoreArrayOrder: true` to accept it.
 
 ### 2. Partial Match (`contains`)
 
@@ -118,7 +118,7 @@ output:
         environment: "production"
 ```
 
-Request `{"ips": ["10.0.1.1", "10.0.1.2", "10.0.1.3"], ...}` will also match — the response array **contains** both specified IPs.
+Request `{"ips": ["10.0.1.1", "10.0.1.2", "10.0.1.3"], ...}` will also match — the request array **contains** both specified IPs, and the extra one is ignored.
 
 ### 3. Regex Match (`matches`)
 
@@ -165,7 +165,7 @@ output:
         environment: "staging"
 ```
 
-**Important:** Matching expressions must be static. Do not use dynamic templates (<code v-pre>`{{ ... }}`</code>) inside `equals`, `contains`, or `matches`.
+**Important:** Matching expressions must be static. Do not use dynamic templates (<code v-pre>`{{ ... }}`</code>) inside `equals`, `contains`, `matches`, `glob` or `anyOf`.
 
 ::: v-pre
 ```yaml
@@ -246,8 +246,8 @@ input:
 |------|------------------|
 | `users/*` | `users/.*` |
 | `api/v1/*/items` | `api/v1/.*/items` |
-| `file?.txt` | `file.{txt}` |
-| `data[12].json` | `data[12].json` |
+| `file?.txt` | `file.\.txt` |
+| `data[12].json` | `data[12]\.json` |
 
 ::: tip Note
 `glob` uses Go's `path.Match` — `*` does NOT match path separators (`/`). For patterns that need to cross slashes, use `matches` (regex) with `.*`.

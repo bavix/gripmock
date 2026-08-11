@@ -4,15 +4,8 @@ title: Delay Configuration
 
 # Delay Configuration <VersionTag version="v3.2.16" />
 
-Delay configuration allows you to simulate network latency and processing time in your gRPC mock responses, making your tests more realistic.
-
-## Overview
-
-The `delay` field in stub output configuration lets you add artificial delays before sending responses. This is useful for:
-- Testing timeout scenarios
-- Simulating slow network conditions
-- Validating client-side retry logic
-- Performance testing under realistic conditions
+`output.delay` makes the server wait before sending a response — long enough to
+exercise a client timeout, a retry path, or a slow-network assumption.
 
 ## Basic Usage
 
@@ -190,23 +183,6 @@ output:
   error: "Service temporarily unavailable"
   code: 14  # UNAVAILABLE
 ```
-
-## Best Practices
-
-### 1. Realistic Delays
-- Use delays that reflect real-world conditions
-- Consider your application's timeout settings
-- Test with various delay values
-
-### 2. Testing Strategy
-- Test with zero delay for fast responses
-- Test with moderate delays (100-500ms) for normal conditions
-- Test with long delays (1s+) for timeout scenarios
-
-### 3. Performance Considerations
-- Avoid extremely long delays in automated tests
-- Use appropriate delays for your testing environment
-- Consider the impact on test execution time
 
 ## Delay Logic
 

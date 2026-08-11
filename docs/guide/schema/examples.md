@@ -1,6 +1,6 @@
 # Schema Examples
 
-Ready to see the JSON Schema in action? This guide shows you real examples of how to use it for different scenarios. We'll start simple and work our way up to more complex cases.
+Stub files covering the common shapes, simplest first.
 
 ## Basic Examples
 
@@ -464,14 +464,9 @@ output:
     code: 16  # UNAUTHENTICATED
 ```
 
-## Best Practices
+## Notes
 
-Here are some tips we've learned from real-world usage:
-
-1. **Use meaningful priorities**: Higher numbers for specific cases, lower for fallbacks - it makes your logic easier to understand
-2. **Validate your stubs**: Always test with the schema before deployment - it's like spell-checking your configuration
-3. **Use descriptive service/method names**: Makes debugging easier when things go wrong
-4. **Include realistic data**: Use data that matches your actual API - it makes your tests more reliable
-5. **Test edge cases**: Include error scenarios and boundary conditions - real APIs have edge cases
-6. **Document complex stubs**: Add comments for non-obvious logic - your future self will thank you
-7. **Use consistent naming**: Follow a consistent pattern for IDs and fields - it helps with maintenance 
+Priority only breaks ties between equally specific stubs — see
+[Priority](../stubs/priority) for the full ordering. YAML stubs take comments;
+JSON stubs do not, so a non-obvious matcher is worth a `description` field in
+the surrounding file or a comment in the YAML form.

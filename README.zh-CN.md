@@ -12,9 +12,9 @@
 
 > 提示：本页面由机器翻译生成，内容可能存在不准确或不完整之处。请以英文原文 [`README.md`](README.md) 为准。
 
-**用于测试与开发的最快、最可靠的 gRPC Mock 服务器。**
+用于测试与开发的 gRPC Mock 服务器。
 
-GripMock 可以根据你的 `.proto` 文件或编译后的 `.pb` 描述文件创建 Mock 服务器，让 gRPC 测试变得简单且高效。非常适合端到端测试、开发环境和 CI/CD 流水线。
+GripMock 根据你的 `.proto` 文件或编译后的 `.pb` 描述文件构建 Mock 服务器：19 MB 镜像，29 804 req/s，冷启动 0.4 秒（[基准测试](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)）。
 
 ![greeter](https://raw.githubusercontent.com/bavix/.github/master/svgs/gripmock-greeter.gif)
 
@@ -45,24 +45,14 @@ GripMock 可以根据你的 `.proto` 文件或编译后的 `.pb` 描述文件创
 
 **[完整文档](https://bavix.github.io/gripmock)** - 带示例的完整指南
 
-- **Descriptor API（`/api/descriptors`）**：运行时加载编译后的 proto 描述文件（`.pb`），附带可验证的 curl 工作流：[文档](https://bavix.github.io/gripmock/guide/api/descriptors)
-- **Upstream Modes（实验性）**：`proxy`、`replay`、`capture`，包含实用的上线迁移指导：[文档](https://bavix.github.io/gripmock/guide/modes)
-- **Embedded SDK（实验性）**：进程内测试，支持 `sdk.NewServer`、`Match()`、`Return()` 及校验：[文档](https://bavix.github.io/gripmock/guide/embedded-sdk)
-- **Faker 参考**：内置 faker 的逐键说明与示例：[文档](https://bavix.github.io/gripmock/guide/stubs/faker)
-- **OpenTelemetry + 指标**：追踪环境变量与 `/metrics` 说明：[文档](https://bavix.github.io/gripmock/guide/introduction/advanced-usage)
-- **GitHub Actions（CI/CD）**：官方工作流 Action，可自动下载安装、启动、等待就绪并停止 GripMock：[文档](https://bavix.github.io/gripmock/guide/ci-cd/github-actions)
-
-## 🧬 项目演进
-
-GripMock 最初是 [tokopedia/gripmock](https://github.com/tokopedia/gripmock) 的一个 fork，随后演进为独立且完全重写的项目。
-
-当前 GripMock 聚焦于实用测试工作流：
-
-- 原生进程内架构（无需运行时代码生成）
-- 灵活描述来源与运行时能力（热更新 stubs + descriptors API）
-- 面向生产场景测试能力（流式、模板、upstream modes、plugins、SDK、MCP）
-
-架构细节与基准方法见：[Performance Comparison](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
+较新功能的详细文档：
+[Descriptor API](https://bavix.github.io/gripmock/guide/api/descriptors) ·
+[Upstream Modes（实验性）](https://bavix.github.io/gripmock/guide/modes) ·
+[Embedded SDK（实验性）](https://bavix.github.io/gripmock/guide/embedded-sdk) ·
+[Faker Reference](https://bavix.github.io/gripmock/guide/stubs/faker) ·
+[OpenTelemetry + Metrics](https://bavix.github.io/gripmock/guide/introduction/advanced-usage) ·
+[GitHub Actions](https://bavix.github.io/gripmock/guide/ci-cd/github-actions) ·
+[Performance Comparison](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
 
 ## 🖥️ Web 界面
 
@@ -100,7 +90,7 @@ docker pull bavix/gripmock
 如需构建插件，请使用配套 builder 镜像：
 
 ```bash
-docker pull bavix/gripmock:v3.17.2-builder
+docker pull bavix/gripmock:3.18.4-builder
 ```
 
 #### Go Install
@@ -529,10 +519,11 @@ Upstream modes 叠加在 reflection sources 之上，定义运行时行为：
 
 |  | bavix | tokopedia |
 | --- | --- | --- |
-| 吞吐量 | 24 284 req/s | 5 600 req/s |
-| p99 延迟 | 11 ms | 26 ms |
-| 启动，平均 | 0.43 s | 2.29 s |
-| 镜像大小，amd64 | 19.13 MB | 226.29 MB |
+| 吞吐量 | 29 804 req/s | 6 221 req/s |
+| p99 延迟 | 9.44 ms | 24.08 ms |
+| 启动，平均 | 0.399 s | 2.205 s |
+| 镜像大小，amd64 | 19.17 MB | 226.29 MB |
+| 镜像大小，arm64 | 18.49 MB | 219.90 MB |
 
 ![Image size benchmark](docs/public/bench/image-size.svg)
 ![Startup readiness benchmark](docs/public/bench/startup-ready.svg)

@@ -20,7 +20,7 @@ The service key `gripmock` is reserved for GripMock internal readiness.
 
 | Request `service` | Internal stub | User stub | Result |
 |---|---|---|---|
-| `gripmock` | Yes (automatic) | Yes/No | Internal stub → SERVING |
+| `gripmock` | Yes (automatic) | Yes/No | Internal stub — `NOT_SERVING` until the server is ready, `SERVING` after |
 | Custom name | No | Yes | User stub response |
 | Custom name | No | No | Default behavior (`Check` returns `NotFound`) |
 | Empty `""` | No | Yes | Mocked response |

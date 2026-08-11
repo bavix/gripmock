@@ -31,7 +31,7 @@ Capture stores request and upstream result in stub form:
 - `grpc+capture://host:port`
 - `grpcs+capture://host:port`
 
-For descriptor loading options, see [Upstreams with gRPC reflection](/guide/modes/#upstreams-with-grpc-reflection-v3-13-0) (when upstream supports reflection) or [Upstreams without gRPC reflection](/guide/modes/#upstreams-without-grpc-reflection-v3-13-0) (when local descriptors are needed).
+For descriptor loading options, see [Upstreams with gRPC reflection](/guide/modes/#upstreams-with-grpc-reflection-v3-9-0) (when upstream supports reflection) or [Upstreams without gRPC reflection](/guide/modes/#upstreams-without-grpc-reflection-v3-9-0) (when local descriptors are needed).
 
 ## Query parameters
 
@@ -46,7 +46,7 @@ For descriptor loading options, see [Upstreams with gRPC reflection](/guide/mode
 Example with delay recording enabled:
 
 ```bash
-GRPC_PORT=4770 HTTP_PORT=4771 gripmock "grpc+capture://orders.api.local:4770?recordDelay=true"
+GRPC_PORT=4770 HTTP_PORT=4771 gripmock "grpc+capture://orders.api.local:8443?recordDelay=true"
 ```
 
 ## Order Service example

@@ -1,8 +1,7 @@
 # Static JSON Stubs <VersionTag version="v1.13.0" />  
-Use static JSON/YAML files to predefine stubs without relying on the HTTP API. Perfect for:  
-- Tests that don't need HTTP dependencies  
-- Immutable stub configurations  
-- Large-scale stub setups
+Stub files are loaded from disk at startup, so a test suite can run without
+touching the HTTP API. The stub set is fixed for the run and scales to large
+numbers of stubs.
 
 ## Schema Validation
 

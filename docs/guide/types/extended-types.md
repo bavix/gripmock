@@ -1,6 +1,6 @@
 # Extended Types (`google.type.*`) in Protocol Buffers <VersionTag version="v2.7.1" />
 
-Extended types (`google.type.*`) are domain-specific Protobuf types that standardize complex data structures. They are part of the `googleapis` repository and provide reusable definitions for common use cases like money, geolocation, and dates. This documentation covers **all major extended types** with examples, usage guidelines, and best practices.
+Extended types (`google.type.*`) are domain-specific Protobuf types that standardize complex data structures. They are part of the `googleapis` repository and provide reusable definitions for common use cases like money, geolocation, and dates. 
 
 ## 1. `google.type.Money`
 Represents a monetary amount with currency precision.
@@ -84,8 +84,8 @@ message LocationResponse {
 ```
 
 ### Key Features
-- **Precision**: Floating-point values with up to 8 decimal places.
-- **Validation**: Latitude must be in `[-90, 90]`, longitude in `[-180, 180]`.
+- **Precision**: both fields are `double`.
+- **Ranges**: latitude belongs in `[-90, 90]`, longitude in `[-180, 180]`. The type does not enforce this.
 
 ### Example: Geolocation Service
 **Proto File (`extended_latlng.proto`):**
@@ -541,7 +541,7 @@ message DataResponse {
 - service: EmptyService  
   method: GetData  
   input:  
-    matches: {}  # Required for empty input in GripMock  
+    equals: {}  # empty matcher — matches any request  
   output:  
     data:  
       content: "test"  
@@ -561,13 +561,13 @@ grpcurl -plaintext -d '{}' localhost:4770 extended.EmptyService/GetData
 ```  
 
 ### GripMock Specific Behavior  
-For RPC methods with empty input (e.g., `rpc GetData(google.protobuf.Empty)`), **always specify `input.matches: {}`** in the stub configuration. This ensures GripMock correctly handles the absence of input data.
+For an RPC with empty input (`rpc GetData(google.protobuf.Empty)`) give the stub an empty matcher — `equals: {}` — so it matches the empty request. Any strategy works here, since an empty matcher map always passes; `equals: {}` is the form used elsewhere in these docs.
 
 ## Best Practices
 1. **Currency Codes**: Always use ISO 4217 codes (e.g., `"USD"`) with `Money`.
 2. **Time Zones**: Prefer IANA names (e.g., `"America/New_York"`) over UTC offsets.
 3. **Validation**: Ensure `LatLng` values are within valid ranges.
-4. **Postal Addresses**: Use `address_lines` for street-level details and `administrative_area` for regions/states.
+4. **Postal Addresses**: Use `addressLines` for street-level details and `administrativeArea` for regions/states.
 
 ## Common Pitfalls
 - **Money Precision**: Avoid using `float`/`double` for money; use `units` and `nanos`.

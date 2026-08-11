@@ -73,6 +73,12 @@ enum TaskStatus {
 message ErrorResponse {
   ErrorCode code = 1;
   string message = 2;
+  repeated FieldViolation errors = 3;
+}
+
+message FieldViolation {
+  string field = 1;
+  string description = 2;
 }
 
 enum ErrorCode {
@@ -152,8 +158,8 @@ grpcurl -plaintext \
 ```json
 {
   "success": {
-    "task_id": "TASK-456",
-    "status": "NOTIFICATION_SENT"
+    "taskId": "TASK-456",
+    "status": "TASK_CREATED"
   }
 }
 ```
@@ -232,4 +238,3 @@ grpcurl -plaintext \
 - [API Design Best Practices](https://cloud.google.com/apis/design/proto3)
 - [gRPC Error Handling](https://grpc.io/docs/guides/error/)
 
-This pattern is widely used in APIs for payment processing, notifications, and polymorphic data structures.

@@ -76,7 +76,7 @@ func TestExternalService_SlowResponse(t *testing.T) {
 
     srv.ExpectUnary(ExternalService_Process_FullMethodName).
         Match("id", "slow-request").
-        Return(Delay(500*time.Millisecond, "result", "processed"))
+        Return(sdk.Delay(500*time.Millisecond, "result", "processed"))
 
     client := NewExternalServiceClient(srv.Conn())
 
@@ -219,7 +219,7 @@ func TestPaymentService_Failure(t *testing.T) {
     client := NewPaymentServiceClient(srv.Conn())
 
     // ACT
-    _, err = client.Charge(t.Context(), &ChargeRequest{Amount: 0})
+    _, err := client.Charge(t.Context(), &ChargeRequest{Amount: 0})
 
     // ASSERT
     require.Error(t, err)
@@ -227,7 +227,3 @@ func TestPaymentService_Failure(t *testing.T) {
     require.Contains(t, err.Error(), "Amount must be greater than 0")
 }
 ```
-
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::

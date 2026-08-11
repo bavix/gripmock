@@ -1,15 +1,17 @@
 ---
-title: "Why IDs Are Critical for Effective Stub Management"
+title: "Why You Should Specify IDs in Stubs"
 ---
 
-# Why You Should Always Specify IDs in Stubs
+# Why You Should Specify IDs in Stubs
 
-Explicitly defining **UUID-based IDs** in your stub configurations unlocks powerful capabilities in GripMock, from precise stub management to seamless developer workflows. Here's why IDs are essential:
+Every stub has a UUID. If a stub file does not carry one, GripMock generates a
+UUIDv4 on load — so the stub works either way, but its ID changes every time the
+file is reloaded. Writing the ID down keeps it stable.
 
-## 1. Universal Identification 🔍  
-Every stub **MUST** have a UUIDv4 identifier:  
-```yaml  
-- id: 7f746310-a470-43dc-9eeb-355dff50d2a9 # ✅ Valid UUIDv4  
+## 1. The ID must be a UUID
+
+```yaml
+- id: 7f746310-a470-43dc-9eeb-355dff50d2a9
   service: BookingService
   method: GetBooking
   input:
@@ -20,70 +22,70 @@ Every stub **MUST** have a UUIDv4 identifier:
       bookingTime:
         startTime: "2024-01-01T00:00:00Z"
         endTime: "2024-01-01T23:59:59Z"
-```  
+```
 
-- ❌ Don't use custom strings like `my_stub_123`  
-- ✅ Generate with `uuidgen` or [online tools](https://bavix.github.io/uuid-ui/)
+A custom string such as `my_stub_123` fails to parse. Generate one with
+`uuidgen` or with the [UUID tools](https://bavix.github.io/uuid-ui/).
 
-## 2. Admin Panel Efficiency 🚀  
-Instantly locate stubs in the web UI:  
-```bash  
-# Open in your browser
+## 2. Deep links into the admin panel
+
+```bash
 http://localhost:4771/#/stubs/7f746310-a470-43dc-9eeb-355dff50d2a9/show
 ```
 
 ::: warning
-Search by ID in the admin panel is not available yet; use the direct URL for now.
+Search by ID in the admin panel is not available yet; use the direct URL.
 :::
 
-## 3. Dead Stub Detection 🧹  
-Clean up abandoned stubs via API:  
-```bash  
-# Find unused stubs  
+## 3. Deleting a stub by ID
+
+```bash
+# Find unused stubs
 curl http://localhost:4771/api/stubs/unused
 
-# Delete if unused  
-curl -X DELETE http://localhost:4771/api/stubs/7f746310-a470-43dc-9eeb-355dff50d2a9 
-```  
+# Delete one
+curl -X DELETE http://localhost:4771/api/stubs/7f746310-a470-43dc-9eeb-355dff50d2a9
+```
 
-## 4. Live Reloading Magic 🔄  
+Without a written ID, the value you read from `/api/stubs/unused` is only valid
+until the next reload.
 
-::: warning
-Warning! If you do not specify IDs in your stubs, IDs may change when the file is updated.
-:::
+## 4. Live reloading
 
-Enable automatic updates **without restarting GripMock**:  
-```bash  
-# .env configuration  
-STUB_WATCHER_ENABLED=true # Default value: true
-STUB_WATCHER_INTERVAL=5000ms # Default value: 1s.
-STUB_WATCHER_TYPE=fsnotify # Filesystem events. Default value: fsnotify. Other options: timer.  
-```  
-1. Edit `stubs/feature_x.yaml` in your IDE  
-2. GripMock auto-updates **only modified stubs**  
-3. No API calls or restarts needed  
+The stub watcher is on by default and reloads changed files without a restart:
+
+```bash
+STUB_WATCHER_ENABLED=true   # default: true
+STUB_WATCHER_INTERVAL=1s    # default: 1s, timer mode only
+STUB_WATCHER_TYPE=fsnotify  # default: fsnotify; other option: timer
+```
+
+Reloading works with or without IDs. What IDs change is the outcome. A stub with
+a written ID is updated in place. An ID-less stub is re-assigned from the pool of
+IDs that file held before, handed out in file order — so inserting or deleting a
+stub in the middle of the file shifts every ID after it onto a different stub.
+Anything holding the old value — a bookmark, a `DELETE` call, a test fixture —
+now points somewhere else.
 
 ::: info
-In timer mode, GripMock does not reload all stubs every N seconds. It reloads only files with updated modification times.
+In timer mode GripMock does not reload every file each tick. It reloads only
+files whose modification time changed.
 :::
 
-## 5. Collision Prevention ⚠️  
-Unique IDs prevent conflicts in multi-team environments:  
-```yaml  
-# Team A's stub  
-- id: 6e8b4c2a-3d8f-4a1b-8c9d-0e7f2a9b8c7d  
-  service: Payments  
-  method: Process  
+## 5. Collision prevention
 
-# Team B's stub  
-- id: 9f1a2b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c  
-  service: Payments  
-  method: Refund  
-```  
+Unique IDs keep two teams from overwriting each other's stubs:
 
-### Key Implementation Rules 📌  
-- 🆔 **UUIDv4 required** (no custom formats)  
-- 🔄 Auto-reloading requires both:  
-  - `id` field in YAML/JSON  
-  - `STUB_WATCHER_ENABLED=true`  
-- 🚫 Never reuse IDs across environments  
+```yaml
+# Team A
+- id: 6e8b4c2a-3d8f-4a1b-8c9d-0e7f2a9b8c7d
+  service: Payments
+  method: Process
+
+# Team B
+- id: 9f1a2b3c-4d5e-6f7a-8b9c-0d1e2f3a4b5c
+  service: Payments
+  method: Refund
+```
+
+Do not reuse an ID across environments.

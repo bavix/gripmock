@@ -47,7 +47,7 @@ output:
 | Code | Name | Description |
 |---|---|---|
 | 0 | OK | Success |
-| 1 | CANCELED | Cancelled |
+| 1 | CANCELLED | Call cancelled by the client |
 | 3 | INVALID_ARGUMENT | Invalid input |
 | 4 | DEADLINE_EXCEEDED | Timeout |
 | 5 | NOT_FOUND | Resource missing |

@@ -4,32 +4,24 @@ title: Priority
 
 # Stub Priority <VersionTag version="v3.3.0" />
 
-Stub priority allows you to control which stub is selected when multiple stubs match the same request. This is essential for creating complex mocking scenarios with fallback behaviors.
+`priority` decides which stub answers when several of them match one request.
+It is any integer, and defaults to 0.
 
-## Overview
+## How a stub is chosen
 
-When multiple stubs match a gRPC request, GripMock uses priority to pick which stub to use:
+Among the stubs that match, GripMock compares, in this order:
 
-1. **Higher priority** stubs are selected first
-2. **Lower priority** stubs serve as fallbacks
-3. **Default priority** is 0 (if not specified)
+1. **Specificity** — how narrowly the stub's matchers describe the request.
+2. **Score** — the match rank plus `priority × 10`.
+3. **Field count** — the stub declaring more matcher fields wins.
+4. **Stub ID** — a deterministic tiebreak, so a fully tied pair always resolves
+   the same way.
 
-## Priority Rules
+Priority therefore outranks the match rank, but not specificity: a `contains`
+stub with `priority: 1000` still loses to an `equals` stub that matches the same
+request. Position in the file has no effect.
 
-### **Priority Values**
-- **Higher numbers = Higher priority**
-- **Default priority = 0**
-- **Range**: Any integer value
-
-### **Matching Order**
-1. **Priority** (highest number wins)
-2. **Order of definition** (first defined wins if priorities are equal)
-
-## Use Cases
-
-### **1. Specific vs General Matching**
-
-Use priority to create specific handlers with general fallbacks:
+## Specific stub with a fallback
 
 ```yaml
 # High priority: Specific user
@@ -59,9 +51,9 @@ Use priority to create specific handlers with general fallbacks:
       email: "unknown@example.com"
 ```
 
-### **2. Error Scenarios**
+## Error scenarios
 
-Create specific error handlers with different priorities:
+Three levels: a named error, a validation error, and a catch-all.
 
 ```yaml
 # High priority: Specific error for invalid ID
@@ -97,52 +89,9 @@ Create specific error handlers with different priorities:
     code: 5  # NOT_FOUND
 ```
 
-### **3. Testing Different Scenarios**
+## JSON and YAML
 
-Test various response scenarios with priority:
-
-```yaml
-# High priority: Success scenario
-- service: PaymentService
-  method: ProcessPayment
-  priority: 100
-  input:
-    equals:
-      amount: 100
-      currency: "USD"
-  output:
-    data:
-      transactionId: "txn_123"
-      status: "success"
-      amount: 100
-
-# Medium priority: Partial success
-- service: PaymentService
-  method: ProcessPayment
-  priority: 50
-  input:
-    contains:
-      amount: 100
-  output:
-    data:
-      transactionId: "txn_456"
-      status: "pending"
-      amount: 100
-
-# Low priority: Error fallback
-- service: PaymentService
-  method: ProcessPayment
-  priority: 1
-  input:
-    contains:
-  output:
-    error: "Payment processing failed"
-    code: 13  # INTERNAL
-```
-
-## Examples
-
-### **JSON Format**
+### JSON
 ```json
 {
   "service": "AuthService",
@@ -163,7 +112,7 @@ Test various response scenarios with priority:
 }
 ```
 
-### **YAML Format**
+### YAML
 ```yaml
 service: AuthService
 method: Authenticate
@@ -178,11 +127,11 @@ output:
     role: "admin"
 ```
 
-## Advanced Patterns
+## Cascading fallbacks
 
-### **1. Cascading Fallbacks**
-
-Create multiple levels of fallback behavior:
+Three levels, narrowest first. Note that the priorities here only reinforce an
+order that specificity already produces — `equals` beats `contains` beats the
+catch-all regardless of the numbers.
 
 ```yaml
 # Level 1: Exact match (highest priority)
@@ -218,120 +167,16 @@ Create multiple levels of fallback behavior:
       results: ["default result"]
 ```
 
-### **2. Environment-Specific Responses**
-
-Use priority to simulate different environments:
-
-```yaml
-# Production-like responses (high priority)
-- service: DataService
-  method: GetData
-  priority: 100
-  input:
-    contains:
-      environment: "production"
-  output:
-    data:
-      data: "production data"
-      source: "production_db"
-
-# Development responses (medium priority)
-- service: DataService
-  method: GetData
-  priority: 50
-  input:
-    contains:
-      environment: "development"
-  output:
-    data:
-      data: "development data"
-      source: "dev_db"
-
-# Test responses (low priority)
-- service: DataService
-  method: GetData
-  priority: 1
-  input:
-    contains:
-  output:
-    data:
-      data: "test data"
-      source: "mock_db"
-```
-
-### **3. Rate Limiting Simulation**
-
-Simulate rate limiting with priority:
-
-```yaml
-# Rate limit exceeded (high priority)
-- service: APIService
-  method: CallAPI
-  priority: 100
-  input:
-    contains:
-      rateLimit: "exceeded"
-  output:
-    error: "Rate limit exceeded"
-    code: 8  # RESOURCE_EXHAUSTED
-
-# Normal response (low priority)
-- service: APIService
-  method: CallAPI
-  priority: 1
-  input:
-    contains:
-  output:
-    data:
-      result: "success"
-      timestamp: "2024-01-01T12:00:00Z"
-```
-
-## Best Practices
-
-### **1. Priority Ranges**
-- **1000+**: Critical/specific scenarios
-- **100-999**: Important business logic
-- **10-99**: General fallbacks
-- **1-9**: Default/error responses
-
-### **2. Naming Convention**
-Use descriptive comments to document priority levels:
-
-```yaml
-# Priority 1000: Exact match scenarios
-- service: Service
-  method: Method
-  priority: 1000
-  # ...
-
-# Priority 100: Business logic scenarios  
-- service: Service
-  method: Method
-  priority: 100
-  # ...
-
-# Priority 1: Fallback scenarios
-- service: Service
-  method: Method
-  priority: 1
-  # ...
-```
-
-### **3. Testing Strategy**
-- Test with different priority combinations
-- Verify fallback behavior works correctly
-- Ensure no unintended stub matches occur
+Priority earns its keep when two stubs are equally specific — two `contains`
+stubs over the same field, say — and you need one of them to win.
 
 ## Verification
 
-### **Check Stub Priority**
 ```bash
 # List all stubs with their priorities
 curl http://localhost:4771/api/stubs
 ```
 
-### **Test Priority Matching**
 ```bash
 # Test specific high-priority stub
 curl -X POST -d '{

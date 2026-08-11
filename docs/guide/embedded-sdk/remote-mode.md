@@ -264,7 +264,7 @@ func TestMyService_RemoteWithGRPCTimeout(t *testing.T) {
     )
 
     srv.ExpectUnary(MyService_SlowMethod_FullMethodName).
-        Return(Delay(2*time.Second, "result", "ok"))
+        Return(sdk.Delay(2*time.Second, "result", "ok"))
 
     client := NewMyServiceClient(srv.Conn())
 
@@ -277,20 +277,13 @@ func TestMyService_RemoteWithGRPCTimeout(t *testing.T) {
 }
 ```
 
-## Advantages of Remote Mode
+## When to use it
 
-- Share a single GripMock instance across multiple test processes
-- Better resource utilization in CI environments
-- Persistent state between test runs (if needed)
-- Ability to inspect state via the web UI
+Remote mode is worth its cost when one GripMock has to serve several test
+processes at once, when the state must outlive a single test binary, or when you
+want to watch the stubs in the web UI while the suite runs.
 
-## Disadvantages of Remote Mode
-
-- Network overhead
-- Potential for test interference without proper session isolation
-- Dependency on external process
-- Slower startup compared to embedded mode
-
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::
+Against that: every call crosses the network, the process has to be running
+before the tests start, and tests that skip [session isolation](./sessions.md)
+will overwrite each other's stubs. For a single Go test binary, embedded mode is
+the simpler choice.

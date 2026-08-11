@@ -4,11 +4,9 @@ title: Match Limit (times)
 
 # Match Limit (options.times) <VersionTag version="v3.7.0" />
 
-The `options.times` setting limits how many times a stub can be matched. After the limit is reached, the stub is exhausted and no longer used. This is useful for testing error scenarios, retries, and exact call counts.
-
-## Overview
-
-When a stub has `options.times` set:
+`options.times` limits how many times a stub can be matched. Past the limit the
+stub is exhausted and no longer used — which is how you assert an exact call
+count, or make the second attempt of a retry hit a different stub.
 
 - **times: 0** (default) — unlimited matches; the stub never exhausts
 - **times: 1** — exactly one match, then the stub is exhausted
@@ -171,10 +169,11 @@ Use priority so a second stub handles calls after the first is exhausted:
 
 ## Concurrency
 
-The match limit is safe under concurrent access: `stubCallCount` is protected by a mutex. Under heavy concurrency, exactly `times` matches succeed; extra calls receive `StubNotFound`.
+The counter is mutex-protected. Under concurrent load exactly `times` matches
+succeed; extra calls receive `StubNotFound`.
 
 ## Notes
 
 - Exhausted stubs remain in storage; they are only excluded from matching
-- `stubs/unused` and `stubs/used` reflect whether a stub has been matched (used count > 0)
+- `/api/stubs/unused` and `/api/stubs/used` reflect whether a stub has been matched (used count > 0)
 - Clearing the storage (`DELETE /stubs` or restart) resets all match counts

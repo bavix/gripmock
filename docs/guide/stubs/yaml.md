@@ -1,6 +1,7 @@
 # YAML Stubs
 
-YAML provides human-readable syntax with advanced features like comments and multi-document support, while maintaining compatibility with JSON structures.
+YAML stubs describe the same structure as JSON stubs, plus comments, anchors and
+multi-document files. See [Why YAML?](./benefits-yaml) for the comparison.
 
 ## Schema Validation
 
@@ -16,12 +17,11 @@ output:
     result: success
 ```
 
-## When to Use YAML  
-Perfect for:  
-- Tests that don't need HTTP dependencies  
-- Immutable/Versioned stub configurations  
-- Large-scale stub management  
-- Teams who prefer YAML's readability  
+## When to Use YAML
+
+Stub files load from disk at startup, so a test suite runs without touching the
+HTTP API, the stub set is versioned alongside the code, and it scales to large
+numbers of stubs.
 
 ## Project Structure  
 ```
@@ -125,11 +125,13 @@ input:
       version: 2.1  
 ```  
 
-## Key Notes  
-- 🔄 Auto-reloading: Changes in stub files are detected on container restart  
-- 📁 Recursive loading: All .yaml/.yml files in --stub directory are processed  
-- 🔍 Validation: Syntax errors in YAML files prevent server startup  
-- 🔄 API Compatibility: Works alongside HTTP API for hybrid setups
-- 🎯 Priority System: Use `priority` field to control stub matching order  
+## Key notes
+
+- Auto-reloading: the stub watcher is on by default and picks up file changes
+  without a restart. See [Why IDs matter](./why-ids-are-crucial).
+- Recursive loading: every `.yaml` / `.yml` file under `--stub` is read.
+- Validation: a syntax error in a stub file prevents server startup.
+- File stubs and the HTTP API coexist; a hybrid setup is fine.
+- `priority` controls which stub wins when several match.
 
 For schema details, see [JSON Schema for stubs](https://bavix.github.io/gripmock/schema/stub.json).  

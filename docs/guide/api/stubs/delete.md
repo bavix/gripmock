@@ -56,8 +56,6 @@ curl -X DELETE http://127.0.0.1:4771/api/stubs/6c85b0fa-caaf-4640-a672-f56b7dd80
    HTTP/1.1 404 Not Found
    Content-Type: application/json
    Date: Fri, 04 Apr 2025 22:31:30 GMT
-   Content-Length: 0
-
    { "error": "Stub with ID '6c85b0fa-caaf-4640-a672-f56b7dd8074d' not found" }
    ```
 
@@ -74,7 +72,3 @@ curl -X DELETE http://127.0.0.1:4771/api/stubs/6c85b0fa-caaf-4640-a672-f56b7dd80
 For complete schema details, see:
 - [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
 - [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)
-
----
-
-This endpoint is critical for precise management of stubs during testing. Use it to remove outdated or redundant configurations.

@@ -4,8 +4,6 @@
 
 > Hinweis: Diese Seite wurde maschinell übersetzt. Der Inhalt kann ungenau oder unvollständig sein. Bitte verwenden Sie das englische Original [`CONTRIBUTING.md`](CONTRIBUTING.md) als Referenz.
 
-Vielen Dank für Ihr Interesse an einem Beitrag zu GripMock! Dieses Dokument enthält Richtlinien für die Mitarbeit am Projekt.
-
 ## Erste Schritte
 
 1. **Repository forken** und den Fork lokal klonen
@@ -15,7 +13,7 @@ Vielen Dank für Ihr Interesse an einem Beitrag zu GripMock! Dieses Dokument ent
 
 ### ConnectRPC-Tests
 
-**HTTP-Client-Tests** (`.http`-Dateien) für den ConnectRPC-Server befinden sich in `examples/projects/*/connectrpc-tests.http`.
+**HTTP-Client-Tests** (`.http`-Dateien) für den ConnectRPC-Server befinden sich in `examples/projects/*/connectrpc-tests/`.
 
 **Ausführung mit httpyac:**
 ```bash
@@ -26,11 +24,9 @@ Sie können `.http`-Dateien auch in JetBrains-IDEs (GoLand, IntelliJ) öffnen un
 
 ## Testanforderungen
 
-### ⚠️ Kritische Regeln
+### 1. gRPC-Serveränderungen erfordern Integrationstests
 
-#### 1. gRPC-Serveränderungen erfordern Integrationstests
-
-**Wenn Sie etwas an der gRPC-Serverfunktionalität ändern, hinzufügen oder reparieren, MÜSSEN Sie Integrationstests mit grpctestify im `.gctf`-Format schreiben.**
+Alles, was das Verhalten des gRPC-Servers ändert, braucht einen Integrationstest mit grpctestify im `.gctf`-Format.
 
 Integrationstests befinden sich im `examples/`-Verzeichnis. Beispiel einer `.gctf`-Datei:
 
@@ -45,43 +41,31 @@ helloworld.Greeter/SayHello
 {"message": "Hello, Alex!"}
 ```
 
-**Tests ausführen:**
-```bash
-make test              # Unit-Tests
-grpctestify examples/  # Integrationstests
-make lint              # Linter
-```
-
 **Wo Tests platziert werden:**
 - Integrationstests: `examples/projects/*/case_*.gctf`
 - Unit-Tests: `internal/app/*_internal_test.go`
 
-#### 2. Jeder PR muss Tests enthalten
+### 2. Jeder PR enthält Tests
 
-Alle Pull-Requests müssen geeignete Tests enthalten, insbesondere für Fehlerbehebungen und neue Funktionen.
+Fehlerbehebungen und neue Funktionen brauchen beide welche.
 
-#### 3. Tests lokal ausführen
+### 3. Tests lokal ausführen
 
-Stellen Sie vor dem Einreichen eines PRs sicher, dass alle Tests bestanden werden:
-
-**Für Integrationstests mit grpctestify:**
 ```bash
-# Server starten (in einem separaten Terminal)
-go run main.go examples -s examples
-
-# Integrationstests ausführen
-grpctestify examples/
+make test    # Unit-Tests
+make lint    # Linter
 ```
 
-**Für Unit-Tests:**
+Integrationstests brauchen den Server in einem separaten Terminal:
+
 ```bash
-make test
-make lint
+go run main.go examples -s examples
+grpctestify examples/
 ```
 
 ## Rückwärtskompatibilität
 
-**Alle Änderungen MÜSSEN rückwärtskompatibel sein**, sofern nicht ausdrücklich durch ein Issue diskutiert und genehmigt.
+Alle Änderungen müssen rückwärtskompatibel sein, sofern ein Breaking Change nicht über ein Issue diskutiert und genehmigt wurde.
 
 ### Prozess für Breaking Changes
 
@@ -103,7 +87,7 @@ Wenn Sie einen Breaking Change einführen müssen:
 - [ ] Alle Tests bestehen lokal
 - [ ] Code folgt den Projektstilrichtlinien (`make lint`)
 - [ ] Dokumentation wurde bei Bedarf aktualisiert
-- [ ] Ihr Branch ist mit dem Hauptbranch auf dem neuesten Stand
+- [ ] Ihr Branch ist mit `master` auf dem neuesten Stand
 
 ### PR-Beschreibung
 
@@ -136,13 +120,8 @@ Dokumentationsorte:
 
 ## Fragen?
 
-- Vorhandene Issues und Diskussionen überprüfen
-- Ein neues Issue mit dem Label `question` öffnen
-- Die [Dokumentation](https://bavix.github.io/gripmock/) durchsehen
-
-## Zusätzliche Ressourcen
+Sehen Sie zuerst die vorhandenen Issues und Diskussionen durch, öffnen Sie dann
+ein neues Issue mit dem Label `question`.
 
 - [Projektdokumentation](https://bavix.github.io/gripmock/)
 - [grpctestify-Dokumentation](https://gripmock.github.io/grpctestify-rust/)
-
-Vielen Dank, dass Sie zu GripMock beitragen! 🚀

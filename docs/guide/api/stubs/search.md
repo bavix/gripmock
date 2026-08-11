@@ -1,5 +1,5 @@
 # Stub API: Search Stubs
-The `/api/stubs/search` endpoint allows flexible searching of stubs based on input criteria, headers, service, method, or ID. It returns the **first matching stub's output** for testing gRPC services.  
+The `/api/stubs/search` endpoint resolves a request against the loaded stubs — by input criteria, headers, service, method or ID — and returns the winning stub's output. It answers "which stub would this call hit?" without making the gRPC call.  
 
 ## Example Contract (`simple.proto`)
 ```proto
@@ -50,7 +50,11 @@ message Reply {
   ```
 
 ## Input Matching Rules
-Stubs are matched based on **input criteria**. Rules are evaluated in order: `equals` → `contains` → `matches`.  
+
+A stub matches when **every** strategy it declares passes — `equals`, `contains`,
+`matches` and `glob` are AND-ed, with no ordering between them. An omitted
+strategy always passes. See [Matching Logic](../../matcher/logic) for the formal
+rules.
 
 ### 1. `equals` (Exact Match)
 Matches fields **exactly** (case-sensitive).  
@@ -67,7 +71,9 @@ Matches fields **exactly** (case-sensitive).
 ```
 
 ### 2. `contains` (Partial Match)
-For example, you need a minimum of keys from those passed in the request, and not all of them.
+Matches when the request carries at least the listed keys and values. Extra keys
+in the request are ignored; string values match on substring, arrays on
+containment.
 **Example Stub**:
 ```json
 {
@@ -229,13 +235,12 @@ curl -X POST -d '{
 **Note**: When searching by ID, the `id` field is used for exact ID matching, but `service` and `method` fields are still required as they are mandatory in the SearchRequest structure.
 
 ## Behavior
-- **Stub Priority**: When multiple stubs match, higher `priority` values are selected first.
-- **First Match**: Returns the first stub that matches after applying `priority` sorting.  
+- **Selection**: among matching stubs, the most specific one wins; `priority` breaks ties, then declared field count, then stub ID. See [Priority](../../stubs/priority).
 - **No Match**: Returns `error` with code `5` (Not Found) if no stub matches.  
 
 ## Notes
 - **Edge Cases**:  
-  - If multiple stubs share the same `priority`, the first created stub is returned.  
+  - A fully tied pair resolves by stub ID, so the outcome is stable across runs but not tied to creation order.  
   - Use `ignoreArrayOrder` to ignore array element order in `equals`.  
 - **Related Endpoints**:  
   - `GET /api/stubs/used`: Track stubs matched by this endpoint.  
@@ -245,7 +250,3 @@ curl -X POST -d '{
 For complete schema details, see:
 - [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
 - [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)
-
----
-
-This endpoint is essential for validating stub behavior during testing. Use it to simulate gRPC responses dynamically.

@@ -2,58 +2,20 @@
 
 ## Installation
 
-Choose your preferred way to install GripMock:
+### 1. Homebrew (macOS and Linux) <VersionTag version="v3.2.5" />
 
-### 1. **Using Homebrew (Recommended)**
-Homebrew provides an easy way to install GripMock on macOS and Linux.
-
-#### Step 1: Add the Repository
-Add the official Homebrew repository for GripMock:
 ```bash
 brew tap gripmock/tap
-```
-
-#### Step 2: Install GripMock <VersionTag version="v3.2.4" />
-Install GripMock with the following command:
-```bash
 brew install --cask gripmock
-```
-
-#### Step 3: Check Installation
-Make sure GripMock is installed correctly by checking its version:
-```bash
 gripmock --version
 ```
-You should see output similar to:
-```
-gripmock version v3.2.4
-```
 
-### 2. **Using Shell Script (curl)**
-For Linux/macOS on **arm64/amd64** architectures:
+### 2. Shell script (curl)
+
+Linux and macOS, arm64 and amd64:
+
 ```bash
 curl -s https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.sh | sh -s
-```
-
-**Example installation output:**
-```bash
-ℹ Starting GripMock installation... 🚀
-ℹ Checking dependencies...
-✔ Dependencies are ready.
-ℹ Detecting system information...
-✔ Detected OS: linux 🌍
-✔ Detected architecture: amd64 💻
-ℹ Fetching the latest version of GripMock from GitHub...
-✔ Latest version: 3.2.8 🎉
-ℹ Downloading checksums file...
-✔ Checksums file downloaded.
-ℹ Downloading GripMock for linux/amd64...
-✔ Downloaded GripMock (9.59 MB)
-✔ Checksum verified successfully.
-ℹ Installing GripMock...
-✔ GripMock has been successfully installed.
-ℹ You can now run 'gripmock --help' to get started.
-✔ Installation complete! You're all set to use GripMock 🎉
 ```
 
 This script automatically:
