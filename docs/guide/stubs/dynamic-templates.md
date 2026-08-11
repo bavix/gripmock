@@ -4,11 +4,8 @@ title: Dynamic Templates
 
 # Dynamic Templates <VersionTag version="v3.4.0" />
 
-Dynamic templates allow you to use request data in your stub responses at runtime. This feature enables creating more realistic and flexible mock responses that adapt based on the incoming request.
-
-## Overview
-
-Dynamic templates use Go's `text/template` syntax to process request data and generate responses. Templates are processed at runtime, not at load time, allowing for real-time data substitution.
+A stub response can read the request that triggered it. Templates use Go's
+`text/template` syntax and are evaluated per request, not at load time.
 
 ## Basic Syntax
 
@@ -51,38 +48,37 @@ Use <code v-pre>`{{.Headers.field}}`</code> to access request headers:
 
 ## Template Functions
 
-GripMock provides several built-in template functions:
+Go's own template builtins (`len`, `index`, `if`, `range`, …) are available.
+GripMock adds these:
 
 ### String Functions
-- `upper(s)`: Convert to uppercase
-- `lower(s)`: Convert to lowercase
-- `title(s)`: Convert to title case
-- `split(s, sep)`: Split string by separator
-- `join(slice, sep)`: Join string slice with separator
-- `index(slice, i)`: Get element at index from slice
+- `upper(s)`, `lower(s)`, `title(s)`: change case
+- `split(s, sep)`: split a string into a slice
+- `join(slice, sep)`: join a slice into a string
+- `sprintf(format, args...)`, `str(v)`: format a value
 
 ### Math Functions
-- `len(slice)`: Get length of slice
-- `mul(a, b)`: Multiply two numbers
-- `add(a, b)`: Add two numbers
-- `sub(a, b)`: Subtract two numbers
-- `div(a, b)`: Divide two numbers (returns 0 for division by zero)
-
-### Slice Functions
-- `sum(slice)`: Sum all values in a slice
-- `mul(slice)`: Multiply all values in a slice
-- `avg(slice)`: Calculate average of all values in a slice
-- `min(slice)`: Find minimum value in a slice
-- `max(slice)`: Find maximum value in a slice
+- `add`, `sub`, `div`, `mod`: two numbers. `div` returns 0 for division by zero
+- `sum`, `mul`, `avg`, `min`, `max`: variadic — either spread numbers
+  (<code v-pre>{{sum 1 2 3}}</code>) or one slice (<code v-pre>{{sum .Request.items}}</code>)
+- `int`, `int64`, `float`, `round`, `floor`, `ceil`, `decimal`: numeric conversion
+- `eq`, `gt`, `gte`, `lt`, `lte`: comparison
 
 ### Time Functions
-- `now()`: Get current time (changes for each message)
-- `requestTime()`: Get atomic request time (same for all templates in one request)
-- `unix(t)`: Convert time to Unix timestamp
-- `format(t, layout)`: Format time with layout
+- `now()`: current time, re-evaluated per message
+- `unix(t)`: time to Unix timestamp
+- `format(t, layout)`: format a time
+
+For a timestamp that stays identical across every template in one request, use
+the `.RequestTime` field rather than `now()`.
 
 ### Utility Functions
-- `json(v)`: Convert value to JSON string
+- `json(v)`: value to JSON string
+- `extract(messages, field)`: pull `field` out of each message —
+  <code v-pre>{{extract .Requests "value"}}</code>
+- `uuid`, `uuid2base64`, `uuid2bytes`, `uuid2int64`, `string2base64`,
+  `bytes2base64`, `bytes`: identifier and encoding conversion
+- `faker.*`: see the [Faker reference](./faker)
 
 ### Plugin Functions <VersionTag version="v3.5.0" />
 Custom functions provided by plugins are also available in templates. Load plugins using the `--plugins` flag and use their functions just like built-in functions.
@@ -147,21 +143,12 @@ Example:
 ```
 :::
 
-### State Management
-You can access and modify request state directly using `.State`:
-- <code v-pre>`{{.State.key}}`</code>: Get value from request state
-- <code v-pre>`{{setState "key" "value"}}`</code>: Set value in request state (returns empty string)
-
-State is isolated per request and can be used to track calculations across multiple template evaluations.
-
 ## Technical Parameters
-
-Dynamic templates provide access to essential technical parameters:
 
 ### Core Parameters
 - <code v-pre>`{{.MessageIndex}}`</code>: Current message index (0-based) for streaming
-- <code v-pre>`{{.RequestTime}}`</code>: Atomic request time for consistent timestamps
-- <code v-pre>`{{.State}}`</code>: Request-scoped state for tracking calculations across templates
+- <code v-pre>`{{.RequestTime}}`</code>: Request time, identical for every template in one request (alias: <code v-pre>`{{.Timestamp}}`</code>)
+- <code v-pre>`{{.StubID}}`</code>: UUID of the stub that matched (alias: <code v-pre>`{{.RequestID}}`</code>)
 
 ### Streaming Context
 - <code v-pre>`{{.Requests}}`</code>: Slice of all non-empty client messages for client streaming
@@ -338,22 +325,6 @@ You can create different responses based on request data:
 ```
 :::
 
-### State Management Example
-::: v-pre
-```yaml
-- service: example.Service
-  method: ProcessOrder
-  input:
-    equals:
-      user_id: "USER_123"
-  output:
-    data:
-      order_id: "ORDER_{{.Request.user_id | split \"_\" | index 1}}_{{now | unix}}"
-      processing_step: "{{if .State.step}}{{.State.step}}{{else}}1{{end}}"
-      message: "{{setState \"step\" (add (.State.step | default 0) 1)}}Processing step {{.State.step}}"
-```
-:::
-
 ## Implementation Details
 
 ### Template Processing Flow
@@ -374,26 +345,11 @@ Dynamic templates are fully backward compatible:
 - No migration required for existing stubs
 - Dynamic templates are opt-in only
 
-## Performance Considerations
+## Thread Safety
 
-- Template processing happens at runtime, so there's a small performance impact
-- Complex template functions may impact performance
-- Template errors return gRPC internal errors
-- Consider caching for high-throughput scenarios
-
-## Thread Safety and Atomicity
-
-### Atomic Functions
-All template functions are designed to be thread-safe and atomic:
-- **Mathematical functions** (`add`, `mul`, `sub`, `div`, `len`): Pure functions, no side effects
-- **String functions** (`upper`, `lower`, `split`, `join`): Pure functions, no side effects
-- **Time functions**: `now()` returns current time for each message, `requestTime()` uses atomic time within a single request
-
-### Race Condition Prevention
-- Each request gets its own `TemplateData` instance
-- Time functions use atomic timestamps within a single request
-- No shared state between concurrent requests
-- Template processing is isolated per request
+Every request builds its own template data. Nothing is shared between concurrent
+requests, and the functions themselves are pure. `now()` re-reads the clock per
+message; `.RequestTime` is fixed for the whole request.
 
 ## Error Handling
 
@@ -403,21 +359,6 @@ Template errors are handled gracefully:
 - Template processing errors are logged for debugging
 - Division by zero returns 0 instead of causing errors
 - For server streaming with `output.stream` and `output.error`/`output.code` set: stream messages are sent first, then the error is returned. If `output.stream` is empty, the error is returned immediately
-
-## Best Practices
-
-1. **Use meaningful field names**: Make templates readable and maintainable
-2. **Test thoroughly**: Verify templates work with different request data
-3. **Keep templates simple**: Avoid overly complex template logic
-4. **Use appropriate functions**: Choose the right template function for your use case
-5. **Consider performance**: Be mindful of template complexity in high-throughput scenarios
-6. **Handle edge cases**: Consider division by zero, missing fields, etc.
-7. **Use state management**: Leverage state functions for complex calculations
-
-## Limitations
-
-- Template errors cause gRPC internal errors
-- State is request-scoped and not persisted between requests
 
 ## Migration Guide
 
@@ -455,11 +396,7 @@ grpctestify examples/projects/calculator
 
 ## Important Notes
 
-- Do not use dynamic templates inside `input.equals`, `input.contains`, or `input.matches`. Matching expressions must be static (plain strings, numbers, or regex strings). Use dynamic templates only in the `output` section
-
-## Additional Functions
-
-Along with the functions listed above, the following helpers are available:
-
-- `extract(messages, field)` → returns a slice with `field` extracted from each message (e.g., `extract .Requests "value"`)
-- `sprintf`, `str`, `int`, `int64`, `float`, `round`, `floor`, `ceil`
+Templates belong in `output` only. Every matcher — `input.equals`,
+`input.contains`, `input.matches`, `input.glob`, `input.anyOf`, and their
+`headers` counterparts — must be static: plain strings, numbers, regex or glob
+patterns.

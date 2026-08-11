@@ -50,20 +50,16 @@ func TestMyService_WithSession(t *testing.T) {
 }
 ```
 
-## Session Isolation Benefits
+## Why sessions
 
-Sessions provide several benefits:
+Stubs and call history are scoped to the session, so several test processes can
+share one remote GripMock without seeing each other's stubs or each other's
+history. Session-scoped state is also what gets cleaned up when the test ends.
 
-- **Test Isolation**: Prevents stubs from one test affecting another
-- **Parallel Test Safety**: Allows safe parallel execution when sharing a remote GripMock instance
-- **History Separation**: Keeps call history separate between different test contexts
-- **Resource Management**: Enables cleanup of test-specific resources
+## Choosing a session ID
 
-## Session Best Practices
-
-### 1. Use Unique Session IDs
-
-Always use unique session identifiers to prevent conflicts:
+Two tests sharing an ID share their stubs, which is exactly the failure sessions
+exist to prevent. `t.Name()` is unique per test and readable in the UI:
 
 ```go
 // Good: Use test name as session ID for uniqueness
@@ -135,7 +131,7 @@ Sessions can be configured with various options depending on your needs:
 
 ### Session Timeouts
 
-By default, SDK schedules remote session cleanup with TTL `60s`. Use `sdk.WithSessionTTL(...)` to override:
+The SDK schedules remote session cleanup with a TTL of `60s` by default. Use `sdk.WithSessionTTL(...)` to override:
 
 ```go
 srv := sdk.NewServer(t,
@@ -192,7 +188,6 @@ func runSharedSessionMock(t *testing.T) *sdk.Server {
 
 ## Session Limitations
 
-- Sessions are only applicable when using remote mode (`sdk.WithRemote`)
-- Session IDs should be unique to prevent conflicts
-- Session data persists until explicitly cleared or the server restarts/cleans up
-- Each session consumes server resources, so avoid creating excessive numbers of sessions
+- Sessions apply to remote mode only (`sdk.WithRemote`); an embedded server is already isolated
+- Session data persists until it is cleared, its TTL expires, or the server restarts
+- Each session holds its own stubs and history on the server

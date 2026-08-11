@@ -12,9 +12,9 @@
 
 > Aviso: Esta página ha sido traducida automáticamente. Puede contener imprecisiones o estar incompleta. Consulte el original en inglés [`README.md`](README.md) como referencia.
 
-**El servidor mock gRPC más rápido y confiable para pruebas y desarrollo.**
+Un servidor mock de gRPC para pruebas y desarrollo.
 
-GripMock crea un servidor mock a partir de sus archivos `.proto` o descriptores `.pb` compilados, haciendo que las pruebas gRPC sean simples y eficientes. Perfecto para pruebas de extremo a extremo, entornos de desarrollo y pipelines CI/CD.
+GripMock construye un servidor mock a partir de sus archivos `.proto` o de un descriptor `.pb` compilado: 29 804 req/s y 0,4 s de arranque en frío desde una imagen de 19 MB ([benchmark](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)).
 
 ![greeter](https://raw.githubusercontent.com/bavix/.github/master/svgs/gripmock-greeter.gif)
 
@@ -45,24 +45,14 @@ GripMock crea un servidor mock a partir de sus archivos `.proto` o descriptores 
 
 **[Documentación completa](https://bavix.github.io/gripmock)** - Guía completa con ejemplos
 
-- **API de descriptores (`/api/descriptors`)**: Carga en tiempo de ejecución de descriptores proto compilados (`.pb`) con flujo de trabajo curl validado: [docs](https://bavix.github.io/gripmock/guide/api/descriptors)
-- **Modos Upstream (Experimental)**: `proxy`, `replay`, `capture` con guía práctica de implementación: [docs](https://bavix.github.io/gripmock/guide/modes)
-- **Embedded SDK (Experimental)**: Pruebas en proceso con `sdk.NewServer`, `Match()`, `Return()` y verificación: [docs](https://bavix.github.io/gripmock/guide/embedded-sdk)
-- **Referencia Faker**: Catálogo clave por clave del faker incorporado con ejemplos: [docs](https://bavix.github.io/gripmock/guide/stubs/faker)
-- **OpenTelemetry + Métricas**: Variables de entorno de tracing y comportamiento de `/metrics`: [docs](https://bavix.github.io/gripmock/guide/introduction/advanced-usage)
-- **GitHub Actions (CI/CD)**: Acción oficial de workflow para descargar, iniciar, esperar disponibilidad y detener GripMock automáticamente: [docs](https://bavix.github.io/gripmock/guide/ci-cd/github-actions)
-
-## 🧬 Evolución del proyecto
-
-GripMock comenzó como un fork de [tokopedia/gripmock](https://github.com/tokopedia/gripmock) y luego evolucionó hasta convertirse en un proyecto independiente completamente reescrito.
-
-Hoy GripMock es un runtime independiente centrado en flujos de trabajo prácticos de prueba:
-
-- Arquitectura nativa en proceso (sin generación de código en tiempo de ejecución)
-- Fuentes de descriptores flexibles y operaciones en tiempo de ejecución (stubs en caliente + API de descriptores)
-- Funciones de prueba de estilo productivo (streaming, plantillas, modos upstream, plugins, SDK, MCP)
-
-Para detalles de arquitectura y metodología de benchmarks: [Comparación de rendimiento](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
+Profundizaciones sobre las áreas más recientes:
+[Descriptor API](https://bavix.github.io/gripmock/guide/api/descriptors) ·
+[Upstream Modes (Experimental)](https://bavix.github.io/gripmock/guide/modes) ·
+[Embedded SDK (Experimental)](https://bavix.github.io/gripmock/guide/embedded-sdk) ·
+[Faker Reference](https://bavix.github.io/gripmock/guide/stubs/faker) ·
+[OpenTelemetry + Metrics](https://bavix.github.io/gripmock/guide/introduction/advanced-usage) ·
+[GitHub Actions](https://bavix.github.io/gripmock/guide/ci-cd/github-actions) ·
+[Performance Comparison](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
 
 ## 🖥️ Interfaz web
 
@@ -100,7 +90,7 @@ docker pull bavix/gripmock
 Para builds de plugins, use la imagen builder asociada:
 
 ```bash
-docker pull bavix/gripmock:v3.17.2-builder
+docker pull bavix/gripmock:3.18.4-builder
 ```
 
 #### Instalación Go
@@ -529,10 +519,11 @@ Con 500 stubs, 4 CPU por contenedor. Método y cifras completas: [Performance Co
 
 |  | bavix | tokopedia |
 | --- | --- | --- |
-| Rendimiento | 24 284 req/s | 5 600 req/s |
-| Latencia p99 | 11 ms | 26 ms |
-| Inicio, promedio | 0.43 s | 2.29 s |
-| Tamaño de imagen, amd64 | 19.13 MB | 226.29 MB |
+| Rendimiento | 29 804 req/s | 6 221 req/s |
+| Latencia p99 | 9.44 ms | 24.08 ms |
+| Inicio, promedio | 0.399 s | 2.205 s |
+| Tamaño de imagen, amd64 | 19.17 MB | 226.29 MB |
+| Tamaño de imagen, arm64 | 18.49 MB | 219.90 MB |
 
 ![Benchmark de tamaño de imagen](docs/public/bench/image-size.svg)
 ![Benchmark de preparación de inicio](docs/public/bench/startup-ready.svg)

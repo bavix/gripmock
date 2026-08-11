@@ -25,25 +25,32 @@ If one of them is missing, gRPC starts without TLS.
 | `GRPC_TLS_CA_FILE` | CA bundle used to verify client certificates | Required when `GRPC_TLS_CLIENT_AUTH=true` |
 | `GRPC_TLS_MIN_VERSION` | Minimal TLS version (`1.2` or `1.3`) | No (default: `1.2`) |
 
-## HTTP TLS environment variables
+## HTTP and gateway TLS environment variables
 
-The HTTP API can also run with TLS:
+The HTTP API and the ConnectRPC/gRPC-web gateway take the same five settings
+under their own prefixes — `HTTP_TLS_` and `GATEWAY_TLS_`:
 
-| Variable | Purpose |
+| Suffix | Purpose |
 |---|---|
-| `HTTP_TLS_CERT_FILE` | HTTP server certificate file |
-| `HTTP_TLS_KEY_FILE` | HTTP server private key file |
-| `HTTP_TLS_CLIENT_AUTH` | Enable mTLS for HTTP clients |
-| `HTTP_TLS_CA_FILE` | CA bundle for HTTP client certificate verification |
+| `CERT_FILE` | Server certificate file (PEM) |
+| `KEY_FILE` | Server private key file (PEM) |
+| `CLIENT_AUTH` | Enable mTLS (`true`/`false`) |
+| `CA_FILE` | CA bundle for client certificate verification |
+| `MIN_VERSION` | Minimal TLS version (`1.2` or `1.3`) |
+
+The older `CONNECTRPC_TLS_*` names are still read as fallbacks for
+`GATEWAY_TLS_*`, and will be removed in a future release.
 
 ## Examples
 
 ### gRPC TLS (server auth only)
 
+No `GRPC_TLS_CA_FILE` — the CA bundle is only needed to verify *client*
+certificates, which server-auth-only does not do.
+
 ```bash
 GRPC_TLS_CERT_FILE=./third_party/tls/tls12/server.crt \
 GRPC_TLS_KEY_FILE=./third_party/tls/tls12/server.key \
-GRPC_TLS_CA_FILE=./third_party/tls/tls12/ca.crt \
 GRPC_TLS_MIN_VERSION=1.2 \
 gripmock --stub=examples examples
 ```

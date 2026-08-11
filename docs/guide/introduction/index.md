@@ -6,38 +6,26 @@ title: Introduction
 
 ![GripMock](https://github.com/bavix/gripmock/assets/5111255/023aae40-5950-43ba-abd1-0803de6fd246)
 
-GripMock is your go-to tool for testing gRPC services. It creates a mock server that responds exactly how you want it to, making testing faster and more reliable.
+GripMock is a mock server for gRPC services. Point it at your `.proto` files or a
+compiled `.pb` descriptor, describe the responses you want in YAML or JSON, and
+it serves them — no backend, and no client library beyond the gRPC one your
+language already has.
 
-## What is GripMock?
+## Architecture
 
-GripMock is a **mock server** for **gRPC** services. Give it your `.proto` files, and it instantly creates a working server that responds with your predefined test data. Perfect for testing your applications without needing a real backend server.
-
-## Why Use GripMock?
-
-- **Fast Setup**: Get a working server in seconds
-- **Easy Testing**: Define responses in simple YAML or JSON files
-- **Real Scenarios**: Test file uploads, chat applications, and data streaming
-- **No Dependencies**: Works with any programming language that supports gRPC
-- **Production Ready**: Built-in health checks and Docker support
-
-## Architecture Story
-
-GripMock was initially inspired by [tokopedia/gripmock](https://github.com/tokopedia/gripmock), but the current project is fully rewritten.
-
-The modern GripMock engine is fundamentally different:
-
-- It does **not** generate gRPC server code at runtime
-- It does **not** spawn generated servers via `cmd/exec`
-- It uses a native in-process runtime for stubbing and transport handling
+The engine does not generate gRPC server code at runtime, and does not spawn a
+generated server through `cmd/exec`. Stubbing and transport are handled in
+process, which is where the startup time and the image size come from — see the
+[Performance Comparison](./performance-comparison).
 
 ## Key Features
 
 - **Quick Start**: Use your `.proto` files to start a mock server instantly
 - **YAML & JSON**: Define test responses in the format you prefer
-- **Header & Input Matching**: Fine-grained request matching with `equals`, `contains`, `matches`, `anyOf` <VersionTag version="v3.11.0" />
+- **Header & Input Matching**: `equals`, `contains`, `matches`, `anyOf` <VersionTag version="v3.11.0" />, `glob` <VersionTag version="v3.12.0" />
 - **Streaming**: Server, client, and bidirectional streaming support
 - **Error Simulation**: Test error handling with codes and details
-- **Dynamic Templates**: Generate realistic data with `faker.*`, `{{uuid}}`, etc. <VersionTag version="v3.10.0" />
+- **Dynamic Templates**: Build responses from the request <VersionTag version="v3.4.0" />, with `faker.*` <VersionTag version="v3.10.0" />
 - **Effects**: Stateful stubs with automatic upsert/delete after match <VersionTag version="v3.11.0" />
 - **Health Checks**: Built-in health endpoints + mockable health service <VersionTag version="v3.9.3" />
 - **TLS/mTLS**: Native TLS support for secure gRPC <VersionTag version="v3.8.1" />
@@ -64,12 +52,8 @@ See [Streaming](../stubs/streaming) for details.
 
 ## Web Interface <VersionTag version="v3.0.0" />
 
-The **dashboard** provides a user-friendly way to:
-- Create and edit test responses
-- Monitor which responses are being used
-- Manage your test scenarios visually
-
-Access it at `http://localhost:4771/` when you start GripMock.
+The dashboard at `http://localhost:4771/` lists the loaded stubs, shows which of
+them have been matched, and lets you edit them without restarting the server.
 
 ## Experimental Features
 
@@ -78,15 +62,13 @@ Access it at `http://localhost:4771/` when you start GripMock.
 
 ## Runtime descriptor loading <VersionTag version="v3.7.0" />
 
-Need to load `.pb` descriptors into a running server without restart? See [Descriptor API (`/api/descriptors`)](/guide/api/descriptors).
+`.pb` descriptors can be pushed into a running server without a restart — see the
+[Descriptor API](/guide/api/descriptors).
 
 ## Getting Started
 
-1. **Install**: Download or use Docker
-2. **Configure**: Point to your `.proto` files
-3. **Define Responses**: Create YAML/JSON files with your test data
-4. **Test**: Your mock server is ready!
+Install from Docker or a release binary, point GripMock at your `.proto` files,
+and write the responses as YAML or JSON. [Quick Usage](./quick-usage) walks
+through the first run.
 
-## Need Help?
-
-Stuck with something? Check out our [GitHub issues page](https://github.com/bavix/gripmock/issues) or join our community discussions.
+Bugs and questions go to [GitHub issues](https://github.com/bavix/gripmock/issues).

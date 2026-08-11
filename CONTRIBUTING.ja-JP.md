@@ -4,8 +4,6 @@
 
 > 注意：このページは機械翻訳により生成されています。内容に不正確または不完全な箇所がある可能性があります。英語の原文 [`CONTRIBUTING.md`](CONTRIBUTING.md) を参照としてください。
 
-GripMock への貢献に興味を持っていただきありがとうございます！このドキュメントはプロジェクトへの貢献のためのガイドラインを提供します。
-
 ## はじめに
 
 1. **リポジトリをフォーク** し、フォークをローカルにクローンします
@@ -15,7 +13,7 @@ GripMock への貢献に興味を持っていただきありがとうござい�
 
 ### ConnectRPC テスト
 
-**HTTP クライアントテスト**（`.http` ファイル）は `examples/projects/*/connectrpc-tests.http` にあります。
+**HTTP クライアントテスト**（`.http` ファイル）は `examples/projects/*/connectrpc-tests/` にあります。
 
 **httpyac での実行：**
 ```bash
@@ -26,11 +24,9 @@ JetBrains IDE（GoLand、IntelliJ）で `.http` ファイルを開き、各リ�
 
 ## テスト要件
 
-### ⚠️ 重要なルール
+### 1. gRPC サーバーの変更には統合テストが必要
 
-#### 1. gRPC サーバーの変更には統合テストが必要
-
-**gRPC サーバー機能に関連するものを変更、追加、修正した場合は、`.gctf` 形式で grpctestify を使用した統合テストを作成する必要があります。**
+gRPC サーバーの挙動を変える変更には、grpctestify による `.gctf` 形式の統合テストが必要です。
 
 統合テストは `examples/` ディレクトリにあります。`.gctf` ファイルの例：
 
@@ -45,43 +41,31 @@ helloworld.Greeter/SayHello
 {"message": "Hello, Alex!"}
 ```
 
-**テストの実行：**
-```bash
-make test              # ユニットテスト
-grpctestify examples/  # 統合テスト
-make lint              # リンター
-```
-
 **テストの配置場所：**
 - 統合テスト：`examples/projects/*/case_*.gctf`
 - ユニットテスト：`internal/app/*_internal_test.go`
 
-#### 2. すべての PR にテストを含める必要があります
+### 2. すべての PR にテストを含める
 
-すべてのプルリクエストには、特にバグ修正と新機能に対して、適切なテストを含める必要があります。
+バグ修正も新機能も、どちらにも必要です。
 
-#### 3. ローカルでテストを実行
+### 3. ローカルでテストを実行
 
-PR を提出する前に、すべてのテストが合格することを確認してください：
-
-**grpctestify を使用した統合テスト：**
 ```bash
-# サーバーを起動（別のターミナルで）
-go run main.go examples -s examples
-
-# 統合テストを実行
-grpctestify examples/
+make test    # ユニットテスト
+make lint    # リンター
 ```
 
-**ユニットテスト：**
+統合テストには、別のターミナルで起動したサーバーが必要です：
+
 ```bash
-make test
-make lint
+go run main.go examples -s examples
+grpctestify examples/
 ```
 
 ## 後方互換性
 
-**すべての変更は後方互換性を維持する必要があります**。issue を通じて明示的に議論され承認されない限り、破壊的変更は許可されません。
+すべての変更は後方互換性を維持する必要があります。破壊的変更は、issue で議論され承認された場合に限り許可されます。
 
 ### 破壊的変更のプロセス
 
@@ -103,7 +87,7 @@ make lint
 - [ ] すべてのテストがローカルで合格
 - [ ] コードがプロジェクトのスタイルガイドに従っている（`make lint`）
 - [ ] 必要に応じてドキュメントが更新されている
-- [ ] ブランチがメインブランチと最新の状態である
+- [ ] ブランチが `master` と最新の状態である
 
 ### PR の説明
 
@@ -136,13 +120,8 @@ PR を作成する際は、以下を含めてください：
 
 ## 質問は？
 
-- 既存の issue と discussions を確認
-- `question` ラベルで新しい issue を開く
-- [ドキュメント](https://bavix.github.io/gripmock/) を参照
-
-## 追加リソース
+まず既存の issue と discussions を確認し、その上で `question` ラベルを付けた
+新しい issue を開いてください。
 
 - [プロジェクトドキュメント](https://bavix.github.io/gripmock/)
 - [grpctestify ドキュメント](https://gripmock.github.io/grpctestify-rust/)
-
-GripMock への貢献ありがとうございます！🚀

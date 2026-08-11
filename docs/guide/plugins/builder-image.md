@@ -35,7 +35,7 @@ This keeps runtime and builder strictly aligned.
 docker run --rm \
   -v "$PWD":/work \
   -w /work \
-  bavix/gripmock:v3.17.2-builder \
+  bavix/gripmock:3.18.4-builder \
   sh -lc 'go build -buildmode=plugin -o ./plugins/myplugin.so ./cmd/myplugin'
 ```
 
@@ -44,7 +44,7 @@ docker run --rm \
   -p 4770:4770 -p 4771:4771 \
   -v "$PWD/plugins":/plugins \
   -v "$PWD/proto":/proto \
-  bavix/gripmock:v3.7.1 \
+  bavix/gripmock:3.18.4 \
   --plugins=/plugins/myplugin.so /proto/service.proto
 ```
 

@@ -359,8 +359,11 @@ message WeatherReport {
 ```
 
 ### Key Features
-- **JSON Format**: Serialized as `"YYYY-MM-DD"` string (e.g., `"2023-10-05"`).
-- **Validation**: Automatically checks for valid dates (no February 30th).
+- **JSON Format**: an ordinary message, so protojson emits an object —
+  `{"year": 2023, "month": 10, "day": 5}`. The `"2023-10-05"` string form appears
+  only where a grpc-gateway transform produces it.
+- **No validation**: the type is three `int32` fields. `2023-02-30` is accepted
+  and passed through; validate it in your own code if it matters.
 - **Common Uses**: Birthdays, event scheduling, historical records.
 
 ### Example: Weather Forecast Service
@@ -468,7 +471,8 @@ service DirectService {
 - `google.protobuf.Timestamp` → **RFC3339 string** (e.g. `"2024-01-01T12:00:00Z"`)
 - `google.protobuf.Duration`  → **duration string** (e.g. `"1.5s"`, `"330s"`)
 - `google.protobuf.StringValue` → **string**
-- `google.protobuf.{Int32,Int64,UInt32,UInt64,SInt32,SInt64,Fixed32,Fixed64,SFixed32,SFixed64,Float,Double}Value` → **number**
+- `google.protobuf.{Int32,Int64,UInt32,UInt64,Float,Double}Value` → **number**
+  (these six are the only numeric wrappers in `wrappers.proto`; there is no `SInt32Value`, `Fixed64Value` and so on)
 - `google.protobuf.BoolValue`  → **boolean**
 - `google.protobuf.BytesValue` → **base64 string**
 - `google.protobuf.Struct`     → **object** (a plain JSON object)
@@ -490,7 +494,7 @@ service DirectService {
   input:
     equals: {}
   output:
-    data: "1.5s"
+    data: "1.5s"   # protojson normalizes this to "1.500s" on the wire
 
 - service: DirectService
   method: GetCount
@@ -517,8 +521,9 @@ grpcurl -plaintext localhost:4770 wkt.DirectService/GetCount
 grpcurl -plaintext localhost:4770 wkt.DirectService/GetConfig
 ```
 
-**Output:**
-```json
+**Output** — one response per call, in the order above:
+
+```
 "2024-01-01T12:00:00Z"
 "1.500s"
 42
@@ -550,7 +555,7 @@ working setup.
 - **Duration Ranges**: Values outside ±10,000 years are rejected.
 - **Any Type Safety**: Incorrect `type_url` leads to deserialization failures.
 - **Wrapper Defaults**: `null` vs. `0`/`""` distinctions must be documented.
-- **Date Validity**: Invalid dates like `2023-02-30` will cause errors
+- **Date Validity**: `google.type.Date` does not reject impossible dates — check them yourself
 - **Time Zone Assumptions**: Always document expected timezone context
 - **Direct WKT Return**: When a method returns a WKT, the stub `data` must be the **canonical protojson** form
   (RFC3339 string for `Timestamp`, `"1.5s"` for `Duration`, a plain object for `Struct`) — never the proto-wire

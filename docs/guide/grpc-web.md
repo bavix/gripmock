@@ -1,6 +1,6 @@
 # gRPC-web <VersionTag version="v3.17.0" />
 
-gRPC-web is a browser-compatible protocol that brings gRPC to web applications. GripMock supports gRPC-web unary and streaming calls, with the same stubs and features as ConnectRPC and native gRPC.
+gRPC-web is the browser-facing form of gRPC. GripMock serves unary and streaming gRPC-web calls from the same stubs it uses for ConnectRPC and native gRPC.
 
 The gateway serves gRPC-web and ConnectRPC on a **single port** (`:4769` by default). Content-Type negotiation dispatches to the correct handler automatically. See [ConnectRPC](connect-rpc) for the companion protocol.
 

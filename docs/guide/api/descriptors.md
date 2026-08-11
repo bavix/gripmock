@@ -41,9 +41,7 @@ Common error (`400 Bad Request`):
 
 This usually means the uploaded file is not a valid `FileDescriptorSet`.
 
-## Validated workflow (unitconverter)
-
-This flow was re-checked on the Homebrew release binary (`gripmock` v3.7.0).
+## Worked example (unitconverter)
 
 ### 1) Start server
 

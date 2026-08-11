@@ -53,7 +53,7 @@ curl -X DELETE http://127.0.0.1:4771/api/stubs
 ## Notes
 - **Edge Cases**:  
   - If no stubs exist, the endpoint still returns `204`.  
-  - Does not affect the `/api/stubs/used` or `/api/stubs/unused` lists (they reset automatically).  
+  - `/api/stubs/used` and `/api/stubs/unused` both go empty: the stubs they reported are gone.  
 - **Related Endpoints**:  
   - `GET /api/stubs`: List all stubs.  
   - `POST /api/stubs`: Add new stubs.  
@@ -63,7 +63,3 @@ curl -X DELETE http://127.0.0.1:4771/api/stubs
 For complete schema details, see:
 - [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
 - [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)
-
----
-
-This endpoint is useful for resetting stub storage between test runs or cleaning up outdated configurations. Use with caution.

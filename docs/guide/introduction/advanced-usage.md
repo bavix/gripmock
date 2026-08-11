@@ -31,9 +31,9 @@ services:
 - **Explicit Files**: List all required `.proto` files in the command to prevent `File not found` errors  
 - **Path Consistency**: Ensure volume paths (`./src/proto:/proto`) match import paths in your `.proto` files  
 
-## Using Proto Descriptors (Binary Support) <VersionTag version="v3.7.0" />
+## Using Proto Descriptors (Binary Support) <VersionTag version="v3.1.0" />
 
-GripMock supports compiled Protocol Buffers descriptors (`.pb` files) for improved performance and simplified dependency management. This is especially useful for projects with multiple interdependent proto files.
+GripMock reads compiled Protocol Buffers descriptors (`.pb` files). A single descriptor carries the whole dependency graph, so a project with many interdependent proto files needs no import paths at run time.
 
 For dynamic descriptor loading over HTTP (without restarting GripMock), see [Descriptor API (`/api/descriptors`)](/guide/api/descriptors).
 
@@ -80,11 +80,11 @@ services:
 ```
 
 ### Key Advantages
-- ✅ **Single artifact**: Bundle all services and dependencies into one `.pb` file
-- ✅ **Faster startup**: Pre-compiled definitions eliminate parsing overhead
-- ✅ **Version control**: Commit the binary descriptor for reproducible mocks
-- ✅ **Cross-platform**: Works seamlessly across different OS/architectures
-- ✅ **Dependency management**: Buf automatically resolves transitive dependencies
+- **Single artifact**: all services and dependencies in one `.pb` file
+- **Faster startup**: nothing to parse at boot
+- **Version control**: commit the descriptor and the mock is reproducible
+- **Portable**: the same file on any OS or architecture
+- **Dependencies**: Buf resolves transitive imports when it builds the descriptor
 
 ### Important Considerations
 1. **Conflict Prevention**:  
@@ -134,9 +134,9 @@ services:
      /proto/api.pb
    ```
 
-This approach ensures all proto definitions are pre-compiled and validated before runtime.
+A broken proto now fails the build, not the server start.
 
-## TLS Configuration 🔒 <VersionTag version="v3.8.1" />
+## TLS Configuration <VersionTag version="v3.8.1" />
 
 GripMock supports native TLS/mTLS via environment variables and also supports reverse-proxy TLS termination.
 
@@ -198,12 +198,12 @@ Disable array sorting checks with `ignoreArrayOrder`:
 ```
 
 ### Custom gRPC Error Codes <VersionTag version="v2.0.0" />
-Return errors with specific status codes:
+Return errors with specific status codes. Code 16 is `UNAUTHENTICATED`:
 ```json
 {
   "output": {
     "error": "Unauthorized",
-    "code": 16  // gRPC 'Unauthenticated' code
+    "code": 16
   }
 }
 ```
@@ -252,8 +252,10 @@ Match requests based on headers:
 | Rule       | Description                                                                 |
 |------------|-----------------------------------------------------------------------------|
 | `equals`   | Exact match for fields (case-sensitive)                                    |
-| `contains` | Check for presence of fields (values ignored)                              |
+| `contains` | Subset match: strings must contain the expected substring, arrays the expected elements |
 | `matches`  | Regex matching for string fields (e.g., `"name": "^user_\\d+$"`)           |
+| `glob`     | Shell-style glob patterns (`*`, `?`, `[...]`)                              |
+| `anyOf`    | OR over a list of alternatives                                             |
 
 ### Output Configuration
 | Field   | Description                                                                 |
@@ -288,13 +290,14 @@ Match requests based on headers:
 
 ### Validation Steps
 1. Check logs: `docker logs gripmock_container_id`  
-2. Test proto compilation locally:  
+2. Build the descriptor locally — this surfaces import errors without starting the server:  
    ```bash
-   protoc --proto_path=./src/proto --go_out=. ./src/proto/user/user.proto
+   protoc --proto_path=./src/proto --include_imports \
+     --descriptor_set_out=/dev/null ./src/proto/user/user.proto
    ```
 3. Validate runtime descriptor loading with the API walkthrough: [Descriptor API (`/api/descriptors`)](/guide/api/descriptors)
 
 ## Performance Tips
-- **Stub Prioritization**: GripMock returns the **first matching stub**. Order stubs from most to least specific.  
+- **Stub selection**: among matching stubs, the most specific one wins; `priority` breaks ties. File order is irrelevant. See [Priority](/guide/stubs/priority).  
 - **Batch Operations**: Use `POST /api/stubs/batchDelete` for bulk deletions instead of individual API calls.  
 - **Health checks**: Monitor with `GET /api/health/readiness` for production deployments.

@@ -10,7 +10,7 @@
 
 > **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" /> (legacy API: `sdk.Run`, `mock.Stub`, `.When`, `.Reply`, `.Commit`). Current v2 API available since <VersionTag version="v3.16.0" />. See the [Upgrade Guide](./upgrade.md) for migration.
 
-The GripMock Embedded SDK provides an integrated way to use GripMock directly within your Go tests without requiring external processes or containers. This approach offers faster test execution and better integration with your development workflow.
+The Embedded SDK runs GripMock inside the Go test process — no container to start, no external binary to orchestrate.
 
 ## Real-World Example
 
@@ -18,51 +18,21 @@ Looking for a full project that uses embedded mode in practice?
 
 - [bavix/greeter-gripmock-embedded](https://github.com/bavix/greeter-gripmock-embedded) - End-to-end example of GripMock Embedded SDK usage
 
-## Why Use the Embedded SDK?
+## What it changes
 
-The GripMock Embedded SDK offers several key advantages over traditional external mock server approaches:
+- **No container startup per test.** A Docker-based mock costs roughly 0.4s to
+  become ready ([benchmark](/guide/introduction/performance-comparison)); an
+  in-process server costs a function call.
+- **One instance per test.** Nothing is shared, so tests cannot pollute each
+  other through stub state.
+- **Stubs are Go code.** The compiler checks them, and a rename in the proto
+  surfaces at build time rather than as a silent no-match.
+- **Same process as the test.** A debugger steps from the assertion into the
+  mock without crossing a process boundary.
 
-### 1. **Faster Test Execution**
-- No network overhead for gRPC calls to external mock servers
-- Eliminates process startup/shutdown time
-- Reduces test execution time significantly, especially for large test suites
-
-### 2. **Better Test Isolation**
-- Each test gets its own isolated GripMock instance
-- No cross-test pollution from shared state
-- Deterministic test results
-
-### 3. **Simplified Test Setup**
-- No need to manage external processes or Docker containers
-- Single function call to start a fully configured mock server
-- Automatic cleanup when using the recommended patterns
-
-### 4. **Type Safety**
-- Compile-time checking of your mock setup
-- Leverage Go's type system for stub definitions
-- Reduce runtime errors in test setup
-
-### 5. **Enhanced Debugging**
-- Everything runs in the same process as your test
-- Easier to debug test failures
-- Full access to mock internals if needed
-
-### 6. **Seamless Integration**
-- Natural Go API that feels like part of your test code
-- Easy to integrate with existing test frameworks
-- Works well with popular testing libraries like `testify`
-
-## Core Capabilities
-
-The Embedded SDK allows you to:
-
-- **Start and manage GripMock instances** directly from your Go code
-- **Define stubs programmatically** using Go functions with type safety
-- **Access history and verification features** directly from your tests
-- **Use context-aware remote management calls** for history and verification in remote mode
-- **Run tests without external dependencies** like Docker or external processes
-- **Verify call counts and patterns** with built-in verification tools
-- **Support all gRPC features** including unary, streaming, headers, and error responses
+Stubs cover the same ground as file stubs: unary and all three streaming
+patterns, headers, errors, delays and priority. Call history and verification
+are available in both embedded and remote mode.
 
 ## How It Works
 
@@ -72,14 +42,5 @@ The Embedded SDK creates a GripMock server instance directly within your test pr
 - Maintains its own state for the duration of the test
 - Automatically cleans up when the test completes
 
-## Navigation
-
-Explore the documentation:
-
-- [Installation](./installation.md) - How to install the SDK
-- [Quick Start](./quick-start.md) - Basic usage examples with AAA pattern
-- [Defining Stubs](./defining-stubs.md) - How to define stubs with various matching strategies
-- [Advanced Features](./advanced-features.md) - Advanced features like delays, headers, and priority
-- [Verification](./verification.md) - How to verify calls and check history
-- [Remote Mode](./remote-mode.md) - Connecting to remote GripMock instances
-- [Best Practices](./best-practices.md) - Recommended patterns and practices
+Start with [Installation](./installation.md), then
+[Quick Start](./quick-start.md). The sidebar lists the rest.

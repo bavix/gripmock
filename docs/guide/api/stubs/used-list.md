@@ -1,7 +1,6 @@
 # Stub API: List Used Stubs
 
-## Overview
-The `/api/stubs/used` endpoint retrieves a list of **stubs that have been matched during search operations**. This list is dynamically updated whenever a stub is successfully found via the `/api/stubs/search` endpoint. It provides visibility into which stubs are actively being utilized in your testing workflows.
+The `/api/stubs/used` endpoint returns the stubs that have been matched at least once since the server started. Use it to see which stubs a test run actually exercised.
 
 ## Request
 - **Method**: `GET`
@@ -30,7 +29,7 @@ curl http://127.0.0.1:4771/api/stubs/used
       "equals": { "name": "gripmock" }
     },
     "output": {
-      "data": { "message": "Hello GripMock", "return_code": 42 },
+      "data": { "message": "Hello GripMock", "returnCode": 42 },
       "error": ""
     }
   }
@@ -43,13 +42,13 @@ curl http://127.0.0.1:4771/api/stubs/used
 | `id`    | `string` | Unique identifier for the stub (UUID format).                              |
 | `service`| `string` | Name of the gRPC service (e.g., `Gripmock`).                              |
 | `method` | `string` | Name of the gRPC method (e.g., `SayHello`).                               |
-| `input`  | `object` | Input matching criteria (e.g., `equals`, `contains`, `matches`).          |
+| `input`  | `object` | Input matching criteria (`equals`, `contains`, `matches`, `glob`, `anyOf`, `ignoreArrayOrder`). |
 | `output` | `object` | Response configuration, including `data`, `error`, and gRPC status `code`.|
 
 ## Behavior
-- **Usage Tracking**: A stub is marked as "used" **only when it is matched during a search operation** (e.g., via `POST /api/stubs/search`).
+- **Usage Tracking**: A stub is marked as "used" the first time it is matched — by a real gRPC call, by `POST /api/stubs/search`, or through the MCP API.
 - **Persistence**: The "used" state is ephemeral and resets when the GripMock server restarts.
-- **Inverse of Unused**: The `/api/stubs/unused` endpoint returns stubs that have **never** been matched by a search.
+- **Inverse of Unused**: The `/api/stubs/unused` endpoint returns stubs that have **never** been matched.
 
 ## Example Workflow
 1. **Create a Stub**:
@@ -58,7 +57,7 @@ curl http://127.0.0.1:4771/api/stubs/used
      "service": "Gripmock",
      "method": "SayHello",
      "input": { "equals": { "name": "gripmock" } },
-     "output": { "data": { "message": "Hello GripMock", "return_code": 42 } }
+     "output": { "data": { "message": "Hello GripMock", "returnCode": 42 } }
    }' http://127.0.0.1:4771/api/stubs
    ```
 

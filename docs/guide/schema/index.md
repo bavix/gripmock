@@ -1,19 +1,11 @@
 # JSON Schema for Stubs
 
-Ever wondered if your stub definitions are correct? GripMock's JSON Schema is here to help! It's like having a spell-checker for your stub files - it catches errors before they cause problems and gives you helpful hints as you write.
+A JSON Schema for stub files, so an editor can validate them and complete field
+names as you type: **https://bavix.github.io/gripmock/schema/stub.json**
 
-## Overview
-
-You can find the JSON Schema at: **https://bavix.github.io/gripmock/schema/stub.json**
-
-Think of this schema as your stub definition rulebook. It covers everything you might want to do:
-- ✅ Single stub objects (the basics)
-- ✅ Arrays of stubs (when you need multiple responses)
-- ✅ All input matching strategies (equals, contains, matches)
-- ✅ Header matching (for authentication and metadata)
-- ✅ Streaming responses (for real-time data)
-- ✅ Delays and error responses (for realistic testing)
-- ✅ Priority system (for complex routing logic)
+It covers a single stub object or an array of them, every input matching
+strategy (`equals`, `contains`, `matches`, `glob`, `anyOf`), header matching,
+streaming responses, delays, errors and `priority`.
 
 ## Usage
 
@@ -50,15 +42,12 @@ Add this to your JSON stub files:
 
 ## IDE Support
 
-The best part? Your favorite IDE probably already supports this! Here's how to get it working:
-
 ### VS Code
 
-1. Install the "YAML" extension (if you haven't already)
-2. Add the schema reference to your files (see examples above)
-3. Enjoy real-time validation and helpful auto-completion
+1. Install the "YAML" extension
+2. Add the schema reference to your files, as shown above
 
-
+Validation and completion then work as you type.
 
 ## Validation
 
@@ -205,19 +194,9 @@ output:
   code: 14  # UNAVAILABLE
 ```
 
-## Why Use the Schema?
-
-Here's what you get when you use our JSON Schema:
-
-- **Consistency**: Everyone on your team writes stubs the same way
-- **Quality**: Catch typos and errors before they break your tests
-- **Productivity**: Auto-completion means you write faster and make fewer mistakes
-- **Documentation**: Hover over any field to see what it does
-- **Team Collaboration**: New team members can understand your stubs immediately
-
 ## Related Documentation
 
 - [JSON Stubs Guide](../stubs/json.md)
 - [YAML Stubs Guide](../stubs/yaml.md)
 - [Input Matching Rules](../matcher/input.md)
-- [Header Matching Rules](../matcher/headers.md) 
+- [Header Matching Rules](../matcher/headers.md)

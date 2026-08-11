@@ -12,7 +12,7 @@ GripMock's matcher determines which stub responds to an incoming gRPC request ba
 |---|---|
 | [Matching Logic](./logic) | AND/OR composition, `anyOf` semantics, `ignoreArrayOrder` |
 | [Input](./input) | Match against request body fields |
-| [Headers](./input) | Match against gRPC metadata/headers |
+| [Headers](./headers) | Match against gRPC metadata/headers |
 
 ## Quick Reference
 
@@ -21,6 +21,7 @@ input:
   equals:       # exact match (AND)
   contains:     # partial match (AND)
   matches:      # regex match (AND)
+  glob:         # glob match (AND)
   anyOf:        # OR alternatives
   ignoreArrayOrder: true
 
@@ -31,9 +32,9 @@ headers:
 ## Matching Flow
 
 1. **Fast Path**: Exact `equals` matches are checked first
-2. **Full Match**: `contains`, `matches`, and `anyOf` are evaluated
-3. **Ranking**: Multiple matches are scored by specificity
-4. **Priority**: Explicit `priority` overrides scoring
+2. **Full Match**: `contains`, `matches`, `glob` and `anyOf` are evaluated
+3. **Ranking**: Matching stubs are ordered by specificity, then by score
+   (rank plus `priority × 10`), then by declared field count
 
 ## Examples
 

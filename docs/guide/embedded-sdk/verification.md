@@ -129,14 +129,9 @@ func TestMyService_History(t *testing.T) {
 
 ## Context-Aware Verification and History (Remote)
 
-In remote mode, verification and history operations call GripMock REST endpoints.
-
-- `srv.Called(fullMethod)` — returns call count for a method
-- `srv.TotalCalls()` — returns total call count
-- `srv.ExpectationsWereMet()` — verifies all expectations
-- `srv.History()` — returns all recorded calls
-
-All these APIs use `t.Context()` for their network requests.
+In remote mode `srv.Called`, `srv.TotalCalls`, `srv.ExpectationsWereMet` and
+`srv.History` each become a REST call to the GripMock server, issued with
+`t.Context()`.
 
 If you need to pass a specific context (for cancellation, tracing, request-scoped values), use SDK context helpers:
 
@@ -210,8 +205,7 @@ func TestMyService_TimesVerification(t *testing.T) {
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "limited"})
     _, _ = client.MyMethod(t.Context(), &MyRequest{Id: "limited"})
 
-    // ASSERT - Automatic verification via srv.Cleanup
-    // srv.Cleanup registers ExpectationsWereMet() — no manual call needed
+    // ASSERT - ExpectationsWereMet() runs from the t.Cleanup that NewServer registers
     // To verify explicitly:
     require.NoError(t, srv.ExpectationsWereMet())
 }
@@ -257,7 +251,7 @@ func TestOrderService_ComplexVerification(t *testing.T) {
     _, err = client.CancelOrder(t.Context(), &CancelOrderRequest{OrderId: "ORD-001"})
     require.NoError(t, err)
 
-    // ASSERT - Automatic verification via Times() in srv.Cleanup
+    // ASSERT - Times() is checked by the registered t.Cleanup
     require.Equal(t, "ORD-001", createResp.GetOrderId())
 
     // Or verify explicitly:
@@ -312,7 +306,3 @@ func TestPaymentService_HistoryAnalysis(t *testing.T) {
     require.Equal(t, "TXN-100", allCalls[2].Responses[0]["transactionId"])
 }
 ```
-
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::

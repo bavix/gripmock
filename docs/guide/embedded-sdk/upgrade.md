@@ -113,7 +113,7 @@ srv.ExpectBidirectionalStream(FullMethod).
 | `.Reply(sdk.Data("k", "v"))` | `Return("k", "v")` |
 | `.ReplyError(code, msg)` | `ReturnError(code, msg)` |
 | `.ReplyStream(msg...)` | `SendStream(map...)` (on `ExpectServerStream`) |
-| `.Delay(d).Commit()` | `Return(Delay(d, kv...))` |
+| `.Delay(d).Commit()` | `Return(sdk.Delay(d, kv...))` |
 | `.Times(n).Commit()` | `Times(n).Return(...)` |
 | `.Priority(n).Commit()` | `Priority(n).Return(...)` |
 | `.Commit()` | **removed** — auto-registered |
@@ -155,7 +155,7 @@ mock.Stub(sdk.By(FullMethod)).
 // new — delay is part of the return value
 srv.ExpectUnary(FullMethod).
     Match("id", "slow").
-    Return(Delay(100*time.Millisecond, "result", "ok"))
+    Return(sdk.Delay(100*time.Millisecond, "result", "ok"))
 ```
 
 ### Sequential responses
@@ -225,7 +225,7 @@ calls := srv.History()
 - `ExpectClientStream(fullMethod)` + `Match()`
 - `ExpectBidirectionalStream(fullMethod)` + `Run(fn)`
 - `NextWillReturn(kv...)` — sequential responses on any expectation
-- `Return(Delay(d, kv...))` — composable delay inside the return value
+- `Return(sdk.Delay(d, kv...))` — composable delay inside the return value
 - `Effect(Upsert(...).Build())` — side-effect stubs
 - `Server.Reset()` / `Server.Flush()` / `Server.Address()` — more lifecycle methods
 - `WithBatch()` — batch mode for remote

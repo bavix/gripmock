@@ -4,7 +4,7 @@ title: Headers
 
 # Header Matching Rules <VersionTag version="v2.1.0" />
 
-GripMock supports header matching to control stub responses based on gRPC request headers. Use **equals**, **contains**, **matches**, and **anyOf** rules for authentication, versioning, and routing.
+A stub can match on gRPC request headers as well as on the request body — for authentication, versioning or routing. Headers accept the same strategies as input: **equals**, **contains**, **matches**, **glob**, and **anyOf**.
 
 For the formal composition rules (AND/OR logic, `anyOf` semantics), see [Matching Logic](./logic). This page covers header-specific behavior.
 

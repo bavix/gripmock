@@ -1,6 +1,6 @@
 # Schema Validation
 
-So you've written some stub definitions and want to make sure they're correct? This guide shows you how to validate them using our JSON Schema. Think of it as a safety net that catches problems before they cause issues in your tests.
+How to check stub files against the JSON Schema — from the command line, from an editor, and in CI.
 
 ## Command Line Validation
 
@@ -43,9 +43,7 @@ python -c "import yaml, json; print(json.dumps(yaml.safe_load(open('your-stubs.y
 # yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
 ```
 
-3. Get real-time validation and auto-completion
-
-
+3. Validation and completion then work as you type.
 
 ## CI/CD Integration
 
@@ -60,10 +58,10 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v5
       
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.9'
           
@@ -73,16 +71,18 @@ jobs:
           
       - name: Validate JSON stubs
         run: |
-          for file in $(find . -name "*.json" -path "*/stubs/*"); do
+          find . -path "*/stubs/*" -name "*.json" -print0 | while IFS= read -r -d "" file; do
             echo "Validating $file"
             jsonschema -i "$file" https://bavix.github.io/gripmock/schema/stub.json
           done
           
       - name: Validate YAML stubs
         run: |
-          for file in $(find . -name "*.yaml" -path "*/stubs/*" -o -name "*.yml" -path "*/stubs/*"); do
+          find . -path "*/stubs/*" \( -name "*.yaml" -o -name "*.yml" \) -print0 |
+          while IFS= read -r -d "" file; do
             echo "Validating $file"
-            python -c "import yaml, json; json.dumps(yaml.safe_load(open('$file')))" | jsonschema -i - https://bavix.github.io/gripmock/schema/stub.json
+            python -c "import yaml, json, sys; json.dump(yaml.safe_load(open(sys.argv[1])), sys.stdout)" "$file" |
+              jsonschema -i - https://bavix.github.io/gripmock/schema/stub.json
           done
 ```
 
@@ -109,10 +109,11 @@ validate_stubs:
 
 ### Missing Required Fields
 
+A stub with `service` but no `method` and no `output`:
+
 ```json
 {
   "service": "MyService"
-  // Missing "method" and "output" - required fields
 }
 ```
 
@@ -143,12 +144,9 @@ input:
 
 **Error**: `'string' is not of a type(s) 'object'`
 
-## Best Practices
+## Notes
 
-Here are some tips to make validation work better for you:
-
-1. **Always validate** your stubs before deployment - it's like proofreading your code
-2. **Use IDE integration** for real-time feedback - catch errors as you type
-3. **Set up CI/CD validation** to catch errors early - let the computer do the boring work
-4. **Test with real data** to ensure your stubs work as expected - validation catches syntax errors, but you need to test logic
-5. **Keep schemas updated** when adding new features - the schema should match what you're actually using 
+Schema validation catches structure — a missing `method`, a `code` that is a
+string, a matcher key that does not exist. It says nothing about whether a stub
+matches the request you expect it to; for that, use
+[`POST /api/stubs/search`](../api/stubs/search.md). 

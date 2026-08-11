@@ -125,7 +125,7 @@ func TestGreeter_SayHello(t *testing.T) {
     // Define a stub with delay
     srv.ExpectUnary(Greeter_SayHello_FullMethodName).
         Match("name", "Bob").
-        Return(Delay(20*time.Millisecond, "message", "Hello Bob"))
+        Return(sdk.Delay(20*time.Millisecond, "message", "Hello Bob"))
 
     client := helloworld.NewGreeterClient(srv.Conn())
 
@@ -207,7 +207,3 @@ func TestAuthService_Login(t *testing.T) {
     require.Equal(t, "limited-token", limitedReply2.GetToken())
 }
 ```
-
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::

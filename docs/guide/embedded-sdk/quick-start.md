@@ -95,10 +95,10 @@ func TestGreeter_SayHello_WithDelay(t *testing.T) {
     srv := sdk.NewServer(t, sdk.WithFileDescriptor(helloworld.File_helloworld_proto))
     defer srv.Close()
 
-    // Define an expectation with delay using composable Delay()
+    // Define a stub with a delay, using the composable sdk.Delay()
     srv.ExpectUnary("/helloworld.Greeter/SayHello").
         Match("name", "Bob").
-        Return(Delay(20*time.Millisecond, "message", "Hello Bob"))
+        Return(sdk.Delay(20*time.Millisecond, "message", "Hello Bob"))
 
     client := helloworld.NewGreeterClient(srv.Conn())
 
@@ -156,7 +156,3 @@ srv.ExpectUnary(helloworld.Greeter_SayHello_FullMethodName).
     Match("name", "Alex").
     Return("message", "Hi Alex")
 ```
-
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::

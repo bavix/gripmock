@@ -61,12 +61,12 @@ curl http://127.0.0.1:4771/api/stubs/unused
 | `id`     | `string` | Unique identifier for the stub (UUID format).                              |
 | `service`| `string` | Name of the gRPC service (e.g., `Gripmock`).                              |
 | `method` | `string` | Name of the gRPC method (e.g., `SayHello`).                               |
-| `input`  | `object` | Input matching criteria (e.g., `equals`, `contains`, `matches`).          |
+| `input`  | `object` | Input matching criteria (`equals`, `contains`, `matches`, `glob`, `anyOf`, `ignoreArrayOrder`). |
 | `output` | `object` | Response configuration, including `data`, `error`, and gRPC status `code`.|  
 
 ## Behavior
-- **Unused Definition**: A stub is considered "unused" if it has **never** been matched by a `POST /api/stubs/search` request.  
-- **Inverse of Used**: The `/api/stubs/used` endpoint returns stubs that **have** been matched by searches.  
+- **Unused Definition**: A stub is "unused" until it is first matched — by a real gRPC call, by `POST /api/stubs/search`, or through the MCP API.  
+- **Inverse of Used**: The `/api/stubs/used` endpoint returns stubs that **have** been matched.  
 - **Persistence**: The "unused" state resets when the GripMock server restarts.  
 
 ## Example Workflow
@@ -120,7 +120,3 @@ curl http://127.0.0.1:4771/api/stubs/unused
 For complete schema details, see:
 - [OpenAPI Stub Definition](https://bavix.github.io/gripmock-openapi/)
 - [JSON Schema for Stubs](https://bavix.github.io/gripmock/schema/stub.json)
-
----
-
-This endpoint is essential for maintaining clean stub configurations by identifying and removing unused stubs.

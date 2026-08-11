@@ -1,12 +1,12 @@
 # Why YAML?
 
-YAML makes working with GripMock simple and enjoyable. Let's explore why this format is the perfect choice for your gRPC mocking needs.
+GripMock reads stubs from both JSON and YAML. YAML is the shorter of the two,
+and it carries anchors, comments and multi-line strings that JSON does not.
 
-## 1. Clean and Readable Syntax
+## 1. Less punctuation
 
-YAML removes unnecessary punctuation, making your configuration crystal clear at first glance:
+The same stub, first as JSON:
 
-**Here's how it would look in JSON:**
 ```json  
 [
   {
@@ -27,7 +27,8 @@ YAML removes unnecessary punctuation, making your configuration crystal clear at
 ]
 ```  
 
-**And here's the same thing in YAML:**
+And as YAML:
+
 ```yaml  
 - service: Gripmock
   method: SayHello
@@ -40,13 +41,11 @@ YAML removes unnecessary punctuation, making your configuration crystal clear at
       returnCode: 1
 ```  
 
-See the difference? No more brackets and commas cluttering your code - just clean, readable configuration!
+17 lines against 10, for the same stub.
 
 ---
 
-## 2. Streaming Support Made Simple
-
-YAML handles all types of gRPC streaming scenarios with ease:
+## 2. Streaming
 
 ### Simple Request-Response
 ```yaml
@@ -66,7 +65,7 @@ YAML handles all types of gRPC streaming scenarios with ease:
 ```yaml
 - service: UploadService
   method: UploadFile
-  stream:
+  inputs:
     - equals:
         chunk_id: "file_001"
         sequence: 1
@@ -89,7 +88,7 @@ YAML handles all types of gRPC streaming scenarios with ease:
 ```yaml
 - service: ChatService
   method: Chat
-  stream:
+  inputs:
     - equals:
         user_id: "alice"
         message: "Hello!"
@@ -106,7 +105,7 @@ YAML handles all types of gRPC streaming scenarios with ease:
 
 ---
 
-## 3. Flexible Matching Options
+## 3. Matching options
 
 ### Ignore Array Order
 ```yaml
@@ -143,9 +142,10 @@ YAML handles all types of gRPC streaming scenarios with ease:
 
 ---
 
-## 4. Reusable Components
+## 4. Anchors
 
-YAML lets you create templates and reuse them throughout your configuration:
+An anchor (`&name`) defines a value once; an alias (`*name`) reuses it. JSON has
+no equivalent.
 
 ```yaml  
 # Create a response template
@@ -173,9 +173,9 @@ YAML lets you create templates and reuse them throughout your configuration:
 
 ---
 
-## 5. Built-in Data Transformations
+## 5. Template functions
 
-YAML supports built-in functions for handling complex data conversions:
+Stub values pass through the template engine, in YAML and JSON alike:
 
 ### UUID Handling
 ```yaml
@@ -203,11 +203,9 @@ string: {{ string2base64 "hello world" }}
 
 ---
 
-## 6. Version Compatibility
+## 6. Both stub formats
 
-GripMock automatically supports both old and new formats:
-
-### Old Format (V1) - Still Works
+### V1 — `input`
 ```yaml
 - service: ChatService
   method: SendMessage
@@ -220,11 +218,11 @@ GripMock automatically supports both old and new formats:
       reply: "Hello, Alice!"
 ```
 
-### New Format (V2) - Recommended
+### V2 — `inputs`
 ```yaml
 - service: ChatService
   method: SendMessage
-  stream:
+  inputs:
     - equals:
         user: Alice
         text: "Hello"
@@ -233,13 +231,13 @@ GripMock automatically supports both old and new formats:
       reply: "Hello, Alice!"
 ```
 
-**Important**: GripMock automatically detects the format and works with both!
+GripMock accepts both, and picks the format from whichever field the stub carries.
 
 ---
 
-## 7. Priority Control
+## 7. Priority
 
-Control which stub should be selected first:
+When several stubs match, the higher `priority` wins:
 
 ```yaml
 # High priority for important cases
@@ -270,15 +268,7 @@ Control which stub should be selected first:
 
 ---
 
-## What Makes YAML Special?
+Both `.yaml` and `.yml` extensions are read.
 
-- 🔄 **Readability**: No more cluttered brackets and commas
-- ♻️ **Reusability**: Create templates and use them over and over
-- 🛠 **Flexibility**: Built-in functions for UUID, Base64, and other formats
-- 🔧 **Compatibility**: Works with both `.yaml` and `.yml` files
-- 📡 **Streaming**: Excellent support for all gRPC streaming types
-- 🎯 **Matching**: Flexible settings for exact, partial, and regex matching
-- 🔄 **Backward Compatibility**: Automatic support for old and new formats
-- ⚡ **Performance**: Efficient ranking and matching algorithms
-
-For advanced transformation functions, check out the [UUID Utilities Documentation](https://bavix.github.io/uuid-ui/).  
+For the UUID conversion functions, see the
+[UUID Utilities documentation](https://bavix.github.io/uuid-ui/).

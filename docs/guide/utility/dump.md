@@ -19,7 +19,7 @@ Use it to:
 gripmock dump
 ```
 
-By default writes YAML files to `./stubs_export`, connecting to `http://` + `HTTP_ADDR`.
+Writes YAML files to `./stubs_export`, reading from the GripMock instance at `HTTP_ADDR` over HTTP.
 
 ## Options
 
@@ -28,7 +28,7 @@ By default writes YAML files to `./stubs_export`, connecting to `http://` + `HTT
 | `--output` | `-o` | `stubs_export` | Output directory. |
 | `--format` | — | `yaml` | Output format: `yaml` or `json`. |
 | `--scheme` | — | `http` | URL scheme: `http` or `https`. |
-| `--source` | — | *(empty)* | Filter by source: `file`, `rest`, `mcp`, `proxy`. |
+| `--source` | — | *(empty)* | Filter by source: `rest`, `mcp`, `proxy`. Empty exports everything except `file`. |
 
 ## Source behavior
 

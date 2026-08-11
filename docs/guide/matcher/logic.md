@@ -4,7 +4,7 @@ title: Matching Logic
 
 # Matching Logic
 
-GripMock uses a declarative matching model built on three strategies and one composition operator. This page defines the formal semantics that apply identically to [Input](./input) and [Header](./headers) matching.
+GripMock uses a declarative matching model built on four strategies and one composition operator. This page defines the formal semantics that apply identically to [Input](./input) and [Header](./headers) matching.
 
 ## Strategies
 
@@ -13,13 +13,14 @@ GripMock uses a declarative matching model built on three strategies and one com
 | `equals` | Exact deep-equality. Every key-value pair must match the request verbatim. |
 | `contains` | Substring/subset check. String values must contain the expected substring; arrays must contain all expected elements; objects are matched recursively. |
 | `matches` | Regular expression. Each value is treated as a Go regex pattern applied to the corresponding request value. |
+| `glob` <VersionTag version="v3.12.0" /> | Glob pattern (`*`, `?`, `[...]`) applied to the corresponding request value. Every listed key must be present. |
 
 ## Conjunction (AND)
 
-Within one matcher block, all three strategies are AND-ed:
+Within one matcher block, all four strategies are AND-ed:
 
 ```
-equals(request) AND contains(request) AND matches(request)
+equals(request) AND contains(request) AND matches(request) AND glob(request)
 ```
 
 Empty/absent maps always pass (`len == 0 → true`), so in practice only the strategies you provide contribute to the result.
@@ -43,10 +44,10 @@ Matches only when `role` is exactly `"admin"` **and** `name` contains `"jo"` **a
 `anyOf` adds an OR layer on top of the base conjunction:
 
 ```
-base(equals, contains, matches) AND (anyOf[0] OR anyOf[1] OR ...)
+base(equals, contains, matches, glob) AND (anyOf[0] OR anyOf[1] OR ...)
 ```
 
-Each `anyOf` element is itself a conjunction (`element.equals AND element.contains AND element.matches`). At least one element must pass for the whole `anyOf` to pass.
+Each `anyOf` element is itself a conjunction (`element.equals AND element.contains AND element.matches AND element.glob`). At least one element must pass for the whole `anyOf` to pass.
 
 If `anyOf` is empty or absent, only the base conjunction is evaluated.
 
@@ -109,27 +110,18 @@ input:
 
 ## Empty matchers
 
-A stub with all empty matchers (`equals: {}`, `contains: {}`, `matches: {}`, no `anyOf`) acts as a **catch-all** — it matches any request. This is useful for fallback stubs with low [priority](../stubs/priority).
+A stub with all empty matchers (`equals: {}`, `contains: {}`, and so on, no `anyOf`) acts as a **catch-all** — it matches any request. This is useful for fallback stubs with low [priority](../stubs/priority). A matcher key written with no value at all is equivalent to `{}`.
 
 ## Formal grammar
 
 ```
 Matcher      = Base AND AnyOf?
-Base         = Equals(Request) AND Contains(Request) AND Matches(Request)
+Base         = Equals(Request) AND Contains(Request) AND Matches(Request) AND Glob(Request)
 AnyOf        = Alt[0] OR Alt[1] OR ...
-Alt[i]       = AltEquals(Request) AND AltContains(Request) AND AltMatches(Request)
+Alt[i]       = AltEquals(Request) AND AltContains(Request) AND AltMatches(Request) AND AltGlob(Request)
 ```
 
-Where each `*Equals`/`*Contains`/`*Matches` returns `true` when its map is empty.
-
-## Summary
-
-| Concept | Operator | Notes |
-|---|---|---|
-| Within one block | `AND` | `equals ∧ contains ∧ matches` |
-| Between `anyOf` alternatives | `OR` | At least one must pass |
-| Overall formula | `base AND (anyOf?)` | `anyOf` is optional |
-| `ignoreArrayOrder` | Per-block | Not inherited into `anyOf` |
+Where each strategy returns `true` when its map is empty.
 
 ## Related
 

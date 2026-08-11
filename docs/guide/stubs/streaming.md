@@ -1,6 +1,6 @@
 # Streaming <VersionTag version="v3.3.0" />
 
-GripMock supports three streaming patterns from gRPC. This guide covers all of them.
+GripMock supports all three gRPC streaming patterns.
 
 ## Types
 
@@ -38,12 +38,13 @@ output:
 output:
   delay: 200ms
   stream:
-    - message: "First"
-    - message: "Second"  # sent after 200ms
+    - message: "First"   # sent after 200ms
+    - message: "Second"  # sent after another 200ms
     - message: "Third"   # sent after another 200ms
 ```
 
-For 3 messages with 200ms delay: total = 400ms (delay × (count-1))
+The delay applies before every message, including the first. Three messages at
+200ms take 600ms.
 
 ## Client Streaming
 
@@ -130,7 +131,7 @@ output:
 ```yaml
 service: ChatService
 method: SendMessage
-stream:  # V2 indicator
+inputs:  # V2 indicator
   - equals:
       user: "alice"
 output:
@@ -138,7 +139,7 @@ output:
     success: true
 ```
 
-GripMock auto-detects V1 vs V2 based on presence of `stream` field.
+GripMock picks V1 or V2 by which input field the stub carries: `input` or `inputs`.
 
 ## Error Handling
 
@@ -162,46 +163,6 @@ output:
     - message: "Almost done"
   error: "Insufficient resources"
   code: 8  # RESOURCE_EXHAUSTED
-```
-
-## Best Practices
-
-### 1. Consistent Message Structure
-```yaml
-# Good
-stream:
-  - message: "First"
-    timestamp: "2024-01-01T12:00:00Z"
-  - message: "Second"
-    timestamp: "2024-01-01T12:00:01Z"
-
-# Avoid — inconsistent
-stream:
-  - message: "First"
-  - message: "Second"
-    timestamp: "2024-01-01T12:00:01Z"
-```
-
-### 2. Reasonable Delays
-```yaml
-# Good
-delay: 500ms
-
-# Avoid
-delay: 30s  # Too long for tests
-```
-
-### 3. Reasonable Stream Length
-```yaml
-# Good
-stream:
-  - chunk: 1
-    total: 10
-
-# Avoid
-stream:
-  - chunk: i
-    total: 10000  # Too many
 ```
 
 ## Related

@@ -130,9 +130,9 @@ func TestMyService_WithVerification(t *testing.T) {
 }
 ```
 
-## Use Descriptive Stub IDs
+## One Stub per Scenario
 
-When working with complex stubs, consider organizing with clear structure:
+Give each branch its own stub, matched on the field that distinguishes it, rather than one stub with conditional logic:
 
 ```go
 func TestUserService_ComplexScenario(t *testing.T) {
@@ -163,36 +163,11 @@ func TestUserService_ComplexScenario(t *testing.T) {
 }
 ```
 
-## Error Handling
+## Startup Failures
 
-The SDK's `NewServer` does not return an error — startup failures trigger a panic internally:
-
-```go
-func runSafeMock(t *testing.T) *sdk.Server {
-    t.Helper()
-
-    // ARRANGE
-    srv := sdk.NewServer(t, sdk.WithFileDescriptor(service.File_service_proto))
-
-    return srv
-}
-
-func TestMyService_WithSafeMock(t *testing.T) {
-    // ARRANGE
-    srv := runSafeMock(t)
-
-    srv.ExpectUnary(MyService_MyMethod_FullMethodName).
-        Match("id", "safe-test").
-        Return("result", "safe-success")
-
-    // ACT
-    resp, err := client.MyMethod(t.Context(), &MyRequest{Id: "safe-test"})
-
-    // ASSERT
-    require.NoError(t, err)
-    require.Equal(t, "safe-success", resp.Result)
-}
-```
+`sdk.NewServer` returns no error — a bad descriptor or an unavailable port
+panics, which fails the test at the line that caused it. There is nothing to
+check for.
 
 ## Use Times for Exact Call Verification
 
@@ -258,9 +233,9 @@ func TestPaymentService_WithMinimalMocks(t *testing.T) {
 }
 ```
 
-## Comprehensive Example
+## Everything Together
 
-Here's a complete example showing all best practices:
+The patterns above in one test:
 
 ```go
 func TestOrderService_Comprehensive(t *testing.T) {
@@ -313,7 +288,3 @@ func TestOrderService_Comprehensive(t *testing.T) {
     require.Equal(t, 1, srv.Called(OrderService_CancelOrder_FullMethodName))
 }
 ```
-
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::

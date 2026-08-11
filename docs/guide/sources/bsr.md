@@ -31,7 +31,7 @@ BSR_BUF_TOKEN=<token> gripmock --stub ./stubs buf.build/acme/private-api
 
 ## Configuration
 
-GripMock uses simple BSR profile configuration with these environment variables:
+BSR access is configured through two profiles — public Buf and self-hosted:
 
 - `BSR_BUF_BASE_URL` - Base URL for public BSR (default: `https://buf.build`)
 - `BSR_BUF_TOKEN` - Token for public BSR access
@@ -42,9 +42,8 @@ GripMock uses simple BSR profile configuration with these environment variables:
 
 ## Host matching
 
-GripMock routes modules based on host matching:
-
-GripMock uses the host from `BSR_SELF_BASE_URL` for routing.
+A module reference carries its host. If that host matches the one in
+`BSR_SELF_BASE_URL`, the Self profile serves it; otherwise the Buf profile does.
 
 ### Examples
 
@@ -101,8 +100,6 @@ BSR_SELF_TOKEN=<on-prem-token>
 2. GripMock extracts the host part (`bsr.company.local`)
 3. If Self profile is configured and host matches → use Self client
 4. Otherwise → use Buf client
-
-This simple approach makes it easy to work with multiple BSR instances without complex configuration.
 
 ## Project fixture example
 

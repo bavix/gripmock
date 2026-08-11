@@ -12,9 +12,9 @@
 
 > 注意：このページは機械翻訳により生成されています。内容に不正確または不完全な箇所がある可能性があります。英語の原文 [`README.md`](README.md) を参照としてください。
 
-**テストと開発のための最速かつ最も信頼性の高い gRPC モックサーバー。**
+テストと開発のための gRPC モックサーバー。
 
-GripMock は `.proto` ファイルまたはコンパイル済みの `.pb` 記述子からモックサーバーを作成し、gRPC テストをシンプルかつ効率的にします。エンドツーエンドテスト、開発環境、CI/CD パイプラインに最適です。
+GripMock は `.proto` ファイルまたはコンパイル済みの `.pb` 記述子からモックサーバーを構築します。19 MB のイメージで 29 804 req/s、コールドスタート 0.4 秒（[ベンチマーク](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)）。
 
 ![greeter](https://raw.githubusercontent.com/bavix/.github/master/svgs/gripmock-greeter.gif)
 
@@ -45,24 +45,14 @@ GripMock は `.proto` ファイルまたはコンパイル済みの `.pb` 記述
 
 **[完全なドキュメント](https://bavix.github.io/gripmock)** - サンプル付きの完全なガイド
 
-- **Descriptor API（`/api/descriptors`）**：検証可能な curl ワークフロー付きでコンパイル済み proto 記述子（`.pb`）を実行時にロード：[ドキュメント](https://bavix.github.io/gripmock/guide/api/descriptors)
-- **Upstream Modes（試験運用）**：`proxy`、`replay`、`capture` と実用的なロールアウトガイダンス：[ドキュメント](https://bavix.github.io/gripmock/guide/modes)
-- **Embedded SDK（試験運用）**：`sdk.NewServer`、`Match()`、`Return()` と検証を使用したプロセス内テスト：[ドキュメント](https://bavix.github.io/gripmock/guide/embedded-sdk)
-- **Faker リファレンス**：組み込み Faker のキーごとのカタログと例：[ドキュメント](https://bavix.github.io/gripmock/guide/stubs/faker)
-- **OpenTelemetry + メトリクス**：トレーシング環境変数と `/metrics` の動作：[ドキュメント](https://bavix.github.io/gripmock/guide/introduction/advanced-usage)
-- **GitHub Actions（CI/CD）**：公式ワークフローアクションで GripMock を自動的にダウンロード、起動、準備完了待機、停止：[ドキュメント](https://bavix.github.io/gripmock/guide/ci-cd/github-actions)
-
-## 🧬 プロジェクトの進化
-
-GripMock は [tokopedia/gripmock](https://github.com/tokopedia/gripmock) のフォークとして開始され、その後独立した完全に書き直されたプロジェクトに進化しました。
-
-現在の GripMock は実用的なテストワークフローに焦点を当てています：
-
-- ネイティブプロセス内アーキテクチャ（実行時のコード生成なし）
-- 柔軟な記述子ソースとランタイム操作（ホットスタブ + descriptors API）
-- 本番品質のテスト機能（ストリーミング、テンプレート、アップストリームモード、プラグイン、SDK、MCP）
-
-アーキテクチャの詳細とベンチマーク方法については：[パフォーマンス比較](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
+新しい機能の詳細：
+[Descriptor API](https://bavix.github.io/gripmock/guide/api/descriptors) ·
+[Upstream Modes（試験運用）](https://bavix.github.io/gripmock/guide/modes) ·
+[Embedded SDK（試験運用）](https://bavix.github.io/gripmock/guide/embedded-sdk) ·
+[Faker Reference](https://bavix.github.io/gripmock/guide/stubs/faker) ·
+[OpenTelemetry + Metrics](https://bavix.github.io/gripmock/guide/introduction/advanced-usage) ·
+[GitHub Actions](https://bavix.github.io/gripmock/guide/ci-cd/github-actions) ·
+[Performance Comparison](https://bavix.github.io/gripmock/guide/introduction/performance-comparison)
 
 ## 🖥️ Web インターフェース
 
@@ -100,7 +90,7 @@ docker pull bavix/gripmock
 プラグインビルドには、ペアのビルダーイメージを使用します：
 
 ```bash
-docker pull bavix/gripmock:v3.17.2-builder
+docker pull bavix/gripmock:3.18.4-builder
 ```
 
 #### Go インストール
@@ -529,10 +519,11 @@ Upstream modes は reflection ソース上で動作し、ランタイムの動�
 
 |  | bavix | tokopedia |
 | --- | --- | --- |
-| スループット | 24 284 req/s | 5 600 req/s |
-| p99 レイテンシ | 11 ms | 26 ms |
-| 起動、平均 | 0.43 s | 2.29 s |
-| イメージサイズ、amd64 | 19.13 MB | 226.29 MB |
+| スループット | 29 804 req/s | 6 221 req/s |
+| p99 レイテンシ | 9.44 ms | 24.08 ms |
+| 起動、平均 | 0.399 s | 2.205 s |
+| イメージサイズ、amd64 | 19.17 MB | 226.29 MB |
+| イメージサイズ、arm64 | 18.49 MB | 219.90 MB |
 
 ![イメージサイズベンチマーク](docs/public/bench/image-size.svg)
 ![起動準備完了ベンチマーク](docs/public/bench/startup-ready.svg)

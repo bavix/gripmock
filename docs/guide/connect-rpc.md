@@ -1,6 +1,6 @@
 # ConnectRPC <VersionTag version="v3.15.0" />
 
-ConnectRPC is a modern HTTP RPC protocol. GripMock supports it out of the box, including unary, server-streaming, client-streaming, and bidirectional streaming over the standard Connect envelope framing.
+ConnectRPC is an HTTP RPC protocol. GripMock serves it with the same stubs it serves gRPC from — unary, server-streaming, client-streaming and bidirectional, over the standard Connect envelope framing.
 
 The gateway serves ConnectRPC and gRPC-web on a **single port** (`:4769` by default). Content-Type negotiation dispatches to the correct handler automatically. See [gRPC-web](grpc-web) for the companion protocol.
 
@@ -82,7 +82,7 @@ output:
 
 ## Features
 
-- **Input Matching** — `equals`, `contains`, `regex`, `glob`, `anyOf`
+- **Input Matching** — `equals`, `contains`, `matches`, `glob`, `anyOf`
 - **Output Templates** — `faker.*`, `{{uuid}}`, `{{timestamp}}`
 - **Delay Simulation** — `output.delay`
 - **Error Responses** — `output.error` with gRPC status codes
