@@ -1,7 +1,9 @@
 ![GripMock](https://github.com/bavix/gripmock/assets/5111255/d1fc10ef-2149-4302-8e24-aef4fdfe043c)
 
-[![Coverage Status](https://coveralls.io/repos/github/bavix/gripmock/badge.svg?branch=master)](https://coveralls.io/github/bavix/gripmock?branch=master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/bavix/gripmock/v3)](https://goreportcard.com/report/github.com/bavix/gripmock/v3)
+[![CI](https://img.shields.io/github/actions/workflow/status/bavix/gripmock/continuous-integration.yml?branch=master&label=CI)](https://github.com/bavix/gripmock/actions/workflows/continuous-integration.yml)
+[![Coverage](https://img.shields.io/coverallsCoverage/github/bavix/gripmock?branch=master)](https://coveralls.io/github/bavix/gripmock?branch=master)
+[![Release](https://img.shields.io/github/v/release/bavix/gripmock?sort=semver)](https://github.com/bavix/gripmock/releases)
+[![Docker Pulls](https://img.shields.io/docker/pulls/bavix/gripmock)](https://hub.docker.com/r/bavix/gripmock)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # GripMock 🚀
