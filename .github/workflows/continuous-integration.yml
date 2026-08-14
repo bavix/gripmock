@@ -11,7 +11,7 @@ concurrency:
 
 env:
   GRPCTESTIFY_VERSION: "1.10.2"
-  GO_VERSION: "1.26"
+  GO_VERSION: "1.26.6"
 
 jobs:
   unit-tests:

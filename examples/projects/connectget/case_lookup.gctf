@@ -7,7 +7,11 @@ tags: [connectget]
 connectget.v1.LookupService/Lookup
 
 --- REQUEST ---
-{"key": "alpha"}
+{
+  "key": "alpha"
+}
 
 --- RESPONSE ---
-{"value": "cached"}
+{
+  "value": "cached"
+}

@@ -161,7 +161,7 @@ func (m *grpcMocker) recordUnaryStub(
 ) {
 	captureCtx := m.newCaptureRequestContext(ctx)
 	requestData := m.convertToMap(req)
-	responseHeaders := responseHeadersFromMetadata(header, trailer)
+	responseMeta := captureMetadata(header, trailer)
 
 	var responseData any
 	if resp != nil {
@@ -172,7 +172,7 @@ func (m *grpcMocker) recordUnaryStub(
 		func() *stuber.Stub {
 			return proxycapture.BuildUnaryStub(
 				m.fullServiceName, m.methodName, captureCtx.sessionID,
-				requestData, captureCtx.headers, responseData, responseHeaders, callErr,
+				requestData, captureCtx.headers, responseData, responseMeta, callErr,
 			)
 		},
 		route.Source.RecordDelay, elapsed,
