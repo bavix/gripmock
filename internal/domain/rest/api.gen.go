@@ -80,24 +80,31 @@ func (e StubEffectAction) Valid() bool {
 	}
 }
 
-// AddDescriptorsResponse defines model for AddDescriptorsResponse.
+// AddDescriptorsResponse Result of registering an uploaded FileDescriptorSet.
 type AddDescriptorsResponse struct {
+	// Message Human-readable result of the upload.
 	Message string `json:"message"`
 
 	// ServiceIDs Service IDs (e.g. helloworld.Greeter) registered. Use DELETE /services/{serviceID} to remove.
-	ServiceIDs []string  `json:"serviceIDs"`
-	Time       time.Time `json:"time"`
+	ServiceIDs []string `json:"serviceIDs"`
+
+	// Time Server time when the response was produced (RFC 3339).
+	Time time.Time `json:"time"`
 }
 
-// CallRecord defines model for CallRecord.
+// CallRecord One gRPC call the server answered.
 type CallRecord struct {
 	// Code gRPC status code (e.g., 0 for OK, 5 for NotFound)
 	Code *int `json:"code,omitempty"`
 
 	// ElapsedMs Handler duration in milliseconds
-	ElapsedMs *int64  `json:"elapsedMs,omitempty"`
-	Error     *string `json:"error,omitempty"`
-	Method    *string `json:"method,omitempty"`
+	ElapsedMs *int64 `json:"elapsedMs,omitempty"`
+
+	// Error gRPC status message, empty when the call succeeded.
+	Error *string `json:"error,omitempty"`
+
+	// Method gRPC method name.
+	Method *string `json:"method,omitempty"`
 
 	// Request Deprecated: use requests for streaming calls
 	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
@@ -115,19 +122,26 @@ type CallRecord struct {
 
 	// Responses Response messages for streaming calls (server stream, bidi stream)
 	Responses *[]map[string]any `json:"responses,omitempty"`
-	Service   *string           `json:"service,omitempty"`
+
+	// Service Fully qualified gRPC service name.
+	Service *string `json:"service,omitempty"`
 
 	// Session Session ID (empty = global)
 	Session *string `json:"session,omitempty"`
 
 	// StubId Stub identifier
-	StubId    *uuid.UUID `json:"stubId,omitempty"`
+	StubId *uuid.UUID `json:"stubId,omitempty"`
+
+	// Timestamp When the call was received (RFC 3339).
 	Timestamp *time.Time `json:"timestamp,omitempty"`
 }
 
-// Dashboard defines model for Dashboard.
+// Dashboard Overview and runtime info in a single payload.
 type Dashboard struct {
-	AppName  string `json:"appName"`
+	// AppName Application name reported by the binary.
+	AppName string `json:"appName"`
+
+	// Compiler Go compiler used for the build.
 	Compiler string `json:"compiler"`
 
 	// CoveredMethods Number of gRPC methods that have at least one stub
@@ -135,54 +149,117 @@ type Dashboard struct {
 
 	// GatewayAddr ConnectRPC + gRPC-web listen address
 	GatewayAddr string `json:"gatewayAddr,omitempty"`
-	GoVersion   string `json:"goVersion"`
-	Goarch      string `json:"goarch"`
-	Goos        string `json:"goos"`
+
+	// GoVersion Go version the binary was built with.
+	GoVersion string `json:"goVersion"`
+
+	// Goarch CPU architecture the binary targets.
+	Goarch string `json:"goarch"`
+
+	// Goos Operating system the binary targets.
+	Goos string `json:"goos"`
 
 	// GrpcAddr Native gRPC listen address
-	GrpcAddr       string `json:"grpcAddr,omitempty"`
-	HistoryEnabled bool   `json:"historyEnabled"`
-	HistoryErrors  int    `json:"historyErrors"`
+	GrpcAddr string `json:"grpcAddr,omitempty"`
+
+	// HistoryEnabled Whether call history recording is on (`HISTORY_ENABLED`).
+	HistoryEnabled bool `json:"historyEnabled"`
+
+	// HistoryErrors Recorded calls that ended in a gRPC error.
+	HistoryErrors int `json:"historyErrors"`
 
 	// HttpAddr Admin REST API + UI listen address
-	HttpAddr           string    `json:"httpAddr,omitempty"`
-	NumCPU             int       `json:"numCPU"`
-	Ready              bool      `json:"ready"`
-	RuntimeDescriptors int       `json:"runtimeDescriptors"`
-	StartedAt          time.Time `json:"startedAt"`
-	TotalHistory       int       `json:"totalHistory"`
+	HttpAddr string `json:"httpAddr,omitempty"`
+
+	// NumCPU CPUs visible to the process.
+	NumCPU int `json:"numCPU"`
+
+	// Ready Whether the server has finished loading and is answering calls.
+	Ready bool `json:"ready"`
+
+	// RuntimeDescriptors Descriptors uploaded over REST since startup.
+	RuntimeDescriptors int `json:"runtimeDescriptors"`
+
+	// StartedAt When the process started (RFC 3339).
+	StartedAt time.Time `json:"startedAt"`
+
+	// TotalHistory Calls recorded in history.
+	TotalHistory int `json:"totalHistory"`
 
 	// TotalMethods Total number of gRPC methods across all services
-	TotalMethods  int    `json:"totalMethods,omitempty"`
-	TotalServices int    `json:"totalServices"`
-	TotalSessions int    `json:"totalSessions"`
-	TotalStubs    int    `json:"totalStubs"`
-	UnusedStubs   int    `json:"unusedStubs"`
-	UptimeSeconds int    `json:"uptimeSeconds"`
-	UsedStubs     int    `json:"usedStubs"`
-	Version       string `json:"version"`
+	TotalMethods int `json:"totalMethods,omitempty"`
+
+	// TotalServices Services currently registered, from every descriptor source.
+	TotalServices int `json:"totalServices"`
+
+	// TotalSessions Sessions currently known to the server.
+	TotalSessions int `json:"totalSessions"`
+
+	// TotalStubs Stubs currently in storage.
+	TotalStubs int `json:"totalStubs"`
+
+	// UnusedStubs Stubs never matched since startup.
+	UnusedStubs int `json:"unusedStubs"`
+
+	// UptimeSeconds Seconds since startup.
+	UptimeSeconds int `json:"uptimeSeconds"`
+
+	// UsedStubs Stubs matched at least once since startup.
+	UsedStubs int `json:"usedStubs"`
+
+	// Version GripMock version.
+	Version string `json:"version"`
 }
 
-// DashboardInfo defines model for DashboardInfo.
+// DashboardInfo Build and runtime information about this instance.
 type DashboardInfo struct {
-	AppName            string    `json:"appName"`
-	Compiler           string    `json:"compiler"`
-	GoVersion          string    `json:"goVersion"`
-	Goarch             string    `json:"goarch"`
-	Goos               string    `json:"goos"`
-	HistoryEnabled     bool      `json:"historyEnabled"`
-	NumCPU             int       `json:"numCPU"`
-	Ready              bool      `json:"ready"`
-	RuntimeDescriptors int       `json:"runtimeDescriptors"`
-	StartedAt          time.Time `json:"startedAt"`
-	TotalServices      int       `json:"totalServices"`
-	TotalSessions      int       `json:"totalSessions"`
-	TotalStubs         int       `json:"totalStubs"`
-	UptimeSeconds      int       `json:"uptimeSeconds"`
-	Version            string    `json:"version"`
+	// AppName Application name reported by the binary.
+	AppName string `json:"appName"`
+
+	// Compiler Go compiler used for the build.
+	Compiler string `json:"compiler"`
+
+	// GoVersion Go version the binary was built with.
+	GoVersion string `json:"goVersion"`
+
+	// Goarch CPU architecture the binary targets.
+	Goarch string `json:"goarch"`
+
+	// Goos Operating system the binary targets.
+	Goos string `json:"goos"`
+
+	// HistoryEnabled Whether call history recording is on (`HISTORY_ENABLED`).
+	HistoryEnabled bool `json:"historyEnabled"`
+
+	// NumCPU CPUs visible to the process.
+	NumCPU int `json:"numCPU"`
+
+	// Ready Whether the server has finished loading and is answering calls.
+	Ready bool `json:"ready"`
+
+	// RuntimeDescriptors Descriptors uploaded over REST since startup.
+	RuntimeDescriptors int `json:"runtimeDescriptors"`
+
+	// StartedAt When the process started (RFC 3339).
+	StartedAt time.Time `json:"startedAt"`
+
+	// TotalServices Services currently registered, from every descriptor source.
+	TotalServices int `json:"totalServices"`
+
+	// TotalSessions Sessions currently known to the server.
+	TotalSessions int `json:"totalSessions"`
+
+	// TotalStubs Stubs currently in storage.
+	TotalStubs int `json:"totalStubs"`
+
+	// UptimeSeconds Seconds since startup.
+	UptimeSeconds int `json:"uptimeSeconds"`
+
+	// Version GripMock version.
+	Version string `json:"version"`
 }
 
-// DashboardOverview defines model for DashboardOverview.
+// DashboardOverview Aggregate counters shown on the dashboard.
 type DashboardOverview struct {
 	// CoveredMethods Number of gRPC methods that have at least one stub
 	CoveredMethods int `json:"coveredMethods,omitempty"`
@@ -191,117 +268,217 @@ type DashboardOverview struct {
 	GatewayAddr string `json:"gatewayAddr,omitempty"`
 
 	// GrpcAddr Native gRPC listen address
-	GrpcAddr      string `json:"grpcAddr,omitempty"`
-	HistoryErrors int    `json:"historyErrors"`
+	GrpcAddr string `json:"grpcAddr,omitempty"`
+
+	// HistoryErrors Recorded calls that ended in a gRPC error.
+	HistoryErrors int `json:"historyErrors"`
 
 	// HttpAddr Admin REST API + UI listen address
-	HttpAddr           string `json:"httpAddr,omitempty"`
-	RuntimeDescriptors int    `json:"runtimeDescriptors"`
-	TotalHistory       int    `json:"totalHistory"`
+	HttpAddr string `json:"httpAddr,omitempty"`
+
+	// RuntimeDescriptors Descriptors uploaded over REST since startup.
+	RuntimeDescriptors int `json:"runtimeDescriptors"`
+
+	// TotalHistory Calls recorded in history.
+	TotalHistory int `json:"totalHistory"`
 
 	// TotalMethods Total number of gRPC methods across all services
-	TotalMethods  int `json:"totalMethods,omitempty"`
+	TotalMethods int `json:"totalMethods,omitempty"`
+
+	// TotalServices Services currently registered, from every descriptor source.
 	TotalServices int `json:"totalServices"`
+
+	// TotalSessions Sessions currently known to the server.
 	TotalSessions int `json:"totalSessions"`
-	TotalStubs    int `json:"totalStubs"`
-	UnusedStubs   int `json:"unusedStubs"`
-	UsedStubs     int `json:"usedStubs"`
+
+	// TotalStubs Stubs currently in storage.
+	TotalStubs int `json:"totalStubs"`
+
+	// UnusedStubs Stubs never matched since startup.
+	UnusedStubs int `json:"unusedStubs"`
+
+	// UsedStubs Stubs matched at least once since startup.
+	UsedStubs int `json:"usedStubs"`
 }
 
-// DescriptorServiceIDs defines model for DescriptorServiceIDs.
+// DescriptorServiceIDs Service IDs registered from descriptors uploaded over REST.
 type DescriptorServiceIDs struct {
 	// ServiceIDs Service IDs added via POST /descriptors
 	ServiceIDs []string `json:"serviceIDs"`
 }
 
-// HistoryList defines model for HistoryList.
+// HistoryList A page of recorded calls, newest first.
 type HistoryList = []CallRecord
 
-// ID Example: 51c50050-ec27-4dae-a583-a32ca71a1dd5
+// ID Stub identifier (UUID).
+//
+// Example: 51c50050-ec27-4dae-a583-a32ca71a1dd5
 type ID = uuid.UUID
 
-// InspectCandidate defines model for InspectCandidate.
+// InspectCandidate A stub the server considered, with the verdict at each stage.
 type InspectCandidate struct {
-	Events           []InspectCandidateEvent `json:"events"`
-	ExcludedBy       []string                `json:"excludedBy"`
-	HeadersMatched   bool                    `json:"headersMatched"`
-	Id               string                  `json:"id"`
-	InputMatched     bool                    `json:"inputMatched"`
-	Matched          bool                    `json:"matched"`
-	Method           string                  `json:"method"`
-	Priority         int                     `json:"priority"`
-	Score            float64                 `json:"score"`
-	Service          string                  `json:"service"`
-	Session          string                  `json:"session"`
-	Specificity      int                     `json:"specificity"`
-	Times            int                     `json:"times"`
-	Used             int                     `json:"used"`
-	VisibleBySession bool                    `json:"visibleBySession"`
-	WithinTimes      bool                    `json:"withinTimes"`
+	// Events Per-stage verdicts for this candidate.
+	Events []InspectCandidateEvent `json:"events"`
+
+	// ExcludedBy Reasons this candidate was ruled out; empty when it survived.
+	ExcludedBy []string `json:"excludedBy"`
+
+	// HeadersMatched Whether the stub `headers` matched the request metadata.
+	HeadersMatched bool `json:"headersMatched"`
+
+	// Id Stub UUID.
+	Id string `json:"id"`
+
+	// InputMatched Whether the stub `input` matched the request body.
+	InputMatched bool `json:"inputMatched"`
+
+	// Matched True for the single stub that won.
+	Matched bool `json:"matched"`
+
+	// Method Method the stub answers.
+	Method string `json:"method"`
+
+	// Priority The stub `priority` value.
+	Priority int `json:"priority"`
+
+	// Score Match rank plus `priority × 10`. Breaks ties between equally specific stubs.
+	Score float64 `json:"score"`
+
+	// Service Service the stub answers.
+	Service string `json:"service"`
+
+	// Session Session the stub belongs to; empty means global.
+	Session string `json:"session"`
+
+	// Specificity How narrowly the stub describes the request. Compared first when picking a winner.
+	Specificity int `json:"specificity"`
+
+	// Times Effective match limit; `0` means unlimited.
+	Times int `json:"times"`
+
+	// Used How many times the stub has already matched in this session.
+	Used int `json:"used"`
+
+	// VisibleBySession False when the stub belongs to a different session.
+	VisibleBySession bool `json:"visibleBySession"`
+
+	// WithinTimes False when the stub is exhausted by its `times` limit.
+	WithinTimes bool `json:"withinTimes"`
 }
 
-// InspectCandidateEvent defines model for InspectCandidateEvent.
+// InspectCandidateEvent What happened to one candidate at one stage.
 type InspectCandidateEvent struct {
+	// Reason Why, when the candidate was dropped.
 	Reason *string `json:"reason,omitempty"`
-	Result string  `json:"result"`
-	Stage  string  `json:"stage"`
+
+	// Result Whether the candidate passed the stage, was dropped, or was selected.
+	Result string `json:"result"`
+
+	// Stage Stage the event belongs to.
+	Stage string `json:"stage"`
 }
 
-// InspectReport defines model for InspectReport.
+// InspectReport Why a request matched — or did not. Stages show how the candidate set narrowed.
 type InspectReport struct {
-	Candidates       []InspectCandidate `json:"candidates"`
-	Error            string             `json:"error"`
-	FallbackToMethod bool               `json:"fallbackToMethod"`
-	MatchedStubId    string             `json:"matchedStubId"`
-	Method           string             `json:"method"`
-	Service          string             `json:"service"`
-	Session          string             `json:"session"`
-	SimilarStubId    string             `json:"similarStubId"`
-	Stages           []InspectStage     `json:"stages"`
+	// Candidates Every stub considered, with its verdict.
+	Candidates []InspectCandidate `json:"candidates"`
+
+	// Error Why the request could not be resolved.
+	Error string `json:"error"`
+
+	// FallbackToMethod True when no stub matched the input and the search widened to any stub on the method.
+	FallbackToMethod bool `json:"fallbackToMethod"`
+
+	// MatchedStubId UUID of the winning stub, absent when nothing matched.
+	MatchedStubId string `json:"matchedStubId"`
+
+	// Method Method that was inspected.
+	Method string `json:"method"`
+
+	// Service Service that was inspected.
+	Service string `json:"service"`
+
+	// Session Session the request was resolved against.
+	Session string `json:"session"`
+
+	// SimilarStubId Closest non-matching stub, offered as a hint when nothing matched.
+	SimilarStubId string `json:"similarStubId"`
+
+	// Stages How the candidate set narrowed, step by step.
+	Stages []InspectStage `json:"stages"`
 }
 
-// InspectRequest defines model for InspectRequest.
+// InspectRequest A request to explain: the server reports every stub it considered and why each was kept or dropped.
 type InspectRequest struct {
+	// Headers Request metadata, matched against stub `headers`.
 	Headers map[string]any `json:"headers,omitempty"`
 
-	// Id Example: 51c50050-ec27-4dae-a583-a32ca71a1dd5
-	Id      *ID              `json:"id,omitempty"`
-	Input   []map[string]any `json:"input,omitempty"`
-	Method  string           `json:"method"`
-	Service string           `json:"service"`
-	Session *string          `json:"session,omitempty"`
+	// Id Stub identifier (UUID).
+	//
+	// Example: 51c50050-ec27-4dae-a583-a32ca71a1dd5
+	Id *ID `json:"id,omitempty"`
+
+	// Input Request body, matched against stub `input`.
+	Input []map[string]any `json:"input,omitempty"`
+
+	// Method gRPC method name.
+	Method string `json:"method"`
+
+	// Service Fully qualified gRPC service name.
+	Service string `json:"service"`
+
+	// Session Session to resolve against; empty means the global scope.
+	Session *string `json:"session,omitempty"`
 }
 
-// InspectStage defines model for InspectStage.
+// InspectStage One filtering step, with how many candidates entered and survived it.
 type InspectStage struct {
-	After   int    `json:"after"`
-	Before  int    `json:"before"`
-	Name    string `json:"name"`
-	Removed int    `json:"removed"`
+	// After Candidates surviving the step.
+	After int `json:"after"`
+
+	// Before Candidates entering the step.
+	Before int `json:"before"`
+
+	// Name Filter applied at this step: service/method, session, times, headers, input, or the method fallback.
+	Name string `json:"name"`
+
+	// Removed Candidates dropped by the step (`before` minus `after`).
+	Removed int `json:"removed"`
 }
 
-// ListID defines model for ListID.
+// ListID A list of stub UUIDs.
 type ListID = []ID
 
-// MessageOK defines model for MessageOK.
+// MessageOK Generic acknowledgement.
 type MessageOK struct {
-	Message string    `json:"message"`
-	Time    time.Time `json:"time"`
+	// Message Human-readable result of the operation.
+	Message string `json:"message"`
+
+	// Time Server time when the response was produced (RFC 3339).
+	Time time.Time `json:"time"`
 }
 
-// Method defines model for Method.
+// Method A method of a gRPC service.
 type Method struct {
 	// ClientStreaming Indicates client-side streaming method
-	ClientStreaming bool   `json:"clientStreaming,omitempty"`
-	Id              string `json:"id"`
+	ClientStreaming bool `json:"clientStreaming,omitempty"`
+
+	// Id Method name, used as the path segment in `/methods/{methodID}`.
+	Id string `json:"id"`
 
 	// MethodType gRPC method interaction type
-	MethodType    MethodMethodType    `json:"methodType"`
-	Name          string              `json:"name"`
+	MethodType MethodMethodType `json:"methodType"`
+
+	// Name Method name as declared in the proto file.
+	Name string `json:"name"`
+
+	// RequestSchema Shape of a proto message, as GripMock resolved it from the descriptor.
 	RequestSchema *ProtoMessageSchema `json:"requestSchema,omitempty"`
 
 	// RequestType Fully-qualified protobuf request message type
-	RequestType    *string             `json:"requestType,omitempty"`
+	RequestType *string `json:"requestType,omitempty"`
+
+	// ResponseSchema Shape of a proto message, as GripMock resolved it from the descriptor.
 	ResponseSchema *ProtoMessageSchema `json:"responseSchema,omitempty"`
 
 	// ResponseType Fully-qualified protobuf response message type
@@ -314,20 +491,43 @@ type Method struct {
 // MethodMethodType gRPC method interaction type
 type MethodMethodType string
 
-// ProtoFieldSchema defines model for ProtoFieldSchema.
+// ProtoFieldSchema A single field of a proto message.
 type ProtoFieldSchema struct {
-	Cardinality      ProtoFieldSchemaCardinality `json:"cardinality"`
-	EnumValues       *[]string                   `json:"enumValues,omitempty"`
-	JsonName         string                      `json:"jsonName"`
-	Kind             string                      `json:"kind"`
-	Map              bool                        `json:"map,omitempty"`
-	MapKeyKind       *string                     `json:"mapKeyKind,omitempty"`
-	MapValueKind     *string                     `json:"mapValueKind,omitempty"`
-	MapValueMessage  *ProtoMessageSchema         `json:"mapValueMessage,omitempty"`
-	MapValueTypeName *string                     `json:"mapValueTypeName,omitempty"`
-	Message          *ProtoMessageSchema         `json:"message,omitempty"`
-	Name             string                      `json:"name"`
-	Number           int                         `json:"number"`
+	// Cardinality Whether the field is optional, required or repeated.
+	Cardinality ProtoFieldSchemaCardinality `json:"cardinality"`
+
+	// EnumValues Allowed value names when `kind` is `enum`.
+	EnumValues *[]string `json:"enumValues,omitempty"`
+
+	// JsonName Field name in protojson output (camelCase).
+	JsonName string `json:"jsonName"`
+
+	// Kind Proto kind, for example `string`, `int32`, `message`, `enum`.
+	Kind string `json:"kind"`
+
+	// Map True when the field is a proto map.
+	Map bool `json:"map,omitempty"`
+
+	// MapKeyKind Kind of the map key, when `map` is true.
+	MapKeyKind *string `json:"mapKeyKind,omitempty"`
+
+	// MapValueKind Kind of the map value, when `map` is true.
+	MapValueKind *string `json:"mapValueKind,omitempty"`
+
+	// MapValueMessage Shape of a proto message, as GripMock resolved it from the descriptor.
+	MapValueMessage *ProtoMessageSchema `json:"mapValueMessage,omitempty"`
+
+	// MapValueTypeName Fully qualified type name of the map value, when it is a message or enum.
+	MapValueTypeName *string `json:"mapValueTypeName,omitempty"`
+
+	// Message Shape of a proto message, as GripMock resolved it from the descriptor.
+	Message *ProtoMessageSchema `json:"message,omitempty"`
+
+	// Name Field name as declared in the proto file (snake_case).
+	Name string `json:"name"`
+
+	// Number Field number from the proto definition.
+	Number int `json:"number"`
 
 	// Oneof Oneof group name if field belongs to oneof
 	Oneof *string `json:"oneof,omitempty"`
@@ -336,11 +536,12 @@ type ProtoFieldSchema struct {
 	TypeName *string `json:"typeName,omitempty"`
 }
 
-// ProtoFieldSchemaCardinality defines model for ProtoFieldSchema.Cardinality.
+// ProtoFieldSchemaCardinality Whether the field is optional, required or repeated.
 type ProtoFieldSchemaCardinality string
 
-// ProtoMessageSchema defines model for ProtoMessageSchema.
+// ProtoMessageSchema Shape of a proto message, as GripMock resolved it from the descriptor.
 type ProtoMessageSchema struct {
+	// Fields Fields declared on the message.
 	Fields []ProtoFieldSchema `json:"fields"`
 
 	// RecursiveRef True when schema expansion stopped due to recursive reference
@@ -350,69 +551,106 @@ type ProtoMessageSchema struct {
 	TypeName string `json:"typeName"`
 }
 
-// SearchRequest defines model for SearchRequest.
+// SearchRequest A synthetic gRPC request. The server resolves it against the loaded stubs and returns the output of the winning stub, without performing the call.
 type SearchRequest struct {
-	Data    any               `json:"data"`
+	// Data Request body to match against stub `input`.
+	Data any `json:"data"`
+
+	// Headers Request metadata to match against stub `headers`.
 	Headers map[string]string `json:"headers,omitempty"`
 
-	// Id Example: 51c50050-ec27-4dae-a583-a32ca71a1dd5
+	// Id Stub identifier (UUID).
+	//
+	// Example: 51c50050-ec27-4dae-a583-a32ca71a1dd5
 	Id *ID `json:"id,omitempty"`
 
-	// Method Example: SayHello
+	// Method gRPC method name.
+	//
+	// Example: SayHello
 	Method string `json:"method"`
 
-	// Service Example: Gripmock
+	// Service Fully qualified gRPC service name.
+	//
+	// Example: Gripmock
 	Service string `json:"service"`
 }
 
-// SearchResponse defines model for SearchResponse.
+// SearchResponse Output of the stub that won the match.
 type SearchResponse struct {
-	// Code Example: 3
+	// Code gRPC status code.
+	//
+	// Example: 3
 	Code codes.Code `json:"code,omitempty"`
-	Data any        `json:"data"`
 
-	// Error Example: Message not found
-	Error   string            `json:"error"`
+	// Data Response body of the matched stub.
+	Data any `json:"data"`
+
+	// Error gRPC status message, empty when the stub returns data.
+	//
+	// Example: Message not found
+	Error string `json:"error"`
+
+	// Headers Response metadata of the matched stub.
 	Headers map[string]string `json:"headers,omitempty"`
 }
 
-// Service defines model for Service.
+// Service A gRPC service GripMock can serve.
 type Service struct {
-	Id      string   `json:"id"`
+	// Id Fully qualified service name, used as the path segment in `/services/{serviceID}`.
+	Id string `json:"id"`
+
+	// Methods Methods the service exposes.
 	Methods []Method `json:"methods"`
-	Name    string   `json:"name"`
-	Package string   `json:"package"`
+
+	// Name Service name without the package prefix.
+	Name string `json:"name"`
+
+	// Package Proto package the service is declared in.
+	Package string `json:"package"`
 }
 
-// Sessions defines model for Sessions.
+// Sessions Session IDs currently known to the server.
 type Sessions struct {
+	// Sessions Known session IDs.
 	Sessions []string `json:"sessions"`
 }
 
-// Stub defines model for Stub.
+// Stub A single stub: which method it answers, which requests it accepts, and what it returns.
 type Stub struct {
 	// Effects Side effects applied after successful stub match
 	Effects []StubEffect `json:"effects,omitempty"`
-	Headers StubHeaders  `json:"headers,omitempty"`
 
-	// Id Example: 51c50050-ec27-4dae-a583-a32ca71a1dd5
-	Id    *ID       `json:"id,omitempty"`
+	// Headers Matchers applied to gRPC request metadata. Header names are case-insensitive. All blocks present are AND-ed; an omitted or empty block always passes.
+	Headers StubHeaders `json:"headers,omitempty"`
+
+	// Id Stub identifier (UUID).
+	//
+	// Example: 51c50050-ec27-4dae-a583-a32ca71a1dd5
+	Id *ID `json:"id,omitempty"`
+
+	// Input Matchers applied to the request body. All blocks present are AND-ed; an omitted or empty block always passes, so a stub with every block empty matches any request.
 	Input StubInput `json:"input"`
 
-	// Inputs Inputs to match against. If multiple inputs are provided, the stub will be matched if any of the inputs match.
+	// Inputs Per-message matchers for client and bidirectional streaming. With one element it is a broadcast pattern that every message must match; with several, element N is matched against the Nth message and the counts must be equal. Mutually exclusive with `input` — a stub with both is rejected. For OR semantics use `input.anyOf`.
 	Inputs []StubInput `json:"inputs,omitempty"`
 
-	// Method Example: SayHello
+	// Method gRPC method name, without the service prefix.
+	//
+	// Example: SayHello
 	Method string `json:"method"`
 
 	// Options Optional behavior settings for a stub
 	Options *StubOptions `json:"options,omitempty,omitzero"`
-	Output  StubOutput   `json:"output"`
 
-	// Priority Priority of the stub. Higher priority stubs are matched first.
+	// Output What the stub returns. Over this API exactly one side must be set: either the unary side (`data`, `error`, `code`, `details`) or `stream`. A stub carrying both is rejected with `400`.
+	Output StubOutput `json:"output"`
+
+	// Priority Tie-breaker among equally specific stubs; higher wins. Specificity is compared first, so an `equals` stub still beats a `contains` stub with a higher priority.
 	Priority int `json:"priority,omitempty"`
 
-	// Service Example: Gripmock
+	// Service Fully qualified gRPC service name.
+	//
+	// Example: Gripmock
 	Service string `json:"service"`
 
 	// Source Source of the stub (file, rest, mcp, proxy)
@@ -422,68 +660,111 @@ type Stub struct {
 	Used bool `json:"used,omitempty"`
 }
 
-// StubEffect defines model for StubEffect.
+// StubEffect Side effect applied after this stub matches — used to build multi-step flows where one call arms the next.
 type StubEffect struct {
+	// Action `upsert` creates or replaces a stub, `delete` removes one.
 	Action StubEffectAction `json:"action"`
 
-	// Id Stub UUID for delete action
+	// Id Target stub UUID for `delete`. May be a template that renders to a UUID.
 	Id string `json:"id,omitempty"`
 
-	// Stub Stub payload for upsert action
+	// Stub Stub payload for `upsert`, validated after template rendering.
 	Stub map[string]any `json:"stub,omitempty"`
 }
 
-// StubEffectAction defines model for StubEffect.Action.
+// StubEffectAction `upsert` creates or replaces a stub, `delete` removes one.
 type StubEffectAction string
 
-// StubHeaders defines model for StubHeaders.
+// StubHeaders Matchers applied to gRPC request metadata. Header names are case-insensitive. All blocks present are AND-ed; an omitted or empty block always passes.
 type StubHeaders struct {
-	// AnyOf Alternative header matchers (OR logic)
-	AnyOf    []StubHeadersAnyOfElement `json:"anyOf,omitempty"`
-	Contains map[string]string         `json:"contains,omitempty"`
-	Equals   map[string]string         `json:"equals,omitempty"`
-	Matches  map[string]string         `json:"matches,omitempty"`
-}
+	// AnyOf Alternative header matchers (OR). The stub matches when the blocks above pass AND at least one element here passes.
+	AnyOf []StubHeadersAnyOfElement `json:"anyOf,omitempty"`
 
-// StubHeadersAnyOfElement defines model for StubHeadersAnyOfElement.
-type StubHeadersAnyOfElement struct {
+	// Contains Subset match. The request must carry at least these header names; values match on substring.
 	Contains map[string]string `json:"contains,omitempty"`
-	Equals   map[string]string `json:"equals,omitempty"`
-	Matches  map[string]string `json:"matches,omitempty"`
+
+	// Equals Exact match on header values (multiple values are joined with `;`).
+	Equals map[string]string `json:"equals,omitempty"`
+
+	// Glob Glob match on header values, using Go `path.Match`.
+	Glob map[string]string `json:"glob,omitempty"`
+
+	// Matches Regex match on header values.
+	Matches map[string]string `json:"matches,omitempty"`
 }
 
-// StubInput defines model for StubInput.
+// StubHeadersAnyOfElement One alternative of a header `anyOf`. Its own blocks are AND-ed together.
+type StubHeadersAnyOfElement struct {
+	// Contains Subset match. The request must carry at least these header names; values match on substring.
+	Contains map[string]string `json:"contains,omitempty"`
+
+	// Equals Exact match on header values (multiple values are joined with `;`).
+	Equals map[string]string `json:"equals,omitempty"`
+
+	// Glob Glob match on header values, using Go `path.Match`.
+	Glob map[string]string `json:"glob,omitempty"`
+
+	// Matches Regex match on header values.
+	Matches map[string]string `json:"matches,omitempty"`
+}
+
+// StubInput Matchers applied to the request body. All blocks present are AND-ed; an omitted or empty block always passes, so a stub with every block empty matches any request.
 type StubInput struct {
-	// AnyOf Alternative input matchers (OR logic)
-	AnyOf            []StubInputAnyOfElement `json:"anyOf,omitempty"`
-	Contains         map[string]any          `json:"contains,omitempty"`
-	Equals           map[string]any          `json:"equals,omitempty"`
-	IgnoreArrayOrder bool                    `json:"ignoreArrayOrder,omitempty"`
-	Matches          map[string]any          `json:"matches,omitempty"`
+	// AnyOf Alternative matchers (OR). The stub matches when the blocks above pass AND at least one element here passes. Depth is exactly one — an element cannot itself contain `anyOf`.
+	AnyOf []StubInputAnyOfElement `json:"anyOf,omitempty"`
+
+	// Contains Subset match. The request must carry at least these fields. Strings match on substring, arrays on containment, nested objects recursively. Extra fields in the request are ignored.
+	Contains map[string]any `json:"contains,omitempty"`
+
+	// Equals Exact match. Every listed field must be present in the request with exactly this value, case-sensitive. Arrays compare in order unless `ignoreArrayOrder` is set.
+	Equals map[string]any `json:"equals,omitempty"`
+
+	// Glob Glob match. Each leaf value is a shell-style pattern (`*`, `?`, `[...]`) evaluated with Go `path.Match`; `*` does not cross `/`.
+	Glob map[string]any `json:"glob,omitempty"`
+
+	// IgnoreArrayOrder Compare arrays as sets rather than ordered sequences. Applies to this matcher block only — it is not inherited by `anyOf` elements.
+	IgnoreArrayOrder bool `json:"ignoreArrayOrder,omitempty"`
+
+	// Matches Regex match. Each leaf value is a Go regular expression applied to the corresponding request value.
+	Matches map[string]any `json:"matches,omitempty"`
 }
 
-// StubInputAnyOfElement defines model for StubInputAnyOfElement.
+// StubInputAnyOfElement One alternative of an `anyOf`. Its own blocks are AND-ed together.
 type StubInputAnyOfElement struct {
-	Contains         map[string]any `json:"contains,omitempty"`
-	Equals           map[string]any `json:"equals,omitempty"`
-	IgnoreArrayOrder bool           `json:"ignoreArrayOrder,omitempty"`
-	Matches          map[string]any `json:"matches,omitempty"`
+	// Contains Subset match. The request must carry at least these fields. Strings match on substring, arrays on containment, nested objects recursively. Extra fields in the request are ignored.
+	Contains map[string]any `json:"contains,omitempty"`
+
+	// Equals Exact match. Every listed field must be present in the request with exactly this value, case-sensitive. Arrays compare in order unless `ignoreArrayOrder` is set.
+	Equals map[string]any `json:"equals,omitempty"`
+
+	// Glob Glob match. Each leaf value is a shell-style pattern (`*`, `?`, `[...]`) evaluated with Go `path.Match`; `*` does not cross `/`.
+	Glob map[string]any `json:"glob,omitempty"`
+
+	// IgnoreArrayOrder Compare arrays as sets rather than ordered sequences. Applies to this matcher block only — it is not inherited by `anyOf` elements.
+	IgnoreArrayOrder bool `json:"ignoreArrayOrder,omitempty"`
+
+	// Matches Regex match. Each leaf value is a Go regular expression applied to the corresponding request value.
+	Matches map[string]any `json:"matches,omitempty"`
 }
 
-// StubList defines model for StubList.
+// StubList A list of stubs.
 type StubList = []Stub
 
 // StubOptions Optional behavior settings for a stub
 type StubOptions struct {
-	// Times Max number of matches; 0 = unlimited
+	// Times Maximum number of matches; `0` means unlimited. Once the limit is reached the stub is exhausted and stops matching, though it stays in storage.
 	Times int `json:"times,omitempty"`
 }
 
-// StubOutput defines model for StubOutput.
+// StubOutput What the stub returns. Over this API exactly one side must be set: either the unary side (`data`, `error`, `code`, `details`) or `stream`. A stub carrying both is rejected with `400`.
 type StubOutput struct {
-	// Code Example: 3
+	// Code gRPC status code; `0` (OK) is the default.
+	//
+	// Example: 3
 	Code codes.Code `json:"code,omitempty"`
-	Data any        `json:"data,omitempty"`
+
+	// Data Response body for unary and client-streaming calls. Usually an object matching the proto message; may be a scalar when the method returns a well-known type directly.
+	Data any `json:"data,omitempty"`
 
 	// Delay Delay before sending the response
 	//
@@ -493,10 +774,19 @@ type StubOutput struct {
 	// Details gRPC status details packed into google.protobuf.Any (each item must contain type URL in `type`)
 	Details []StubOutput_Details_Item `json:"details,omitempty"`
 
-	// Error Example: Message not found
-	Error   string            `json:"error,omitempty"`
+	// Error gRPC status message. Returned instead of `data`, and counts as the unary side of the data/stream choice.
+	//
+	// Example: Message not found
+	Error string `json:"error,omitempty"`
+
+	// Headers Response metadata.
 	Headers map[string]string `json:"headers,omitempty"`
-	Stream  []any             `json:"stream,omitempty"`
+
+	// Stream Response messages for server and bidirectional streaming, sent in order. Cannot be combined with `data`, `error`, `code` or `details` on this endpoint.
+	Stream []any `json:"stream,omitempty"`
+
+	// Trailers Trailing metadata, sent after the last message with the status. Independent of `headers`: the same key may appear in both, and each is delivered on its own channel.
+	Trailers map[string]string `json:"trailers,omitempty"`
 }
 
 // StubOutput_Details_Item defines model for StubOutput.details.Item.
@@ -506,18 +796,28 @@ type StubOutput_Details_Item struct {
 	AdditionalProperties map[string]any `json:"-"`
 }
 
-// VerifyError defines model for VerifyError.
+// VerifyError Reported when the recorded count differs from the expectation.
 type VerifyError struct {
-	Actual   *int    `json:"actual,omitempty"`
-	Expected *int    `json:"expected,omitempty"`
-	Message  *string `json:"message,omitempty"`
+	// Actual Count actually recorded.
+	Actual *int `json:"actual,omitempty"`
+
+	// Expected Count the caller asked for.
+	Expected *int `json:"expected,omitempty"`
+
+	// Message Human-readable summary of the mismatch.
+	Message *string `json:"message,omitempty"`
 }
 
-// VerifyRequest defines model for VerifyRequest.
+// VerifyRequest Expected number of calls to one method.
 type VerifyRequest struct {
-	ExpectedCount int    `json:"expectedCount"`
-	Method        string `json:"method"`
-	Service       string `json:"service"`
+	// ExpectedCount Number of calls the method must have received.
+	ExpectedCount int `json:"expectedCount"`
+
+	// Method gRPC method name.
+	Method string `json:"method"`
+
+	// Service Fully qualified gRPC service name.
+	Service string `json:"service"`
 }
 
 // ListHistoryParams defines parameters for ListHistory.
@@ -526,9 +826,13 @@ type ListHistoryParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 
 	// Offset Skip the N newest records (page backward through older calls)
-	Offset  *int    `form:"offset,omitempty" json:"offset,omitempty"`
+	Offset *int `form:"offset,omitempty" json:"offset,omitempty"`
+
+	// Service Keep only calls to this fully qualified service name.
 	Service *string `form:"service,omitempty" json:"service,omitempty"`
-	Method  *string `form:"method,omitempty" json:"method,omitempty"`
+
+	// Method Keep only calls to this method name.
+	Method *string `form:"method,omitempty" json:"method,omitempty"`
 
 	// Error When true, return only calls that ended with a gRPC error
 	Error *bool `form:"error,omitempty" json:"error,omitempty"`

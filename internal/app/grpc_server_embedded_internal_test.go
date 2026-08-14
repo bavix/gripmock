@@ -49,6 +49,7 @@ func TestGRPCServerBuildWithoutStartupDescriptors(t *testing.T) {
 		256,
 		nil,
 		nil,
+		DefaultServerLimits(),
 	)
 
 	grpcServer, err := server.Build(ctx)
@@ -90,6 +91,7 @@ func TestGRPCServerFindMethodDescriptorFromDynamicRegistry(t *testing.T) {
 		256,
 		nil,
 		nil,
+		DefaultServerLimits(),
 	)
 
 	method, err := server.findMethodDescriptor("helloworld.Greeter", "SayHello")

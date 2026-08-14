@@ -51,7 +51,7 @@ func (b *Builder) GatewayServe(ctx context.Context) error {
 	gateway := b.newMultiProtocolGateway()
 
 	router := mux.NewRouter()
-	router.Handle("/{service}/{method}", gateway).Methods(http.MethodPost)
+	router.Handle("/{service}/{method}", gateway).Methods(http.MethodPost, http.MethodGet)
 
 	srv := b.newGatewayServer(ctx, router)
 
@@ -85,6 +85,8 @@ func (b *Builder) newMultiProtocolGateway() *app.MultiProtocolGateway {
 		b.StubValidator(),
 		b.ErrorFormatter(),
 	)
+
+	g.RequireProtocolVersion(b.config.ConnectRequireProtocolVersion)
 
 	return g
 }

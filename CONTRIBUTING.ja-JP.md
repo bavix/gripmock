@@ -11,16 +11,16 @@
    - 統合テスト用の [grpctestify](https://github.com/gripmock/grpctestify-rust) をインストールします（インストール手順は [grpctestify ドキュメント](https://gripmock.github.io/grpctestify-rust/) を参照）
    - Go がインストールおよび設定されていることを確認します
 
-### ConnectRPC テスト
+### ゲートウェイのテスト（ConnectRPC と gRPC-Web）
 
-**HTTP クライアントテスト**（`.http` ファイル）は `examples/projects/*/connectrpc-tests/` にあります。
+grpctestify は 3 つのワイヤープロトコルすべてに対応しているため、同じ `.gctf`
+ファイルがそれぞれで通る必要があります。ゲートウェイのポートを指定し、
+プロトコルを切り替えます：
 
-**httpyac での実行：**
 ```bash
-npx httpyac run examples/projects/greeter/connectrpc-tests/ --all
+GRPCTESTIFY_ADDRESS=localhost:4769 grpctestify run --protocol connectrpc examples/projects/greeter/
+GRPCTESTIFY_ADDRESS=localhost:4769 grpctestify run --protocol grpc-web  examples/projects/greeter/
 ```
-
-JetBrains IDE（GoLand、IntelliJ）で `.http` ファイルを開き、各リクエストの横にある実行アイコンをクリックすることもできます。
 
 ## テスト要件
 

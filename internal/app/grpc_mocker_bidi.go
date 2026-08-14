@@ -2,6 +2,7 @@ package app
 
 //nolint:revive
 import (
+	"context"
 	"io"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
+	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
 const (
@@ -62,6 +64,10 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 	}
 
 	requestTime := time.Now()
+
+	defer func() {
+		m.setResponseTrailersAny(stream.Context(), stream, recordingStream.stubTrailers)
+	}()
 
 	for {
 		inputMsg := dynamicpb.NewMessage(m.inputDesc)
@@ -151,6 +157,10 @@ func (m *grpcMocker) sendBidiResponse(
 		if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
 			return errors.Wrap(err, "failed to set headers")
 		}
+	}
+
+	if recStream, ok := stream.(*bidiRecordingStream); ok {
+		recStream.mergeStubTrailers(outputToUse.Trailers)
 	}
 
 	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil {
@@ -247,6 +257,13 @@ func (m *grpcMocker) prepareBidiOutput(stub *stuber.Stub, templateData template.
 		}
 	}
 
+	trailersCopy := deepCopyStringMap(stub.Output.Trailers)
+	if template.HasTemplatesInHeaders(trailersCopy) {
+		if err := m.templateEngine.ProcessHeaders(trailersCopy, templateData); err != nil {
+			return stuber.Output{}, errors.Wrap(err, "failed to process trailer templates")
+		}
+	}
+
 	streamCopy := make([]any, len(stub.Output.Stream))
 	for i, item := range stub.Output.Stream {
 		if itemMap, ok := item.(map[string]any); ok {
@@ -262,13 +279,14 @@ func (m *grpcMocker) prepareBidiOutput(stub *stuber.Stub, templateData template.
 	}
 
 	outputToUse := stuber.Output{
-		Data:    outputDataCopy,
-		Stream:  streamCopy,
-		Headers: headersCopy,
-		Error:   stub.Output.Error,
-		Code:    stub.Output.Code,
-		Details: deepCopyDetails(stub.Output.Details),
-		Delay:   stub.Output.Delay,
+		Data:     outputDataCopy,
+		Stream:   streamCopy,
+		Headers:  headersCopy,
+		Trailers: trailersCopy,
+		Error:    stub.Output.Error,
+		Code:     stub.Output.Code,
+		Details:  deepCopyDetails(stub.Output.Details),
+		Delay:    stub.Output.Delay,
 	}
 
 	if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
@@ -349,25 +367,18 @@ func (m *grpcMocker) sendClientStreamResponses(
 	}
 
 	for _, streamElement := range output.Stream[start:end] {
-		streamData, ok := streamElement.(map[string]any)
-		if !ok {
+		if _, ok := streamElement.(map[string]any); !ok {
 			continue
-		}
-
-		streamDataCopy := deepCopyMapAny(streamData)
-
-		delayDelay := output.Delay
-		if d, ok := stuber.ExtractGripMockDelay(streamDataCopy); ok {
-			delayDelay = d
-		}
-
-		if err := delayResponse(stream.Context(), delayDelay); err != nil {
-			return err
 		}
 
 		// Stream elements were already rendered once by prepareBidiOutput with the
 		// correct request context; do not re-render with an empty context here.
-		outputMsg, err := m.newOutputMessage(streamDataCopy)
+		payload, err := m.prepareStreamElement(stream.Context(), streamElement, output.Delay)
+		if err != nil {
+			return err
+		}
+
+		outputMsg, err := m.newOutputMessage(payload)
 		if err != nil {
 			return errors.Wrap(err, errMsgConvertToDynamic)
 		}
@@ -380,29 +391,45 @@ func (m *grpcMocker) sendClientStreamResponses(
 	return nil
 }
 
+// prepareStreamElement applies the per-element _gripmock directives: an error
+// marker aborts the stream at this position, a delay marker overrides the
+// output-level delay.
+func (m *grpcMocker) prepareStreamElement(ctx context.Context, element any, outputDelay types.Duration) (any, error) {
+	data, ok := element.(map[string]any)
+	if !ok {
+		return element, nil
+	}
+
+	copied := deepCopyMapAny(data)
+
+	marker := stuber.ExtractGripMock(copied)
+	if marker.HasError {
+		return nil, m.streamElementError(marker, template.Data{})
+	}
+
+	delay := outputDelay
+	if marker.HasDelay {
+		delay = marker.Delay
+	}
+
+	if err := delayResponse(ctx, delay); err != nil {
+		return nil, err
+	}
+
+	return copied, nil
+}
+
 func (m *grpcMocker) sendServerStreamResponses(
 	stream grpc.ServerStream,
 	output stuber.Output,
 ) error {
 	for _, streamElement := range output.Stream {
-		streamDataCopy := streamElement
-		if streamData, ok := streamElement.(map[string]any); ok {
-			copied := deepCopyMapAny(streamData)
-			streamDataCopy = copied
-
-			delayDelay := output.Delay
-			if d, found := stuber.ExtractGripMockDelay(copied); found {
-				delayDelay = d
-			}
-
-			if delayDelay != 0 {
-				if err := delayResponse(stream.Context(), delayDelay); err != nil {
-					return err
-				}
-			}
+		payload, err := m.prepareStreamElement(stream.Context(), streamElement, output.Delay)
+		if err != nil {
+			return err
 		}
 
-		outputMsg, err := m.newOutputMessage(streamDataCopy)
+		outputMsg, err := m.newOutputMessage(payload)
 		if err != nil {
 			return errors.Wrap(err, errMsgConvertToDynamic)
 		}

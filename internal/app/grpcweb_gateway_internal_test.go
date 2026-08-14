@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/binary"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 )
 
 // extractPayload
@@ -19,7 +21,7 @@ func TestExtractPayload_RawBody(t *testing.T) {
 
 	// Raw proto — no frame header.
 	raw := []byte{0x0a, 0x04, 0x74, 0x65, 0x73, 0x74}
-	got, err := extractPayload(raw)
+	got, err := extractPayload(raw, http.Header{})
 	require.NoError(t, err)
 	require.Equal(t, raw, got)
 }
@@ -27,11 +29,11 @@ func TestExtractPayload_RawBody(t *testing.T) {
 func TestExtractPayload_EmptyBody(t *testing.T) {
 	t.Parallel()
 
-	got, err := extractPayload(nil)
+	got, err := extractPayload(nil, http.Header{})
 	require.NoError(t, err)
 	require.Nil(t, got)
 
-	got, err = extractPayload([]byte{})
+	got, err = extractPayload([]byte{}, http.Header{})
 	require.NoError(t, err)
 	require.Empty(t, got)
 }
@@ -41,7 +43,7 @@ func TestExtractPayload_ShortBody(t *testing.T) {
 
 	// Less than 5 bytes — no frame header possible.
 	raw := []byte{0x01, 0x02}
-	got, err := extractPayload(raw)
+	got, err := extractPayload(raw, http.Header{})
 	require.NoError(t, err)
 	require.Equal(t, raw, got)
 }
@@ -53,20 +55,41 @@ func TestExtractPayload_UncompressedFrame(t *testing.T) {
 	data := []byte{0x0a, 0x04, 0x74, 0x65, 0x73, 0x74}
 	frame := buildFrame(0x00, data)
 
-	got, err := extractPayload(frame)
+	got, err := extractPayload(frame, http.Header{})
 	require.NoError(t, err)
 	require.Equal(t, data, got)
 }
 
-func TestExtractPayload_CompressedFrame(t *testing.T) {
+func TestExtractPayload_CompressedFrameWithoutNegotiation(t *testing.T) {
 	t.Parallel()
 
 	data := []byte{0x01, 0x02, 0x03}
 	frame := buildFrame(0x01, data)
 
-	_, err := extractPayload(frame)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "compression")
+	_, err := extractPayload(frame, http.Header{})
+	require.Error(t, err, "a compressed frame without grpc-encoding cannot be decoded")
+}
+
+func TestExtractPayload_GzipCompressedFrame(t *testing.T) {
+	t.Parallel()
+
+	payload := []byte(`{"name":"Alex"}`)
+
+	var buf bytes.Buffer
+
+	zw := gzip.NewWriter(&buf)
+	_, err := zw.Write(payload)
+	require.NoError(t, err)
+	require.NoError(t, zw.Close())
+
+	frame := buildFrame(0x01, buf.Bytes())
+
+	hdr := http.Header{}
+	hdr.Set(headerGRPCEncoding, encodingGzip)
+
+	got, err := extractPayload(frame, hdr)
+	require.NoError(t, err)
+	require.Equal(t, payload, got)
 }
 
 func TestExtractPayload_FrameLengthMismatch(t *testing.T) {
@@ -77,7 +100,7 @@ func TestExtractPayload_FrameLengthMismatch(t *testing.T) {
 	frame := buildFrame(0x00, data)
 	frame = append(frame, 0xde, 0xad) // extra junk
 
-	got, err := extractPayload(frame)
+	got, err := extractPayload(frame, http.Header{})
 	require.NoError(t, err)
 	require.Equal(t, frame, got) // returned as-is
 }
@@ -89,7 +112,7 @@ func TestExtractPayload_UnknownFlag(t *testing.T) {
 	data := []byte{0x01}
 	frame := buildFrame(0x02, data)
 
-	got, err := extractPayload(frame)
+	got, err := extractPayload(frame, http.Header{})
 	require.NoError(t, err)
 	require.Equal(t, frame, got)
 }
@@ -305,7 +328,9 @@ func TestMultiProtocolGateway_GRPCWebContentType(t *testing.T) {
 	require.Contains(t, string(body), "grpc-status")
 }
 
-func TestMultiProtocolGateway_GRPCWebTextRejected(t *testing.T) {
+// grpc-web-text used to be rejected outright with unimplemented; it is now
+// served, with the frame stream base64-encoded in both directions.
+func TestMultiProtocolGateway_GRPCWebTextRoutedToGRPCWeb(t *testing.T) {
 	t.Parallel()
 
 	gateway := NewMultiProtocolGateway(nil, nil, nil, nil, nil, nil)
@@ -315,19 +340,24 @@ func TestMultiProtocolGateway_GRPCWebTextRejected(t *testing.T) {
 
 	gateway.ServeHTTP(w, r)
 
-	// gRPC-web-text → rejected with unimplemented
 	require.Equal(t, http.StatusOK, w.Code)
-	body := w.Body.Bytes()
-	require.Contains(t, string(body), "grpc-status: 12") // codes.Unimplemented
-	require.Contains(t, string(body), "grpc-web-text")
+
+	// No descriptors are registered here, so the answer is a trailers frame
+	// carrying NotFound — the point is that it is a gRPC-Web answer, not a
+	// blanket "text mode unsupported".
+	body := w.Body.String()
+	require.NotContains(t, body, "grpc-web-text (base64) encoding is not supported")
+	require.NotEmpty(t, body)
 }
 
 func TestMultiProtocolGateway_RejectsNonPost(t *testing.T) {
 	t.Parallel()
 
+	// GET is reserved for Connect's cacheable methods, so the refusal is
+	// demonstrated with a verb no protocol accepts.
 	gateway := NewMultiProtocolGateway(nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/Svc/Method", nil)
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/Svc/Method", nil)
 
 	gateway.ServeHTTP(w, r)
 
@@ -347,4 +377,39 @@ func buildFrame(flag byte, data []byte) []byte {
 	buf.Write(data)
 
 	return buf.Bytes()
+}
+
+func TestGRPCWebAdapterSetTrailerWritesTrailersFrame(t *testing.T) {
+	t.Parallel()
+
+	w := httptest.NewRecorder()
+	adapter := &grpcwebAdapter{baseStreamAdapter: baseStreamAdapter{w: w}}
+
+	adapter.SetTrailer(metadata.Pairs("x-audit", "done", "x-multi", "a"))
+	adapter.SetTrailer(metadata.Pairs("x-multi", "b"))
+
+	writeGRPCWebTrailers(w, codes.OK, "", adapter.trailerExtra...)
+
+	body := w.Body.String()
+	require.Equal(t, byte(0x80), w.Body.Bytes()[0])
+	require.Contains(t, body, "x-audit: done")
+	require.Contains(t, body, "x-multi: a")
+	require.Contains(t, body, "x-multi: b")
+}
+
+func TestGRPCWebAdapterSetTrailerStripsNewlines(t *testing.T) {
+	t.Parallel()
+
+	w := httptest.NewRecorder()
+	adapter := &grpcwebAdapter{baseStreamAdapter: baseStreamAdapter{w: w}}
+
+	adapter.SetTrailer(metadata.Pairs("x-evil", "a\r\ngrpc-status: 0"))
+	writeGRPCWebTrailers(w, codes.NotFound, "missing", adapter.trailerExtra...)
+
+	body := w.Body.String()
+	require.Contains(t, body, "grpc-status: 5", "the real status must survive")
+	require.NotContains(t, body, "\r\ngrpc-status: 0",
+		"a stub value must not start a line of its own and forge a status")
+	require.Contains(t, body, "x-evil: agrpc-status: 0",
+		"CR/LF are stripped, so the value stays on one line")
 }

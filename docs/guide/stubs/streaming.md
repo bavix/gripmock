@@ -156,6 +156,10 @@ When both `stream` and `error` are specified:
 - Non-empty stream → all messages sent, then error
 - Empty stream → error immediately
 
+This works for stubs loaded from a file. `POST /api/stubs` rejects the same stub
+with `400`: over REST, `output` must carry either the unary side (`data`,
+`error`, `code`, `details`) or `stream`, not both.
+
 ```yaml
 output:
   stream:

@@ -280,6 +280,9 @@ func TestHistoryBidiStreamRecordsConfiguredErrorCode(t *testing.T) {
 	require.Equal(t, uint32(codes.NotFound), calls[0].Code, "must record the configured code, not Unknown")
 }
 
+// Regression: a server stream that failed returned before recordCall, so the
+// call vanished from history and from /api/verify — the bidi path already
+// recorded partial exchanges. Now both record the error with its real code.
 func TestHistoryServerStreamWithError(t *testing.T) {
 	t.Parallel()
 
@@ -311,5 +314,59 @@ func TestHistoryServerStreamWithError(t *testing.T) {
 
 	recorder, ok := mocker.recorder.(*history.MemoryStore)
 	require.True(t, ok, testRecorderShouldBeMemoryStore)
-	require.Equal(t, 0, recorder.Count())
+
+	calls := recorder.Filter(history.FilterOpts{})
+	require.Len(t, calls, 1)
+	require.Equal(t, stub.ID, calls[0].StubID)
+	require.Equal(t, uint32(codes.Aborted), calls[0].Code, "Output.Error without Code means Aborted")
+	require.Contains(t, calls[0].Error, "stub error")
+}
+
+// Regression: when a server stream broke partway, handleArrayStreamData
+// returned before recordCall and the whole call disappeared from history —
+// precisely the case a user is testing. The messages already sent must be
+// recorded alongside the terminal status.
+func TestHistoryServerStreamRecordsPartialStream(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMockerWithRecorder(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+
+	stub := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: testServiceName,
+		Method:  testMethodName,
+		Input:   stuber.InputData{Contains: map[string]any{}},
+		Output: stuber.Output{Stream: []any{
+			map[string]any{"result": 1},
+			map[string]any{"result": 2},
+			map[string]any{"result": 3},
+		}},
+	}
+	mocker.budgerigar.PutMany(stub)
+
+	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
+	stream := &mockFullServerStream{
+		ctx:              t.Context(),
+		sentMessages:     make([]*dynamicpb.Message, 0),
+		receivedMessages: []*dynamicpb.Message{inputMsg},
+		recvMsgLimit:     1,
+		sendMsgFailAfter: 2,
+	}
+
+	err := mocker.handleServerStream(stream)
+	require.Error(t, err)
+	require.Len(t, stream.sentMessages, 2, "two messages reached the client before the break")
+
+	recorder, ok := mocker.recorder.(*history.MemoryStore)
+	require.True(t, ok, testRecorderShouldBeMemoryStore)
+
+	calls := recorder.Filter(history.FilterOpts{})
+	require.Len(t, calls, 1)
+	require.Equal(t, stub.ID, calls[0].StubID)
+	require.Len(t, calls[0].Responses, 2, "only the sent messages are recorded, not all three")
+	require.NotEmpty(t, calls[0].Error)
 }

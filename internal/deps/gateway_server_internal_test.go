@@ -78,7 +78,13 @@ func TestGatewayServe_RejectsMethodNotAllowed(t *testing.T) {
 	addr, teardown := startGatewayServer(t)
 	defer teardown()
 
-	resp, err := http.Get("http://" + addr + "/test.Service/TestMethod") //nolint:noctx
+	// GET is routed now, because Connect serves it for methods marked
+	// NO_SIDE_EFFECTS; PUT is refused by every protocol.
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPut,
+		"http://"+addr+"/test.Service/TestMethod", nil)
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 
 	defer resp.Body.Close() //nolint:errcheck

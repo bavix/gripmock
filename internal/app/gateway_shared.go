@@ -91,6 +91,10 @@ type baseStreamAdapter struct {
 
 	typeResolver *protosetinfra.TypeResolver
 
+	// frameEncoding is the codec applied to each streaming envelope, resolved
+	// once from the request's accept-encoding headers.
+	frameEncoding string
+
 	mu             sync.Mutex
 	sendHeaderOnce sync.Once
 	endOfStream    atomic.Bool
@@ -119,9 +123,10 @@ func (a *baseStreamAdapter) SendHeader(md metadata.MD) error {
 	return a.SetHeader(md)
 }
 
-func (a *baseStreamAdapter) SetTrailer(md metadata.MD) {
-	_ = a.SetHeader(md)
-}
+// SetTrailer is a no-op on the base adapter: HTTP has no trailer channel that
+// applies to both protocols. httpStreamAdapter and grpcwebAdapter override it
+// with the form their protocol defines.
+func (a *baseStreamAdapter) SetTrailer(_ metadata.MD) {}
 
 // gatewayHandler holds shared dependencies for ConnectRPC and gRPC-Web gateways.
 type gatewayHandler struct {
@@ -131,6 +136,7 @@ type gatewayHandler struct {
 	proxyRoutesRef *atomic.Pointer[proxyroutes.Registry]
 	validator      *validator.Validate
 	errorFormatter *ErrorFormatter
+	reflection     *gatewayReflection
 }
 
 func newGatewayHandler(
@@ -153,6 +159,7 @@ func newGatewayHandler(
 		proxyRoutesRef: proxyRoutesRef,
 		validator:      validator,
 		errorFormatter: e,
+		reflection:     newGatewayReflection(descriptorRegistry),
 	}
 }
 

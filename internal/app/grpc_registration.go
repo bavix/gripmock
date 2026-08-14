@@ -35,16 +35,18 @@ import (
 
 func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 	logger := zerolog.Ctx(ctx)
+	limits := s.limits.withDefaults()
 
 	opts := []grpc.ServerOption{
 		grpc.NumStreamWorkers(uint32(runtimeNumStreamWorkers)), //nolint:gosec
 		grpc.MaxConcurrentStreams(maxConcurrentStreams),
+		grpc.MaxRecvMsgSize(limits.MaxRecvMsgSize),
 		grpc.KeepaliveParams(keepalive.ServerParameters{
-			MaxConnectionIdle:     keepaliveMaxIdle,
-			MaxConnectionAge:      keepaliveMaxAge,
+			MaxConnectionIdle:     limits.KeepaliveMaxConnectionIdle,
+			MaxConnectionAge:      limits.KeepaliveMaxConnectionAge,
 			MaxConnectionAgeGrace: keepaliveMaxAgeGrace,
-			Time:                  keepaliveTime,
-			Timeout:               keepaliveTimeout,
+			Time:                  limits.KeepaliveTime,
+			Timeout:               limits.KeepaliveTimeout,
 		}),
 		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
 			MinTime:             keepaliveMinTime,
@@ -61,6 +63,10 @@ func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 			LogStreamInterceptor,
 		),
 		grpc.UnknownServiceHandler(s.handleUnknownService),
+	}
+
+	if limits.MaxSendMsgSize > 0 {
+		opts = append(opts, grpc.MaxSendMsgSize(limits.MaxSendMsgSize))
 	}
 
 	if s.otelEnabled {

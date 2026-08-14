@@ -1,0 +1,16 @@
+# Config for `redocly lint` / `redocly build-docs` against api/api.yaml.
+apis:
+  gripmock:
+    root: api/api.yaml
+
+extends:
+  - recommended
+
+rules:
+  # Several GET endpoints take no input at all (/dashboard, /sessions,
+  # /descriptors), so they have no 4xx to document. Only operations with typed
+  # query parameters declare 400, and those do return it.
+  operation-4xx-response: off
+  # `x-omitzero` sits next to `$ref` on purpose: it is an oapi-codegen hint,
+  # consumed by `make gen-rest`, and moving it would change generated Go types.
+  spec-ref-siblings: off

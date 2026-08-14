@@ -174,11 +174,17 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 		return nil, err //nolint:wrapcheck
 	}
 
+	if err := m.renderTrailers(&outputToUse, templateData); err != nil {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to process trailer templates: %v", err))
+	}
+
+	m.setResponseTrailersAny(ctx, stream, outputToUse.Trailers)
+
 	m.applyEffects(ctx, found, templateData)
 
 	if err := m.handleOutputError(ctx, stream, outputToUse); err != nil {
 		code := status.Code(err)
-		m.recordCall(ctx, found.ID, uint32(code), requestTime, []map[string]any{requestData}, nil, outputToUse.Headers, err.Error())
+		m.recordCall(ctx, found.ID, uint32(code), requestTime, []map[string]any{requestData}, nil, recordedMetadata(outputToUse), err.Error())
 		outputToUse.Error = err.Error()
 
 		return nil, err //nolint:wrapcheck
@@ -189,18 +195,47 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 		return nil, err //nolint:wrapcheck
 	}
 
-	m.recordCall(ctx, found.ID, uint32(codes.OK), requestTime, []map[string]any{requestData}, []any{outputDataCopy}, outputToUse.Headers, "")
+	m.recordCall(ctx, found.ID, uint32(codes.OK), requestTime,
+		[]map[string]any{requestData}, []any{outputDataCopy}, recordedMetadata(outputToUse), "")
 
 	return outputMsg, nil
 }
 
-func (m *grpcMocker) setResponseHeadersAny(ctx context.Context, stream grpc.ServerStream, headers map[string]string) error {
-	if len(headers) == 0 {
+func recordedMetadata(output stuber.Output) map[string]string {
+	if len(output.Trailers) == 0 {
+		return output.Headers
+	}
+
+	return responseHeadersFromMetadata(buildResponseMD(output.Headers), buildResponseMD(output.Trailers))
+}
+
+func (m *grpcMocker) renderTrailers(output *stuber.Output, templateData template.Data) error {
+	if !template.HasTemplatesInHeaders(output.Trailers) {
 		return nil
 	}
 
-	mdResp := make(metadata.MD, len(headers))
-	for k, v := range headers {
+	trailersCopy := deepCopyStringMap(output.Trailers)
+	if err := m.templateEngine.ProcessHeaders(trailersCopy, templateData); err != nil {
+		return err //nolint:wrapcheck
+	}
+
+	output.Trailers = trailersCopy
+
+	return nil
+}
+
+func buildResponseMD(values map[string]string) metadata.MD {
+	if len(values) == 0 {
+		return nil
+	}
+
+	mdResp := make(metadata.MD, len(values))
+
+	for k, v := range values {
+		if strings.HasPrefix(k, ":") {
+			continue
+		}
+
 		switch strings.ToLower(k) {
 		case "content-type", "content-length", "content-encoding", "grpc-status", "grpc-message", "grpc-status-details-bin":
 			continue
@@ -213,6 +248,15 @@ func (m *grpcMocker) setResponseHeadersAny(ctx context.Context, stream grpc.Serv
 		return nil
 	}
 
+	return mdResp
+}
+
+func (m *grpcMocker) setResponseHeadersAny(ctx context.Context, stream grpc.ServerStream, headers map[string]string) error {
+	mdResp := buildResponseMD(headers)
+	if mdResp == nil {
+		return nil
+	}
+
 	if stream != nil {
 		return stream.SetHeader(mdResp)
 	}
@@ -220,6 +264,21 @@ func (m *grpcMocker) setResponseHeadersAny(ctx context.Context, stream grpc.Serv
 	_ = grpc.SetHeader(ctx, mdResp)
 
 	return nil
+}
+
+func (m *grpcMocker) setResponseTrailersAny(ctx context.Context, stream grpc.ServerStream, trailers map[string]string) {
+	mdResp := buildResponseMD(trailers)
+	if mdResp == nil {
+		return
+	}
+
+	if stream != nil {
+		stream.SetTrailer(mdResp)
+
+		return
+	}
+
+	_ = grpc.SetTrailer(ctx, mdResp)
 }
 
 func (m *grpcMocker) handleOutputError(_ context.Context, _ grpc.ServerStream, output stuber.Output) error {
@@ -415,6 +474,12 @@ func (m *grpcMocker) sendClientStreamResponse(
 		return errors.Wrap(err, "failed to set headers")
 	}
 
+	if err := m.renderTrailers(&outputToUse, templateData); err != nil {
+		return errors.Wrap(err, "failed to process trailer templates")
+	}
+
+	m.setResponseTrailersAny(stream.Context(), stream, outputToUse.Trailers)
+
 	outputDataCopy := deepCopyAny(outputToUse.Data)
 	if dataMap, ok := outputDataCopy.(map[string]any); ok {
 		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
@@ -437,7 +502,8 @@ func (m *grpcMocker) sendClientStreamResponse(
 
 	err = stream.SendMsg(outputMsg)
 	if err == nil {
-		m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime, messages, []any{outputDataCopy}, outputToUse.Headers, "")
+		m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime,
+			messages, []any{outputDataCopy}, recordedMetadata(outputToUse), "")
 	}
 
 	return err

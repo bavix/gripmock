@@ -148,6 +148,7 @@ func BuildFromDescriptorSet(
 		descriptors:    descriptors.NewRegistry(),
 		validator:      mustNewStubValidator(),
 		errorFormatter: NewErrorFormatter(),
+		limits:         DefaultServerLimits(),
 	}
 	server := s.createServer(ctx)
 	s.setupHealthCheck(server, reg)

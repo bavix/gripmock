@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: multiverse.v1.MultiverseService
+  method: Ping
+  input:
+    equals:
+      message: "with_trailers"
+      user_id: "user_900"
+  output:
+    data:
+      reply: "Pong"
+      user_id: "user_900"
+      timestamp: "2024-01-15T10:00:00Z"
+    headers:
+      x-channel: "header"
+    trailers:
+      x-channel: "trailer"
+      x-audit: "done"

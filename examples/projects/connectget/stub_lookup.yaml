@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: connectget.v1.LookupService
+  method: Lookup
+  input:
+    equals:
+      key: "alpha"
+  output:
+    data:
+      value: "cached"
+
+- service: connectget.v1.LookupService
+  method: Mutate
+  input:
+    equals:
+      key: "alpha"
+  output:
+    data:
+      value: "mutated"

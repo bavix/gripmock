@@ -1,0 +1,24 @@
+--- META ---
+name: trailers on a successful unary call
+summary: output.trailers reaches the client as trailing metadata, independently of output.headers
+tags: [trailers]
+
+--- ENDPOINT ---
+multiverse.v1.MultiverseService/Ping
+
+--- REQUEST ---
+{
+  "message": "with_trailers",
+  "user_id": "user_900"
+}
+
+--- RESPONSE ---
+{
+  "reply": "Pong",
+  "timestamp": "2024-01-15T10:00:00Z",
+  "user_id": "user_900"
+}
+
+--- ASSERTS ---
+@trailer("x-audit") == "done"
+@trailer("x-channel") == "trailer"

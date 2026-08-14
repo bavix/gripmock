@@ -64,6 +64,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		b.config.MaxNestingDepth,
 		b.StubValidator(),
 		b.ErrorFormatter(),
+		b.serverLimits(),
 	)
 
 	server, err := grpcServer.Build(ctx)
@@ -111,4 +112,17 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 	}
 
 	return nil
+}
+
+func (b *Builder) serverLimits() app.ServerLimits {
+	limits := b.config.GRPCLimits
+
+	return app.ServerLimits{
+		MaxRecvMsgSize:             int(limits.MaxRecvMsgSize.Int64()),
+		MaxSendMsgSize:             int(limits.MaxSendMsgSize.Int64()),
+		KeepaliveTime:              limits.KeepaliveTime,
+		KeepaliveTimeout:           limits.KeepaliveTimeout,
+		KeepaliveMaxConnectionIdle: limits.KeepaliveMaxConnectionIdle,
+		KeepaliveMaxConnectionAge:  limits.KeepaliveMaxConnectionAge,
+	}
 }

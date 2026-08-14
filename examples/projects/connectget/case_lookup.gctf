@@ -1,0 +1,13 @@
+--- META ---
+name: lookup over gRPC
+summary: The stub answers over native gRPC; the Connect GET path is exercised by TestConnectGetRequestDecodesQuery and the gateway e2e script.
+tags: [connectget]
+
+--- ENDPOINT ---
+connectget.v1.LookupService/Lookup
+
+--- REQUEST ---
+{"key": "alpha"}
+
+--- RESPONSE ---
+{"value": "cached"}

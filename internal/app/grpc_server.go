@@ -42,16 +42,17 @@ const (
 	unknownValue     = "unknown"
 
 	// High-load gRPC server tuning.
-	keepaliveMaxIdle     = 5 * time.Minute
-	keepaliveMaxAge      = 30 * time.Minute
-	keepaliveMaxAgeGrace = 5 * time.Second
-	keepaliveTime        = 30 * time.Second
-	keepaliveTimeout     = 10 * time.Second
-	keepaliveMinTime     = 10 * time.Second
-	maxConcurrentStreams = 100
-	maxLoggingStreamMsgs = 32
-	maxHistoryStreamMsgs = 100
-	minStreamWorkers     = 4
+	keepaliveMaxIdle      = 5 * time.Minute
+	keepaliveMaxAge       = 30 * time.Minute
+	keepaliveMaxAgeGrace  = 5 * time.Second
+	keepaliveTime         = 30 * time.Second
+	keepaliveTimeout      = 10 * time.Second
+	keepaliveMinTime      = 10 * time.Second
+	maxConcurrentStreams  = 100
+	defaultMaxRecvMsgSize = 4 << 20
+	maxLoggingStreamMsgs  = 32
+	maxHistoryStreamMsgs  = 100
+	minStreamWorkers      = 4
 )
 
 const (
@@ -88,6 +89,7 @@ type GRPCServer struct {
 	maxNestingDepth uint32
 	validator       *validator.Validate
 	errorFormatter  *ErrorFormatter
+	limits          ServerLimits
 
 	resolverOnce sync.Once
 	dynResolver  *dynamicDescriptorResolver
@@ -142,6 +144,7 @@ func NewGRPCServer(
 	maxNestingDepth uint32,
 	stubValidator *validator.Validate,
 	errorFormatter *ErrorFormatter,
+	limits ServerLimits,
 ) *GRPCServer {
 	registry := descriptorRegistry
 	if registry == nil {
@@ -178,6 +181,7 @@ func NewGRPCServer(
 		maxNestingDepth: maxNestingDepth,
 		validator:       v,
 		errorFormatter:  e,
+		limits:          limits.withDefaults(),
 	}
 }
 

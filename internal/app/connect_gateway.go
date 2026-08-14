@@ -1,8 +1,10 @@
 package app
 
 import (
+	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"sync/atomic"
 
 	"github.com/go-playground/validator/v10"
@@ -11,8 +13,10 @@ import (
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
@@ -22,7 +26,15 @@ import (
 
 type ConnectRPCGateway struct {
 	gatewayHandler
+
+	requireProtocolVersion bool
 }
+
+const (
+	headerConnectProtocolVersion = "Connect-Protocol-Version"
+	connectProtocolVersion       = "1"
+	connectGetVersionValue       = "v1"
+)
 
 func NewConnectRPCGateway(
 	budgerigar *stuber.Budgerigar,
@@ -37,20 +49,35 @@ func NewConnectRPCGateway(
 	}
 }
 
-func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+// isConnectStreamContentType reports whether a streaming Connect request
+// carries one of the enveloped codecs. The protocol requires
+// application/connect+{codec} for every streaming RPC; the plain
+// application/{codec} forms are unary-only.
+func isConnectStreamContentType(ct string) bool {
+	if i := strings.IndexByte(ct, ';'); i >= 0 {
+		ct = ct[:i]
+	}
 
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(ct)), "application/connect+")
+}
+
+// RequireProtocolVersion turns on the rejection the protocol permits: "clients
+// should send this header. Servers and proxies may reject traffic without this
+// header with 400 Bad Request".
+func (g *ConnectRPCGateway) RequireProtocolVersion(require bool) {
+	g.requireProtocolVersion = require
+}
+
+func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !g.acceptRequest(w, r) {
 		return
 	}
 
 	vars := mux.Vars(r)
 	service := vars["service"]
 	method := vars["method"]
-	fullMethod := "/" + service + "/" + method
 
-	logger := zerolog.Ctx(r.Context())
-	logger.Debug().
+	zerolog.Ctx(r.Context()).Debug().
 		Str("method", r.Method).
 		Str("path", r.URL.Path).
 		Str("protocol", "connectrpc").
@@ -58,35 +85,105 @@ func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Str("method", method).
 		Msg("gateway: handling connectrpc request")
 
+	if isReflectionMethod(service, method) {
+		g.serveReflection(w, r, service)
+
+		return
+	}
+
+	methodDesc, ok := g.resolveMethod(w, r, service, method)
+	if !ok {
+		return
+	}
+
+	g.serveMethod(w, r, service, method, methodDesc)
+}
+
+func (g *ConnectRPCGateway) acceptRequest(w http.ResponseWriter, r *http.Request) bool {
+	if r.Method != http.MethodPost && r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+
+		return false
+	}
+
+	if g.requireProtocolVersion && !g.hasProtocolVersion(r) {
+		g.writeError(w, codes.InvalidArgument,
+			`missing required header: set Connect-Protocol-Version to "1"`)
+
+		return false
+	}
+
+	return true
+}
+
+// resolveMethod finds the descriptor and, for GET, checks the method is
+// side-effect free and rewrites the content type from the query encoding.
+//
+//nolint:ireturn
+func (g *ConnectRPCGateway) resolveMethod(
+	w http.ResponseWriter, r *http.Request, service, method string,
+) (protoreflect.MethodDescriptor, bool) {
 	methodDesc, err := findMethodDescriptor(g.descriptors, service, method)
 	if err != nil {
 		if g.descriptors == nil && g.budgerigar != nil {
 			g.handleWithoutDescriptor(w, r, service, method, connectResponse{})
 
-			return
+			return nil, false
 		}
 
 		g.writeError(w, codes.NotFound, "method not found")
 
-		return
+		return nil, false
 	}
 
-	mocker := g.buildMocker(r, service, method, fullMethod, methodDesc)
+	if r.Method == http.MethodGet {
+		if !methodAllowsGET(methodDesc) {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+
+			return nil, false
+		}
+
+		r.Header.Set(headerContentType, connectGetContentType(r))
+	}
+
+	return methodDesc, true
+}
+
+func (g *ConnectRPCGateway) serveMethod(
+	w http.ResponseWriter, r *http.Request, service, method string, methodDesc protoreflect.MethodDescriptor,
+) {
+	mocker := g.buildMocker(r, service, method, "/"+service+"/"+method, methodDesc)
 
 	adapter := &httpStreamAdapter{
 		baseStreamAdapter: baseStreamAdapter{
-			ctx:          r.Context(),
-			req:          r,
-			w:            w,
-			typeResolver: mocker.typeResolver,
+			ctx:           httpHeadersToGRPCContext(r.Context(), r.Header),
+			req:           r,
+			w:             w,
+			typeResolver:  mocker.typeResolver,
+			frameEncoding: responseFrameEncoding(w, r),
 		},
 		streaming: mocker.serverStream || mocker.clientStream,
 	}
 
-	adapter.ctx = httpHeadersToGRPCContext(r.Context(), r.Header)
+	if adapter.streaming && !isConnectStreamContentType(r.Header.Get(headerContentType)) {
+		http.Error(w, "unsupported media type", http.StatusUnsupportedMediaType)
+
+		return
+	}
+
+	timedCtx, cancel, err := withRequestTimeout(adapter.ctx, r.Header)
+	if err != nil {
+		g.writeError(w, codes.InvalidArgument, "invalid connect-timeout-ms")
+
+		return
+	}
+
+	defer cancel()
+
+	adapter.ctx = timedCtx
 
 	if !adapter.streaming {
-		g.handleUnary(mocker, adapter)
+		g.handleUnary(mocker, adapter, methodDesc)
 
 		return
 	}
@@ -94,25 +191,70 @@ func (g *ConnectRPCGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := mocker.streamHandler(adapter.ctx, adapter); err != nil { //nolint:contextcheck
 		st, _ := status.FromError(err)
 		adapter.writeErrorStatus(normalizeHealthError(st, service))
-	} else {
-		// Per Connect RPC protocol, the server signals end of stream
-		// by sending an empty envelope with the endStream flag set.
-		if err := writeConnectFrame(adapter.w, nil, true); err != nil {
-			logger.Debug().Err(err).Msg("connect.gateway: send end stream")
-		}
-	}
-}
-
-func (g *ConnectRPCGateway) handleUnary(mocker *grpcMocker, a *httpStreamAdapter) {
-	body, err := io.ReadAll(a.req.Body)
-	if err != nil {
-		a.writeError(codes.Internal, "failed to read body")
 
 		return
 	}
 
+	adapter.sendHeader()
+
+	body, _ := json.Marshal(connectEndStream{Metadata: adapter.takeTrailerMetadata()})
+	if err := writeConnectFrameEncoded(adapter.w, body, true, adapter.frameEncoding); err != nil {
+		zerolog.Ctx(r.Context()).Debug().Err(err).Msg("connect.gateway: send end stream")
+	}
+}
+
+func (g *ConnectRPCGateway) hasProtocolVersion(r *http.Request) bool {
+	if r.Method == http.MethodGet {
+		return r.URL.Query().Get(connectQueryVersion) == connectGetVersionValue
+	}
+
+	return r.Header.Get(headerConnectProtocolVersion) == connectProtocolVersion
+}
+
+// ServerReflectionInfo is bidi-streaming, so the Connect protocol requires the
+// enveloped application/connect+{codec} form and answers with 200 plus a final
+// EndStreamResponse frame -- the same shape as any other streaming method.
+func (g *ConnectRPCGateway) serveReflection(w http.ResponseWriter, r *http.Request, service string) {
+	if !isConnectStreamContentType(r.Header.Get(headerContentType)) {
+		http.Error(w, "unsupported media type", http.StatusUnsupportedMediaType)
+
+		return
+	}
+
+	adapter := &httpStreamAdapter{
+		baseStreamAdapter: baseStreamAdapter{
+			ctx:           httpHeadersToGRPCContext(r.Context(), r.Header),
+			req:           r,
+			w:             w,
+			typeResolver:  g.reflection.resolver,
+			frameEncoding: responseFrameEncoding(w, r),
+		},
+		streaming: true,
+	}
+
+	if err := g.reflection.serve(service, adapter); err != nil && !errors.Is(err, io.EOF) {
+		st, _ := status.FromError(err)
+		adapter.writeErrorStatus(st)
+
+		return
+	}
+
+	adapter.sendHeader()
+
+	body, _ := json.Marshal(connectEndStream{Metadata: adapter.takeTrailerMetadata()})
+	if err := writeConnectFrameEncoded(adapter.w, body, true, adapter.frameEncoding); err != nil {
+		zerolog.Ctx(r.Context()).Debug().Err(err).Msg("connect.gateway: send reflection end stream")
+	}
+}
+
+func (g *ConnectRPCGateway) handleUnary(mocker *grpcMocker, a *httpStreamAdapter, methodDesc protoreflect.MethodDescriptor) {
+	body, contentType, err := g.unaryRequestBody(a, methodDesc)
+	if err != nil {
+		return
+	}
+
 	resp, err := handleUnaryCore(a.ctx, a, body, mocker,
-		a.req.Header.Get(headerContentType),
+		contentType,
 		isJSONContentType,
 		func(st *status.Status) {
 			a.writeErrorStatus(normalizeHealthError(st, mocker.serviceName))
@@ -125,6 +267,28 @@ func (g *ConnectRPCGateway) handleUnary(mocker *grpcMocker, a *httpStreamAdapter
 	if err := a.SendMsg(resp); err != nil {
 		zerolog.Ctx(a.ctx).Debug().Err(err).Msg("connect.gateway: send unary response")
 	}
+}
+
+func (g *ConnectRPCGateway) unaryRequestBody(a *httpStreamAdapter, methodDesc protoreflect.MethodDescriptor) ([]byte, string, error) {
+	if a.req.Method == http.MethodGet {
+		body, err := connectGetRequest(a.req, methodDesc)
+		if err != nil {
+			a.writeError(codes.InvalidArgument, err.Error())
+
+			return nil, "", err
+		}
+
+		return body, a.req.Header.Get(headerContentType), nil
+	}
+
+	body, err := io.ReadAll(a.req.Body)
+	if err != nil {
+		a.writeError(codes.Internal, "failed to read body")
+
+		return nil, "", err
+	}
+
+	return body, a.req.Header.Get(headerContentType), nil
 }
 
 func (g *ConnectRPCGateway) writeError(w http.ResponseWriter, code codes.Code, msg string) {
@@ -174,6 +338,33 @@ type httpStreamAdapter struct {
 	baseStreamAdapter
 
 	streaming bool
+	trailerMD metadata.MD
+}
+
+func (a *httpStreamAdapter) SetTrailer(md metadata.MD) {
+	if len(md) == 0 {
+		return
+	}
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if a.streaming {
+		a.trailerMD = metadata.Join(a.trailerMD, md)
+
+		return
+	}
+
+	for k, values := range md {
+		key := k
+		if !strings.HasPrefix(strings.ToLower(key), "trailer-") {
+			key = "Trailer-" + key
+		}
+
+		for _, v := range values {
+			a.w.Header().Add(key, v)
+		}
+	}
 }
 
 func (a *httpStreamAdapter) SendMsg(m any) error {
@@ -192,7 +383,7 @@ func (a *httpStreamAdapter) SendMsg(m any) error {
 	}
 
 	if a.streaming {
-		if err := writeConnectFrame(a.w, data, false); err != nil {
+		if err := writeConnectFrameEncoded(a.w, data, false, a.frameEncoding); err != nil {
 			return err
 		}
 	} else {
@@ -235,6 +426,17 @@ func (a *httpStreamAdapter) RecvMsg(m any) error {
 	return a.recvUnaryMessage(msg, ct)
 }
 
+func (a *httpStreamAdapter) takeTrailerMetadata() map[string][]string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if len(a.trailerMD) == 0 {
+		return nil
+	}
+
+	return a.trailerMD
+}
+
 func (a *httpStreamAdapter) sendHeader() {
 	a.sendHeaderOnce.Do(func() {
 		a.mu.Lock()
@@ -250,6 +452,10 @@ func (a *httpStreamAdapter) sendHeader() {
 			a.w.Header().Set(headerContentType, contentTypeJSON)
 		default:
 			a.w.Header().Set(headerContentType, contentTypeProto)
+		}
+
+		if a.streaming && a.frameEncoding == encodingGzip {
+			a.w.Header().Set(headerConnectContentEncoding, encodingGzip)
 		}
 
 		a.w.WriteHeader(http.StatusOK)
@@ -298,7 +504,12 @@ func (a *httpStreamAdapter) recvStreamingMessage(msg proto.Message, ct string) e
 		a.endOfStream.Store(true)
 	}
 
-	return a.decodeMessage(frame.data, msg, ct)
+	payload, err := decodeFramePayload(frame.flags, frame.data, a.req.Header)
+	if err != nil {
+		return err
+	}
+
+	return a.decodeMessage(payload, msg, ct)
 }
 
 func (a *httpStreamAdapter) decodeMessage(data []byte, msg proto.Message, ct string) error {
@@ -319,7 +530,16 @@ func (a *httpStreamAdapter) writeError(code codes.Code, msg string) {
 }
 
 func (a *httpStreamAdapter) writeErrorStatus(st *status.Status) {
-	body, _ := json.Marshal(serializeErrorStatus(st))
+	connErr := serializeErrorStatus(st)
+
+	if !a.streaming {
+		body, _ := json.Marshal(connErr)
+		a.writeBody(st.Code(), body)
+
+		return
+	}
+
+	body, _ := json.Marshal(connectEndStream{Error: &connErr, Metadata: a.takeTrailerMetadata()})
 	a.writeBody(st.Code(), body)
 }
 
@@ -327,7 +547,7 @@ func (a *httpStreamAdapter) writeBody(code codes.Code, body []byte) {
 	if a.streaming {
 		a.sendHeader()
 
-		_ = writeConnectFrame(a.w, body, true)
+		_ = writeConnectFrameEncoded(a.w, body, true, a.frameEncoding)
 	} else {
 		a.w.Header().Set(headerContentType, contentTypeConnectJSON)
 		a.w.WriteHeader(ErrorCodeToHTTPStatus(code))
@@ -379,11 +599,13 @@ func ErrorCodeToString(code codes.Code) string {
 	}
 }
 
+const statusClientClosedRequest = 499
+
 //nolint:cyclop,exhaustive
 func ErrorCodeToHTTPStatus(code codes.Code) int {
 	switch code {
 	case codes.Canceled:
-		return http.StatusRequestTimeout
+		return statusClientClosedRequest
 	case codes.Unknown:
 		return http.StatusInternalServerError
 	case codes.InvalidArgument:
