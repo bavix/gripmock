@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -111,16 +112,19 @@ func (g *GRPCWebGateway) serveMethod(
 
 	adapter := newGRPCWebAdapter(r, w, mocker)
 
-	timedCtx, cancel, err := withRequestTimeout(adapter.ctx, r.Header)
+	timeout, ok, err := requestTimeout(r.Header)
 	if err != nil {
 		writeGRPCWebError(w, codes.InvalidArgument, "invalid grpc-timeout")
 
 		return
 	}
 
-	defer cancel()
+	if ok && timeout > 0 {
+		timedCtx, cancel := context.WithTimeout(adapter.ctx, timeout)
+		defer cancel()
 
-	adapter.ctx = timedCtx
+		adapter.ctx = timedCtx
+	}
 
 	if !mocker.serverStream && !mocker.clientStream {
 		g.handleUnary(mocker, adapter)

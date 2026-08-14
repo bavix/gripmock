@@ -82,43 +82,32 @@ func (p *gatewayServiceInfoProvider) GetServiceInfo() map[string]grpc.ServiceInf
 
 func (g *gatewayReflection) serve(service string, stream grpc.ServerStream) error {
 	if service == reflectionServiceV1Alpha {
-		return g.v1alpha.ServerReflectionInfo(&reflectionStreamV1Alpha{ServerStream: stream})
+		//nolint:staticcheck // deprecated upstream, still the only reflection API some clients speak.
+		return g.v1alpha.ServerReflectionInfo(
+			&reflectionStream[reflectionv1alpha.ServerReflectionRequest, reflectionv1alpha.ServerReflectionResponse]{
+				ServerStream: stream,
+			})
 	}
 
-	return g.v1.ServerReflectionInfo(&reflectionStreamV1{ServerStream: stream})
+	return g.v1.ServerReflectionInfo(
+		&reflectionStream[reflectionv1.ServerReflectionRequest, reflectionv1.ServerReflectionResponse]{
+			ServerStream: stream,
+		})
 }
 
-type reflectionStreamV1 struct {
+// reflectionStream adapts a gateway stream adapter to the generated
+// ServerReflectionInfo server interface. The v1 and v1alpha services differ
+// only in their message types, so one generic wrapper serves both.
+type reflectionStream[Req, Resp any] struct {
 	grpc.ServerStream
 }
 
-func (s *reflectionStreamV1) Send(m *reflectionv1.ServerReflectionResponse) error {
+func (s *reflectionStream[Req, Resp]) Send(m *Resp) error {
 	return s.SendMsg(m)
 }
 
-func (s *reflectionStreamV1) Recv() (*reflectionv1.ServerReflectionRequest, error) {
-	m := new(reflectionv1.ServerReflectionRequest)
-	if err := s.RecvMsg(m); err != nil {
-		return nil, err
-	}
-
-	return m, nil
-}
-
-// The v1alpha service is deprecated upstream but still the only reflection API
-// some clients speak, so gripmock keeps answering it.
-type reflectionStreamV1Alpha struct {
-	grpc.ServerStream
-}
-
-//nolint:staticcheck
-func (s *reflectionStreamV1Alpha) Send(m *reflectionv1alpha.ServerReflectionResponse) error {
-	return s.SendMsg(m)
-}
-
-//nolint:staticcheck
-func (s *reflectionStreamV1Alpha) Recv() (*reflectionv1alpha.ServerReflectionRequest, error) {
-	m := new(reflectionv1alpha.ServerReflectionRequest)
+func (s *reflectionStream[Req, Resp]) Recv() (*Req, error) {
+	m := new(Req)
 	if err := s.RecvMsg(m); err != nil {
 		return nil, err
 	}

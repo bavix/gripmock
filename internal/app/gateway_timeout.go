@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"strconv"
@@ -82,19 +81,4 @@ func parseGRPCTimeout(raw string) (time.Duration, error) {
 	}
 
 	return time.Duration(n) * unit, nil
-}
-
-func withRequestTimeout(ctx context.Context, hdr http.Header) (context.Context, context.CancelFunc, error) {
-	timeout, ok, err := requestTimeout(hdr)
-	if err != nil {
-		return ctx, func() {}, err
-	}
-
-	if !ok || timeout <= 0 {
-		return ctx, func() {}, nil
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-
-	return ctx, cancel, nil
 }

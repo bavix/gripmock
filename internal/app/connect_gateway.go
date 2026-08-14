@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -171,16 +172,19 @@ func (g *ConnectRPCGateway) serveMethod(
 		return
 	}
 
-	timedCtx, cancel, err := withRequestTimeout(adapter.ctx, r.Header)
+	timeout, ok, err := requestTimeout(r.Header)
 	if err != nil {
 		g.writeError(w, codes.InvalidArgument, "invalid connect-timeout-ms")
 
 		return
 	}
 
-	defer cancel()
+	if ok && timeout > 0 {
+		timedCtx, cancel := context.WithTimeout(adapter.ctx, timeout)
+		defer cancel()
 
-	adapter.ctx = timedCtx
+		adapter.ctx = timedCtx
+	}
 
 	if !adapter.streaming {
 		g.handleUnary(mocker, adapter, methodDesc)

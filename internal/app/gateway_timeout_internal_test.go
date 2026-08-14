@@ -2,10 +2,17 @@ package app
 
 import (
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
 func TestRequestTimeoutParsesBothProtocols(t *testing.T) {
@@ -77,30 +84,41 @@ func TestRequestTimeoutPrefersConnectHeader(t *testing.T) {
 	require.Equal(t, 100*time.Millisecond, got)
 }
 
-func TestWithRequestTimeoutSetsDeadline(t *testing.T) {
+// The parsed timeout is worth nothing unless the gateway puts it on the
+// context the mocker runs under: a stub that sleeps past the client's deadline
+// must come back as deadline_exceeded, not as its data.
+func TestConnectGatewayAppliesRequestTimeout(t *testing.T) {
 	t.Parallel()
 
-	hdr := http.Header{}
-	hdr.Set(headerConnectTimeoutMs, "50")
+	registry := descriptors.NewRegistry()
+	registerMultiverseDescriptors(t, t.Context(), registry)
 
-	ctx, cancel, err := withRequestTimeout(t.Context(), hdr)
-	defer cancel()
+	budgerigar := stuber.NewBudgerigar()
+	budgerigar.PutMany(&stuber.Stub{
+		Service: "multiverse.v1.MultiverseService",
+		Method:  "Ping",
+		Input:   stuber.InputData{Equals: map[string]any{"message": "slow"}},
+		Output: stuber.Output{
+			Data:  map[string]any{"reply": "Pong"},
+			Delay: types.Duration(time.Second),
+		},
+	})
 
-	require.NoError(t, err)
+	gateway := NewConnectRPCGateway(budgerigar, registry, nil, nil, nil, nil)
+	router := mux.NewRouter()
+	router.Handle("/{service:.+}/{method}", gateway).Methods(http.MethodPost)
 
-	deadline, ok := ctx.Deadline()
-	require.True(t, ok, "the caller asked for a deadline, it must be applied")
-	require.WithinDuration(t, time.Now().Add(50*time.Millisecond), deadline, 20*time.Millisecond)
-}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost,
+		"/multiverse.v1.MultiverseService/Ping", strings.NewReader(`{"message":"slow"}`))
+	req.Header.Set(headerContentType, contentTypeJSON)
+	req.Header.Set(headerConnectTimeoutMs, "20")
 
-func TestWithRequestTimeoutLeavesContextAloneWhenAbsent(t *testing.T) {
-	t.Parallel()
+	start := time.Now()
 
-	ctx, cancel, err := withRequestTimeout(t.Context(), http.Header{})
-	defer cancel()
+	router.ServeHTTP(rec, req)
 
-	require.NoError(t, err)
-
-	_, ok := ctx.Deadline()
-	require.False(t, ok)
+	require.Less(t, time.Since(start), time.Second, "the deadline must cut the stub delay short")
+	require.Equal(t, http.StatusGatewayTimeout, rec.Code)
+	require.Contains(t, rec.Body.String(), "deadline_exceeded")
 }
