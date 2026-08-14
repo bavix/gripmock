@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package connectget.v1;
+
+option go_package = "github.com/bavix/gripmock/examples/connectget;connectget";
+
+service LookupService {
+  rpc Lookup (LookupRequest) returns (LookupReply) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
+  rpc Mutate (LookupRequest) returns (LookupReply) {}
+}
+
+message LookupRequest {
+  string key = 1;
+}
+
+message LookupReply {
+  string value = 1;
+}

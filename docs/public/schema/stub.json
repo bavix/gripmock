@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://bavix.github.io/gripmock/schema/stub.json",
   "title": "GripMock Stub Schema",
-  "description": "Unified schema for GripMock stub definitions (supports both JSON and YAML formats)",
+  "description": "Stub definitions for GripMock. Accepts a single stub object or an array of them, in JSON or YAML.",
   "examples": [
     {
       "description": "Single stub object",
@@ -133,7 +133,7 @@
       "required": [ "service", "method", "output" ],
       "properties": {
         "id": {
-          "description": "Unique identifier for the stub (auto-generated if omitted)",
+          "description": "Stub identifier. Must be a UUID. Generated on load when omitted, in which case it changes every time the file is reloaded.",
           "type": "string",
           "format": "uuid"
         },
@@ -148,42 +148,42 @@
           "minLength": 1
         },
         "priority": {
-          "description": "Stub priority for matching (higher numbers = higher priority)",
+          "description": "Tie-breaker among equally specific stubs; higher wins. Specificity is compared first, so an equals stub still beats a contains stub with a higher priority.",
           "default": 0,
           "type": "integer"
         },
         "input": {
-          "description": "Input matching rules for unary requests (mutually exclusive with inputs)",
+          "description": "Matchers for a unary request body. Mutually exclusive with inputs.",
           "$ref": "#/$defs/inputMatcher"
         },
         "inputs": {
-          "description": "Inputs matching rules for client streaming requests (mutually exclusive with input)",
+          "description": "Per-message matchers for client and bidirectional streaming. With one element it is a broadcast pattern every message must match; with several, element N is matched against the Nth message and the counts must be equal. Mutually exclusive with input. For OR semantics use input.anyOf.",
           "type": "array",
           "items": {
             "$ref": "#/$defs/inputMatcher"
           }
         },
         "headers": {
-          "description": "Header matching rules",
+          "description": "Matchers for gRPC request metadata. Header names are case-insensitive.",
           "$ref": "#/$defs/headerMatcher"
         },
         "options": {
-          "description": "Optional behavior settings (e.g. times limit)",
+          "description": "Optional behaviour settings, currently the times limit.",
           "$ref": "#/$defs/stubOptions"
         },
         "output": {
-          "description": "Response configuration",
+          "description": "What the stub returns: a message, a stream, or an error.",
           "$ref": "#/$defs/output"
         },
         "effects": {
-          "description": "Side effects applied after successful stub match. Generated/deleted stubs inherit parent stub session automatically.",
+          "description": "Side effects applied after this stub matches, used to build multi-step flows where one call arms the next. Stubs created or deleted here inherit this stub's session.",
           "type": "array",
           "items": {
             "$ref": "#/$defs/effect"
           }
         },
         "session": {
-          "description": "Session ID isolating this stub (empty = global)",
+          "description": "Session this stub belongs to. A stub with a session is invisible outside it; empty means the global scope.",
           "type": "string"
         }
       },
@@ -197,7 +197,7 @@
         "required": [ "service", "method", "output" ],
         "properties": {
           "id": {
-            "description": "Unique identifier for the stub (auto-generated if omitted)",
+            "description": "Stub identifier. Must be a UUID. Generated on load when omitted, in which case it changes every time the file is reloaded.",
             "type": "string",
             "format": "uuid"
           },
@@ -212,42 +212,42 @@
             "minLength": 1
           },
           "priority": {
-            "description": "Stub priority for matching (higher numbers = higher priority)",
+            "description": "Tie-breaker among equally specific stubs; higher wins. Specificity is compared first, so an equals stub still beats a contains stub with a higher priority.",
             "default": 0,
             "type": "integer"
           },
           "input": {
-            "description": "Input matching rules for unary requests (mutually exclusive with inputs)",
+            "description": "Matchers for a unary request body. Mutually exclusive with inputs.",
             "$ref": "#/$defs/inputMatcher"
           },
           "inputs": {
-            "description": "Inputs matching rules for client streaming requests (mutually exclusive with input)",
+            "description": "Per-message matchers for client and bidirectional streaming. With one element it is a broadcast pattern every message must match; with several, element N is matched against the Nth message and the counts must be equal. Mutually exclusive with input. For OR semantics use input.anyOf.",
             "type": "array",
             "items": {
               "$ref": "#/$defs/inputMatcher"
             }
           },
           "headers": {
-            "description": "Header matching rules",
+            "description": "Matchers for gRPC request metadata. Header names are case-insensitive.",
             "$ref": "#/$defs/headerMatcher"
           },
           "options": {
-            "description": "Optional behavior settings (e.g. times limit)",
+            "description": "Optional behaviour settings, currently the times limit.",
             "$ref": "#/$defs/stubOptions"
           },
           "output": {
-            "description": "Response configuration",
+            "description": "What the stub returns: a message, a stream, or an error.",
             "$ref": "#/$defs/output"
           },
           "effects": {
-            "description": "Side effects applied after successful stub match. Generated/deleted stubs inherit parent stub session automatically.",
+            "description": "Side effects applied after this stub matches, used to build multi-step flows where one call arms the next. Stubs created or deleted here inherit this stub's session.",
             "type": "array",
             "items": {
               "$ref": "#/$defs/effect"
             }
           },
           "session": {
-            "description": "Session ID isolating this stub (empty = global)",
+            "description": "Session this stub belongs to. A stub with a session is invisible outside it; empty means the global scope.",
             "type": "string"
           }
         },
@@ -257,6 +257,7 @@
   ],
   "$defs": {
     "effect": {
+      "description": "One side effect: create/replace a stub, or delete one.",
       "type": "object",
       "allOf": [
         {
@@ -289,17 +290,18 @@
       "required": [ "action" ],
       "properties": {
         "action": {
+          "description": "upsert creates or replaces a stub, delete removes one.",
           "type": "string",
           "enum": [ "upsert", "delete" ],
           "minLength": 1
         },
         "id": {
-          "description": "Target stub ID for delete action. Can be static UUID or template-rendered string.",
+          "description": "Target stub UUID for the delete action. May be a template that renders to a UUID.",
           "type": "string",
           "minLength": 1
         },
         "stub": {
-          "description": "Stub payload for upsert action (validated after template rendering)",
+          "description": "Stub payload for the upsert action, validated after template rendering.",
           "type": "object",
           "minProperties": 1,
           "additionalProperties": true
@@ -308,6 +310,7 @@
       "additionalProperties": false
     },
     "inputMatcher": {
+      "description": "Matchers for the request body. All blocks present are AND-ed; an omitted or empty block always passes, so a stub with every block empty matches any request.",
       "type": "object",
       "minProperties": 1,
       "properties": {
@@ -317,14 +320,22 @@
           "type": "boolean"
         },
         "equals": {
-          "description": "Exact match for field names and values (case-sensitive)",
-          "type": "object",
-          "additionalProperties": true
+          "oneOf": [
+            {
+              "description": "Exact match for field names and values (case-sensitive)",
+              "type": "object",
+              "additionalProperties": true
+            },
+            {
+              "description": "Empty equals matcher (matches any input)",
+              "type": "null"
+            }
+          ]
         },
         "contains": {
           "oneOf": [
             {
-              "description": "Partial match (substring) for field values",
+              "description": "Subset match for field values: the request must carry at least these keys. Strings match on substring, arrays on containment, objects recursively.",
               "type": "object",
               "additionalProperties": true
             },
@@ -361,7 +372,7 @@
           ]
         },
         "anyOf": {
-          "description": "Alternative matchers (OR logic). Each item is evaluated as equals AND contains AND matches.",
+          "description": "Alternative matchers (OR logic). Each item is evaluated as equals AND contains AND matches AND glob.",
           "type": "array",
           "minItems": 1,
           "items": {
@@ -372,6 +383,7 @@
       "additionalProperties": false
     },
     "inputMatcherAnyOfElement": {
+      "description": "One alternative of an anyOf. Its own blocks are AND-ed together; anyOf cannot nest.",
       "type": "object",
       "minProperties": 1,
       "properties": {
@@ -381,14 +393,22 @@
           "type": "boolean"
         },
         "equals": {
-          "description": "Exact match for field names and values (case-sensitive)",
-          "type": "object",
-          "additionalProperties": true
+          "oneOf": [
+            {
+              "description": "Exact match for field names and values (case-sensitive)",
+              "type": "object",
+              "additionalProperties": true
+            },
+            {
+              "description": "Empty equals matcher (matches any input)",
+              "type": "null"
+            }
+          ]
         },
         "contains": {
           "oneOf": [
             {
-              "description": "Partial match (substring) for field values",
+              "description": "Subset match for field values: the request must carry at least these keys. Strings match on substring, arrays on containment, objects recursively.",
               "type": "object",
               "additionalProperties": true
             },
@@ -432,7 +452,7 @@
       "type": "object",
       "properties": {
         "times": {
-          "description": "Max number of matches; 0 = unlimited. After limit, stub exhausts and no longer matches.",
+          "description": "Maximum number of matches; 0 means unlimited. Once the limit is reached the stub is exhausted and stops matching, though it stays in storage.",
           "default": 0,
           "type": "integer",
           "minimum": 0
@@ -441,42 +461,75 @@
       "additionalProperties": false
     },
     "headerMatcher": {
+      "description": "Matchers for gRPC request metadata. All blocks present are AND-ed; an omitted or empty block always passes.",
       "type": "object",
       "minProperties": 1,
       "properties": {
         "equals": {
-          "description": "Exact match for header names and values",
-          "type": "object",
-          "additionalProperties": {
-            "description": "Header value (multiple values separated by ';')",
-            "type": "string"
-          }
+          "oneOf": [
+            {
+              "description": "Exact match for header names and values",
+              "type": "object",
+              "additionalProperties": {
+                "description": "Header value (multiple values separated by ';')",
+                "type": "string"
+              }
+            },
+            {
+              "description": "Empty equals matcher (matches any headers)",
+              "type": "null"
+            }
+          ]
         },
         "contains": {
-          "description": "Partial match for header values",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
+          "oneOf": [
+            {
+              "description": "Subset match for headers: the request must carry at least these header names. Values match on substring.",
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            {
+              "description": "Empty contains matcher (matches any headers)",
+              "type": "null"
+            }
+          ]
         },
         "matches": {
-          "description": "Regex match for header values",
-          "type": "object",
-          "additionalProperties": {
-            "description": "Regular expression pattern",
-            "type": "string"
-          }
+          "oneOf": [
+            {
+              "description": "Regex match for header values",
+              "type": "object",
+              "additionalProperties": {
+                "description": "Regular expression pattern",
+                "type": "string"
+              }
+            },
+            {
+              "description": "Empty matches matcher (matches any headers)",
+              "type": "null"
+            }
+          ]
         },
         "glob": {
-          "description": "Glob pattern match for header values",
-          "type": "object",
-          "additionalProperties": {
-            "description": "Glob pattern (uses path.Match)",
-            "type": "string"
-          }
+          "oneOf": [
+            {
+              "description": "Glob pattern match for header values",
+              "type": "object",
+              "additionalProperties": {
+                "description": "Glob pattern (uses path.Match)",
+                "type": "string"
+              }
+            },
+            {
+              "description": "Empty glob matcher (matches any headers)",
+              "type": "null"
+            }
+          ]
         },
         "anyOf": {
-          "description": "Alternative header matchers (OR logic). Each item is evaluated as equals AND contains AND matches.",
+          "description": "Alternative header matchers (OR logic). Each item is evaluated as equals AND contains AND matches AND glob.",
           "type": "array",
           "minItems": 1,
           "items": {
@@ -487,39 +540,72 @@
       "additionalProperties": false
     },
     "headerMatcherAnyOfElement": {
+      "description": "One alternative of a header anyOf. Its own blocks are AND-ed together.",
       "type": "object",
       "minProperties": 1,
       "properties": {
         "equals": {
-          "description": "Exact match for header names and values",
-          "type": "object",
-          "additionalProperties": {
-            "description": "Header value (multiple values separated by ';')",
-            "type": "string"
-          }
+          "oneOf": [
+            {
+              "description": "Exact match for header names and values",
+              "type": "object",
+              "additionalProperties": {
+                "description": "Header value (multiple values separated by ';')",
+                "type": "string"
+              }
+            },
+            {
+              "description": "Empty equals matcher (matches any headers)",
+              "type": "null"
+            }
+          ]
         },
         "contains": {
-          "description": "Partial match for header values",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
+          "oneOf": [
+            {
+              "description": "Subset match for headers: the request must carry at least these header names. Values match on substring.",
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            {
+              "description": "Empty contains matcher (matches any headers)",
+              "type": "null"
+            }
+          ]
         },
         "matches": {
-          "description": "Regex match for header values",
-          "type": "object",
-          "additionalProperties": {
-            "description": "Regular expression pattern",
-            "type": "string"
-          }
+          "oneOf": [
+            {
+              "description": "Regex match for header values",
+              "type": "object",
+              "additionalProperties": {
+                "description": "Regular expression pattern",
+                "type": "string"
+              }
+            },
+            {
+              "description": "Empty matches matcher (matches any headers)",
+              "type": "null"
+            }
+          ]
         },
         "glob": {
-          "description": "Glob pattern match for header values",
-          "type": "object",
-          "additionalProperties": {
-            "description": "Glob pattern (uses path.Match)",
-            "type": "string"
-          }
+          "oneOf": [
+            {
+              "description": "Glob pattern match for header values",
+              "type": "object",
+              "additionalProperties": {
+                "description": "Glob pattern (uses path.Match)",
+                "type": "string"
+              }
+            },
+            {
+              "description": "Empty glob matcher (matches any headers)",
+              "type": "null"
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -550,10 +636,15 @@
       ]
     },
     "streamMessage": {
-      "description": "Single message in a stream response. Usually an object matching the proto message structure; can be a scalar for methods that return a well-known type directly per message.",
+      "description": "Single message in a stream response. Usually an object matching the proto message structure; can be a scalar for methods that return a well-known type directly per message. An object may carry the reserved `_gripmock` key to delay this message or to fail the stream at this position.",
       "anyOf": [
         {
           "type": "object",
+          "properties": {
+            "_gripmock": {
+              "$ref": "#/$defs/gripMockElement"
+            }
+          },
           "additionalProperties": true
         },
         {
@@ -575,26 +666,27 @@
       ]
     },
     "output": {
+      "description": "The stub response: data, a stream, an error, or a combination.",
       "type": "object",
       "minProperties": 1,
       "properties": {
         "data": {
-          "description": "Response data for unary calls",
+          "description": "Response body for unary and client-streaming calls.",
           "$ref": "#/$defs/outputData"
         },
         "stream": {
-          "description": "Array of messages for streaming responses",
+          "description": "Response messages for server and bidirectional streaming, sent in order. In a stub file it may be combined with error: every message is sent first, then the error closes the stream. The REST API rejects that combination — POST /api/stubs requires either the unary side or stream, not both.",
           "type": "array",
           "items": {
             "$ref": "#/$defs/streamMessage"
           }
         },
         "error": {
-          "description": "gRPC error message",
+          "description": "gRPC status message. Returned instead of data when set.",
           "type": "string"
         },
         "code": {
-          "description": "gRPC status code (e.g., 3 for InvalidArgument, 14 for Unavailable)",
+          "description": "gRPC status code; 0 (OK) is the default. For example 3 for INVALID_ARGUMENT, 14 for UNAVAILABLE.",
           "type": "integer",
           "maximum": 16,
           "minimum": 0
@@ -615,15 +707,53 @@
           }
         },
         "delay": {
-          "description": "Delay timing: for unary calls - before response; for streaming - between messages (e.g., '100ms', '2.5s', '1m')",
+          "description": "How long to wait before sending. Applies before every message, including the first, so three stream messages at 200ms take 600ms. Accepts Go duration strings such as '100ms', '2.5s', '1m'.",
           "type": "string",
           "pattern": "^(\\d+(\\.\\d+)?(ms|s|m|h))+$"
         },
         "headers": {
-          "description": "Response headers",
+          "description": "Response metadata.",
           "type": "object",
           "additionalProperties": {
             "type": "string"
+          }
+        },
+        "trailers": {
+          "description": "Trailing metadata, sent after the last message with the status. Independent of headers: the same key may appear in both.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "gripMockElement": {
+      "description": "Reserved per-element directives. With `error`, `code` or `details` the element replaces its message and ends the stream with that status; the remaining elements are not sent.",
+      "type": "object",
+      "properties": {
+        "delay": {
+          "description": "Wait this long before sending this message.",
+          "type": "string",
+          "pattern": "^(\\d+(\\.\\d+)?(ms|s|m|h))+$"
+        },
+        "error": {
+          "description": "gRPC status message ending the stream here.",
+          "type": "string"
+        },
+        "code": {
+          "description": "gRPC status code ending the stream here.",
+          "type": "integer",
+          "maximum": 16,
+          "minimum": 0
+        },
+        "details": {
+          "description": "gRPC status details, as in output.details.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [ "type" ],
+            "additionalProperties": true
           }
         }
       },

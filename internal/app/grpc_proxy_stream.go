@@ -104,7 +104,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 						return proxycapture.BuildServerStreamStub(
 							m.fullServiceName, m.methodName, captureCtx.sessionID,
 							requestData, captureCtx.headers, responses,
-							responseHeadersFromClientStream(clientStream), err,
+							captureMetadataFromClientStream(clientStream), err,
 						)
 					},
 					recordDelay && !recorded,
@@ -144,7 +144,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 				return proxycapture.BuildServerStreamStub(
 					m.fullServiceName, m.methodName, captureCtx.sessionID,
 					requestData, captureCtx.headers, responses,
-					responseHeadersFromClientStream(clientStream), nil,
+					captureMetadataFromClientStream(clientStream), nil,
 				)
 			},
 			recordDelay && !recorded,
@@ -244,7 +244,7 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 					return proxycapture.BuildClientStreamStub(
 						m.fullServiceName, m.methodName, captureCtx.sessionID,
 						requests, captureCtx.headers, nil,
-						responseHeadersFromClientStream(clientStream), err,
+						captureMetadataFromClientStream(clientStream), err,
 					)
 				},
 				recordDelay, time.Since(startTime),
@@ -275,7 +275,7 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 				return proxycapture.BuildClientStreamStub(
 					m.fullServiceName, m.methodName, captureCtx.sessionID,
 					requests, captureCtx.headers, respEntry,
-					responseHeadersFromClientStream(clientStream), nil,
+					captureMetadataFromClientStream(clientStream), nil,
 				)
 			},
 			recordDelay, time.Since(startTime),

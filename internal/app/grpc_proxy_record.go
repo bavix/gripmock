@@ -29,6 +29,10 @@ func responseHeadersFromMetadata(head metadata.MD, tail metadata.MD) map[string]
 	return proxycapture.ResponseHeaders(head, tail)
 }
 
+func captureMetadata(head metadata.MD, tail metadata.MD) proxycapture.ResponseMetadata {
+	return proxycapture.CaptureMetadata(head, tail)
+}
+
 func messageToAny(message proto.Message) any {
 	return proxycapture.MessageToAny(message)
 }
@@ -119,7 +123,7 @@ func (m *grpcMocker) captureBidiResult(
 			return proxycapture.BuildBidiStub(
 				m.fullServiceName, m.methodName, captureCtx.sessionID,
 				requests, captureCtx.headers, responses,
-				responseHeadersFromClientStream(clientStream), captureErr,
+				captureMetadataFromClientStream(clientStream), captureErr,
 			)
 		},
 		recordDelay, elapsed,

@@ -4,9 +4,23 @@ servers:
 security:
   - {}
 info:
-  version: 3.0.0
+  version: 3.18.4
   title: GripMock API Schema
-  description: Documentation and API specification GripMock.
+  description: |
+    REST control plane for [GripMock](https://github.com/bavix/gripmock), a gRPC mock server.
+
+    Use it to load stubs, ask which stub a request would match, read call history and assert
+    call counts — all while the server keeps running.
+
+    **Base URL.** Every path below is relative to `/api`, served on the HTTP port (`4771` by
+    default). The gRPC port (`4770`) and the ConnectRPC/gRPC-web gateway (`4769`) are separate.
+
+    **Sessions.** Send `X-Gripmock-Session: <id>` to scope a request to one session. Stubs
+    created within a session are visible only there, and call history is kept apart. Without
+    the header the request works against the global scope.
+
+    **Not in this document.** `POST /api/mcp` speaks the Model Context Protocol for agent
+    tooling, and `GET /metrics` — outside `/api` — serves Prometheus metrics.
   contact:
     name: Maksim Babichev
     url: https://github.com/bavix/gripmock-openapi
@@ -15,21 +29,27 @@ info:
     url: https://github.com/bavix/gripmock-openapi/blob/master/LICENSE
 tags:
   - name: healthcheck
-    description: Healthcheck
+    description: Liveness and readiness probes.
   - name: dashboard
-    description: Dashboard and runtime telemetry
+    description: Aggregate counters and build/runtime information behind the web UI.
   - name: sessions
-    description: Session management
+    description: Session IDs currently known to the server.
   - name: services
-    description: Services reflection
+    description: Services and methods GripMock can serve, across every descriptor source.
   - name: stubs
-    description: Stubs storage and matching
+    description: >-
+      Create, list, search and delete stubs, and inspect why one matched. Send `X-Gripmock-Session: <id>`
+      to scope the call to one session; without it the request works against the global scope.
   - name: history
-    description: Recorded gRPC call history
+    description: >-
+      Calls the server has answered, newest first. Send `X-Gripmock-Session: <id>` to scope the call to
+      one session; without it the request works against the global scope.
   - name: verify
-    description: Verify call count expectations
+    description: >-
+      Assert how many times a method was called. Send `X-Gripmock-Session: <id>` to scope the call to
+      one session; without it the request works against the global scope.
   - name: descriptors
-    description: Protocol Buffer descriptors (FileDescriptorSet)
+    description: Load a compiled `FileDescriptorSet` into a running server.
 paths:
   # healthcheck
   /health/liveness:
@@ -75,7 +95,8 @@ paths:
       tags:
         - dashboard
       summary: Dashboard aggregate payload
-      description: Returns combined dashboard counters, runtime metadata, and process state in one response.
+      description: Returns combined dashboard counters, runtime metadata, and process state in one 
+        response.
       operationId: dashboard
       responses:
         '200':
@@ -203,7 +224,8 @@ paths:
             type: string
         - name: methodID
           in: path
-          description: Method short name (e.g. SayHello) or full id (e.g. helloworld.Greeter/SayHello)
+          description: Method short name (e.g. SayHello) or full id (e.g. 
+            helloworld.Greeter/SayHello)
           required: true
           schema:
             type: string
@@ -225,7 +247,8 @@ paths:
       tags:
         - services
       summary: Service details
-      description: Returns exact metadata for one service including all methods and streaming capabilities.
+      description: Returns exact metadata for one service including all methods and streaming 
+        capabilities.
       operationId: serviceGet
       parameters:
         - name: serviceID
@@ -251,7 +274,8 @@ paths:
       tags:
         - services
       summary: Remove service
-      description: Removes a service added via POST /descriptors. Services from startup (proto path) cannot be removed.
+      description: Removes a service added via POST /descriptors. Services from startup (proto path)
+        cannot be removed.
       operationId: deleteService
       parameters:
         - name: serviceID
@@ -310,7 +334,8 @@ paths:
       tags:
         - stubs
       summary: Getting a list of stubs
-      description: The list of stubs is required to view all added stubs. Use source query param to filter by source.
+      description: The list of stubs is required to view all added stubs. Use source query param to 
+        filter by source.
       operationId: listStubs
       parameters:
         - name: source
@@ -379,6 +404,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StubList'
+        '400':
+          description: >-
+            A query parameter could not be parsed, for example a non-numeric `limit`.
         '404':
           description: No stubs found
         '500':
@@ -398,9 +426,10 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/ListID'
         '400':
-          description: Invalid stub data
-        '422':
-          description: Validation error
+          description: >-
+            The payload is not valid JSON, or the stub failed validation — for example `input` and `inputs`
+            both set, or `output` carrying both the unary side and `stream`. The body holds an `error`
+            string naming the field.
         '500':
           description: Internal Server Error
       requestBody:
@@ -464,9 +493,10 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/StubList'
         '400':
-          description: Invalid stub data
-        '422':
-          description: Validation error
+          description: >-
+            The payload is not valid JSON, or the stub failed validation — for example `input` and `inputs`
+            both set, or `output` carrying both the unary side and `stream`. The body holds an `error`
+            string naming the field.
         '500':
           description: Internal Server Error
       requestBody:
@@ -548,7 +578,8 @@ paths:
         '500':
           description: Internal Server Error
       requestBody:
-        description: Search criteria including service, method, headers and data to match against stubs
+        description: Search criteria including service, method, headers and data to match against 
+          stubs
         required: true
         content:
           application/json:
@@ -559,7 +590,8 @@ paths:
       tags:
         - stubs
       summary: Inspect stub matching decision path
-      description: Returns detailed matching stages/candidates for a query without consuming stub times.
+      description: Returns detailed matching stages/candidates for a query without consuming stub 
+        times.
       operationId: inspectStubs
       responses:
         '200':
@@ -575,7 +607,8 @@ paths:
         '500':
           description: Internal Server Error
       requestBody:
-        description: Inspect criteria including service, method, optional headers/session and input messages
+        description: Inspect criteria including service, method, optional headers/session and input 
+          messages
         required: true
         content:
           application/json:
@@ -610,11 +643,15 @@ paths:
           required: false
           schema:
             type: string
+          description: >-
+            Keep only calls to this fully qualified service name.
         - name: method
           in: query
           required: false
           schema:
             type: string
+          description: >-
+            Keep only calls to this method name.
         - name: error
           in: query
           required: false
@@ -633,6 +670,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HistoryList'
+        '400':
+          description: >-
+            A query parameter could not be parsed, for example a non-numeric `limit`.
         '500':
           description: Internal Server Error
   /verify:
@@ -670,7 +710,8 @@ paths:
       tags:
         - descriptors
       summary: List service IDs from REST-added descriptors
-      description: Returns service IDs (e.g. helloworld.Greeter) added via POST /descriptors. Use DELETE /services/{serviceID} to remove.
+      description: Returns service IDs (e.g. helloworld.Greeter) added via POST /descriptors. Use 
+        DELETE /services/{serviceID} to remove.
       operationId: listDescriptors
       responses:
         '200':
@@ -685,7 +726,9 @@ paths:
       tags:
         - descriptors
       summary: Upload FileDescriptorSet
-      description: Accepts binary Protocol Buffers FileDescriptorSet. Registers descriptors for dynamic service discovery. Returns service IDs for later removal via DELETE /services/{serviceID}.
+      description: Accepts binary Protocol Buffers FileDescriptorSet. Registers descriptors for 
+        dynamic service discovery. Returns service IDs for later removal via DELETE 
+        /services/{serviceID}.
       operationId: addDescriptors
       requestBody:
         required: true
@@ -718,10 +761,16 @@ components:
         message:
           type: string
           x-omitzero: false
+          description: >-
+            Human-readable result of the operation.
         time:
           type: string
           format: date-time
           x-omitzero: false
+          description: >-
+            Server time when the response was produced (RFC 3339).
+      description: >-
+        Generic acknowledgement.
     AddDescriptorsResponse:
       type: object
       required:
@@ -732,15 +781,22 @@ components:
         message:
           type: string
           x-omitzero: false
+          description: >-
+            Human-readable result of the upload.
         time:
           type: string
           format: date-time
           x-omitzero: false
+          description: >-
+            Server time when the response was produced (RFC 3339).
         serviceIDs:
           type: array
           items:
             type: string
-          description: Service IDs (e.g. helloworld.Greeter) registered. Use DELETE /services/{serviceID} to remove.
+          description: Service IDs (e.g. helloworld.Greeter) registered. Use DELETE 
+            /services/{serviceID} to remove.
+      description: >-
+        Result of registering an uploaded FileDescriptorSet.
     DescriptorServiceIDs:
       type: object
       required:
@@ -752,6 +808,8 @@ components:
             type: string
           description: Service IDs added via POST /descriptors
     # services
+      description: >-
+        Service IDs registered from descriptors uploaded over REST.
     Service:
       type: object
       required:
@@ -763,17 +821,27 @@ components:
         id:
           type: string
           x-omitzero: false
+          description: >-
+            Fully qualified service name, used as the path segment in `/services/{serviceID}`.
         package:
           type: string
           x-omitzero: false
+          description: >-
+            Proto package the service is declared in.
         name:
           type: string
           x-omitzero: false
+          description: >-
+            Service name without the package prefix.
         methods:
           type: array
           items:
             $ref: '#/components/schemas/Method'
           x-omitzero: false
+          description: >-
+            Methods the service exposes.
+      description: >-
+        A gRPC service GripMock can serve.
     Method:
       type: object
       required:
@@ -784,9 +852,13 @@ components:
         id:
           type: string
           x-omitzero: false
+          description: >-
+            Method name, used as the path segment in `/methods/{methodID}`.
         name:
           type: string
           x-omitzero: false
+          description: >-
+            Method name as declared in the proto file.
         methodType:
           type: string
           description: gRPC method interaction type
@@ -814,6 +886,8 @@ components:
           type: boolean
           description: Indicates server-side streaming method
           x-go-type-skip-optional-pointer: true
+      description: >-
+        A method of a gRPC service.
     ProtoMessageSchema:
       type: object
       required:
@@ -831,6 +905,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ProtoFieldSchema'
+          description: >-
+            Fields declared on the message.
+      description: >-
+        Shape of a proto message, as GripMock resolved it from the descriptor.
     ProtoFieldSchema:
       type: object
       required:
@@ -842,19 +920,29 @@ components:
       properties:
         name:
           type: string
+          description: >-
+            Field name as declared in the proto file (snake_case).
         jsonName:
           type: string
+          description: >-
+            Field name in protojson output (camelCase).
         number:
           type: integer
           minimum: 1
+          description: >-
+            Field number from the proto definition.
         kind:
           type: string
+          description: >-
+            Proto kind, for example `string`, `int32`, `message`, `enum`.
         cardinality:
           type: string
           enum:
             - optional
             - required
             - repeated
+          description: >-
+            Whether the field is optional, required or repeated.
         typeName:
           type: string
           description: Referenced protobuf type for message/enum fields
@@ -865,20 +953,32 @@ components:
           type: array
           items:
             type: string
+          description: >-
+            Allowed value names when `kind` is `enum`.
         map:
           type: boolean
           x-go-type-skip-optional-pointer: true
+          description: >-
+            True when the field is a proto map.
         mapKeyKind:
           type: string
+          description: >-
+            Kind of the map key, when `map` is true.
         mapValueKind:
           type: string
+          description: >-
+            Kind of the map value, when `map` is true.
         mapValueTypeName:
           type: string
+          description: >-
+            Fully qualified type name of the map value, when it is a message or enum.
         message:
           $ref: '#/components/schemas/ProtoMessageSchema'
         mapValueMessage:
           $ref: '#/components/schemas/ProtoMessageSchema'
     # stubs
+      description: >-
+        A single field of a proto message.
     ID:
       type: string
       format: uuid
@@ -888,16 +988,22 @@ components:
         path: github.com/google/uuid
       example: 51c50050-ec27-4dae-a583-a32ca71a1dd5
       x-omitzero: false
+      description: >-
+        Stub identifier (UUID).
     ListID:
       type: array
       items:
         $ref: '#/components/schemas/ID'
       x-omitzero: false
+      description: >-
+        A list of stub UUIDs.
     StubList:
       type: array
       items:
         $ref: '#/components/schemas/Stub'
       x-omitzero: false
+      description: >-
+        A list of stubs.
     SearchRequest:
       type: object
       required:
@@ -911,20 +1017,31 @@ components:
           type: string
           example: Gripmock
           x-omitzero: false
+          description: >-
+            Fully qualified gRPC service name.
         method:
           type: string
           example: SayHello
           x-omitzero: false
+          description: >-
+            gRPC method name.
         headers:
           type: object
           additionalProperties:
             type: string
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Request metadata to match against stub `headers`.
         data:
           type: object
           x-go-type: interface{}
           additionalProperties: true
           x-omitzero: false
+          description: >-
+            Request body to match against stub `input`.
+      description: >-
+        A synthetic gRPC request. The server resolves it against the loaded stubs and returns the output
+        of the winning stub, without performing the call.
     SearchResponse:
       type: object
       required:
@@ -936,15 +1053,21 @@ components:
           additionalProperties:
             type: string
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Response metadata of the matched stub.
         data:
           type: object
           x-go-type: interface{}
           additionalProperties: true
           x-omitzero: false
+          description: >-
+            Response body of the matched stub.
         error:
           type: string
           example: Message not found
           x-omitzero: false
+          description: >-
+            gRPC status message, empty when the stub returns data.
         code:
           type: integer
           format: uint32
@@ -954,13 +1077,21 @@ components:
             path: google.golang.org/grpc/codes
           example: 3
           x-go-type-skip-optional-pointer: true
+          description: >-
+            gRPC status code.
+      description: >-
+        Output of the stub that won the match.
     CallRecord:
       type: object
       properties:
         service:
           type: string
+          description: >-
+            Fully qualified gRPC service name.
         method:
           type: string
+          description: >-
+            gRPC method name.
         session:
           type: string
           description: Session ID (empty = global)
@@ -975,6 +1106,8 @@ components:
         timestamp:
           type: string
           format: date-time
+          description: >-
+            When the call was received (RFC 3339).
         request:
           type: object
           additionalProperties: true
@@ -1008,14 +1141,20 @@ components:
           description: gRPC status code (e.g., 0 for OK, 5 for NotFound)
         error:
           type: string
+          description: >-
+            gRPC status message, empty when the call succeeded.
         elapsedMs:
           type: integer
           format: int64
           description: Handler duration in milliseconds
+      description: >-
+        One gRPC call the server answered.
     HistoryList:
       type: array
       items:
         $ref: '#/components/schemas/CallRecord'
+      description: >-
+        A page of recorded calls, newest first.
     VerifyRequest:
       type: object
       required:
@@ -1025,20 +1164,36 @@ components:
       properties:
         service:
           type: string
+          description: >-
+            Fully qualified gRPC service name.
         method:
           type: string
+          description: >-
+            gRPC method name.
         expectedCount:
           type: integer
           minimum: 0
+          description: >-
+            Number of calls the method must have received.
+      description: >-
+        Expected number of calls to one method.
     VerifyError:
       type: object
       properties:
         message:
           type: string
+          description: >-
+            Human-readable summary of the mismatch.
         expected:
           type: integer
+          description: >-
+            Count the caller asked for.
         actual:
           type: integer
+          description: >-
+            Count actually recorded.
+      description: >-
+        Reported when the recorded count differs from the expectation.
     InspectRequest:
       type: object
       required:
@@ -1049,20 +1204,32 @@ components:
           $ref: '#/components/schemas/ID'
         service:
           type: string
+          description: >-
+            Fully qualified gRPC service name.
         method:
           type: string
+          description: >-
+            gRPC method name.
         session:
           type: string
+          description: >-
+            Session to resolve against; empty means the global scope.
         headers:
           type: object
           additionalProperties: true
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Request metadata, matched against stub `headers`.
         input:
           type: array
           items:
             type: object
             additionalProperties: true
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Request body, matched against stub `input`.
+      description: >-
+        A request to explain: the server reports every stub it considered and why each was kept or dropped.
     InspectStage:
       type: object
       required:
@@ -1073,12 +1240,23 @@ components:
       properties:
         name:
           type: string
+          description: >-
+            Filter applied at this step: service/method, session, times, headers, input, or the method
+            fallback.
         before:
           type: integer
+          description: >-
+            Candidates entering the step.
         after:
           type: integer
+          description: >-
+            Candidates surviving the step.
         removed:
           type: integer
+          description: >-
+            Candidates dropped by the step (`before` minus `after`).
+      description: >-
+        One filtering step, with how many candidates entered and survived it.
     InspectCandidateEvent:
       type: object
       required:
@@ -1087,10 +1265,18 @@ components:
       properties:
         stage:
           type: string
+          description: >-
+            Stage the event belongs to.
         result:
           type: string
+          description: >-
+            Whether the candidate passed the stage, was dropped, or was selected.
         reason:
           type: string
+          description: >-
+            Why, when the candidate was dropped.
+      description: >-
+        What happened to one candidate at one stage.
     InspectCandidate:
       type: object
       required:
@@ -1113,41 +1299,75 @@ components:
       properties:
         id:
           type: string
+          description: >-
+            Stub UUID.
         service:
           type: string
+          description: >-
+            Service the stub answers.
         method:
           type: string
+          description: >-
+            Method the stub answers.
         session:
           type: string
+          description: >-
+            Session the stub belongs to; empty means global.
         priority:
           type: integer
+          description: >-
+            The stub `priority` value.
         times:
           type: integer
+          description: >-
+            Effective match limit; `0` means unlimited.
         used:
           type: integer
+          description: >-
+            How many times the stub has already matched in this session.
         specificity:
           type: integer
+          description: >-
+            How narrowly the stub describes the request. Compared first when picking a winner.
         score:
           type: number
           format: double
+          description: >-
+            Match rank plus `priority × 10`. Breaks ties between equally specific stubs.
         visibleBySession:
           type: boolean
+          description: >-
+            False when the stub belongs to a different session.
         withinTimes:
           type: boolean
+          description: >-
+            False when the stub is exhausted by its `times` limit.
         headersMatched:
           type: boolean
+          description: >-
+            Whether the stub `headers` matched the request metadata.
         inputMatched:
           type: boolean
+          description: >-
+            Whether the stub `input` matched the request body.
         matched:
           type: boolean
+          description: >-
+            True for the single stub that won.
         excludedBy:
           type: array
           items:
             type: string
+          description: >-
+            Reasons this candidate was ruled out; empty when it survived.
         events:
           type: array
           items:
             $ref: '#/components/schemas/InspectCandidateEvent'
+          description: >-
+            Per-stage verdicts for this candidate.
+      description: >-
+        A stub the server considered, with the verdict at each stage.
     InspectReport:
       type: object
       required:
@@ -1163,26 +1383,46 @@ components:
       properties:
         service:
           type: string
+          description: >-
+            Service that was inspected.
         method:
           type: string
+          description: >-
+            Method that was inspected.
         session:
           type: string
+          description: >-
+            Session the request was resolved against.
         matchedStubId:
           type: string
+          description: >-
+            UUID of the winning stub, absent when nothing matched.
         similarStubId:
           type: string
+          description: >-
+            Closest non-matching stub, offered as a hint when nothing matched.
         fallbackToMethod:
           type: boolean
+          description: >-
+            True when no stub matched the input and the search widened to any stub on the method.
         error:
           type: string
+          description: >-
+            Why the request could not be resolved.
         stages:
           type: array
           items:
             $ref: '#/components/schemas/InspectStage'
+          description: >-
+            How the candidate set narrowed, step by step.
         candidates:
           type: array
           items:
             $ref: '#/components/schemas/InspectCandidate'
+          description: >-
+            Every stub considered, with its verdict.
+      description: >-
+        Why a request matched — or did not. Stages show how the candidate set narrowed.
     DashboardOverview:
       type: object
       required:
@@ -1198,15 +1438,23 @@ components:
         totalServices:
           type: integer
           minimum: 0
+          description: >-
+            Services currently registered, from every descriptor source.
         totalStubs:
           type: integer
           minimum: 0
+          description: >-
+            Stubs currently in storage.
         usedStubs:
           type: integer
           minimum: 0
+          description: >-
+            Stubs matched at least once since startup.
         unusedStubs:
           type: integer
           minimum: 0
+          description: >-
+            Stubs never matched since startup.
         coveredMethods:
           type: integer
           minimum: 0
@@ -1232,15 +1480,25 @@ components:
         totalSessions:
           type: integer
           minimum: 0
+          description: >-
+            Sessions currently known to the server.
         runtimeDescriptors:
           type: integer
           minimum: 0
+          description: >-
+            Descriptors uploaded over REST since startup.
         totalHistory:
           type: integer
           minimum: 0
+          description: >-
+            Calls recorded in history.
         historyErrors:
           type: integer
           minimum: 0
+          description: >-
+            Recorded calls that ended in a gRPC error.
+      description: >-
+        Aggregate counters shown on the dashboard.
     Sessions:
       type: object
       required:
@@ -1250,6 +1508,10 @@ components:
           type: array
           items:
             type: string
+          description: >-
+            Known session IDs.
+      description: >-
+        Session IDs currently known to the server.
     DashboardInfo:
       type: object
       required:
@@ -1271,41 +1533,73 @@ components:
       properties:
         appName:
           type: string
+          description: >-
+            Application name reported by the binary.
         version:
           type: string
+          description: >-
+            GripMock version.
         goVersion:
           type: string
+          description: >-
+            Go version the binary was built with.
         compiler:
           type: string
+          description: >-
+            Go compiler used for the build.
         goos:
           type: string
+          description: >-
+            Operating system the binary targets.
         goarch:
           type: string
+          description: >-
+            CPU architecture the binary targets.
         numCPU:
           type: integer
           minimum: 1
+          description: >-
+            CPUs visible to the process.
         startedAt:
           type: string
           format: date-time
+          description: >-
+            When the process started (RFC 3339).
         uptimeSeconds:
           type: integer
           minimum: 0
+          description: >-
+            Seconds since startup.
         ready:
           type: boolean
+          description: >-
+            Whether the server has finished loading and is answering calls.
         historyEnabled:
           type: boolean
+          description: >-
+            Whether call history recording is on (`HISTORY_ENABLED`).
         totalServices:
           type: integer
           minimum: 0
+          description: >-
+            Services currently registered, from every descriptor source.
         totalStubs:
           type: integer
           minimum: 0
+          description: >-
+            Stubs currently in storage.
         totalSessions:
           type: integer
           minimum: 0
+          description: >-
+            Sessions currently known to the server.
         runtimeDescriptors:
           type: integer
           minimum: 0
+          description: >-
+            Descriptors uploaded over REST since startup.
+      description: >-
+        Build and runtime information about this instance.
     Dashboard:
       type: object
       required:
@@ -1331,41 +1625,71 @@ components:
       properties:
         appName:
           type: string
+          description: >-
+            Application name reported by the binary.
         version:
           type: string
+          description: >-
+            GripMock version.
         goVersion:
           type: string
+          description: >-
+            Go version the binary was built with.
         compiler:
           type: string
+          description: >-
+            Go compiler used for the build.
         goos:
           type: string
+          description: >-
+            Operating system the binary targets.
         goarch:
           type: string
+          description: >-
+            CPU architecture the binary targets.
         numCPU:
           type: integer
           minimum: 1
+          description: >-
+            CPUs visible to the process.
         startedAt:
           type: string
           format: date-time
+          description: >-
+            When the process started (RFC 3339).
         uptimeSeconds:
           type: integer
           minimum: 0
+          description: >-
+            Seconds since startup.
         ready:
           type: boolean
+          description: >-
+            Whether the server has finished loading and is answering calls.
         historyEnabled:
           type: boolean
+          description: >-
+            Whether call history recording is on (`HISTORY_ENABLED`).
         totalServices:
           type: integer
           minimum: 0
+          description: >-
+            Services currently registered, from every descriptor source.
         totalStubs:
           type: integer
           minimum: 0
+          description: >-
+            Stubs currently in storage.
         usedStubs:
           type: integer
           minimum: 0
+          description: >-
+            Stubs matched at least once since startup.
         unusedStubs:
           type: integer
           minimum: 0
+          description: >-
+            Stubs never matched since startup.
         coveredMethods:
           type: integer
           minimum: 0
@@ -1391,15 +1715,25 @@ components:
         totalSessions:
           type: integer
           minimum: 0
+          description: >-
+            Sessions currently known to the server.
         runtimeDescriptors:
           type: integer
           minimum: 0
+          description: >-
+            Descriptors uploaded over REST since startup.
         totalHistory:
           type: integer
           minimum: 0
+          description: >-
+            Calls recorded in history.
         historyErrors:
           type: integer
           minimum: 0
+          description: >-
+            Recorded calls that ended in a gRPC error.
+      description: >-
+        Overview and runtime info in a single payload.
     Stub:
       type: object
       required:
@@ -1414,14 +1748,20 @@ components:
           type: string
           example: Gripmock
           x-omitzero: false
+          description: >-
+            Fully qualified gRPC service name.
         method:
           type: string
           example: SayHello
           x-omitzero: false
+          description: >-
+            gRPC method name, without the service prefix.
         priority:
           type: integer
           default: 0
-          description: Priority of the stub. Higher priority stubs are matched first.
+          description: >-
+            Tie-breaker among equally specific stubs; higher wins. Specificity is compared first, so an
+            `equals` stub still beats a `contains` stub with a higher priority.
           x-go-type-skip-optional-pointer: true
         used:
           type: boolean
@@ -1432,9 +1772,15 @@ components:
         input:
           $ref: '#/components/schemas/StubInput'
           x-omitzero: false
+          description: >-
+            Matchers for a unary request body. Mutually exclusive with `inputs`.
         inputs:
           type: array
-          description: Inputs to match against. If multiple inputs are provided, the stub will be matched if any of the inputs match.
+          description: >-
+            Per-message matchers for client and bidirectional streaming. With one element it is a broadcast
+            pattern that every message must match; with several, element N is matched against the Nth
+            message and the counts must be equal. Mutually exclusive with `input` — a stub with both is
+            rejected. For OR semantics use `input.anyOf`.
           items:
             $ref: '#/components/schemas/StubInput'
           x-go-type-skip-optional-pointer: true
@@ -1455,13 +1801,17 @@ components:
           description: Source of the stub (file, rest, mcp, proxy)
           readOnly: true
           x-omitzero: true
+      description: >-
+        A single stub: which method it answers, which requests it accepts, and what it returns.
     StubOptions:
       type: object
       description: Optional behavior settings for a stub
       properties:
         times:
           type: integer
-          description: Max number of matches; 0 = unlimited
+          description: >-
+            Maximum number of matches; `0` means unlimited. Once the limit is reached the stub is exhausted
+            and stops matching, though it stays in storage.
           minimum: 0
           default: 0
           x-go-type-skip-optional-pointer: true
@@ -1473,15 +1823,22 @@ components:
         action:
           type: string
           enum: [upsert, delete]
+          description: >-
+            `upsert` creates or replaces a stub, `delete` removes one.
         id:
           type: string
-          description: Stub UUID for delete action
+          description: >-
+            Target stub UUID for `delete`. May be a template that renders to a UUID.
           x-go-type-skip-optional-pointer: true
         stub:
           type: object
           additionalProperties: true
-          description: Stub payload for upsert action
+          description: >-
+            Stub payload for `upsert`, validated after template rendering.
           x-go-type-skip-optional-pointer: true
+      description: >-
+        Side effect applied after this stub matches — used to build multi-step flows where one call arms
+        the next.
     StubInput:
       type: object
       properties:
@@ -1489,24 +1846,48 @@ components:
           type: boolean
           default: false
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Compare arrays as sets rather than ordered sequences. Applies to this matcher block only —
+            it is not inherited by `anyOf` elements.
         equals:
           type: object
           additionalProperties: true
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Exact match. Every listed field must be present in the request with exactly this value, case-sensitive.
+            Arrays compare in order unless `ignoreArrayOrder` is set.
         contains:
           type: object
           additionalProperties: true
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Subset match. The request must carry at least these fields. Strings match on substring, arrays
+            on containment, nested objects recursively. Extra fields in the request are ignored.
         matches:
           type: object
           additionalProperties: true
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Regex match. Each leaf value is a Go regular expression applied to the corresponding request
+            value.
+        glob:
+          type: object
+          description: >-
+            Glob match. Each leaf value is a shell-style pattern (`*`, `?`, `[...]`) evaluated with Go
+            `path.Match`; `*` does not cross `/`.
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
         anyOf:
           type: array
-          description: Alternative input matchers (OR logic)
+          description: >-
+            Alternative matchers (OR). The stub matches when the blocks above pass AND at least one element
+            here passes. Depth is exactly one — an element cannot itself contain `anyOf`.
           items:
             $ref: '#/components/schemas/StubInputAnyOfElement'
           x-go-type-skip-optional-pointer: true
+      description: >-
+        Matchers applied to the request body. All blocks present are AND-ed; an omitted or empty block
+        always passes, so a stub with every block empty matches any request.
     StubInputAnyOfElement:
       type: object
       properties:
@@ -1514,18 +1895,39 @@ components:
           type: boolean
           default: false
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Compare arrays as sets rather than ordered sequences. Applies to this matcher block only —
+            it is not inherited by `anyOf` elements.
         equals:
           type: object
           additionalProperties: true
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Exact match. Every listed field must be present in the request with exactly this value, case-sensitive.
+            Arrays compare in order unless `ignoreArrayOrder` is set.
         contains:
           type: object
           additionalProperties: true
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Subset match. The request must carry at least these fields. Strings match on substring, arrays
+            on containment, nested objects recursively. Extra fields in the request are ignored.
         matches:
           type: object
           additionalProperties: true
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Regex match. Each leaf value is a Go regular expression applied to the corresponding request
+            value.
+        glob:
+          type: object
+          description: >-
+            Glob match. Each leaf value is a shell-style pattern (`*`, `?`, `[...]`) evaluated with Go
+            `path.Match`; `*` does not cross `/`.
+          additionalProperties: true
+          x-go-type-skip-optional-pointer: true
+      description: >-
+        One alternative of an `anyOf`. Its own blocks are AND-ed together.
     StubHeaders:
       type: object
       x-go-type-skip-optional-pointer: true
@@ -1535,22 +1937,40 @@ components:
           additionalProperties:
             type: string
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Exact match on header values (multiple values are joined with `;`).
         contains:
           type: object
           additionalProperties:
             type: string
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Subset match. The request must carry at least these header names; values match on substring.
         matches:
           type: object
           additionalProperties:
             type: string
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Regex match on header values.
+        glob:
+          type: object
+          description: >-
+            Glob match on header values, using Go `path.Match`.
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
         anyOf:
           type: array
-          description: Alternative header matchers (OR logic)
+          description: >-
+            Alternative header matchers (OR). The stub matches when the blocks above pass AND at least
+            one element here passes.
           items:
             $ref: '#/components/schemas/StubHeadersAnyOfElement'
           x-go-type-skip-optional-pointer: true
+      description: >-
+        Matchers applied to gRPC request metadata. Header names are case-insensitive. All blocks present
+        are AND-ed; an omitted or empty block always passes.
     StubHeadersAnyOfElement:
       type: object
       properties:
@@ -1559,27 +1979,58 @@ components:
           additionalProperties:
             type: string
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Exact match on header values (multiple values are joined with `;`).
         contains:
           type: object
           additionalProperties:
             type: string
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Subset match. The request must carry at least these header names; values match on substring.
         matches:
           type: object
           additionalProperties:
             type: string
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Regex match on header values.
+        glob:
+          type: object
+          description: >-
+            Glob match on header values, using Go `path.Match`.
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+      description: >-
+        One alternative of a header `anyOf`. Its own blocks are AND-ed together.
     StubOutput:
       type: object
       properties:
         data:
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Response body for unary and client-streaming calls. Usually an object matching the proto message;
+            may be a scalar when the method returns a well-known type directly.
         stream:
           type: array
           items: {}
           x-go-type-skip-optional-pointer: true
+          description: >-
+            Response messages for server and bidirectional streaming, sent in order. Cannot be combined
+            with `data`, `error`, `code` or `details` on this endpoint.
         headers:
           type: object
+          additionalProperties:
+            type: string
+          x-go-type-skip-optional-pointer: true
+          description: >-
+            Response metadata.
+        trailers:
+          type: object
+          description: >-
+            Trailing metadata, sent after the last message with the status. Independent of `headers`:
+            the same key may appear in both, and each is delivered on its own channel.
           additionalProperties:
             type: string
           x-go-type-skip-optional-pointer: true
@@ -1587,6 +2038,9 @@ components:
           type: string
           example: Message not found
           x-go-type-skip-optional-pointer: true
+          description: >-
+            gRPC status message. Returned instead of `data`, and counts as the unary side of the data/stream
+            choice.
         code:
           type: integer
           format: uint32
@@ -1596,16 +2050,20 @@ components:
             path: google.golang.org/grpc/codes
           example: 3
           x-go-type-skip-optional-pointer: true
+          description: >-
+            gRPC status code; `0` (OK) is the default.
         details:
           type: array
-          description: gRPC status details packed into google.protobuf.Any (each item must contain type URL in `type`)
+          description: gRPC status details packed into google.protobuf.Any (each item must contain 
+            type URL in `type`)
           items:
             type: object
             required: [type]
             properties:
               type:
                 type: string
-                description: Full Any type URL (for example, type.googleapis.com/google.rpc.ErrorInfo)
+                description: Full Any type URL (for example, 
+                  type.googleapis.com/google.rpc.ErrorInfo)
             additionalProperties: true
           x-go-type-skip-optional-pointer: true
         delay:
@@ -1618,3 +2076,6 @@ components:
           example: "1s"
           x-omitzero: true
           x-go-type-skip-optional-pointer: true
+      description: >-
+        What the stub returns. Over this API exactly one side must be set: either the unary side (`data`,
+        `error`, `code`, `details`) or `stream`. A stub carrying both is rejected with `400`.

@@ -101,12 +101,12 @@ func stubFromFieldLevel(fl validator.FieldLevel) *stuber.Stub {
 }
 
 func hasValidInputData(input stuber.InputData) bool {
-	if input.Contains != nil || input.Equals != nil || input.Matches != nil {
+	if input.Contains != nil || input.Equals != nil || input.Matches != nil || input.Glob != nil {
 		return true
 	}
 
 	for _, alt := range input.AnyOf {
-		if alt.Contains != nil || alt.Equals != nil || alt.Matches != nil {
+		if alt.Contains != nil || alt.Equals != nil || alt.Matches != nil || alt.Glob != nil {
 			return true
 		}
 	}

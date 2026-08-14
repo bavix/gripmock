@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -15,8 +17,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/descriptorpb"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
+	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
@@ -24,13 +30,17 @@ import (
 func TestConnectRPCGateway_MethodNotAllowed(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
-	w := httptest.NewRecorder()
-	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/TestService/TestMethod", nil)
+	// The Connect protocol accepts GET and POST; anything else is refused
+	// before routing.
+	for _, method := range []string{http.MethodPut, http.MethodDelete, http.MethodPatch} {
+		gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
+		w := httptest.NewRecorder()
+		r := httptest.NewRequestWithContext(t.Context(), method, "/TestService/TestMethod", nil)
 
-	gateway.ServeHTTP(w, r)
+		gateway.ServeHTTP(w, r)
 
-	require.Equal(t, http.StatusMethodNotAllowed, w.Code)
+		require.Equal(t, http.StatusMethodNotAllowed, w.Code, method)
+	}
 }
 
 func TestConnectRPCGateway_MethodNotFound(t *testing.T) {
@@ -357,7 +367,7 @@ func TestConnectRPCGateway_HandleUnary_StubNotFound(t *testing.T) {
 		},
 	}
 
-	gateway.handleUnary(mocker, adapter)
+	gateway.handleUnary(mocker, adapter, nil)
 
 	require.Equal(t, http.StatusNotFound, rec.Code)
 	require.Equal(t, "application/connect+json", rec.Header().Get("Content-Type"))
@@ -413,7 +423,7 @@ func TestConnectRPCGateway_HandleUnary_Success(t *testing.T) {
 		},
 	}
 
-	gateway.handleUnary(mocker, adapter)
+	gateway.handleUnary(mocker, adapter, nil)
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
@@ -576,4 +586,234 @@ func TestHttpStreamAdapter_SendMsgNotAffectedByClientEndStream(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, frame.flags&connectEnvelopeFlagEndStream,
 		"server response must not have endStream flag set")
+}
+
+func TestConnectAdapterUnaryTrailersUsePrefix(t *testing.T) {
+	t.Parallel()
+
+	w := httptest.NewRecorder()
+	adapter := &httpStreamAdapter{baseStreamAdapter: baseStreamAdapter{w: w}}
+
+	adapter.SetTrailer(metadata.Pairs("x-audit", "done"))
+	adapter.SetTrailer(metadata.Pairs("Trailer-x-already", "kept"))
+
+	require.Equal(t, []string{"done"}, w.Header().Values("Trailer-X-Audit"),
+		"Connect unary carries trailing metadata as Trailer- prefixed headers")
+	require.Equal(t, []string{"kept"}, w.Header().Values("Trailer-X-Already"),
+		"an already-prefixed key must not be double-prefixed")
+	require.Nil(t, adapter.takeTrailerMetadata(), "unary writes headers, it does not buffer")
+}
+
+func TestConnectAdapterStreamingTrailersRideEndStream(t *testing.T) {
+	t.Parallel()
+
+	w := httptest.NewRecorder()
+	adapter := &httpStreamAdapter{baseStreamAdapter: baseStreamAdapter{w: w}, streaming: true}
+
+	adapter.SetTrailer(metadata.Pairs("x-audit", "done"))
+
+	require.Empty(t, w.Header().Values("Trailer-X-Audit"), "streaming must not use HTTP headers")
+	require.Equal(t, map[string][]string{"x-audit": {"done"}}, adapter.takeTrailerMetadata())
+}
+
+func TestConnectStreamingErrorIsNestedUnderError(t *testing.T) {
+	t.Parallel()
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/svc/Method", nil)
+	r.Header.Set(headerContentType, contentTypeConnectJSON)
+	adapter := &httpStreamAdapter{baseStreamAdapter: baseStreamAdapter{w: w, req: r}, streaming: true}
+	adapter.SetTrailer(metadata.Pairs("x-audit", "done"))
+
+	adapter.writeErrorStatus(status.New(codes.NotFound, "missing"))
+
+	body := w.Body.Bytes()
+	require.Greater(t, len(body), ConnectEnvelopeHeaderSize)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(body[ConnectEnvelopeHeaderSize:], &payload))
+	require.Contains(t, payload, "error", "the Connect protocol nests the error in the end-stream envelope")
+	require.Contains(t, payload, "metadata")
+}
+
+// The Connect protocol pins each code to an HTTP status; canceled maps to
+// 499, which net/http has no constant for and which was previously 408.
+func TestErrorCodeToHTTPStatusFollowsConnectProtocol(t *testing.T) {
+	t.Parallel()
+
+	for code, want := range map[codes.Code]int{
+		codes.Canceled:           499,
+		codes.Unknown:            http.StatusInternalServerError,
+		codes.InvalidArgument:    http.StatusBadRequest,
+		codes.DeadlineExceeded:   http.StatusGatewayTimeout,
+		codes.NotFound:           http.StatusNotFound,
+		codes.AlreadyExists:      http.StatusConflict,
+		codes.PermissionDenied:   http.StatusForbidden,
+		codes.ResourceExhausted:  http.StatusTooManyRequests,
+		codes.FailedPrecondition: http.StatusBadRequest,
+		codes.Aborted:            http.StatusConflict,
+		codes.OutOfRange:         http.StatusBadRequest,
+		codes.Unimplemented:      http.StatusNotImplemented,
+		codes.Internal:           http.StatusInternalServerError,
+		codes.Unavailable:        http.StatusServiceUnavailable,
+		codes.DataLoss:           http.StatusInternalServerError,
+		codes.Unauthenticated:    http.StatusUnauthorized,
+	} {
+		require.Equal(t, want, ErrorCodeToHTTPStatus(code), "code %s", code)
+	}
+}
+
+func TestConnectRPCGateway_RejectsMalformedTimeout(t *testing.T) {
+	t.Parallel()
+
+	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
+	w := httptest.NewRecorder()
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/TestService/TestMethod", nil)
+	r.Header.Set(headerConnectTimeoutMs, "not-a-number")
+
+	gateway.ServeHTTP(w, r)
+
+	// The method is unknown too, but a malformed timeout must not be ignored:
+	// running the call unbounded would defeat the caller's deadline.
+	require.NotEqual(t, http.StatusOK, w.Code)
+}
+
+// A streaming response that carries no messages never called SendMsg, so the
+// content type was never set and Go sniffed it as application/octet-stream.
+func TestConnectStreamingEndFrameSetsContentType(t *testing.T) {
+	t.Parallel()
+
+	rec := httptest.NewRecorder()
+	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/svc/Method", nil)
+	r.Header.Set(headerContentType, contentTypeConnectJSON)
+
+	adapter := &httpStreamAdapter{
+		baseStreamAdapter: baseStreamAdapter{w: rec, req: r},
+		streaming:         true,
+	}
+
+	adapter.sendHeader()
+
+	body, err := json.Marshal(connectEndStream{})
+	require.NoError(t, err)
+	require.NoError(t, writeConnectFrame(rec, body, true))
+
+	require.Equal(t, contentTypeConnectJSON, rec.Header().Get(headerContentType)) //nolint:testifylint
+	require.JSONEq(t, "{}", rec.Body.String()[ConnectEnvelopeHeaderSize:],
+		"the end-of-stream envelope must carry a JSON object")
+}
+
+func TestIsConnectStreamContentType(t *testing.T) {
+	t.Parallel()
+
+	for ct, want := range map[string]bool{
+		contentTypeConnectJSON:                true,
+		contentTypeConnectProto:               true,
+		"application/connect+json; charset=1": true,
+		"APPLICATION/CONNECT+JSON":            true,
+		contentTypeJSON:                       false,
+		contentTypeProto:                      false,
+		"application/grpc-web+proto":          false,
+		"":                                    false,
+	} {
+		require.Equal(t, want, isConnectStreamContentType(ct), "content type %q", ct)
+	}
+}
+
+// The protocol requires application/connect+{codec} for streaming RPCs; the
+// unary forms must be answered with 415, not silently accepted.
+func TestConnectRPCGateway_StreamingRejectsUnaryContentType(t *testing.T) {
+	t.Parallel()
+
+	registry := descriptors.NewRegistry()
+	registerMultiverseDescriptors(t, t.Context(), registry)
+
+	gateway := NewConnectRPCGateway(stuber.NewBudgerigar(), registry, nil, nil, nil, nil)
+	router := mux.NewRouter()
+	router.Handle("/{service:.+}/{method}", gateway).Methods(http.MethodPost)
+
+	for ct, want := range map[string]int{
+		contentTypeJSON:        http.StatusUnsupportedMediaType,
+		contentTypeProto:       http.StatusUnsupportedMediaType,
+		contentTypeConnectJSON: http.StatusOK,
+	} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost,
+			"/multiverse.v1.MultiverseService/StreamData", strings.NewReader(""))
+		req.Header.Set(headerContentType, ct)
+
+		router.ServeHTTP(rec, req)
+
+		require.Equal(t, want, rec.Code, "content type %q", ct)
+	}
+}
+
+func registerMultiverseDescriptors(t *testing.T, ctx context.Context, registry *descriptors.Registry) {
+	t.Helper()
+
+	fdsList, err := protoset.Build(ctx, nil,
+		[]string{filepath.Join("..", "..", "examples", "projects", "multiverse", "service.proto")}, nil)
+	require.NoError(t, err)
+
+	var merged descriptorpb.FileDescriptorSet
+	for _, set := range fdsList {
+		merged.File = append(merged.File, set.GetFile()...)
+	}
+
+	files, err := decodeDescriptorFiles(&merged)
+	require.NoError(t, err)
+
+	for _, fd := range files {
+		registry.Register(fd)
+	}
+}
+
+// The protocol makes rejection the server's choice, so the check stays off
+// until asked for; when on it must accept the header form and the GET query
+// form the spec defines.
+func TestConnectRPCGateway_RequireProtocolVersion(t *testing.T) {
+	t.Parallel()
+
+	for name, tc := range map[string]struct {
+		require bool
+		method  string
+		target  string
+		header  string
+		wantErr bool
+	}{
+		"off by default":     {require: false, method: http.MethodPost, target: "/svc/M"},
+		"missing header":     {require: true, method: http.MethodPost, target: "/svc/M", wantErr: true},
+		"header present":     {require: true, method: http.MethodPost, target: "/svc/M", header: "1"},
+		"wrong header value": {require: true, method: http.MethodPost, target: "/svc/M", header: "2", wantErr: true},
+		"get query present":  {require: true, method: http.MethodGet, target: "/svc/M?connect=v1"},
+		"get query missing":  {require: true, method: http.MethodGet, target: "/svc/M", wantErr: true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			gateway := NewConnectRPCGateway(stuber.NewBudgerigar(), descriptors.NewRegistry(), nil, nil, nil, nil)
+			gateway.RequireProtocolVersion(tc.require)
+
+			router := mux.NewRouter()
+			router.Handle("/{service:.+}/{method}", gateway).Methods(http.MethodPost, http.MethodGet)
+
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequestWithContext(t.Context(), tc.method, tc.target, nil)
+
+			if tc.header != "" {
+				req.Header.Set(headerConnectProtocolVersion, tc.header)
+			}
+
+			router.ServeHTTP(rec, req)
+
+			if tc.wantErr {
+				require.Equal(t, http.StatusBadRequest, rec.Code)
+				require.Contains(t, rec.Body.String(), "invalid_argument")
+
+				return
+			}
+
+			require.NotEqual(t, http.StatusBadRequest, rec.Code)
+		})
+	}
 }

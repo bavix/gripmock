@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 
 	"github.com/go-playground/validator/v10"
-	"google.golang.org/grpc/codes"
 
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
@@ -43,8 +42,13 @@ func NewMultiProtocolGateway(
 	}
 }
 
+// RequireProtocolVersion applies only to Connect: gRPC-Web has no such header.
+func (g *MultiProtocolGateway) RequireProtocolVersion(require bool) {
+	g.connect.RequireProtocolVersion(require)
+}
+
 func (g *MultiProtocolGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+	if r.Method != http.MethodPost && r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 
 		return
@@ -53,11 +57,6 @@ func (g *MultiProtocolGateway) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	ct := r.Header.Get("Content-Type")
 
 	switch {
-	case strings.HasPrefix(ct, "application/grpc-web-text"):
-		writeGRPCWebError(w, codes.Unimplemented,
-			"grpc-web-text (base64) encoding is not supported; use application/grpc-web+proto or application/grpc-web+json")
-
-		return
 	case strings.HasPrefix(ct, "application/grpc-web"):
 		g.grpcweb.ServeHTTP(w, r)
 

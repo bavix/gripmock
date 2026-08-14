@@ -35,6 +35,13 @@ type connectError struct {
 	Details []map[string]any `json:"details"`
 }
 
+// connectEndStream is the JSON payload of the end-of-stream envelope.
+// See https://connectrpc.com/docs/protocol/#error-end-stream
+type connectEndStream struct {
+	Error    *connectError       `json:"error,omitempty"`
+	Metadata map[string][]string `json:"metadata,omitempty"`
+}
+
 type connectFrame struct {
 	flags byte
 	data  []byte
@@ -78,9 +85,22 @@ func readConnectFrame(r io.Reader) (connectFrame, error) {
 // flag (0x02) is set when endStream is true (used to signal the end of
 // server streaming).
 func writeConnectFrame(w io.Writer, data []byte, endStream bool) error {
+	return writeConnectFrameEncoded(w, data, endStream, encodingIdentity)
+}
+
+// writeConnectFrameEncoded is writeConnectFrame with per-frame compression.
+// Streaming responses cannot use Content-Encoding for their payloads, so the
+// negotiated codec is applied to each envelope and announced by the compressed
+// flag (bit 0).
+func writeConnectFrameEncoded(w io.Writer, data []byte, endStream bool, encoding string) error {
 	var header [ConnectEnvelopeHeaderSize]byte
 
-	flags := byte(0)
+	data, compressedFlag, err := compressFrame(data, encoding)
+	if err != nil {
+		return err
+	}
+
+	flags := compressedFlag
 	if endStream {
 		flags |= connectEnvelopeFlagEndStream
 	}

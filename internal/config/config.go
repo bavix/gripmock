@@ -28,6 +28,17 @@ type ServerConfig struct {
 	Addr string `env:"ADDR"`
 }
 
+// GRPCLimitsConfig holds gRPC message size limits and keepalive settings.
+type GRPCLimitsConfig struct {
+	MaxRecvMsgSize ByteSize `env:"MAX_RECV_MSG_SIZE" envDefault:"4M"`
+	MaxSendMsgSize ByteSize `env:"MAX_SEND_MSG_SIZE" envDefault:"0"`
+
+	KeepaliveTime              time.Duration `env:"KEEPALIVE_TIME"                envDefault:"30s"`
+	KeepaliveTimeout           time.Duration `env:"KEEPALIVE_TIMEOUT"             envDefault:"10s"`
+	KeepaliveMaxConnectionIdle time.Duration `env:"KEEPALIVE_MAX_CONNECTION_IDLE" envDefault:"5m"`
+	KeepaliveMaxConnectionAge  time.Duration `env:"KEEPALIVE_MAX_CONNECTION_AGE"  envDefault:"30m"`
+}
+
 // OTelConfig holds OpenTelemetry configuration.
 type OTelConfig struct {
 	Endpoint string `env:"EXPORTER_OTLP_ENDPOINT" envDefault:"localhost:4317"`
@@ -41,9 +52,10 @@ type Config struct {
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 
 	// GRPC server configuration.
-	GRPCNetwork string       `env:"GRPC_NETWORK"    envDefault:"tcp"`
-	GRPC        ServerConfig `envPrefix:"GRPC_"`
-	GRPCTLS     TLSConfig    `envPrefix:"GRPC_TLS_"`
+	GRPCNetwork string           `env:"GRPC_NETWORK"    envDefault:"tcp"`
+	GRPC        ServerConfig     `envPrefix:"GRPC_"`
+	GRPCTLS     TLSConfig        `envPrefix:"GRPC_TLS_"`
+	GRPCLimits  GRPCLimitsConfig `envPrefix:"GRPC_"`
 
 	// HTTP server configuration.
 	HTTP    ServerConfig `envPrefix:"HTTP_"`
@@ -57,6 +69,13 @@ type Config struct {
 	// applyGatewayBackwardCompat).
 	Gateway    ServerConfig `envPrefix:"GATEWAY_"`
 	GatewayTLS TLSConfig    `envPrefix:"GATEWAY_TLS_"`
+
+	// ConnectRequireProtocolVersion rejects Connect requests that carry no
+	// connect-protocol-version header with 400. The protocol leaves this to the
+	// server ("clients should send this header, servers may reject traffic
+	// without it"), and curl or a hand-rolled client rarely sends it, so a mock
+	// stays permissive unless asked.
+	ConnectRequireProtocolVersion bool `env:"CONNECT_REQUIRE_PROTOCOL_VERSION" envDefault:"false"`
 
 	// CORS configuration (applied to REST API).
 	CORSAllowedOrigins []string `env:"CORS_ALLOWED_ORIGINS" envDefault:"*"`

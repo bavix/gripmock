@@ -2,6 +2,7 @@ package config
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -34,4 +35,38 @@ func TestParseHistoryEnv(t *testing.T) {
 	require.Equal(t, toGiB, cfg.HistoryLimit.Int64(), "unexpected limit")
 	require.EqualValues(t, 1024, cfg.HistoryMessageMaxBytes, "unexpected max bytes")
 	require.Equal(t, []string{"password", "token", "secret"}, cfg.HistoryRedactKeys, "unexpected redact keys")
+}
+
+//nolint:paralleltest // t.Setenv forbids t.Parallel.
+func TestParseGRPCLimitsDefaults(t *testing.T) {
+	for _, k := range []string{
+		"GRPC_MAX_RECV_MSG_SIZE", "GRPC_MAX_SEND_MSG_SIZE",
+		"GRPC_KEEPALIVE_TIME", "GRPC_KEEPALIVE_TIMEOUT",
+		"GRPC_KEEPALIVE_MAX_CONNECTION_IDLE", "GRPC_KEEPALIVE_MAX_CONNECTION_AGE",
+	} {
+		t.Setenv(k, "")
+	}
+
+	cfg := Load()
+	require.Equal(t, int64(4*1024*1024), cfg.GRPCLimits.MaxRecvMsgSize.Int64())
+	require.Equal(t, int64(0), cfg.GRPCLimits.MaxSendMsgSize.Int64(), "0 means unlimited")
+	require.Equal(t, 30*time.Second, cfg.GRPCLimits.KeepaliveTime)
+	require.Equal(t, 10*time.Second, cfg.GRPCLimits.KeepaliveTimeout)
+	require.Equal(t, 5*time.Minute, cfg.GRPCLimits.KeepaliveMaxConnectionIdle)
+	require.Equal(t, 30*time.Minute, cfg.GRPCLimits.KeepaliveMaxConnectionAge)
+}
+
+func TestParseGRPCLimitsEnv(t *testing.T) {
+	// cannot use t.Parallel with t.Setenv
+	t.Setenv("GRPC_MAX_RECV_MSG_SIZE", "16M")
+	t.Setenv("GRPC_MAX_SEND_MSG_SIZE", "8388608")
+	t.Setenv("GRPC_KEEPALIVE_TIME", "5s")
+	t.Setenv("GRPC_KEEPALIVE_MAX_CONNECTION_AGE", "1m")
+
+	cfg := Load()
+	require.Equal(t, int64(16*1024*1024), cfg.GRPCLimits.MaxRecvMsgSize.Int64())
+	require.Equal(t, int64(8*1024*1024), cfg.GRPCLimits.MaxSendMsgSize.Int64())
+	require.Equal(t, 5*time.Second, cfg.GRPCLimits.KeepaliveTime)
+	require.Equal(t, time.Minute, cfg.GRPCLimits.KeepaliveMaxConnectionAge)
+	require.Equal(t, 10*time.Second, cfg.GRPCLimits.KeepaliveTimeout, "untouched var keeps its default")
 }

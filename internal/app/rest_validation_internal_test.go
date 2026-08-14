@@ -270,8 +270,17 @@ func (s *RestValidationTestSuite) TestAddStubValidConfigurations() {
 			}]`,
 		},
 		{
+			name: "valid unary stub with glob matcher",
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestMethod",
+				"input": {"glob": {"key": "user_*"}},
+				"output": {"data": {"result": "success"}}
+			}]`,
+		},
+		{
 			name: "valid unary stub with anyOf matcher",
-			jsonData: `[{ 
+			jsonData: `[{
 				"service": "test.Service",
 				"method": "TestMethod",
 				"input": {
@@ -279,6 +288,20 @@ func (s *RestValidationTestSuite) TestAddStubValidConfigurations() {
 					"anyOf": [
 						{"equals": {"name": "Alice"}},
 						{"matches": {"name": "^admin_"}}
+					]
+				},
+				"output": {"data": {"result": "success"}}
+			}]`,
+		},
+		{
+			name: "valid unary stub with glob-only anyOf alternatives",
+			jsonData: `[{
+				"service": "test.Service",
+				"method": "TestMethod",
+				"input": {
+					"anyOf": [
+						{"glob": {"path": "/api/v1/*"}},
+						{"glob": {"path": "/api/v2/*"}}
 					]
 				},
 				"output": {"data": {"result": "success"}}

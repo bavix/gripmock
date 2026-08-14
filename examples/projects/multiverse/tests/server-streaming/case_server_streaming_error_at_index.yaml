@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+- service: multiverse.v1.MultiverseService
+  method: StreamData
+  input:
+    equals:
+      stream_id: "stream_fail"
+      chunk_count: 3
+      delay_ms: 0
+      pattern: "sequential"
+  output:
+    stream:
+      - _gripmock:
+          error: "upstream ran out of budget"
+          code: 8
+      - chunk_id: "never_sent"
+        sequence: 2
+        total_chunks: 3
+        content_type: "application/json"

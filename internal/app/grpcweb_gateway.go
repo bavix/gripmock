@@ -1,7 +1,9 @@
 package app
 
 import (
+	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,8 +15,10 @@ import (
 	"github.com/rs/zerolog"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
@@ -63,14 +67,19 @@ func (g *GRPCWebGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	method := vars["method"]
 	fullMethod := "/" + service + "/" + method
 
-	logger := zerolog.Ctx(r.Context())
-	logger.Debug().
+	zerolog.Ctx(r.Context()).Debug().
 		Str("method", r.Method).
 		Str("path", r.URL.Path).
 		Str("protocol", "grpc-web").
 		Str("service", service).
 		Str("method", method).
 		Msg("gateway: handling grpc-web request")
+
+	if isReflectionMethod(service, method) {
+		g.serveReflection(w, r, service)
+
+		return
+	}
 
 	methodDesc, err := findMethodDescriptor(g.descriptors, service, method)
 	if err != nil {
@@ -85,9 +94,37 @@ func (g *GRPCWebGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	g.serveMethod(w, r, service, method, fullMethod, methodDesc) //nolint:contextcheck
+}
+
+func (g *GRPCWebGateway) serveMethod(
+	w http.ResponseWriter, r *http.Request, service, method, fullMethod string,
+	methodDesc protoreflect.MethodDescriptor,
+) {
 	mocker := g.buildMocker(r, service, method, fullMethod, methodDesc)
 
+	if isGRPCWebTextContentType(r.Header.Get(headerContentType)) {
+		textWriter := newBase64StreamWriter(w)
+		defer func() { _ = textWriter.Close() }()
+
+		w = textWriter
+	}
+
 	adapter := newGRPCWebAdapter(r, w, mocker)
+
+	timeout, ok, err := requestTimeout(r.Header)
+	if err != nil {
+		writeGRPCWebError(w, codes.InvalidArgument, "invalid grpc-timeout")
+
+		return
+	}
+
+	if ok && timeout > 0 {
+		timedCtx, cancel := context.WithTimeout(adapter.ctx, timeout)
+		defer cancel()
+
+		adapter.ctx = timedCtx
+	}
 
 	if !mocker.serverStream && !mocker.clientStream {
 		g.handleUnary(mocker, adapter)
@@ -95,12 +132,44 @@ func (g *GRPCWebGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := mocker.streamHandler(adapter.ctx, adapter); err != nil { //nolint:contextcheck
+	if err := mocker.streamHandler(adapter.ctx, adapter); err != nil {
 		st, _ := status.FromError(err)
 		adapter.writeErrorStatus(normalizeHealthError(st, mocker.serviceName))
-	} else {
-		adapter.writeTrailers(codes.OK, "")
+
+		return
 	}
+
+	adapter.writeTrailers(codes.OK, "")
+}
+
+// gRPC-Web frames every mode identically, so reflection needs no special
+// casing beyond the base64 text variant and the usual trailers frame.
+func (g *GRPCWebGateway) serveReflection(w http.ResponseWriter, r *http.Request, service string) {
+	if isGRPCWebTextContentType(r.Header.Get(headerContentType)) {
+		textWriter := newBase64StreamWriter(w)
+		defer func() { _ = textWriter.Close() }()
+
+		w = textWriter
+	}
+
+	adapter := &grpcwebAdapter{
+		baseStreamAdapter: baseStreamAdapter{
+			ctx:           httpHeadersToGRPCContext(r.Context(), r.Header),
+			req:           r,
+			w:             w,
+			typeResolver:  g.reflection.resolver,
+			frameEncoding: responseFrameEncoding(w, r),
+		},
+	}
+
+	if err := g.reflection.serve(service, adapter); err != nil && !errors.Is(err, io.EOF) {
+		st, _ := status.FromError(err)
+		adapter.writeErrorStatus(st)
+
+		return
+	}
+
+	adapter.writeTrailers(codes.OK, "")
 }
 
 func (g *GRPCWebGateway) handleUnary(mocker *grpcMocker, a *grpcwebAdapter) {
@@ -111,7 +180,16 @@ func (g *GRPCWebGateway) handleUnary(mocker *grpcMocker, a *grpcwebAdapter) {
 		return
 	}
 
-	data, err := extractPayload(raw)
+	if isGRPCWebTextContentType(a.req.Header.Get(headerContentType)) {
+		raw, err = decodeGRPCWebText(raw)
+		if err != nil {
+			a.writeError(codes.InvalidArgument, "malformed grpc-web-text body")
+
+			return
+		}
+	}
+
+	data, err := extractPayload(raw, a.req.Header)
 	if err != nil {
 		a.writeError(codes.InvalidArgument, err.Error())
 
@@ -145,7 +223,7 @@ func (g *GRPCWebGateway) handleUnary(mocker *grpcMocker, a *grpcwebAdapter) {
 //   - flag 0x00 (uncompressed data): header stripped, payload returned
 //   - flag 0x01 (compressed data):   clear error — not supported
 //   - no valid frame detected:       raw body returned as-is
-func extractPayload(raw []byte) ([]byte, error) {
+func extractPayload(raw []byte, hdr http.Header) ([]byte, error) {
 	if len(raw) < ConnectEnvelopeHeaderSize {
 		return raw, nil
 	}
@@ -158,9 +236,8 @@ func extractPayload(raw []byte) ([]byte, error) {
 	switch raw[0] {
 	case 0x00: //nolint:mnd
 		return raw[ConnectEnvelopeHeaderSize:], nil
-	case 0x01: //nolint:mnd
-		return nil, status.Error(codes.Unimplemented,
-			"grpc frame compression (flag 0x01) is not supported; use Content-Encoding: gzip on the HTTP body instead")
+	case connectEnvelopeFlagCompressed:
+		return decompressFrame(raw[ConnectEnvelopeHeaderSize:], frameEncoding(hdr))
 	default:
 		return raw, nil
 	}
@@ -183,13 +260,18 @@ func (grpcwebResponse) WriteSuccess(w http.ResponseWriter, r *http.Request) {
 }
 
 func isGRPCWebJSONContentType(ct string) bool {
-	return ct == contentTypeJSON || ct == grpcwebContentTypeJSON
+	return ct == contentTypeJSON || ct == grpcwebContentTypeJSON || ct == grpcwebContentTypeTextJSON
 }
 
 func setGRPCWebContentType(w http.ResponseWriter, r *http.Request) {
-	if isGRPCWebJSONContentType(r.Header.Get(headerContentType)) {
+	ct := r.Header.Get(headerContentType)
+
+	switch {
+	case isGRPCWebTextContentType(ct):
+		w.Header().Set(headerContentType, grpcwebTextResponseContentType(ct))
+	case isGRPCWebJSONContentType(ct):
 		w.Header().Set(headerContentType, grpcwebContentTypeJSON)
-	} else {
+	default:
 		w.Header().Set(headerContentType, grpcwebContentTypeProto)
 	}
 }
@@ -280,10 +362,11 @@ func newGRPCWebAdapter(r *http.Request, w http.ResponseWriter, mocker *grpcMocke
 
 	return &grpcwebAdapter{
 		baseStreamAdapter: baseStreamAdapter{
-			ctx:          ctx,
-			req:          r,
-			w:            w,
-			typeResolver: mocker.typeResolver,
+			ctx:           ctx,
+			req:           r,
+			w:             w,
+			typeResolver:  mocker.typeResolver,
+			frameEncoding: responseFrameEncoding(w, r),
 		},
 	}
 }
@@ -303,7 +386,7 @@ func (a *grpcwebAdapter) SendMsg(m any) error {
 		return err
 	}
 
-	if err := writeConnectFrame(a.w, data, false); err != nil {
+	if err := writeConnectFrameEncoded(a.w, data, false, a.frameEncoding); err != nil {
 		return err
 	}
 
@@ -344,9 +427,36 @@ func (a *grpcwebAdapter) RecvMsg(m any) error {
 	return a.decodeMessage(frame.data, msg, ct)
 }
 
+func (a *grpcwebAdapter) SetTrailer(md metadata.MD) {
+	if len(md) == 0 {
+		return
+	}
+
+	lines := make([]string, 0, len(md))
+
+	for k, values := range md {
+		if len(values) == 0 {
+			continue
+		}
+
+		lines = append(lines, sanitizeTrailerLine(k)+": "+sanitizeTrailerLine(strings.Join(values, ",")))
+	}
+
+	a.setTrailerExtra(lines...)
+}
+
+func sanitizeTrailerLine(s string) string {
+	return strings.NewReplacer("\r", "", "\n", "").Replace(s)
+}
+
 func (a *grpcwebAdapter) sendHeader() {
 	a.sendHeaderOnce.Do(func() {
 		setGRPCWebContentType(a.w, a.req)
+
+		if a.frameEncoding == encodingGzip {
+			a.w.Header().Set(headerGRPCEncoding, encodingGzip)
+		}
+
 		a.w.WriteHeader(http.StatusOK)
 	})
 }
@@ -360,6 +470,9 @@ func (a *grpcwebAdapter) encodeMessage(msg proto.Message, ct string) ([]byte, er
 }
 
 func (a *grpcwebAdapter) setTrailerExtra(lines ...string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	a.trailerExtra = append(a.trailerExtra, lines...)
 }
 

@@ -27,7 +27,8 @@ func TestReflectionIncludesDynamicService(t *testing.T) {
 	defer cancel()
 
 	registry := descriptors.NewRegistry()
-	grpcServer := NewGRPCServer("tcp", "127.0.0.1:0", nil, stuber.NewBudgerigar(), nil, nil, registry, nil, nil, false, 256, nil, nil)
+	grpcServer := NewGRPCServer("tcp", "127.0.0.1:0", nil, stuber.NewBudgerigar(), nil, nil,
+		registry, nil, nil, false, 256, nil, nil, DefaultServerLimits())
 
 	server, err := grpcServer.Build(ctx)
 	require.NoError(t, err)

@@ -1,0 +1,21 @@
+--- META ---
+name: stream fails at a _gripmock marker
+summary: A _gripmock marker replaces its message and ends the stream with the configured status. Here it sits at index 0, because grpctestify treats the first received message as the outcome and cannot assert RESPONSE and ERROR together; failing after N messages is covered by TestHandleServerStreamFailsAtMarkedElement.
+tags: [stream-error]
+
+--- ENDPOINT ---
+multiverse.v1.MultiverseService/StreamData
+
+--- REQUEST ---
+{
+  "chunk_count": 3,
+  "delay_ms": 0,
+  "pattern": "sequential",
+  "stream_id": "stream_fail"
+}
+
+--- ERROR ---
+{
+  "code": 8,
+  "message": "upstream ran out of budget"
+}

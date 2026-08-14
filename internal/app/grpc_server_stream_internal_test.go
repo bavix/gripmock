@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"io"
 	"testing"
 	"time"
@@ -26,6 +27,9 @@ const (
 	testMethodName  = "TestMethod"
 )
 
+// errTestSendFailed simulates the transport dropping mid-stream.
+var errTestSendFailed = errors.New("send failed")
+
 // mockFullServerStream mocks grpc.ServerStream for testing with full functionality.
 type mockFullServerStream struct {
 	grpc.ServerStream
@@ -34,11 +38,13 @@ type mockFullServerStream struct {
 	sentMessages     []*dynamicpb.Message
 	receivedMessages []*dynamicpb.Message
 	sendMsgError     error
+	sendMsgFailAfter int // when > 0, SendMsg fails once this many messages have been sent
 	recvMsgError     error
 	recvMsgCount     int
 	recvMsgLimit     int
 	contextCancelled bool
 	headers          metadata.MD
+	trailers         metadata.MD
 }
 
 func (m *mockFullServerStream) Context() context.Context {
@@ -53,6 +59,10 @@ func (m *mockFullServerStream) Context() context.Context {
 }
 
 func (m *mockFullServerStream) SendMsg(msg any) error {
+	if m.sendMsgFailAfter > 0 && len(m.sentMessages) >= m.sendMsgFailAfter {
+		return errTestSendFailed
+	}
+
 	if m.sendMsgError != nil {
 		return m.sendMsgError
 	}
@@ -84,7 +94,7 @@ func (m *mockFullServerStream) RecvMsg(msg any) error {
 }
 
 func (m *mockFullServerStream) SetHeader(md metadata.MD) error {
-	m.headers = md
+	m.headers = metadata.Join(m.headers, md)
 
 	return nil
 }
@@ -94,6 +104,7 @@ func (m *mockFullServerStream) SendHeader(md metadata.MD) error {
 }
 
 func (m *mockFullServerStream) SetTrailer(md metadata.MD) {
+	m.trailers = metadata.Join(m.trailers, md)
 }
 
 func TestHandleServerStreamWithArrayStream(t *testing.T) {
@@ -779,4 +790,133 @@ func TestConvertToMapProto3DefaultValues(t *testing.T) {
 		require.Contains(t, result, "value")
 		require.InDelta(t, 0.0, result["value"], 1e-9)
 	})
+}
+
+func TestHandleServerStreamSetsTrailers(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMocker(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+
+	stream := createTestStream(t, mocker)
+
+	stub := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: testServiceName,
+		Method:  testMethodName,
+		Input:   stuber.InputData{Contains: map[string]any{}},
+		Output: stuber.Output{
+			Stream:   []any{map[string]any{"message": "test"}},
+			Headers:  map[string]string{"x-response": "header-value"},
+			Trailers: map[string]string{"x-response": "trailer-value", "x-audit": "a;b"},
+		},
+	}
+	mocker.budgerigar.PutMany(stub)
+
+	require.NoError(t, mocker.handleServerStream(stream))
+
+	require.Equal(t, "header-value", stream.headers.Get("x-response")[0])
+	require.Equal(t, "trailer-value", stream.trailers.Get("x-response")[0],
+		"headers and trailers are separate channels and may share a key")
+	require.Equal(t, []string{"a", "b"}, stream.trailers.Get("x-audit"),
+		"';' splits into repeated metadata values, as for headers")
+}
+
+func TestTrailersDropKeysOwnedByTheTransport(t *testing.T) {
+	t.Parallel()
+
+	md := buildResponseMD(map[string]string{
+		"grpc-status":             "0",
+		"grpc-message":            "forged",
+		"grpc-status-details-bin": "x",
+		"content-type":            "application/grpc",
+		":status":                 "200",
+		"x-keep":                  "yes",
+	})
+
+	require.Empty(t, md.Get("grpc-status"), "a stub-set grpc-status would override the real status")
+	require.Empty(t, md.Get("grpc-message"))
+	require.Empty(t, md.Get("grpc-status-details-bin"))
+	require.Empty(t, md.Get("content-type"))
+	require.Empty(t, md.Get(":status"))
+	require.Equal(t, "yes", md.Get("x-keep")[0])
+}
+
+func TestHandleBidiStreamFlushesTrailersOnce(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMocker(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+
+	stub := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: testServiceName,
+		Method:  testMethodName,
+		Input:   stuber.InputData{Contains: map[string]any{}},
+		Inputs:  []stuber.InputData{{Contains: map[string]any{}}, {Contains: map[string]any{}}},
+		Output: stuber.Output{
+			Stream:   []any{map[string]any{"status": "ack1"}, map[string]any{"status": "ack2"}},
+			Trailers: map[string]string{"x-audit": "done"},
+		},
+	}
+	mocker.budgerigar.PutMany(stub)
+
+	inputMsg1 := dynamicpb.NewMessage(mocker.inputDesc)
+	inputMsg2 := dynamicpb.NewMessage(mocker.inputDesc)
+	stream := &mockFullServerStream{
+		ctx:              t.Context(),
+		sentMessages:     make([]*dynamicpb.Message, 0),
+		receivedMessages: []*dynamicpb.Message{inputMsg1, inputMsg2},
+		recvMsgLimit:     2,
+	}
+
+	require.NoError(t, mocker.handleBidiStream(stream))
+	require.Equal(t, []string{"done"}, stream.trailers.Get("x-audit"),
+		"SetTrailer is cumulative: emitting per message would repeat the value once per message")
+}
+
+func TestHandleServerStreamFailsAtMarkedElement(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMockerWithRecorder(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+
+	stub := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: testServiceName,
+		Method:  testMethodName,
+		Input:   stuber.InputData{Contains: map[string]any{}},
+		Output: stuber.Output{Stream: []any{
+			map[string]any{"message": "first"},
+			map[string]any{stuber.GripMockKey: map[string]any{
+				"error": "resources gone",
+				"code":  float64(codes.ResourceExhausted),
+			}},
+			map[string]any{"message": "never sent"},
+		}},
+	}
+	mocker.budgerigar.PutMany(stub)
+
+	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
+	stream := &mockFullServerStream{
+		ctx:              t.Context(),
+		sentMessages:     make([]*dynamicpb.Message, 0),
+		receivedMessages: []*dynamicpb.Message{inputMsg},
+		recvMsgLimit:     1,
+	}
+
+	err := mocker.handleServerStream(stream)
+	require.Error(t, err)
+	require.Equal(t, codes.ResourceExhausted, status.Code(err))
+	require.Contains(t, err.Error(), "resources gone")
+	require.Len(t, stream.sentMessages, 1, "the marked element replaces a message, it does not follow one")
 }

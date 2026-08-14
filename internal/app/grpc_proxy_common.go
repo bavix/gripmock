@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
+	"github.com/bavix/gripmock/v3/internal/infra/proxycapture"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 )
 
@@ -128,4 +129,14 @@ func responseHeadersFromClientStream(clientStream grpc.ClientStream) map[string]
 	header, _ := clientStream.Header()
 
 	return responseHeadersFromMetadata(header, clientStream.Trailer())
+}
+
+func captureMetadataFromClientStream(clientStream grpc.ClientStream) proxycapture.ResponseMetadata {
+	if clientStream == nil {
+		return proxycapture.ResponseMetadata{}
+	}
+
+	header, _ := clientStream.Header()
+
+	return captureMetadata(header, clientStream.Trailer())
 }

@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"maps"
 	"strings"
 	"time"
 
@@ -37,12 +38,13 @@ func sessionFromContext(ctx context.Context) string {
 type bidiRecordingStream struct {
 	grpc.ServerStream
 
-	requests    []map[string]any
-	responses   []map[string]any
-	respHeader  metadata.MD
-	respTrailer metadata.MD
-	stubID      uuid.UUID
-	maxItems    int
+	requests     []map[string]any
+	responses    []map[string]any
+	respHeader   metadata.MD
+	respTrailer  metadata.MD
+	stubID       uuid.UUID
+	maxItems     int
+	stubTrailers map[string]string
 	// recordHeaders gates metadata interception: without a recorder the
 	// merged maps would never be read.
 	recordHeaders bool
@@ -88,6 +90,18 @@ func (s *bidiRecordingStream) SendMsg(m any) error {
 	}
 
 	return nil
+}
+
+func (s *bidiRecordingStream) mergeStubTrailers(trailers map[string]string) {
+	if len(trailers) == 0 {
+		return
+	}
+
+	if s.stubTrailers == nil {
+		s.stubTrailers = make(map[string]string, len(trailers))
+	}
+
+	maps.Copy(s.stubTrailers, trailers)
 }
 
 func (s *bidiRecordingStream) getResponseHeaders() map[string]string {

@@ -11,8 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GRPCTESTIFY_VERSION: "1.9.4"
-  GO_VERSION: "1.26"
+  GRPCTESTIFY_VERSION: "1.10.2"
+  GO_VERSION: "1.26.6"
   GREETER_GRPC_PORT: "4444"
   CALC_GRPC_PORT: "5555"
   CAPTURE_SOURCE_GRPC_PORT: "4111"

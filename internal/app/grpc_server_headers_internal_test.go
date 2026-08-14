@@ -16,12 +16,13 @@ import (
 
 // mockServerStream mocks grpc.ServerStream for testing.
 type mockServerStream struct {
-	headers metadata.MD
-	ctx     context.Context //nolint:containedctx
+	headers  metadata.MD
+	trailers metadata.MD
+	ctx      context.Context //nolint:containedctx
 }
 
 func (m *mockServerStream) SetHeader(md metadata.MD) error {
-	m.headers = md
+	m.headers = metadata.Join(m.headers, md)
 
 	return nil
 }
@@ -33,7 +34,7 @@ func (m *mockServerStream) SendHeader(md metadata.MD) error {
 }
 
 func (m *mockServerStream) SetTrailer(md metadata.MD) {
-	// Not used in current implementation
+	m.trailers = metadata.Join(m.trailers, md)
 }
 
 func (m *mockServerStream) Context() context.Context {

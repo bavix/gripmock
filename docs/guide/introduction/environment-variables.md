@@ -18,6 +18,24 @@ GripMock reads configuration from environment variables on startup.
 | `GRPC_PORT` | `4770` | gRPC bind port. |
 | `GRPC_ADDR` | `$GRPC_HOST:$GRPC_PORT` | Full gRPC bind address. |
 
+## gRPC limits and keepalive <VersionTag version="v3.19.0" />
+
+Sizes accept a `K`/`M`/`G` suffix or plain bytes. Defaults reproduce the values
+used before these variables existed, so an unset environment changes nothing.
+
+| Variable | Default | Description |
+|---|---|---|
+| `GRPC_MAX_RECV_MSG_SIZE` | `4M` | Largest accepted inbound message. A client sending more gets `RESOURCE_EXHAUSTED`. |
+| `GRPC_MAX_SEND_MSG_SIZE` | `0` | Largest outbound message; `0` means unlimited. |
+| `GRPC_KEEPALIVE_TIME` | `30s` | Idle period before the server pings the client. |
+| `GRPC_KEEPALIVE_TIMEOUT` | `10s` | How long to wait for a ping reply before closing the connection. |
+| `GRPC_KEEPALIVE_MAX_CONNECTION_IDLE` | `5m` | Close a connection idle for this long. |
+| `GRPC_KEEPALIVE_MAX_CONNECTION_AGE` | `30m` | Close a connection this old, regardless of traffic. |
+
+These apply to the gRPC port only. The ConnectRPC/gRPC-web gateway caps a frame
+at 4 MiB independently, so raising `GRPC_MAX_RECV_MSG_SIZE` does not lift the
+limit for gateway traffic.
+
 ## HTTP admin server
 
 | Variable | Default | Description |
@@ -40,6 +58,7 @@ The gateway serves both **ConnectRPC** and **gRPC-web** protocols on a single HT
 | `GATEWAY_TLS_CLIENT_AUTH` | `false` | Require client certs for gateway (mTLS). |
 | `GATEWAY_TLS_CA_FILE` | *(empty)* | CA file for validating gateway client certs. |
 | `GATEWAY_TLS_MIN_VERSION` | `1.2` | Minimum TLS version (`1.2`, `1.3`). |
+| `CONNECT_REQUIRE_PROTOCOL_VERSION` <VersionTag version="v3.19.0" /> | `false` | Reject Connect requests without `Connect-Protocol-Version: 1` (or `?connect=v1` on GET) with `400`. |
 
 The gateway provides unary and streaming RPC support for both protocols over HTTP/1.1 and HTTP/2 (with or without TLS). It shares the same stub storage, descriptor registry, and history store as gRPC and REST servers.
 

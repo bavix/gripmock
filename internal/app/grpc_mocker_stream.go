@@ -98,7 +98,20 @@ func (m *grpcMocker) newQuery(ctx context.Context, msg *dynamicpb.Message) stube
 		query.Session = sessionFromMetadata(md)
 	}
 
-	return query
+	return m.withHealthVisibility(query)
+}
+
+// withHealthVisibility mirrors mockableHealthServer.findStub: the health
+// service is the only caller allowed to see the reserved internal stubs. On
+// native gRPC health is served by that handler, but the gateways route it
+// through this mocker, and without the flag a user stub would override the
+// runtime status of the protected "gripmock" service.
+func (m *grpcMocker) withHealthVisibility(query stuber.Query) stuber.Query {
+	if m.fullServiceName != HealthServiceFullName {
+		return query
+	}
+
+	return stuber.WithInternalStubs(query)
 }
 
 func (m *grpcMocker) newQueryBidi(ctx context.Context) stuber.QueryBidi {
@@ -183,6 +196,12 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		return errors.Wrap(err, "failed to set headers")
 	}
 
+	if err := m.renderTrailers(&outputToUse, templateData); err != nil {
+		return errors.Wrap(err, "failed to process trailer templates")
+	}
+
+	m.setResponseTrailersAny(stream.Context(), stream, outputToUse.Trailers)
+
 	m.applyEffects(stream.Context(), found, templateData)
 
 	if found.Output.Stream == nil {
@@ -190,39 +209,94 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	}
 
 	if len(found.Output.Stream) == 0 {
-		if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil { //nolint:wrapcheck
-			return err
+		callErr := m.handleOutputError(stream.Context(), stream, outputToUse)
+
+		m.recordServerStreamUnlessProxied(stream.Context(), found, requestTime,
+			requestData, []any{outputToUse.Data}, recordedMetadata(outputToUse), callErr)
+
+		return callErr //nolint:wrapcheck
+	}
+
+	sent, callErr := m.handleArrayStreamData(stream, found, inputMsg, requestTime)
+	if callErr == nil {
+		callErr = m.handleOutputError(stream.Context(), stream, outputToUse)
+	}
+
+	m.recordServerStreamUnlessProxied(stream.Context(), found, requestTime,
+		requestData, cleanStreamResponses(found.Output.Stream[:sent]), recordedMetadata(outputToUse), callErr)
+
+	return callErr //nolint:wrapcheck
+}
+
+func (m *grpcMocker) streamElementError(element stuber.GripMockElement, templateData template.Data) error {
+	msg := element.Error
+	if msg != "" && template.IsTemplateString(msg) {
+		rendered, err := m.templateEngine.ProcessError(msg, templateData)
+		if err != nil {
+			return errors.Wrap(err, "failed to process error template")
 		}
 
-		m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime,
-			[]map[string]any{requestData}, []any{outputToUse.Data}, outputToUse.Headers, "")
+		msg = rendered
+	}
 
+	st, err := m.statusFromOutput(stuber.Output{
+		Error:   msg,
+		Code:    element.Code,
+		Details: element.Details,
+	})
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	if st == nil {
 		return nil
 	}
 
-	if err := m.handleArrayStreamData(stream, found, inputMsg, requestTime); err != nil {
-		return err
-	}
+	return st.Err()
+}
 
-	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil { //nolint:wrapcheck
-		return err
-	}
+func cleanStreamResponses(items []any) []any {
+	responses := make([]any, 0, len(items))
 
-	streamResponses := make([]any, 0, len(found.Output.Stream))
-	for _, item := range found.Output.Stream {
-		if itemMap, ok := item.(map[string]any); ok {
-			clean := deepCopyMapAny(itemMap)
-			stuber.ExtractGripMockDelay(clean)
-			streamResponses = append(streamResponses, clean)
-		} else {
-			streamResponses = append(streamResponses, item)
+	for _, item := range items {
+		itemMap, ok := item.(map[string]any)
+		if !ok {
+			responses = append(responses, item)
+
+			continue
 		}
+
+		clean := deepCopyMapAny(itemMap)
+		stuber.ExtractGripMockDelay(clean)
+		responses = append(responses, clean)
 	}
 
-	m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime,
-		[]map[string]any{requestData}, streamResponses, outputToUse.Headers, "")
+	return responses
+}
 
-	return nil
+func (m *grpcMocker) recordServerStreamUnlessProxied(
+	ctx context.Context,
+	found *stuber.Stub,
+	requestTime time.Time,
+	requestData map[string]any,
+	responses []any,
+	headers map[string]string,
+	callErr error,
+) {
+	if callErr != nil && m.proxyFallbackWillServe(callErr) {
+		return
+	}
+
+	code := uint32(codes.OK)
+	errMsg := ""
+
+	if callErr != nil {
+		code = uint32(status.Code(callErr))
+		errMsg = callErr.Error()
+	}
+
+	m.recordCall(ctx, found.ID, code, requestTime,
+		[]map[string]any{requestData}, responses, headers, errMsg)
 }
 
 func (m *grpcMocker) handleServerStreamOutput(
@@ -232,15 +306,12 @@ func (m *grpcMocker) handleServerStreamOutput(
 	outputToUse stuber.Output,
 	requestTime time.Time,
 ) error {
-	err := m.handleNonArrayStreamData(stream, found, outputToUse, requestData, requestTime)
-	if err != nil {
-		return err
-	}
+	callErr := m.handleNonArrayStreamData(stream, found, outputToUse, requestData, requestTime)
 
-	m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime,
-		[]map[string]any{requestData}, []any{outputToUse.Data}, outputToUse.Headers, "")
+	m.recordServerStreamUnlessProxied(stream.Context(), found, requestTime,
+		requestData, []any{outputToUse.Data}, recordedMetadata(outputToUse), callErr)
 
-	return nil
+	return callErr
 }
 
 func (m *grpcMocker) ensureServerStreamResult(
@@ -264,22 +335,22 @@ func (m *grpcMocker) handleArrayStreamData(
 	found *stuber.Stub,
 	inputMsg *dynamicpb.Message,
 	requestTime time.Time,
-) error {
+) (int, error) {
 	done := stream.Context().Done()
 
 	for i, streamData := range found.Output.Stream {
 		select {
 		case <-done:
-			return stream.Context().Err()
+			return i, stream.Context().Err()
 		default:
 		}
 
 		if err := m.handleStreamElement(stream, found, streamData, i, inputMsg, requestTime); err != nil {
-			return err
+			return i, err
 		}
 	}
 
-	return nil
+	return len(found.Output.Stream), nil
 }
 
 func (m *grpcMocker) handleStreamElement(
@@ -296,9 +367,10 @@ func (m *grpcMocker) handleStreamElement(
 	}
 
 	outputDataCopy := deepCopyMapAny(outputData)
+	element := stuber.ExtractGripMock(outputDataCopy)
 
 	delay := found.Output.Delay
-	if d, ok := stuber.ExtractGripMockDelay(outputDataCopy); ok {
+	if d, ok := element.Delay, element.HasDelay; ok {
 		delay = d
 	}
 
@@ -314,6 +386,11 @@ func (m *grpcMocker) handleStreamElement(
 	}
 
 	templateData := newTemplateData(requestData, headers, i, requestTime, []any{requestData}, found.ID.String())
+
+	if element.HasError {
+		return m.streamElementError(element, templateData)
+	}
+
 	if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
 		return errors.Wrap(err, "failed to process dynamic templates")
 	}

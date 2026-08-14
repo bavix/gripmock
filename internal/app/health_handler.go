@@ -204,10 +204,9 @@ func (s *mockableHealthServer) proxyCheck(
 		}
 	}
 
-	respHeaders := responseHeadersFromMetadata(header, trailer)
 	s.captureProxyHealthStub(
 		ctx, req, healthMethodCheck, proxycapture.MessageToMap(resp),
-		nil, err, respHeaders, route, elapsed,
+		nil, err, captureMetadata(header, trailer), route, elapsed,
 	)
 
 	return resp, err
@@ -228,7 +227,8 @@ func (s *mockableHealthServer) proxyWatch(
 
 	clientStream, err := healthgrpc.NewHealthClient(route.Conn).Watch(proxyCtx, req)
 	if err != nil {
-		s.captureProxyHealthStub(stream.Context(), req, healthMethodWatch, nil, nil, err, nil, route, time.Since(startTime))
+		s.captureProxyHealthStub(stream.Context(), req, healthMethodWatch, nil, nil, err,
+			proxycapture.ResponseMetadata{}, route, time.Since(startTime))
 
 		return err
 	}
@@ -252,10 +252,9 @@ func (s *mockableHealthServer) proxyWatch(
 				stream.SetTrailer(trailer)
 			}
 
-			respHeaders := responseHeadersFromClientStream(clientStream)
 			s.captureProxyHealthStub(
-				stream.Context(), req, healthMethodWatch,
-				nil, responses, recvErr, respHeaders, route, time.Since(startTime),
+				stream.Context(), req, healthMethodWatch, nil, responses, recvErr,
+				captureMetadataFromClientStream(clientStream), route, time.Since(startTime),
 			)
 
 			return recvErr
@@ -276,7 +275,7 @@ func (s *mockableHealthServer) captureProxyHealthStub(
 	response any,
 	responses []any,
 	callErr error,
-	responseHeaders map[string]string,
+	responseMeta proxycapture.ResponseMetadata,
 	route *proxyroutes.Route,
 	elapsed time.Duration,
 ) {
@@ -286,7 +285,7 @@ func (s *mockableHealthServer) captureProxyHealthStub(
 
 	md, _ := metadata.FromIncomingContext(ctx)
 
-	stub := s.buildHealthStub(method, md, req, response, responses, responseHeaders, callErr)
+	stub := s.buildHealthStub(method, md, req, response, responses, responseMeta, callErr)
 	if stub == nil {
 		return
 	}
@@ -304,7 +303,7 @@ func (s *mockableHealthServer) buildHealthStub(
 	req *healthgrpc.HealthCheckRequest,
 	response any,
 	responses []any,
-	responseHeaders map[string]string,
+	responseMeta proxycapture.ResponseMetadata,
 	callErr error,
 ) *stuber.Stub {
 	switch method {
@@ -312,13 +311,13 @@ func (s *mockableHealthServer) buildHealthStub(
 		return proxycapture.BuildUnaryStub(
 			HealthServiceFullName, method, sessionFromMetadata(md),
 			map[string]any{"service": req.GetService()}, requestHeadersFromMetadata(md),
-			response, responseHeaders, callErr,
+			response, responseMeta, callErr,
 		)
 	case healthMethodWatch:
 		return proxycapture.BuildServerStreamStub(
 			HealthServiceFullName, method, sessionFromMetadata(md),
 			map[string]any{"service": req.GetService()}, requestHeadersFromMetadata(md),
-			responses, responseHeaders, callErr,
+			responses, responseMeta, callErr,
 		)
 	}
 

@@ -2,6 +2,7 @@ package stuber
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -73,36 +74,46 @@ type Effect struct {
 // When present in a stream entry, it must be a map[string]any.
 // Supported sub-keys:
 //   - "delay" — per-element delay before sending this message (Go duration string)
+//   - "error", "code", "details" — fail the stream at this element instead of sending it
 const GripMockKey = "_gripmock"
 
-// ExtractGripMockDelay checks a stream element map for GripMockKey.
-// If found, it extracts the "delay" value, deletes GripMockKey from the map,
-// and returns the parsed duration. Returns (0, false) if no valid delay is present.
-//
-// The map is modified in place (GripMockKey is removed).
-func ExtractGripMockDelay(m map[string]any) (types.Duration, bool) {
+type GripMockElement struct {
+	Delay    types.Duration
+	HasDelay bool
+
+	Error    string
+	Code     *codes.Code
+	Details  []map[string]any
+	HasError bool
+}
+
+func ExtractGripMock(m map[string]any) GripMockElement {
+	var out GripMockElement
+
 	if m == nil {
-		return 0, false
+		return out
 	}
 
 	raw, has := m[GripMockKey]
 	if !has {
-		return 0, false
+		return out
 	}
 
 	delete(m, GripMockKey)
 
 	gk, ok := raw.(map[string]any)
 	if !ok {
-		return 0, false
+		return out
 	}
 
-	delayStr, has := gk["delay"]
-	if !has {
-		return 0, false
-	}
+	out.Delay, out.HasDelay = gripMockDelay(gk)
+	out.Error, out.Code, out.Details, out.HasError = gripMockError(gk)
 
-	s, ok := delayStr.(string)
+	return out
+}
+
+func gripMockDelay(gk map[string]any) (types.Duration, bool) {
+	s, ok := gk["delay"].(string)
 	if !ok {
 		return 0, false
 	}
@@ -113,6 +124,89 @@ func ExtractGripMockDelay(m map[string]any) (types.Duration, bool) {
 	}
 
 	return types.Duration(d), true
+}
+
+func gripMockError(gk map[string]any) (string, *codes.Code, []map[string]any, bool) {
+	msg, hasMsg := gk["error"].(string)
+
+	var code *codes.Code
+
+	if raw, has := gk["code"]; has {
+		if n, ok := toCodeNumber(raw); ok {
+			c := codes.Code(n)
+			code = &c
+		}
+	}
+
+	details := toDetailList(gk["details"])
+
+	if !hasMsg && code == nil && len(details) == 0 {
+		return "", nil, nil, false
+	}
+
+	return msg, code, details, true
+}
+
+//nolint:cyclop // one branch per JSON number shape; a table would not be clearer.
+func toCodeNumber(raw any) (uint32, bool) {
+	switch v := raw.(type) {
+	case json.Number:
+		n, err := v.Int64()
+		if err != nil || n < 0 {
+			return 0, false
+		}
+
+		return uint32(n), true //nolint:gosec
+	case float64:
+		if v < 0 {
+			return 0, false
+		}
+
+		return uint32(v), true
+	case int:
+		if v < 0 {
+			return 0, false
+		}
+
+		return uint32(v), true //nolint:gosec
+	case int64:
+		if v < 0 {
+			return 0, false
+		}
+
+		return uint32(v), true //nolint:gosec
+	case uint32:
+		return v, true
+	default:
+		return 0, false
+	}
+}
+
+func toDetailList(raw any) []map[string]any {
+	items, ok := raw.([]any)
+	if !ok {
+		return nil
+	}
+
+	details := make([]map[string]any, 0, len(items))
+
+	for _, item := range items {
+		if detail, ok := item.(map[string]any); ok {
+			details = append(details, detail)
+		}
+	}
+
+	if len(details) == 0 {
+		return nil
+	}
+
+	return details
+}
+
+func ExtractGripMockDelay(m map[string]any) (types.Duration, bool) {
+	el := ExtractGripMock(m)
+
+	return el.Delay, el.HasDelay
 }
 
 // EffectiveTimes returns the stub's max match count; 0 means unlimited.
@@ -251,9 +345,10 @@ func (i InputHeader) Len() int {
 
 // Output represents the output data of a gRPC response.
 type Output struct {
-	Headers map[string]string `json:"headers"`          // The headers of the response.
-	Data    any               `json:"data,omitempty"`   // The data of the response. Map for regular messages, scalar for WKT top-level.
-	Stream  []any             `json:"stream,omitempty"` // The stream data for server-side streaming.
+	Headers  map[string]string `json:"headers"`            // The headers of the response.
+	Trailers map[string]string `json:"trailers,omitempty"` // The trailing metadata of the response.
+	Data     any               `json:"data,omitempty"`     // The data of the response. Map for regular messages, scalar for WKT top-level.
+	Stream   []any             `json:"stream,omitempty"`   // The stream data for server-side streaming.
 	// Each element represents a message to be sent. Each entry may be a map (regular message) or scalar (WKT top-level).
 	Error   string           `json:"error"`             // The error message of the response.
 	Code    *codes.Code      `json:"code,omitempty"`    // The status code of the response.

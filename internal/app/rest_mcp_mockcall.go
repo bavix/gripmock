@@ -114,6 +114,15 @@ func mcpRenderMockResponse(
 		output.Headers = headersCopy
 	}
 
+	if template.HasTemplatesInHeaders(output.Trailers) {
+		trailersCopy := deepCopyStringMap(output.Trailers)
+		if err := engine.ProcessHeaders(trailersCopy, templateData); err != nil {
+			return h.mockTemplateError(found, service, method, session, input, requestTime, err)
+		}
+
+		output.Trailers = trailersCopy
+	}
+
 	if output.Error != "" && template.IsTemplateString(output.Error) {
 		errorStr, err := engine.ProcessError(output.Error, templateData)
 		if err != nil {
@@ -158,6 +167,10 @@ func mcpRenderMockResponse(
 
 	if len(output.Headers) > 0 {
 		response["headers"] = output.Headers
+	}
+
+	if len(output.Trailers) > 0 {
+		response["trailers"] = output.Trailers
 	}
 
 	if delay := time.Duration(output.Delay); delay > 0 {
