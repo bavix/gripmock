@@ -1,5 +1,23 @@
 # Changelog
 
+## v3.19.0 - 2026-08-15
+
+### What's Changed
+
+* docs: update perf cmp by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/951
+* chore(deps): bump actions/upload-artifact from 4 to 7 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/957
+* chore(deps): bump sourcemeta/jsonschema from 16.5.0 to 16.7.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/956
+* chore(deps): bump actions/download-artifact from 4 to 8 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/955
+* chore(deps): bump github.com/klauspost/compress from 1.19.1 to 1.19.2 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/953
+* chore(deps): bump go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc from 0.69.0 to 0.70.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/954
+* chore(deps): bump go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp from 0.69.0 to 0.70.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/952
+* shields by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/958
+* docs errors have been corrected by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/959
+* fix connectrpc/grpc-web by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/961
+* chore(deps): bump google.golang.org/protobuf from 1.36.11 to 1.36.12 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/960
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.18.4...v3.19.0
+
 ## v3.18.4 - 2026-08-08
 
 ### What's Changed
