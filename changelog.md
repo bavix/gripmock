@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.20.0 - 2026-08-19
+
+### What's Changed
+
+* [v3.20] remove deprecated code (sdk v1), optimize processing, fix connectrpc … by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/967
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.19.0...v3.20.0
+
 ## v3.19.0 - 2026-08-15
 
 ### What's Changed
