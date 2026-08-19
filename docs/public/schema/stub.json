@@ -711,6 +711,16 @@
           "type": "string",
           "pattern": "^(\\d+(\\.\\d+)?(ms|s|m|h))+$"
         },
+        "delay_type": {
+          "description": "Strategy used to adjust the response delay between stub matches",
+          "type": "string",
+          "enum": [ "default", "regressive" ]
+        },
+        "delay_step": {
+          "description": "Amount subtracted from delay after every match when delay_type is regressive",
+          "type": "string",
+          "pattern": "^(\\d+(\\.\\d+)?(ms|s|m|h))+$"
+        },
         "headers": {
           "description": "Response metadata.",
           "type": "object",
@@ -726,7 +736,35 @@
           }
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": [ "delay_step" ]
+          },
+          "then": {
+            "required": [ "delay_type" ],
+            "properties": {
+              "delay_type": {
+                "const": "regressive"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [ "delay_type" ],
+            "properties": {
+              "delay_type": {
+                "const": "regressive"
+              }
+            }
+          },
+          "then": {
+            "required": [ "delay", "delay_step" ]
+          }
+        }
+      ]
     },
     "gripMockElement": {
       "description": "Reserved per-element directives. With `error`, `code` or `details` the element replaces its message and ends the stream with that status; the remaining elements are not sent.",

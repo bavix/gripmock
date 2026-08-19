@@ -80,6 +80,24 @@ func (e StubEffectAction) Valid() bool {
 	}
 }
 
+// Defines values for StubOutputDelayType.
+const (
+	Default    StubOutputDelayType = "default"
+	Regressive StubOutputDelayType = "regressive"
+)
+
+// Valid indicates whether the value is a known member of the StubOutputDelayType enum.
+func (e StubOutputDelayType) Valid() bool {
+	switch e {
+	case Default:
+		return true
+	case Regressive:
+		return true
+	default:
+		return false
+	}
+}
+
 // AddDescriptorsResponse Result of registering an uploaded FileDescriptorSet.
 type AddDescriptorsResponse struct {
 	// Message Human-readable result of the upload.
@@ -771,6 +789,16 @@ type StubOutput struct {
 	// Example: 1s
 	Delay gptypes.Duration `json:"delay,omitempty,omitzero"`
 
+	// DelayStep Amount subtracted from delay after every match when delay_type is regressive
+	//
+	// Example: 500ms
+	DelayStep gptypes.Duration `json:"delay_step,omitempty,omitzero"`
+
+	// DelayType Strategy used to adjust the response delay between stub matches
+	//
+	// Example: regressive
+	DelayType StubOutputDelayType `json:"delay_type,omitempty"`
+
 	// Details gRPC status details packed into google.protobuf.Any (each item must contain type URL in `type`)
 	Details []StubOutput_Details_Item `json:"details,omitempty"`
 
@@ -788,6 +816,11 @@ type StubOutput struct {
 	// Trailers Trailing metadata, sent after the last message with the status. Independent of `headers`: the same key may appear in both, and each is delivered on its own channel.
 	Trailers map[string]string `json:"trailers,omitempty"`
 }
+
+// StubOutputDelayType Strategy used to adjust the response delay between stub matches
+//
+// Example: regressive
+type StubOutputDelayType string
 
 // StubOutput_Details_Item defines model for StubOutput.details.Item.
 type StubOutput_Details_Item struct {
