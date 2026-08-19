@@ -96,13 +96,18 @@ func mcpRenderMockResponse(
 	// no context is created per request.
 	engine := h.templateEngine
 
-	dataCopy := deepCopyAny(output.Data)
-	if dataMap, ok := dataCopy.(map[string]any); ok {
-		if err := engine.ProcessMap(dataMap, templateData); err != nil {
-			return h.mockTemplateError(found, service, method, session, input, requestTime, err)
-		}
+	dataCopy, err := renderOutputData(engine, output, templateData)
+	if err != nil {
+		return h.mockTemplateError(found, service, method, session, input, requestTime, err)
+	}
 
-		dataCopy = dataMap
+	streamCopy, err := renderMCPStream(engine, output, templateData)
+	if err != nil {
+		return h.mockTemplateError(found, service, method, session, input, requestTime, err)
+	}
+
+	if streamCopy != nil {
+		output.Stream = streamCopy
 	}
 
 	if template.HasTemplatesInHeaders(output.Headers) {
@@ -153,7 +158,10 @@ func mcpRenderMockResponse(
 	var recordedData any
 
 	if errMsg == "" {
-		if dataCopy != nil {
+		if len(output.Stream) > 0 {
+			response["stream"] = output.Stream
+			recordedData = output.Stream
+		} else if dataCopy != nil {
 			response["data"] = dataCopy
 			recordedData = dataCopy
 		}
@@ -180,6 +188,33 @@ func mcpRenderMockResponse(
 	h.recordMockCall(found, service, method, session, input, recordedData, uint32(code), errMsg, requestTime)
 
 	return response
+}
+
+func renderMCPStream(engine *template.Engine, output stuber.Output, templateData template.Data) ([]any, error) {
+	streamCopy, hasStreamTemplate, err := renderOutputStreamTemplate(engine, output, templateData)
+	if err != nil || hasStreamTemplate {
+		return streamCopy, err
+	}
+
+	if len(output.Stream) == 0 {
+		return nil, nil
+	}
+
+	streamCopy = deepCopySliceAny(output.Stream)
+	for i, item := range streamCopy {
+		itemMap, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		if err := engine.ProcessMap(itemMap, templateData); err != nil {
+			return nil, err
+		}
+
+		streamCopy[i] = itemMap
+	}
+
+	return streamCopy, nil
 }
 
 // mockTemplateError mirrors the gRPC handler returning codes.Internal when a
@@ -231,8 +266,15 @@ func (h *RestServer) recordMockCall(
 		Timestamp: requestTime,
 	}
 
-	if dataMap, ok := data.(map[string]any); ok {
-		record.Responses = []map[string]any{dataMap}
+	switch rendered := data.(type) {
+	case map[string]any:
+		record.Responses = []map[string]any{rendered}
+	case []any:
+		for _, item := range rendered {
+			if itemMap, ok := item.(map[string]any); ok {
+				record.Responses = append(record.Responses, itemMap)
+			}
+		}
 	}
 
 	recorder.Record(record)

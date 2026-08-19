@@ -369,3 +369,36 @@ func TestExecuteEmptyData(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(bytes), "null")
 }
+
+func TestExecutePreservesStructuralTemplateBlock(t *testing.T) {
+	t.Parallel()
+
+	conv := yaml2json.New(nil)
+	result, err := conv.Execute(t.Context(), "test", []byte(`
+- service: example.Service
+  method: List
+  input:
+    equals:
+      key: value
+  output:
+    dataTemplate: |
+      items:
+      {{ range .Request.items }}
+        - id: {{ json .id }}
+          generated_id: {{ json faker.Identity.UUID }}
+      {{ end }}
+`))
+	require.NoError(t, err)
+
+	var decoded []map[string]any
+	require.NoError(t, json.Unmarshal(result, &decoded))
+	require.Len(t, decoded, 1)
+
+	output, ok := decoded[0]["output"].(map[string]any)
+	require.True(t, ok)
+	tmpl, ok := output["dataTemplate"].(string)
+	require.True(t, ok)
+	require.Contains(t, tmpl, "{{ range .Request.items }}")
+	require.Contains(t, tmpl, "{{ json .id }}")
+	require.Contains(t, tmpl, "{{ json faker.Identity.UUID }}")
+}

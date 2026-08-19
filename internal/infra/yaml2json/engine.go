@@ -49,6 +49,8 @@ var runtimeTemplatePattern = regexp.MustCompile(
 // {{foo.Bar.Baz}} which depend on runtime objects and must not be pre-executed.
 var chainedCallTemplatePattern = regexp.MustCompile(`\{\{\s*\(?\s*[A-Za-z_][A-Za-z0-9_]*\s*\)?\s*(?:\.[A-Za-z_][A-Za-z0-9_]*)+[^}]*\}\}`)
 
+var structuralTemplateFieldPattern = regexp.MustCompile(`^(\s*)(dataTemplate|streamTemplate)\s*:\s*(.*)$`)
+
 // executeTemplates executes static template functions at load time and escapes runtime templates.
 func (e *engine) executeTemplates(ctx context.Context, name string, data []byte) []byte {
 	// Get template functions from registry
@@ -59,7 +61,15 @@ func (e *engine) executeTemplates(ctx context.Context, name string, data []byte)
 
 	var result []string
 
+	structuralTemplateIndent := -1
+
 	for _, line := range lines {
+		if preserveStructuralTemplateLine(line, &structuralTemplateIndent) {
+			result = append(result, line)
+
+			continue
+		}
+
 		if !containsTemplateMarkers([]byte(line)) {
 			result = append(result, line)
 
@@ -78,6 +88,33 @@ func (e *engine) executeTemplates(ctx context.Context, name string, data []byte)
 	}
 
 	return []byte(strings.Join(result, "\n"))
+}
+
+func preserveStructuralTemplateLine(line string, blockIndent *int) bool {
+	if *blockIndent >= 0 {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || leadingWhitespace(line) > *blockIndent {
+			return true
+		}
+
+		*blockIndent = -1
+	}
+
+	matches := structuralTemplateFieldPattern.FindStringSubmatch(line)
+	if matches == nil {
+		return false
+	}
+
+	value := strings.TrimSpace(matches[3])
+	if strings.HasPrefix(value, "|") || strings.HasPrefix(value, ">") {
+		*blockIndent = len(matches[1])
+	}
+
+	return true
+}
+
+func leadingWhitespace(line string) int {
+	return len(line) - len(strings.TrimLeft(line, " \t"))
 }
 
 // getTemplateFuncs returns template functions from the registry.

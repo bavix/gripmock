@@ -1,0 +1,20 @@
+--- ENDPOINT ---
+ecommerce.EcommerceService/CreateOrder
+
+--- REQUEST ---
+{
+  "items": [],
+  "payment_method": "credit_card",
+  "shipping_address": "123 Main St",
+  "user_id": "USER_123"
+}
+
+--- RESPONSE ---
+{
+  "estimated_delivery": "2024-01-20",
+  "items": [],
+  "order_id": "ORDER_123_1734038400",
+  "status": "processing",
+  "total_amount": 0,
+  "user_id": "USER_123"
+}

@@ -3,6 +3,7 @@ package stuber
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -226,7 +227,7 @@ func (s *Stub) IsClientStream() bool {
 
 // IsServerStream returns true if this stub is for server streaming responses (has Output.Stream data).
 func (s *Stub) IsServerStream() bool {
-	return len(s.Output.Stream) > 0
+	return len(s.Output.Stream) > 0 || strings.TrimSpace(s.Output.StreamTemplate) != ""
 }
 
 // IsBidirectional returns true if this stub can handle bidirectional streaming.
@@ -347,8 +348,11 @@ func (i InputHeader) Len() int {
 type Output struct {
 	Headers  map[string]string `json:"headers"`            // The headers of the response.
 	Trailers map[string]string `json:"trailers,omitempty"` // The trailing metadata of the response.
-	Data     any               `json:"data,omitempty"`     // The data of the response. Map for regular messages, scalar for WKT top-level.
-	Stream   []any             `json:"stream,omitempty"`   // The stream data for server-side streaming.
+	// Data is a map for regular messages or a scalar for top-level well-known types.
+	Data           any    `json:"data,omitempty"`
+	DataTemplate   string `json:"dataTemplate,omitempty"`   // Runtime YAML/JSON template for response data.
+	Stream         []any  `json:"stream,omitempty"`         // The stream data for server-side streaming.
+	StreamTemplate string `json:"streamTemplate,omitempty"` // Runtime YAML/JSON template for stream messages.
 	// Each element represents a message to be sent. Each entry may be a map (regular message) or scalar (WKT top-level).
 	Error   string           `json:"error"`             // The error message of the response.
 	Code    *codes.Code      `json:"code,omitempty"`    // The status code of the response.

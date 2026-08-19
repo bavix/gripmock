@@ -174,6 +174,15 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 
 	templateData := newTemplateData(requestData, headers, 0, requestTime, []any{requestData}, found.ID.String())
 
+	streamCopy, hasStreamTemplate, err := renderOutputStreamTemplate(m.templateEngine, outputToUse, templateData)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	if hasStreamTemplate {
+		outputToUse.Stream = streamCopy
+	}
+
 	if template.HasTemplatesInHeaders(outputToUse.Headers) {
 		headersCopy := deepCopyStringMap(outputToUse.Headers)
 		if err := m.templateEngine.ProcessHeaders(headersCopy, templateData); err != nil {
@@ -204,11 +213,11 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 
 	m.applyEffects(stream.Context(), found, templateData)
 
-	if found.Output.Stream == nil {
+	if outputToUse.Stream == nil {
 		return m.handleServerStreamOutput(stream, found, requestData, outputToUse, requestTime)
 	}
 
-	if len(found.Output.Stream) == 0 {
+	if len(outputToUse.Stream) == 0 {
 		callErr := m.handleOutputError(stream.Context(), stream, outputToUse)
 
 		m.recordServerStreamUnlessProxied(stream.Context(), found, requestTime,
@@ -217,13 +226,23 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		return callErr //nolint:wrapcheck
 	}
 
-	sent, callErr := m.handleArrayStreamData(stream, found, inputMsg, requestTime)
+	var (
+		sent    int
+		callErr error
+	)
+
+	if hasStreamTemplate {
+		sent, callErr = m.handleRenderedArrayStreamData(stream, outputToUse)
+	} else {
+		sent, callErr = m.handleArrayStreamData(stream, found, inputMsg, requestTime)
+	}
+
 	if callErr == nil {
 		callErr = m.handleOutputError(stream.Context(), stream, outputToUse)
 	}
 
 	m.recordServerStreamUnlessProxied(stream.Context(), found, requestTime,
-		requestData, cleanStreamResponses(found.Output.Stream[:sent]), recordedMetadata(outputToUse), callErr)
+		requestData, cleanStreamResponses(outputToUse.Stream[:sent]), recordedMetadata(outputToUse), callErr)
 
 	return callErr //nolint:wrapcheck
 }
@@ -353,6 +372,36 @@ func (m *grpcMocker) handleArrayStreamData(
 	return len(found.Output.Stream), nil
 }
 
+// handleRenderedArrayStreamData sends structural template results without
+// processing their scalar values as templates a second time.
+func (m *grpcMocker) handleRenderedArrayStreamData(stream grpc.ServerStream, output stuber.Output) (int, error) {
+	done := stream.Context().Done()
+
+	for i, streamData := range output.Stream {
+		select {
+		case <-done:
+			return i, stream.Context().Err()
+		default:
+		}
+
+		payload, err := m.prepareStreamElement(stream.Context(), streamData, output.Delay)
+		if err != nil {
+			return i, err
+		}
+
+		outputMsg, err := m.newOutputMessage(payload)
+		if err != nil {
+			return i, errors.Wrap(err, "failed to convert response to dynamic message")
+		}
+
+		if err := sendStreamMessage(stream, outputMsg); err != nil {
+			return i, err
+		}
+	}
+
+	return len(output.Stream), nil
+}
+
 func (m *grpcMocker) handleStreamElement(
 	stream grpc.ServerStream,
 	found *stuber.Stub,
@@ -407,7 +456,7 @@ func (m *grpcMocker) handleStreamElement(
 	return nil
 }
 
-//nolint:cyclop,funlen
+//nolint:cyclop
 func (m *grpcMocker) handleNonArrayStreamData(
 	stream grpc.ServerStream,
 	found *stuber.Stub,
@@ -434,8 +483,6 @@ func (m *grpcMocker) handleNonArrayStreamData(
 			return err
 		}
 
-		outputDataCopy := deepCopyAny(found.Output.Data)
-
 		// Render against the request the caller already consumed. A server-stream
 		// client half-closes after one message, so a fresh RecvMsg here returns
 		// EOF and would otherwise leave the data template unrendered; only a genuine
@@ -454,12 +501,10 @@ func (m *grpcMocker) handleNonArrayStreamData(
 		}
 
 		templateData := newTemplateData(msgData, headers, 0, msgTime, []any{msgData}, found.ID.String())
-		if dataMap, ok := outputDataCopy.(map[string]any); ok {
-			if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
-				return errors.Wrap(err, "failed to process dynamic templates")
-			}
 
-			outputDataCopy = dataMap
+		outputDataCopy, err := renderOutputData(m.templateEngine, found.Output, templateData)
+		if err != nil {
+			return status.Error(codes.Internal, err.Error())
 		}
 
 		outputMsg, err := m.newOutputMessage(outputDataCopy)

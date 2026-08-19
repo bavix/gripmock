@@ -314,6 +314,74 @@ func (s *RestServerTestSuite) TestMCPMockCall() {
 	s.Require().InDelta(float64(1), history["total"], 0)
 }
 
+func (s *RestServerTestSuite) TestMCPMockCallStructuralDataTemplate() {
+	server := s.newRestServerWithHistory()
+
+	s.mcpToolCall(server, 1, "stubs_upsert", map[string]any{
+		"stubs": map[string]any{
+			"service": "svc",
+			"method":  "Expand",
+			"input":   map[string]any{"contains": map[string]any{"kind": "item"}},
+			"output": map[string]any{"dataTemplate": `items:
+{{ range .Request.items }}
+  - id: {{ .id | json }}
+{{ else }}
+  []
+{{ end }}`},
+		},
+	})
+
+	called := s.mcpStructuredContent(s.mcpToolCall(server, 2, "mock_call", map[string]any{
+		"service": "svc",
+		"method":  "Expand",
+		"payload": map[string]any{
+			"kind":  "item",
+			"items": []any{map[string]any{"id": "a"}, map[string]any{"id": "b"}},
+		},
+	}))
+
+	s.Require().Equal("OK", called["codeName"])
+	data, ok := called["data"].(map[string]any)
+	s.Require().True(ok)
+	items, ok := data["items"].([]any)
+	s.Require().True(ok)
+	s.Require().Len(items, 2)
+	s.Require().Equal("a", mapField(items[0], "id"))
+}
+
+func (s *RestServerTestSuite) TestMCPMockCallStructuralStreamTemplate() {
+	server := s.newRestServerWithHistory()
+
+	s.mcpToolCall(server, 1, "stubs_upsert", map[string]any{
+		"stubs": map[string]any{
+			"service": "svc",
+			"method":  "ExpandStream",
+			"input":   map[string]any{"contains": map[string]any{"kind": "item"}},
+			"output": map[string]any{"streamTemplate": `
+{{ range .Request.items }}
+- id: {{ .id | json }}
+{{ else }}
+[]
+{{ end }}`},
+		},
+	})
+
+	called := s.mcpStructuredContent(s.mcpToolCall(server, 2, "mock_call", map[string]any{
+		"service": "svc",
+		"method":  "ExpandStream",
+		"payload": map[string]any{
+			"kind":  "item",
+			"items": []any{map[string]any{"id": "a"}, map[string]any{"id": "b"}},
+		},
+	}))
+
+	s.Require().Equal("OK", called["codeName"])
+	stream, ok := called["stream"].([]any)
+	s.Require().True(ok)
+	s.Require().Len(stream, 2)
+	s.Require().Equal("b", mapField(stream[1], "id"))
+}
+
 func (s *RestServerTestSuite) TestMCPMockCallError() {
 	server := s.newRestServerWithHistory()
 

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/dynamicpb"
 	"google.golang.org/protobuf/types/known/structpb"
 
@@ -67,6 +68,40 @@ func TestHistoryUnary(t *testing.T) {
 	require.Equal(t, uint32(0), calls[0].Code)
 	require.NotNil(t, calls[0].Request)
 	require.NotNil(t, calls[0].Response)
+}
+
+func TestUnaryStructuralDataTemplate(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMockerWithRecorder(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+
+	stub := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: testServiceName,
+		Method:  testMethodName,
+		Input:   stuber.InputData{Contains: map[string]any{}},
+		Output: stuber.Output{DataTemplate: `items:
+{{ range .Request.fields.items.list_value.values }}
+  - id: "{{ .struct_value.fields.id.string_value }}"
+{{ else }}
+  []
+{{ end }}`},
+	}
+	mocker.budgerigar.PutMany(stub)
+
+	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
+	require.NoError(t, protojson.Unmarshal([]byte(`{"items":[{"id":"a"},{"id":"b"},{"id":"c"}]}`), inputMsg))
+
+	resp, err := mocker.handleUnary(t.Context(), nil, inputMsg)
+	require.NoError(t, err)
+
+	rendered, err := protojson.Marshal(resp)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"items":[{"id":"a"},{"id":"b"},{"id":"c"}]}`, string(rendered))
 }
 
 func TestHistoryServerStream1N(t *testing.T) {
@@ -153,6 +188,48 @@ func TestHistoryClientStreamN1(t *testing.T) {
 	require.NotNil(t, calls[0].Response)
 }
 
+func TestClientStreamStructuralDataTemplate(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMockerWithRecorder(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+
+	stub := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: testServiceName,
+		Method:  testMethodName,
+		Inputs:  []stuber.InputData{{Contains: map[string]any{}}},
+		Output: stuber.Output{DataTemplate: `items:
+{{ range .Requests }}
+  - received: true
+{{ else }}
+  []
+{{ end }}`},
+	}
+	mocker.budgerigar.PutMany(stub)
+
+	stream := &mockFullServerStream{
+		ctx: t.Context(),
+		receivedMessages: []*dynamicpb.Message{
+			dynamicpb.NewMessage(mocker.inputDesc),
+			dynamicpb.NewMessage(mocker.inputDesc),
+			dynamicpb.NewMessage(mocker.inputDesc),
+		},
+		recvMsgLimit: 3,
+	}
+
+	err := mocker.handleClientStream(stream)
+	require.NoError(t, err)
+	require.Len(t, stream.sentMessages, 1)
+
+	rendered, err := protojson.Marshal(stream.sentMessages[0])
+	require.NoError(t, err)
+	require.JSONEq(t, `{"items":[{"received":true},{"received":true},{"received":true}]}`, string(rendered))
+}
+
 func TestHistoryBidiStreamNM(t *testing.T) {
 	t.Parallel()
 
@@ -197,6 +274,46 @@ func TestHistoryBidiStreamNM(t *testing.T) {
 	require.Equal(t, uint32(0), calls[0].Code)
 	require.NotNil(t, calls[0].Request)
 	require.NotNil(t, calls[0].Response)
+}
+
+func TestBidiStructuralStreamTemplate(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMockerWithRecorder(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+
+	stub := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: testServiceName,
+		Method:  testMethodName,
+		Input:   stuber.InputData{Contains: map[string]any{}},
+		Inputs:  []stuber.InputData{{Contains: map[string]any{}}, {Contains: map[string]any{}}},
+		Output:  stuber.Output{StreamTemplate: `- status: "ack-{{ .MessageIndex }}"`},
+	}
+	mocker.budgerigar.PutMany(stub)
+
+	stream := &mockFullServerStream{
+		ctx: t.Context(),
+		receivedMessages: []*dynamicpb.Message{
+			dynamicpb.NewMessage(mocker.inputDesc),
+			dynamicpb.NewMessage(mocker.inputDesc),
+		},
+		recvMsgLimit: 2,
+	}
+
+	err := mocker.handleBidiStream(stream)
+	require.NoError(t, err)
+	require.Len(t, stream.sentMessages, 2)
+
+	first, err := protojson.Marshal(stream.sentMessages[0])
+	require.NoError(t, err)
+	second, err := protojson.Marshal(stream.sentMessages[1])
+	require.NoError(t, err)
+	require.JSONEq(t, `{"status":"ack-0"}`, string(first))
+	require.JSONEq(t, `{"status":"ack-1"}`, string(second))
 }
 
 func TestHistoryBidiStream11(t *testing.T) {

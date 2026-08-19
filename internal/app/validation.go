@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 
@@ -62,8 +63,23 @@ func validateOutputConfiguration(fl validator.FieldLevel) bool {
 		return false
 	}
 
-	hasDataOutput := v.Output.Error != "" || v.Output.Data != nil || v.Output.Code != nil || len(v.Output.Details) > 0
-	hasStreamOutput := len(v.Output.Stream) > 0
+	return isValidOutputConfiguration(v.Output)
+}
+
+func isValidOutputConfiguration(output stuber.Output) bool {
+	hasDataTemplate := strings.TrimSpace(output.DataTemplate) != ""
+	hasStreamTemplate := strings.TrimSpace(output.StreamTemplate) != ""
+
+	if output.Data != nil && hasDataTemplate {
+		return false
+	}
+
+	if len(output.Stream) > 0 && hasStreamTemplate {
+		return false
+	}
+
+	hasDataOutput := output.Error != "" || output.Data != nil || hasDataTemplate || output.Code != nil || len(output.Details) > 0
+	hasStreamOutput := len(output.Stream) > 0 || hasStreamTemplate
 
 	return hasDataOutput != hasStreamOutput
 }

@@ -2012,6 +2012,12 @@ components:
           description: >-
             Response body for unary and client-streaming calls. Usually an object matching the proto message;
             may be a scalar when the method returns a well-known type directly.
+        dataTemplate:
+          type: string
+          x-go-type-skip-optional-pointer: true
+          description: >-
+            Runtime Go template that renders a complete YAML or JSON response body for unary and
+            client-streaming calls. Cannot be combined with `data` or stream-side output.
         stream:
           type: array
           items: {}
@@ -2019,6 +2025,12 @@ components:
           description: >-
             Response messages for server and bidirectional streaming, sent in order. Cannot be combined
             with `data`, `error`, `code` or `details` on this endpoint.
+        streamTemplate:
+          type: string
+          x-go-type-skip-optional-pointer: true
+          description: >-
+            Runtime Go template that must render a YAML or JSON array of messages for server and
+            bidirectional streaming calls. Cannot be combined with `stream` or data-side output.
         headers:
           type: object
           additionalProperties:
@@ -2078,4 +2090,5 @@ components:
           x-go-type-skip-optional-pointer: true
       description: >-
         What the stub returns. Over this API exactly one side must be set: either the unary side (`data`,
-        `error`, `code`, `details`) or `stream`. A stub carrying both is rejected with `400`.
+        `dataTemplate`, `error`, `code`, `details`) or the stream side (`stream`, `streamTemplate`).
+        Static and templated forms on the same side are mutually exclusive.
