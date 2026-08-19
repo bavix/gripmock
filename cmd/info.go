@@ -44,7 +44,6 @@ type pluginGroup struct {
 }
 
 type uiContext struct {
-	width       int
 	titleStyle  ansiStyle
 	keyStyle    ansiStyle
 	valStyle    ansiStyle
@@ -56,7 +55,6 @@ type uiContext struct {
 const (
 	labelBuiltin          = "gripmock"
 	labelExternal         = "external"
-	defaultWidth          = 100
 	builtinFuncMultiplier = 8
 	dash                  = "—"
 )
@@ -329,10 +327,7 @@ func runInfoCmd(ctx context.Context) error {
 }
 
 func newUIContext() uiContext {
-	width := termWidth()
-
 	return uiContext{
-		width:       width,
 		titleStyle:  newStyle("212").Bold(),
 		keyStyle:    newStyle("244"),
 		valStyle:    newStyle("15").Bold(),
@@ -448,14 +443,4 @@ func countStats(groups map[string]*pluginGroup) uiStats {
 	}
 
 	return stats
-}
-
-func termWidth() int {
-	if cols, ok := os.LookupEnv("COLUMNS"); ok {
-		if n, err := strconv.Atoi(cols); err == nil && n > 0 {
-			return n
-		}
-	}
-
-	return defaultWidth
 }

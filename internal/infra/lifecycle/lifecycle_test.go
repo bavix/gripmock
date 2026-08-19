@@ -1,22 +1,16 @@
 package lifecycle_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"testing"
 
+	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 
 	"github.com/bavix/gripmock/v3/internal/infra/lifecycle"
 )
-
-type testLogger struct {
-	errs []error
-}
-
-func (l *testLogger) Err(err error) {
-	l.errs = append(l.errs, err)
-}
 
 var errBoom = errors.New("boom")
 
@@ -27,7 +21,7 @@ func TestManagerOrderAndClear(t *testing.T) {
 
 	var calls []int
 
-	m := lifecycle.New(nil)
+	m := lifecycle.New()
 	m.Add(
 		func(context.Context) error {
 			calls = append(calls, 1)
@@ -53,15 +47,18 @@ func TestManagerOrderAndClear(t *testing.T) {
 func TestManagerLogsErrors(t *testing.T) {
 	t.Parallel()
 
-	ctx := t.Context()
-	logger := &testLogger{}
-	m := lifecycle.New(logger)
+	var sink bytes.Buffer
 
+	logger := zerolog.New(&sink)
+	ctx := logger.WithContext(t.Context())
+
+	m := lifecycle.New()
 	m.Add(func(context.Context) error {
 		return errBoom
 	})
 
 	m.Do(ctx)
 
-	require.Equal(t, []error{errBoom}, logger.errs)
+	require.Contains(t, sink.String(), "shutdown callback failed")
+	require.Contains(t, sink.String(), errBoom.Error())
 }

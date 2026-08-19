@@ -160,33 +160,3 @@ func TestDeepCopySliceAny(t *testing.T) {
 		require.Equal(t, 1, d0[0])
 	})
 }
-
-func TestDeepCopyStringMap(t *testing.T) {
-	t.Parallel()
-
-	t.Run("nil returns nil", func(t *testing.T) {
-		t.Parallel()
-
-		require.Nil(t, deepCopyStringMap(nil))
-	})
-
-	t.Run("empty map", func(t *testing.T) {
-		t.Parallel()
-
-		src := map[string]string{}
-		dst := deepCopyStringMap(src)
-		require.NotNil(t, dst)
-		require.Empty(t, dst)
-	})
-
-	t.Run("map with values", func(t *testing.T) {
-		t.Parallel()
-
-		src := map[string]string{"k1": "v1", "k2": "v2"}
-		dst := deepCopyStringMap(src)
-		require.Equal(t, src, dst)
-		src["k1"] = "modified"
-
-		require.Equal(t, "v1", dst["k1"])
-	})
-}

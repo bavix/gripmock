@@ -71,6 +71,6 @@ func (s *Server) RecordCall(service, method string, request, response map[string
 		Service:   service,
 		Method:    method,
 		Requests:  []map[string]any{request},
-		Responses: []map[string]any{response},
+		Responses: []any{response},
 	})
 }

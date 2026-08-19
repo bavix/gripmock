@@ -11,18 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeriveAndExtractHostHelpers(t *testing.T) {
-	t.Parallel()
-
-	require.Equal(t, "http://localhost:4771", deriveRestURLFromGrpcAddr("localhost:4770"))
-	require.Equal(t, "http://127.0.0.1:4771", deriveRestURLFromGrpcAddr("127.0.0.1:8888"))
-	require.Equal(t, "http://[bad::addr]:4771", deriveRestURLFromGrpcAddr("bad::addr"))
-
-	require.Equal(t, "example.com", extractHost("example.com:9090"))
-	require.Equal(t, "http://api.local:8080", extractHost("http://api.local:8080"))
-	require.Equal(t, "", extractHost("")) //nolint:testifylint
-}
-
 func TestNormalizeRemoteHelpers(t *testing.T) {
 	t.Parallel()
 

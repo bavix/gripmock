@@ -34,7 +34,7 @@ type HistoryCall struct {
 	Method          string
 	Session         string
 	Requests        []map[string]any
-	Responses       []map[string]any
+	Responses       []any
 	ResponseHeaders map[string]string
 	Error           string
 	Code            uint32
@@ -351,7 +351,7 @@ func decodeHistory(body io.Reader) ([]HistoryCall, error) {
 		Method          *string             `json:"method"`
 		Session         *string             `json:"session"`
 		Requests        *[]map[string]any   `json:"requests"`
-		Responses       *[]map[string]any   `json:"responses"`
+		Responses       *[]any              `json:"responses"`
 		ResponseHeaders *map[string]string  `json:"responseHeaders"`
 		Code            *uint32             `json:"code"`
 		Error           *string             `json:"error"`

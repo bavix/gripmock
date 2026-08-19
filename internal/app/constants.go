@@ -20,12 +20,3 @@ const (
 	LogFieldPeerAddress = "peer.address"
 	LogFieldComponent   = "grpc.component"
 )
-
-//nolint:gochecknoglobals
-var ExcludedHeaders = []string{
-	":authority",
-	"content-type",
-	"grpc-accept-encoding",
-	"user-agent",
-	"accept-encoding",
-}

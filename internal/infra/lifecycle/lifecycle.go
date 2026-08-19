@@ -4,29 +4,22 @@ import (
 	"context"
 	"slices"
 	"sync"
+
+	"github.com/rs/zerolog"
 )
 
 // Fn describes a shutdown callback.
 type Fn func(context.Context) error
 
-// Logger is a minimal logger interface used to report shutdown errors.
-type Logger interface {
-	Err(err error)
-}
-
 // Manager collects shutdown callbacks and executes them in LIFO order.
 type Manager struct {
-	mu     sync.Mutex
-	fns    []Fn
-	logger Logger
+	mu  sync.Mutex
+	fns []Fn
 }
 
-// New creates a Manager with an optional logger.
-func New(logger Logger) *Manager {
-	return &Manager{
-		fns:    []Fn{},
-		logger: logger,
-	}
+// New creates a Manager.
+func New() *Manager {
+	return &Manager{fns: []Fn{}}
 }
 
 // Add registers one or more callbacks. Nil callbacks are ignored.
@@ -43,15 +36,15 @@ func (m *Manager) Add(fns ...Fn) {
 	}
 }
 
-// Do runs registered callbacks in reverse order. Errors are logged via the
-// provided logger, if any, and stored callbacks are cleared after execution.
+// Do runs registered callbacks in reverse order and clears them. A callback that
+// fails is reported through the context logger instead of being swallowed.
 func (m *Manager) Do(ctx context.Context) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	for _, v := range slices.Backward(m.fns) {
-		if err := v(ctx); err != nil && m.logger != nil {
-			m.logger.Err(err)
+		if err := v(ctx); err != nil {
+			zerolog.Ctx(ctx).Err(err).Msg("shutdown callback failed")
 		}
 	}
 
