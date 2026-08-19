@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/goccy/go-json"
+	"github.com/goccy/go-yaml"
 	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/bavix/gripmock/v3/pkg/plugins"
@@ -97,6 +99,30 @@ func (e *Engine) Render(tmpl string, data Data) (result string, err error) {
 	e.cache.Add(tmpl, parsed)
 
 	return result, exec(parsed)
+}
+
+// RenderStructured renders a YAML or JSON template and decodes the result into
+// the same generic value tree used by stub outputs.
+func (e *Engine) RenderStructured(tmpl string, data Data) (any, error) {
+	rendered, err := e.Render(tmpl, data)
+	if err != nil {
+		return nil, err
+	}
+
+	jsonData, err := yaml.YAMLToJSON([]byte(rendered))
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode rendered YAML/JSON: %w", err)
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(jsonData))
+	decoder.UseNumber()
+
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		return nil, fmt.Errorf("failed to decode rendered value: %w", err)
+	}
+
+	return value, nil
 }
 
 // unescapeTemplateQuotes removes escape sequences from quotes inside template expressions.

@@ -8,16 +8,17 @@
       user_id: "USER_123"
       payment_method: "credit_card"
   output:
-    data:
+    dataTemplate: |
       orderId: 'ORDER_{{index (split .Request.user_id "_") 1}}_1734038400'
-      userId: "{{.Request.user_id}}"
-      totalAmount: "{{mul (len .Request.items) 25.50}}"
+      userId: {{ .Request.user_id | json }}
+      totalAmount: {{ mul (len .Request.items) 25.50 }}
       status: "processing"
       estimatedDelivery: "2024-01-20"
       items:
-        - productId: "{{(index .Request.items 0).product_id}}"
-          quantity: "{{(index .Request.items 0).quantity}}"
-          unitPrice: "{{(index .Request.items 0).unit_price}}"
-        - productId: "{{(index .Request.items 1).product_id}}"
-          quantity: "{{(index .Request.items 1).quantity}}"
-          unitPrice: "{{(index .Request.items 1).unit_price}}"
+      {{ range .Request.items }}
+        - productId: {{ .product_id | json }}
+          quantity: {{ .quantity }}
+          unitPrice: {{ .unit_price }}
+      {{ else }}
+        []
+      {{ end }}

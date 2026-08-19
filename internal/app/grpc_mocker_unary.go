@@ -140,16 +140,11 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 
 	templateData := newTemplateData(requestData, headers, 0, requestTime, []any{requestData}, found.ID.String())
 
-	outputDataCopy := deepCopyAny(outputToUse.Data)
+	outputDataCopy, err := renderOutputData(m.templateEngine, outputToUse, templateData)
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg("failed to process dynamic templates")
 
-	if dataMap, ok := outputDataCopy.(map[string]any); ok {
-		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
-			zerolog.Ctx(ctx).Err(err).Msg("failed to process dynamic templates")
-
-			return nil, status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
-		}
-
-		outputDataCopy = dataMap
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	if template.HasTemplatesInHeaders(outputToUse.Headers) {
@@ -480,13 +475,9 @@ func (m *grpcMocker) sendClientStreamResponse(
 
 	m.setResponseTrailersAny(stream.Context(), stream, outputToUse.Trailers)
 
-	outputDataCopy := deepCopyAny(outputToUse.Data)
-	if dataMap, ok := outputDataCopy.(map[string]any); ok {
-		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
-			return errors.Wrap(err, "failed to process dynamic templates")
-		}
-
-		outputDataCopy = dataMap
+	outputDataCopy, err := renderOutputData(m.templateEngine, outputToUse, templateData)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	m.applyEffects(stream.Context(), found, templateData)

@@ -140,6 +140,73 @@ func TestHandleServerStreamWithArrayStream(t *testing.T) {
 	require.Len(t, stream.sentMessages, 2)
 }
 
+func TestHandleServerStreamWithStructuralTemplate(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMocker(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+
+	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
+	require.NoError(t, protojson.Unmarshal(
+		[]byte(`{"items":[{"id":"{{ unknownTemplateFunction }}"},{"id":"b"},{"id":"c"}]}`),
+		inputMsg,
+	))
+	stream := &mockFullServerStream{
+		ctx:              t.Context(),
+		sentMessages:     make([]*dynamicpb.Message, 0),
+		receivedMessages: []*dynamicpb.Message{inputMsg},
+		recvMsgLimit:     1,
+	}
+
+	stub := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: testServiceName,
+		Method:  testMethodName,
+		Input:   stuber.InputData{Contains: map[string]any{}},
+		Output: stuber.Output{StreamTemplate: `
+{{ range .Request.fields.items.list_value.values }}
+- id: {{ printf "%q" .struct_value.fields.id.string_value }}
+{{ else }}
+[]
+{{ end }}`},
+	}
+	mocker.budgerigar.PutMany(stub)
+
+	err := mocker.handleServerStream(stream)
+	require.NoError(t, err)
+	require.Len(t, stream.sentMessages, 3)
+
+	first, err := protojson.Marshal(stream.sentMessages[0])
+	require.NoError(t, err)
+	require.JSONEq(t, `{"id":"{{ unknownTemplateFunction }}"}`, string(first))
+}
+
+func TestHandleServerStreamStructuralTemplateRequiresArray(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMocker(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+	stream := createTestStream(t, mocker)
+
+	mocker.budgerigar.PutMany(&stuber.Stub{
+		ID:      uuid.New(),
+		Service: testServiceName,
+		Method:  testMethodName,
+		Input:   stuber.InputData{Contains: map[string]any{}},
+		Output:  stuber.Output{StreamTemplate: "value: 1"},
+	})
+
+	err := mocker.handleServerStream(stream)
+	require.Error(t, err)
+	require.Equal(t, codes.Internal, status.Code(err))
+}
+
 func TestHandleServerStreamWithNonArrayStream(t *testing.T) {
 	t.Parallel()
 

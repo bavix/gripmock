@@ -27,6 +27,52 @@ Use <code v-pre>`{{.Request.field}}`</code> to access request data:
 ```
 :::
 
+## Structural Response Templates
+
+Regular dynamic templates replace scalar values in an already defined response structure. Use `dataTemplate` when the request must also determine the structure itself, such as the number of elements in a response array.
+
+The complete template is rendered at request time and then decoded as YAML or JSON. All regular template context and functions remain available.
+
+::: v-pre
+```yaml
+- service: example.ItemService
+  method: ProcessItems
+  input:
+    matches:
+      items: ".+"
+  output:
+    dataTemplate: |
+      items:
+      {{ range .Request.items }}
+        - id: {{ .id | json }}
+          generated_id: {{ faker.Identity.UUID | json }}
+      {{ else }}
+        []
+      {{ end }}
+```
+:::
+
+An empty request array produces `items: []`; otherwise the response contains one element for every request item. `dataTemplate` is available for unary and client-streaming responses and cannot be combined with `data`.
+
+For server-streaming and bidirectional-streaming methods, use `streamTemplate`. Its rendered result must be an array of response messages:
+
+::: v-pre
+```yaml
+output:
+  streamTemplate: |
+    {{ range .Request.items }}
+    - id: {{ .id | json }}
+      status: processed
+    {{ else }}
+    []
+    {{ end }}
+```
+:::
+
+`streamTemplate` cannot be combined with `stream`. Dynamically generated stream elements support the same `_gripmock` delay and error directives as static stream elements.
+
+If template execution fails, the rendered document is invalid YAML/JSON, or `streamTemplate` does not produce an array, GripMock returns an `INTERNAL` error for that call.
+
 ### Header Access
 Use <code v-pre>`{{.Headers.field}}`</code> to access request headers:
 

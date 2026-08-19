@@ -674,12 +674,22 @@
           "description": "Response body for unary and client-streaming calls.",
           "$ref": "#/$defs/outputData"
         },
+        "dataTemplate": {
+          "description": "Runtime Go template that renders a complete YAML or JSON response body for unary and client-streaming calls. Cannot be combined with data or stream-side output.",
+          "type": "string",
+          "minLength": 1
+        },
         "stream": {
           "description": "Response messages for server and bidirectional streaming, sent in order. In a stub file it may be combined with error: every message is sent first, then the error closes the stream. The REST API rejects that combination — POST /api/stubs requires either the unary side or stream, not both.",
           "type": "array",
           "items": {
             "$ref": "#/$defs/streamMessage"
           }
+        },
+        "streamTemplate": {
+          "description": "Runtime Go template that must render a YAML or JSON array of messages for server and bidirectional-streaming calls. Cannot be combined with stream or data-side output.",
+          "type": "string",
+          "minLength": 1
         },
         "error": {
           "description": "gRPC status message. Returned instead of data when set.",

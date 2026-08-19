@@ -148,7 +148,7 @@ func (m *grpcMocker) sendBidiResponse(
 
 	outputToUse, err := m.prepareBidiOutput(stub, td)
 	if err != nil {
-		return err
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	m.applyEffects(stream.Context(), stub, td)
@@ -239,15 +239,10 @@ func (m *grpcMocker) recordBidiStream(
 	m.recorder.Record(rec)
 }
 
-//nolint:cyclop
 func (m *grpcMocker) prepareBidiOutput(stub *stuber.Stub, templateData template.Data) (stuber.Output, error) {
-	outputDataCopy := deepCopyAny(stub.Output.Data)
-	if dataMap, ok := outputDataCopy.(map[string]any); ok {
-		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
-			return stuber.Output{}, errors.Wrap(err, errMsgProcessTemplates)
-		}
-
-		outputDataCopy = dataMap
+	outputDataCopy, err := renderOutputData(m.templateEngine, stub.Output, templateData)
+	if err != nil {
+		return stuber.Output{}, errors.Wrap(err, errMsgProcessTemplates)
 	}
 
 	headersCopy := deepCopyStringMap(stub.Output.Headers)
@@ -264,29 +259,22 @@ func (m *grpcMocker) prepareBidiOutput(stub *stuber.Stub, templateData template.
 		}
 	}
 
-	streamCopy := make([]any, len(stub.Output.Stream))
-	for i, item := range stub.Output.Stream {
-		if itemMap, ok := item.(map[string]any); ok {
-			itemCopy := deepCopyMapAny(itemMap)
-			if err := m.templateEngine.ProcessMap(itemCopy, templateData); err != nil {
-				return stuber.Output{}, errors.Wrap(err, "failed to process stream template")
-			}
-
-			streamCopy[i] = itemCopy
-		} else {
-			streamCopy[i] = item
-		}
+	streamCopy, err := m.renderBidiStream(stub.Output, templateData)
+	if err != nil {
+		return stuber.Output{}, err
 	}
 
 	outputToUse := stuber.Output{
-		Data:     outputDataCopy,
-		Stream:   streamCopy,
-		Headers:  headersCopy,
-		Trailers: trailersCopy,
-		Error:    stub.Output.Error,
-		Code:     stub.Output.Code,
-		Details:  deepCopyDetails(stub.Output.Details),
-		Delay:    stub.Output.Delay,
+		Data:           outputDataCopy,
+		DataTemplate:   stub.Output.DataTemplate,
+		Stream:         streamCopy,
+		StreamTemplate: stub.Output.StreamTemplate,
+		Headers:        headersCopy,
+		Trailers:       trailersCopy,
+		Error:          stub.Output.Error,
+		Code:           stub.Output.Code,
+		Details:        deepCopyDetails(stub.Output.Details),
+		Delay:          stub.Output.Delay,
 	}
 
 	if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
@@ -299,6 +287,36 @@ func (m *grpcMocker) prepareBidiOutput(stub *stuber.Stub, templateData template.
 	}
 
 	return outputToUse, nil
+}
+
+func (m *grpcMocker) renderBidiStream(output stuber.Output, templateData template.Data) ([]any, error) {
+	streamCopy, hasStreamTemplate, err := renderOutputStreamTemplate(m.templateEngine, output, templateData)
+	if err != nil {
+		return nil, err
+	}
+
+	if hasStreamTemplate {
+		return streamCopy, nil
+	}
+
+	streamCopy = make([]any, len(output.Stream))
+	for i, item := range output.Stream {
+		itemMap, ok := item.(map[string]any)
+		if !ok {
+			streamCopy[i] = item
+
+			continue
+		}
+
+		itemCopy := deepCopyMapAny(itemMap)
+		if err := m.templateEngine.ProcessMap(itemCopy, templateData); err != nil {
+			return nil, errors.Wrap(err, "failed to process stream template")
+		}
+
+		streamCopy[i] = itemCopy
+	}
+
+	return streamCopy, nil
 }
 
 func (m *grpcMocker) sendBidiResponses(
@@ -328,6 +346,10 @@ func (m *grpcMocker) sendStreamResponses(
 	stub *stuber.Stub,
 	messageIndex int,
 ) error {
+	if output.StreamTemplate != "" {
+		return m.sendServerStreamResponses(stream, output)
+	}
+
 	if stub.IsClientStream() {
 		return m.sendClientStreamResponses(stream, output, stub, messageIndex)
 	}

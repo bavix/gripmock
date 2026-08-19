@@ -642,7 +642,7 @@ type Stub struct {
 	// Options Optional behavior settings for a stub
 	Options *StubOptions `json:"options,omitempty,omitzero"`
 
-	// Output What the stub returns. Over this API exactly one side must be set: either the unary side (`data`, `error`, `code`, `details`) or `stream`. A stub carrying both is rejected with `400`.
+	// Output What the stub returns. Over this API exactly one side must be set: either the unary side (`data`, `dataTemplate`, `error`, `code`, `details`) or the stream side (`stream`, `streamTemplate`). Static and templated forms on the same side are mutually exclusive.
 	Output StubOutput `json:"output"`
 
 	// Priority Tie-breaker among equally specific stubs; higher wins. Specificity is compared first, so an `equals` stub still beats a `contains` stub with a higher priority.
@@ -756,7 +756,7 @@ type StubOptions struct {
 	Times int `json:"times,omitempty"`
 }
 
-// StubOutput What the stub returns. Over this API exactly one side must be set: either the unary side (`data`, `error`, `code`, `details`) or `stream`. A stub carrying both is rejected with `400`.
+// StubOutput What the stub returns. Over this API exactly one side must be set: either the unary side (`data`, `dataTemplate`, `error`, `code`, `details`) or the stream side (`stream`, `streamTemplate`). Static and templated forms on the same side are mutually exclusive.
 type StubOutput struct {
 	// Code gRPC status code; `0` (OK) is the default.
 	//
@@ -765,6 +765,9 @@ type StubOutput struct {
 
 	// Data Response body for unary and client-streaming calls. Usually an object matching the proto message; may be a scalar when the method returns a well-known type directly.
 	Data any `json:"data,omitempty"`
+
+	// DataTemplate Runtime Go template that renders a complete YAML or JSON response body for unary and client-streaming calls. Cannot be combined with `data` or stream-side output.
+	DataTemplate string `json:"dataTemplate,omitempty"`
 
 	// Delay Delay before sending the response
 	//
@@ -784,6 +787,9 @@ type StubOutput struct {
 
 	// Stream Response messages for server and bidirectional streaming, sent in order. Cannot be combined with `data`, `error`, `code` or `details` on this endpoint.
 	Stream []any `json:"stream,omitempty"`
+
+	// StreamTemplate Runtime Go template that must render a YAML or JSON array of messages for server and bidirectional streaming calls. Cannot be combined with `stream` or data-side output.
+	StreamTemplate string `json:"streamTemplate,omitempty"`
 
 	// Trailers Trailing metadata, sent after the last message with the status. Independent of `headers`: the same key may appear in both, and each is delivered on its own channel.
 	Trailers map[string]string `json:"trailers,omitempty"`

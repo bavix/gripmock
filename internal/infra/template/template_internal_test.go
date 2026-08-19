@@ -3,6 +3,7 @@ package template
 import (
 	"testing"
 
+	"github.com/goccy/go-json"
 	"github.com/stretchr/testify/require"
 )
 
@@ -405,4 +406,63 @@ func TestHasTemplatesInHeaders(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestEngineRenderStructuredRange(t *testing.T) {
+	t.Parallel()
+
+	engine := New(t.Context(), nil)
+	tmpl := `items:
+{{ range .Request.items }}
+  - id: {{ json .id }}
+    active: {{ .active }}
+{{ else }}
+  []
+{{ end }}`
+
+	value, err := engine.RenderStructured(tmpl, Data{Request: map[string]any{
+		"items": []any{
+			map[string]any{"id": 10, "active": true},
+			map[string]any{"id": 20, "active": false},
+		},
+	}})
+	require.NoError(t, err)
+
+	root, ok := value.(map[string]any)
+	require.True(t, ok)
+	items, ok := root["items"].([]any)
+	require.True(t, ok)
+	require.Len(t, items, 2)
+
+	first, ok := items[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, json.Number("10"), first["id"])
+	require.Equal(t, true, first["active"])
+}
+
+func TestEngineRenderStructuredEmptyRange(t *testing.T) {
+	t.Parallel()
+
+	engine := New(t.Context(), nil)
+	value, err := engine.RenderStructured(`items:
+{{ range .Request.items }}
+  - id: {{ json .id }}
+{{ else }}
+  []
+{{ end }}`, Data{Request: map[string]any{"items": []any{}}})
+	require.NoError(t, err)
+
+	root, ok := value.(map[string]any)
+	require.True(t, ok)
+	items, ok := root["items"].([]any)
+	require.True(t, ok)
+	require.Empty(t, items)
+}
+
+func TestEngineRenderStructuredInvalidResult(t *testing.T) {
+	t.Parallel()
+
+	engine := New(t.Context(), nil)
+	_, err := engine.RenderStructured("items: [", Data{})
+	require.Error(t, err)
 }
