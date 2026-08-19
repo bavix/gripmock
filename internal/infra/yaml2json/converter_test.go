@@ -369,3 +369,186 @@ func TestExecuteEmptyData(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(bytes), "null")
 }
+
+func templateConverter(t *testing.T) *yaml2json.Convertor {
+	t.Helper()
+
+	reg := plugins.NewRegistry()
+	plugins.RegisterBuiltins(reg)
+
+	return yaml2json.New(reg)
+}
+
+func outputOf(t *testing.T, converted []byte) map[string]any {
+	t.Helper()
+
+	var stubs []map[string]any
+
+	require.NoError(t, json.Unmarshal(converted, &stubs))
+	require.Len(t, stubs, 1)
+
+	output, ok := stubs[0]["output"].(map[string]any)
+	require.True(t, ok)
+
+	return output
+}
+
+func TestConverterKeepsOutputTemplateVerbatim(t *testing.T) {
+	t.Parallel()
+
+	convertor := templateConverter(t)
+
+	out, err := convertor.Execute(t.Context(), "stubs", []byte(`
+- service: catalog.Catalog
+  method: Search
+  output:
+    template: true
+    data: |
+      {"matched": {{ len .Request.catalog }}, "id": "{{ uuid }}"}
+`))
+	require.NoError(t, err)
+
+	want := "{\"matched\": {{ len .Request.catalog }}, \"id\": \"{{ uuid }}\"}\n"
+
+	output := outputOf(t, out)
+	require.Equal(t, true, output["template"])
+	require.Equal(t, want, output["data"])
+}
+
+func TestConverterDefersEverythingUnderOutput(t *testing.T) {
+	t.Parallel()
+
+	convertor := templateConverter(t)
+
+	out, err := convertor.Execute(t.Context(), "stubs", []byte(`
+- service: catalog.Catalog
+  method: Search
+  input:
+    equals:
+      id: {{ uuid2base64 "77465064-a0ce-48a3-b7e4-d50f88e55093" }}
+  output:
+    data:
+      id: {{ uuid }}
+`))
+	require.NoError(t, err)
+
+	output := outputOf(t, out)
+
+	data, ok := output["data"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "{{ uuid }}", data["id"])
+}
+
+func TestConverterDefersAnchoredBlockAliasedIntoOutput(t *testing.T) {
+	t.Parallel()
+
+	convertor := templateConverter(t)
+
+	out, err := convertor.Execute(t.Context(), "stubs", []byte(`
+- service: catalog.Catalog
+  method: Search
+  input:
+    equals:
+      id: {{ uuid2base64 "77465064-a0ce-48a3-b7e4-d50f88e55093" }}
+  x-doc: &shared |
+    {{ dict "id" (uuid) }}
+  output:
+    template: true
+    data: *shared
+`))
+	require.NoError(t, err)
+
+	output := outputOf(t, out)
+
+	require.Equal(t, true, output["template"])
+	require.Equal(t, "{{ dict \"id\" (uuid) }}\n", output["data"])
+}
+
+func TestConverterSplicesCollectionResultsWithoutNewline(t *testing.T) {
+	t.Parallel()
+
+	out, err := templateConverter(t).Execute(t.Context(), "stubs", []byte(`
+- service: catalog.Catalog
+  method: Search
+  input:
+    equals: {{ dict "id" 1 }}
+  output:
+    data:
+      ok: true
+`))
+	require.NoError(t, err)
+
+	var stubs []map[string]any
+
+	require.NoError(t, json.Unmarshal(out, &stubs))
+
+	input, ok := stubs[0]["input"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, map[string]any{"id": float64(1)}, input["equals"])
+}
+
+func TestConverterKeepsExecutingSiblingKeysOfOutput(t *testing.T) {
+	t.Parallel()
+
+	out, err := templateConverter(t).Execute(t.Context(), "stubs", []byte(`
+- output:
+    data:
+      ok: true
+  service: catalog.Catalog
+  method: Search
+  input:
+    equals:
+      id: {{ uuid2base64 "77465064-a0ce-48a3-b7e4-d50f88e55093" }}
+`))
+	require.NoError(t, err)
+
+	var stubs []map[string]any
+
+	require.NoError(t, json.Unmarshal(out, &stubs))
+
+	input, ok := stubs[0]["input"].(map[string]any)
+	require.True(t, ok)
+
+	equals, ok := input["equals"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "d0ZQZKDOSKO35NUPiOVQkw==", equals["id"])
+}
+
+func TestConverterDefersTemplateInAwkwardYAMLShapes(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]string{
+		"flow style": `
+- service: catalog.Catalog
+  method: Search
+  output: {template: true, data: '{{ dict "a" 1 }}'}
+`,
+		"comment after output": `
+- service: catalog.Catalog
+  method: Search
+  output: # answers every request
+    template: true
+    data: '{{ dict "a" 1 }}'
+`,
+		"comment inside the block": `
+- service: catalog.Catalog
+  method: Search
+  output:
+    headers:
+      x-kind: static
+# the document below must survive the load
+    template: true
+    data: '{{ dict "a" 1 }}'
+`,
+	}
+
+	for name, document := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			out, err := templateConverter(t).Execute(t.Context(), "stubs", []byte(document))
+			require.NoError(t, err)
+			require.Equal(t, `{{ dict "a" 1 }}`, outputOf(t, out)["data"])
+		})
+	}
+}
