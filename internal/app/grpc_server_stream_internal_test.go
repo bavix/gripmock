@@ -27,10 +27,8 @@ const (
 	testMethodName  = "TestMethod"
 )
 
-// errTestSendFailed simulates the transport dropping mid-stream.
 var errTestSendFailed = errors.New("send failed")
 
-// mockFullServerStream mocks grpc.ServerStream for testing with full functionality.
 type mockFullServerStream struct {
 	grpc.ServerStream
 
@@ -38,7 +36,7 @@ type mockFullServerStream struct {
 	sentMessages     []*dynamicpb.Message
 	receivedMessages []*dynamicpb.Message
 	sendMsgError     error
-	sendMsgFailAfter int // when > 0, SendMsg fails once this many messages have been sent
+	sendMsgFailAfter int
 	recvMsgError     error
 	recvMsgCount     int
 	recvMsgLimit     int
@@ -419,10 +417,6 @@ func TestHandleNonArrayStreamDataWithTemplates(t *testing.T) {
 	require.Len(t, stream.sentMessages, 1)
 }
 
-// Regression: a server-stream stub with non-array output.data left its template
-// unrendered. The client half-closes after one message, so the function's second
-// RecvMsg returns EOF and the render was skipped — the caller's already-captured
-// request must be used instead.
 func TestHandleNonArrayStreamDataRendersFromCapturedRequest(t *testing.T) {
 	t.Parallel()
 
@@ -430,7 +424,7 @@ func TestHandleNonArrayStreamDataRendersFromCapturedRequest(t *testing.T) {
 	stream := &mockFullServerStream{
 		ctx:          t.Context(),
 		sentMessages: make([]*dynamicpb.Message, 0),
-		recvMsgLimit: 0, // client already half-closed → RecvMsg returns EOF
+		recvMsgLimit: 0,
 	}
 
 	stub := &stuber.Stub{
@@ -496,9 +490,6 @@ func TestHandleNonArrayStreamDataWithError(t *testing.T) {
 	require.Contains(t, err.Error(), "test error")
 }
 
-// Regression: handleNonArrayStreamData used found.Output (raw) for the error,
-// so an error template rendered by the caller was ignored. It must honor the
-// templated outputToUse the caller passes in.
 func TestHandleNonArrayStreamDataUsesTemplatedError(t *testing.T) {
 	t.Parallel()
 
@@ -513,12 +504,12 @@ func TestHandleNonArrayStreamDataUsesTemplatedError(t *testing.T) {
 		ID: uuid.New(),
 		Output: stuber.Output{
 			Data:  map[string]any{"message": "test"},
-			Error: "{{.Request.name}}-RAW", // un-rendered original
+			Error: "{{.Request.name}}-RAW",
 		},
 	}
 
 	rendered := stub.Output
-	rendered.Error = "RENDERED-ERROR" // what the caller produced
+	rendered.Error = "RENDERED-ERROR"
 
 	err := mocker.handleNonArrayStreamData(stream, stub, rendered, map[string]any{}, time.Now())
 	require.Error(t, err)
@@ -575,9 +566,6 @@ func TestSendClientStreamResponseRendersHeaderTemplate(t *testing.T) {
 	require.Len(t, stream.sentMessages, 1)
 }
 
-// Regression: handleOutputError ran before setResponseHeadersAny, so an error
-// status closed the stream with trailers before headers were sent. Headers must
-// be set even on the error path (matching handleUnary).
 func TestSendClientStreamResponseSetsHeadersOnError(t *testing.T) {
 	t.Parallel()
 
@@ -604,9 +592,6 @@ func TestSendClientStreamResponseSetsHeadersOnError(t *testing.T) {
 	require.Equal(t, id.String(), stream.headers.Get("x-stub")[0])
 }
 
-// Regression: applyEffects was skipped when an error status was configured
-// because handleOutputError returned early. Effects are independent of response
-// disposition and must run on the error path too (matching handleUnary).
 func TestSendClientStreamResponseAppliesEffectsOnError(t *testing.T) {
 	t.Parallel()
 
@@ -726,13 +711,10 @@ func TestProcessHeadersMultipleValues(t *testing.T) {
 func TestSessionFromMetadataEmpty(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	md := metadata.New(nil)
 
-	// Act
 	result := sessionFromMetadata(md)
 
-	// Assert
 	require.Empty(t, result)
 }
 
@@ -744,10 +726,8 @@ func TestSessionFromMetadataFirstNonEmptyTrimmed(t *testing.T) {
 		sessionHeaderKey, "  test-session  ",
 	)
 
-	// Act
 	result := sessionFromMetadata(md)
 
-	// Assert
 	require.Equal(t, "test-session", result)
 }
 
@@ -756,22 +736,17 @@ func TestSessionFromMetadataHeaderAbsent(t *testing.T) {
 
 	md := metadata.Pairs("x-other", "value")
 
-	// Act
 	result := sessionFromMetadata(md)
 
-	// Assert
 	require.Empty(t, result)
 }
 
-// TestConvertToMap_Proto3DefaultValues verifies that scalar fields with default values (e.g. 0.0)
-// are included in the result. Proto3 omits default values on the wire, so Range skips them;
-// we iterate over the descriptor to include all fields for stub matching.
 func TestConvertToMapProto3DefaultValues(t *testing.T) {
 	t.Parallel()
 
 	t.Run("wrapperspb_DoubleValue", func(t *testing.T) {
 		t.Parallel()
-		// Empty DoubleValue: value field not set, defaults to 0.0. Range() would skip it.
+
 		msg := &wrapperspb.DoubleValue{}
 		result := convertToMap(msg)
 		require.NotNil(t, result)
@@ -781,8 +756,7 @@ func TestConvertToMapProto3DefaultValues(t *testing.T) {
 
 	t.Run("dynamicpb_empty_message", func(t *testing.T) {
 		t.Parallel()
-		// Simulates a message received from wire with no fields (e.g. value=0.0 omitted).
-		// dynamicpb.NewMessage creates empty message; Get(fd) returns default.
+
 		desc := (&wrapperspb.DoubleValue{}).ProtoReflect().Descriptor()
 		msg := dynamicpb.NewMessage(desc)
 		result := convertToMap(msg)

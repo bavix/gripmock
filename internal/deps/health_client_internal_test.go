@@ -45,13 +45,10 @@ func TestNormalizePingAddress(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Arrange
 			input := tt.input
 
-			// Act
 			actual := normalizePingAddress(input)
 
-			// Assert
 			require.Equal(t, tt.expected, actual)
 		})
 	}

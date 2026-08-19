@@ -98,7 +98,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 		}
 
 		if err != nil {
-			if capture {
+			if capture && capturableResult(stream.Context(), 1, len(responses), err) {
 				m.recordCapturedStub(
 					func() *stuber.Stub {
 						return proxycapture.BuildServerStreamStub(
@@ -238,7 +238,7 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 
 	resp := dynamicpb.NewMessage(m.outputDesc)
 	if err = clientStream.RecvMsg(resp); err != nil {
-		if capture {
+		if capture && capturableResult(stream.Context(), len(requests), 0, err) {
 			m.recordCapturedStub(
 				func() *stuber.Stub {
 					return proxycapture.BuildClientStreamStub(
@@ -289,7 +289,7 @@ func (m *grpcMocker) proxyBidiStream(stream grpc.ServerStream, route *proxyroute
 	return m.proxyBidiStreamWithRequests(stream, route, nil, capture)
 }
 
-//nolint:funlen,nonamedreturns
+//nolint:nonamedreturns
 func (m *grpcMocker) proxyBidiStreamWithRequests(
 	stream grpc.ServerStream,
 	route *proxyroutes.Route,
@@ -303,9 +303,13 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 	proxyCtx, proxyCancel := route.WithStreamTimeout(proxyroutes.ForwardIncomingMetadata(stream.Context()), desc)
 	defer proxyCancel()
 
-	state := NewStreamCaptureState()
-	state.startTime = startTime
-	state.recordDelay = capture && route.Source.RecordDelay
+	var state *StreamCaptureState
+
+	if capture || m.recorder != nil {
+		state = NewStreamCaptureState()
+		state.startTime = startTime
+		state.recordDelay = capture && route.Source.RecordDelay
+	}
 
 	var clientStream grpc.ClientStream
 
@@ -323,39 +327,68 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 
 	captureCtx := m.newCaptureRequestContext(stream.Context())
 
-	errCh := make(chan error, proxyErrChanCap)
+	reqDone := make(chan error, 1)
+	respDone := make(chan error, 1)
 
 	bidiCtx, bidiCancel := context.WithCancel(proxyCtx)
 	defer bidiCancel()
 
-	go m.forwardBidiRequests(bidiCtx, stream, clientStream, prefetchedRequests, state, errCh)
-	go m.forwardBidiResponses(bidiCtx, stream, clientStream, state, errCh)
+	go m.forwardBidiRequests(bidiCtx, stream, clientStream, prefetchedRequests, state, reqDone)
+	go m.forwardBidiResponses(bidiCtx, stream, clientStream, state, respDone)
 
-	firstErr := <-errCh
-
-	// Always apply a timeout so the select below does not hang
-	// indefinitely when the second goroutine is blocked.
-	timeout := route.Source.ReflectTimeout
-	if timeout <= 0 {
-		timeout = proxyBidiTimeoutFallback
-	}
-
-	var secondErr error
-	select {
-	case secondErr = <-errCh:
-	case <-time.After(timeout):
-		bidiCancel()
-	}
+	firstErr, secondErr := awaitBidiCompletion(reqDone, respDone, proxyBidiTimeoutFallback, bidiCancel)
 
 	forwardUpstreamTrailer(stream, clientStream)
 
 	if capture {
 		requests, responses := state.Snapshot()
 		needGlobalDelay := route.Source.RecordDelay && !state.HasTimedResponses()
-		m.captureBidiResult(clientStream, captureCtx, requests, responses, firstErr, secondErr, needGlobalDelay, time.Since(startTime))
+		m.captureBidiResult(stream.Context(), clientStream, captureCtx,
+			requests, responses, firstErr, secondErr, needGlobalDelay, time.Since(startTime))
 	}
 
 	return selectCaptureError(firstErr, secondErr)
+}
+
+func awaitBidiCompletion(reqDone, respDone <-chan error, guard time.Duration, cancel context.CancelFunc) (error, error) {
+	select {
+	case reqErr := <-reqDone:
+		if reqErr == nil {
+			return nil, <-respDone
+		}
+
+		return reqErr, drainBidiSide(respDone, guard, cancel)
+
+	case respErr := <-respDone:
+		return drainBidiSide(reqDone, guard, cancel), respErr
+	}
+}
+
+func drainBidiSide(done <-chan error, guard time.Duration, cancel context.CancelFunc) error {
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(guard):
+		cancel()
+
+		return nil
+	}
+}
+
+func (m *grpcMocker) captureRequest(state *StreamCaptureState, req *dynamicpb.Message) {
+	if state == nil {
+		return
+	}
+
+	state.AppendRequest(m.convertToMap(req))
+}
+
+func captureResponse(state *StreamCaptureState, resp *dynamicpb.Message) {
+	if state == nil {
+		return
+	}
+
+	state.AppendResponseWithTiming(messageToAny(resp), time.Now())
 }
 
 func trySendErr(ch chan<- error, err error) {
@@ -386,7 +419,7 @@ func (m *grpcMocker) forwardBidiRequests(
 			return
 		}
 
-		state.AppendRequest(m.convertToMap(prefetched))
+		m.captureRequest(state, prefetched)
 
 		if err := clientStream.SendMsg(prefetched); err != nil {
 			trySendErr(errCh, err)
@@ -419,7 +452,7 @@ func (m *grpcMocker) forwardBidiRequests(
 			return
 		}
 
-		state.AppendRequest(m.convertToMap(req))
+		m.captureRequest(state, req)
 
 		if err = clientStream.SendMsg(req); err != nil {
 			trySendErr(errCh, err)
@@ -465,10 +498,7 @@ func (m *grpcMocker) forwardBidiResponses(
 			return
 		}
 
-		now := time.Now()
-		if respMap, ok := messageToAny(resp).(map[string]any); ok {
-			state.AppendResponseWithTiming(respMap, now)
-		}
+		captureResponse(state, resp)
 
 		if err = stream.SendMsg(resp); err != nil {
 			trySendErr(errCh, err)
@@ -548,7 +578,12 @@ func (m *grpcMocker) recordBidiProxyHistory(
 			break
 		}
 
-		clean := deepCopyMapAny(r)
+		respMap, ok := r.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		clean := deepCopyMapAny(respMap)
 		stuber.ExtractGripMockDelay(clean)
 		historyResponses = append(historyResponses, clean)
 	}

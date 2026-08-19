@@ -2,8 +2,6 @@
 
 `proxy` is pure reverse-proxy mode.
 
-⚠️ **EXPERIMENTAL FEATURE**: `proxy` mode is part of the experimental upstream modes feature set and may change without notice.
-
 ## Behavior
 
 For unary and all streaming methods:

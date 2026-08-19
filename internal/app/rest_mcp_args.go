@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"slices"
 	"strings"
 
@@ -11,9 +12,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-// mcpStubListFilter mirrors the REST GET /stubs filters. Session filtering keeps
-// the MCP "visible" semantics (session-scoped + global stubs), unlike the REST
-// list which buckets by exact session — the MCP tools serve request-time lookups.
 type mcpStubListFilter struct {
 	service string
 	method  string
@@ -56,8 +54,6 @@ func mcpStubMatchesFilters(stub *stuber.Stub, f mcpStubListFilter) bool {
 	return stubVisibleForSession(stub.Session, f.session)
 }
 
-// mcpStubMatchesQuery is the case-insensitive substring match over
-// service/method/ID, identical to stuber.ListOptions.Query.
 func mcpStubMatchesQuery(stub *stuber.Stub, query string) bool {
 	q := strings.ToLower(query)
 
@@ -263,31 +259,18 @@ func buildDebugHints(h *RestServer, serviceFound, methodFound bool, method strin
 	return hints
 }
 
-// filterHistory returns the most-recent `limit` records (tail). It is the
-// offset-0 case of filterHistoryWindow.
 func filterHistory(h *RestServer, opts history.FilterOpts, limit int) []rest.CallRecord {
 	records, _ := filterHistoryWindow(h, opts, limit, 0)
 
 	return records
 }
 
-// filterHistoryWindow mirrors the REST GET /history windowing so MCP clients can
-// paginate large histories: total is the full filtered count; ?limit returns the
-// most recent N and ?offset skips the N newest first. Returns (page, total).
 func filterHistoryWindow(h *RestServer, opts history.FilterOpts, limit, offset int) ([]rest.CallRecord, int) {
 	if h.history == nil {
 		return []rest.CallRecord{}, 0
 	}
 
-	calls := h.history.Filter(opts)
-	total := len(calls)
-
-	if limit > 0 {
-		off := max(offset, 0)
-		end := max(len(calls)-off, 0)
-		start := max(end-limit, 0)
-		calls = calls[start:end]
-	}
+	calls, total := historyWindow(h.history, opts, limit, offset)
 
 	out := make([]rest.CallRecord, len(calls))
 	for i, c := range calls {
@@ -303,20 +286,25 @@ func mcpIntArg(args map[string]any, key string, defaultValue int) (int, error) {
 		return defaultValue, nil
 	}
 
-	switch v := raw.(type) {
-	case float64:
-		if v < 0 || v != float64(int(v)) {
-			return 0, mcpNonNegativeIntegerArgError(key)
-		}
-
-		return int(v), nil
-	case int:
-		if v < 0 {
-			return 0, mcpNonNegativeIntegerArgError(key)
-		}
-
-		return v, nil
-	default:
+	value, ok := nonNegativeInt(raw)
+	if !ok {
 		return 0, mcpNonNegativeIntegerArgError(key)
+	}
+
+	return value, nil
+}
+
+func nonNegativeInt(raw any) (int, bool) {
+	switch v := raw.(type) {
+	case json.Number:
+		parsed, err := v.Int64()
+
+		return int(parsed), err == nil && parsed >= 0
+	case float64:
+		return int(v), v >= 0 && v == float64(int(v))
+	case int:
+		return v, v >= 0
+	default:
+		return 0, false
 	}
 }

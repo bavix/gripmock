@@ -17,7 +17,6 @@ import (
 
 var errTest = errors.New("test error")
 
-// mockServer implements ServerInterface for testing.
 type mockServer struct {
 	called map[string]bool
 }
@@ -162,6 +161,12 @@ func (m *mockServer) ListHistory(w http.ResponseWriter, _ *http.Request, _ ListH
 	m.called["ListHistory"] = true
 
 	_ = json.NewEncoder(w).Encode(HistoryList{}) //nolint:errchkjson
+}
+
+func (m *mockServer) PurgeHistory(w http.ResponseWriter, _ *http.Request) {
+	m.called["PurgeHistory"] = true
+
+	_ = json.NewEncoder(w).Encode(HistoryPurged{}) //nolint:errchkjson
 }
 
 func (m *mockServer) VerifyCalls(w http.ResponseWriter, _ *http.Request) {

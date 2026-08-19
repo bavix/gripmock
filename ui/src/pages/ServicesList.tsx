@@ -10,7 +10,7 @@ import { useToast } from '../components/shared/Toast';
 import { Search, ChevronDown, ChevronRight, Loader2, Plus, History, Trash2 } from 'lucide-react';
 import { colors } from '../lib/theme';
 import { DataTable } from '../components/table/DataTable';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { Column } from '../components/table/tableFeatures';
 import type { Service, Method, ProtoFieldSchema, ProtoMessageSchema } from '../lib/types';
 
 export function ServicesList() {
@@ -44,7 +44,7 @@ export function ServicesList() {
       || s.methods.some((mm) => mm.name.toLowerCase().includes(q)));
   }, [services, search]);
 
-  const columns = useMemo<ColumnDef<Service>[]>(() => [
+  const columns = useMemo<Column<Service>[]>(() => [
     { id: 'id', header: 'Service', accessorKey: 'id', cell: (info) => <span style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{info.getValue() as string}</span> },
     { id: 'name', header: 'Name', accessorKey: 'name', cell: (info) => <span style={{ fontWeight: 500 }}>{info.getValue() as string}</span> },
     { id: 'methods', header: 'RPCs', accessorKey: 'methods', cell: (info) => (info.getValue() as Method[]).length },

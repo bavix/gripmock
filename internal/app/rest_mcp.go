@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	stderrors "errors"
 	"net/http"
@@ -59,11 +60,9 @@ func newMCPStreamableHandler(h *RestServer) http.Handler {
 
 func newMCPToolHandler(h *RestServer, name string) mcp.ToolHandler {
 	return func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		var args map[string]any
-		if len(req.Params.Arguments) > 0 {
-			if err := json.Unmarshal(req.Params.Arguments, &args); err != nil {
-				return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: mcpInvalidArgError("arguments must be an object").Error()}
-			}
+		args, err := decodeToolArguments(req.Params.Arguments)
+		if err != nil {
+			return nil, &jsonrpc.Error{Code: jsonrpc.CodeInvalidParams, Message: err.Error()}
 		}
 
 		args = mcpusecase.ApplySession(name, args, mcpSessionFromContext(ctx, req))
@@ -78,6 +77,22 @@ func newMCPToolHandler(h *RestServer, name string) mcp.ToolHandler {
 			StructuredContent: result,
 		}, nil
 	}
+}
+
+func decodeToolArguments(raw []byte) (map[string]any, error) {
+	if len(raw) == 0 {
+		return map[string]any{}, nil
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+
+	var args map[string]any
+	if err := decoder.Decode(&args); err != nil {
+		return nil, mcpInvalidArgError("arguments must be an object")
+	}
+
+	return args, nil
 }
 
 func mcpSessionFromContext(ctx context.Context, req *mcp.CallToolRequest) string {
@@ -120,11 +135,8 @@ func callMCPToolDispatch(h *RestServer, name string, args map[string]any) (map[s
 	return result, err
 }
 
-// mcpToolFunc is the shared shape of every MCP tool implementation.
 type mcpToolFunc func(*RestServer, map[string]any) (map[string]any, error)
 
-// bindTool adapts an (h, args) tool function to the arg-only ToolHandler the
-// dispatcher expects, capturing the server.
 func bindTool(h *RestServer, fn mcpToolFunc) mcpusecase.ToolHandler {
 	return func(args map[string]any) (map[string]any, error) {
 		return fn(h, args)
@@ -133,31 +145,29 @@ func bindTool(h *RestServer, fn mcpToolFunc) mcpusecase.ToolHandler {
 
 func mcpToolHandlers(h *RestServer) map[string]mcpusecase.ToolHandler {
 	funcs := map[string]mcpToolFunc{
-		// general
-		mcpusecase.ToolHealthLiveness:  mcpHealthLiveness,
-		mcpusecase.ToolHealthReadiness: mcpHealthReadiness,
-		mcpusecase.ToolHealthStatus:    mcpHealthStatus,
-		mcpusecase.ToolDashboard:       mcpDashboard,
-		mcpusecase.ToolOverview:        mcpDashboardOverview,
-		mcpusecase.ToolInfo:            mcpDashboardInfo,
-		mcpusecase.ToolSessionsList:    mcpSessionsList,
-		mcpusecase.ToolGripmockInfo:    mcpGripmockInfo,
-		mcpusecase.ToolReflectInfo:     mcpReflectInfo,
-		mcpusecase.ToolReflectSources:  mcpReflectSources,
-		mcpusecase.ToolDescriptorsAdd:  mcpDescriptorsAdd,
-		mcpusecase.ToolDescriptorsList: mcpDescriptorsList,
-		mcpusecase.ToolHistoryList:     mcpHistoryList,
-		mcpusecase.ToolHistoryErrors:   mcpHistoryErrors,
-		mcpusecase.ToolVerifyCalls:     mcpVerifyCalls,
-		mcpusecase.ToolDebugCall:       mcpDebugCall,
-		mcpusecase.ToolSchemaStub:      mcpSchemaStub,
-		// services
-		mcpusecase.ToolServicesList:    mcpServicesList,
-		mcpusecase.ToolServicesGet:     mcpServicesGet,
-		mcpusecase.ToolServicesMethods: mcpServicesMethods,
-		mcpusecase.ToolServicesMethod:  mcpServicesMethod,
-		mcpusecase.ToolServicesDelete:  mcpServicesDelete,
-		// stubs
+		mcpusecase.ToolHealthLiveness:   mcpHealthLiveness,
+		mcpusecase.ToolHealthReadiness:  mcpHealthReadiness,
+		mcpusecase.ToolHealthStatus:     mcpHealthStatus,
+		mcpusecase.ToolDashboard:        mcpDashboard,
+		mcpusecase.ToolOverview:         mcpDashboardOverview,
+		mcpusecase.ToolInfo:             mcpDashboardInfo,
+		mcpusecase.ToolSessionsList:     mcpSessionsList,
+		mcpusecase.ToolGripmockInfo:     mcpGripmockInfo,
+		mcpusecase.ToolReflectInfo:      mcpReflectInfo,
+		mcpusecase.ToolReflectSources:   mcpReflectSources,
+		mcpusecase.ToolDescriptorsAdd:   mcpDescriptorsAdd,
+		mcpusecase.ToolDescriptorsList:  mcpDescriptorsList,
+		mcpusecase.ToolHistoryList:      mcpHistoryList,
+		mcpusecase.ToolHistoryErrors:    mcpHistoryErrors,
+		mcpusecase.ToolHistoryPurge:     mcpHistoryPurge,
+		mcpusecase.ToolVerifyCalls:      mcpVerifyCalls,
+		mcpusecase.ToolDebugCall:        mcpDebugCall,
+		mcpusecase.ToolSchemaStub:       mcpSchemaStub,
+		mcpusecase.ToolServicesList:     mcpServicesList,
+		mcpusecase.ToolServicesGet:      mcpServicesGet,
+		mcpusecase.ToolServicesMethods:  mcpServicesMethods,
+		mcpusecase.ToolServicesMethod:   mcpServicesMethod,
+		mcpusecase.ToolServicesDelete:   mcpServicesDelete,
 		mcpusecase.ToolStubsUpsert:      mcpStubsUpsert,
 		mcpusecase.ToolStubsValidate:    mcpStubsValidate,
 		mcpusecase.ToolStubsList:        mcpStubsList,

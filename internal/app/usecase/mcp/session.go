@@ -22,7 +22,7 @@ func ApplySession(toolName string, args map[string]any, sessionID string) map[st
 
 func ToolUsesSession(toolName string) bool {
 	switch toolName {
-	case ToolDashboard, ToolOverview, ToolInfo, ToolHistoryList, ToolHistoryErrors, ToolVerifyCalls, ToolDebugCall:
+	case ToolDashboard, ToolOverview, ToolInfo, ToolHistoryList, ToolHistoryErrors, ToolHistoryPurge, ToolVerifyCalls, ToolDebugCall:
 		return true
 	case ToolStubsUpsert, ToolStubsValidate, ToolStubsList, ToolStubsPurge,
 		ToolStubsSearch, ToolStubsInspect, ToolStubsUsed, ToolStubsUnused, ToolMockCall:

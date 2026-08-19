@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package onboarding.v1;
+
+option go_package = "github.com/bavix/gripmock/v3/examples/sdk/onboarding/v1;onboardingv1";
+
+service OnboardingService {
+  rpc StartSignup(StartSignupRequest) returns (StartSignupResponse);
+  rpc ConfirmEmail(ConfirmEmailRequest) returns (ConfirmEmailResponse);
+}
+
+message StartSignupRequest {
+  string email = 1;
+  string plan = 2;
+}
+
+message StartSignupResponse {
+  string status = 1;
+  string next_step = 2;
+}
+
+message ConfirmEmailRequest {
+  string email = 1;
+  string token = 2;
+}
+
+message ConfirmEmailResponse {
+  string status = 1;
+  string next_step = 2;
+}

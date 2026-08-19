@@ -1,7 +1,9 @@
 package app
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	spb "google.golang.org/genproto/googleapis/rpc/status"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -74,12 +77,17 @@ func recordCall(
 		ResponseHeaders: respHeaders,
 	}
 
-	if len(requests) > 0 {
-		rec.Request = requests[0]
-	}
+	recordOwned(recorder, rec)
+}
 
-	if len(responses) > 0 {
-		rec.Response = responses[0]
+// recordOwned hands the freshly built maps to the store without a defensive
+// clone; every internal call site constructs them per call and never touches
+// them afterwards.
+func recordOwned(recorder history.Recorder, rec history.CallRecord) {
+	if owned, ok := recorder.(interface{ RecordOwned(rec history.CallRecord) }); ok {
+		owned.RecordOwned(rec)
+
+		return
 	}
 
 	recorder.Record(rec)
@@ -91,8 +99,6 @@ type baseStreamAdapter struct {
 
 	typeResolver *protosetinfra.TypeResolver
 
-	// frameEncoding is the codec applied to each streaming envelope, resolved
-	// once from the request's accept-encoding headers.
 	frameEncoding string
 
 	mu             sync.Mutex
@@ -123,12 +129,8 @@ func (a *baseStreamAdapter) SendHeader(md metadata.MD) error {
 	return a.SetHeader(md)
 }
 
-// SetTrailer is a no-op on the base adapter: HTTP has no trailer channel that
-// applies to both protocols. httpStreamAdapter and grpcwebAdapter override it
-// with the form their protocol defines.
 func (a *baseStreamAdapter) SetTrailer(_ metadata.MD) {}
 
-// gatewayHandler holds shared dependencies for ConnectRPC and gRPC-Web gateways.
 type gatewayHandler struct {
 	budgerigar     *stuber.Budgerigar
 	descriptors    *descriptors.Registry
@@ -137,9 +139,16 @@ type gatewayHandler struct {
 	validator      *validator.Validate
 	errorFormatter *ErrorFormatter
 	reflection     *gatewayReflection
+
+	// templateEngine is built once: it carries the whole plugin function table
+	// and the parsed-template cache, both of which were rebuilt per request.
+	templateEngine *template.Engine
+
+	typeResolver *protosetinfra.TypeResolver
 }
 
 func newGatewayHandler(
+	ctx context.Context,
 	budgerigar *stuber.Budgerigar,
 	descriptorRegistry *descriptors.Registry,
 	recorder history.Recorder,
@@ -160,10 +169,15 @@ func newGatewayHandler(
 		validator:      validator,
 		errorFormatter: e,
 		reflection:     newGatewayReflection(descriptorRegistry),
+		templateEngine: template.New(context.WithoutCancel(ctx), nil),
+		typeResolver: protosetinfra.NewTypeResolver(&dynamicDescriptorResolver{
+			static:  protoregistry.GlobalFiles,
+			dynamic: descriptorRegistry,
+		}),
 	}
 }
 
-func (h *gatewayHandler) buildMocker(r *http.Request, service, method, fullMethod string,
+func (h *gatewayHandler) buildMocker(_ *http.Request, service, method, fullMethod string,
 	methodDesc protoreflect.MethodDescriptor,
 ) *grpcMocker {
 	var proxies *proxyroutes.Registry
@@ -172,14 +186,11 @@ func (h *gatewayHandler) buildMocker(r *http.Request, service, method, fullMetho
 	}
 
 	return &grpcMocker{
-		budgerigar:     h.budgerigar,
-		templateEngine: template.New(r.Context(), nil),
-		errorFormatter: h.errorFormatter,
-		recorder:       h.recorder,
-		typeResolver: protosetinfra.NewTypeResolver(&dynamicDescriptorResolver{
-			static:  protoregistry.GlobalFiles,
-			dynamic: h.descriptors,
-		}),
+		budgerigar:         h.budgerigar,
+		templateEngine:     h.templateEngine,
+		errorFormatter:     h.errorFormatter,
+		recorder:           h.recorder,
+		typeResolver:       h.typeResolver,
 		proxies:            proxies,
 		validator:          h.validator,
 		fullServiceName:    service,
@@ -194,8 +205,6 @@ func (h *gatewayHandler) buildMocker(r *http.Request, service, method, fullMetho
 	}
 }
 
-// withoutDescriptorResponse abstracts protocol-specific response writing
-// for the handleWithoutDescriptor flow.
 type withoutDescriptorResponse interface {
 	WriteError(w http.ResponseWriter, r *http.Request, code codes.Code, msg string)
 	WriteSuccess(w http.ResponseWriter, r *http.Request)
@@ -275,8 +284,6 @@ func (h *gatewayHandler) handleWithoutDescriptor(
 		requestTime, []map[string]any{emptyInput}, []map[string]any{{}}, outputToUse.Headers, "")
 }
 
-// collectFieldMaskNames returns a set of JSON field names that are
-// google.protobuf.FieldMask in the given message descriptor.
 func collectFieldMaskNames(msg proto.Message) map[string]struct{} {
 	if msg == nil {
 		return nil
@@ -301,12 +308,6 @@ func collectFieldMaskNames(msg proto.Message) map[string]struct{} {
 	return result
 }
 
-// normalizeFieldMaskJSON converts well-known FieldMask fields from object JSON
-// form {"paths": ["a","b"]} to string form "a,b" which is what protojson
-// expects for google.protobuf.FieldMask. Only fields confirmed as FieldMask
-// via the message descriptor are normalized. Returns the original data unchanged
-// if no FieldMask fields are found or if conversion isn't needed.
-//
 //nolint:cyclop
 func normalizeFieldMaskJSON(data []byte, msg proto.Message) []byte {
 	fieldMaskNames := collectFieldMaskNames(msg)
@@ -314,8 +315,11 @@ func normalizeFieldMaskJSON(data []byte, msg proto.Message) []byte {
 		return data
 	}
 
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.UseNumber()
+
 	var rawMap map[string]any
-	if err := json.Unmarshal(data, &rawMap); err != nil {
+	if err := decoder.Decode(&rawMap); err != nil {
 		return data
 	}
 
@@ -368,29 +372,25 @@ func normalizeFieldMaskJSON(data []byte, msg proto.Message) []byte {
 	return result
 }
 
-// serializeErrorStatus converts a *status.Status to a connectError JSON struct
-// with properly serialized error details (including @type annotations via protojson).
-//
-//nolint:nestif
+const anyTypeURLPrefix = "type.googleapis.com/"
+
 func serializeErrorStatus(st *status.Status) connectError {
 	sp := st.Proto()
 
-	details := make([]map[string]any, 0, len(sp.GetDetails()))
-	if len(sp.GetDetails()) > 0 {
-		statusData, err := protosetinfra.GlobalTypeResolver().Marshal(sp)
-		if err == nil {
-			var statusObj map[string]any
-			if err := json.Unmarshal(statusData, &statusObj); err == nil {
-				if d, ok := statusObj["details"].([]any); ok {
-					details = make([]map[string]any, 0, len(d))
-					for _, item := range d {
-						if m, ok := item.(map[string]any); ok {
-							details = append(details, m)
-						}
-					}
-				}
-			}
+	details := make([]connectErrorDetail, 0, len(sp.GetDetails()))
+	debug := debugRenderedDetails(sp)
+
+	for i, detail := range sp.GetDetails() {
+		entry := connectErrorDetail{
+			Type:  strings.TrimPrefix(detail.GetTypeUrl(), anyTypeURLPrefix),
+			Value: base64.RawStdEncoding.EncodeToString(detail.GetValue()),
 		}
+
+		if i < len(debug) {
+			entry.Debug = debug[i]
+		}
+
+		details = append(details, entry)
 	}
 
 	return connectError{
@@ -400,8 +400,27 @@ func serializeErrorStatus(st *status.Status) connectError {
 	}
 }
 
-// normalizeHealthError returns "unknown service" NotFound for unknown health check services,
-// matching the standard gRPC health check protocol behavior.
+func debugRenderedDetails(sp *spb.Status) []json.RawMessage {
+	if len(sp.GetDetails()) == 0 {
+		return nil
+	}
+
+	statusData, err := protosetinfra.GlobalTypeResolver().Marshal(sp)
+	if err != nil {
+		return nil
+	}
+
+	var rendered struct {
+		Details []json.RawMessage `json:"details"`
+	}
+
+	if err := json.Unmarshal(statusData, &rendered); err != nil {
+		return nil
+	}
+
+	return rendered.Details
+}
+
 func normalizeHealthError(st *status.Status, serviceName string) *status.Status {
 	if serviceName == "grpc.health.v1.Health" && st.Code() == codes.NotFound {
 		return status.New(codes.NotFound, "unknown service")
@@ -418,7 +437,6 @@ func decodeMessageData(
 	resolver *protosetinfra.TypeResolver,
 ) error {
 	if isJSONType(ct) {
-		// Preprocess FieldMask fields (accept {"paths": [...]} format)
 		normalized := normalizeFieldMaskJSON(data, msg)
 
 		return resolver.Unmarshal(normalized, msg)

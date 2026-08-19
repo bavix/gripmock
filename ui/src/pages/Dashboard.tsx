@@ -61,7 +61,7 @@ function LatencyStat({ label, value, warn }: Readonly<{ label: string; value: nu
   return (
     <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5 }}>
       <span style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{label}</span>
-      <span style={{ fontSize: 15, fontWeight: 700, color: warn ? colors.warning : 'var(--text)' }}>{value}<span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 1 }}>ms</span></span>
+      <span style={{ fontSize: 15, fontWeight: 700, color: warn ? colors.warning : 'var(--text)' }}>{value === 0 ? '<1' : value}<span style={{ fontSize: 10.5, fontWeight: 500, color: 'var(--text-muted)', marginLeft: 1 }}>ms</span></span>
     </span>
   );
 }

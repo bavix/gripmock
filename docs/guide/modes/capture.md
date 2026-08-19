@@ -2,8 +2,6 @@
 
 `capture` is replay mode plus automatic recording of upstream misses.
 
-⚠️ **EXPERIMENTAL FEATURE**: `capture` mode is part of the experimental upstream modes feature set and may change without notice.
-
 ## Behavior
 
 For each request:
@@ -20,7 +18,11 @@ Recorded stubs are immediately available for later local replay.
 Capture stores request and upstream result in stub form:
 
 - request input (`input`/`inputs`)
-- request headers (filtered user headers)
+- request headers (filtered user headers) — credentials (`authorization`, `cookie`,
+  `x-api-key`, …) and per-request identifiers (`traceparent`, `x-request-id`, …) are
+  never written into a stub: the first would leak into exported stub files, and the
+  second would key the stub to an id that never repeats. Stub *matching* still sees
+  every header, so a hand-written stub may match on any of them.
 - response data/stream
 - grpc error code/message/details (when present)
 - response headers

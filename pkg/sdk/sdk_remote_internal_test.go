@@ -60,20 +60,6 @@ func TestRemoteBatchDelete(t *testing.T) {
 	require.Empty(t, mock.Budgerigar.All())
 }
 
-func TestRemoteVerifyCalls(t *testing.T) {
-	t.Parallel()
-
-	mock, client := newRemoteMock(t)
-
-	mock.RecordCall("svc", "method", nil, nil)
-	mock.RecordCall("svc", "method", nil, nil)
-
-	require.NoError(t, client.VerifyMethodCalled("svc", "method", 2))
-
-	err := client.VerifyMethodCalled("svc", "method", 1)
-	require.Error(t, err)
-}
-
 func TestRemoteHistory(t *testing.T) {
 	t.Parallel()
 

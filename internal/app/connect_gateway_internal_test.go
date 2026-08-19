@@ -33,7 +33,7 @@ func TestConnectRPCGateway_MethodNotAllowed(t *testing.T) {
 	// The Connect protocol accepts GET and POST; anything else is refused
 	// before routing.
 	for _, method := range []string{http.MethodPut, http.MethodDelete, http.MethodPatch} {
-		gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
+		gateway := NewConnectRPCGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 		w := httptest.NewRecorder()
 		r := httptest.NewRequestWithContext(t.Context(), method, "/TestService/TestMethod", nil)
 
@@ -46,7 +46,7 @@ func TestConnectRPCGateway_MethodNotAllowed(t *testing.T) {
 func TestConnectRPCGateway_MethodNotFound(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/UnknownService/UnknownMethod", nil)
 
@@ -58,7 +58,7 @@ func TestConnectRPCGateway_MethodNotFound(t *testing.T) {
 func TestConnectRPCGateway_StubNotFoundWithoutDescriptor(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/UnknownService/UnknownMethod", bytes.NewReader([]byte(`{}`)))
 	r.Header.Set("Content-Type", "application/connect+json")
@@ -72,7 +72,7 @@ func TestConnectRPCGateway_StubNotFoundWithoutDescriptor(t *testing.T) {
 func TestConnectRPCGateway_InvalidJSON(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/TestService/TestMethod", bytes.NewReader([]byte("invalid json")))
 	r.Header.Set("Content-Type", "application/json")
@@ -85,13 +85,14 @@ func TestConnectRPCGateway_InvalidJSON(t *testing.T) {
 func TestConnectRPCGateway_WriteError(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
 
 	gateway.writeError(w, codes.Unimplemented, "streaming not supported")
 
 	require.Equal(t, http.StatusNotImplemented, w.Code)
-	require.Equal(t, "application/connect+json", w.Header().Get("Content-Type"))
+	// The protocol pins error bodies to application/json.
+	require.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
 	var resp struct {
 		Code    string           `json:"code"`
@@ -100,7 +101,9 @@ func TestConnectRPCGateway_WriteError(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	require.Equal(t, "unimplemented", resp.Code)
-	require.NotNil(t, resp.Details)
+	// details is optional and omitted when there are none, as connect-go writes it.
+	require.Empty(t, resp.Details)
+	require.NotContains(t, w.Body.String(), `"details"`)
 }
 
 func TestConnectRPCGateway_IsJSONContentType(t *testing.T) {
@@ -130,7 +133,7 @@ func TestConnectRPCGateway_IsJSONContentType(t *testing.T) {
 func TestConnectRPCGateway_NewConnectRPCGateway(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 	require.NotNil(t, gateway)
 }
 
@@ -214,7 +217,7 @@ func TestHttpHeadersToGRPCContext_PropagatesSession(t *testing.T) {
 func TestConnectRPCGateway_RoutedRequest_ParsesVars(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	router.Handle("/{service}/{method}", gateway).Methods(http.MethodPost)
@@ -342,7 +345,7 @@ func TestConnectRPCGateway_HandleUnary_StubNotFound(t *testing.T) {
 
 	structDesc := (&structpb.Struct{}).ProtoReflect().Descriptor()
 	bg := stuber.NewBudgerigar()
-	gateway := NewConnectRPCGateway(bg, nil, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), bg, nil, nil, nil, nil, nil)
 
 	mocker := &grpcMocker{
 		budgerigar:      bg,
@@ -370,7 +373,8 @@ func TestConnectRPCGateway_HandleUnary_StubNotFound(t *testing.T) {
 	gateway.handleUnary(mocker, adapter, nil)
 
 	require.Equal(t, http.StatusNotFound, rec.Code)
-	require.Equal(t, "application/connect+json", rec.Header().Get("Content-Type"))
+	// The protocol pins error bodies to application/json.
+	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 
 	var resp struct {
 		Code    string           `json:"code"`
@@ -398,7 +402,7 @@ func TestConnectRPCGateway_HandleUnary_Success(t *testing.T) {
 	}
 	bg.PutMany(stub)
 
-	gateway := NewConnectRPCGateway(bg, nil, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), bg, nil, nil, nil, nil, nil)
 
 	mocker := &grpcMocker{
 		budgerigar:      bg,
@@ -439,7 +443,7 @@ func TestConnectRPCGateway_HandleWithoutDescriptor_StubNotFound(t *testing.T) {
 	t.Parallel()
 
 	bg := stuber.NewBudgerigar()
-	gateway := NewConnectRPCGateway(bg, nil, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), bg, nil, nil, nil, nil, nil)
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost,
@@ -449,7 +453,8 @@ func TestConnectRPCGateway_HandleWithoutDescriptor_StubNotFound(t *testing.T) {
 	gateway.handleWithoutDescriptor(rec, req, "test.Service", "TestMethod", connectResponse{})
 
 	require.Equal(t, http.StatusNotFound, rec.Code)
-	require.Equal(t, "application/connect+json", rec.Header().Get("Content-Type"))
+	// The protocol pins error bodies to application/json.
+	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 
 	var body struct {
 		Code string `json:"code"`
@@ -471,7 +476,7 @@ func TestConnectRPCGateway_HandleWithoutDescriptor_EmptyData(t *testing.T) {
 	}
 	bg.PutMany(stub)
 
-	gateway := NewConnectRPCGateway(bg, nil, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), bg, nil, nil, nil, nil, nil)
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost,
@@ -501,7 +506,7 @@ func TestConnectRPCGateway_HandleWithoutDescriptor_WithData(t *testing.T) {
 	}
 	bg.PutMany(stub)
 
-	gateway := NewConnectRPCGateway(bg, nil, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), bg, nil, nil, nil, nil, nil)
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost,
@@ -511,7 +516,8 @@ func TestConnectRPCGateway_HandleWithoutDescriptor_WithData(t *testing.T) {
 	gateway.handleWithoutDescriptor(rec, req, "test.Service", "TestMethod", connectResponse{})
 
 	require.Equal(t, http.StatusNotImplemented, rec.Code)
-	require.Equal(t, "application/connect+json", rec.Header().Get("Content-Type"))
+	// The protocol pins error bodies to application/json.
+	require.Equal(t, "application/json", rec.Header().Get("Content-Type"))
 
 	var body struct {
 		Code string `json:"code"`
@@ -666,7 +672,7 @@ func TestErrorCodeToHTTPStatusFollowsConnectProtocol(t *testing.T) {
 func TestConnectRPCGateway_RejectsMalformedTimeout(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewConnectRPCGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/TestService/TestMethod", nil)
 	r.Header.Set(headerConnectTimeoutMs, "not-a-number")
@@ -728,7 +734,7 @@ func TestConnectRPCGateway_StreamingRejectsUnaryContentType(t *testing.T) {
 	registry := descriptors.NewRegistry()
 	registerMultiverseDescriptors(t, t.Context(), registry)
 
-	gateway := NewConnectRPCGateway(stuber.NewBudgerigar(), registry, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), stuber.NewBudgerigar(), registry, nil, nil, nil, nil)
 	router := mux.NewRouter()
 	router.Handle("/{service:.+}/{method}", gateway).Methods(http.MethodPost)
 
@@ -791,7 +797,7 @@ func TestConnectRPCGateway_RequireProtocolVersion(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			gateway := NewConnectRPCGateway(stuber.NewBudgerigar(), descriptors.NewRegistry(), nil, nil, nil, nil)
+			gateway := NewConnectRPCGateway(t.Context(), stuber.NewBudgerigar(), descriptors.NewRegistry(), nil, nil, nil, nil)
 			gateway.RequireProtocolVersion(tc.require)
 
 			router := mux.NewRouter()

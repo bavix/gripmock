@@ -25,15 +25,10 @@ func mustBuildFDS(t *testing.T, protoPath string) *descriptorpb.FileDescriptorSe
 	return fdsSlice[0]
 }
 
-// mustRunWithProto builds descriptors from protoPath and runs mock via Run(t, ...) (auto cleanup).
-func mustRunWithProto(t *testing.T, protoPath string, opts ...Option) Mock { //nolint:ireturn
+func mustServerWithProto(t *testing.T, protoPath string, opts ...Option) *Server {
 	t.Helper()
 
 	fds := mustBuildFDS(t, protoPath)
-	allOpts := append([]Option{WithDescriptors(fds)}, opts...)
-	mock, err := Run(t, allOpts...)
-	require.NoError(t, err)
-	require.NotNil(t, mock)
 
-	return mock
+	return NewTestServer(t, append([]Option{WithDescriptors(fds)}, opts...)...)
 }

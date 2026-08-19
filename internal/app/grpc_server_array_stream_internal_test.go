@@ -18,7 +18,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
-// mockArrayStreamServerStream mocks grpc.ServerStream for array stream testing.
 type mockArrayStreamServerStream struct {
 	grpc.ServerStream
 
@@ -94,7 +93,6 @@ func TestHandleArrayStreamDataSendsAllMessages(t *testing.T) {
 		},
 	}
 
-	// Create empty input message
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 
 	_, err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
@@ -156,7 +154,6 @@ func TestHandleArrayStreamDataWithDelay(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, stream.sentMessages, 2)
-	// Should have at least one delay (between messages)
 	require.GreaterOrEqual(t, duration, time.Duration(delay))
 }
 
@@ -181,17 +178,14 @@ func TestHandleArrayStreamDataWithTemplates(t *testing.T) {
 		},
 	}
 
-	// Create empty input message (template will use empty request)
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
 
 	_, err := mocker.handleArrayStreamData(stream, stub, inputMsg, time.Now())
 	require.NoError(t, err)
 	require.Len(t, stream.sentMessages, 2)
 
-	// Verify template processing by converting messages back to maps
 	msg1Map := convertToMap(stream.sentMessages[0])
 	require.NotNil(t, msg1Map)
-	// Check if value was processed (may be in different structure depending on descriptor)
 	require.NotNil(t, msg1Map)
 
 	msg2Map := convertToMap(stream.sentMessages[1])
@@ -215,7 +209,7 @@ func TestHandleArrayStreamDataInvalidDataType(t *testing.T) {
 		Output: stuber.Output{
 			Stream: []any{
 				map[string]any{"value": "message1"},
-				"invalid_string", // Invalid type
+				"invalid_string",
 			},
 		},
 	}
@@ -312,7 +306,6 @@ func TestHandleArrayStreamDataMessageIndexInTemplates(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, stream.sentMessages, 3)
 
-	// Verify all messages were sent (template processing is tested in template package)
 	for _, msg := range stream.sentMessages {
 		msgMap := convertToMap(msg)
 		require.NotNil(t, msgMap)
@@ -346,7 +339,6 @@ func TestHandleArrayStreamDataWithHeaders(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, stream.sentMessages, 1)
 
-	// Verify message was sent (template processing with headers is tested in template package)
 	msgMap := convertToMap(stream.sentMessages[0])
 	require.NotNil(t, msgMap)
 }

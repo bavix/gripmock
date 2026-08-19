@@ -101,11 +101,6 @@ func (m *grpcMocker) newQuery(ctx context.Context, msg *dynamicpb.Message) stube
 	return m.withHealthVisibility(query)
 }
 
-// withHealthVisibility mirrors mockableHealthServer.findStub: the health
-// service is the only caller allowed to see the reserved internal stubs. On
-// native gRPC health is served by that handler, but the gateways route it
-// through this mocker, and without the flag a user stub would override the
-// runtime status of the protected "gripmock" service.
 func (m *grpcMocker) withHealthVisibility(query stuber.Query) stuber.Query {
 	if m.fullServiceName != HealthServiceFullName {
 		return query
@@ -152,6 +147,8 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	result, err = m.ensureServerStreamResult(query, result, err)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
+			m.recordUnmatched(stream.Context(), requestTime, []map[string]any{m.convertToMap(inputMsg)}, err)
+
 			return newServerStreamFallbackError(err, inputMsg)
 		}
 
@@ -160,8 +157,10 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 
 	found := result.Found()
 
-	if err := delayResponse(stream.Context(), found.Output.Delay); err != nil {
-		return err
+	if !streamDelaysPerMessage(found) {
+		if err := delayResponse(stream.Context(), found.Output.Delay); err != nil {
+			return err
+		}
 	}
 
 	outputToUse := found.Output
@@ -204,6 +203,15 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 
 	m.applyEffects(stream.Context(), found, templateData)
 
+	if found.ServerStreamHandler != nil {
+		callErr := handlerStatusError(found.ServerStreamHandler(stream.Context(), requestData, stream))
+
+		m.recordServerStreamUnlessProxied(stream.Context(), found, requestTime,
+			requestData, nil, recordedMetadata(outputToUse), callErr)
+
+		return callErr
+	}
+
 	if found.Output.Stream == nil {
 		return m.handleServerStreamOutput(stream, found, requestData, outputToUse, requestTime)
 	}
@@ -226,6 +234,14 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		requestData, cleanStreamResponses(found.Output.Stream[:sent]), recordedMetadata(outputToUse), callErr)
 
 	return callErr //nolint:wrapcheck
+}
+
+func streamDelaysPerMessage(found *stuber.Stub) bool {
+	if found.ServerStreamHandler != nil {
+		return false
+	}
+
+	return found.Output.Stream == nil || len(found.Output.Stream) > 0
 }
 
 func (m *grpcMocker) streamElementError(element stuber.GripMockElement, templateData template.Data) error {
@@ -415,8 +431,6 @@ func (m *grpcMocker) handleNonArrayStreamData(
 	requestData map[string]any,
 	requestTime time.Time,
 ) error {
-	// Use outputToUse (templated headers/error already rendered by the caller),
-	// not found.Output — otherwise an error template is emitted unrendered.
 	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil {
 		return err
 	}
@@ -434,12 +448,8 @@ func (m *grpcMocker) handleNonArrayStreamData(
 			return err
 		}
 
-		outputDataCopy := deepCopyAny(found.Output.Data)
+		outputDataCopy := copyForTemplates(found.Output.Data)
 
-		// Render against the request the caller already consumed. A server-stream
-		// client half-closes after one message, so a fresh RecvMsg here returns
-		// EOF and would otherwise leave the data template unrendered; only a genuine
-		// follow-up message (bidi-like) overrides the captured request.
 		msgData, msgTime := requestData, requestTime
 
 		inputMsg := dynamicpb.NewMessage(m.inputDesc)

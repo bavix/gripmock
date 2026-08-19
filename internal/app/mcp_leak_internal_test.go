@@ -43,7 +43,6 @@ func TestMcpMessageNOGoroutineLeakOnNotifications(t *testing.T) {
 		require.Equal(t, http.StatusAccepted, w.Code)
 	}
 
-	// Allow small jitter from runtime/test infrastructure.
 	require.Eventually(t, func() bool {
 		after := runtime.NumGoroutine()
 

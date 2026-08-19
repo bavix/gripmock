@@ -6,8 +6,8 @@ import { hasKeys } from './buildStubOutput';
 // next to buildStubBody/buildStubOutput so the stub wire-format stays owned by
 // one module (StubCreate consumes this via the stashClone handoff).
 export function stubFromCall(r: CallRecord): Record<string, unknown> {
-  const requests = r.requests ?? (r.request ? [r.request] : []);
-  const responses = r.responses ?? (r.response ? [r.response] : []);
+  const requests = r.requests ?? [];
+  const responses = r.responses ?? [];
 
   const output: Record<string, unknown> = {};
   if (responses.length > 1) output.stream = responses;

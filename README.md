@@ -35,9 +35,9 @@ GripMock builds a mock server from your `.proto` files or a compiled `.pb` descr
 - **OpenTelemetry Tracing** - OTLP tracing for gRPC and HTTP paths (`otelgrpc` + `otelhttp`)
 - **Prometheus Metrics (`/metrics`)** - Runtime/process metrics (`go_*`, `process_*`) plus GripMock metrics
 - **Operational APIs** - Health endpoints, descriptors API, stubs API, and web dashboard
-- **Embedded SDK (Experimental)** - Run GripMock inside Go tests with verification helpers
-- **MCP API (Experimental)** - Streamable MCP endpoint for agent and tool integrations
-- **Upstream Modes (Experimental)** - `proxy`, `replay`, `capture` modes for gradual migration from live upstream services to local mocks
+- **Embedded SDK** - Run GripMock inside Go tests with verification helpers
+- **MCP API** - Streamable MCP endpoint for agent and tool integrations
+- **Upstream Modes** - `proxy`, `replay`, `capture` modes for gradual migration from live upstream services to local mocks
 
 ## 📚 Documentation
 
@@ -45,8 +45,8 @@ GripMock builds a mock server from your `.proto` files or a compiled `.pb` descr
 
 Deep dives on the newer surfaces:
 [Descriptor API](https://bavix.github.io/gripmock/guide/api/descriptors) ·
-[Upstream Modes (Experimental)](https://bavix.github.io/gripmock/guide/modes) ·
-[Embedded SDK (Experimental)](https://bavix.github.io/gripmock/guide/embedded-sdk) ·
+[Upstream Modes](https://bavix.github.io/gripmock/guide/modes) ·
+[Embedded SDK](https://bavix.github.io/gripmock/guide/embedded-sdk) ·
 [Faker Reference](https://bavix.github.io/gripmock/guide/stubs/faker) ·
 [OpenTelemetry + Metrics](https://bavix.github.io/gripmock/guide/introduction/advanced-usage) ·
 [GitHub Actions](https://bavix.github.io/gripmock/guide/ci-cd/github-actions) ·
@@ -126,7 +126,7 @@ gripmock grpcs://10.0.0.5:8443?serverName=api.company.local
 gripmock grpc://localhost:50051?bearer=<token>
 ```
 
-**Use upstream modes over reflection (Experimental):**
+**Use upstream modes over reflection:**
 ```bash
 # Pure reverse proxy through GripMock
 gripmock grpc+proxy://localhost:50051
@@ -503,9 +503,7 @@ gripmock grpcs://10.0.0.5:8443?serverName=api.company.local
 
 Full guide: [gRPC Reflection Source](https://bavix.github.io/gripmock/guide/sources/grpc-reflection).
 
-## 🔁 Upstream Modes (Experimental)
-
-⚠️ **EXPERIMENTAL FEATURE**: Upstream modes may change without notice.
+## 🔁 Upstream Modes
 
 Upstream modes work on top of reflection sources and define runtime behavior:
 

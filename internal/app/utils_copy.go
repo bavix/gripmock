@@ -1,6 +1,10 @@
 package app
 
-import "maps"
+import (
+	"maps"
+
+	"github.com/bavix/gripmock/v3/internal/infra/template"
+)
 
 func deepCopyMapAny(src map[string]any) map[string]any {
 	if src == nil {
@@ -13,6 +17,17 @@ func deepCopyMapAny(src map[string]any) map[string]any {
 	}
 
 	return dst
+}
+
+// copyForTemplates deep-copies only when the value actually carries templates:
+// rendering mutates the copy in place, and a template-free payload can be
+// served as-is because every consumer treats stub data as immutable.
+func copyForTemplates(src any) any {
+	if !template.HasTemplatesInValue(src) {
+		return src
+	}
+
+	return deepCopyAny(src)
 }
 
 func deepCopyAny(src any) any {

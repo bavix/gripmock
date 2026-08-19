@@ -11,7 +11,7 @@ GripMock uses a declarative matching model built on four strategies and one comp
 | Strategy | Semantics |
 |---|---|
 | `equals` | Exact deep-equality. Every key-value pair must match the request verbatim. |
-| `contains` | Substring/subset check. String values must contain the expected substring; arrays must contain all expected elements; objects are matched recursively. |
+| `contains` | Subset check. Objects are matched recursively and unlisted fields are ignored; arrays must carry all expected elements in any order; every other value, strings included, must be equal. Use `matches` or `glob` for partial strings. |
 | `matches` | Regular expression. Each value is treated as a Go regex pattern applied to the corresponding request value. |
 | `glob` <VersionTag version="v3.12.0" /> | Glob pattern (`*`, `?`, `[...]`) applied to the corresponding request value. Every listed key must be present. |
 
@@ -83,7 +83,8 @@ x-env == "prod" AND (
 
 ## `ignoreArrayOrder`
 
-Controls whether arrays are compared as ordered sequences or as sets.
+Controls whether arrays are compared as ordered sequences or as multisets: order stops
+mattering, but how many times an element appears still does.
 
 **Scoping rules:**
 

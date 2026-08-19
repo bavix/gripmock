@@ -33,8 +33,6 @@ func TestResponseFrameEncoding(t *testing.T) {
 			requestHeaders: map[string]string{headerConnectAcceptEncoding: "br"},
 			want:           encodingIdentity,
 		},
-		// handlers.CompressHandler sets Content-Encoding before the handler
-		// runs; compressing frames on top would gzip the same bytes twice.
 		"http layer already compressing": {
 			requestHeaders:  map[string]string{headerConnectAcceptEncoding: "gzip"},
 			responseHeaders: map[string]string{"Content-Encoding": "gzip"},
@@ -92,8 +90,6 @@ func TestWriteConnectFrameEncodedKeepsEndStreamFlag(t *testing.T) {
 	require.NotZero(t, flags&connectEnvelopeFlagCompressed)
 }
 
-// An identity frame must stay byte-for-byte what writeConnectFrame produced,
-// so a client that negotiated no compression sees no behaviour change.
 func TestWriteConnectFrameEncodedIdentityMatchesPlain(t *testing.T) {
 	t.Parallel()
 

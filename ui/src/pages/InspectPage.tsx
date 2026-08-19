@@ -297,7 +297,7 @@ function CandidateRow({ rank, candidate, selected, isTarget, onSelect }: Readonl
 
 // Prefer the authoritative per-stage events (3 states: passed/failed/skipped);
 // fall back to the boolean checks when events are absent.
-type Check = { label: string; state: 'passed' | 'failed' | 'skipped'; reason: string };
+type Check = { stage: string; label: string; state: 'passed' | 'failed' | 'skipped'; reason: string };
 
 function computeHeaderDiff(candidate: InspectCandidate, stub: Stub | undefined, headersText: string): FieldRule[] | null {
   if (candidate.headersMatched || !stub || !hasContent(stub.headers)) return null;
@@ -315,17 +315,23 @@ function computeInputDiff(candidate: InspectCandidate, stub: Stub | undefined, p
 
 function buildChecks(candidate: InspectCandidate): Check[] {
   if (candidate.events && candidate.events.length > 0) {
-    return candidate.events.map((e) => ({
+    const checks: Check[] = candidate.events.map((e) => ({
+      stage: e.stage,
       label: STAGE_LABEL[e.stage] ?? e.stage,
       state: e.result === 'passed' ? 'passed' : e.result === 'skipped' ? 'skipped' : 'failed',
       reason: e.reason && e.result !== 'passed' ? reasonText(e.reason) : '',
     }));
+
+    const failedEarlier = checks.some((c) => c.stage !== 'selected' && c.state === 'failed');
+
+    return checks.filter((c) => !(c.stage === 'selected' && c.state === 'failed' && failedEarlier));
   }
+
   return [
-    { label: 'Session scope', state: candidate.visibleBySession ? 'passed' : 'failed', reason: '' },
-    { label: 'Times limit', state: candidate.withinTimes ? 'passed' : 'failed', reason: '' },
-    { label: 'Header matcher', state: candidate.headersMatched ? 'passed' : 'failed', reason: '' },
-    { label: 'Input matcher', state: candidate.inputMatched ? 'passed' : 'failed', reason: '' },
+    { stage: 'session', label: 'Session scope', state: candidate.visibleBySession ? 'passed' : 'failed', reason: '' },
+    { stage: 'times', label: 'Times limit', state: candidate.withinTimes ? 'passed' : 'failed', reason: '' },
+    { stage: 'headers', label: 'Header matcher', state: candidate.headersMatched ? 'passed' : 'failed', reason: '' },
+    { stage: 'input', label: 'Input matcher', state: candidate.inputMatched ? 'passed' : 'failed', reason: '' },
   ];
 }
 

@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package telemetry.v1;
+
+option go_package = "github.com/bavix/gripmock/v3/examples/sdk/telemetry/v1;telemetryv1";
+
+service TelemetryService {
+  rpc StreamSamples(StreamSamplesRequest) returns (stream StreamSamplesResponse);
+}
+
+message StreamSamplesRequest {
+  string device_id = 1;
+  string metric = 2;
+}
+
+message StreamSamplesResponse {
+  int64 sequence = 1;
+  double value = 2;
+  string unit = 3;
+}

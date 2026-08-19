@@ -1,10 +1,6 @@
 # Health Checks <VersionTag version="v3.9.3" />
 
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::
-
-> **Version history:** Health service stubbing available since <VersionTag version="v3.9.3" /> (JSON stubs). Embedded SDK support since <VersionTag version="v3.9.3" /> (legacy API). Current v2 API since <VersionTag version="v3.16.0" />.
+> **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" />. Current API since <VersionTag version="v3.16.0" />; the legacy `sdk.Run` / `mock.Stub` / `mock.Verify` API was **removed in v3.20.0**. See the [Upgrade Guide](./upgrade.md).
 
 GripMock supports stubbing the standard gRPC health service:
 

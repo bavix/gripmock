@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/cockroachdb/errors"
+	"github.com/go-playground/validator/v10"
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -12,7 +13,37 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
+type effectApplier struct {
+	budgerigar     *stuber.Budgerigar
+	templateEngine *template.Engine
+	validator      *validator.Validate
+}
+
+func (h *RestServer) effects() effectApplier {
+	return effectApplier{
+		budgerigar:     h.budgerigar,
+		templateEngine: h.templateEngine,
+		validator:      h.validator,
+	}
+}
+
+func (m *grpcMocker) effects() effectApplier {
+	return effectApplier{
+		budgerigar:     m.budgerigar,
+		templateEngine: m.templateEngine,
+		validator:      m.validator,
+	}
+}
+
 func (m *grpcMocker) applyEffects(
+	ctx context.Context,
+	matched *stuber.Stub,
+	templateData template.Data,
+) {
+	m.effects().apply(ctx, matched, templateData)
+}
+
+func (m effectApplier) apply(
 	ctx context.Context,
 	matched *stuber.Stub,
 	templateData template.Data,
@@ -56,7 +87,7 @@ type effectOperation struct {
 	parentSession string
 }
 
-func (m *grpcMocker) prepareEffect(
+func (m effectApplier) prepareEffect(
 	effect stuber.Effect,
 	templateData template.Data,
 	parentSession string,
@@ -81,7 +112,7 @@ func (m *grpcMocker) prepareEffect(
 	}
 }
 
-func (m *grpcMocker) prepareUpsertEffect(
+func (m effectApplier) prepareUpsertEffect(
 	effect stuber.Effect,
 	templateData template.Data,
 	parentSession string,
@@ -114,7 +145,7 @@ func (m *grpcMocker) prepareUpsertEffect(
 	return stub, nil
 }
 
-func (m *grpcMocker) prepareDeleteEffect(
+func (m effectApplier) prepareDeleteEffect(
 	effect stuber.Effect,
 	templateData template.Data,
 ) (uuid.UUID, error) {
@@ -140,7 +171,7 @@ func (m *grpcMocker) prepareDeleteEffect(
 	return id, nil
 }
 
-func (m *grpcMocker) applyEffectOperation(op effectOperation) error {
+func (m effectApplier) applyEffectOperation(op effectOperation) error {
 	switch op.action {
 	case stuber.EffectActionUpsert:
 		if op.upsertStub == nil {

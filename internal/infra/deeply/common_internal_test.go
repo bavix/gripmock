@@ -8,13 +8,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/spf13/cast"
 	"github.com/stretchr/testify/require"
 )
 
-// TestStructuralValuesNeedNoDeepEqual pins the assumption that lets the public
-// matchers skip reflect.DeepEqual for maps and slices: whenever DeepEqual would
-// have said yes, the dedicated map or slice path already did.
 var errStringify = errors.New("boom")
 
 func TestStructuralValuesNeedNoDeepEqual(t *testing.T) {
@@ -59,34 +55,48 @@ func TestStructuralRejectsLeaves(t *testing.T) {
 	}
 }
 
-// TestStringifyMatchesCast keeps the allocation-free conversion in step with
-// the cast package it replaced.
-func TestStringifyMatchesCast(t *testing.T) {
+func TestStringifyConversions(t *testing.T) {
 	t.Parallel()
 
-	convertible := []any{
-		"text", "", nil, true, false,
-		[]byte("bytes"), int(1), int8(2), int16(3), int32(4), int64(5),
-		uint(6), uint8(7), uint16(8), uint32(9), uint64(10),
-		float32(1.5), float64(2.25), json.Number("42"),
-		template.HTML("<b>"), template.URL("/path"), template.JS("x"), template.CSS("a{}"),
-		errStringify, &url.URL{Host: "example.com"},
+	cases := []struct {
+		value any
+		want  string
+	}{
+		{"text", "text"},
+		{"", ""},
+		{nil, ""},
+		{true, "true"},
+		{false, "false"},
+		{[]byte("bytes"), "bytes"},
+		{int(1), "1"},
+		{int8(2), "2"},
+		{int16(3), "3"},
+		{int32(4), "4"},
+		{int64(5), "5"},
+		{uint(6), "6"},
+		{uint8(7), "7"},
+		{uint16(8), "8"},
+		{uint32(9), "9"},
+		{uint64(10), "10"},
+		{float32(1.5), "1.5"},
+		{float64(2.25), "2.25"},
+		{json.Number("42"), "42"},
+		{template.HTML("<b>"), "<b>"},
+		{template.URL("/path"), "/path"},
+		{template.JS("x"), "x"},
+		{template.CSS("a{}"), "a{}"},
+		{errStringify, errStringify.Error()},
+		{&url.URL{Host: "example.com"}, "//example.com"},
 	}
 
-	for _, value := range convertible {
-		want, err := cast.ToStringE(value)
-		require.NoError(t, err)
-
-		got, ok := stringify(value)
-		require.True(t, ok)
-		require.Equal(t, want, got)
+	for _, tc := range cases {
+		got, ok := stringify(tc.value)
+		require.True(t, ok, "%T", tc.value)
+		require.Equal(t, tc.want, got, "%T", tc.value)
 	}
 
 	for _, value := range []any{map[string]any{"a": 1}, []any{1}, struct{}{}, complex(1, 2)} {
-		_, err := cast.ToStringE(value)
-		require.Error(t, err)
-
 		_, ok := stringify(value)
-		require.False(t, ok)
+		require.False(t, ok, "%T", value)
 	}
 }

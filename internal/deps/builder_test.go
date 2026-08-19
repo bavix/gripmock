@@ -24,14 +24,14 @@ func TestBuilderHIstoryStoreWithRedactKeys(t *testing.T) {
 	require.NotNil(t, store)
 
 	store.Record(history.CallRecord{
-		Service:  "svc",
-		Method:   "M",
-		Request:  map[string]any{"user": "alice", "password": "secret"},
-		Response: map[string]any{"ok": true},
+		Service:   "svc",
+		Method:    "M",
+		Requests:  []map[string]any{{"user": "alice", "password": "secret"}},
+		Responses: []map[string]any{{"ok": true}},
 	})
 
 	all := store.All()
 	require.Len(t, all, 1)
-	require.Equal(t, "alice", all[0].Request["user"])
-	require.Equal(t, "[REDACTED]", all[0].Request["password"])
+	require.Equal(t, "alice", all[0].Requests[0]["user"])
+	require.Equal(t, "[REDACTED]", all[0].Requests[0]["password"])
 }

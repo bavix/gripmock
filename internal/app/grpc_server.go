@@ -93,6 +93,9 @@ type GRPCServer struct {
 
 	resolverOnce sync.Once
 	dynResolver  *dynamicDescriptorResolver
+
+	templateOnce   sync.Once
+	templateEngine *template.Engine
 }
 
 type grpcMocker struct {
@@ -248,6 +251,17 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	s.markServerReady(ctx)
 
 	return server, nil
+}
+
+// templates builds the engine once: it carries the whole plugin function table
+// and the parsed-template cache, and handleUnknownService rebuilt both on every
+// call to a dynamically registered service.
+func (s *GRPCServer) templates(ctx context.Context) *template.Engine {
+	s.templateOnce.Do(func() {
+		s.templateEngine = template.New(context.WithoutCancel(ctx), nil)
+	})
+
+	return s.templateEngine
 }
 
 // BuildFromDescriptorSet creates a gRPC server from a pre-built FileDescriptorSet.

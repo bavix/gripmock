@@ -9,7 +9,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog"
-	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 
@@ -217,9 +216,9 @@ func (p *processor) addFile(ctx context.Context, filePath, fileType string) {
 
 func (p *processor) result() *Configure {
 	return &Configure{
-		imports:        lo.Uniq(p.imports),
-		protos:         lo.Uniq(p.protos),
-		descriptors:    lo.Uniq(p.descriptors),
+		imports:        slices.Clone(p.imports),
+		protos:         slices.Clone(p.protos),
+		descriptors:    slices.Clone(p.descriptors),
 		descriptorSets: slices.Clone(p.descriptorSets),
 	}
 }

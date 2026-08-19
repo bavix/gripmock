@@ -118,6 +118,12 @@ curl -X POST -d '[
 - `effects` is supported for runtime transitions (`upsert`, `delete`).
 - Effects inherit session automatically from matched parent stub.
 
+## Request size
+
+A request body larger than **4 MB** is rejected with `413` and
+`{"error":"request body exceeds the maximum size"}`. The limit applies to every endpoint that
+takes a body, so a large stub set has to be imported in batches.
+
 ## Related Endpoints
 - `GET /api/stubs`: List all stubs.  
 - `DELETE /api/stubs`: Delete all stubs.  

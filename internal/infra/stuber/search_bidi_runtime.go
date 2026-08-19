@@ -12,9 +12,9 @@ type BidiResult struct {
 	lookup        *searcherLookup
 	reserveQuery  Query
 	inputBuf      [1]map[string]any
-	matchingStubs []*Stub      // Stubs that match the current message pattern
-	messageCount  atomic.Int32 // Number of messages processed so far
-	mu            sync.Mutex   // Thread safety for concurrent access
+	matchingStubs []*Stub
+	messageCount  atomic.Int32
+	mu            sync.Mutex
 }
 
 // Next processes the next message in the bidirectional stream and returns the matching stub.
@@ -43,7 +43,7 @@ func (br *BidiResult) Next(messageData map[string]any) (*Stub, error) {
 		if br.tryReserveAndFinalize(bestStub, itemQuery, isFirstMessage) {
 			return bestStub, nil
 		}
-		// Stub exhausted (Times), remove and try next
+
 		br.removeStubFromMatchingByIndex(bestIndex)
 	}
 }
@@ -54,7 +54,6 @@ func (br *BidiResult) GetMessageIndex() int {
 }
 
 func (br *BidiResult) ensureMatchingStubs(messageData map[string]any) (bool, int) {
-	// Track the actual message index regardless of matchingStubs state.
 	messageIndex := int(br.messageCount.Add(1)) - 1
 
 	if len(br.matchingStubs) == 0 {
@@ -64,7 +63,7 @@ func (br *BidiResult) ensureMatchingStubs(messageData map[string]any) (bool, int
 		}
 
 		for stub := range allStubs {
-			if matchBidiStubMessage(stub, messageData) {
+			if matchBidiStubMessage(stub, br.reserveQuery.Headers, messageData) {
 				br.matchingStubs = append(br.matchingStubs, stub)
 			}
 		}
@@ -79,7 +78,7 @@ func (br *BidiResult) filterMatchingStubs(messageData map[string]any) {
 	filtered := br.matchingStubs[:0]
 
 	for _, stub := range br.matchingStubs {
-		if matchBidiStubMessage(stub, messageData) {
+		if matchBidiStubMessage(stub, br.reserveQuery.Headers, messageData) {
 			filtered = append(filtered, stub)
 		}
 	}
@@ -145,10 +144,7 @@ func (br *BidiResult) removeStubFromMatchingByIndex(index int) {
 	br.matchingStubs = br.matchingStubs[:last]
 }
 
-// findBidi retrieves a BidiResult for bidirectional streaming with the given QueryBidi.
-// For bidirectional streaming, each message is treated as a separate unary request.
 func (s *searcher) findBidi(query QueryBidi) (*BidiResult, error) {
-	// ID-based queries can't use bidi streaming — fall back to regular search.
 	if query.ID != nil {
 		return s.searchByIDBidi(query)
 	}
@@ -160,8 +156,6 @@ func (s *searcher) findBidi(query QueryBidi) (*BidiResult, error) {
 	return s.newBidiResult(query, nil, s.lookup(query.Session)), nil
 }
 
-// searchByIDBidi handles ID-based queries for bidirectional streaming.
-// Since we can't use bidirectional streaming for ID-based queries, we fallback to regular search.
 func (s *searcher) searchByIDBidi(query QueryBidi) (*BidiResult, error) {
 	if err := s.ensureServiceMethodExists(query.Service, query.Method); err != nil {
 		return nil, err
@@ -172,7 +166,6 @@ func (s *searcher) searchByIDBidi(query QueryBidi) (*BidiResult, error) {
 		return nil, ErrServiceNotFound
 	}
 
-	// tryReserve not called here - BidiResult will call it when GetNextStub
 	return s.newBidiResult(query, []*Stub{found}, lookup), nil
 }
 

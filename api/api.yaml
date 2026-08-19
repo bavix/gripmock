@@ -400,6 +400,11 @@ paths:
       responses:
         '200':
           description: Successful operation
+          headers:
+            X-Total-Count:
+              description: Total number of stubs matching the filters, before pagination
+              schema:
+                type: integer
           content:
             application/json:
               schema:
@@ -430,6 +435,8 @@ paths:
             The payload is not valid JSON, or the stub failed validation — for example `input` and `inputs`
             both set, or `output` carrying both the unary side and `stream`. The body holds an `error`
             string naming the field.
+        '413':
+          description: Payload Too Large
         '500':
           description: Internal Server Error
       requestBody:
@@ -444,8 +451,11 @@ paths:
     delete:
       tags:
         - stubs
-      summary: Remove all stubs
-      description: Completely clears the stub storage
+      summary: Remove stubs
+      description: >-
+        Deletes stubs. With `X-Gripmock-Session` only the stubs of that session are removed,
+        so one client cannot wipe another session's fixtures; without the header the whole
+        stub storage is cleared.
       operationId: purgeStubs
       responses:
         '204':
@@ -468,6 +478,8 @@ paths:
           description: Invalid IDs provided
         '404':
           description: Some stubs not found
+        '413':
+          description: Payload Too Large
         '500':
           description: Internal Server Error
       requestBody:
@@ -497,6 +509,8 @@ paths:
             The payload is not valid JSON, or the stub failed validation — for example `input` and `inputs`
             both set, or `output` carrying both the unary side and `stream`. The body holds an `error`
             string naming the field.
+        '413':
+          description: Payload Too Large
         '500':
           description: Internal Server Error
       requestBody:
@@ -573,6 +587,8 @@ paths:
                 $ref: '#/components/schemas/SearchResponse'
         '400':
           description: Invalid search criteria
+        '413':
+          description: Payload Too Large
         '422':
           description: Validation error
         '500':
@@ -602,6 +618,8 @@ paths:
                 $ref: '#/components/schemas/InspectReport'
         '400':
           description: Invalid inspect criteria
+        '413':
+          description: Payload Too Large
         '422':
           description: Validation error
         '500':
@@ -675,12 +693,33 @@ paths:
             A query parameter could not be parsed, for example a non-numeric `limit`.
         '500':
           description: Internal Server Error
+    delete:
+      tags:
+        - history
+      summary: Purge call history
+      description: >-
+        Deletes recorded calls. With `X-Gripmock-Session` only the records of that session are
+        removed, so a test can reset its own history without disturbing the calls of a parallel
+        session; without the header the whole history is cleared.
+      operationId: purgeHistory
+      responses:
+        '200':
+          description: Number of records deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HistoryPurged'
+        '500':
+          description: Internal Server Error
   /verify:
     post:
       tags:
         - verify
       summary: Verify call counts
-      description: Asserts that a method was called a specified number of times
+      description: >-
+        Asserts that a method was called a specified number of times. With `X-Gripmock-Session`
+        the count covers that session's calls plus global ones — the same scope its stubs match
+        in. Without the header every call is counted, including calls made under a session.
       operationId: verifyCalls
       responses:
         '200':
@@ -695,6 +734,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VerifyError'
+        '413':
+          description: Payload Too Large
         '500':
           description: Internal Server Error
       requestBody:
@@ -746,6 +787,8 @@ paths:
                 $ref: '#/components/schemas/AddDescriptorsResponse'
         '400':
           description: Invalid or empty FileDescriptorSet
+        '413':
+          description: Payload Too Large
         '500':
           description: Internal Server Error
 
@@ -1108,25 +1151,15 @@ components:
           format: date-time
           description: >-
             When the call was received (RFC 3339).
-        request:
-          type: object
-          additionalProperties: true
-          description: "Deprecated: use requests for streaming calls"
-          deprecated: true
         requests:
           type: array
-          description: Request messages for streaming calls (client stream, bidi stream)
+          description: Request messages; a unary call carries exactly one
           items:
             type: object
             additionalProperties: true
-        response:
-          type: object
-          additionalProperties: true
-          description: "Deprecated: use responses for streaming calls"
-          deprecated: true
         responses:
           type: array
-          description: Response messages for streaming calls (server stream, bidi stream)
+          description: Response messages; a unary call carries exactly one
           items:
             type: object
             additionalProperties: true
@@ -1155,6 +1188,21 @@ components:
         $ref: '#/components/schemas/CallRecord'
       description: >-
         A page of recorded calls, newest first.
+    HistoryPurged:
+      type: object
+      required:
+        - deletedCount
+      properties:
+        deletedCount:
+          type: integer
+          description: >-
+            Number of records removed.
+        session:
+          type: string
+          description: >-
+            Session the purge was scoped to, absent when the whole history was cleared.
+      description: >-
+        Result of a history purge.
     VerifyRequest:
       type: object
       required:
@@ -1766,6 +1814,13 @@ components:
         used:
           type: boolean
           description: Response-only — whether the stub has matched at least once. Ignored on input.
+          x-go-type-skip-optional-pointer: true
+        session:
+          type: string
+          readOnly: true
+          description: >-
+            Session the stub belongs to; empty means global. Assigned from the `X-Gripmock-Session`
+            request header — a value sent in the body is discarded.
           x-go-type-skip-optional-pointer: true
         headers:
           $ref: '#/components/schemas/StubHeaders'

@@ -23,6 +23,7 @@ const (
 	ToolServicesDelete  = "services_delete"
 	ToolHistoryList     = "history_list"
 	ToolHistoryErrors   = "history_errors"
+	ToolHistoryPurge    = "history_purge"
 	ToolVerifyCalls     = "verify_calls"
 	ToolDebugCall       = "debug_call"
 	ToolSchemaStub      = "schema_stub"
@@ -62,6 +63,7 @@ func ListTools() []map[string]any {
 		servicesDeleteTool(),
 		historyListTool(),
 		historyErrorsTool(),
+		historyPurgeTool(),
 		verifyCallsTool(),
 		debugCallTool(),
 		schemaStubTool(),
@@ -236,6 +238,11 @@ func historyErrorsTool() map[string]any {
 		"session": stringProp(),
 		"limit":   nonNegativeIntegerProp(),
 	}))
+}
+
+func historyPurgeTool() map[string]any {
+	return newTool(ToolHistoryPurge, "Delete recorded calls, all of them or only one session's",
+		objectSchema(map[string]any{"session": stringProp()}))
 }
 
 func debugCallTool() map[string]any {
@@ -413,8 +420,8 @@ func mockCallTool() map[string]any {
 	return map[string]any{
 		"name": ToolMockCall,
 		"description": "Execute a mock call: match a stub for service/method/payload, render its templated response as the gRPC data " +
-			"plane would, record it to history, and return the response with its status code. Protobuf shape validation and stub " +
-			"effects are not applied (use the gateway endpoint for a fully faithful call).",
+			"plane would, apply its effects, record it to history, and return the response with its status code. Protobuf " +
+			"shape validation is not applied (use the gateway endpoint for a fully faithful call).",
 		"inputSchema": map[string]any{
 			"type": "object",
 			"required": []string{

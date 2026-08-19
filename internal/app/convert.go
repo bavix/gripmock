@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/base64"
+	"slices"
 	"strconv"
 
 	"github.com/goccy/go-json"
@@ -10,7 +11,7 @@ import (
 )
 
 type convertScope struct {
-	seen  map[protoreflect.Message]struct{}
+	seen  []protoreflect.Message
 	depth int
 	max   int
 }
@@ -20,10 +21,7 @@ func newConvertScope(maxDepth int) *convertScope {
 		maxDepth = defaultConvertDepth
 	}
 
-	return &convertScope{
-		seen: make(map[protoreflect.Message]struct{}),
-		max:  maxDepth,
-	}
+	return &convertScope{max: maxDepth}
 }
 
 func (c *convertScope) enter(msg protoreflect.Message) bool {
@@ -35,11 +33,11 @@ func (c *convertScope) enter(msg protoreflect.Message) bool {
 		return false
 	}
 
-	if _, ok := c.seen[msg]; ok {
+	if slices.Contains(c.seen, msg) {
 		return false
 	}
 
-	c.seen[msg] = struct{}{}
+	c.seen = append(c.seen, msg)
 	c.depth++
 
 	return true
@@ -47,6 +45,7 @@ func (c *convertScope) enter(msg protoreflect.Message) bool {
 
 func (c *convertScope) exit() {
 	c.depth--
+	c.seen = c.seen[:len(c.seen)-1]
 }
 
 func convertToMap(msg proto.Message) map[string]any {

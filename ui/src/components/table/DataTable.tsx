@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useMemo, Fragment, type ReactNode, type CSSProperties } from 'react';
 import {
-  useReactTable, getCoreRowModel, getSortedRowModel, getPaginationRowModel,
-  flexRender, type ColumnDef, type SortingState,
-  type VisibilityState, type Row, type Table, type SortDirection,
+  useTable, flexRender,
+  type SortingState, type ColumnVisibilityState, type SortDirection, type RowData,
 } from '@tanstack/react-table';
+import { tableFeatures, type Column, type RowOf, type TableOf } from './tableFeatures';
 import { ChevronDown, ChevronUp, ChevronsUpDown, ChevronRight } from 'lucide-react';
 
 type Density = 'compact' | 'normal' | 'comfortable';
@@ -15,9 +15,9 @@ const DENSITY_STYLES: Record<Density, CSSProperties> = {
   comfortable: { height: 48, fontSize: 13, padding: '0 12px' },
 };
 
-interface DataTableProps<T> {
+interface DataTableProps<T extends RowData> {
   data: T[];
-  columns: ColumnDef<T>[];
+  columns: Column<T>[];
   loading?: boolean;
   emptyMessage?: string;
   getRowId?: (row: T) => string;
@@ -54,7 +54,7 @@ function ExpandChevron({ expanded }: Readonly<{ expanded: boolean }>) {
   );
 }
 
-function TableHead<T>({ table }: Readonly<{ table: Table<T> }>) {
+function TableHead<T extends RowData>({ table }: Readonly<{ table: TableOf<T> }>) {
   return (
     <thead>
       {table.getHeaderGroups().map((hg) => (
@@ -84,8 +84,8 @@ function TableHead<T>({ table }: Readonly<{ table: Table<T> }>) {
   );
 }
 
-interface RowProps<T> {
-  row: Row<T>;
+interface RowProps<T extends RowData> {
+  row: RowOf<T>;
   density: Density;
   canExpand: boolean;
   expandedId: string | null;
@@ -95,7 +95,7 @@ interface RowProps<T> {
   colCount: number;
 }
 
-function TableRow<T>({ row, density, canExpand, expandedId, setExpandedId, onRowClick, renderExpanded, colCount }: Readonly<RowProps<T>>) {
+function TableRow<T extends RowData>({ row, density, canExpand, expandedId, setExpandedId, onRowClick, renderExpanded, colCount }: Readonly<RowProps<T>>) {
   const isExpanded = expandedId === row.id;
   const clickable = canExpand || !!onRowClick;
   const handleRowClick = () => {
@@ -127,9 +127,9 @@ function TableRow<T>({ row, density, canExpand, expandedId, setExpandedId, onRow
   );
 }
 
-interface BodyProps<T> {
+interface BodyProps<T extends RowData> {
   loading?: boolean;
-  rows: Row<T>[];
+  rows: RowOf<T>[];
   colCount: number;
   emptyMessage: string;
   density: Density;
@@ -148,7 +148,7 @@ function messageRow(colCount: number, message: ReactNode) {
   );
 }
 
-function DataTableBody<T>({ loading, rows, colCount, emptyMessage, density, canExpand, expandedId, setExpandedId, onRowClick, renderExpanded }: Readonly<BodyProps<T>>) {
+function DataTableBody<T extends RowData>({ loading, rows, colCount, emptyMessage, density, canExpand, expandedId, setExpandedId, onRowClick, renderExpanded }: Readonly<BodyProps<T>>) {
   if (loading) return messageRow(colCount, 'Loading...');
   if (rows.length === 0) return messageRow(colCount, emptyMessage);
   return (
@@ -162,13 +162,13 @@ function DataTableBody<T>({ loading, rows, colCount, emptyMessage, density, canE
   );
 }
 
-export function DataTable<T = any>({
+export function DataTable<T extends RowData = any>({
   data, columns, loading, emptyMessage = 'No data', getRowId, renderExpanded,
   density: extDensity, onDensityChange, onRowClick,
   manualPagination, rowCount, pageIndex = 0, pageSize = 50, onPageChange,
 }: Readonly<DataTableProps<T>>) {
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [internalVisibility, setInternalVisibility] = useState<VisibilityState>({});
+  const [internalVisibility, setInternalVisibility] = useState<ColumnVisibilityState>({});
   const [density, setDensity] = useState<Density>(extDensity || 'normal');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -178,7 +178,7 @@ export function DataTable<T = any>({
     if (extDensity) setDensity(extDensity);
   }, [extDensity]);
 
-  const expandCol: ColumnDef<T> | undefined = renderExpanded ? {
+  const expandCol: Column<T> | undefined = renderExpanded ? {
     id: '_exp',
     header: '',
     cell: ({ row }) => <ExpandChevron expanded={expandedId === row.id} />,
@@ -189,7 +189,8 @@ export function DataTable<T = any>({
 
   // Stable per-row id: use the provided getRowId, else the row index so rows
   // without an `id` field (e.g. history call records) never collide.
-  const table = useReactTable({
+  const table = useTable({
+    features: tableFeatures,
     data, columns: allCols,
     getRowId: getRowId ? ((row) => getRowId(row)) : ((_row, index) => String(index)),
     // With server-side pagination the table holds only one page, so a client sort
@@ -202,9 +203,6 @@ export function DataTable<T = any>({
     },
     onSortingChange: setSorting,
     onColumnVisibilityChange: setInternalVisibility,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     ...(manualPagination
       ? {
           manualPagination: true,
@@ -214,7 +212,7 @@ export function DataTable<T = any>({
             onPageChange?.(next.pageIndex);
           },
         }
-      : { initialState: { pagination: { pageSize: 50 } } }),
+      : { initialState: { pagination: { pageIndex: 0, pageSize: 50 } } }),
   });
 
   const handleDensity = useCallback(() => {
@@ -247,13 +245,15 @@ export function DataTable<T = any>({
         <button type="button" onClick={handleDensity} style={{ fontSize: 11, padding: '4px 8px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', cursor: 'pointer' }}>
           {density}
         </button>
+        {table.getPageCount() > 1 && (
         <div style={{ display: 'flex', gap: 8, fontSize: 12, color: 'var(--text-muted)' }}>
           <button type="button" onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} style={pageBtn}>««</button>
           <button type="button" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} style={pageBtn}>«</button>
-          <span>Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}</span>
+          <span>Page {table.state.pagination.pageIndex + 1} of {table.getPageCount()}</span>
           <button type="button" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} style={pageBtn}>»</button>
           <button type="button" onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} style={pageBtn}>»»</button>
         </div>
+        )}
       </div>
     </div>
   );

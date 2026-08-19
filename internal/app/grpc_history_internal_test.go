@@ -65,8 +65,8 @@ func TestHistoryUnary(t *testing.T) {
 	require.Len(t, calls[0].Responses, 1)
 	require.Equal(t, stub.ID, calls[0].StubID)
 	require.Equal(t, uint32(0), calls[0].Code)
-	require.NotNil(t, calls[0].Request)
-	require.NotNil(t, calls[0].Response)
+	require.NotNil(t, calls[0].Requests[0])
+	require.NotNil(t, calls[0].Responses[0])
 }
 
 func TestHistoryServerStream1N(t *testing.T) {
@@ -149,8 +149,8 @@ func TestHistoryClientStreamN1(t *testing.T) {
 	require.Equal(t, stub.ID, calls[0].StubID)
 	require.Len(t, calls[0].Requests, 3)
 	require.Len(t, calls[0].Responses, 1)
-	require.NotNil(t, calls[0].Request)
-	require.NotNil(t, calls[0].Response)
+	require.NotNil(t, calls[0].Requests[0])
+	require.NotNil(t, calls[0].Responses[0])
 }
 
 func TestHistoryBidiStreamNM(t *testing.T) {
@@ -195,8 +195,8 @@ func TestHistoryBidiStreamNM(t *testing.T) {
 	require.Len(t, calls[0].Requests, 2)
 	require.Len(t, calls[0].Responses, 2)
 	require.Equal(t, uint32(0), calls[0].Code)
-	require.NotNil(t, calls[0].Request)
-	require.NotNil(t, calls[0].Response)
+	require.NotNil(t, calls[0].Requests[0])
+	require.NotNil(t, calls[0].Responses[0])
 }
 
 func TestHistoryBidiStream11(t *testing.T) {
@@ -238,8 +238,6 @@ func TestHistoryBidiStream11(t *testing.T) {
 	require.Len(t, calls[0].Responses, 1)
 }
 
-// Regression: recordBidiStream hardcoded codes.Unknown for every error, so a
-// bidi stub returning a configured Output.Code was recorded with the wrong code.
 func TestHistoryBidiStreamRecordsConfiguredErrorCode(t *testing.T) {
 	t.Parallel()
 
@@ -280,9 +278,6 @@ func TestHistoryBidiStreamRecordsConfiguredErrorCode(t *testing.T) {
 	require.Equal(t, uint32(codes.NotFound), calls[0].Code, "must record the configured code, not Unknown")
 }
 
-// Regression: a server stream that failed returned before recordCall, so the
-// call vanished from history and from /api/verify — the bidi path already
-// recorded partial exchanges. Now both record the error with its real code.
 func TestHistoryServerStreamWithError(t *testing.T) {
 	t.Parallel()
 
@@ -322,10 +317,6 @@ func TestHistoryServerStreamWithError(t *testing.T) {
 	require.Contains(t, calls[0].Error, "stub error")
 }
 
-// Regression: when a server stream broke partway, handleArrayStreamData
-// returned before recordCall and the whole call disappeared from history —
-// precisely the case a user is testing. The messages already sent must be
-// recorded alongside the terminal status.
 func TestHistoryServerStreamRecordsPartialStream(t *testing.T) {
 	t.Parallel()
 

@@ -84,8 +84,7 @@ func InitTracing(ctx context.Context, cfg Config) func(context.Context) error {
 
 	res, err := resource.Merge(
 		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
+		resource.NewSchemaless(
 			semconv.ServiceName("gripmock"),
 			semconv.ServiceVersion(cfg.Version),
 		),

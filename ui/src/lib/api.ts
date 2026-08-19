@@ -105,6 +105,6 @@ export const api = {
   get: <T>(p: string, params?: Record<string, string | undefined>) => request<T>(`${p}${qs(params)}`),
   getWithMeta: <T>(p: string, params?: Record<string, string | undefined>) => requestWithMeta<T>(`${p}${qs(params)}`),
   post: <T>(p: string, body?: unknown) => request<T>(p, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
-  delete: <T>(p: string) => request<T>(p, { method: 'DELETE' }),
+  delete: <T>(p: string, headers?: Record<string, string>) => request<T>(p, { method: 'DELETE', headers }),
   postBinary: <T>(p: string, data: Blob) => request<T>(p, { method: 'POST', body: data, headers: { 'Content-Type': 'application/octet-stream' } }),
 };

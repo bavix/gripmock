@@ -23,6 +23,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
 	"github.com/bavix/gripmock/v3/internal/infra/build"
+	"github.com/bavix/gripmock/v3/internal/infra/httputil"
 	"github.com/bavix/gripmock/v3/internal/infra/muxmiddleware"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
@@ -247,9 +248,19 @@ func (h *RestServer) liveness(ctx context.Context, w http.ResponseWriter) {
 
 // responseError writes an error response to the HTTP writer.
 func (h *RestServer) responseError(ctx context.Context, w http.ResponseWriter, err error) {
-	w.WriteHeader(http.StatusInternalServerError)
+	w.WriteHeader(errorStatus(err))
 
 	h.writeResponseError(ctx, w, err)
+}
+
+func errorStatus(err error) int {
+	var toLarge *http.MaxBytesError
+
+	if stderrors.Is(err, httputil.ErrBodyTooLarge) || stderrors.As(err, &toLarge) {
+		return http.StatusRequestEntityTooLarge
+	}
+
+	return http.StatusInternalServerError
 }
 
 // validationError writes a validation error response to the HTTP writer.
@@ -364,14 +375,9 @@ func (h *RestServer) dashboardPayload(r *http.Request) rest.Dashboard {
 		return payload
 	}
 
-	records := h.history.Filter(history.FilterOpts{Session: muxmiddleware.FromRequest(r)})
-	payload.TotalHistory = len(records)
-
-	for _, record := range records {
-		if record.Error != "" {
-			payload.HistoryErrors++
-		}
-	}
+	session := muxmiddleware.FromRequest(r)
+	payload.TotalHistory = countHistory(h.history, history.FilterOpts{Session: session})
+	payload.HistoryErrors = countHistory(h.history, history.FilterOpts{Session: session, ErrorOnly: true})
 
 	return payload
 }

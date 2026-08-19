@@ -10,6 +10,7 @@ export interface Stub {
   options?: StubOptions;
   effects?: StubEffect[];
   source?: string;
+  /** Assigned from the X-Gripmock-Session header; a value sent in the body is discarded. */
   session?: string;
   /** Response-only: whether the stub has matched at least once. */
   used?: boolean;
@@ -117,9 +118,7 @@ export interface CallRecord {
   session?: string;
   stubId?: string;
   timestamp: string;
-  request?: Record<string, unknown>;
   requests?: Record<string, unknown>[];
-  response?: Record<string, unknown>;
   responses?: Record<string, unknown>[];
   responseHeaders?: Record<string, string>;
   code: number;

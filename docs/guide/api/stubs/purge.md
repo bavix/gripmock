@@ -1,15 +1,19 @@
 # Stub API: Purge Stubs
-The `/api/stubs` endpoint with the `DELETE` method removes **all stubs** from the storage. This is a destructive operation and cannot be undone.  
+The `/api/stubs` endpoint with the `DELETE` method removes stubs from the storage. This is a destructive operation and cannot be undone.
 
 ## Request
-- **Method**: `DELETE`  
-- **URL**: `/api/stubs`  
-- **Parameters**: None required.  
-- **Headers**: Standard headers (e.g., `Content-Type: application/json`).  
+- **Method**: `DELETE`
+- **URL**: `/api/stubs`
+- **Parameters**: None required.
+- **Headers**: `X-Gripmock-Session` narrows the purge to one session; without it every stub is removed.
 
-**Example Request**:  
+**Example Request**:
 ```bash
+# Everything
 curl -X DELETE http://127.0.0.1:4771/api/stubs
+
+# Only the fixtures of one session
+curl -X DELETE -H 'X-Gripmock-Session: team-a' http://127.0.0.1:4771/api/stubs
 ```
 
 ## Response
@@ -17,9 +21,12 @@ curl -X DELETE http://127.0.0.1:4771/api/stubs
 - **Body**: Empty (no content returned).  
 
 ## Behavior
-- **Global Deletion**: Removes **all stubs** (both used and unused).  
-- **Static Stubs**: Currently, all stubs are deleted. A future flag may allow excluding static stubs.  
-- **Irreversible**: Deleted stubs cannot be recovered.  
+- **Unscoped**: Removes **all stubs** (both used and unused, every session).
+- **Session-scoped**: With `X-Gripmock-Session`, only that session's stubs go; global stubs and
+  other sessions are untouched. This is what the admin UI uses, so one client cannot wipe
+  another session's fixtures.
+- **Static Stubs**: Currently, all stubs in scope are deleted. A future flag may allow excluding static stubs.
+- **Irreversible**: Deleted stubs cannot be recovered.
 
 ## Example Workflow
 1. **Create Stubs**:  
@@ -57,7 +64,8 @@ curl -X DELETE http://127.0.0.1:4771/api/stubs
 - **Related Endpoints**:  
   - `GET /api/stubs`: List all stubs.  
   - `POST /api/stubs`: Add new stubs.  
-  - `POST /api/stubs/batchDelete`: Delete specific stubs by ID.  
+  - `POST /api/stubs/batchDelete`: Delete specific stubs by ID.
+  - `DELETE /api/history`: The same scoping rule for recorded calls.
 
 ## Schema References
 For complete schema details, see:

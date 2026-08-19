@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package negotiation.v1;
+
+option go_package = "github.com/bavix/gripmock/v3/examples/sdk/negotiation/v1;negotiationv1";
+
+service NegotiationService {
+  rpc Haggle(stream HaggleRequest) returns (stream HaggleResponse);
+}
+
+message HaggleRequest {
+  string deal_id = 1;
+  int64 price_cents = 2;
+}
+
+message HaggleResponse {
+  int64 price_cents = 1;
+  string verdict = 2;
+}

@@ -37,9 +37,9 @@ GripMock 根据你的 `.proto` 文件或编译后的 `.pb` 描述文件构建 Mo
 - **OpenTelemetry 链路追踪** - 支持 gRPC 与 HTTP 路径的 OTLP 追踪（`otelgrpc` + `otelhttp`）
 - **Prometheus 指标（`/metrics`）** - 暴露运行时/进程指标（`go_*`、`process_*`）以及 GripMock 指标
 - **运维 API** - 健康检查端点、descriptors API、stubs API 以及 Web 控制台
-- **Embedded SDK（实验性）** - 在 Go 测试中内嵌 GripMock 并提供验证助手
-- **MCP API（实验性）** - 提供可流式处理的 MCP 端点，用于 Agent 与工具集成
-- **Upstream Modes（实验性）** - `proxy`、`replay`、`capture` 模式，用于从真实上游服务渐进迁移到本地 mocks
+- **Embedded SDK** - 在 Go 测试中内嵌 GripMock 并提供验证助手
+- **MCP API** - 提供可流式处理的 MCP 端点，用于 Agent 与工具集成
+- **Upstream Modes** - `proxy`、`replay`、`capture` 模式，用于从真实上游服务渐进迁移到本地 mocks
 
 ## 📚 文档
 
@@ -47,8 +47,8 @@ GripMock 根据你的 `.proto` 文件或编译后的 `.pb` 描述文件构建 Mo
 
 较新功能的详细文档：
 [Descriptor API](https://bavix.github.io/gripmock/guide/api/descriptors) ·
-[Upstream Modes（实验性）](https://bavix.github.io/gripmock/guide/modes) ·
-[Embedded SDK（实验性）](https://bavix.github.io/gripmock/guide/embedded-sdk) ·
+[Upstream Modes](https://bavix.github.io/gripmock/guide/modes) ·
+[Embedded SDK](https://bavix.github.io/gripmock/guide/embedded-sdk) ·
 [Faker Reference](https://bavix.github.io/gripmock/guide/stubs/faker) ·
 [OpenTelemetry + Metrics](https://bavix.github.io/gripmock/guide/introduction/advanced-usage) ·
 [GitHub Actions](https://bavix.github.io/gripmock/guide/ci-cd/github-actions) ·
@@ -128,7 +128,7 @@ gripmock grpcs://10.0.0.5:8443?serverName=api.company.local
 gripmock grpc://localhost:50051?bearer=<token>
 ```
 
-**在 reflection 基础上使用 upstream modes（实验性）：**
+**在 reflection 基础上使用 upstream modes：**
 ```bash
 # 通过 GripMock 进行纯反向代理
 gripmock grpc+proxy://localhost:50051
@@ -496,9 +496,7 @@ gripmock grpcs://10.0.0.5:8443?serverName=api.company.local
 
 完整指南：[gRPC Reflection Source](https://bavix.github.io/gripmock/guide/sources/grpc-reflection)。
 
-## 🔁 Upstream Modes（实验性）
-
-⚠️ **实验性功能**：Upstream modes 可能在未提前通知的情况下变更。
+## 🔁 Upstream Modes
 
 Upstream modes 叠加在 reflection sources 之上，定义运行时行为：
 

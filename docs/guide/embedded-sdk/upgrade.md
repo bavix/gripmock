@@ -1,7 +1,8 @@
-# Upgrading to v3.16.0 <VersionTag version="v3.16.0" />
+# Migrating from the legacy SDK API <VersionTag version="v3.16.0" />
 
-::: warning
-⚠️ The old stub-definition API (`sdk.Run`, `mock.Stub`, `Mock.Verify`, etc.) is deprecated but still available. All new code should use the new API.
+::: danger Removed in v3.20.0
+The legacy API (`sdk.Run`, `mock.Stub`, `mock.Verify`, …) no longer exists. This
+page is the map from each old construct to its replacement.
 :::
 
 ## Why the change?
@@ -231,19 +232,16 @@ calls := srv.History()
 - `WithBatch()` — batch mode for remote
 - Unified `Matcher` types: `Equals`, `Contains`, `Matches`, `Glob`, `AnyOf`, `And`, `IgnoreArrayOrder`
 
-## Old API Still Available
+## Removed in v3.20.0
 
-The old API (`sdk.Run`, `mock.Stub`, `mock.Verify`, etc.) still works via `v1compat.go`. Both APIs can coexist in the same test suite — migrate at your own pace.
+| Removed | Replacement |
+|---|---|
+| `sdk.Run(t, opts...)` | `sdk.NewServer(t, opts...)` |
+| `sdk.Mock` | `*sdk.Server` |
+| `sdk.StubBuilder` | `ExpectUnary` / `ExpectServerStream` / `ExpectClientStream` / `ExpectBidirectionalStream` |
+| `sdk.Verifier`, `sdk.MethodVerifier` | `Server.Called`, `Server.TotalCalls`, `Server.ExpectationsWereMet` |
+| `sdk.HistoryReader` | `Server.History()` |
+| `sdk.Merge(...)` | `sdk.And(...)` |
+| `Server.Stub`, `Server.Verify` | the four `Expect*` methods and the verification methods above |
+| `Server.Addr()` | `Server.Address()` |
 
-```go
-// old API — still works
-mock, err := sdk.Run(t, sdk.WithFileDescriptor(helloworld.File_service_proto))
-mock.Stub(sdk.By(helloworld.Greeter_SayHello_FullMethodName)).
-    When(sdk.Equals("name", "Alex")).
-    Reply(sdk.Data("message", "Hi Alex")).
-    Commit()
-```
-
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::

@@ -15,43 +15,35 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-// Server is a running gRPC mock server (v2 API).
-// Create via NewServer, which calls v1 Run() internally.
-//
-// Thread safety: All exported methods are safe for concurrent use.
-// Each NewServer call creates an independent instance — safe for t.Parallel().
-//
-// Usage:
-//
-//	srv := sdk.NewServer(t, sdk.WithProtoFiles("service.proto"))
-//	defer srv.Close()
-//
-//	srv.ExpectUnary("/svc/Method").
-//	    Match("field", "value").
-//	    Return("responseField", "responseValue")
-//
-//	client := pb.NewServiceClient(srv.Conn())
-//	resp, _ := client.Method(t.Context(), &pb.Request{Field: "value"})
-type Server struct {
-	t    TestingT
-	mock Mock
+// TestingT is the minimal interface for test assertions.
+type TestingT interface {
+	Error(args ...any)
+	Fail()
+	Context() context.Context
+	Cleanup(f func())
+}
 
-	// Direct access for fast path (embedded mode)
+// Server is a running gRPC mock server (v2 API).
+type Server struct {
+	t TestingT
+
+	bg context.Context //nolint:containedctx
+
+	embedded *embeddedMock
+	remote   *remoteMock
+
 	budgerigar *stuber.Budgerigar
 	recorder   *history.MemoryStore
 
-	// Remote handle (non-nil in remote mode)
-	remote *remoteMock
+	session string
 
-	// Batch queue: stubs are accumulated in remote mode only when WithBatch() is used.
-	// Otherwise each terminal method sends stubs immediately.
 	pending   []*stuber.Stub
 	pendingMu sync.Mutex
 	batchMode bool
 
 	mu           sync.Mutex
-	expectations []expectedCall // protected by mu
-	verified     bool           // protected by mu
+	expectations []expectedCall
+	verified     bool
 }
 
 type expectedCall struct {
@@ -61,7 +53,6 @@ type expectedCall struct {
 	times   int
 }
 
-// initServer is the shared initialization for both NewServer and Run (v1 compatibility).
 func initServer(t TestingT, opts ...Option) (*Server, error) {
 	if t == nil {
 		panic("gripmock: TestingT must not be nil")
@@ -79,24 +70,19 @@ func initServer(t TestingT, opts ...Option) (*Server, error) {
 		o.httpClient = &http.Client{Timeout: 10 * time.Second} //nolint:mnd
 	}
 
-	mock, err := startServer(t.Context(), o)
-	if err != nil {
+	srv := &Server{
+		t:         t,
+		bg:        context.WithoutCancel(t.Context()),
+		batchMode: o.batchMode,
+		session:   o.session,
+	}
+
+	if err := startServer(t.Context(), o, srv); err != nil {
 		return nil, err
 	}
 
-	srv := &Server{t: t, mock: mock, batchMode: o.batchMode}
-
-	// Extract internals for direct, lock-free stub registration
-	switch m := mock.(type) {
-	case *embeddedMock:
-		srv.budgerigar = m.budgerigar
-		srv.recorder = m.recorder
-	case *remoteMock:
-		srv.remote = m
-	}
-
 	t.Cleanup(func() {
-		if verr := srv.ExpectationsWereMet(); verr != nil {
+		if verr := srv.ExpectationsWereMetContext(srv.bg); verr != nil {
 			t.Error(verr)
 		}
 
@@ -109,8 +95,6 @@ func initServer(t TestingT, opts ...Option) (*Server, error) {
 }
 
 // NewServer creates and starts a mock server.
-// Panics on initialization errors. Registers t.Cleanup for auto-verify + close.
-// Each call creates an independent server — safe for t.Parallel().
 func NewServer(t TestingT, opts ...Option) *Server {
 	srv, err := initServer(t, opts...)
 	if err != nil {
@@ -121,14 +105,23 @@ func NewServer(t TestingT, opts ...Option) *Server {
 }
 
 // Address returns the server address (e.g. "127.0.0.1:PORT").
-func (s *Server) Address() string { return s.mock.Addr() }
+func (s *Server) Address() string {
+	if s.remote != nil {
+		return s.remote.addr
+	}
+
+	return s.embedded.addr
+}
 
 func (s *Server) Conn() *grpc.ClientConn {
-	return s.mock.Conn()
+	if s.remote != nil {
+		return s.remote.conn
+	}
+
+	return s.embedded.conn
 }
 
 // ExpectUnary terminal: Return, ReturnProto, ReturnError, Run.
-// Use Delay() inside Return for delayed responses: Return(Delay(100*ms, "msg", "hello")).
 func (s *Server) ExpectUnary(fullMethod string) *UnaryExpectation {
 	return newUnaryExpectation(s, fullMethod)
 }
@@ -149,10 +142,8 @@ func (s *Server) ExpectBidirectionalStream(fullMethod string) *BidirectionalExpe
 }
 
 // ExpectationsWereMet checks all expectations with non-zero Times were fulfilled.
-// Idempotent: second call returns nil. Thread-safe.
-// Flushes pending stubs before verification (important for remote mode).
 func (s *Server) ExpectationsWereMet() error {
-	return s.ExpectationsWereMetContext(s.t.Context())
+	return s.ExpectationsWereMetContext(s.readCtx())
 }
 
 // ExpectationsWereMetContext is the context-aware version of ExpectationsWereMet.
@@ -169,7 +160,6 @@ func (s *Server) ExpectationsWereMetContext(ctx context.Context) error {
 	copy(ec, s.expectations)
 	s.mu.Unlock()
 
-	// Ensure all pending stubs are sent before verifying
 	_ = s.Flush() //nolint:contextcheck
 
 	if s.remote != nil {
@@ -183,14 +173,8 @@ func (s *Server) ExpectationsWereMetContext(ctx context.Context) error {
 func (s *Server) embeddedVerify(ec []expectedCall) error {
 	var errs []error
 
-	// Count matched calls PER STUB (by the recorded StubID), not per method.
-	// A stub can only match up to its Times budget, so an EXACT check is
-	// well-defined and consistent with the remote /api/verify contract
-	// (rest_dashboard.go: actual != expected). Per-method counting would break
-	// multiple stubs sharing one method (Once + Twice) and NextWillReturn
-	// chains, where the method is hit more times than any single Times(n).
 	counts := make(map[uuid.UUID]int)
-	for _, rec := range s.recorder.All() {
+	for rec := range s.recorder.FilterSeq(history.FilterOpts{}) {
 		counts[rec.StubID]++
 	}
 
@@ -215,10 +199,7 @@ func (s *Server) embeddedVerify(ec []expectedCall) error {
 
 //nolint:funcorder
 func (s *Server) remoteVerify(ctx context.Context, ec []expectedCall) error {
-	// Count PER STUB (by recorded StubID), identical to embeddedVerify. A
-	// per-method /api/verify would mis-count multiple stubs sharing one method
-	// (Once + Twice) and NextWillReturn chains, diverging from the embedded path.
-	calls, err := (&remoteHistory{mock: s.remote}).AllContext(ctx)
+	calls, err := s.remote.history().AllContext(ctx)
 	if err != nil {
 		return err
 	}
@@ -249,61 +230,87 @@ func (s *Server) remoteVerify(ctx context.Context, ec []expectedCall) error {
 }
 
 // Called returns the number of times a method was called.
-// fullMethod format: "/package.Service/Method".
 func (s *Server) Called(fullMethod string) int {
 	service, method := splitMethodName(fullMethod)
 	if s.remote != nil {
-		calls, _ := s.remote.History().FilterByMethodContext(s.t.Context(), service, method)
+		calls, err := s.remote.history().FilterByMethodContext(s.readCtx(), service, method)
+		s.reportRemoteErr("Called", err)
 
 		return len(calls)
 	}
 
-	return len(s.recorder.FilterByMethod(service, method))
+	return s.recorder.CountFilter(history.FilterOpts{
+		Service: service,
+		Method:  method,
+		Session: s.session,
+	})
 }
 
 func (s *Server) TotalCalls() int {
 	if s.remote != nil {
-		count, _ := s.remote.History().CountContext(s.t.Context())
+		count, err := s.remote.history().CountContext(s.readCtx())
+		s.reportRemoteErr("TotalCalls", err)
 
 		return count
 	}
 
-	return s.recorder.Count()
+	if s.session == "" {
+		return s.recorder.Count()
+	}
+
+	return s.recorder.CountFilter(history.FilterOpts{Session: s.session})
 }
 
 func (s *Server) History() []CallRecord {
 	if s.remote != nil {
-		calls, _ := s.remote.History().AllContext(s.t.Context())
+		calls, err := s.remote.history().AllContext(s.readCtx())
+		s.reportRemoteErr("History", err)
 
 		return calls
 	}
 
 	records := s.recorder.All()
+	if s.session != "" {
+		records = s.recorder.Filter(history.FilterOpts{Session: s.session})
+	}
+
 	result := make([]CallRecord, len(records))
 	copy(result, records)
 
 	return result
 }
 
-// Reset clears local expectations, pending stubs, and verification state.
-// For embedded: also clears budgerigar and history recorder.
-// For remote: clears local state only (remote server history is shared).
-// Does NOT close the server — register new expectations after Reset.
+//nolint:funcorder
+func (s *Server) reportRemoteErr(op string, err error) {
+	if err != nil {
+		s.t.Error("gripmock: ", op, " failed to read remote history: ", err)
+	}
+}
+
 func (s *Server) Reset() {
 	s.mu.Lock()
 	s.expectations = nil
 	s.verified = false
 	s.mu.Unlock()
 
+	s.pendingMu.Lock()
 	s.pending = nil
+	s.pendingMu.Unlock()
 
 	if s.budgerigar != nil {
 		s.budgerigar.Clear()
 	}
 
-	// Clear the recorder in place — the running server holds this same pointer,
-	// so swapping it would leave the server writing into an orphaned store while
-	// Called/History/verify read the fresh empty one.
+	if s.remote != nil {
+		if err := s.remote.deleteOwnedStubs(); err != nil {
+			s.t.Error("gripmock: Reset failed to delete remote stubs: ", err)
+		}
+
+		if err := s.remote.purgeHistory(); err != nil {
+			s.t.Error("gripmock: Reset failed to purge remote history: ", err)
+		}
+	}
+
 	if s.recorder != nil {
 		s.recorder.Clear()
 	}
@@ -311,11 +318,15 @@ func (s *Server) Reset() {
 
 // Close flushes pending stubs in batch mode and shuts down the server.
 func (s *Server) Close() error {
-	if s.batchMode && s.remote != nil {
-		_ = s.Flush()
+	if s.remote != nil {
+		if s.batchMode {
+			_ = s.Flush()
+		}
+
+		return s.remote.Close()
 	}
 
-	return s.mock.Close()
+	return s.embedded.Close()
 }
 
 // Flush is a no-op for embedded mode and non-batch remote mode.
@@ -333,7 +344,14 @@ func (s *Server) Flush() error {
 	return err
 }
 
-// trackExpectation records an expectation and queues/registers the stub.
+func (s *Server) readCtx() context.Context {
+	if s.t.Context().Err() != nil {
+		return s.bg
+	}
+
+	return s.t.Context()
+}
+
 func (s *Server) trackExpectation(stub *stuber.Stub) {
 	s.mu.Lock()
 	if stub.Options.Times > 0 {
@@ -349,8 +367,6 @@ func (s *Server) trackExpectation(stub *stuber.Stub) {
 	s.registerStub(stub)
 }
 
-// registerStub registers a stub immediately (embedded) or sends/queues it (remote).
-// Thread-safe: in batch mode queues with pendingMu; in immediate mode sends via REST.
 func (s *Server) registerStub(stub *stuber.Stub) {
 	switch {
 	case s.budgerigar != nil:
@@ -362,6 +378,27 @@ func (s *Server) registerStub(stub *stuber.Stub) {
 	case s.remote != nil:
 		_ = s.remote.commitStubsBatch([]*stuber.Stub{stub})
 	}
+}
+
+func (s *Server) upsertStub(stub *stuber.Stub) {
+	if s.remote != nil && s.batchMode {
+		s.pendingMu.Lock()
+		defer s.pendingMu.Unlock()
+
+		for i, queued := range s.pending {
+			if queued.ID == stub.ID {
+				s.pending[i] = stub
+
+				return
+			}
+		}
+
+		s.pending = append(s.pending, stub)
+
+		return
+	}
+
+	s.registerStub(stub)
 }
 
 func splitMethodName(fullMethod string) (string, string) {
@@ -397,4 +434,58 @@ func joinErrors(errs []error) error {
 
 		return errors.Wrapf(ErrVerificationFailed, "%s", b.String())
 	}
+}
+
+func startServer(ctx context.Context, o *options, srv *Server) error {
+	if o.remoteAddr != "" {
+		rm, err := runRemote(ctx, o)
+		if err != nil {
+			return err
+		}
+
+		srv.remote = rm
+
+		return nil
+	}
+
+	if err := resolveEmbeddedDescriptors(ctx, o); err != nil {
+		return err
+	}
+
+	em, err := runEmbedded(ctx, o)
+	if err != nil {
+		return err
+	}
+
+	srv.embedded = em
+	srv.budgerigar = em.budgerigar
+	srv.recorder = em.recorder
+
+	return nil
+}
+
+func resolveEmbeddedDescriptors(ctx context.Context, o *options) error {
+	if len(o.protoPaths) > 0 {
+		fds, err := compileProtoFiles(ctx, o.protoPaths)
+		if err != nil {
+			return err
+		}
+
+		o.appendDescriptorFiles(fds.GetFile())
+	}
+
+	if len(o.descriptorFiles) == 0 && o.mockFromAddr == "" {
+		return ErrDescriptorsRequired
+	}
+
+	if o.mockFromAddr != "" {
+		fds, err := resolveDescriptorsFromReflection(ctx, o.mockFromAddr)
+		if err != nil {
+			return err
+		}
+
+		o.descriptorFiles = fds.GetFile()
+	}
+
+	return nil
 }

@@ -14,11 +14,6 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-// TestNewOutputMessageWKTDirect is the regression test for issue #882: methods
-// that return a well-known type at the top level. protojson + dynamicpb handle
-// the canonical protojson encoding natively; gripmock just needs to plumb the
-// stub data through json.Encode -> protojson.Unmarshal without inventing a
-// parallel encoder.
 func TestNewOutputMessageWKTDirect(t *testing.T) {
 	t.Parallel()
 
@@ -180,7 +175,6 @@ func testNewOutputMessageEmpty(t *testing.T, concrete func(t *testing.T, msg, ta
 	require.NoError(t, err)
 	require.NotNil(t, msg)
 
-	// Empty has no fields; round-trip is the assertion.
 	got := &emptypb.Empty{}
 	concrete(t, msg, got)
 }
@@ -201,7 +195,6 @@ func testNewOutputMessageInt64(t *testing.T) {
 	require.NotNil(t, msg)
 }
 
-// TestConvertMapValueStringNoFd verifies that without a field descriptor strings stay as-is.
 func TestConvertMapValueStringNoFd(t *testing.T) {
 	t.Parallel()
 

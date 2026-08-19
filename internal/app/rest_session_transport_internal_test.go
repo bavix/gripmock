@@ -20,7 +20,6 @@ func (nopExtender) Wait(context.Context) {}
 func TestRestAddStubSessionFromHeaderOnly(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	b := stuber.NewBudgerigar()
 	srv, err := NewRestServer(t.Context(), b, nopExtender{}, nil, nil, nil, nil)
 	require.NoError(t, err)
@@ -34,10 +33,8 @@ func TestRestAddStubSessionFromHeaderOnly(t *testing.T) {
 
 	w := httptest.NewRecorder()
 
-	// Act
 	srv.AddStub(w, req)
 
-	// Assert
 	require.Equal(t, http.StatusOK, w.Code)
 
 	all := b.All()
@@ -48,7 +45,6 @@ func TestRestAddStubSessionFromHeaderOnly(t *testing.T) {
 func TestRestAddStubWithoutHeaderUsesGlobal(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	b := stuber.NewBudgerigar()
 	srv, err := NewRestServer(t.Context(), b, nopExtender{}, nil, nil, nil, nil)
 	require.NoError(t, err)
@@ -61,10 +57,8 @@ func TestRestAddStubWithoutHeaderUsesGlobal(t *testing.T) {
 
 	w := httptest.NewRecorder()
 
-	// Act
 	srv.AddStub(w, req)
 
-	// Assert
 	require.Equal(t, http.StatusOK, w.Code)
 
 	all := b.All()

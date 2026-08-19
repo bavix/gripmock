@@ -48,8 +48,6 @@ func TestDecodeGRPCWebTextAcceptsEveryPadding(t *testing.T) {
 	t.Run("concatenated frames", func(t *testing.T) {
 		t.Parallel()
 
-		// A streaming client encodes each frame on its own, so the body is a
-		// run of independently padded chunks rather than one base64 string.
 		first := []byte{0x00, 0x00, 0x00, 0x00, 0x01, 0x41}
 		second := []byte{0x80, 0x00, 0x00, 0x00, 0x01, 0x42}
 		body := base64.StdEncoding.EncodeToString(first) + base64.StdEncoding.EncodeToString(second)
@@ -81,8 +79,6 @@ func TestBase64StreamWriterEncodesWholeBody(t *testing.T) {
 	rec := httptest.NewRecorder()
 	w := newBase64StreamWriter(rec)
 
-	// A frame reaches the writer as a header write followed by a payload
-	// write; encoding each separately would corrupt the stream.
 	header := []byte{0x00, 0x00, 0x00, 0x00, 0x01}
 	payload := []byte{0x41}
 	trailers := []byte{0x80, 0x00, 0x00, 0x00, 0x01, 0x42}

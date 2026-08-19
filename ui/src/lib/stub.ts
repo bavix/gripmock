@@ -93,6 +93,24 @@ export function evalMatcherFields(payload: Record<string, unknown>, matcher?: St
   return rows;
 }
 
+function containsMatches(expected: unknown, actual: unknown): boolean {
+  if (Array.isArray(expected)) {
+    return Array.isArray(actual) && expected.every((e) => actual.some((a) => containsMatches(e, a)));
+  }
+
+  if (isPlainObject(expected)) {
+    if (!isPlainObject(actual)) return false;
+
+    return Object.entries(expected).every(([key, value]) => containsMatches(value, actual[key]));
+  }
+
+  return JSON.stringify(expected) === JSON.stringify(actual);
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function fieldMatches(kind: MatcherKind, expected: unknown, actual: unknown): boolean {
   if (actual === undefined) return false;
 
@@ -100,14 +118,13 @@ function fieldMatches(kind: MatcherKind, expected: unknown, actual: unknown): bo
     case 'equals':
       return JSON.stringify(expected) === JSON.stringify(actual);
     case 'contains':
-      // String → substring. Array → every expected element present. Otherwise
-      // (scalars, objects) fall back to equality — a scalar only "contains"
-      // an equal scalar (avoids "15" matching contains 5).
-      if (typeof expected === 'string' && typeof actual === 'string') return actual.includes(expected);
-      if (Array.isArray(expected) && Array.isArray(actual)) {
-        return expected.every((e) => actual.some((a) => JSON.stringify(a) === JSON.stringify(e)));
-      }
-      return JSON.stringify(expected) === JSON.stringify(actual);
+      // Structural containment, mirroring deeply.ContainsIgnoreArrayOrder on the
+      // server: an object is a subset, an array is a subset ignoring order, and
+      // anything else — strings included — must be equal. Treating a string as a
+      // substring made this diff disagree with the engine, which is the one
+      // thing an "why didn't it match" view must never do. Use `matches` for
+      // substrings.
+      return containsMatches(expected, actual);
     case 'matches':
       try { return new RegExp(String(expected)).test(String(actual)); } catch { return false; }
     case 'glob':

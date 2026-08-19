@@ -1,35 +1,13 @@
 # Defining Stubs <VersionTag version="v3.7.0" />
 
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::
-
 ::: info
 **Minimum Requirements**: Go 1.26 or later
 :::
 
-> **Version history:** Stub definition available since <VersionTag version="v3.7.0" /> (legacy API: `mock.Stub(...).When(...).Reply(...).Commit()`). Current v2 API since <VersionTag version="v3.16.0" />. See the [Upgrade Guide](./upgrade.md) for migration.
+> **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" />. Current API since <VersionTag version="v3.16.0" />; the legacy `sdk.Run` / `mock.Stub` / `mock.Verify` API was **removed in v3.20.0**. See the [Upgrade Guide](./upgrade.md).
 
 The SDK provides helper functions to define stubs easily.
 
----
-
-### Legacy API (v3.7.0+)
-
-The same stub definition in the legacy API:
-
-```go
-mock, err := sdk.Run(t, sdk.WithFileDescriptor(user.File_user_service_proto))
-require.NoError(t, err)
-defer mock.Close()
-
-mock.Stub(sdk.By(UserService_GetUser_FullMethodName)).
-    When(sdk.Equals("id", "user-123")).
-    Reply(sdk.Data("name", "John Doe", "email", "john@example.com")).
-    Commit()
-```
-
----
 
 ## Basic Matching
 

@@ -25,8 +25,6 @@ func spaHandler(assets fs.FS) http.Handler {
 			return
 		}
 
-		// Reject traversal/invalid paths before touching the FS; a valid
-		// existing asset is served, everything else falls back to index.html.
 		if fs.ValidPath(upath) {
 			if f, err := assets.Open(upath); err == nil {
 				_ = f.Close()
@@ -37,7 +35,7 @@ func spaHandler(assets fs.FS) http.Handler {
 			}
 		}
 
-		if strings.HasPrefix(upath, "assets/") {
+		if strings.HasPrefix(upath, "assets/") || upath == "api" || strings.HasPrefix(upath, "api/") {
 			http.NotFound(w, r)
 
 			return

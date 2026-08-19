@@ -2,13 +2,13 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { Column } from './tableFeatures';
 import { DataTable } from './DataTable';
 
 afterEach(cleanup);
 
 interface Row { id: string; name: string }
-const columns: ColumnDef<Row>[] = [{ id: 'name', header: 'Name', accessorKey: 'name' }];
+const columns: Column<Row>[] = [{ id: 'name', header: 'Name', accessorKey: 'name' }];
 const rows = (n: number): Row[] => Array.from({ length: n }, (_, i) => ({ id: String(i), name: `row-${i}` }));
 
 describe('DataTable manual pagination', () => {

@@ -72,7 +72,8 @@ brews:
         format: openpgp
     commit_msg_template: "Update GripMock to {{ .Version }}"
 
-    # Deprecation warning mechanism
+    # Deprecated 2026-02-18. Distribution channels get a full year of support,
+    # so this formula block is removed no earlier than 2027-02-18.
     custom_block: |
       deprecate! date: "2026-02-18", because: "moved to cask. Please run `brew install --cask gripmock`"
 

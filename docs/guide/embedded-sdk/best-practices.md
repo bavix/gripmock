@@ -1,14 +1,10 @@
 # Best Practices <VersionTag version="v3.7.0" />
 
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::
-
 ::: info
 **Minimum Requirements**: Go 1.26 or later
 :::
 
-> **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" /> (legacy API). Current v2 API since <VersionTag version="v3.16.0" />.
+> **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" />. Current API since <VersionTag version="v3.16.0" />; the legacy `sdk.Run` / `mock.Stub` / `mock.Verify` API was **removed in v3.20.0**. See the [Upgrade Guide](./upgrade.md).
 
 Recommended patterns and practices for using GripMock Embedded SDK.
 

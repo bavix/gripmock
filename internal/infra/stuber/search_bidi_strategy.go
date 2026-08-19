@@ -1,6 +1,34 @@
 package stuber
 
-func matchBidiStubMessage(stub *Stub, messageData map[string]any) bool {
+func matchBidiStubHeaders(stub *Stub, queryHeaders map[string]any) bool {
+	if stub.Headers.Len() > 0 && len(queryHeaders) == 0 {
+		return false
+	}
+
+	if len(queryHeaders) > 0 && !matchHeaders(queryHeaders, stub.Headers) {
+		return false
+	}
+
+	return true
+}
+
+func HandlerCandidate(stub *Stub, query QueryBidi) bool {
+	if stub.Handler == nil {
+		return false
+	}
+
+	if stub.Session != "" && stub.Session != query.Session {
+		return false
+	}
+
+	return matchBidiStubHeaders(stub, query.Headers)
+}
+
+func matchBidiStubMessage(stub *Stub, queryHeaders map[string]any, messageData map[string]any) bool {
+	if !matchBidiStubHeaders(stub, queryHeaders) {
+		return false
+	}
+
 	if stub.IsBidirectional() {
 		if len(stub.Inputs) == 0 {
 			return matchInputData(stub.Input, messageData)
@@ -32,11 +60,13 @@ func matchAnyStreamInput(inputs []InputData, messageData map[string]any) bool {
 
 func scoreBidiStubMessage(query Query, stub *Stub, messageIndex int) float64 {
 	if stub.IsBidirectional() && len(stub.Inputs) > 0 {
+		headersRank := rankHeaders(query.Headers, stub.Headers)
+
 		if messageIndex < len(stub.Inputs) {
-			return rankInputData(stub.Inputs[messageIndex], query.Input[0])
+			return headersRank + rankInputData(stub.Inputs[messageIndex], query.Input[0])
 		}
 
-		return 0.1 //nolint:mnd
+		return headersRank + 0.1 //nolint:mnd
 	}
 
 	return rankStub(query, stub)
@@ -104,41 +134,11 @@ func matchInputEquals(expected map[string]any, messageData map[string]any) bool 
 }
 
 func matchInputContains(expected map[string]any, messageData map[string]any) bool {
-	return matchInputByComparator(expected, messageData, contains)
+	return contains(expected, messageData)
 }
 
 func matchInputRegex(expected map[string]any, messageData map[string]any) bool {
-	return matchInputByComparator(expected, messageData, matches)
-}
-
-func matchInputByComparator(
-	expected map[string]any,
-	messageData map[string]any,
-	comparator func(map[string]any, any) bool,
-) bool {
-	var scratch map[string]any
-
-	for key, expectedValue := range expected {
-		actualValue, exists := messageData[key]
-		if !exists {
-			return false
-		}
-
-		if scratch == nil {
-			scratch = make(map[string]any, 1)
-		}
-
-		scratch[key] = expectedValue
-		if !comparator(scratch, actualValue) {
-			delete(scratch, key)
-
-			return false
-		}
-
-		delete(scratch, key)
-	}
-
-	return true
+	return matches(expected, messageData)
 }
 
 func rankInputEquals(expected map[string]any, messageData map[string]any) float64 {
@@ -166,22 +166,16 @@ func rankInputByComparator(
 	messageData map[string]any,
 	comparator func(map[string]any, any) bool,
 ) float64 {
-	var scratch map[string]any
-
 	total := 0.0
 
 	for key, expectedValue := range expected {
-		if actualValue, exists := messageData[key]; exists {
-			if scratch == nil {
-				scratch = make(map[string]any, 1)
-			}
+		actualValue, exists := messageData[key]
+		if !exists {
+			continue
+		}
 
-			scratch[key] = expectedValue
-			if comparator(scratch, actualValue) {
-				total += 10.0
-			}
-
-			delete(scratch, key)
+		if comparator(map[string]any{key: expectedValue}, map[string]any{key: actualValue}) {
+			total += 10.0
 		}
 	}
 

@@ -125,9 +125,8 @@ func TestTracingDisabled(t *testing.T) {
 	require.NoError(t, err)
 }
 
+//nolint:paralleltest // installs the process-wide tracer provider
 func TestTracingUnreachableCollector(t *testing.T) {
-	t.Parallel()
-
 	ctx := t.Context()
 
 	cfg := telemetry.Config{
@@ -139,21 +138,19 @@ func TestTracingUnreachableCollector(t *testing.T) {
 
 	start := time.Now()
 	shutdown := telemetry.InitTracing(ctx, cfg)
-	elapsed := time.Since(start)
 
-	require.Less(t, elapsed, 5*time.Second)
+	require.Less(t, time.Since(start), 5*time.Second,
+		"init must not block on a collector that is not there")
+	require.NotNil(t, shutdown, "the caller registers this without a nil check")
 
-	if shutdown != nil {
-		shutdownCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-		defer cancel()
+	shutdownCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
 
-		_ = shutdown(shutdownCtx)
-	}
+	require.NoError(t, shutdown(shutdownCtx))
 }
 
+//nolint:paralleltest // installs the process-wide tracer provider
 func TestTracingInvalidEndpoint(t *testing.T) {
-	t.Parallel()
-
 	ctx := t.Context()
 
 	cfg := telemetry.Config{
@@ -165,20 +162,18 @@ func TestTracingInvalidEndpoint(t *testing.T) {
 
 	start := time.Now()
 	shutdown := telemetry.InitTracing(ctx, cfg)
-	elapsed := time.Since(start)
 
-	require.Less(t, elapsed, 5*time.Second)
+	require.Less(t, time.Since(start), 5*time.Second)
 	require.NotNil(t, shutdown)
 
 	shutdownCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	_ = shutdown(shutdownCtx)
+	require.NoError(t, shutdown(shutdownCtx))
 }
 
+//nolint:paralleltest // installs the process-wide tracer provider
 func TestTracerProviderSetAfterInit(t *testing.T) {
-	t.Parallel()
-
 	ctx := t.Context()
 
 	cfg := telemetry.Config{
@@ -188,19 +183,25 @@ func TestTracerProviderSetAfterInit(t *testing.T) {
 		Version:  "test",
 	}
 
-	_ = telemetry.InitTracing(ctx, cfg)
+	shutdown := telemetry.InitTracing(ctx, cfg)
 
-	tracer := otel.Tracer("test")
-	require.NotNil(t, tracer)
+	t.Cleanup(func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
 
-	_, span := tracer.Start(ctx, "test-span")
-	require.NotNil(t, span)
-	span.End()
+		_ = shutdown(shutdownCtx)
+	})
+
+	_, span := otel.Tracer("test").Start(ctx, "test-span")
+	defer span.End()
+
+	require.True(t, span.IsRecording(),
+		"a no-op provider would hand back a non-recording span, so this is what proves init took")
+	require.True(t, span.SpanContext().IsValid())
 }
 
+//nolint:paralleltest // installs the process-wide tracer provider
 func TestTextMapPropagatorSetAfterInit(t *testing.T) {
-	t.Parallel()
-
 	ctx := t.Context()
 
 	cfg := telemetry.Config{

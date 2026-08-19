@@ -19,7 +19,6 @@ func TestReadConnectFrame_EOF(t *testing.T) {
 func TestReadConnectFrame_EmptyData(t *testing.T) {
 	t.Parallel()
 
-	// 5-byte header: flag=0, length=0
 	header := []byte{0, 0, 0, 0, 0}
 
 	frame, err := readConnectFrame(bytes.NewReader(header))
@@ -54,37 +53,26 @@ func TestReadConnectFrame_TruncatedHeader(t *testing.T) {
 	t.Parallel()
 
 	_, err := readConnectFrame(bytes.NewReader([]byte{0, 0, 0}))
-	// io.ReadFull returns io.ErrUnexpectedEOF for a partial read,
-	// which the caller surfaces directly as a protocol violation.
 	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
 }
 
 func TestReadConnectFrame_TruncatedBody(t *testing.T) {
 	t.Parallel()
 
-	// header says 10 bytes but only 3 are present
 	header := []byte{0, 0, 0, 0, 10}
 	_, err := readConnectFrame(bytes.NewReader(append(header, []byte("abc")...)))
 	require.ErrorIs(t, err, io.ErrUnexpectedEOF)
 }
 
-// TestReadConnectFrame_OversizedBodyReturnsErrEnvelopeTooLarge guards
-// against a malicious peer advertising an enormous length and forcing
-// a huge allocation. The helper must reject such frames with
-// ErrEnvelopeTooLarge before any memory is allocated. After this
-// error the stream is poisoned and must not be reused.
 func TestReadConnectFrame_OversizedBodyReturnsErrEnvelopeTooLarge(t *testing.T) {
 	t.Parallel()
 
-	// length = 1 GiB, body = 0 bytes (the reader closes immediately)
 	header := []byte{0, 0x40, 0x00, 0x00, 0x00}
 
 	_, err := readConnectFrame(bytes.NewReader(header))
 	require.ErrorIs(t, err, ErrEnvelopeTooLarge)
 }
 
-// TestReadConnectFrame_ExactlyMaxSizeAccepted verifies that frames at
-// exactly the maximum size are accepted.
 func TestReadConnectFrame_ExactlyMaxSizeAccepted(t *testing.T) {
 	t.Parallel()
 
@@ -98,7 +86,6 @@ func TestReadConnectFrame_ExactlyMaxSizeAccepted(t *testing.T) {
 	require.Len(t, frame.data, connectEnvelopeMaxFrameSize)
 }
 
-// TestReadConnectFrame_OneByteOverMaxSizeRejected verifies the boundary.
 func TestReadConnectFrame_OneByteOverMaxSizeRejected(t *testing.T) {
 	t.Parallel()
 
@@ -149,7 +136,7 @@ func TestReadWriteConnectFrame_Roundtrip(t *testing.T) {
 	payloads := [][]byte{
 		[]byte("first"),
 		[]byte("second message"),
-		nil, // empty frame
+		nil,
 	}
 
 	var buf bytes.Buffer

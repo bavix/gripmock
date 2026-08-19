@@ -28,7 +28,6 @@ func (errRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
 func newTestServer(t *testing.T, handler func(http.ResponseWriter, *http.Request)) *httptest.Server {
 	t.Helper()
 
-	// Wrap with gzip decompression middleware to match real server behavior
 	h := httputil.GzipRequestMiddleware(http.HandlerFunc(handler))
 
 	ts := httptest.NewServer(h)
@@ -44,7 +43,6 @@ func newTestClient(ts *httptest.Server, session string) Client {
 func TestClientAddStub(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	var called bool
 
 	ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -86,10 +84,8 @@ func TestClientAddStub(t *testing.T) {
 
 	c := newTestClient(ts, "A")
 
-	// Act
 	err := c.AddStub(&stuber.Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: stuber.Output{Data: map[string]any{"ok": true}}})
 
-	// Assert
 	require.NoError(t, err)
 	require.True(t, called)
 }
@@ -107,7 +103,6 @@ func TestClientBatchDeleteAcceptsNotFoundOrGone(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Arrange
 			ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 				if r.URL.Path != "/api/stubs/batchDelete" {
 					t.Errorf("expected /api/stubs/batchDelete, got %s", r.URL.Path)
@@ -125,10 +120,8 @@ func TestClientBatchDeleteAcceptsNotFoundOrGone(t *testing.T) {
 			})
 			c := newTestClient(ts, "")
 
-			// Act
 			err := c.BatchDelete([]uuid.UUID{uuid.New()})
 
-			// Assert
 			require.NoError(t, err)
 		})
 	}
@@ -138,7 +131,6 @@ func TestClientBatchDeleteAcceptsNotFoundOrGone(t *testing.T) {
 func TestClientUploadDescriptors(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	name := "svc.proto"
 
 	var called bool
@@ -195,10 +187,8 @@ func TestClientUploadDescriptors(t *testing.T) {
 
 	c := newTestClient(ts, "")
 
-	// Act
 	err := c.UploadDescriptors([]*descriptorpb.FileDescriptorProto{{Name: &name}})
 
-	// Assert
 	require.NoError(t, err)
 	require.True(t, called)
 }
@@ -206,7 +196,6 @@ func TestClientUploadDescriptors(t *testing.T) {
 func TestClientFetchHistory(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	now := "2026-03-29T10:00:00Z"
 	ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/api/history" {
@@ -228,61 +217,24 @@ func TestClientFetchHistory(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte("[{\"service\":\"svc\",\"method\":\"M\",\"request\":{\"x\":1},\"response\":{\"ok\":true},\"stubId\":\"550e8400-e29b-41d4-a716-446655440000\",\"timestamp\":\"" + now + "\"}]")) //nolint:lll
+		_, _ = w.Write([]byte("[{\"service\":\"svc\",\"method\":\"M\",\"requests\":[{\"x\":1}],\"responses\":[{\"ok\":true}],\"stubId\":\"550e8400-e29b-41d4-a716-446655440000\",\"timestamp\":\"" + now + "\"}]")) //nolint:lll
 	})
 
 	c := newTestClient(ts, "A")
 
-	// Act
 	history, err := c.FetchHistory()
 
-	// Assert
 	require.NoError(t, err)
 	require.Len(t, history, 1)
 	require.Equal(t, "svc", history[0].Service)
 	require.Equal(t, "M", history[0].Method)
 	require.Equal(t, "550e8400-e29b-41d4-a716-446655440000", history[0].StubID.String())
-	require.InDelta(t, float64(1), history[0].Request["x"], 0.001)
-}
-
-func TestClientVerifyMethodCalledBadRequest(t *testing.T) {
-	t.Parallel()
-
-	// Arrange
-	ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/verify" {
-			t.Errorf("expected /api/verify, got %s", r.URL.Path)
-
-			return
-		}
-
-		if r.Method != http.MethodPost {
-			t.Errorf("expected POST, got %s", r.Method)
-
-			return
-		}
-
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"message":"bad count"}`))
-	})
-
-	c := newTestClient(ts, "")
-
-	// Act
-	err := c.VerifyMethodCalled("svc", "M", 2)
-
-	// Assert
-	require.Error(t, err)
-
-	var badReq VerifyBadRequestError
-	require.ErrorAs(t, err, &badReq)
-	require.Equal(t, "bad count", badReq.Error())
+	require.InDelta(t, float64(1), history[0].Requests[0]["x"], 0.001)
 }
 
 func TestClientAddStubUsesDefaultHTTPClientWhenNil(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	var called bool
 
 	ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
@@ -305,10 +257,8 @@ func TestClientAddStubUsesDefaultHTTPClientWhenNil(t *testing.T) {
 
 	c := Client{BaseURL: ts.URL}
 
-	// Act
 	err := c.AddStub(&stuber.Stub{ID: uuid.New(), Service: "svc", Method: "M", Output: stuber.Output{Data: map[string]any{"ok": true}}})
 
-	// Assert
 	require.NoError(t, err)
 	require.True(t, called)
 }
@@ -355,25 +305,16 @@ func TestClientAddStubsBatchPayload(t *testing.T) {
 func TestPtrOrZero(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	value := "x"
 	now := time.Now().UTC()
 	m := map[string]any{"k": "v"}
 
-	// Act + Assert
 	require.Empty(t, ptrOrZero[string](nil))
 	require.Equal(t, value, ptrOrZero(&value))
 	require.Nil(t, ptrOrZero[map[string]any](nil))
 	require.Equal(t, m, ptrOrZero(&m))
 	require.True(t, ptrOrZero[time.Time](nil).IsZero())
 	require.Equal(t, now, ptrOrZero(&now))
-}
-
-func TestVerifyBadRequestErrorDefaultMessage(t *testing.T) {
-	t.Parallel()
-
-	err := VerifyBadRequestError{}
-	require.Equal(t, "verification failed", err.Error())
 }
 
 func TestClientAddStubErrorStatus(t *testing.T) {
@@ -532,71 +473,9 @@ func TestClientFetchHistoryErrorBranches(t *testing.T) {
 		require.Len(t, history, 1)
 		require.Empty(t, history[0].Service)
 		require.Empty(t, history[0].Method)
-		require.Nil(t, history[0].Request)
-		require.Nil(t, history[0].Response)
+		require.Empty(t, history[0].Requests)
+		require.Empty(t, history[0].Responses)
 		require.True(t, history[0].Timestamp.IsZero())
-	})
-}
-
-func TestClientVerifyMethodCalledBranches(t *testing.T) {
-	t.Parallel()
-
-	t.Run("success", func(t *testing.T) {
-		t.Parallel()
-
-		ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path != "/api/verify" {
-				t.Errorf("expected /api/verify, got %s", r.URL.Path)
-
-				return
-			}
-
-			w.WriteHeader(http.StatusOK)
-		})
-
-		c := newTestClient(ts, "")
-		require.NoError(t, c.VerifyMethodCalled("svc", "M", 1))
-	})
-
-	t.Run("bad-request-invalid-json", func(t *testing.T) {
-		t.Parallel()
-
-		ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path != "/api/verify" {
-				t.Errorf("expected /api/verify, got %s", r.URL.Path)
-
-				return
-			}
-
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("not-json"))
-		})
-
-		c := newTestClient(ts, "")
-		err := c.VerifyMethodCalled("svc", "M", 1)
-
-		var badReq VerifyBadRequestError
-		require.ErrorAs(t, err, &badReq)
-		require.Equal(t, "verification failed", badReq.Error())
-	})
-
-	t.Run("server-status", func(t *testing.T) {
-		t.Parallel()
-
-		ts := newTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path != "/api/verify" {
-				t.Errorf("expected /api/verify, got %s", r.URL.Path)
-
-				return
-			}
-
-			w.WriteHeader(http.StatusInternalServerError)
-		})
-
-		c := newTestClient(ts, "")
-		err := c.VerifyMethodCalled("svc", "M", 1)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "verify request failed with status 500")
 	})
 }
 
@@ -640,7 +519,6 @@ func TestClientRequestErrors(t *testing.T) {
 						return err
 					},
 				},
-				{name: "verify", call: func() error { return c.VerifyMethodCalled("svc", "M", 1) }},
 			}
 
 			for _, tc := range tests {

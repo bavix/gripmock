@@ -509,3 +509,37 @@ func TestBuildDoesNotFetchDescriptorsForProxySources(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 0, calls)
 }
+
+func TestBuildFetchesDuplicateRemoteSourceOnce(t *testing.T) {
+	t.Parallel()
+
+	name := "service.proto"
+	calls := 0
+	client := &mockRemoteClient{fn: func(_ *Source) *descriptorpb.FileDescriptorSet {
+		calls++
+
+		return &descriptorpb.FileDescriptorSet{
+			File: []*descriptorpb.FileDescriptorProto{{Name: &name}},
+		}
+	}}
+
+	sets, err := Build(t.Context(), nil, []string{
+		"grpc://upstream.example:443",
+		"grpc://upstream.example:443",
+	}, client)
+	require.NoError(t, err)
+	require.Equal(t, 1, calls)
+	require.Len(t, sets, 1)
+}
+
+func TestBuildKeepsCallerSlicesIntact(t *testing.T) {
+	t.Parallel()
+
+	imports := []string{"zzzzzzzzzz", "aa"}
+	paths := []string{"grpc+proxy://b.example:50051", "grpc+proxy://a.example:50051"}
+
+	_, err := Build(t.Context(), imports, paths, nil)
+	require.NoError(t, err)
+	require.Equal(t, []string{"zzzzzzzzzz", "aa"}, imports)
+	require.Equal(t, []string{"grpc+proxy://b.example:50051", "grpc+proxy://a.example:50051"}, paths)
+}

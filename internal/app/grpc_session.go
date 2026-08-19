@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/dynamicpb"
 
 	"github.com/bavix/gripmock/v3/internal/infra/session"
@@ -38,15 +39,13 @@ func sessionFromContext(ctx context.Context) string {
 type bidiRecordingStream struct {
 	grpc.ServerStream
 
-	requests     []map[string]any
-	responses    []map[string]any
-	respHeader   metadata.MD
-	respTrailer  metadata.MD
-	stubID       uuid.UUID
-	maxItems     int
-	stubTrailers map[string]string
-	// recordHeaders gates metadata interception: without a recorder the
-	// merged maps would never be read.
+	requests      []map[string]any
+	responses     []map[string]any
+	respHeader    metadata.MD
+	respTrailer   metadata.MD
+	stubID        uuid.UUID
+	maxItems      int
+	stubTrailers  map[string]string
 	recordHeaders bool
 }
 
@@ -139,6 +138,19 @@ func (m *grpcMocker) recordCall(
 
 	recordCall(m.recorder, m.fullServiceName, m.methodName, sessionFromContext(ctx),
 		stubID, code, timestamp, requests, recordedResponses, respHeaders, errMsg)
+}
+
+func (m *grpcMocker) recordUnmatched(
+	ctx context.Context,
+	requestTime time.Time,
+	requests []map[string]any,
+	callErr error,
+) {
+	if m.proxyFallbackWillServe(callErr) {
+		return
+	}
+
+	m.recordCall(ctx, uuid.Nil, uint32(status.Code(callErr)), requestTime, requests, nil, nil, callErr.Error())
 }
 
 func processHeaders(md metadata.MD) map[string]any {

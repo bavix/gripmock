@@ -144,3 +144,30 @@ func TestRankMatchRegularDigits(t *testing.T) {
 		map[any]any{"vint64": 10012},
 	), 0.)
 }
+
+func TestIgnoreArrayOrderRespectsMultiplicity(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name         string
+		expect       []any
+		actual       []any
+		wantEquals   bool
+		wantContains bool
+	}{
+		{"same multiset", []any{"a", "a", "b"}, []any{"b", "a", "a"}, true, true},
+		{"different multiset", []any{"a", "a", "b"}, []any{"a", "b", "b"}, false, false},
+		{"subset", []any{"a", "b"}, []any{"a", "b", "c"}, false, true},
+		{"needs two, has one", []any{"a", "a"}, []any{"a", "b", "c"}, false, false},
+		{"needs two, has two", []any{"a", "a"}, []any{"a", "a", "c"}, false, true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tc.wantEquals, deeply.EqualsIgnoreArrayOrder(tc.expect, tc.actual))
+			require.Equal(t, tc.wantContains, deeply.ContainsIgnoreArrayOrder(tc.expect, tc.actual))
+		})
+	}
+}

@@ -169,11 +169,20 @@ describe('evalMatcherFields', () => {
     expect(rows.find((r) => r.field === 'bad')?.ok).toBe(false);
   });
 
-  it('contains: string substring', () => {
-    const rows = evalMatcherFields({ name: 'hello world' }, m({ contains: { name: 'world' } }));
+  it('contains: strings must be equal, not a substring (mirrors the engine)', () => {
+    const rows = evalMatcherFields({ name: 'hello world' }, m({ contains: { name: 'hello world' } }));
     expect(rows[0].ok).toBe(true);
-    const rows2 = evalMatcherFields({ name: 'hello' }, m({ contains: { name: 'zzz' } }));
+    const rows2 = evalMatcherFields({ name: 'hello world' }, m({ contains: { name: 'world' } }));
     expect(rows2[0].ok).toBe(false);
+  });
+
+  it('contains: object is a subset, array ignores order', () => {
+    const nested = evalMatcherFields({ user: { id: 1, name: 'a' } }, m({ contains: { user: { id: 1 } } }));
+    expect(nested[0].ok).toBe(true);
+    const arr = evalMatcherFields({ tags: ['b', 'a'] }, m({ contains: { tags: ['a'] } }));
+    expect(arr[0].ok).toBe(true);
+    const missing = evalMatcherFields({ tags: ['b'] }, m({ contains: { tags: ['a'] } }));
+    expect(missing[0].ok).toBe(false);
   });
 
   it('contains: numeric field is equality, not substring (15 does not contain 5)', () => {

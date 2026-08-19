@@ -29,34 +29,41 @@ func IsKnownSource(source string) bool {
 
 // StubOptions holds optional behavior settings for a stub.
 type StubOptions struct {
-	Times int `json:"times,omitempty" validate:"gte=0"` // Max number of matches; 0 = unlimited.
+	Times int `json:"times,omitempty" validate:"gte=0"`
 }
 
 // Stub represents a gRPC service method and its associated data.
 type Stub struct {
-	ID                  uuid.UUID     `json:"id"`                                                           // Unique stub identifier.
-	Service             string        `json:"service"                       validate:"required"`            // Service name.
-	Method              string        `json:"method"                        validate:"required"`            // Method name.
-	Session             string        `json:"session,omitempty"`                                            // Session ID (empty = global).
-	Priority            int           `json:"priority"`                                                     // Priority score.
-	Options             StubOptions   `json:"options,omitempty"`                                            //nolint:modernize
-	Headers             InputHeader   `json:"headers"`                                                      // Request headers.
-	Input               InputData     `json:"input"                         validate:"valid_input_config"`  // Unary matches.
-	Inputs              []InputData   `json:"inputs,omitempty"              validate:"valid_input_config"`  // Stream matches.
-	Output              Output        `json:"output"                        validate:"valid_output_config"` // Response output.
-	Effects             []Effect      `json:"effects,omitempty"             validate:"valid_effects"`       // Side effects.
-	Source              string        `json:"source,omitempty"`                                             // Stub source.
-	Handler             StreamHandler `json:"-"`                                                            // Custom stream handler.
-	MatchOnFirstMessage bool          `json:"matchOnFirstMessage,omitempty"`                                // Match on first msg only.
+	ID       uuid.UUID     `json:"id"`
+	Service  string        `json:"service"           validate:"required"`
+	Method   string        `json:"method"            validate:"required"`
+	Session  string        `json:"session,omitempty"`
+	Priority int           `json:"priority"`
+	Options  StubOptions   `json:"options,omitempty"` //nolint:modernize
+	Headers  InputHeader   `json:"headers"`
+	Input    InputData     `json:"input"             validate:"valid_input_config"`
+	Inputs   []InputData   `json:"inputs,omitempty"  validate:"valid_input_config"`
+	Output   Output        `json:"output"            validate:"valid_output_config"`
+	Effects  []Effect      `json:"effects,omitempty" validate:"valid_effects"`
+	Source   string        `json:"source,omitempty"`
+	Handler  StreamHandler `json:"-"`
 
-	// Used is a response-only decoration set by list handlers (whether the
-	// stub has matched at least once). Ignored on input.
+	UnaryHandler        UnaryHandler        `json:"-"`
+	ServerStreamHandler ServerStreamHandler `json:"-"`
+	ClientStreamHandler ClientStreamHandler `json:"-"`
+
 	Used bool `json:"used,omitempty"`
 }
 
 // StreamHandler processes a bidirectional stream directly.
-// When set on a Stub, the handler manages send/recv instead of using static Output.
 type StreamHandler func(ctx context.Context, stream any) error
+
+type UnaryHandler func(ctx context.Context, in any) (any, error)
+
+// ServerStreamHandler writes the response stream itself, given the decoded request.
+type ServerStreamHandler func(ctx context.Context, in any, stream any) error
+
+type ClientStreamHandler func(ctx context.Context, messages []any) (any, error)
 
 const (
 	EffectActionUpsert = "upsert"
@@ -71,10 +78,6 @@ type Effect struct {
 }
 
 // GripMockKey is the reserved map key for per-element stream metadata.
-// When present in a stream entry, it must be a map[string]any.
-// Supported sub-keys:
-//   - "delay" — per-element delay before sending this message (Go duration string)
-//   - "error", "code", "details" — fail the stream at this element instead of sending it
 const GripMockKey = "_gripmock"
 
 type GripMockElement struct {
@@ -230,7 +233,6 @@ func (s *Stub) IsServerStream() bool {
 }
 
 // IsBidirectional returns true if this stub can handle bidirectional streaming.
-// For bidirectional streaming, the stub should have Inputs data (for input matching) and Output.Stream data (for output).
 func (s *Stub) IsBidirectional() bool {
 	return s.IsClientStream() && s.IsServerStream()
 }
@@ -257,16 +259,15 @@ func (s *Stub) Score() int {
 
 // InputData represents the input data of a gRPC request.
 type InputData struct {
-	Equals           map[string]any `json:"equals"`                     // The data to match exactly.
-	Contains         map[string]any `json:"contains"`                   // The data to match partially.
-	Matches          map[string]any `json:"matches"`                    // The data to match using regular expressions.
-	Glob             map[string]any `json:"glob,omitempty"`             // The data to match using glob patterns.
-	AnyOf            []AnyOfElement `json:"anyOf,omitempty"`            // Alternative matchers (OR logic).
-	IgnoreArrayOrder bool           `json:"ignoreArrayOrder,omitempty"` // Whether to ignore the order of arrays in the input data.
+	Equals           map[string]any `json:"equals"`
+	Contains         map[string]any `json:"contains"`
+	Matches          map[string]any `json:"matches"`
+	Glob             map[string]any `json:"glob,omitempty"`
+	AnyOf            []AnyOfElement `json:"anyOf,omitempty"`
+	IgnoreArrayOrder bool           `json:"ignoreArrayOrder,omitempty"`
 }
 
 // AnyOfElement is a flat alternative matcher inside InputData.
-// Unlike InputData, it cannot nest further AnyOf — depth is limited to 1.
 type AnyOfElement struct {
 	IgnoreArrayOrder bool           `json:"ignoreArrayOrder,omitempty"`
 	Equals           map[string]any `json:"equals"`
@@ -297,11 +298,11 @@ func (i InputData) GetGlob() map[string]any {
 
 // InputHeader represents the headers of a gRPC request.
 type InputHeader struct {
-	Equals   map[string]any       `json:"equals"`          // The headers to match exactly.
-	Contains map[string]any       `json:"contains"`        // The headers to match partially.
-	Matches  map[string]any       `json:"matches"`         // The headers to match using regular expressions.
-	Glob     map[string]any       `json:"glob,omitempty"`  // The headers to match using glob patterns.
-	AnyOf    []AnyOfHeaderElement `json:"anyOf,omitempty"` // Alternative matchers (OR logic).
+	Equals   map[string]any       `json:"equals"`
+	Contains map[string]any       `json:"contains"`
+	Matches  map[string]any       `json:"matches"`
+	Glob     map[string]any       `json:"glob,omitempty"`
+	AnyOf    []AnyOfHeaderElement `json:"anyOf,omitempty"`
 }
 
 // AnyOfHeaderElement is a flat alternative matcher inside InputHeader.
@@ -345,13 +346,12 @@ func (i InputHeader) Len() int {
 
 // Output represents the output data of a gRPC response.
 type Output struct {
-	Headers  map[string]string `json:"headers"`            // The headers of the response.
-	Trailers map[string]string `json:"trailers,omitempty"` // The trailing metadata of the response.
-	Data     any               `json:"data,omitempty"`     // The data of the response. Map for regular messages, scalar for WKT top-level.
-	Stream   []any             `json:"stream,omitempty"`   // The stream data for server-side streaming.
-	// Each element represents a message to be sent. Each entry may be a map (regular message) or scalar (WKT top-level).
-	Error   string           `json:"error"`             // The error message of the response.
-	Code    *codes.Code      `json:"code,omitempty"`    // The status code of the response.
-	Details []map[string]any `json:"details,omitempty"` // gRPC error details (google.protobuf.Any payloads).
-	Delay   types.Duration   `json:"delay,omitempty"`   // The delay of the response or error.
+	Headers  map[string]string `json:"headers"`
+	Trailers map[string]string `json:"trailers,omitempty"`
+	Data     any               `json:"data,omitempty"`
+	Stream   []any             `json:"stream,omitempty"`
+	Error    string            `json:"error"`
+	Code     *codes.Code       `json:"code,omitempty"`
+	Details  []map[string]any  `json:"details,omitempty"`
+	Delay    types.Duration    `json:"delay,omitempty"`
 }

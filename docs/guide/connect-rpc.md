@@ -27,9 +27,28 @@ Request and response bodies are **raw** protobuf or JSON — no binary framing. 
 
 ```http
 HTTP/1.1 404 Not Found
-Content-Type: application/connect+json
+Content-Type: application/json
 
-{"code":"not_found","message":"method not found","details":[]}
+{"code":"not_found","message":"method not found"}
+```
+
+Error bodies are always `application/json`, whatever codec the request used. A
+content type GripMock has no codec for is answered with `415 Unsupported Media Type`.
+
+`output.details` are carried the way the protocol defines them — the type name plus
+the serialized message, base64 without padding — so a Connect client can rebuild
+them. The readable rendering is repeated in the optional `debug` field:
+
+```json
+{
+  "code": "invalid_argument",
+  "message": "bad id",
+  "details": [{
+    "type": "google.rpc.ErrorInfo",
+    "value": "CglJRF9JTlZBTElE",
+    "debug": {"@type": "type.googleapis.com/google.rpc.ErrorInfo", "reason": "ID_INVALID"}
+  }]
+}
 ```
 
 ### Streaming
@@ -47,8 +66,10 @@ Each message is wrapped in a 5-byte Connect envelope. The flag bit `0x02` marks 
 | Header | Description |
 |--------|-------------|
 | `Content-Type` | Determines serialization (see table above) |
-| `Content-Encoding` | `gzip`, `deflate`, `zstd`, `snappy`, or `br` |
-| `Accept-Encoding` | `gzip` or `deflate` (response compression) |
+| `Content-Encoding` | `gzip`, `deflate`, `zstd`, `snappy`, or `br` (unary) |
+| `Accept-Encoding` | `gzip` or `deflate` (unary response compression) |
+| `Connect-Content-Encoding` | Streaming compression. Only `identity` is supported; anything else answers `unimplemented` |
+| `Connect-Timeout-Ms` | Per-call deadline; exceeding it answers `deadline_exceeded` |
 | `X-Gripmock-Session` | Session ID for call tracking |
 
 ## Examples
@@ -103,6 +124,7 @@ Configured via `GATEWAY_TLS_*` variables. See [Environment Variables](/guide/int
 |---|---|
 | v3.15.0 | ConnectRPC server on a dedicated port (`CONNECTRPC_PORT`) |
 | v3.17.0 | Unified gateway: ConnectRPC + gRPC-web on a single port (`GATEWAY_PORT`) |
+| v3.20.0 | `CONNECTRPC_*` environment fallbacks removed |
 
 ## Related
 

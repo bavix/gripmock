@@ -1,15 +1,15 @@
 package protoset
 
 import (
+	"cmp"
 	"context"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/bufbuild/protocompile"
 	"github.com/cockroachdb/errors"
-	"github.com/samber/lo"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -137,8 +137,8 @@ func newConfigure(ctx context.Context, imports []string, paths []string, remoteC
 }
 
 func findMinimalPaths(paths []string) []string {
-	sort.Slice(paths, func(i, j int) bool {
-		return len(paths[i]) < len(paths[j])
+	slices.SortStableFunc(paths, func(a, b string) int {
+		return cmp.Compare(len(a), len(b))
 	})
 
 	var result []string
@@ -173,35 +173,65 @@ func Build(
 	paths []string,
 	remoteClient RemoteClient,
 ) ([]*descriptorpb.FileDescriptorSet, error) {
-	var err error
-
-	for i, importPath := range imports {
-		imports[i], err = filepath.Abs(importPath)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to resolve import path: %s", importPath)
-		}
+	roots, err := absoluteImportRoots(imports)
+	if err != nil {
+		return nil, err
 	}
 
-	for i, path := range paths {
-		source, err := ParseSource(path)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse source: %s", path)
-		}
-
-		if source.Type == SourceBufBuild || source.Type == SourceReflect || source.Type == SourceProxy {
-			continue
-		}
-
-		paths[i], err = filepath.Abs(path)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to resolve path: %s", path)
-		}
+	sources, err := resolveSources(paths)
+	if err != nil {
+		return nil, err
 	}
 
-	configure, err := newConfigure(ctx, lo.Uniq(findMinimalPaths(imports)), lo.Uniq(paths), remoteClient)
+	configure, err := newConfigure(ctx, findMinimalPaths(roots), sources, remoteClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create configuration")
 	}
 
 	return compile(ctx, configure)
+}
+
+func absoluteImportRoots(imports []string) ([]string, error) {
+	roots := make([]string, len(imports))
+
+	for i, importPath := range imports {
+		root, err := filepath.Abs(importPath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to resolve import path: %s", importPath)
+		}
+
+		roots[i] = root
+	}
+
+	return roots, nil
+}
+
+func resolveSources(paths []string) ([]string, error) {
+	sources := make([]string, 0, len(paths))
+	seen := make(map[string]struct{}, len(paths))
+
+	for _, path := range paths {
+		source, err := ParseSource(path)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to parse source: %s", path)
+		}
+
+		resolved := path
+
+		if source.Type != SourceBufBuild && source.Type != SourceReflect && source.Type != SourceProxy {
+			resolved, err = filepath.Abs(path)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to resolve path: %s", path)
+			}
+		}
+
+		if _, dup := seen[resolved]; dup {
+			continue
+		}
+
+		seen[resolved] = struct{}{}
+		sources = append(sources, resolved)
+	}
+
+	return sources, nil
 }

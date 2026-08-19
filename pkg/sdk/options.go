@@ -35,18 +35,18 @@ func (o *options) appendDescriptorFiles(files []*descriptorpb.FileDescriptorProt
 }
 
 type options struct {
-	descriptorFiles []*descriptorpb.FileDescriptorProto // accumulated via append
-	protoPaths      []string                            // .proto file paths to compile
-	batchMode       bool                                // batch stubs in remote mode
+	descriptorFiles []*descriptorpb.FileDescriptorProto
+	protoPaths      []string
+	batchMode       bool
 	mockFromAddr    string
-	remoteAddr      string // gRPC address for remote mode
-	remoteRestURL   string // REST base URL (e.g. "http://localhost:4771") for remote mode
+	remoteAddr      string
+	remoteRestURL   string
 	httpClient      *http.Client
-	session         string // X-Gripmock-Session for isolation (remote mode)
+	session         string
 	sessionTTL      time.Duration
 	grpcTimeout     time.Duration
-	listenNetwork   string // "tcp" for real port
-	listenAddr      string // ":0" for real port
+	listenNetwork   string
+	listenAddr      string
 	healthyTimeout  time.Duration
 }
 
@@ -72,7 +72,8 @@ func WithFileDescriptor(fd protoreflect.FileDescriptor) Option {
 	}
 }
 
-// WithListenAddr sets network and address for real port listening.
+// WithListenAddr sets network and address for real port listening. The default is
+// a loopback port (127.0.0.1:0), which is also the address the server reports.
 func WithListenAddr(network, addr string) Option {
 	return func(o *options) {
 		o.listenNetwork = network
@@ -87,8 +88,6 @@ func WithHealthCheckTimeout(d time.Duration) Option {
 }
 
 // WithRemote configures the mock to connect to an external gripmock process.
-// grpcAddr is of gRPC server address (e.g. "localhost:4770").
-// restURL is the REST base URL used for management operations (e.g. "http://localhost:4771").
 func WithRemote(grpcAddr string, restURL string) Option {
 	return func(o *options) {
 		o.remoteAddr = normalizeRemoteAddr(grpcAddr)
@@ -97,15 +96,13 @@ func WithRemote(grpcAddr string, restURL string) Option {
 }
 
 // WithHTTPClient overrides the HTTP client used by WithRemote mode for REST API calls.
-// If not set, SDK uses a default client with 10s timeout.
 func WithHTTPClient(client *http.Client) Option {
 	return func(o *options) {
 		o.httpClient = client
 	}
 }
 
-// WithSession sets the session ID for isolation (remote mode only).
-// Stubs and history are partitioned by session; use with t.Parallel() when sharing one gripmock.
+// WithSession sets the session ID for isolation.
 func WithSession(sessionID string) Option {
 	return func(o *options) {
 		o.session = strings.TrimSpace(sessionID)
@@ -113,7 +110,6 @@ func WithSession(sessionID string) Option {
 }
 
 // WithSessionTTL configures automatic cleanup time for session-scoped remote resources.
-// Only applies to WithRemote mode.
 func WithSessionTTL(d time.Duration) Option {
 	return func(o *options) {
 		o.sessionTTL = d
@@ -121,7 +117,6 @@ func WithSessionTTL(d time.Duration) Option {
 }
 
 // WithGRPCTimeout sets default per-RPC timeout for remote gRPC calls.
-// Applied only when request context has no deadline.
 func WithGRPCTimeout(d time.Duration) Option {
 	return func(o *options) {
 		o.grpcTimeout = d
@@ -135,8 +130,6 @@ func WithProtoFiles(paths ...string) Option {
 }
 
 // WithBatch enables batch mode for remote stub registration.
-// Stubs are queued locally and sent on Flush()/Close()/ExpectationsWereMet().
-// Without this option, each stub is sent immediately via REST.
 func WithBatch() Option {
 	return func(o *options) {
 		o.batchMode = true

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"text/template"
 	"time"
@@ -160,6 +161,27 @@ func IsTemplateString(s string) bool {
 	_, after, found := strings.Cut(s, "{{")
 
 	return found && strings.Contains(after, "}}")
+}
+
+// HasTemplatesInValue reports whether any string anywhere inside the value
+// contains a template.
+func HasTemplatesInValue(value any) bool {
+	switch typed := value.(type) {
+	case string:
+		return IsTemplateString(typed)
+	case map[string]any:
+		for _, nested := range typed {
+			if HasTemplatesInValue(nested) {
+				return true
+			}
+		}
+
+		return false
+	case []any:
+		return slices.ContainsFunc(typed, HasTemplatesInValue)
+	default:
+		return false
+	}
 }
 
 // HasTemplatesInHeaders reports whether any header value contains a template.

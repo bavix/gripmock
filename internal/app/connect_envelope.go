@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"io"
 )
@@ -30,9 +31,15 @@ var ErrEnvelopeTooLarge = errors.New("connect envelope payload exceeds maximum s
 // connectError is the JSON body of a Connect RPC error response.
 // See https://connectrpc.com/docs/protocol/#error-end-stream
 type connectError struct {
-	Code    string           `json:"code"`
-	Message string           `json:"message"`
-	Details []map[string]any `json:"details"`
+	Code    string               `json:"code"`
+	Message string               `json:"message,omitempty"`
+	Details []connectErrorDetail `json:"details,omitempty"`
+}
+
+type connectErrorDetail struct {
+	Type  string          `json:"type"`
+	Value string          `json:"value"`
+	Debug json.RawMessage `json:"debug,omitempty"`
 }
 
 // connectEndStream is the JSON payload of the end-of-stream envelope.

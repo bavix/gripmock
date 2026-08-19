@@ -59,7 +59,7 @@ func TestSplitMethodName(t *testing.T) {
 		{"/grpc.health.v1.Health/Check", "grpc.health.v1.Health", "Check"},
 		{"", "unknown", "unknown"},
 		{"/only", "unknown", "unknown"},
-		{"/a/b/extra", "unknown", "unknown"}, // 4 parts - only /svc/method (2 segments) supported
+		{"/a/b/extra", "unknown", "unknown"},
 	}
 
 	for _, tt := range tests {

@@ -13,8 +13,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-// ListHistory supports ?limit=N (most recent N), ?offset=M (skip newest M),
-// ?service/?method filters, and an X-Total-Count header.
 func TestListHistoryLimitAndFilter(t *testing.T) {
 	t.Parallel()
 
@@ -47,9 +45,7 @@ func TestListHistoryLimitAndFilter(t *testing.T) {
 	}{
 		{"no filter", rest.ListHistoryParams{}, 6, "6"},
 		{"limit=2", rest.ListHistoryParams{Limit: new(2)}, 2, "6"},
-		// offset skips the newest record; total header still reflects the full set.
 		{"limit=2&offset=2", rest.ListHistoryParams{Limit: new(2), Offset: new(2)}, 2, "6"},
-		// offset past the end yields an empty slice, not a panic.
 		{"offset past end", rest.ListHistoryParams{Limit: new(2), Offset: new(100)}, 0, "6"},
 		{"method filter", rest.ListHistoryParams{Method: new("GetProduct")}, 5, "5"},
 		{"method+limit", rest.ListHistoryParams{Method: new("GetProduct"), Limit: new(3)}, 3, "5"},

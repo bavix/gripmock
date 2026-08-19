@@ -1,10 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useStore } from '../lib/store';
-import { useSessions } from '../hooks/useSessions';
+import { useSessions, usePurgeSession } from '../hooks/useSessions';
 import { useStubs } from '../hooks/useStubs';
 import { colors } from '../lib/theme';
-import { Fingerprint, Globe, Plus, Copy, History, ListOrdered, ShieldCheck } from 'lucide-react';
+import { Fingerprint, Globe, Plus, Copy, History, ListOrdered, ShieldCheck, Trash2 } from 'lucide-react';
 import { useToast } from '../components/shared/Toast';
 
 export function SessionPage() {
@@ -16,6 +16,7 @@ export function SessionPage() {
   const recent = useStore((s) => s.recentSessions);
   const { data: backend } = useSessions();
   const { data: stubs } = useStubs();
+  const purge = usePurgeSession();
 
   // Session-scoped stub counts (stub.session === id).
   const stubCount = useMemo(() => {
@@ -85,6 +86,19 @@ export function SessionPage() {
                       <button onClick={() => activate(s)} title="Activate" style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, color: active ? 'var(--accent-text)' : 'var(--text)', padding: 0 }}>{s}</button>
                       {stubCount[s] > 0 && <span className="badge" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }} title="session-scoped stubs">{stubCount[s]}</span>}
                       <button className="icon-btn" style={{ width: 20, height: 20 }} onClick={() => copy(s)} title="Copy"><Copy size={11} /></button>
+                      <button
+                        className="icon-btn"
+                        style={{ width: 20, height: 20, color: colors.error }}
+                        disabled={purge.isPending}
+                        onClick={() => {
+                          if (!confirm(`Delete every stub and recorded call of session ${s}?`)) return;
+                          purge.mutate(s, {
+                            onSuccess: () => toast.show(`Session ${s} cleared`),
+                            onError: (e) => toast.show(`Could not clear ${s}: ${(e as Error).message}`),
+                          });
+                        }}
+                        title="Delete this session's stubs and calls"
+                      ><Trash2 size={11} /></button>
                     </span>
                   );
                 })}

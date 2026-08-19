@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package billing.v1;
+
+option go_package = "github.com/bavix/gripmock/v3/examples/sdk/billing/v1;billingv1";
+
+service BillingService {
+  rpc ChargeInvoice(ChargeInvoiceRequest) returns (ChargeInvoiceResponse);
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse);
+}
+
+message ChargeInvoiceRequest {
+  string invoice_id = 1;
+  string customer_id = 2;
+  int64 amount_cents = 3;
+}
+
+message ChargeInvoiceResponse {
+  string transaction_id = 1;
+  string status = 2;
+  int64 remaining_cents = 3;
+}
+
+message GetBalanceRequest {
+  string customer_id = 1;
+}
+
+message GetBalanceResponse {
+  int64 balance_cents = 1;
+  string currency = 2;
+}

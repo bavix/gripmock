@@ -1,14 +1,10 @@
 # Session Management <VersionTag version="v3.16.0" />
 
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::
-
 ::: info
 **Minimum Requirements**: Go 1.26 or later
 :::
 
-> **Version history:** Sessions introduced in <VersionTag version="v3.16.0" />. Not available in the legacy API.
+> **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" />. Current API since <VersionTag version="v3.16.0" />; the legacy `sdk.Run` / `mock.Stub` / `mock.Verify` API was **removed in v3.20.0**. See the [Upgrade Guide](./upgrade.md).
 
 Sessions provide isolation for stubs and history data when using remote GripMock instances. Each session maintains its own set of stubs and call history, preventing interference between different test contexts.
 
@@ -188,6 +184,7 @@ func runSharedSessionMock(t *testing.T) *sdk.Server {
 
 ## Session Limitations
 
-- Sessions apply to remote mode only (`sdk.WithRemote`); an embedded server is already isolated
+- Sessions behave the same in both modes; they matter most in remote mode (`sdk.WithRemote`)
+- `Session(id)` scopes one stub; `sdk.WithSession(id)` scopes every call the server makes
 - Session data persists until it is cleared, its TTL expires, or the server restarts
 - Each session holds its own stubs and history on the server

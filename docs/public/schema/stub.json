@@ -185,6 +185,18 @@
         "session": {
           "description": "Session this stub belongs to. A stub with a session is invisible outside it; empty means the global scope.",
           "type": "string"
+        },
+        "_meta": {
+          "description": "Provenance written by `gripmock dump`. Ignored on load.",
+          "type": "object",
+          "properties": {
+            "source": {
+              "description": "Where the exported stub came from.",
+              "type": "string",
+              "enum": [ "file", "rest", "mcp", "proxy" ]
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -249,6 +261,18 @@
           "session": {
             "description": "Session this stub belongs to. A stub with a session is invisible outside it; empty means the global scope.",
             "type": "string"
+          },
+          "_meta": {
+            "description": "Provenance written by `gripmock dump`. Ignored on load.",
+            "type": "object",
+            "properties": {
+              "source": {
+                "description": "Where the exported stub came from.",
+                "type": "string",
+                "enum": [ "file", "rest", "mcp", "proxy" ]
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false

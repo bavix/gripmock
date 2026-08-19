@@ -11,7 +11,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-// RestValidationTestSuite provides test suite for REST API validation.
 type RestValidationTestSuite struct {
 	suite.Suite
 
@@ -19,7 +18,6 @@ type RestValidationTestSuite struct {
 	budgerigar *stuber.Budgerigar
 }
 
-// SetupSuite initializes the test suite.
 func (s *RestValidationTestSuite) SetupSuite() {
 	s.budgerigar = stuber.NewBudgerigar()
 	extender := &mockExtender{}
@@ -28,13 +26,10 @@ func (s *RestValidationTestSuite) SetupSuite() {
 	s.server = server
 }
 
-// SetupTest cleans up before each test.
 func (s *RestValidationTestSuite) SetupTest() {
 	s.budgerigar.Clear()
 }
 
-// TestAddStubValidationErrors tests validation error cases for AddStub.
-//
 //nolint:funlen
 func (s *RestValidationTestSuite) TestAddStubValidationErrors() {
 	tests := []struct {
@@ -234,8 +229,6 @@ func (s *RestValidationTestSuite) TestAddStubValidationErrors() {
 	}
 }
 
-// TestAddStubValidConfigurations tests valid stub configurations.
-//
 //nolint:funlen
 func (s *RestValidationTestSuite) TestAddStubValidConfigurations() {
 	tests := []struct {
@@ -438,7 +431,6 @@ func (s *RestValidationTestSuite) TestAddStubValidConfigurations() {
 	}
 }
 
-// TestAddStubInvalidJSON tests invalid JSON handling.
 func (s *RestValidationTestSuite) TestAddStubInvalidJSON() {
 	tests := []struct {
 		name           string
@@ -480,8 +472,6 @@ func (s *RestValidationTestSuite) TestAddStubInvalidJSON() {
 	}
 }
 
-// TestAddStubContentTypeValidation tests content type validation.
-//
 //nolint:funlen
 func (s *RestValidationTestSuite) TestAddStubContentTypeValidation() {
 	validStubData := `[{
@@ -549,7 +539,6 @@ func (s *RestValidationTestSuite) TestAddStubContentTypeValidation() {
 	}
 }
 
-// TestAddStubSpecialCases tests edge cases and special configurations.
 func (s *RestValidationTestSuite) TestAddStubSpecialCases() {
 	tests := []struct {
 		name        string
@@ -593,7 +582,6 @@ func (s *RestValidationTestSuite) TestAddStubSpecialCases() {
 	}
 }
 
-// TestRestValidationTestSuite runs the REST validation test suite.
 func TestRestValidationTestSuite(t *testing.T) { //nolint:paralleltest
 	suite.Run(t, new(RestValidationTestSuite))
 }

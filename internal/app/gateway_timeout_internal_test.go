@@ -84,9 +84,6 @@ func TestRequestTimeoutPrefersConnectHeader(t *testing.T) {
 	require.Equal(t, 100*time.Millisecond, got)
 }
 
-// The parsed timeout is worth nothing unless the gateway puts it on the
-// context the mocker runs under: a stub that sleeps past the client's deadline
-// must come back as deadline_exceeded, not as its data.
 func TestConnectGatewayAppliesRequestTimeout(t *testing.T) {
 	t.Parallel()
 
@@ -104,7 +101,7 @@ func TestConnectGatewayAppliesRequestTimeout(t *testing.T) {
 		},
 	})
 
-	gateway := NewConnectRPCGateway(budgerigar, registry, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), budgerigar, registry, nil, nil, nil, nil)
 	router := mux.NewRouter()
 	router.Handle("/{service:.+}/{method}", gateway).Methods(http.MethodPost)
 

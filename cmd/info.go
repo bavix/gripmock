@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/mail"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -11,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
 	"github.com/bavix/gripmock/v3/internal/deps"
@@ -40,17 +40,17 @@ type uiStats struct {
 
 type pluginGroup struct {
 	info  plugins.PluginInfo
-	funcs []plugins.FunctionInfo // all functions
+	funcs []plugins.FunctionInfo
 }
 
 type uiContext struct {
 	width       int
-	titleStyle  lipgloss.Style
-	keyStyle    lipgloss.Style
-	valStyle    lipgloss.Style
-	dimStyle    lipgloss.Style
-	tagBuiltin  lipgloss.Style
-	tagExternal lipgloss.Style
+	titleStyle  ansiStyle
+	keyStyle    ansiStyle
+	valStyle    ansiStyle
+	dimStyle    ansiStyle
+	tagBuiltin  ansiStyle
+	tagExternal ansiStyle
 }
 
 const (
@@ -332,14 +332,13 @@ func newUIContext() uiContext {
 	width := termWidth()
 
 	return uiContext{
-		width:      width,
-		titleStyle: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("212")),
-		keyStyle:   lipgloss.NewStyle().Foreground(lipgloss.Color("244")),
-		valStyle:   lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Bold(true),
-		dimStyle:   lipgloss.NewStyle().Foreground(lipgloss.Color("240")),
-		tagBuiltin: lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Bold(true),
-		tagExternal: lipgloss.NewStyle().
-			Foreground(lipgloss.Color("33")).Bold(true),
+		width:       width,
+		titleStyle:  newStyle("212").Bold(),
+		keyStyle:    newStyle("244"),
+		valStyle:    newStyle("15").Bold(),
+		dimStyle:    newStyle("240"),
+		tagBuiltin:  newStyle("10").Bold(),
+		tagExternal: newStyle("33").Bold(),
 	}
 }
 
@@ -400,8 +399,7 @@ func formatAuthorsLine(ctx uiContext, authors []plugins.Author, _ []string, _ st
 
 		switch {
 		case name != "" && contact != "":
-			// nosemgrep: semgrep-go.sprintf-mail-address
-			items = append(items, fmt.Sprintf("%s <%s>", name, contact))
+			items = append(items, (&mail.Address{Name: name, Address: contact}).String())
 		case name != "":
 			items = append(items, name)
 		default:
