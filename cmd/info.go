@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/mail"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -398,7 +399,7 @@ func formatAuthorsLine(ctx uiContext, authors []plugins.Author, _ []string, _ st
 
 		switch {
 		case name != "" && contact != "":
-			items = append(items, fmt.Sprintf("%s <%s>", name, contact))
+			items = append(items, (&mail.Address{Name: name, Address: contact}).String())
 		case name != "":
 			items = append(items, name)
 		default:
