@@ -38,10 +38,10 @@ features:
     details: "Traces over OTLP, and a `/metrics` endpoint to scrape."
   - title: "Built-in faker"
     details: "Generate values from `faker.Person`, `faker.Geo`, `faker.Identity` and seven more domains."
-  - title: "Upstream modes (experimental)"
+  - title: "Upstream modes"
     details: "`proxy`, `replay` and `capture` move a test from live upstream traffic to local mocks in stages."
   - title: "Docker ready"
     details: "19 MB image for local development, CI and containerized test environments."
-  - title: "Embedded SDK (experimental)"
+  - title: "Embedded SDK"
     details: "Run GripMock inside a Go test, with no external process to orchestrate."
 ---

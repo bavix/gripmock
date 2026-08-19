@@ -2,8 +2,6 @@
 
 `replay` is local-first mode with upstream fallback.
 
-⚠️ **EXPERIMENTAL FEATURE**: `replay` mode is part of the experimental upstream modes feature set and may change without notice.
-
 ## Behavior
 
 For each incoming request:

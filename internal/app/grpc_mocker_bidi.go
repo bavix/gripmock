@@ -28,12 +28,9 @@ const (
 func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 	queryBidi := m.newQueryBidi(stream.Context())
 
-	// Check for a custom handler on ANY matching stub, not just stubs[0] —
-	// FindBy ordering is not guaranteed, so a handler on a later stub would
-	// otherwise be silently ignored.
 	stubs, _ := m.budgerigar.FindBy(queryBidi.Service, queryBidi.Method)
 	for _, st := range stubs {
-		if st.Handler != nil {
+		if stuber.HandlerCandidate(st, queryBidi) {
 			return st.Handler(stream.Context(), stream)
 		}
 	}
@@ -109,9 +106,6 @@ func (m *grpcMocker) processBidiStreamMessage(
 	if err != nil {
 		wrappedErr := errors.Wrap(err, "failed to process bidirectional message")
 		if errors.Is(err, stuber.ErrStubNotFound) {
-			// Once mock responses have been emitted for earlier messages, do NOT
-			// fall back to the proxy — replaying only the failing message upstream
-			// would interleave a mock response with a proxied one on one stream.
 			if rec, ok := stream.(*bidiRecordingStream); ok && len(rec.getResponses()) > 0 {
 				return status.Error(codes.NotFound, wrappedErr.Error())
 			}
@@ -122,8 +116,10 @@ func (m *grpcMocker) processBidiStreamMessage(
 		return wrappedErr
 	}
 
-	if err := delayResponse(stream.Context(), stub.Output.Delay); err != nil {
-		return err
+	if len(stub.Output.Stream) == 0 {
+		if err := delayResponse(stream.Context(), stub.Output.Delay); err != nil {
+			return err
+		}
 	}
 
 	return m.sendBidiResponse(stream, stub, inputMsg, bidiResult, requestTime)
@@ -174,9 +170,6 @@ func (m *grpcMocker) sendBidiResponse(
 	return m.sendBidiResponses(stream, outputToUse, stub, bidiResult.GetMessageIndex())
 }
 
-// recordBidiStreamUnlessProxied records the failed bidi exchange unless the
-// proxy will retry the call — then the proxy leg owns the history record and
-// pre-recording the NotFound here would double-count it.
 func (m *grpcMocker) recordBidiStreamUnlessProxied(
 	stream *bidiRecordingStream,
 	bidiResult *stuber.BidiResult,
@@ -200,8 +193,6 @@ func (m *grpcMocker) recordBidiStream(
 		return
 	}
 
-	// Derive the real gRPC status code from the error (a configured Output.Error
-	// /Output.Code arrives as a status error), rather than hardcoding Unknown.
 	code := uint32(codes.OK)
 
 	errMsg := ""
@@ -228,20 +219,12 @@ func (m *grpcMocker) recordBidiStream(
 		Timestamp:       requestTime,
 	}
 
-	if len(requests) > 0 {
-		rec.Request = requests[0]
-	}
-
-	if len(responses) > 0 {
-		rec.Response = responses[0]
-	}
-
-	m.recorder.Record(rec)
+	recordOwned(m.recorder, rec)
 }
 
 //nolint:cyclop
 func (m *grpcMocker) prepareBidiOutput(stub *stuber.Stub, templateData template.Data) (stuber.Output, error) {
-	outputDataCopy := deepCopyAny(stub.Output.Data)
+	outputDataCopy := copyForTemplates(stub.Output.Data)
 	if dataMap, ok := outputDataCopy.(map[string]any); ok {
 		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
 			return stuber.Output{}, errors.Wrap(err, errMsgProcessTemplates)
@@ -311,9 +294,6 @@ func (m *grpcMocker) sendBidiResponses(
 		return m.sendStreamResponses(stream, output, stub, messageIndex)
 	}
 
-	// output.Data was already rendered by prepareBidiOutput with the correct
-	// request/index context. Re-rendering here (with an empty Request/State)
-	// would reinterpret any literal {{...}} in the result and degrade templates.
 	outputMsg, err := m.newOutputMessage(output.Data)
 	if err != nil {
 		return errors.Wrap(err, errMsgConvertToDynamic)
@@ -352,14 +332,15 @@ func (m *grpcMocker) sendClientStreamResponses(
 	}
 
 	inputLen := len(stub.Inputs)
-	if inputLen == 0 || messageIndex >= inputLen {
+	if inputLen == 0 {
 		return nil
 	}
 
-	start := messageIndex
-	if start >= streamLen {
-		return nil
+	if messageIndex >= inputLen || messageIndex >= streamLen {
+		return exhaustedBidiScriptError(stub, messageIndex, inputLen)
 	}
+
+	start := messageIndex
 
 	end := start + 1
 	if messageIndex == inputLen-1 {
@@ -371,8 +352,6 @@ func (m *grpcMocker) sendClientStreamResponses(
 			continue
 		}
 
-		// Stream elements were already rendered once by prepareBidiOutput with the
-		// correct request context; do not re-render with an empty context here.
 		payload, err := m.prepareStreamElement(stream.Context(), streamElement, output.Delay)
 		if err != nil {
 			return err
@@ -391,13 +370,25 @@ func (m *grpcMocker) sendClientStreamResponses(
 	return nil
 }
 
-// prepareStreamElement applies the per-element _gripmock directives: an error
-// marker aborts the stream at this position, a delay marker overrides the
-// output-level delay.
+func exhaustedBidiScriptError(stub *stuber.Stub, messageIndex, inputLen int) error {
+	return status.Errorf(codes.NotFound,
+		"stub %s scripts %d message(s) for %s/%s, but the client sent message #%d; "+
+			"declare another inputs/output.stream pair or stop sending",
+		stub.ID, inputLen, stub.Service, stub.Method, messageIndex+1)
+}
+
 func (m *grpcMocker) prepareStreamElement(ctx context.Context, element any, outputDelay types.Duration) (any, error) {
 	data, ok := element.(map[string]any)
 	if !ok {
 		return element, nil
+	}
+
+	if _, marked := data[stuber.GripMockKey]; !marked {
+		if err := delayResponse(ctx, outputDelay); err != nil {
+			return nil, err
+		}
+
+		return copyForTemplates(data), nil
 	}
 
 	copied := deepCopyMapAny(data)

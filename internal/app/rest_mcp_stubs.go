@@ -8,8 +8,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-// decodeAndValidateMCPStubs decodes the "stubs" arg, applies the session, and
-// validates each stub — the shared preamble of upsert and validate.
 func decodeAndValidateMCPStubs(h *RestServer, args map[string]any) ([]*stuber.Stub, error) {
 	rawStubs, ok := args["stubs"]
 	if !ok || rawStubs == nil {
@@ -45,9 +43,6 @@ func mcpStubsUpsert(h *RestServer, args map[string]any) (map[string]any, error) 
 	return map[string]any{"ids": uuidListToStringSlice(ids)}, nil
 }
 
-// mcpStubsValidate dry-runs stub validation without persisting, mirroring the
-// REST POST /stubs/validate endpoint. Returns the normalized stubs (nil IDs
-// stripped) so an agent can preview exactly what an upsert would store.
 func mcpStubsValidate(h *RestServer, args map[string]any) (map[string]any, error) {
 	stubs, err := decodeAndValidateMCPStubs(h, args)
 	if err != nil {
@@ -62,8 +57,6 @@ func mcpStubsValidate(h *RestServer, args map[string]any) (map[string]any, error
 	return map[string]any{"valid": true, "stubs": normalized}, nil
 }
 
-// normalizeMCPStubs round-trips stubs through JSON and drops zero-value IDs so
-// the preview matches the REST validate response shape.
 func normalizeMCPStubs(stubs []*stuber.Stub) ([]map[string]any, error) {
 	raw, err := json.Marshal(stubs)
 	if err != nil {
@@ -71,7 +64,7 @@ func normalizeMCPStubs(stubs []*stuber.Stub) ([]map[string]any, error) {
 	}
 
 	var result []map[string]any
-	if err = json.Unmarshal(raw, &result); err != nil {
+	if err = jsondecoder.Unmarshal(raw, &result); err != nil {
 		return nil, mcpStubPayloadArgError(err)
 	}
 
@@ -97,9 +90,6 @@ func mcpStubsUnused(h *RestServer, args map[string]any) (map[string]any, error) 
 	return mcpStubsListResponse(h, h.budgerigar.Unused(), args)
 }
 
-// mcpStubsListResponse filters/sorts/paginates, then returns the page decorated
-// with the used flag plus total — the pre-pagination count, mirroring the REST
-// GET /stubs X-Total-Count header so MCP clients can page large stub sets.
 func mcpStubsListResponse(h *RestServer, stubs []*stuber.Stub, args map[string]any) (map[string]any, error) {
 	page, total, err := listMCPStubs(stubs, args)
 	if err != nil {
@@ -109,9 +99,6 @@ func mcpStubsListResponse(h *RestServer, stubs []*stuber.Stub, args map[string]a
 	return map[string]any{"stubs": h.decorateStubsUsed(page), "total": total}, nil
 }
 
-// decorateStubsUsed returns shallow copies carrying the response-only Used flag,
-// matching the REST GET /stubs contract. Copies keep the shared storage stubs
-// unmutated (Used is decoration, not persisted state).
 func (h *RestServer) decorateStubsUsed(stubs []*stuber.Stub) []stuber.Stub {
 	usedIDs := h.budgerigar.UsedIDs()
 	out := make([]stuber.Stub, len(stubs))
@@ -344,8 +331,6 @@ func stringArg(args map[string]any, key string) string {
 	return v
 }
 
-// listMCPStubs filters, sorts and paginates the given stub set. It returns the
-// requested page plus the total count before pagination.
 func listMCPStubs(stubs []*stuber.Stub, args map[string]any) ([]*stuber.Stub, int, error) {
 	filter := mcpStubListFilter{
 		service: stringArg(args, "service"),
@@ -367,8 +352,6 @@ func listMCPStubs(stubs []*stuber.Stub, args map[string]any) ([]*stuber.Stub, in
 
 	filtered := filterMCPStubs(stubs, filter)
 
-	// Sort before paginating so offset/limit page a stable order, matching
-	// the REST GET /stubs contract. Unknown sort modes fall back to priority_desc.
 	stuber.SortStubs(filtered, stringArg(args, "sort"))
 
 	total := len(filtered)

@@ -30,6 +30,8 @@ func TestSPAHandler(t *testing.T) {
 		{"client route falls back to index", "/stubs", http.StatusOK, "gripmock"},
 		{"nested client route falls back", "/stubs/create", http.StatusOK, "gripmock"},
 		{"missing asset is 404", "/assets/missing.js", http.StatusNotFound, ""},
+		{"unknown api route is 404", "/api/nope", http.StatusNotFound, ""},
+		{"bare api is 404", "/api", http.StatusNotFound, ""},
 	}
 
 	for _, tc := range cases {

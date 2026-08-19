@@ -63,8 +63,6 @@ func (h *RestServer) SessionsList(w http.ResponseWriter, r *http.Request) {
 	h.writeResponse(r.Context(), w, rest.Sessions{Sessions: h.mergedSessions()})
 }
 
-// mergedSessions is the sorted union of stub-scoped session IDs and sessions
-// seen making live calls (the request tracker), minus the empty (global) one.
 func (h *RestServer) mergedSessions() []string {
 	seen := make(map[string]struct{})
 	merged := make([]string, 0)
@@ -120,27 +118,14 @@ func (h *RestServer) ListHistory(w http.ResponseWriter, r *http.Request, params 
 		return
 	}
 
-	calls := h.history.Filter(history.FilterOpts{
+	calls, total := historyWindow(h.history, history.FilterOpts{
 		Session:   muxmiddleware.FromRequest(r),
 		Service:   stringFromPtr(params.Service),
 		Method:    stringFromPtr(params.Method),
 		ErrorOnly: params.Error != nil && *params.Error,
-	})
+	}, intFromPtr(params.Limit), intFromPtr(params.Offset))
 
-	w.Header().Set("X-Total-Count", strconv.Itoa(len(calls)))
-
-	// ?offset=M skips the M newest records; ?limit=N then keeps the most recent N
-	// of what remains. offset is honored even without a limit; offset=0 + no limit
-	// preserves the legacy "return everything" behavior.
-	offset := max(intFromPtr(params.Offset), 0)
-	end := max(len(calls)-offset, 0)
-	start := 0
-
-	if limit := intFromPtr(params.Limit); limit > 0 {
-		start = max(end-limit, 0)
-	}
-
-	calls = calls[start:end]
+	w.Header().Set("X-Total-Count", strconv.Itoa(total))
 
 	out := make(rest.HistoryList, len(calls))
 	for i, c := range calls {
@@ -150,20 +135,91 @@ func (h *RestServer) ListHistory(w http.ResponseWriter, r *http.Request, params 
 	h.writeResponse(r.Context(), w, out)
 }
 
-// restCallMessages maps request/response payloads and headers onto the REST record.
+type historyCounter interface {
+	CountFilter(opts history.FilterOpts) int
+}
+
+type historyWindower interface {
+	FilterWindow(opts history.FilterOpts, limit, offset int) ([]history.CallRecord, int)
+}
+
+// historyWindow returns one page and the total, without materializing the rest
+// when the reader can page for itself.
+func historyWindow(reader history.Reader, opts history.FilterOpts, limit, offset int) ([]history.CallRecord, int) {
+	if windower, ok := reader.(historyWindower); ok {
+		return windower.FilterWindow(opts, limit, offset)
+	}
+
+	calls := reader.Filter(opts)
+	total := len(calls)
+
+	end := max(total-max(offset, 0), 0)
+	start := 0
+
+	if limit > 0 {
+		start = max(end-limit, 0)
+	}
+
+	return calls[start:end], total
+}
+
+func countHistory(reader history.Reader, opts history.FilterOpts) int {
+	if counter, ok := reader.(historyCounter); ok {
+		return counter.CountFilter(opts)
+	}
+
+	return len(reader.Filter(opts))
+}
+
+// PurgeHistory deletes recorded calls, scoped to the request's session when set.
+func (h *RestServer) PurgeHistory(w http.ResponseWriter, r *http.Request) {
+	session := muxmiddleware.FromRequest(r)
+
+	result := rest.HistoryPurged{}
+	if session != "" {
+		result.Session = &session
+	}
+
+	if h.history == nil {
+		h.writeResponse(r.Context(), w, result)
+
+		return
+	}
+
+	result.DeletedCount = h.purgeHistoryRecords(session)
+
+	h.writeResponse(r.Context(), w, result)
+}
+
+func (h *RestServer) purgeHistoryRecords(session string) int {
+	if session != "" {
+		cleaner, ok := h.history.(history.SessionCleaner)
+		if !ok {
+			return 0
+		}
+
+		return cleaner.DeleteSession(session)
+	}
+
+	clearer, ok := h.history.(interface{ Clear() })
+	if !ok {
+		return 0
+	}
+
+	deleted := h.history.Count()
+
+	clearer.Clear()
+
+	return deleted
+}
+
 func restCallMessages(c history.CallRecord, r *rest.CallRecord) {
 	if len(c.Requests) > 0 {
 		r.Requests = &c.Requests
-		r.Request = &c.Requests[0]
-	} else if c.Request != nil {
-		r.Request = &c.Request
 	}
 
 	if len(c.Responses) > 0 {
 		r.Responses = &c.Responses
-		r.Response = &c.Responses[0]
-	} else if c.Response != nil {
-		r.Response = &c.Response
 	}
 
 	if len(c.ResponseHeaders) > 0 {
@@ -181,6 +237,12 @@ func historyCallRecordToRest(c history.CallRecord) rest.CallRecord {
 		r.StubId = &c.StubID
 	}
 
+	// The field is declared in the schema and was never filled, so every record
+	// came back session-less and no client could tell whose call it was.
+	if c.Session != "" {
+		r.Session = &c.Session
+	}
+
 	restCallMessages(c, &r)
 
 	if c.Error != "" {
@@ -192,7 +254,7 @@ func historyCallRecordToRest(c history.CallRecord) rest.CallRecord {
 		r.Code = &code
 	}
 
-	if c.ElapsedMS > 0 {
+	if !c.Timestamp.IsZero() {
 		r.ElapsedMs = &c.ElapsedMS
 	}
 
@@ -220,13 +282,11 @@ func (h *RestServer) VerifyCalls(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	calls := h.history.Filter(history.FilterOpts{
+	actual := countHistory(h.history, history.FilterOpts{
 		Service: req.Service,
 		Method:  req.Method,
 		Session: muxmiddleware.FromRequest(r),
 	})
-
-	actual := len(calls)
 	if actual != req.ExpectedCount {
 		w.WriteHeader(http.StatusBadRequest)
 		h.writeResponse(r.Context(), w, rest.VerifyError{
@@ -240,5 +300,3 @@ func (h *RestServer) VerifyCalls(w http.ResponseWriter, r *http.Request) {
 
 	h.writeResponse(r.Context(), w, rest.MessageOK{Message: "ok", Time: time.Now()})
 }
-
-// AddStub inserts new stubs.

@@ -9,8 +9,9 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog"
-	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/descriptorpb"
+
+	"github.com/bavix/gripmock/v3/internal/infra/slicesx"
 )
 
 type processor struct {
@@ -217,9 +218,9 @@ func (p *processor) addFile(ctx context.Context, filePath, fileType string) {
 
 func (p *processor) result() *Configure {
 	return &Configure{
-		imports:        lo.Uniq(p.imports),
-		protos:         lo.Uniq(p.protos),
-		descriptors:    lo.Uniq(p.descriptors),
+		imports:        slicesx.Uniq(p.imports),
+		protos:         slicesx.Uniq(p.protos),
+		descriptors:    slicesx.Uniq(p.descriptors),
 		descriptorSets: slices.Clone(p.descriptorSets),
 	}
 }

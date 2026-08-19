@@ -44,7 +44,6 @@ func TestRestServerAddStubAllowsProtectedHealthServiceDefinitions(t *testing.T) 
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			// Arrange
 			server, err := NewRestServer(
 				t.Context(),
 				stuber.NewBudgerigar(),
@@ -61,10 +60,8 @@ func TestRestServerAddStubAllowsProtectedHealthServiceDefinitions(t *testing.T) 
 
 			w := httptest.NewRecorder()
 
-			// Act
 			server.AddStub(w, req)
 
-			// Assert
 			require.Equal(t, http.StatusOK, w.Code)
 		})
 	}
@@ -73,7 +70,6 @@ func TestRestServerAddStubAllowsProtectedHealthServiceDefinitions(t *testing.T) 
 func TestRestServerAddStubAllowsCustomHealthService(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	server, err := NewRestServer(
 		t.Context(),
 		stuber.NewBudgerigar(),
@@ -92,9 +88,7 @@ func TestRestServerAddStubAllowsCustomHealthService(t *testing.T) {
 
 	w := httptest.NewRecorder()
 
-	// Act
 	server.AddStub(w, req)
 
-	// Assert
 	require.Equal(t, http.StatusOK, w.Code)
 }

@@ -48,7 +48,7 @@ func (b *Builder) GatewayServe(ctx context.Context) error {
 		return nil
 	}
 
-	gateway := b.newMultiProtocolGateway()
+	gateway := b.newMultiProtocolGateway(ctx)
 
 	router := mux.NewRouter()
 	router.Handle("/{service}/{method}", gateway).Methods(http.MethodPost, http.MethodGet)
@@ -71,13 +71,13 @@ func (b *Builder) GatewayServe(ctx context.Context) error {
 	return b.serveGateway(ctx, srv, listener)
 }
 
-func (b *Builder) newMultiProtocolGateway() *app.MultiProtocolGateway {
+func (b *Builder) newMultiProtocolGateway(ctx context.Context) *app.MultiProtocolGateway {
 	var recorder history.Recorder
 	if store := b.HistoryStore(); store != nil {
 		recorder = store
 	}
 
-	g := app.NewMultiProtocolGateway(
+	g := app.NewMultiProtocolGateway(ctx,
 		b.Budgerigar(),
 		b.DescriptorRegistry(),
 		recorder,
@@ -91,9 +91,27 @@ func (b *Builder) newMultiProtocolGateway() *app.MultiProtocolGateway {
 	return g
 }
 
+func (b *Builder) gatewayCORS() func(http.Handler) http.Handler {
+	return handlers.CORS(
+		handlers.AllowedOrigins(b.config.CORSAllowedOrigins),
+		handlers.AllowedMethods(b.config.CORSAllowedMethods),
+		handlers.AllowedHeaders([]string{
+			"Accept", "Accept-Encoding", "Content-Encoding", "Content-Type", "Origin",
+			"Connect-Protocol-Version", "Connect-Timeout-Ms",
+			"Connect-Content-Encoding", "Connect-Accept-Encoding",
+			"Grpc-Timeout", "X-Grpc-Web", "X-User-Agent",
+			"X-Gripmock-Session",
+		}),
+		handlers.ExposedHeaders([]string{
+			"Content-Type", "Content-Encoding",
+			"Grpc-Status", "Grpc-Message", "Grpc-Status-Details-Bin",
+		}),
+	)
+}
+
 func (b *Builder) newGatewayServer(ctx context.Context, router *mux.Router) *http.Server {
 	// Middleware order (innermost → outermost):
-	//   router → access-log → gzip-decompress → compress → otel
+	//   router → access-log → gzip-decompress → compress → CORS → otel
 	//
 	// Must keep access-log INSIDE gzip/compress so it sees the
 	// decompressed request body and the uncompressed response body.
@@ -102,6 +120,7 @@ func (b *Builder) newGatewayServer(ctx context.Context, router *mux.Router) *htt
 	handler = gatewayAccessLogMiddleware(handler)
 	handler = httputil.GzipRequestMiddleware(handler)
 	handler = handlers.CompressHandler(handler)
+	handler = b.gatewayCORS()(handler)
 
 	if b.config.OTel.Enabled {
 		handler = otelhttp.NewHandler(handler, "gripmock-gateway")

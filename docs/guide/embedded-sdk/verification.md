@@ -1,41 +1,13 @@
 # Verification <VersionTag version="v3.7.0" />
 
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::
-
 ::: info
 **Minimum Requirements**: Go 1.26 or later
 :::
 
-> **Version history:** Verification available since <VersionTag version="v3.7.0" /> (legacy API: `mock.Verify().Method(fm).Called(t, n)`, `mock.Verify().Total(t, n)`). Current v2 API since <VersionTag version="v3.16.0" />. See the [Upgrade Guide](./upgrade.md) for migration.
+> **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" />. Current API since <VersionTag version="v3.16.0" />; the legacy `sdk.Run` / `mock.Stub` / `mock.Verify` API was **removed in v3.20.0**. See the [Upgrade Guide](./upgrade.md).
 
 Verify that your code interacts with the mock as expected.
 
----
-
-### Legacy API (v3.7.0+)
-
-The same verification in the legacy API:
-
-```go
-mock, err := sdk.Run(t, sdk.WithFileDescriptor(service.File_service_proto))
-require.NoError(t, err)
-defer mock.Close()
-
-mock.Stub(sdk.By(MyService_MyMethod_FullMethodName)).
-    When(sdk.Equals("id", "test")).
-    Reply(sdk.Data("result", "success")).
-    Commit()
-
-// ... make calls ...
-
-mock.Verify().Method(sdk.By(MyService_MyMethod_FullMethodName)).Called(t, 2)
-mock.Verify().Total(t, 3)
-mock.History().FilterByMethod("MyService", "MyMethod")
-```
-
----
 
 ## Call Verification
 

@@ -22,15 +22,11 @@ func parseKVPairsErr(kv []any, errPrefix string) (map[string]any, error) {
 	return m, nil
 }
 
-func parseHeaderPairsErr(kv []string, errPrefix string) (map[string]string, error) {
-	if len(kv)%2 != 0 {
-		return nil, errors.Wrapf(ErrInvalidInput, "%s: need pairs (key, value), got %d args", errPrefix, len(kv))
+func parseKVPairs(kv []any, errPrefix string) map[string]any {
+	m, err := parseKVPairsErr(kv, errPrefix)
+	if err != nil {
+		panic(err.Error())
 	}
 
-	headers := make(map[string]string, len(kv)/2) //nolint:mnd
-	for i := range len(kv) / 2 {
-		headers[kv[i*2]] = kv[i*2+1]
-	}
-
-	return headers, nil
+	return m
 }

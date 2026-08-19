@@ -9,11 +9,11 @@ import (
 
 	"github.com/bufbuild/protocompile"
 	"github.com/cockroachdb/errors"
-	"github.com/samber/lo"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/types/descriptorpb"
 
+	"github.com/bavix/gripmock/v3/internal/infra/slicesx"
 	"github.com/bavix/gripmock/v3/internal/pbs"
 )
 
@@ -198,7 +198,7 @@ func Build(
 		}
 	}
 
-	configure, err := newConfigure(ctx, lo.Uniq(findMinimalPaths(imports)), lo.Uniq(paths), remoteClient)
+	configure, err := newConfigure(ctx, slicesx.Uniq(findMinimalPaths(imports)), slicesx.Uniq(paths), remoteClient)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create configuration")
 	}

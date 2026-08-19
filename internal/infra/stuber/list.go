@@ -2,9 +2,9 @@ package stuber
 
 import (
 	"bytes"
+	"cmp"
 	"iter"
 	"slices"
-	"sort"
 	"strings"
 )
 
@@ -40,7 +40,7 @@ type ListOptions struct {
 
 // List returns filtered stubs and total before pagination.
 func (b *Budgerigar) List(options ListOptions) ([]*Stub, int) {
-	filtered := filterStubs(b.searcher.storage.values(), options)
+	filtered := filterStubs(b.searcher.storage.values(), options, b.searcher.storage.size())
 
 	sortStubs(filtered, options.Sort)
 
@@ -51,7 +51,7 @@ func (b *Budgerigar) List(options ListOptions) ([]*Stub, int) {
 }
 
 //nolint:cyclop
-func filterStubs(stubs iter.Seq[*Stub], options ListOptions) []*Stub {
+func filterStubs(stubs iter.Seq[*Stub], options ListOptions, hint int) []*Stub {
 	seq := stubs
 
 	if options.Source != "" {
@@ -104,7 +104,7 @@ func filterStubs(stubs iter.Seq[*Stub], options ListOptions) []*Stub {
 		})
 	}
 
-	filtered := slices.Collect(seq)
+	filtered := slices.AppendSeq(make([]*Stub, 0, hint), seq)
 	if filtered == nil {
 		return []*Stub{}
 	}
@@ -182,53 +182,50 @@ func sortStubs(stubs []*Stub, mode string) {
 	// Every mode ends in an ID tiebreak so the order is a TOTAL order. Input comes
 	// from values(), which ranges a Go map (random order each call); without the
 	// tiebreak, stubs tying on the sort key keep that random order and pagination
-	// duplicates/drops rows across independently-sorted pages.
-	byID := func(i, j int) bool {
-		return bytes.Compare(stubs[i].ID[:], stubs[j].ID[:]) < 0
+	// duplicates/drops rows across independently-sorted pages. That total order is
+	// also why an unstable sort is enough.
+	byID := func(a, b *Stub) int {
+		return bytes.Compare(a.ID[:], b.ID[:])
 	}
 
-	less := func(i, j int) bool {
-		if stubs[i].Priority != stubs[j].Priority {
-			return stubs[i].Priority > stubs[j].Priority
+	compare := func(a, b *Stub) int {
+		if a.Priority != b.Priority {
+			return cmp.Compare(b.Priority, a.Priority)
 		}
 
-		return byID(i, j)
+		return byID(a, b)
 	}
 
 	switch mode {
 	case ListSortPriorityAsc:
-		less = func(i, j int) bool {
-			if stubs[i].Priority != stubs[j].Priority {
-				return stubs[i].Priority < stubs[j].Priority
+		compare = func(a, b *Stub) int {
+			if a.Priority != b.Priority {
+				return cmp.Compare(a.Priority, b.Priority)
 			}
 
-			return byID(i, j)
+			return byID(a, b)
 		}
 	case ListSortServiceAsc:
-		less = func(i, j int) bool {
-			if stubs[i].Service != stubs[j].Service {
-				return stubs[i].Service < stubs[j].Service
+		compare = func(a, b *Stub) int {
+			if a.Service != b.Service {
+				return cmp.Compare(a.Service, b.Service)
 			}
 
-			if stubs[i].Method != stubs[j].Method {
-				return stubs[i].Method < stubs[j].Method
+			if a.Method != b.Method {
+				return cmp.Compare(a.Method, b.Method)
 			}
 
-			return byID(i, j)
+			return byID(a, b)
 		}
 	case ListSortMethodAsc:
-		less = func(i, j int) bool {
-			if stubs[i].Method != stubs[j].Method {
-				return stubs[i].Method < stubs[j].Method
+		compare = func(a, b *Stub) int {
+			if a.Method != b.Method {
+				return cmp.Compare(a.Method, b.Method)
 			}
 
-			if stubs[i].Service != stubs[j].Service {
-				return stubs[i].Service < stubs[j].Service
-			}
-
-			return byID(i, j)
+			return byID(a, b)
 		}
 	}
 
-	sort.SliceStable(stubs, less)
+	slices.SortFunc(stubs, compare)
 }

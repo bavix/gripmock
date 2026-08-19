@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -29,6 +30,7 @@ type MultiProtocolGateway struct {
 }
 
 func NewMultiProtocolGateway(
+	ctx context.Context,
 	budgerigar *stuber.Budgerigar,
 	descriptorRegistry *descriptors.Registry,
 	recorder history.Recorder,
@@ -37,8 +39,8 @@ func NewMultiProtocolGateway(
 	errorFormatter *ErrorFormatter,
 ) *MultiProtocolGateway {
 	return &MultiProtocolGateway{
-		connect: NewConnectRPCGateway(budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
-		grpcweb: NewGRPCWebGateway(budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
+		connect: NewConnectRPCGateway(ctx, budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
+		grpcweb: NewGRPCWebGateway(ctx, budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
 	}
 }
 
@@ -57,7 +59,7 @@ func (g *MultiProtocolGateway) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	ct := r.Header.Get("Content-Type")
 
 	switch {
-	case strings.HasPrefix(ct, "application/grpc-web"):
+	case strings.HasPrefix(normalizeContentType(ct), "application/grpc-web"):
 		g.grpcweb.ServeHTTP(w, r)
 
 		return

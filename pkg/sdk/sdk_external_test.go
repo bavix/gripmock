@@ -135,7 +135,7 @@ func compileInline(t *testing.T, source, name string) *descriptorpb.FileDescript
 		seen[fdp.GetName()] = true
 		fds.File = append(fds.File, fdp)
 	}
-	// Add imported files from GlobalFiles (for WKT support)
+
 	for _, f := range files {
 		fdp := protodesc.ToFileDescriptorProto(f)
 		for _, dep := range fdp.GetDependency() {
@@ -183,7 +183,7 @@ func newServer(t *testing.T, opts ...sdk.Option) (*sdk.Server, *descriptorpb.Fil
 	fds := compileInline(t, testProto, "test.proto")
 	all := append([]sdk.Option{sdk.WithDescriptors(fds)}, opts...)
 
-	return sdk.NewServer(t, all...), fds
+	return sdk.NewTestServer(t, all...), fds
 }
 
 func newServerSearch(t *testing.T) (*sdk.Server, *descriptorpb.FileDescriptorSet) {
@@ -191,7 +191,7 @@ func newServerSearch(t *testing.T) (*sdk.Server, *descriptorpb.FileDescriptorSet
 	t.Helper()
 	fds := compileInline(t, searchProto, "search.proto")
 
-	return sdk.NewServer(t, sdk.WithDescriptors(fds)), fds
+	return sdk.NewTestServer(t, sdk.WithDescriptors(fds)), fds
 }
 
 func newServerCalc(t *testing.T) (*sdk.Server, *descriptorpb.FileDescriptorSet) {
@@ -199,7 +199,7 @@ func newServerCalc(t *testing.T) (*sdk.Server, *descriptorpb.FileDescriptorSet) 
 	t.Helper()
 	fds := compileInline(t, calcProto, "calc.proto")
 
-	return sdk.NewServer(t, sdk.WithDescriptors(fds)), fds
+	return sdk.NewTestServer(t, sdk.WithDescriptors(fds)), fds
 }
 
 func newServerChat(t *testing.T) (*sdk.Server, *descriptorpb.FileDescriptorSet) {
@@ -207,28 +207,28 @@ func newServerChat(t *testing.T) (*sdk.Server, *descriptorpb.FileDescriptorSet) 
 	t.Helper()
 	fds := compileInline(t, chatProto, "chat.proto")
 
-	return sdk.NewServer(t, sdk.WithDescriptors(fds)), fds
+	return sdk.NewTestServer(t, sdk.WithDescriptors(fds)), fds
 }
 
 func newServerWorkflow(t *testing.T) (*sdk.Server, *descriptorpb.FileDescriptorSet) {
 	t.Helper()
 	fds := compileInline(t, workflowProto, "workflow.proto")
 
-	return sdk.NewServer(t, sdk.WithDescriptors(fds)), fds
+	return sdk.NewTestServer(t, sdk.WithDescriptors(fds)), fds
 }
 
 func newServerWKT(t *testing.T) (*sdk.Server, *descriptorpb.FileDescriptorSet) {
 	t.Helper()
 	fds := compileInline(t, wktProto, "wkt.proto")
 
-	return sdk.NewServer(t, sdk.WithDescriptors(fds)), fds
+	return sdk.NewTestServer(t, sdk.WithDescriptors(fds)), fds
 }
 
 func newServerNested(t *testing.T) (*sdk.Server, *descriptorpb.FileDescriptorSet) {
 	t.Helper()
 	fds := compileInline(t, nestedProto, "nested.proto")
 
-	return sdk.NewServer(t, sdk.WithDescriptors(fds)), fds
+	return sdk.NewTestServer(t, sdk.WithDescriptors(fds)), fds
 }
 
 func sayHello(t *testing.T, srv *sdk.Server, fds *descriptorpb.FileDescriptorSet, name string) *dynamicpb.Message {
@@ -286,7 +286,7 @@ func TestNewServer_Panics(t *testing.T) {
 func TestNewServer_WithHealthTimeout(t *testing.T) {
 	t.Parallel()
 
-	srv, _ := newServer(t, sdk.WithHealthCheckTimeout(5*time.Second))
+	srv, _ := newServer(t, sdk.WithHealthCheckTimeout(sdk.TestHealthTimeout))
 	defer func() { _ = srv.Close() }()
 
 	require.NotNil(t, srv.Conn())
@@ -519,14 +519,14 @@ func TestServerStreamEmpty(t *testing.T) {
 	require.ErrorIs(t, err, io.EOF)
 }
 
-func TestClientStreamFirstPayload(t *testing.T) {
+func TestClientStreamRegexMatch(t *testing.T) {
 	t.Parallel()
 
 	srv, fds := newServerCalc(t)
 	defer func() { _ = srv.Close() }()
 
 	srv.ExpectClientStream("/calc.Calculator/SumNumbers").
-		WithFirstPayload(sdk.Matches("value", "\\d+")).
+		Match(sdk.Matches("value", "\\d+")).
 		Return("result", 99.0, "count", 1)
 
 	d := resolveDesc(t, fds, "calc.NumberRequest", "calc.SumResponse")
@@ -722,7 +722,7 @@ func TestMatchersExist(t *testing.T) {
 	require.NotNil(t, sdk.Equals("k", "v"))
 	require.NotNil(t, sdk.Contains("k", "v"))
 	require.NotNil(t, sdk.Matches("k", "v.*"))
-	require.NotNil(t, sdk.Merge(sdk.Equals("a", 1), sdk.Contains("b", "2")))
+	require.NotNil(t, sdk.And(sdk.Equals("a", 1), sdk.Contains("b", "2")))
 	require.NotNil(t, sdk.IgnoreArrayOrder(sdk.Equals("a", []int{1, 2})))
 }
 
@@ -762,18 +762,27 @@ func TestNestedMessages(t *testing.T) {
 	require.Equal(t, "configured", out.Get(d.out.Fields().ByName("status")).String())
 }
 
-func TestHealthCheckStubbable(t *testing.T) {
+func TestHealthCheckStubbedByEnumName(t *testing.T) {
 	t.Parallel()
 
 	fds := compileInline(t, testProto, "test.proto")
 
-	srv := sdk.NewServer(t, sdk.WithDescriptors(fds))
+	srv := sdk.NewTestServer(t, sdk.WithDescriptors(fds))
 	defer func() { _ = srv.Close() }()
 
-	// Health is built-in. Just verify we can register expectation for it.
 	srv.ExpectUnary("/grpc.health.v1.Health/Check").
 		Match("service", "my-svc").
 		Return("status", "SERVING")
+
+	client := grpc_health_v1.NewHealthClient(srv.Conn())
+
+	stubbed, err := client.Check(t.Context(), &grpc_health_v1.HealthCheckRequest{Service: "my-svc"})
+	require.NoError(t, err)
+	require.Equal(t, grpc_health_v1.HealthCheckResponse_SERVING, stubbed.GetStatus())
+
+	_, err = client.Check(t.Context(), &grpc_health_v1.HealthCheckRequest{Service: "not-stubbed"})
+	require.Equal(t, codes.NotFound, status.Code(err),
+		"a service with no health stub keeps the documented default")
 }
 
 const extendedProto = `
@@ -799,10 +808,9 @@ func TestExtendedTypes(t *testing.T) {
 
 	fds := compileInline(t, extendedProto, "extended.proto")
 
-	srv := sdk.NewServer(t, sdk.WithDescriptors(fds))
+	srv := sdk.NewTestServer(t, sdk.WithDescriptors(fds))
 	defer func() { _ = srv.Close() }()
 
-	// Match on account_id, return nested Money
 	srv.ExpectUnary("/extended.FinanceService/GetBalance").
 		Match("account_id", "acc-42").
 		Return("balance", map[string]any{
@@ -831,7 +839,6 @@ func TestExtendedTypes(t *testing.T) {
 	err := srv.Conn().Invoke(t.Context(), "/extended.FinanceService/GetBalance", in, out)
 	require.NoError(t, err)
 
-	// Check balance fields
 	balFd := outMsgDesc.Fields().ByName("balance")
 	balMsg := out.Get(balFd).Message()
 	require.NotNil(t, balMsg)
@@ -920,12 +927,10 @@ func TestOnceTwice(t *testing.T) {
 		Twice().
 		Return("message", "twice")
 
-	// Once: first call succeeds, second fails
 	msg1 := sayHello(t, srv, fds, "once")
 	require.Equal(t, "once", getMsg(t, msg1))
 	require.Error(t, sayHelloErr(t, srv, fds, "once"))
 
-	// Twice: two calls succeed, third fails
 	msg2 := sayHello(t, srv, fds, "twice")
 	require.Equal(t, "twice", getMsg(t, msg2))
 	msg3 := sayHello(t, srv, fds, "twice")
@@ -1010,7 +1015,6 @@ func TestNextWillReturnSequences(t *testing.T) {
 	srv, fds := newServer(t)
 	defer func() { _ = srv.Close() }()
 
-	// Test: first 2 calls error, 3rd succeeds
 	srv.ExpectUnary("/test.Greeter/SayHello").
 		Match("name", "retry").
 		ReturnError(codes.Unavailable, "try again").
@@ -1044,8 +1048,6 @@ func TestWithHeaderMatch(t *testing.T) {
 	require.Equal(t, "authorized", out.Get(d.out.Fields().ByName("message")).String())
 }
 
-// Regression: mergeInputHeader dropped AnyOf, so WithHeader(AnyOf(...)) compiled
-// to an empty header matcher that matched every request regardless of headers.
 func TestWithHeaderAnyOfRejectsNonMatching(t *testing.T) {
 	t.Parallel()
 
@@ -1071,9 +1073,6 @@ func TestWithHeaderAnyOfRejectsNonMatching(t *testing.T) {
 		"WithHeader(AnyOf(prod, staging)) must not match x-env=dev")
 }
 
-// Regression: EffectBuilder.Build serialized only Output.Data, so an
-// Upsert(...).ReturnError(...) effect lost its code/error and the upserted stub
-// returned an empty success instead of the intended gRPC error.
 func TestUpsertEffectReturnError(t *testing.T) {
 	t.Parallel()
 
@@ -1111,23 +1110,20 @@ func TestDeleteStubEffect(t *testing.T) {
 		Effect(sdk.DeleteStub(target.StubID())).
 		Return("message", "triggered")
 
-	// Trigger the delete
 	msg1 := sayHello(t, srv, fds, "trigger")
 	require.Equal(t, "triggered", getMsg(t, msg1))
 
-	// Target stub should now be deleted
 	require.Error(t, sayHelloErr(t, srv, fds, "target"))
 }
 
-func TestHealthStubbingReal(t *testing.T) {
+func TestHealthCheckStubbedByEnumNumber(t *testing.T) {
 	t.Parallel()
 
 	fds := compileInline(t, testProto, "test.proto")
 
-	srv := sdk.NewServer(t, sdk.WithDescriptors(fds))
+	srv := sdk.NewTestServer(t, sdk.WithDescriptors(fds))
 	defer func() { _ = srv.Close() }()
 
-	// Stub health check
 	srv.ExpectUnary("/grpc.health.v1.Health/Check").
 		Match("service", "my-svc").
 		Return("status", float64(grpc_health_v1.HealthCheckResponse_SERVING))

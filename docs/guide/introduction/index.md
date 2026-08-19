@@ -33,6 +33,8 @@ process, which is where the startup time and the image size come from — see th
 - **Match Limit (`options.times`)**: Limit how many times a stub can be matched <VersionTag version="v3.7.0" />
 - **Embedded SDK**: Run GripMock inside Go tests <VersionTag version="v3.7.0" />
 - **MCP API**: AI/agent tooling integration <VersionTag version="v3.7.0" />
+- **Embedded SDK**: Programmatic GripMock usage in Go tests with built-in verification helpers <VersionTag version="v3.7.0" />
+- **Upstream Modes**: Reflection-based `proxy`/`replay`/`capture` modes for reverse proxy, local-first fallback, and automatic stub recording <VersionTag version="v3.9.0" />
 - **Upstream Modes**: `proxy`, `replay`, `capture` for gradual migration <VersionTag version="v3.9.0" />
 - **OpenTelemetry**: Export traces via OTLP <VersionTag version="v3.10.0" />
 - **Prometheus**: Metrics at `/metrics` <VersionTag version="v3.10.0" />
@@ -54,11 +56,6 @@ See [Streaming](../stubs/streaming) for details.
 
 The dashboard at `http://localhost:4771/` lists the loaded stubs, shows which of
 them have been matched, and lets you edit them without restarting the server.
-
-## Experimental Features
-
-- **Embedded SDK** <VersionTag version="v3.7.0" />: Programmatic GripMock usage in Go tests with built-in verification helpers
-- **Upstream Modes** <VersionTag version="v3.9.0" />: Reflection-based `proxy`/`replay`/`capture` modes for reverse proxy, local-first fallback, and automatic stub recording
 
 ## Runtime descriptor loading <VersionTag version="v3.7.0" />
 

@@ -3,34 +3,19 @@ package sdk
 import (
 	"time"
 
+	"google.golang.org/grpc/codes"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 // DelayItem wraps response data with a time delay.
-// Created via Delay function. Used inside Return, SendStream, Send.
 type DelayItem struct {
 	Delay time.Duration
 	Data  map[string]any
 }
 
 // Delay wraps response data with a time delay.
-//
-// Usage in Return:
-//
-//	Return(Delay(100*time.Millisecond, "msg", "hello"))
-//	Return(Delay(100*ms, &pb.Response{Message: "hi"}))
-//	Return(Delay(100*ms, map[string]any{"msg": "hello"}))
-//
-// Usage in SendStream/Send:
-//
-//	SendStream(
-//	    map[string]any{"msg": "first"},
-//	    Delay(200*ms, "msg", "second"),
-//	)
-//
-//	Send(Delay(150*ms, "msg", "third"))
 func Delay(d time.Duration, kv ...any) DelayItem {
 	if len(kv) == 1 {
 		if msg, ok := kv[0].(proto.Message); ok {
@@ -45,8 +30,32 @@ func Delay(d time.Duration, kv ...any) DelayItem {
 	return DelayItem{Delay: d, Data: parseKVPairs(kv, "sdk.Delay")}
 }
 
-// extractDelay extracts a DelayItem from the first argument if present.
-// Returns (delay, data) where delay=0 means no delay was requested.
+// StreamErrorItem aborts a stream at this position instead of sending a message.
+type StreamErrorItem struct {
+	Code    codes.Code
+	Message string
+	Details []map[string]any
+}
+
+func StreamError(code codes.Code, msg string, details ...map[string]any) StreamErrorItem {
+	return StreamErrorItem{Code: code, Message: msg, Details: details}
+}
+
+func (e StreamErrorItem) element() map[string]any {
+	meta := map[string]any{"error": e.Message, "code": uint32(e.Code)}
+
+	if len(e.Details) > 0 {
+		details := make([]any, len(e.Details))
+		for i, d := range e.Details {
+			details[i] = d
+		}
+
+		meta["details"] = details
+	}
+
+	return map[string]any{stuber.GripMockKey: meta}
+}
+
 func extractDelay(kv []any, errPrefix string) (time.Duration, map[string]any) {
 	if len(kv) == 1 {
 		if d, ok := kv[0].(DelayItem); ok {
@@ -57,10 +66,11 @@ func extractDelay(kv []any, errPrefix string) (time.Duration, map[string]any) {
 	return 0, parseKVPairs(kv, errPrefix)
 }
 
-// injectStreamDelay injects _gripmock delay into a stream item.
-// If item is a DelayItem, adds the delay marker to the data map.
-// Returns the data map ready for the stream.
 func injectStreamDelay(item any) any {
+	if e, ok := item.(StreamErrorItem); ok {
+		return e.element()
+	}
+
 	if d, ok := item.(DelayItem); ok {
 		m := d.Data
 		if m == nil {
@@ -75,15 +85,23 @@ func injectStreamDelay(item any) any {
 	return item
 }
 
-// extractDelayItem extracts the stream data from kv arguments.
-// If first arg is DelayItem, returns the data map with delay injected.
-// Otherwise parses KV pairs and returns a map.
 func extractDelayItem(kv []any) any {
 	if len(kv) == 1 {
-		if d, ok := kv[0].(DelayItem); ok {
-			return injectStreamDelay(d)
-		}
+		return streamElement(kv[0], "sdk.NextWillReturn")
 	}
 
 	return parseKVPairs(kv, "sdk.NextWillReturn")
+}
+
+func streamElement(v any, errPrefix string) any {
+	switch item := v.(type) {
+	case StreamErrorItem:
+		return item.element()
+	case DelayItem:
+		return injectStreamDelay(item)
+	case string:
+		return parseKVPairs([]any{item}, errPrefix)
+	default:
+		return item
+	}
 }

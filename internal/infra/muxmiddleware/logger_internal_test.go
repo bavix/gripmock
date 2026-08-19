@@ -2,6 +2,7 @@ package muxmiddleware
 
 import (
 	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -136,4 +137,49 @@ func TestLoggerRequestLoggerWithEmptyBody(t *testing.T) {
 	require.NoError(t, writeErr)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, "test response", w.Body.String())
+}
+
+func TestRequestLoggerRefusesAnUnreadableBody(t *testing.T) {
+	t.Parallel()
+
+	reached := false
+	handler := RequestLogger(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		reached = true
+
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	body := bytes.Repeat([]byte("a"), (4<<20)+1)
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/stubs",
+		bytes.NewReader(body))
+
+	handler.ServeHTTP(recorder, request)
+
+	require.False(t, reached,
+		"the body is gone by now, so the handler must not be asked to serve the request")
+	require.Equal(t, http.StatusRequestEntityTooLarge, recorder.Code)
+	require.Contains(t, recorder.Body.String(), "exceeds the maximum size")
+	require.Equal(t, "application/json", recorder.Header().Get("Content-Type"))
+}
+
+func TestRequestLoggerPassesAReadableBodyThrough(t *testing.T) {
+	t.Parallel()
+
+	var seen []byte
+
+	handler := RequestLogger(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen, _ = io.ReadAll(r.Body)
+
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/stubs",
+		bytes.NewReader([]byte(`{"ok":true}`)))
+
+	handler.ServeHTTP(recorder, request)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	require.JSONEq(t, `{"ok":true}`, string(seen))
 }

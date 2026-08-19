@@ -15,21 +15,16 @@ import (
 
 // CallRecord represents a single gRPC call made to the mock.
 type CallRecord struct {
-	StubID    uuid.UUID        `json:"stubId,omitempty"`
-	Service   string           `json:"service,omitempty"`
-	Method    string           `json:"method,omitempty"`
-	Session   string           `json:"session,omitempty"`   // Session ID (empty = global).
-	Request   map[string]any   `json:"request,omitempty"`   // Deprecated: use Requests.
-	Requests  []map[string]any `json:"requests,omitempty"`  // For streaming calls with multiple messages.
-	Response  map[string]any   `json:"response,omitempty"`  // Deprecated: use Responses.
-	Responses []map[string]any `json:"responses,omitempty"` // For streaming calls with multiple messages.
-	// ResponseHeaders holds normalized response metadata (header+trailer) the
-	// call answered with — a stub's Output.Headers or an upstream's metadata
-	// when the call was proxied. Used to prefill stubs from recorded traffic.
+	StubID          uuid.UUID         `json:"stubId,omitempty"`
+	Service         string            `json:"service,omitempty"`
+	Method          string            `json:"method,omitempty"`
+	Session         string            `json:"session,omitempty"`
+	Requests        []map[string]any  `json:"requests,omitempty"`
+	Responses       []map[string]any  `json:"responses,omitempty"`
 	ResponseHeaders map[string]string `json:"responseHeaders,omitempty"`
-	Code            uint32            `json:"code,omitempty"` // gRPC status code (e.g., codes.OK, codes.NotFound).
+	Code            uint32            `json:"code,omitempty"`
 	Error           string            `json:"error,omitempty"`
-	ElapsedMS       int64             `json:"elapsedMs,omitempty"` // Handler duration in milliseconds.
+	ElapsedMS       int64             `json:"elapsedMs,omitempty"`
 	Timestamp       time.Time         `json:"timestamp"`
 }
 
@@ -39,14 +34,11 @@ type Recorder interface {
 }
 
 // FilterOpts specifies filter criteria for recorded calls.
-// Empty string means "no filter" for that field.
-// Session non-empty: records with Session=="" or Session==Session (visible to session).
 type FilterOpts struct {
 	Service string
 	Method  string
 	Session string
 
-	// ErrorOnly keeps only calls that ended with a non-OK gRPC status.
 	ErrorOnly bool
 }
 
@@ -64,13 +56,17 @@ type SessionCleaner interface {
 }
 
 // MemoryStore implements both Recorder and Reader (in-memory).
-// LimitBytes 0 means unlimited. MessageMaxBytes 0 means no truncation.
+type storedRecord struct {
+	call CallRecord
+	size int64
+}
+
 type MemoryStore struct {
 	mu              sync.RWMutex
-	calls           []CallRecord
+	calls           []storedRecord
 	limitBytes      int64
 	messageMaxBytes int64
-	redactKeys      map[string]struct{} // lowercased keys to redact
+	redactKeys      map[string]struct{}
 	currentBytes    int64
 }
 
@@ -84,8 +80,6 @@ func WithMessageMaxBytes(n int64) MemoryStoreOption {
 	}
 }
 
-// WithRedactKeys replaces values for matching keys (case-insensitive) with "[REDACTED]"
-// in Request/Response. Keys are matched at any nesting level.
 func WithRedactKeys(keys []string) MemoryStoreOption {
 	m := make(map[string]struct{}, len(keys))
 	for _, k := range keys {
@@ -100,7 +94,6 @@ func WithRedactKeys(keys []string) MemoryStoreOption {
 }
 
 // NewMemoryStore creates a store with optional byte limit.
-// limitBytes <= 0 means unlimited.
 func NewMemoryStore(limitBytes int64, opts ...MemoryStoreOption) *MemoryStore {
 	s := &MemoryStore{limitBytes: limitBytes}
 
@@ -111,15 +104,21 @@ func NewMemoryStore(limitBytes int64, opts ...MemoryStoreOption) *MemoryStore {
 	return s
 }
 
-// Record implements Recorder.
+// Record implements Recorder. The message maps are cloned, so the caller may
+// keep mutating them; RecordOwned skips the clone when ownership is handed over.
 func (s *MemoryStore) Record(call CallRecord) {
-	// The store must OWN its message maps: callers may reuse/mutate the maps they
-	// passed. Redaction already deep-copies every map, so only the non-redacting
-	// path needs an explicit clone (truncation shares non-truncated maps).
+	if len(s.redactKeys) == 0 {
+		call = cloneRecordMessages(call)
+	}
+
+	s.RecordOwned(call)
+}
+
+// RecordOwned stores the record without cloning its message maps: the caller
+// hands them over and must not mutate them afterwards.
+func (s *MemoryStore) RecordOwned(call CallRecord) {
 	if len(s.redactKeys) > 0 {
 		call = redactRecord(call, s.redactKeys)
-	} else {
-		call = cloneRecordMessages(call)
 	}
 
 	if s.messageMaxBytes > 0 {
@@ -129,22 +128,16 @@ func (s *MemoryStore) Record(call CallRecord) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	sz := estimateRecordSize(call)
-	s.calls = append(s.calls, call)
-	s.currentBytes += sz
+	s.calls = append(s.calls, storedRecord{call: call, size: estimateRecordSize(call)})
+	s.currentBytes += s.calls[len(s.calls)-1].size
 
-	// Keep at least the newest record: if a single call alone exceeds limitBytes,
-	// evicting it too would silently drop the most recent (and only) record.
 	for s.limitBytes > 0 && s.currentBytes > s.limitBytes && len(s.calls) > 1 {
-		evicted := s.calls[0]
+		s.currentBytes -= s.calls[0].size
 		s.calls = s.calls[1:]
-		s.currentBytes -= estimateRecordSize(evicted)
 	}
 }
 
 // Clear removes all recorded calls, resetting the store to empty in place.
-// The store pointer stays valid, so a running server holding this recorder
-// keeps writing into the same (now-empty) store.
 func (s *MemoryStore) Clear() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -153,52 +146,21 @@ func (s *MemoryStore) Clear() {
 	s.currentBytes = 0
 }
 
-const fallbackRecordSize = 1024
-
 const redactedValue = "[REDACTED]"
 
-// freshTruncatedMarker returns a new marker map per call. A shared global would
-// be aliased into every truncated record, so any consumer mutating it would
-// corrupt all of them.
 func freshTruncatedMarker() map[string]any {
 	return map[string]any{"_truncated": true}
 }
 
-// redactRecord strips configured secret keys from ALL message fields. Real
-// callers populate the plural Requests/Responses (the primary fields the UI and
-// API read); the deprecated singular Request/Response mirror the first message.
-// Redacting only the singular fields (the previous behavior) left every stored
-// message — including Requests[0], which aliases the same map — unredacted.
 func redactRecord(c CallRecord, keys map[string]struct{}) CallRecord {
 	c.Requests = redactMaps(c.Requests, keys)
 	c.Responses = redactMaps(c.Responses, keys)
 	c.ResponseHeaders = redactStringMap(c.ResponseHeaders, keys)
 
-	if c.Request != nil {
-		c.Request = redactMap(c.Request, keys)
-	}
-
-	if c.Response != nil {
-		c.Response = redactMap(c.Response, keys)
-	}
-
-	// Keep the deprecated singular fields consistent with the redacted slices.
-	if len(c.Requests) > 0 {
-		c.Request = c.Requests[0]
-	}
-
-	if len(c.Responses) > 0 {
-		c.Response = c.Responses[0]
-	}
-
 	return c
 }
 
-// cloneRecordMessages deep-copies the message maps so the stored record does not
-// alias caller-owned maps (which the caller may mutate or reuse afterwards).
 func cloneRecordMessages(c CallRecord) CallRecord {
-	c.Request = cloneMap(c.Request)
-	c.Response = cloneMap(c.Response)
 	c.Requests = cloneMaps(c.Requests)
 	c.Responses = cloneMaps(c.Responses)
 	c.ResponseHeaders = maps.Clone(c.ResponseHeaders)
@@ -206,8 +168,6 @@ func cloneRecordMessages(c CallRecord) CallRecord {
 	return c
 }
 
-// redactStringMap clones the header map, replacing values whose keys are
-// configured for redaction (headers can carry tokens and cookies too).
 func redactStringMap(m map[string]string, keys map[string]struct{}) map[string]string {
 	if m == nil {
 		return nil
@@ -226,8 +186,6 @@ func redactStringMap(m map[string]string, keys map[string]struct{}) map[string]s
 	return out
 }
 
-// mapEach applies fn to each message map, returning a new slice. A nil/empty
-// input is returned unchanged. Shared by the clone/redact/truncate passes.
 func mapEach(ms []map[string]any, fn func(map[string]any) map[string]any) []map[string]any {
 	if len(ms) == 0 {
 		return ms
@@ -344,29 +302,9 @@ func asSlice(v any) []any {
 	return nil
 }
 
-// truncateRecord replaces any message exceeding maxBytes with a marker. It must
-// cover the plural Requests/Responses (the primary fields); truncating only the
-// deprecated singular fields left the size guard dead for the real data path.
 func truncateRecord(c CallRecord, maxBytes int64) CallRecord {
 	c.Requests = truncateMaps(c.Requests, maxBytes)
 	c.Responses = truncateMaps(c.Responses, maxBytes)
-
-	if c.Request != nil {
-		c.Request = truncateMessage(c.Request, maxBytes)
-	}
-
-	if c.Response != nil {
-		c.Response = truncateMessage(c.Response, maxBytes)
-	}
-
-	// Keep the deprecated singular fields consistent with the truncated slices.
-	if len(c.Requests) > 0 {
-		c.Request = c.Requests[0]
-	}
-
-	if len(c.Responses) > 0 {
-		c.Response = c.Responses[0]
-	}
 
 	return c
 }
@@ -383,13 +321,78 @@ func truncateMessage(m map[string]any, maxBytes int64) map[string]any {
 	return m
 }
 
+// estimateRecordSize approximates the JSON footprint without marshalling: the
+// limit only needs proportional accounting, and json.Marshal on every record was
+// the single most expensive step of Record.
 func estimateRecordSize(c CallRecord) int64 {
-	b, err := json.Marshal(c)
-	if err != nil {
-		return fallbackRecordSize
+	const recordOverhead = 160
+
+	size := int64(recordOverhead)
+	size += int64(len(c.Service) + len(c.Method) + len(c.Session) + len(c.Error))
+
+	for _, m := range c.Requests {
+		size += estimateMapSize(m)
 	}
 
-	return int64(len(b))
+	for _, m := range c.Responses {
+		size += estimateMapSize(m)
+	}
+
+	for k, v := range c.ResponseHeaders {
+		size += int64(len(k) + len(v) + kvOverhead)
+	}
+
+	return size
+}
+
+const (
+	kvOverhead      = 8
+	scalarSize      = 16
+	nestingBudget   = 64
+	maxEstimateDeep = 16
+	quoteOverhead   = 2
+	nullSize        = 4
+)
+
+func estimateMapSize(m map[string]any) int64 {
+	size := int64(kvOverhead)
+
+	for k, v := range m {
+		size += int64(len(k)+kvOverhead) + estimateValueSize(v, 0)
+	}
+
+	return size
+}
+
+func estimateValueSize(v any, depth int) int64 {
+	if depth > maxEstimateDeep {
+		return nestingBudget
+	}
+
+	switch typed := v.(type) {
+	case string:
+		return int64(len(typed) + quoteOverhead)
+	case json.Number:
+		return int64(len(typed))
+	case map[string]any:
+		size := int64(kvOverhead)
+		for k, nested := range typed {
+			size += int64(len(k)+kvOverhead) + estimateValueSize(nested, depth+1)
+		}
+
+		return size
+	case []any:
+		size := int64(kvOverhead)
+		for _, nested := range typed {
+			size += estimateValueSize(nested, depth+1)
+		}
+
+		return size
+	case nil:
+		return nullSize
+	default:
+		return scalarSize
+	}
 }
 
 // All implements Reader.
@@ -410,16 +413,15 @@ func (s *MemoryStore) Filter(opts FilterOpts) []CallRecord {
 	return slices.Collect(s.FilterSeq(opts))
 }
 
-// FilterSeq returns an iterator over records matching FilterOpts.
-// Single pass, no intermediate allocations. Lock held during iteration.
-//
 //nolint:cyclop
 func (s *MemoryStore) FilterSeq(opts FilterOpts) iter.Seq[CallRecord] {
 	return func(yield func(CallRecord) bool) {
 		s.mu.RLock()
 		defer s.mu.RUnlock()
 
-		for _, c := range s.calls {
+		for i := range s.calls {
+			c := s.calls[i].call
+
 			if opts.Service != "" && c.Service != opts.Service {
 				continue
 			}
@@ -443,6 +445,50 @@ func (s *MemoryStore) FilterSeq(opts FilterOpts) iter.Seq[CallRecord] {
 	}
 }
 
+// CountFilter counts matching records without materializing them.
+func (s *MemoryStore) CountFilter(opts FilterOpts) int {
+	total := 0
+
+	for range s.FilterSeq(opts) {
+		total++
+	}
+
+	return total
+}
+
+// FilterWindow returns the newest limit records after skipping offset of them,
+// together with the total number of matches. Only the window is held: paginating
+// through Filter used to copy the whole history to hand back a page.
+func (s *MemoryStore) FilterWindow(opts FilterOpts, limit, offset int) ([]CallRecord, int) {
+	offset = max(offset, 0)
+
+	if limit <= 0 {
+		matches := s.Filter(opts)
+
+		return matches[:max(len(matches)-offset, 0)], len(matches)
+	}
+
+	size := limit + offset
+	ring := make([]CallRecord, size)
+	total := 0
+
+	for record := range s.FilterSeq(opts) {
+		ring[total%size] = record
+		total++
+	}
+
+	kept := min(total, size)
+	ordered := make([]CallRecord, 0, kept)
+
+	for i := range kept {
+		ordered = append(ordered, ring[(total-kept+i)%size])
+	}
+
+	end := max(len(ordered)-offset, 0)
+
+	return ordered[max(end-limit, 0):end], total
+}
+
 // FilterByMethod implements Reader. Delegates to Filter for compatibility.
 func (s *MemoryStore) FilterByMethod(service, method string) []CallRecord {
 	return s.Filter(FilterOpts{Service: service, Method: method})
@@ -464,7 +510,6 @@ func (s *MemoryStore) FilterByMethodContext(_ context.Context, service, method s
 }
 
 // DeleteSession removes records that belong strictly to the provided session.
-// Global records (Session == "") are not affected.
 func (s *MemoryStore) DeleteSession(session string) int {
 	if session == "" {
 		return 0
@@ -478,15 +523,15 @@ func (s *MemoryStore) DeleteSession(session string) int {
 
 	var bytesAfter int64
 
-	for _, c := range s.calls {
-		if c.Session == session {
+	for _, rec := range s.calls {
+		if rec.call.Session == session {
 			deleted++
 
 			continue
 		}
 
-		kept = append(kept, c)
-		bytesAfter += estimateRecordSize(c)
+		kept = append(kept, rec)
+		bytesAfter += rec.size
 	}
 
 	s.calls = kept

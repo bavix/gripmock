@@ -54,8 +54,6 @@ func (m *grpcMocker) handleUnaryWithProxy(
 ) (*dynamicpb.Message, error) {
 	route := m.proxyRoute()
 
-	// Health check is excluded from the proxy index by the reflection
-	// client (shouldSkipService). Fall back to the first available route.
 	if route == nil && m.proxies != nil {
 		if m.fullMethod == "/grpc.health.v1.Health/Check" {
 			if routes := m.proxies.Routes(); len(routes) > 0 {
@@ -121,7 +119,10 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 			result = &stuber.Result{}
 		}
 
-		return nil, newUnaryFallbackError(status.Error(codes.NotFound, m.errorFormatter.FormatStubNotFoundError(query, result).Error()))
+		notFound := status.Error(codes.NotFound, m.errorFormatter.FormatStubNotFoundError(query, result).Error())
+		m.recordUnmatched(ctx, requestTime, []map[string]any{m.convertToMap(req)}, notFound)
+
+		return nil, newUnaryFallbackError(notFound)
 	}
 
 	found := result.Found()
@@ -133,6 +134,15 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 	outputToUse := found.Output
 	requestData := m.convertToMap(req)
 
+	if found.UnaryHandler != nil {
+		data, hErr := found.UnaryHandler(ctx, requestData)
+		if hErr != nil {
+			return nil, handlerStatusError(hErr)
+		}
+
+		outputToUse.Data = data
+	}
+
 	headers := make(map[string]any)
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
 		headers = processHeaders(md)
@@ -140,7 +150,7 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 
 	templateData := newTemplateData(requestData, headers, 0, requestTime, []any{requestData}, found.ID.String())
 
-	outputDataCopy := deepCopyAny(outputToUse.Data)
+	outputDataCopy := copyForTemplates(outputToUse.Data)
 
 	if dataMap, ok := outputDataCopy.(map[string]any); ok {
 		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
@@ -310,31 +320,12 @@ func (m *grpcMocker) tryV2API(messages []map[string]any, md metadata.MD) (*stube
 	return m.budgerigar.FindByQuery(query)
 }
 
-func (m *grpcMocker) matchFirstMessage(stream grpc.ServerStream, messages []map[string]any) *stuber.Stub {
-	stubs, _ := m.budgerigar.FindBy(m.fullServiceName, m.methodName)
-	for _, s := range stubs {
-		if !s.MatchOnFirstMessage {
-			continue
-		}
-
-		query := stuber.Query{
-			Service:       m.fullServiceName,
-			Method:        m.methodName,
-			StrictService: m.strictServiceMatch,
-			Input:         []map[string]any{messages[0]},
-		}
-		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
-			query.Headers = processHeaders(md)
-			query.Session = sessionFromMetadata(md)
-		}
-
-		result, matchErr := m.budgerigar.FindByQuery(query)
-		if matchErr == nil && result != nil && result.Found() != nil {
-			return result.Found()
-		}
+func handlerStatusError(err error) error {
+	if _, ok := status.FromError(err); ok {
+		return err
 	}
 
-	return nil
+	return status.Error(codes.Internal, err.Error())
 }
 
 func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
@@ -347,15 +338,11 @@ func (m *grpcMocker) handleClientStream(stream grpc.ServerStream) error {
 
 	zerolog.Ctx(stream.Context()).Debug().Int("msg_count", len(messages)).Msg("client_stream: collected messages")
 
-	if len(messages) > 0 {
-		if found := m.matchFirstMessage(stream, messages); found != nil {
-			return m.sendClientStreamResponse(stream, found, messages, requestTime)
-		}
-	}
-
 	found, err := m.tryFindStub(stream, messages)
 	if err != nil {
 		if status.Code(err) == codes.NotFound {
+			m.recordUnmatched(stream.Context(), requestTime, messages, err)
+
 			return newClientStreamFallbackError(err, originalMessages)
 		}
 
@@ -436,6 +423,20 @@ func (m *grpcMocker) sendClientStreamResponse(
 
 	outputToUse := found.Output
 
+	if found.ClientStreamHandler != nil {
+		decoded := make([]any, len(messages))
+		for i, msg := range messages {
+			decoded[i] = msg
+		}
+
+		data, hErr := found.ClientStreamHandler(stream.Context(), decoded)
+		if hErr != nil {
+			return handlerStatusError(hErr)
+		}
+
+		outputToUse.Data = data
+	}
+
 	headers := make(map[string]any)
 	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
 		headers = processHeaders(md)
@@ -466,10 +467,6 @@ func (m *grpcMocker) sendClientStreamResponse(
 		outputToUse.Error = errorStr
 	}
 
-	// Headers must be sent before any trailer — an error status closes the stream
-	// with trailers, so setting headers afterwards fails. Effects are independent
-	// of response disposition and must run even on the error path, matching
-	// handleUnary. Therefore: headers, then data render + effects, then error.
 	if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
 		return errors.Wrap(err, "failed to set headers")
 	}
@@ -480,7 +477,7 @@ func (m *grpcMocker) sendClientStreamResponse(
 
 	m.setResponseTrailersAny(stream.Context(), stream, outputToUse.Trailers)
 
-	outputDataCopy := deepCopyAny(outputToUse.Data)
+	outputDataCopy := copyForTemplates(outputToUse.Data)
 	if dataMap, ok := outputDataCopy.(map[string]any); ok {
 		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
 			return errors.Wrap(err, "failed to process dynamic templates")

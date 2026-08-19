@@ -15,9 +15,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-// mockExtender is imported from test_utils.go
-
-// RestComprehensiveTestSuite provides comprehensive test suite for REST endpoints.
 type RestComprehensiveTestSuite struct {
 	suite.Suite
 
@@ -25,7 +22,6 @@ type RestComprehensiveTestSuite struct {
 	budgerigar *stuber.Budgerigar
 }
 
-// SetupSuite initializes the test suite.
 func (s *RestComprehensiveTestSuite) SetupSuite() {
 	s.budgerigar = stuber.NewBudgerigar()
 	extender := &mockExtender{}
@@ -34,12 +30,10 @@ func (s *RestComprehensiveTestSuite) SetupSuite() {
 	s.server = server
 }
 
-// SetupTest cleans up before each test.
 func (s *RestComprehensiveTestSuite) SetupTest() {
 	s.budgerigar.Clear()
 }
 
-// TestFindByID tests finding stubs by ID.
 func (s *RestComprehensiveTestSuite) TestFindByID() {
 	tests := []struct {
 		name           string
@@ -55,7 +49,6 @@ func (s *RestComprehensiveTestSuite) TestFindByID() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			// Use a random UUID for non-existing stub test
 			randomUUID := uuid.New()
 			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/"+randomUUID.String(), nil)
 			w := httptest.NewRecorder()
@@ -68,7 +61,6 @@ func (s *RestComprehensiveTestSuite) TestFindByID() {
 	}
 }
 
-// TestBatchStubsDeleteComprehensive tests batch deletion functionality.
 func (s *RestComprehensiveTestSuite) TestBatchStubsDeleteComprehensive() {
 	tests := []struct {
 		name           string
@@ -122,7 +114,6 @@ func (s *RestComprehensiveTestSuite) TestBatchStubsDeleteComprehensive() {
 	}
 }
 
-// TestSearchStubsComprehensive tests search functionality.
 func (s *RestComprehensiveTestSuite) TestSearchStubsComprehensive() {
 	tests := []struct {
 		name           string
@@ -175,7 +166,6 @@ func (s *RestComprehensiveTestSuite) TestSearchStubsComprehensive() {
 	}
 }
 
-// TestServiceMethodsListComprehensive tests service methods listing.
 func (s *RestComprehensiveTestSuite) TestServiceMethodsListComprehensive() {
 	tests := []struct {
 		name        string
@@ -206,16 +196,13 @@ func (s *RestComprehensiveTestSuite) TestServiceMethodsListComprehensive() {
 
 			s.server.ServiceMethodsList(w, req, tt.serviceName)
 
-			// Should always return some response
 			s.Require().NotEmpty(w.Body.String(), tt.description)
 		})
 	}
 }
 
-// TestReadinessComprehensive tests readiness endpoint.
 func (s *RestComprehensiveTestSuite) TestReadinessComprehensive() {
 	s.Run("readiness_check", func() {
-		// Wait for server to be ready with timeout
 		timeout := time.After(2 * time.Second)
 
 		ticker := time.NewTicker(10 * time.Millisecond)
@@ -233,7 +220,6 @@ func (s *RestComprehensiveTestSuite) TestReadinessComprehensive() {
 				s.server.Readiness(w, req)
 
 				if w.Code == http.StatusOK {
-					// Server is ready, final check
 					req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/health/readiness", nil)
 					w := httptest.NewRecorder()
 					s.server.Readiness(w, req)
@@ -247,7 +233,6 @@ func (s *RestComprehensiveTestSuite) TestReadinessComprehensive() {
 	})
 }
 
-// TestErrorHandling tests general error responses.
 func (s *RestComprehensiveTestSuite) TestErrorHandling() {
 	tests := []struct {
 		name        string
@@ -283,10 +268,8 @@ func (s *RestComprehensiveTestSuite) TestErrorHandling() {
 				s.server.AddStub(w, req)
 			}
 
-			// Should always return some response
 			s.Require().NotEmpty(w.Body.String(), tt.description)
 
-			// Check that error response has proper format
 			if w.Code >= http.StatusBadRequest {
 				var response map[string]any
 
@@ -300,10 +283,8 @@ func (s *RestComprehensiveTestSuite) TestErrorHandling() {
 	}
 }
 
-// TestStubLifecycle tests complete stub operations lifecycle.
 func (s *RestComprehensiveTestSuite) TestStubLifecycle() {
 	s.Run("complete_stub_lifecycle", func() {
-		// 1. Add stub
 		stubData := `[{
 			"service": "TestService",
 			"method": "TestMethod",
@@ -320,7 +301,6 @@ func (s *RestComprehensiveTestSuite) TestStubLifecycle() {
 		s.Equal(http.StatusOK, addW.Code, "Adding stub should succeed")
 		s.NotEmpty(addW.Body.String(), "Add response should not be empty")
 
-		// 2. List all stubs
 		listReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs", nil)
 		listW := httptest.NewRecorder()
 
@@ -328,7 +308,6 @@ func (s *RestComprehensiveTestSuite) TestStubLifecycle() {
 		s.Equal(http.StatusOK, listW.Code, "Listing stubs should succeed")
 		s.NotEmpty(listW.Body.String(), "List response should not be empty")
 
-		// 3. Search for stub
 		searchData := `{"service": "TestService", "method": "TestMethod", "data": {"key": "value"}}`
 		searchReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
 		searchReq.Header.Set("Content-Type", "application/json")
@@ -339,7 +318,6 @@ func (s *RestComprehensiveTestSuite) TestStubLifecycle() {
 		s.Equal(http.StatusOK, searchW.Code, "Searching stub should succeed")
 		s.NotEmpty(searchW.Body.String(), "Search response should not be empty")
 
-		// 4. List used stubs
 		usedReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs/used", nil)
 		usedW := httptest.NewRecorder()
 
@@ -347,7 +325,6 @@ func (s *RestComprehensiveTestSuite) TestStubLifecycle() {
 		s.Equal(http.StatusOK, usedW.Code, "Listing used stubs should succeed")
 		s.NotEmpty(usedW.Body.String(), "Used stubs response should not be empty")
 
-		// 5. Purge all stubs
 		purgeReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodDelete, "/api/stubs", nil)
 		purgeW := httptest.NewRecorder()
 
@@ -356,7 +333,6 @@ func (s *RestComprehensiveTestSuite) TestStubLifecycle() {
 	})
 }
 
-// getFirstKey returns the first key from a map for error structure validation.
 func getFirstKey(m map[string]any) string {
 	for k := range m {
 		return k
@@ -365,7 +341,6 @@ func getFirstKey(m map[string]any) string {
 	return ""
 }
 
-// TestRestComprehensiveTestSuite runs the comprehensive REST test suite.
 func TestRestComprehensiveTestSuite(t *testing.T) { //nolint:paralleltest
 	suite.Run(t, new(RestComprehensiveTestSuite))
 }

@@ -43,6 +43,8 @@ limit for gateway traffic.
 | `HTTP_HOST` | `0.0.0.0` | HTTP bind host (admin API + UI). |
 | `HTTP_PORT` | `4771` | HTTP bind port. |
 | `HTTP_ADDR` | `$HTTP_HOST:$HTTP_PORT` | Full HTTP bind address. |
+| `CORS_ALLOWED_ORIGINS` | `*` | Origins allowed to call the admin API and the gateway. Also decides which origins may reach `/api/mcp`: a browser origin that is neither loopback nor listed here is refused. |
+| `CORS_ALLOWED_METHODS` | `GET,POST,DELETE,PATCH` | Methods allowed for cross-origin requests. |
 
 ## Gateway server <VersionTag version="v3.17.0" />
 
@@ -62,22 +64,10 @@ The gateway serves both **ConnectRPC** and **gRPC-web** protocols on a single HT
 
 The gateway provides unary and streaming RPC support for both protocols over HTTP/1.1 and HTTP/2 (with or without TLS). It shares the same stub storage, descriptor registry, and history store as gRPC and REST servers.
 
-### Legacy aliases (deprecated)
-
-The following `CONNECTRPC_*` variables are still supported as fallbacks when the corresponding `GATEWAY_*` variable is not set:
-
-| Deprecated | Unified |
-|---|---|
-| `CONNECTRPC_HOST` | `GATEWAY_HOST` |
-| `CONNECTRPC_PORT` | `GATEWAY_PORT` |
-| `CONNECTRPC_ADDR` | `GATEWAY_ADDR` |
-| `CONNECTRPC_TLS_CERT_FILE` | `GATEWAY_TLS_CERT_FILE` |
-| `CONNECTRPC_TLS_KEY_FILE` | `GATEWAY_TLS_KEY_FILE` |
-| `CONNECTRPC_TLS_CLIENT_AUTH` | `GATEWAY_TLS_CLIENT_AUTH` |
-| `CONNECTRPC_TLS_CA_FILE` | `GATEWAY_TLS_CA_FILE` |
-| `CONNECTRPC_TLS_MIN_VERSION` | `GATEWAY_TLS_MIN_VERSION` |
-
-These aliases will be removed in a future release. Migrate to `GATEWAY_*` variables.
+::: warning Removed in v3.20.0
+The `CONNECTRPC_HOST` / `CONNECTRPC_PORT` / `CONNECTRPC_ADDR` and `CONNECTRPC_TLS_*`
+fallbacks are gone. Use the `GATEWAY_*` variables above.
+:::
 
 ## Stub watcher
 

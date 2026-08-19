@@ -2,11 +2,9 @@ package sdk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
-	"strings"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"google.golang.org/grpc"
@@ -15,43 +13,17 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 
 	"github.com/bavix/gripmock/v3/internal/app"
+	grpcclient "github.com/bavix/gripmock/v3/internal/infra/grpcclient"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 type embeddedMock struct {
-	conn          *grpc.ClientConn
-	server        *grpc.Server
-	lis           net.Listener
-	addr          string
-	budgerigar    *stuber.Budgerigar
-	recorder      *InMemoryRecorder
-	expectedTotal atomic.Int32
-	expectedMu    sync.Mutex
-	expectedByMth map[string]int
-}
-
-func (m *embeddedMock) Conn() *grpc.ClientConn { return m.conn }
-func (m *embeddedMock) Addr() string           { return m.addr }
-func (m *embeddedMock) Stub(service, method string) StubBuilder { //nolint:ireturn
-	if strings.TrimSpace(service) == "" || strings.TrimSpace(method) == "" {
-		panic("sdk.Mock.Stub: service and method must be non-empty")
-	}
-
-	return &stubBuilderCore{
-		service: service,
-		method:  method,
-		onCommit: func(stub *stuber.Stub) error {
-			return m.commitStubs([]*stuber.Stub{stub})
-		},
-	}
-}
-
-//nolint:ireturn
-func (m *embeddedMock) History() HistoryReader { return m.recorder }
-
-//nolint:ireturn
-func (m *embeddedMock) Verify() Verifier {
-	return &verifier{recorder: m.recorder, expectedTotal: &m.expectedTotal, expectedByMth: m.expectedByMth, expectedMu: &m.expectedMu}
+	conn       *grpc.ClientConn
+	server     *grpc.Server
+	lis        net.Listener
+	addr       string
+	budgerigar *stuber.Budgerigar
+	recorder   *InMemoryRecorder
 }
 
 func (m *embeddedMock) Close() error {
@@ -73,28 +45,8 @@ func (m *embeddedMock) Close() error {
 	return nil
 }
 
-func (m *embeddedMock) commitStubs(stubs []*stuber.Stub) error {
-	for _, stub := range stubs {
-		m.budgerigar.PutMany(stub)
-
-		if stub.Options.Times > 0 {
-			m.expectedTotal.Add(int32(stub.Options.Times)) //nolint:gosec
-
-			m.expectedMu.Lock()
-			if m.expectedByMth == nil {
-				m.expectedByMth = make(map[string]int)
-			}
-
-			m.expectedByMth[methodKey(stub.Service, stub.Method)] += stub.Options.Times
-			m.expectedMu.Unlock()
-		}
-	}
-
-	return nil
-}
-
-//nolint:ireturn,funlen
-func runEmbedded(ctx context.Context, o *options) (Mock, error) {
+//nolint:funlen
+func runEmbedded(ctx context.Context, o *options) (*embeddedMock, error) {
 	timeout := o.healthyTimeout
 	if timeout == 0 {
 		timeout = defaultHealthyTimeout
@@ -111,10 +63,9 @@ func runEmbedded(ctx context.Context, o *options) (Mock, error) {
 		return nil, err
 	}
 
-	// Default: TCP :0 (random port). Use WithListenAddr to override.
 	listenAddr := o.listenAddr
 	if listenAddr == "" {
-		listenAddr = ":0"
+		listenAddr = "127.0.0.1:0"
 	}
 
 	if o.listenNetwork == "" {
@@ -132,8 +83,7 @@ func runEmbedded(ctx context.Context, o *options) (Mock, error) {
 
 	go func() { _ = server.Serve(lis) }()
 
-	conn, err := grpc.NewClient("passthrough:///"+addr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient("passthrough:///"+addr, embeddedDialOptions(o)...)
 	if err != nil {
 		_ = lis.Close()
 
@@ -161,7 +111,27 @@ func runEmbedded(ctx context.Context, o *options) (Mock, error) {
 	}, nil
 }
 
+func embeddedDialOptions(o *options) []grpc.DialOption {
+	const maxDialOptions = 3
+
+	opts := make([]grpc.DialOption, 0, maxDialOptions)
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	if o.session == "" {
+		return opts
+	}
+
+	return append(opts,
+		grpc.WithChainUnaryInterceptor(grpcclient.UnarySessionInterceptor(o.session)),
+		grpc.WithChainStreamInterceptor(grpcclient.StreamSessionInterceptor(o.session)),
+	)
+}
+
+var ErrServerNotHealthy = errors.New("gripmock: server did not become healthy")
+
 func waitForHealthy(ctx context.Context, conn *grpc.ClientConn, timeout time.Duration) error {
+	started := time.Now()
+
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -170,21 +140,29 @@ func waitForHealthy(ctx context.Context, conn *grpc.ClientConn, timeout time.Dur
 	ticker := time.NewTicker(50 * time.Millisecond) //nolint:mnd
 	defer ticker.Stop()
 
+	var lastCause string
+
 	for {
+		status, err := client.Check(ctx, &grpc_health_v1.HealthCheckRequest{Service: app.HealthServiceName})
+
+		switch {
+		case err != nil:
+			lastCause = err.Error()
+		case status.GetStatus() == grpc_health_v1.HealthCheckResponse_SERVING:
+			return nil
+		default:
+			lastCause = "status " + status.GetStatus().String()
+		}
+
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
-		case <-ticker.C:
-			resp, err := client.Check(ctx, &grpc_health_v1.HealthCheckRequest{
-				Service: app.HealthServiceName,
-			})
-			if err != nil {
-				continue
+			if lastCause == "" {
+				lastCause = "no health response yet"
 			}
 
-			if resp.GetStatus() == grpc_health_v1.HealthCheckResponse_SERVING {
-				return nil
-			}
+			return fmt.Errorf("%w: %s did not report SERVING within %s (waited %s, last check: %s)",
+				ErrServerNotHealthy, conn.Target(), timeout, time.Since(started).Round(time.Millisecond), lastCause)
+		case <-ticker.C:
 		}
 	}
 }

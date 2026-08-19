@@ -1,4 +1,4 @@
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { nextPageOffset } from '../lib/pagination';
 import type { CallRecord } from '../lib/types';
@@ -60,5 +60,18 @@ export function useHistoryErrorCount(refetchInterval = 0) {
     queryKey: ['history', 'errorCount'],
     queryFn: async () => (await api.getWithMeta<CallRecord[]>('/history', { error: 'true', limit: '1' })).total,
     refetchInterval,
+  });
+}
+
+// Clears recorded calls. The server scopes the purge to the active session when
+// one is set, so it never wipes another session's evidence.
+export function usePurgeHistory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.delete<{ deletedCount: number; session?: string }>('/history'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['history'] });
+      qc.invalidateQueries({ queryKey: ['dashboard'] });
+    },
   });
 }

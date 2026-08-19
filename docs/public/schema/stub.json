@@ -130,7 +130,11 @@
   "oneOf": [
     {
       "type": "object",
-      "required": [ "service", "method", "output" ],
+      "required": [
+        "service",
+        "method",
+        "output"
+      ],
       "properties": {
         "id": {
           "description": "Stub identifier. Must be a UUID. Generated on load when omitted, in which case it changes every time the file is reloaded.",
@@ -185,6 +189,23 @@
         "session": {
           "description": "Session this stub belongs to. A stub with a session is invisible outside it; empty means the global scope.",
           "type": "string"
+        },
+        "_meta": {
+          "type": "object",
+          "description": "Provenance written by `gripmock dump`. Ignored on load.",
+          "additionalProperties": false,
+          "properties": {
+            "source": {
+              "type": "string",
+              "enum": [
+                "file",
+                "rest",
+                "mcp",
+                "proxy"
+              ],
+              "description": "Where the exported stub came from."
+            }
+          }
         }
       },
       "additionalProperties": false
@@ -194,7 +215,11 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": [ "service", "method", "output" ],
+        "required": [
+          "service",
+          "method",
+          "output"
+        ],
         "properties": {
           "id": {
             "description": "Stub identifier. Must be a UUID. Generated on load when omitted, in which case it changes every time the file is reloaded.",
@@ -249,6 +274,23 @@
           "session": {
             "description": "Session this stub belongs to. A stub with a session is invisible outside it; empty means the global scope.",
             "type": "string"
+          },
+          "_meta": {
+            "type": "object",
+            "description": "Provenance written by `gripmock dump`. Ignored on load.",
+            "additionalProperties": false,
+            "properties": {
+              "source": {
+                "type": "string",
+                "enum": [
+                  "file",
+                  "rest",
+                  "mcp",
+                  "proxy"
+                ],
+                "description": "Where the exported stub came from."
+              }
+            }
           }
         },
         "additionalProperties": false
@@ -262,7 +304,9 @@
       "allOf": [
         {
           "if": {
-            "required": [ "action" ],
+            "required": [
+              "action"
+            ],
             "properties": {
               "action": {
                 "const": "upsert"
@@ -270,12 +314,16 @@
             }
           },
           "then": {
-            "required": [ "stub" ]
+            "required": [
+              "stub"
+            ]
           }
         },
         {
           "if": {
-            "required": [ "action" ],
+            "required": [
+              "action"
+            ],
             "properties": {
               "action": {
                 "const": "delete"
@@ -283,16 +331,23 @@
             }
           },
           "then": {
-            "required": [ "id" ]
+            "required": [
+              "id"
+            ]
           }
         }
       ],
-      "required": [ "action" ],
+      "required": [
+        "action"
+      ],
       "properties": {
         "action": {
           "description": "upsert creates or replaces a stub, delete removes one.",
           "type": "string",
-          "enum": [ "upsert", "delete" ],
+          "enum": [
+            "upsert",
+            "delete"
+          ],
           "minLength": 1
         },
         "id": {
@@ -696,7 +751,9 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": [ "type" ],
+            "required": [
+              "type"
+            ],
             "properties": {
               "type": {
                 "description": "Full Any type URL (e.g., type.googleapis.com/google.rpc.ErrorInfo)",
@@ -752,7 +809,9 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": [ "type" ],
+            "required": [
+              "type"
+            ],
             "additionalProperties": true
           }
         }

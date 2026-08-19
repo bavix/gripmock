@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"time"
 
 	"google.golang.org/grpc/codes"
@@ -10,16 +11,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
-// mcpMockCall executes a mock invocation against the stub engine: it matches a
-// stub for service+method+payload, renders its templated output (data, headers,
-// error) exactly as the gRPC data plane would, records the call to history, and
-// returns the rendered response with its status code.
-//
-// Two data-plane concerns are intentionally NOT reproduced here (they live in the
-// gRPC/gateway transport and would require the proto descriptor codec + the full
-// grpcMocker): protobuf shape validation of the payload against the method schema,
-// and stub effects (state mutations / upsert / delete side effects). For a fully
-// faithful call including those, invoke the gateway endpoint POST /{service}/{method}.
 func mcpMockCall(h *RestServer, args map[string]any) (map[string]any, error) {
 	service, _ := args["service"].(string)
 	if service == "" {
@@ -67,8 +58,6 @@ func mcpMockCall(h *RestServer, args map[string]any) (map[string]any, error) {
 	return mcpRenderMockResponse(h, found, service, method, session, input, headers), nil
 }
 
-// mcpRenderMockResponse renders the matched stub's output and records the call.
-//
 //nolint:cyclop,funlen
 func mcpRenderMockResponse(
 	h *RestServer,
@@ -92,11 +81,9 @@ func mcpRenderMockResponse(
 
 	templateData := newTemplateData(firstRequest, headers, 0, requestTime, requests, found.ID.String())
 
-	// Reuse the server's engine (built with the server's context at startup) —
-	// no context is created per request.
 	engine := h.templateEngine
 
-	dataCopy := deepCopyAny(output.Data)
+	dataCopy := copyForTemplates(output.Data)
 	if dataMap, ok := dataCopy.(map[string]any); ok {
 		if err := engine.ProcessMap(dataMap, templateData); err != nil {
 			return h.mockTemplateError(found, service, method, session, input, requestTime, err)
@@ -132,9 +119,6 @@ func mcpRenderMockResponse(
 		output.Error = errorStr
 	}
 
-	// Derive status exactly as the unary handler: an OK status ignores any error
-	// string and returns the data message; a non-OK status returns the error and
-	// no data message. Response headers are set in both cases.
 	code := codes.OK
 	errMsg := ""
 
@@ -178,12 +162,11 @@ func mcpRenderMockResponse(
 	}
 
 	h.recordMockCall(found, service, method, session, input, recordedData, uint32(code), errMsg, requestTime)
+	h.effects().apply(context.Background(), found, templateData)
 
 	return response
 }
 
-// mockTemplateError mirrors the gRPC handler returning codes.Internal when a
-// response template fails to render, and records the failed call.
 func (h *RestServer) mockTemplateError(
 	found *stuber.Stub,
 	service, method, session string,
@@ -204,8 +187,6 @@ func (h *RestServer) mockTemplateError(
 	}
 }
 
-// recordMockCall appends the invocation to history when the store is writable,
-// so a mock_call is observable via history_list and marks the stub used.
 func (h *RestServer) recordMockCall(
 	found *stuber.Stub,
 	service, method, session string,
@@ -235,5 +216,5 @@ func (h *RestServer) recordMockCall(
 		record.Responses = []map[string]any{dataMap}
 	}
 
-	recorder.Record(record)
+	recordOwned(recorder, record)
 }

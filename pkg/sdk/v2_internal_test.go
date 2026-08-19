@@ -151,7 +151,6 @@ func TestV2Verification(t *testing.T) {
 	require.Equal(t, 1, srv.TotalCalls())
 	require.Len(t, srv.History(), 1)
 
-	// Idempotent
 	require.NoError(t, srv.ExpectationsWereMet())
 	_ = srv.Close()
 }
@@ -208,7 +207,6 @@ func TestV2Reset(t *testing.T) {
 
 func TestV2ParallelIsolation(t *testing.T) {
 	t.Parallel()
-	// Each subtest creates its own server — fully isolated
 	t.Run("sub1", func(t *testing.T) {
 		t.Parallel()
 		srv, fds := newProjectSrv(t, "greeter")
@@ -387,7 +385,7 @@ func TestV2EnumOneof(t *testing.T) {
 
 	vtFd := inMsgDesc.Fields().ByName("validation_type")
 	vtDesc := vtFd.Enum()
-	nrVal := vtDesc.Values().ByNumber(4) // NUMBER_RANGE = 4
+	nrVal := vtDesc.Values().ByNumber(4)
 	in.Set(vtFd, protoreflect.ValueOfEnum(nrVal.Number()))
 
 	minFd := inMsgDesc.Fields().ByName("min")
@@ -410,7 +408,6 @@ func TestV2EnumOneof(t *testing.T) {
 func TestV2RepeatedField(t *testing.T) {
 	t.Parallel()
 
-	// Use a simple repeated field test via the identifier project
 	srv2, fds2 := newProjectSrv(t, "identifier")
 
 	srv2.ExpectUnary("/example.identifier.v1.IdentifierService/ProcessUUIDs").
@@ -450,7 +447,6 @@ func TestV2EffectWithTemplate(t *testing.T) {
 	srv, fds := newProjectSrv(t, "greeter")
 	reg := mustBuildReg(t, fds)
 
-	// Effect that uses {{.Request.name}} in its response
 	effect := Upsert("helloworld.Greeter", "SayHello").
 		Match("name", "{{.Request.name}}_effected").
 		Return("message", "Hello {{.Request.name}} from effect").
@@ -461,11 +457,9 @@ func TestV2EffectWithTemplate(t *testing.T) {
 		Effect(effect).
 		Return("message", "first")
 
-	// First call — matches original stub
 	msg1 := invokeGreeter(t, srv.Conn(), reg, "trigger")
 	require.Equal(t, "first", getMsgField(t, msg1))
 
-	// Effect creates a stub that matches "trigger_effected" with template response
 	msg2 := invokeGreeter(t, srv.Conn(), reg, "trigger_effected")
 	require.Equal(t, "Hello trigger from effect", getMsgField(t, msg2))
 }
@@ -481,8 +475,6 @@ func TestV2StreamWithError(t *testing.T) {
 			map[string]any{"id": "1", "title": "first"},
 		)
 
-	// Try sending an error after stream messages using NextWillReturn
-	// (This tests the edge case — may not work yet)
 	reg := mustBuildReg(t, fds)
 	inDesc, _ := reg.FindDescriptorByName("search.SearchRequest")
 	outDesc, _ := reg.FindDescriptorByName("search.SearchResult")
@@ -499,7 +491,6 @@ func TestV2StreamWithError(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, stream.SendMsg(in))
 
-	// First message should arrive
 	outMsgDesc, ok := outDesc.(protoreflect.MessageDescriptor)
 	require.True(t, ok)
 
@@ -510,7 +501,6 @@ func TestV2StreamWithError(t *testing.T) {
 	titleFd := outMsgDesc.Fields().ByName("title")
 	require.Equal(t, "first", out1.Get(titleFd).String())
 
-	// After the stream ends, EOF or error
 	err = stream.RecvMsg(dynamicpb.NewMessage(outMsgDesc))
 	t.Logf("second recv error: %v", err)
 }
@@ -538,18 +528,13 @@ func TestV2EffectsUpsert(t *testing.T) {
 	require.Equal(t, "from effect", getMsgField(t, msg2))
 }
 
-// newProjectSrv creates a test server with a project's proto descriptors.
 func newProjectSrv(t *testing.T, project string) (*Server, *descriptorpb.FileDescriptorSet) {
 	t.Helper()
 	fds := buildTestFDS(t, project)
 
-	return NewServer(t, WithDescriptors(fds)), fds
+	return NewTestServer(t, WithDescriptors(fds)), fds
 }
 
-// TestStreamExpectationEffectsRegistered guards against the regression where
-// Effect() on stream expectations was a silent no-op (only unary attached
-// effects). It verifies all three stream types persist effects onto the stored
-// stub, both when Effect() is called before and after the terminal method.
 func TestStreamExpectationEffectsRegistered(t *testing.T) {
 	t.Parallel()
 
@@ -567,29 +552,24 @@ func TestStreamExpectationEffectsRegistered(t *testing.T) {
 		return Upsert("svc", "Next").Match("k", "v").Return("r", "x").Build()
 	}
 
-	// Server stream — Effect before terminal SendStream.
 	ss := srv.ExpectServerStream("/helloworld.Greeter/SayHello").Match("q", "a").Effect(newEffect())
 	ss.SendStream(map[string]any{"id": "1"})
 	requireEffect(ss.stubID)
 
-	// Server stream — Effect after terminal (committed re-registration path).
 	ss2 := srv.ExpectServerStream("/helloworld.Greeter/SayHello").Match("q", "b")
 	ss2.SendStream(map[string]any{"id": "2"})
 	ss2.Effect(newEffect())
 	requireEffect(ss2.stubID)
 
-	// Client stream — Effect before terminal Return.
 	cs := srv.ExpectClientStream("/helloworld.Greeter/SayHello").Match("k", "v").Effect(newEffect())
 	cs.Return("r", 1.0)
 	requireEffect(cs.stubID)
 
-	// Client stream — Effect after terminal (committed path).
 	cs2 := srv.ExpectClientStream("/helloworld.Greeter/SayHello").Match("k", "w")
 	cs2.Return("r", 2.0)
 	cs2.Effect(newEffect())
 	requireEffect(cs2.stubID)
 
-	// Bidirectional — Effect before terminal Run.
 	bd := srv.ExpectBidirectionalStream("/helloworld.Greeter/Chat").Effect(newEffect())
 	bd.Run(func(_ context.Context, _ any) error { return nil })
 	requireEffect(bd.stubID)

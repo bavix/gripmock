@@ -1,5 +1,4 @@
 // Package httpmock provides a httptest server using the real gripmock REST handlers.
-// Shares Budgerigar and MemoryStore for testing remote mode scenarios.
 package httpmock
 
 import (
@@ -35,9 +34,9 @@ func NewServer() *Server {
 		b,
 		app.NewInstantExtender(),
 		r,
-		nil, // validator — auto-created
-		nil, // descriptor registry — auto-created
-		nil, // error formatter — auto-created
+		nil,
+		nil,
+		nil,
 	)
 	if err != nil {
 		panic("httpmock: failed to create RestServer: " + err.Error())
@@ -46,7 +45,6 @@ func NewServer() *Server {
 	router := mux.NewRouter()
 	rest.HandlerFromMuxWithBaseURL(restSrv, router, "/api")
 
-	// Apply gzip decompression middleware (supports gzip, deflate, zstd, snappy, br)
 	var handler http.Handler = router
 
 	handler = httputil.GzipRequestMiddleware(handler)
@@ -70,9 +68,9 @@ func (s *Server) Close() {
 // RecordCall adds a call to the history recorder.
 func (s *Server) RecordCall(service, method string, request, response map[string]any) {
 	s.Recorder.Record(history.CallRecord{
-		Service:  service,
-		Method:   method,
-		Request:  request,
-		Response: response,
+		Service:   service,
+		Method:    method,
+		Requests:  []map[string]any{request},
+		Responses: []map[string]any{response},
 	})
 }

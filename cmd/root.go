@@ -27,6 +27,8 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 	Version: build.Version + " (" + build.Commit + ") " + build.Date,
 	Args:    cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
+
 		builder := deps.NewBuilder(
 			deps.WithDefaultConfig(),
 			deps.WithPlugins(pluginsFlag),
@@ -78,9 +80,7 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 
 		defer builder.Shutdown(context.WithoutCancel(ctx))
 
-		// Parse arguments with per-proxy source bindings
-		// This uses raw os.Args to detect -S flag positioning relative to proxy URLs
-		params := proto.ParseArgumentsWithBindings(args, importsFlag, sourceFlag)
+		params := proto.ParseArgumentsWithBindings(args, os.Args[1:], importsFlag, sourceFlag)
 
 		zerolog.Ctx(ctx).Info().
 			Strs("args", args).

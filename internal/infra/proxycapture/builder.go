@@ -94,9 +94,21 @@ var reservedTrailerKeys = map[string]struct{}{
 	"grpc-status-details-bin": {},
 }
 
+// reservedHeaderKeys are set by the gRPC stack on every response and describe the
+// transport, not the stub. Replaying them would write a transport header from
+// stub data, and they are noise in every captured stub file.
+//
+//nolint:gochecknoglobals
+var reservedHeaderKeys = map[string]struct{}{
+	"content-type":         {},
+	"content-length":       {},
+	"grpc-encoding":        {},
+	"grpc-accept-encoding": {},
+}
+
 func CaptureMetadata(head metadata.MD, tail metadata.MD) ResponseMetadata {
 	return ResponseMetadata{
-		Headers:  flattenMetadata(head, nil),
+		Headers:  flattenMetadata(head, reservedHeaderKeys),
 		Trailers: flattenMetadata(tail, reservedTrailerKeys),
 	}
 }
@@ -214,13 +226,13 @@ func BuildBidiStub(
 	session string,
 	requests []map[string]any,
 	requestHeaders map[string]any,
-	responses []map[string]any,
+	responses []any,
 	responseMeta ResponseMetadata,
 	callErr error,
 ) *stuber.Stub {
 	return buildProxyStub(service, method, session, requestHeaders,
 		stuber.InputData{}, toInputs(requests),
-		stuber.Output{Stream: toStreamOutputFromMaps(responses), Headers: responseMeta.Headers, Trailers: responseMeta.Trailers}, callErr, false)
+		stuber.Output{Stream: toStreamOutput(responses), Headers: responseMeta.Headers, Trailers: responseMeta.Trailers}, callErr, false)
 }
 
 func toInputs(requests []map[string]any) []stuber.InputData {
@@ -235,15 +247,6 @@ func toInputs(requests []map[string]any) []stuber.InputData {
 func toStreamOutput(responses []any) []any {
 	streamOutput := make([]any, 0, len(responses))
 	streamOutput = append(streamOutput, responses...)
-
-	return streamOutput
-}
-
-func toStreamOutputFromMaps(responses []map[string]any) []any {
-	streamOutput := make([]any, 0, len(responses))
-	for _, r := range responses {
-		streamOutput = append(streamOutput, r)
-	}
 
 	return streamOutput
 }

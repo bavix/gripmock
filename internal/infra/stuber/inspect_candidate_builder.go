@@ -76,7 +76,7 @@ func (s *searcher) evalTraceCandidate(
 	withinTimes := times <= 0 || used < times
 	visible := isStubVisibleForSession(stub.Session, query.Session)
 	headersMatched := doesQueryMatchStubHeaders(query, stub)
-	inputMatched := s.fastMatchV2(query, stub)
+	inputMatched := s.fastMatchBody(query, stub)
 	ranked := s.rankedMatchFor(query, stub)
 
 	routeStage, routePassed, routeReason, reasonCount := evalRoute(query, stub, fallbackToMethod, reasons)

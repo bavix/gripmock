@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	stderrors "errors"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/protobuf/proto"
 
@@ -20,16 +22,15 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
+	"github.com/bavix/gripmock/v3/internal/infra/httputil"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-// mockExtender is a mock implementation of Extender for testing.
 type mockExtender struct{}
 
 func (m *mockExtender) Update(stubs []*stuber.Stub) error { return nil }
 func (m *mockExtender) Wait(ctx context.Context)          {}
 
-// RestServerTestSuite provides test suite for REST server functionality.
 type RestServerTestSuite struct {
 	suite.Suite
 
@@ -106,7 +107,6 @@ func commonAddStubCases() []addStubCase {
 	}
 }
 
-// SetupSuite initializes the test suite.
 func (s *RestServerTestSuite) SetupSuite() {
 	s.budgerigar = stuber.NewBudgerigar()
 	extender := &mockExtender{}
@@ -115,12 +115,10 @@ func (s *RestServerTestSuite) SetupSuite() {
 	s.server = server
 }
 
-// SetupTest cleans up before each test.
 func (s *RestServerTestSuite) SetupTest() {
 	s.budgerigar.Clear()
 }
 
-// TestNewRestServer tests REST server creation.
 func (s *RestServerTestSuite) TestNewRestServer() {
 	ctx := s.T().Context()
 	budgerigar := stuber.NewBudgerigar()
@@ -131,7 +129,6 @@ func (s *RestServerTestSuite) TestNewRestServer() {
 	s.Require().NotNil(server)
 }
 
-// TestAddStub tests stub addition functionality.
 func (s *RestServerTestSuite) TestAddStub() {
 	tests := append(commonAddStubCases(),
 		addStubCase{
@@ -175,13 +172,11 @@ func (s *RestServerTestSuite) TestAddStub() {
 			s.Equal(tt.expectedStatus, w.Code)
 
 			if tt.expectedStatus == http.StatusOK {
-				// AddStub returns array of UUIDs
 				var response []string
 
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				s.Require().NoError(err)
 				s.NotEmpty(response)
-				// Check that it's a valid UUID
 				_, err = uuid.Parse(response[0])
 				s.Require().NoError(err)
 			}
@@ -189,7 +184,6 @@ func (s *RestServerTestSuite) TestAddStub() {
 	}
 }
 
-// TestDeleteStubByID tests stub deletion by ID.
 func (s *RestServerTestSuite) TestDeleteStubByID() {
 	stub := &stuber.Stub{
 		Service: "test.Service",
@@ -204,7 +198,6 @@ func (s *RestServerTestSuite) TestDeleteStubByID() {
 
 	s.budgerigar.PutMany(stub)
 
-	// Get the stub ID
 	stubs := s.budgerigar.All()
 	s.Require().NotEmpty(stubs)
 	stubID := stubs[0].ID
@@ -214,14 +207,11 @@ func (s *RestServerTestSuite) TestDeleteStubByID() {
 
 	s.Equal(http.StatusNoContent, w.Code)
 
-	// Verify the stub was deleted
 	stubs = s.budgerigar.All()
 	s.Empty(stubs)
 }
 
-// TestBatchStubsDelete tests batch stub deletion.
 func (s *RestServerTestSuite) TestBatchStubsDelete() {
-	// Add multiple stubs
 	stub1 := &stuber.Stub{
 		Service: "test.Service1",
 		Method:  "TestMethod1",
@@ -246,7 +236,6 @@ func (s *RestServerTestSuite) TestBatchStubsDelete() {
 
 	s.budgerigar.PutMany(stub1, stub2)
 
-	// Get stub IDs
 	stubs := s.budgerigar.All()
 	s.Require().Len(stubs, 2)
 
@@ -254,7 +243,6 @@ func (s *RestServerTestSuite) TestBatchStubsDelete() {
 	jsonData, err := json.Marshal(stubIDs)
 	s.Require().NoError(err)
 
-	// Delete stubs in batch
 	req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/stubs/batchDelete", bytes.NewBuffer(jsonData))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -264,12 +252,10 @@ func (s *RestServerTestSuite) TestBatchStubsDelete() {
 
 	s.Equal(http.StatusOK, w.Code)
 
-	// Verify stubs were deleted
 	stubs = s.budgerigar.All()
 	s.Empty(stubs)
 }
 
-// TestListStubs tests listing all stubs.
 func (s *RestServerTestSuite) TestListStubs() {
 	stub := &stuber.Stub{
 		Service: "test.Service",
@@ -284,13 +270,11 @@ func (s *RestServerTestSuite) TestListStubs() {
 
 	s.budgerigar.PutMany(stub)
 
-	// List stubs
 	w := httptest.NewRecorder()
 	s.server.ListStubs(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil), rest.ListStubsParams{})
 
 	s.Equal(http.StatusOK, w.Code)
 
-	// ListStubs returns array of stubs
 	var response []*stuber.Stub
 
 	err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -298,7 +282,6 @@ func (s *RestServerTestSuite) TestListStubs() {
 	s.Len(response, 1)
 }
 
-// TestListStubsParams tests filtering, sorting and pagination params.
 func (s *RestServerTestSuite) TestListStubsParams() {
 	s.budgerigar.PutMany(
 		&stuber.Stub{Service: "svc.A", Method: "Ping", Priority: 10, Source: "proxy", Input: stuber.InputData{}, Output: stuber.Output{}},
@@ -336,7 +319,6 @@ func (s *RestServerTestSuite) TestListStubsParams() {
 	s.Equal("Ping", response[0].Method)
 }
 
-// TestAddDescriptors tests POST /api/descriptors with binary FileDescriptorSet.
 func (s *RestServerTestSuite) TestAddDescriptors() {
 	body := s.greeterDescriptorSetBytes()
 	w := s.addDescriptorsPayload(s.server, body)
@@ -352,7 +334,6 @@ func (s *RestServerTestSuite) TestAddDescriptors() {
 	s.Equal("ok", addResp.Message)
 	s.Contains(addResp.ServiceIDs, "helloworld.Greeter")
 
-	// Verify service appears in ServicesList
 	w2 := httptest.NewRecorder()
 	s.server.ServicesList(w2, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/services", nil))
 	s.Equal(http.StatusOK, w2.Code)
@@ -371,13 +352,10 @@ func (s *RestServerTestSuite) TestAddDescriptors() {
 	s.Contains(ids, "helloworld.Greeter")
 }
 
-// TestListDescriptors tests GET /api/descriptors.
 func (s *RestServerTestSuite) TestListDescriptors() {
-	// Add a descriptor first
 	w := s.addDescriptorsPayload(s.server, s.greeterDescriptorSetBytes())
 	s.Require().Equal(http.StatusOK, w.Code)
 
-	// List descriptors - verify serviceID appears
 	w2 := httptest.NewRecorder()
 	s.server.ListDescriptors(w2, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/descriptors", nil))
 	s.Equal(http.StatusOK, w2.Code)
@@ -391,13 +369,10 @@ func (s *RestServerTestSuite) TestListDescriptors() {
 	s.Contains(resp.ServiceIDs, "helloworld.Greeter")
 }
 
-// TestDeleteService tests DELETE /api/services/{serviceID}.
 func (s *RestServerTestSuite) TestDeleteService() {
-	// Add descriptors
 	w := s.addDescriptorsPayload(s.server, s.greeterDescriptorSetBytes())
 	s.Require().Equal(http.StatusOK, w.Code)
 
-	// Delete service
 	delReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodDelete, "/api/services/helloworld.Greeter", nil)
 	delReq = mux.SetURLVars(delReq, map[string]string{"serviceID": "helloworld.Greeter"})
 
@@ -405,7 +380,6 @@ func (s *RestServerTestSuite) TestDeleteService() {
 	s.server.DeleteService(w2, delReq, "helloworld.Greeter")
 	s.Equal(http.StatusNoContent, w2.Code)
 
-	// Delete non-existent returns 404
 	w3 := httptest.NewRecorder()
 	s.server.DeleteService(w3, delReq, "helloworld.Greeter")
 	s.Equal(http.StatusNotFound, w3.Code)
@@ -457,7 +431,6 @@ func (s *RestServerTestSuite) TestMcpMessageDescriptorsLifecycle() {
 }
 
 func (s *RestServerTestSuite) TestAddStub_SessionFromHeader() {
-	// Arrange
 	stubJSON := `[
 		{
 			"service": "svc",
@@ -467,12 +440,10 @@ func (s *RestServerTestSuite) TestAddStub_SessionFromHeader() {
 		}
 	]`
 
-	// Act
 	w := s.addStubJSONWithRequest(s.server, stubJSON, func(req *http.Request) {
 		req.Header.Set("X-Gripmock-Session", "header-session")
 	})
 
-	// Assert
 	s.Equal(http.StatusOK, w.Code)
 
 	stubs := s.budgerigar.All()
@@ -482,7 +453,7 @@ func (s *RestServerTestSuite) TestAddStub_SessionFromHeader() {
 
 func (s *RestServerTestSuite) TestMcpMessageHistoryTools() {
 	server := s.newRestServerWithHistory(
-		history.CallRecord{Service: "svc", Method: "A", Request: map[string]any{"id": 1}},
+		history.CallRecord{Service: "svc", Method: "A", Requests: []map[string]any{{"id": 1}}},
 		history.CallRecord{Service: "svc", Method: "B", Error: "boom"},
 		history.CallRecord{Service: "svc", Method: "B", Error: "kaboom"},
 	)
@@ -506,24 +477,40 @@ func (s *RestServerTestSuite) TestMcpMessageHistoryTools() {
 	s.Len(errorRecords, 1)
 }
 
+func (s *RestServerTestSuite) TestMCPHistoryPurgeScopedToSession() {
+	server := s.newRestServerWithHistory(
+		history.CallRecord{Service: "svc", Method: "Mine", Session: "a"},
+		history.CallRecord{Service: "svc", Method: "Theirs", Session: "b"},
+	)
+
+	purged := s.mcpStructuredContent(s.mcpToolCall(server, 1, "history_purge", map[string]any{
+		"session": "a",
+	}))
+	s.Require().InDelta(float64(1), purged["deletedCount"], 0)
+	s.Require().Equal("a", purged["session"])
+
+	left := s.mcpStructuredContent(s.mcpToolCall(server, 2, "history_list", map[string]any{
+		"session": "b",
+	}))
+	records, ok := left["records"].([]any)
+	s.Require().True(ok)
+	s.Require().Len(records, 1)
+}
+
 func (s *RestServerTestSuite) TestMCPHistoryListPagination() {
-	// Oldest→newest insertion order: M0, M1, M2.
 	server := s.newRestServerWithHistory(
 		history.CallRecord{Service: "svc", Method: "M0"},
 		history.CallRecord{Service: "svc", Method: "M1"},
 		history.CallRecord{Service: "svc", Method: "M2"},
 	)
 
-	// Newest two, no offset.
 	page1 := s.mcpStructuredContent(s.mcpToolCall(server, 1, "history_list", map[string]any{
 		"service": "svc", "limit": 2,
 	}))
-	// Window shifted one older via offset.
 	page2 := s.mcpStructuredContent(s.mcpToolCall(server, 2, "history_list", map[string]any{
 		"service": "svc", "limit": 2, "offset": 1,
 	}))
 
-	// total reflects the full filtered set regardless of the page window.
 	s.Require().InDelta(float64(3), page1["total"], 0)
 	s.Require().InDelta(float64(3), page2["total"], 0)
 
@@ -764,8 +751,6 @@ func (s *RestServerTestSuite) TestMcpRuntimeToolsHaveHandlers() {
 		s.True(exists, "missing handler for runtime tool: %s", name)
 	}
 
-	// Reverse: every registered handler must be exposed as a runtime tool,
-	// otherwise it is dead code unreachable through the MCP surface.
 	for name := range handlers {
 		_, exists := toolNames[name]
 		s.True(exists, "handler registered for unknown/unexposed tool: %s", name)
@@ -926,13 +911,10 @@ func (s *RestServerTestSuite) TestMcpHistoryList_SessionScoping() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			// Arrange
 			server := s.newRestServerWithSessionHistory()
 
-			// Act
 			response := s.mcpToolCallWithRequest(server, 1, "history_list", tt.arguments, tt.prepareRequest)
 
-			// Assert
 			structured := s.mcpStructuredContent(response)
 			records, ok := structured["records"].([]any)
 			s.Require().True(ok)
@@ -972,14 +954,11 @@ func (s *RestServerTestSuite) TestMcpDebugCall_SessionScoping() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			// Arrange
 			server := s.newRestServerWithHistory(history.CallRecord{Service: "svc.Greeter", Method: "SayHello", Error: "not matched"})
 			s.addDebugScopeStubs(server)
 
-			// Act
 			response := s.mcpToolCallWithRequest(server, 1, "debug_call", tt.arguments, tt.prepareRequest)
 
-			// Assert
 			structured := s.mcpStructuredContent(response)
 			stubCount, ok := structured["stubCount"].(float64)
 			s.Require().True(ok)
@@ -999,14 +978,11 @@ func (s *RestServerTestSuite) TestListStubs_EmptyByUsage() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			// Arrange
 			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil)
 
-			// Act
 			w := httptest.NewRecorder()
 			tt.handler(w, req)
 
-			// Assert
 			s.Equal(http.StatusOK, w.Code)
 
 			var response []*stuber.Stub
@@ -1018,7 +994,6 @@ func (s *RestServerTestSuite) TestListStubs_EmptyByUsage() {
 	}
 }
 
-// TestListHistory tests history endpoint (empty when history is disabled).
 func (s *RestServerTestSuite) TestListHistory() {
 	w := httptest.NewRecorder()
 	s.server.ListHistory(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/history", nil), rest.ListHistoryParams{})
@@ -1030,29 +1005,25 @@ func (s *RestServerTestSuite) TestListHistory() {
 }
 
 func (s *RestServerTestSuite) TestListHistory_SessionFromHeader() {
-	// Arrange
 	server := s.newRestServerWithSessionHistory()
 
-	// Act
 	w := s.listHistory(server, func(req *http.Request) {
 		req.Header.Set("X-Gripmock-Session", "A")
 	})
 	s.Equal(http.StatusOK, w.Code)
 
-	// Assert
 	var list []map[string]any
 	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &list))
 	s.Len(list, 2)
 }
 
-// TestListHistory_RedactsSensitiveKeys tests that ListHistory returns redacted values when store has redact keys.
 func (s *RestServerTestSuite) TestListHistory_RedactsSensitiveKeys() {
 	store := history.NewMemoryStore(0, history.WithRedactKeys([]string{"password", "token"}))
 	store.Record(history.CallRecord{
-		Service:  "svc",
-		Method:   "M",
-		Request:  map[string]any{"user": "alice", "password": "secret123"},
-		Response: map[string]any{"token": "jwt-xxx"},
+		Service:   "svc",
+		Method:    "M",
+		Requests:  []map[string]any{{"user": "alice", "password": "secret123"}},
+		Responses: []map[string]any{{"token": "jwt-xxx"}},
 	})
 
 	server := s.newRestServerWithStore(store)
@@ -1063,23 +1034,29 @@ func (s *RestServerTestSuite) TestListHistory_RedactsSensitiveKeys() {
 	var list []map[string]any
 	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &list))
 	s.Len(list, 1)
-	req, ok := list[0]["request"].(map[string]any)
+	requests, ok := list[0]["requests"].([]any)
 	s.Require().True(ok)
-	resp, ok := list[0]["response"].(map[string]any)
+	s.Require().Len(requests, 1)
+	req, ok := requests[0].(map[string]any)
 	s.Require().True(ok)
+
+	responses, ok := list[0]["responses"].([]any)
+	s.Require().True(ok)
+	s.Require().Len(responses, 1)
+	resp, ok := responses[0].(map[string]any)
+	s.Require().True(ok)
+
 	s.Equal("alice", req["user"])
 	s.Equal("[REDACTED]", req["password"])
 	s.Equal("[REDACTED]", resp["token"])
 }
 
-// TestVerifyCallsWithHistory tests verify endpoint with history store.
 func (s *RestServerTestSuite) TestVerifyCallsWithHistory() {
 	server := s.newRestServerWithHistory(
-		history.CallRecord{Service: "svc", Method: "M", Request: map[string]any{"x": "1"}},
-		history.CallRecord{Service: "svc", Method: "M", Request: map[string]any{"x": "2"}},
+		history.CallRecord{Service: "svc", Method: "M", Requests: []map[string]any{{"x": "1"}}},
+		history.CallRecord{Service: "svc", Method: "M", Requests: []map[string]any{{"x": "2"}}},
 	)
 
-	// GET /api/history returns records
 	w := s.listHistory(server, nil)
 	s.Equal(http.StatusOK, w.Code)
 
@@ -1087,29 +1064,23 @@ func (s *RestServerTestSuite) TestVerifyCallsWithHistory() {
 	s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &list))
 	s.Len(list, 2)
 
-	// POST /api/verify with correct count passes
 	w2 := s.verifyCalls(server, map[string]any{"service": "svc", "method": "M", "expectedCount": 2}, nil)
 	s.Equal(http.StatusOK, w2.Code)
 
-	// Wrong count fails
 	w3 := s.verifyCalls(server, map[string]any{"service": "svc", "method": "M", "expectedCount": 1}, nil)
 	s.Equal(http.StatusBadRequest, w3.Code)
 }
 
 func (s *RestServerTestSuite) TestVerifyCallsWithHistory_SessionFromHeader() {
-	// Arrange
 	server := s.newRestServerWithSessionHistory()
 
-	// Act
 	w := s.verifyCalls(server, map[string]any{"service": "svc", "method": "M", "expectedCount": 2}, func(req *http.Request) {
 		req.Header.Set("X-Gripmock-Session", "A")
 	})
 
-	// Assert
 	s.Equal(http.StatusOK, w.Code)
 }
 
-// TestLiveness tests liveness endpoint.
 func (s *RestServerTestSuite) TestLiveness() {
 	w := httptest.NewRecorder()
 	s.server.Liveness(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil))
@@ -1117,9 +1088,7 @@ func (s *RestServerTestSuite) TestLiveness() {
 	s.Equal(http.StatusOK, w.Code)
 }
 
-// TestReadiness tests readiness endpoint.
 func (s *RestServerTestSuite) TestReadiness() {
-	// Wait for server to be ready with timeout
 	timeout := time.After(2 * time.Second)
 
 	ticker := time.NewTicker(10 * time.Millisecond)
@@ -1136,7 +1105,6 @@ func (s *RestServerTestSuite) TestReadiness() {
 			s.server.Readiness(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil))
 
 			if w.Code == http.StatusOK {
-				// Server is ready, final check
 				w := httptest.NewRecorder()
 				s.server.Readiness(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil))
 				s.Equal(http.StatusOK, w.Code)
@@ -1147,7 +1115,6 @@ func (s *RestServerTestSuite) TestReadiness() {
 	}
 }
 
-// TestPurgeStubs tests purging all stubs.
 func (s *RestServerTestSuite) TestPurgeStubs() {
 	stub := &stuber.Stub{
 		Service: "test.Service",
@@ -1162,22 +1129,18 @@ func (s *RestServerTestSuite) TestPurgeStubs() {
 
 	s.budgerigar.PutMany(stub)
 
-	// Verify stub was added
 	stubs := s.budgerigar.All()
 	s.Require().Len(stubs, 1)
 
-	// Purge stubs
 	w := httptest.NewRecorder()
 	s.server.PurgeStubs(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodDelete, "/", nil))
 
 	s.Equal(http.StatusNoContent, w.Code)
 
-	// Verify stubs were purged
 	stubs = s.budgerigar.All()
 	s.Empty(stubs)
 }
 
-// TestSearchStubs tests stub search functionality.
 func (s *RestServerTestSuite) TestSearchStubs() {
 	stub := &stuber.Stub{
 		Service: "test.Service",
@@ -1192,7 +1155,6 @@ func (s *RestServerTestSuite) TestSearchStubs() {
 
 	s.budgerigar.PutMany(stub)
 
-	// Search stubs
 	searchRequest := map[string]any{
 		"service": "test.Service",
 		"method":  "TestMethod",
@@ -1203,7 +1165,6 @@ func (s *RestServerTestSuite) TestSearchStubs() {
 
 	s.Equal(http.StatusOK, w.Code)
 
-	// SearchStubs returns Output, not stub
 	var response map[string]any
 
 	err := json.Unmarshal(w.Body.Bytes(), &response)
@@ -1213,7 +1174,6 @@ func (s *RestServerTestSuite) TestSearchStubs() {
 }
 
 func (s *RestServerTestSuite) TestSearchStubs_SessionFromHeader() {
-	// Arrange
 	s.budgerigar.PutMany(&stuber.Stub{
 		Service: "svc",
 		Method:  "M",
@@ -1231,18 +1191,15 @@ func (s *RestServerTestSuite) TestSearchStubs_SessionFromHeader() {
 	})
 	s.Require().NoError(err)
 
-	// Act
 	wNoSession := s.searchStubs(s.server, nil, searchBody)
 	s.Equal(http.StatusNotFound, wNoSession.Code)
 
 	wWithSession := s.searchStubsWithRequest(s.server, nil, searchBody, func(req *http.Request) {
 		req.Header.Set("X-Gripmock-Session", "A")
 	})
-	// Assert
 	s.Equal(http.StatusOK, wWithSession.Code)
 }
 
-// TestServiceMethodsList tests listing service methods.
 func (s *RestServerTestSuite) TestServiceMethodsList() {
 	w := httptest.NewRecorder()
 	req := httptest.NewRequestWithContext(
@@ -1257,14 +1214,12 @@ func (s *RestServerTestSuite) TestServiceMethodsList() {
 	s.Equal(http.StatusOK, w.Code)
 }
 
-// TestServicesList tests listing all services.
 func (s *RestServerTestSuite) TestServicesList() {
 	w := httptest.NewRecorder()
 	s.server.ServicesList(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil))
 
 	s.Equal(http.StatusOK, w.Code)
 
-	// Just check that response is not empty and contains valid JSON
 	s.NotEmpty(w.Body.String())
 }
 
@@ -1416,7 +1371,6 @@ func (s *RestServerTestSuite) TestServiceMethodGet() {
 	s.Contains(payload["error"], "method not found in service not_found in service "+serviceID)
 }
 
-// TestValidateStubIntegration tests stub validation integration.
 func (s *RestServerTestSuite) TestValidateStubIntegration() {
 	tests := commonAddStubCases()
 
@@ -1434,8 +1388,6 @@ func (s *RestServerTestSuite) TestValidateStubIntegration() {
 	}
 }
 
-// TestAddStubWithDelay tests stub addition with delay functionality via REST API.
-//
 //nolint:funlen
 func (s *RestServerTestSuite) TestAddStubWithDelay() {
 	tests := []struct {
@@ -1545,7 +1497,6 @@ func (s *RestServerTestSuite) TestAddStubWithDelay() {
 
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
-			// Clear storage before each test
 			s.budgerigar.Clear()
 
 			req := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/stubs", bytes.NewBufferString(tt.jsonData))
@@ -1558,22 +1509,18 @@ func (s *RestServerTestSuite) TestAddStubWithDelay() {
 			s.Equal(tt.expectedStatus, w.Code, tt.description)
 
 			if tt.expectedStatus == http.StatusOK {
-				// Verify that stub was added successfully
 				var response []string
 
 				err := json.Unmarshal(w.Body.Bytes(), &response)
 				s.Require().NoError(err, "should unmarshal response as array of UUIDs")
 				s.Len(response, 1, "should return exactly one UUID")
 
-				// Verify that the stub exists in storage
 				stubs := s.budgerigar.All()
 				s.Len(stubs, 1, "should have exactly one stub in storage")
 
-				// Verify that stub was added correctly
 				stub := stubs[0]
 				s.Equal("test.Service", stub.Service)
 
-				// Check delay based on test case
 				if tt.name == "unary stub without delay" || tt.name == "unary stub with zero delay" {
 					s.Zero(stub.Output.Delay, "delay should be zero for this test case")
 				} else {
@@ -1582,6 +1529,54 @@ func (s *RestServerTestSuite) TestAddStubWithDelay() {
 			}
 		})
 	}
+}
+
+func (s *RestServerTestSuite) TestMcpMockCallAppliesEffects() {
+	s.budgerigar.Clear()
+
+	s.budgerigar.PutMany(&stuber.Stub{
+		ID:      uuid.New(),
+		Service: "test.Service",
+		Method:  "Arm",
+		Input:   stuber.InputData{Equals: map[string]any{"step": "arm"}},
+		Output:  stuber.Output{Data: map[string]any{"status": "armed"}},
+		Effects: []stuber.Effect{{
+			Action: stuber.EffectActionUpsert,
+			Stub: map[string]any{
+				"service": "test.Service",
+				"method":  "Arm",
+				"input":   map[string]any{"equals": map[string]any{"step": "unlocked"}},
+				"output":  map[string]any{"data": map[string]any{"status": "unlocked"}},
+			},
+		}},
+	})
+
+	locked := s.mcpToolCall(s.server, 1, "mock_call", map[string]any{
+		"service": "test.Service",
+		"method":  "Arm",
+		"payload": map[string]any{"step": "unlocked"},
+	})
+	s.Equal(false, s.mcpStructuredContent(locked)["matched"])
+
+	armed := s.mcpToolCall(s.server, 2, "mock_call", map[string]any{
+		"service": "test.Service",
+		"method":  "Arm",
+		"payload": map[string]any{"step": "arm"},
+	})
+	s.Equal(true, s.mcpStructuredContent(armed)["matched"])
+
+	unlocked := s.mcpToolCall(s.server, 3, "mock_call", map[string]any{
+		"service": "test.Service",
+		"method":  "Arm",
+		"payload": map[string]any{"step": "unlocked"},
+	})
+
+	content := s.mcpStructuredContent(unlocked)
+	s.Equal(true, content["matched"])
+
+	data, ok := content["data"].(map[string]any)
+	s.Require().True(ok)
+	s.Equal("unlocked", data["status"])
 }
 
 func (s *RestServerTestSuite) mcpCall(server *RestServer, payload map[string]any, expectedStatus int) map[string]any {
@@ -1835,7 +1830,17 @@ func (s *RestServerTestSuite) mcpErrorCode(response map[string]any) float64 {
 	return code
 }
 
-// TestRestServerTestSuite runs the test suite.
 func TestRestServerTestSuite(t *testing.T) { //nolint:paralleltest
 	suite.Run(t, new(RestServerTestSuite))
 }
+
+func TestErrorStatusMapsOversizedBodies(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, http.StatusRequestEntityTooLarge, errorStatus(httputil.ErrBodyTooLarge))
+	require.Equal(t, http.StatusRequestEntityTooLarge,
+		errorStatus(&http.MaxBytesError{Limit: 1}))
+	require.Equal(t, http.StatusInternalServerError, errorStatus(errStatusProbe))
+}
+
+var errStatusProbe = stderrors.New("something else")

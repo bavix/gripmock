@@ -1,12 +1,12 @@
 import { useState, useMemo } from 'react';
-import { byTimestampDesc } from '../lib/format';
+import { byTimestampDesc, callTime } from '../lib/format';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useInfiniteHistory, useHistoryErrorCount } from '../hooks/useHistory';
+import { useInfiniteHistory, useHistoryErrorCount, usePurgeHistory } from '../hooks/useHistory';
 import { useStore } from '../lib/store';
-import { Search, Copy, Fingerprint, Globe, Bug, ExternalLink, Plus } from 'lucide-react';
+import { Search, Copy, Fingerprint, Globe, Bug, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { colors } from '../lib/theme';
 import { DataTable } from '../components/table/DataTable';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { Column } from '../components/table/tableFeatures';
 import { type CallRecord, isCallOk } from '../lib/types';
 import { grpcCodeName } from '../lib/grpc';
 import { inspectLink } from '../lib/stub';
@@ -16,7 +16,7 @@ import { CallStatusBadge } from '../components/shared/CallStatusBadge';
 
 
 function grpcurl(r: CallRecord): string {
-  const msgs = r.requests?.length ? r.requests : (r.request ? [r.request] : [{}]);
+  const msgs = r.requests?.length ? r.requests : [{}];
   const data = msgs.length === 1 ? JSON.stringify(msgs[0]) : msgs.map((m) => JSON.stringify(m)).join('\n');
   return `grpcurl -plaintext -d '${data}' localhost:4770 ${r.service}/${r.method}`;
 }
@@ -32,6 +32,7 @@ export function HistoryList() {
   // errors, not just the ones in already-loaded pages.
   const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteHistory(100, 10_000, statusTab === 'err');
   const errorTotal = useHistoryErrorCount(10_000).data ?? 0;
+  const purge = usePurgeHistory();
 
   const total = data?.pages[0]?.total ?? 0;
   // Flatten loaded pages and sort newest-first (windows arrive oldest-first).
@@ -62,11 +63,11 @@ export function HistoryList() {
   });
 
   const inspectCall = (r: CallRecord) => {
-    const payload = r.requests?.[0] ?? r.request ?? {};
+    const payload = r.requests?.[0] ?? {};
     navigate(inspectLink({ service: r.service, method: r.method, payload: JSON.stringify(payload) }));
   };
 
-  const columns = useMemo<ColumnDef<CallRecord>[]>(() => [
+  const columns = useMemo<Column<CallRecord>[]>(() => [
     { id: '_bar', header: '', cell: (info) => (
       <span style={{ display: 'inline-block', width: 3, height: 18, borderRadius: 2, background: isCallOk(info.row.original) ? colors.success : colors.error }} />
     ), size: 6 },
@@ -81,13 +82,17 @@ export function HistoryList() {
         : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>no match</span>;
     }},
     { id: 'time', header: 'Time', accessorKey: 'timestamp', cell: (info) => (
-      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(info.getValue() as string).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{callTime(info.getValue() as string)}</span>
     ), meta: { hideBelow: 1280 }},
     { id: 'elapsed', header: 'Latency', accessorKey: 'elapsedMs', cell: (info) => {
       const ms = info.getValue() as number | undefined;
-      return ms != null
-        ? <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: ms > 500 ? colors.warning : 'var(--text-secondary)' }}>{ms} ms</span>
-        : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>;
+      if (ms == null) return <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>—</span>;
+
+      return (
+        <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: ms > 500 ? colors.warning : 'var(--text-secondary)' }}>
+          {ms === 0 ? '<1 ms' : `${ms} ms`}
+        </span>
+      );
     }},
     { id: 'status', header: 'Status', cell: (info) => <CallStatusBadge call={info.row.original} /> },
     { id: 'cp', header: '', cell: (info) => (
@@ -121,6 +126,19 @@ export function HistoryList() {
             <button style={tab(sessionTab === 'global')} onClick={() => setSessionTab('global')}><Globe size={11} /> Global</button>
           </div>
         )}
+
+        <button
+          onClick={() => {
+            const scope = session ? `session ${session.slice(0, 16)}` : 'the whole server';
+            if (confirm(`Delete recorded calls for ${scope}?`)) purge.mutate();
+          }}
+          disabled={purge.isPending || total === 0}
+          className="btn btn-sm"
+          style={{ marginLeft: 'auto', color: total === 0 ? undefined : colors.error }}
+          title={session ? 'Delete this session\'s recorded calls' : 'Delete every recorded call on the server'}
+        >
+          <Trash2 size={12} /> Clear
+        </button>
       </div>
       {session && (
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
@@ -149,11 +167,11 @@ export function HistoryList() {
             <div style={{ display: 'flex', gap: 10 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="section-title" style={{ marginBottom: 3 }}>Request {(r.requests?.length ?? 0) > 1 ? `(${r.requests!.length} msgs)` : ''}</div>
-                <pre className="json-block">{JSON.stringify(r.requests ?? r.request ?? {}, null, 2)}</pre>
+                <pre className="json-block">{JSON.stringify(r.requests ?? {}, null, 2)}</pre>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="section-title" style={{ marginBottom: 3 }}>Response {(r.responses?.length ?? 0) > 1 ? `(${r.responses!.length} msgs)` : ''}</div>
-                <pre className="json-block">{JSON.stringify(r.responses ?? r.response ?? {}, null, 2)}</pre>
+                <pre className="json-block">{JSON.stringify(r.responses ?? {}, null, 2)}</pre>
               </div>
             </div>
 

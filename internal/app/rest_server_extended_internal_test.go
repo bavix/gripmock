@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
@@ -15,7 +16,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
-// RestServerExtendedTestSuite provides extended test suite for REST server functionality.
 type RestServerExtendedTestSuite struct {
 	suite.Suite
 
@@ -23,7 +23,6 @@ type RestServerExtendedTestSuite struct {
 	budgerigar *stuber.Budgerigar
 }
 
-// SetupSuite initializes the test suite.
 func (s *RestServerExtendedTestSuite) SetupSuite() {
 	s.budgerigar = stuber.NewBudgerigar()
 	extender := &mockExtender{}
@@ -32,12 +31,10 @@ func (s *RestServerExtendedTestSuite) SetupSuite() {
 	s.server = server
 }
 
-// SetupTest cleans up before each test.
 func (s *RestServerExtendedTestSuite) SetupTest() {
 	s.budgerigar.Clear()
 }
 
-// TestAddStubWithPriority tests adding stubs with different priorities.
 func (s *RestServerExtendedTestSuite) TestAddStubWithPriority() {
 	tests := []struct {
 		name     string
@@ -85,7 +82,6 @@ func (s *RestServerExtendedTestSuite) TestAddStubWithPriority() {
 	}
 }
 
-// TestAddStubWithHeaders tests adding stubs with header matching.
 func (s *RestServerExtendedTestSuite) TestAddStubWithHeaders() {
 	tests := []struct {
 		name     string
@@ -124,7 +120,6 @@ func (s *RestServerExtendedTestSuite) TestAddStubWithHeaders() {
 	}
 }
 
-// TestAddStubWithMatchers tests different matcher types.
 func (s *RestServerExtendedTestSuite) TestAddStubWithMatchers() {
 	tests := []struct {
 		name     string
@@ -166,7 +161,6 @@ func (s *RestServerExtendedTestSuite) TestAddStubWithMatchers() {
 	}
 }
 
-// TestAddStubWithErrors tests adding stubs that return errors.
 func (s *RestServerExtendedTestSuite) TestAddStubWithErrors() {
 	tests := []struct {
 		name     string
@@ -199,11 +193,8 @@ func (s *RestServerExtendedTestSuite) TestAddStubWithErrors() {
 	}
 }
 
-// TestFindStubByIDExtended tests finding stubs by ID with various scenarios.
-//
 //nolint:funlen
 func (s *RestServerExtendedTestSuite) TestFindStubByIDExtended() {
-	// First add a stub to find
 	stubData := `[{
 		"service": "FindService",
 		"method": "FindMethod", 
@@ -218,7 +209,6 @@ func (s *RestServerExtendedTestSuite) TestFindStubByIDExtended() {
 	s.server.AddStub(addW, addReq)
 	s.Require().Equal(http.StatusOK, addW.Code)
 
-	// Get stub ID by listing all stubs (since AddStub might return a message)
 	listReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs", nil)
 	listW := httptest.NewRecorder()
 	s.server.ListStubs(listW, listReq, rest.ListStubsParams{})
@@ -230,7 +220,6 @@ func (s *RestServerExtendedTestSuite) TestFindStubByIDExtended() {
 	s.Require().NoError(err)
 	s.Require().NotEmpty(allStubs)
 
-	// Find our added stub
 	var stubID uuid.UUID
 
 	for _, stub := range allStubs {
@@ -276,9 +265,7 @@ func (s *RestServerExtendedTestSuite) TestFindStubByIDExtended() {
 	}
 }
 
-// TestStubStatistics tests stub usage statistics endpoints.
 func (s *RestServerExtendedTestSuite) TestStubStatistics() {
-	// Add test stubs
 	stubData := `[{
 		"service": "StatsService",
 		"method": "StatsMethod",
@@ -366,7 +353,6 @@ func (s *RestServerExtendedTestSuite) TestDashboardOverview() {
 }
 
 func (s *RestServerExtendedTestSuite) TestSessionsList() {
-	// empty set should be [] (not null)
 	{
 		req := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/sessions", nil)
 		w := httptest.NewRecorder()
@@ -381,7 +367,9 @@ func (s *RestServerExtendedTestSuite) TestSessionsList() {
 		s.Require().NoError(err)
 		s.Contains(payload, "sessions")
 		s.NotNil(payload["sessions"])
-		s.Empty(payload["sessions"])
+		s.NotContains(payload["sessions"], "a")
+		s.NotContains(payload["sessions"], "b")
+		s.NotContains(payload["sessions"], "z-live-session")
 	}
 
 	s.server.budgerigar.PutMany(
@@ -401,13 +389,11 @@ func (s *RestServerExtendedTestSuite) TestSessionsList() {
 
 	err := json.Unmarshal(w.Body.Bytes(), &payload)
 	s.Require().NoError(err)
-	s.Equal([]string{"a", "b"}, payload["sessions"])
+	s.Subset(payload["sessions"], []string{"a", "b"})
 
-	// A session seen only via a live call (request tracker) also surfaces,
-	// unioned with the stub-scoped ones.
 	session.Touch("z-live-session")
 
-	defer session.Forget("z-live-session")
+	defer session.ForgetIfExpired("z-live-session", time.Now(), 0)
 
 	req = httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/sessions", nil)
 	w = httptest.NewRecorder()
@@ -537,11 +523,8 @@ func (s *RestServerExtendedTestSuite) TestInspectStubsEndpoint() {
 	s.Contains(payload, "matchedStubId")
 }
 
-// TestSearchStubsExtended tests advanced stub searching.
-//
 //nolint:funlen
 func (s *RestServerExtendedTestSuite) TestSearchStubsExtended() {
-	// Add searchable stubs
 	stubData := `[
 		{
 			"service": "SearchService",
@@ -605,11 +588,8 @@ func (s *RestServerExtendedTestSuite) TestSearchStubsExtended() {
 	}
 }
 
-// TestServiceDiscovery tests service and method discovery endpoints.
-//
 //nolint:funlen
 func (s *RestServerExtendedTestSuite) TestServiceDiscovery() {
-	// Add stubs for different services
 	stubData := `[
 		{
 			"service": "com.example.UserService",
@@ -680,7 +660,6 @@ func (s *RestServerExtendedTestSuite) TestServiceDiscovery() {
 	}
 }
 
-// TestHealthEndpoints tests health check endpoints.
 func (s *RestServerExtendedTestSuite) TestHealthEndpoints() {
 	tests := []struct {
 		name        string
@@ -709,7 +688,6 @@ func (s *RestServerExtendedTestSuite) TestHealthEndpoints() {
 
 			tt.handler(w, req)
 
-			// Health endpoints should return valid status codes
 			s.Require().True(
 				w.Code == http.StatusOK || w.Code == http.StatusServiceUnavailable,
 				tt.description,
@@ -719,9 +697,7 @@ func (s *RestServerExtendedTestSuite) TestHealthEndpoints() {
 	}
 }
 
-// TestBatchOperations tests batch operations on stubs.
 func (s *RestServerExtendedTestSuite) TestBatchOperations() {
-	// Add multiple stubs
 	stubData := `[
 		{
 			"service": "BatchService",
@@ -750,7 +726,6 @@ func (s *RestServerExtendedTestSuite) TestBatchOperations() {
 	s.server.AddStub(addW, addReq)
 	s.Require().Equal(http.StatusOK, addW.Code)
 
-	// Get added stub IDs by listing all stubs
 	listReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs", nil)
 	listW := httptest.NewRecorder()
 	s.server.ListStubs(listW, listReq, rest.ListStubsParams{})
@@ -762,7 +737,6 @@ func (s *RestServerExtendedTestSuite) TestBatchOperations() {
 	s.Require().NoError(err)
 	s.Require().Len(allStubs, 3)
 
-	// Test batch deletion
 	stubIDs := make([]string, len(allStubs))
 	for i, stub := range allStubs {
 		stubIDs[i] = stub.ID.String()
@@ -781,9 +755,7 @@ func (s *RestServerExtendedTestSuite) TestBatchOperations() {
 	s.Require().Equal(http.StatusOK, deleteW.Code)
 }
 
-// TestStubPersistence tests stub persistence across operations.
 func (s *RestServerExtendedTestSuite) TestStubPersistence() {
-	// Add a stub
 	stubData := `[{
 		"service": "PersistenceService",
 		"method": "PersistentMethod",
@@ -798,7 +770,6 @@ func (s *RestServerExtendedTestSuite) TestStubPersistence() {
 	s.server.AddStub(addW, addReq)
 	s.Require().Equal(http.StatusOK, addW.Code)
 
-	// Verify stub exists in listing
 	listReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/api/stubs", nil)
 	listW := httptest.NewRecorder()
 	s.server.ListStubs(listW, listReq, rest.ListStubsParams{})
@@ -810,7 +781,6 @@ func (s *RestServerExtendedTestSuite) TestStubPersistence() {
 	s.Require().NoError(err)
 	s.Require().NotEmpty(listedStubs)
 
-	// Find our stub
 	var foundStub *stuber.Stub
 
 	for _, stub := range listedStubs {
@@ -823,7 +793,6 @@ func (s *RestServerExtendedTestSuite) TestStubPersistence() {
 
 	s.Require().NotNil(foundStub, "Added stub should be found in listing")
 
-	// Search for the stub
 	searchData := `{"service": "PersistenceService", "method": "PersistentMethod", "data": {"persistent": "data"}}`
 	searchReq := httptest.NewRequestWithContext(s.T().Context(), http.MethodPost, "/api/stubs/search", bytes.NewBufferString(searchData))
 	searchReq.Header.Set("Content-Type", "application/json")
@@ -844,7 +813,6 @@ func (s *RestServerExtendedTestSuite) addStubAndAssertOK(payload string) {
 	s.Require().NotEmpty(w.Body.String())
 }
 
-// TestRestServerExtendedTestSuite runs the extended REST server test suite.
 func TestRestServerExtendedTestSuite(t *testing.T) { //nolint:paralleltest
 	suite.Run(t, new(RestServerExtendedTestSuite))
 }

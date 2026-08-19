@@ -33,7 +33,7 @@ func testFirstProxyWithSources(t *testing.T) {
 		"grpc+proxy://upstream2:4222",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, []string{"./imports"}, nil)
+	result := proto.ParseArgumentsWithBindings(args, args, []string{"./imports"}, nil)
 
 	require.True(t, result.HasProxyBindings())
 	require.Equal(t, []string{"./imports"}, result.Imports())
@@ -58,7 +58,7 @@ func testDifferentSourcesPerProxy(t *testing.T) {
 		"grpcs+capture://upstream2:4222",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil, nil)
+	result := proto.ParseArgumentsWithBindings(args, args, nil, nil)
 
 	require.True(t, result.HasProxyBindings())
 
@@ -84,7 +84,7 @@ func testMixedProtoAndProxy(t *testing.T) {
 		"grpc+replay://upstream2:4222",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil, nil)
+	result := proto.ParseArgumentsWithBindings(args, args, nil, nil)
 
 	require.Equal(t, []string{"common.proto", "types.proto"}, result.ProtoPath())
 	require.True(t, result.HasProxyBindings())
@@ -111,7 +111,7 @@ func testThreeProxies(t *testing.T) {
 		"grpc+replay://upstream3:4333",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil, nil)
+	result := proto.ParseArgumentsWithBindings(args, args, nil, nil)
 
 	require.True(t, result.HasProxyBindings())
 
@@ -139,7 +139,7 @@ func testSourceFlagFormats(t *testing.T) {
 		"grpc+proxy://upstream:4111",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil, nil)
+	result := proto.ParseArgumentsWithBindings(args, args, nil, nil)
 
 	require.True(t, result.HasProxyBindings())
 
@@ -156,7 +156,7 @@ func testProxyWithQueryParams(t *testing.T) {
 		"grpc+proxy://upstream:4111?timeout=30s&insecureSkipVerify=true",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil, nil)
+	result := proto.ParseArgumentsWithBindings(args, args, nil, nil)
 
 	require.True(t, result.HasProxyBindings())
 
@@ -175,7 +175,7 @@ func testNoProxiesUsesAllSources(t *testing.T) {
 		"grpc://upstream:4111", // No +mode suffix
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil, nil)
+	result := proto.ParseArgumentsWithBindings(args, args, nil, nil)
 
 	require.False(t, result.HasProxyBindings())
 	require.Nil(t, result.ProxyBindings())
@@ -192,7 +192,7 @@ func testEmptySourcesList(t *testing.T) {
 		"grpc+proxy://upstream3:4333",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil, nil)
+	result := proto.ParseArgumentsWithBindings(args, args, nil, nil)
 
 	require.True(t, result.HasProxyBindings())
 
@@ -224,7 +224,7 @@ func testMicroservicesScenario(t *testing.T) {
 		"grpc+proxy://payment-service:50052",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, []string{"./examples"}, nil)
+	result := proto.ParseArgumentsWithBindings(args, args, []string{"./examples"}, nil)
 
 	require.Equal(t, []string{"examples/local_service.proto"}, result.ProtoPath())
 	require.True(t, result.HasProxyBindings())
@@ -247,7 +247,7 @@ func testCaptureScenario(t *testing.T) {
 		"grpc+capture://staging-server:443?recordDelay=true",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil, nil)
+	result := proto.ParseArgumentsWithBindings(args, args, nil, nil)
 
 	require.True(t, result.HasProxyBindings())
 
@@ -268,7 +268,7 @@ func testMixedEnvironment(t *testing.T) {
 		"grpc+replay://localhost:50052",
 	}
 
-	result := proto.ParseArgumentsWithBindings(args, nil, nil)
+	result := proto.ParseArgumentsWithBindings(args, args, nil, nil)
 
 	require.Equal(t, []string{"local/greeter.proto"}, result.ProtoPath())
 

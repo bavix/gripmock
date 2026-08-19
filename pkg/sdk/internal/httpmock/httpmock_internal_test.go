@@ -72,29 +72,6 @@ func TestBatchDelete(t *testing.T) {
 	require.Len(t, s.Budgerigar.All(), 1)
 }
 
-func TestVerify(t *testing.T) {
-	t.Parallel()
-
-	s := NewServer()
-	defer s.Close()
-
-	client := remoteapi.Client{
-		BaseURL:    s.URL,
-		HTTPClient: s.HTTPServer.Client(),
-	}
-
-	// Record some calls directly
-	s.RecordCall("svc", "method", map[string]any{"req": "1"}, map[string]any{"resp": "ok"})
-	s.RecordCall("svc", "method", map[string]any{"req": "2"}, map[string]any{"resp": "ok"})
-
-	// Verify correct count
-	require.NoError(t, client.VerifyMethodCalled("svc", "method", 2))
-
-	// Verify wrong count
-	err := client.VerifyMethodCalled("svc", "method", 1)
-	require.Error(t, err)
-}
-
 func TestHistory(t *testing.T) {
 	t.Parallel()
 
@@ -159,7 +136,6 @@ func TestListStubs(t *testing.T) {
 		Output: stuber.Output{Data: map[string]any{"ok": true}},
 	}}))
 
-	// GET /stubs
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, s.URL+"/api/stubs", nil)
 	resp, err := s.HTTPServer.Client().Do(req)
 	require.NoError(t, err)
@@ -188,7 +164,6 @@ func TestFindByID(t *testing.T) {
 		Output: stuber.Output{Data: map[string]any{"ok": true}},
 	}}))
 
-	// GET /stubs/{uuid}
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, s.URL+"/api/stubs/"+id.String(), nil)
 	resp, err := s.HTTPServer.Client().Do(req)
 	require.NoError(t, err)
@@ -217,7 +192,6 @@ func TestDeleteStubByID(t *testing.T) {
 	}}))
 	require.Len(t, s.Budgerigar.All(), 1)
 
-	// DELETE /stubs/{uuid}
 	req, _ := http.NewRequestWithContext(t.Context(), http.MethodDelete, s.URL+"/api/stubs/"+id.String(), nil)
 	resp, err := s.HTTPServer.Client().Do(req)
 	require.NoError(t, err)
@@ -230,12 +204,10 @@ func TestDeleteStubByID(t *testing.T) {
 
 func TestGzipCompression(t *testing.T) {
 	t.Parallel()
-	// Test that the REST server accepts gzip-compressed request bodies
-	// via the GzipRequestMiddleware.
+
 	s := NewServer()
 	defer s.Close()
 
-	// Craft a minimal HTTP request with gzip-compressed body
 	stubs := []*stuber.Stub{{
 		Service: "test.Service",
 		Method:  "TestMethod",
@@ -320,7 +292,6 @@ func TestUploadDescriptors(t *testing.T) {
 		HTTPClient: s.HTTPServer.Client(),
 	}
 
-	// Empty descriptors — should be accepted (no-op in mock)
 	err := client.UploadDescriptors(nil)
 	require.NoError(t, err)
 }

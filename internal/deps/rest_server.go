@@ -129,7 +129,13 @@ func (b *Builder) RestServe(
 		},
 	})
 	router.Path("/api/mcp").Methods(http.MethodPost).Handler(
-		withMCPMiddlewares(apiServer.MCPHandler()),
+		withMCPMiddlewares(apiServer.MCPHandler(), b.config.CORSAllowedOrigins),
+	)
+
+	router.Path("/api/mcp").Methods(http.MethodGet, http.MethodDelete).HandlerFunc(
+		func(w http.ResponseWriter, _ *http.Request) {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		},
 	)
 
 	router.Path("/metrics").Handler(telemetry.MetricsHandler(b.promReg))
@@ -197,12 +203,13 @@ func (b *Builder) RestServe(
 	}, nil
 }
 
-func withMCPMiddlewares(handler http.Handler) http.Handler {
+func withMCPMiddlewares(handler http.Handler, allowedOrigins []string) http.Handler {
 	middlewares := []func(http.Handler) http.Handler{
 		httputil.MaxBodySize(httputil.MaxBodyBytes()),
 		muxmiddleware.PanicRecoveryMiddleware,
 		muxmiddleware.TransportSession,
 		muxmiddleware.RequestLogger,
+		muxmiddleware.MCPOriginGuard(allowedOrigins),
 	}
 
 	for _, middleware := range middlewares {

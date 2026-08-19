@@ -1,14 +1,10 @@
 # Quick Start <VersionTag version="v3.7.0" />
 
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::
-
 ::: info
 **Minimum Requirements**: Go 1.26 or later
 :::
 
-> **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" /> (legacy API: `sdk.Run`, `mock.Stub`, `.When`, `.Reply`, `.Commit`). Current v2 API available since <VersionTag version="v3.16.0" />. See the [Upgrade Guide](./upgrade.md) for migration.
+> **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" />. Current API since <VersionTag version="v3.16.0" />; the legacy `sdk.Run` / `mock.Stub` / `mock.Verify` API was **removed in v3.20.0**. See the [Upgrade Guide](./upgrade.md).
 
 Get started with GripMock Embedded SDK in your tests.
 
@@ -114,40 +110,6 @@ func TestGreeter_SayHello_WithDelay(t *testing.T) {
 }
 ```
 
----
-
-### Legacy API (v3.7.0+)
-
-The same example in the legacy API:
-
-```go
-import (
-    "testing"
-
-    "github.com/stretchr/testify/require"
-    sdk "github.com/bavix/gripmock/v3/pkg/sdk"
-)
-
-func TestMyService_Call_Legacy(t *testing.T) {
-    mock, err := sdk.Run(t, sdk.WithFileDescriptor(helloworld.File_helloworld_proto))
-    require.NoError(t, err)
-    defer mock.Close()
-
-    mock.Stub(sdk.By("/helloworld.Greeter/SayHello")).
-        When(sdk.Equals("name", "Alex")).
-        Reply(sdk.Data("message", "Hi Alex")).
-        Commit()
-
-    client := helloworld.NewGreeterClient(mock.Conn())
-
-    reply, err := client.SayHello(t.Context(), &helloworld.HelloRequest{Name: "Alex"})
-
-    require.NoError(t, err)
-    require.Equal(t, "Hi Alex", reply.GetMessage())
-}
-```
-
----
 
 ## Using Full Method Constants
 

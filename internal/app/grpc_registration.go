@@ -30,7 +30,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/infra/grpccontext"
 	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
-	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
 func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
@@ -98,10 +97,9 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 		return status.Error(codes.Unimplemented, err.Error())
 	}
 
-	templateEngine := template.New(stream.Context(), nil)
 	mocker := &grpcMocker{
 		budgerigar:         s.budgerigar,
-		templateEngine:     templateEngine,
+		templateEngine:     s.templates(stream.Context()),
 		errorFormatter:     s.errorFormatter,
 		recorder:           s.recorder,
 		typeResolver:       protosetinfra.NewTypeResolver(s.globalResolver()),
@@ -408,8 +406,6 @@ func (s *GRPCServer) createGrpcMocker(
 	inputDesc, outputDesc protoreflect.MessageDescriptor,
 	reg *protoregistry.Files,
 ) *grpcMocker {
-	templateEngine := template.New(ctx, nil)
-
 	var resolver protodesc.Resolver = protoregistry.GlobalFiles
 	if reg != nil {
 		resolver = reg
@@ -419,7 +415,7 @@ func (s *GRPCServer) createGrpcMocker(
 
 	return &grpcMocker{
 		budgerigar:      s.budgerigar,
-		templateEngine:  templateEngine,
+		templateEngine:  s.templates(ctx),
 		errorFormatter:  s.errorFormatter,
 		recorder:        s.recorder,
 		typeResolver:    protosetinfra.NewTypeResolver(resolver),

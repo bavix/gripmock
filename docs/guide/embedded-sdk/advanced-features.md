@@ -1,34 +1,13 @@
 # Advanced Features <VersionTag version="v3.7.0" />
 
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::
-
 ::: info
 **Minimum Requirements**: Go 1.26 or later
 :::
 
-> **Version history:** All features existed in <VersionTag version="v3.7.0" /> (legacy API). Current v2 API since <VersionTag version="v3.16.0" />. See the [Upgrade Guide](./upgrade.md) for migration.
+> **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" />. Current API since <VersionTag version="v3.16.0" />; the legacy `sdk.Run` / `mock.Stub` / `mock.Verify` API was **removed in v3.20.0**. See the [Upgrade Guide](./upgrade.md).
 
 Learn about advanced features of the GripMock Embedded SDK.
 
----
-
-### Legacy API (v3.7.0+)
-
-The same features in the legacy API:
-
-```go
-mock.Stub(sdk.By(FullMethod)).
-    WhenHeaders(sdk.Equals("authorization", "Bearer token")).
-    Reply(sdk.Data("result", "ok")).
-    Delay(100 * time.Millisecond).
-    Priority(10).
-    Times(3).
-    Commit()
-```
-
----
 
 ## Headers Matching
 
@@ -226,4 +205,119 @@ func TestPaymentService_Failure(t *testing.T) {
     require.Equal(t, codes.InvalidArgument, status.Code(err))
     require.Contains(t, err.Error(), "Amount must be greater than 0")
 }
+```
+
+## Response Metadata <VersionTag version="v3.20.0" />
+
+Every expectation type can set the metadata the call answers with. Values go
+through the template engine, so they can reference the request.
+
+```go
+srv.ExpectUnary(FullMethod).
+    Match("id", "42").
+    ReturnHeaders(map[string]string{"x-trace-id": "{{.Request.id}}"}).
+    ReturnTrailers(map[string]string{"x-cost": "7"}).
+    Return("name", "Alex")
+```
+
+## Fixed Stub IDs <VersionTag version="v3.20.0" />
+
+`WithID` pins the identifier instead of generating one, so an effect or a later
+test step can target the same stub deterministically.
+
+```go
+id := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+
+srv.ExpectUnary(FullMethod).WithID(id).Match("id", "42").Return("name", "Alex")
+```
+
+## Scalar and Status-Only Responses <VersionTag version="v3.20.0" />
+
+`Return` builds a message from key-value pairs. A method whose response is a
+top-level well-known type needs `ReturnValue`, and a bare status needs
+`ReturnStatus`.
+
+```go
+srv.ExpectUnary("/wkt.TypeService/GetName").Match("id", "1").ReturnValue("plain string")
+srv.ExpectUnary(FullMethod).Match("id", "gone").ReturnStatus(codes.Unavailable)
+```
+
+A client-stream call answers with one message too, so it takes the same terminal
+methods. `ReturnStatus`, `ReturnError` and `Delay` work on all four shapes;
+`Delay` pauses the reply, or every message of a stream.
+
+```go
+srv.ExpectClientStream("/calc.Calculator/SumNumbers").Match(sdk.Matches("value", ".*")).ReturnStatus(codes.ResourceExhausted)
+srv.ExpectBidirectionalStream("/chat.ChatService/Chat").Match("text", "ping").ReturnError(codes.FailedPrecondition, "room closed")
+srv.ExpectUnary(FullMethod).Match("id", "slow").Delay(80 * time.Millisecond).Return("name", "late")
+```
+
+## Positional Stream Matching <VersionTag version="v3.20.0" />
+
+`Match` merges its matchers and applies the result to every message.
+`MatchSequence` matches each message against its own matcher.
+
+```go
+srv.ExpectClientStream("/calc.Calculator/SumNumbers").
+    MatchSequence(sdk.Equals("value", 1.0), sdk.Equals("value", 2.0)).
+    Return("result", 3.0, "count", 2)
+```
+
+## Aborting a Stream <VersionTag version="v3.20.0" />
+
+A stream can end in an error either from the start or partway through.
+
+```go
+// Fails immediately.
+srv.ExpectServerStream(FullMethod).Match("q", "boom").
+    ReturnError(codes.ResourceExhausted, "quota exceeded")
+
+// Delivers one message, then fails.
+srv.ExpectServerStream(FullMethod).Match("q", "half").
+    SendStream(
+        map[string]any{"id": "1"},
+        sdk.StreamError(codes.Aborted, "cut short"),
+    )
+```
+
+`Delay(d)` on a server-stream expectation pauses before **every** message;
+`SendStream(sdk.Delay(d, ...))` delays a single one.
+
+## Static Bidirectional Stubs <VersionTag version="v3.20.0" />
+
+`Run` installs an in-process handler and therefore only works against an
+embedded server. A static bidi stub works in both modes.
+
+```go
+srv.ExpectBidirectionalStream("/chat.ChatService/Chat").
+    Match("text", "ping").
+    SendStream(map[string]any{"text": "pong"})
+```
+
+## Handlers <VersionTag version="v3.20.0" />
+
+Unary, server-stream and client-stream expectations accept a handler when a
+static response is not enough. Handlers run in-process and **panic in remote
+mode**.
+
+```go
+srv.ExpectUnary(FullMethod).
+    Match("name", "Alex").
+    Run(func(ctx context.Context, in any) (any, error) {
+        req := in.(map[string]any)
+
+        return map[string]any{"message": "hello " + req["name"].(string)}, nil
+    })
+```
+
+A client-stream handler receives the request messages already decoded — the
+engine has to drain the stream before it can pick a stub, so the handler cannot
+read it again.
+
+```go
+srv.ExpectClientStream("/calc.Calculator/SumNumbers").
+    Match(sdk.Matches("value", ".*")).
+    Run(func(ctx context.Context, messages []any) (any, error) {
+        return map[string]any{"count": len(messages)}, nil
+    })
 ```

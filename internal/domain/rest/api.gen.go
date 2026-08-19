@@ -106,21 +106,13 @@ type CallRecord struct {
 	// Method gRPC method name.
 	Method *string `json:"method,omitempty"`
 
-	// Request Deprecated: use requests for streaming calls
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	Request *map[string]any `json:"request,omitempty"`
-
-	// Requests Request messages for streaming calls (client stream, bidi stream)
+	// Requests Request messages; a unary call carries exactly one
 	Requests *[]map[string]any `json:"requests,omitempty"`
-
-	// Response Deprecated: use responses for streaming calls
-	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
-	Response *map[string]any `json:"response,omitempty"`
 
 	// ResponseHeaders Normalized response metadata (header+trailer) the call answered with
 	ResponseHeaders map[string]string `json:"responseHeaders,omitempty"`
 
-	// Responses Response messages for streaming calls (server stream, bidi stream)
+	// Responses Response messages; a unary call carries exactly one
 	Responses *[]map[string]any `json:"responses,omitempty"`
 
 	// Service Fully qualified gRPC service name.
@@ -309,6 +301,15 @@ type DescriptorServiceIDs struct {
 
 // HistoryList A page of recorded calls, newest first.
 type HistoryList = []CallRecord
+
+// HistoryPurged Result of a history purge.
+type HistoryPurged struct {
+	// DeletedCount Number of records removed.
+	DeletedCount int `json:"deletedCount"`
+
+	// Session Session the purge was scoped to, absent when the whole history was cleared.
+	Session *string `json:"session,omitempty"`
+}
 
 // ID Stub identifier (UUID).
 //
@@ -652,6 +653,9 @@ type Stub struct {
 	//
 	// Example: Gripmock
 	Service string `json:"service"`
+
+	// Session Session the stub belongs to; empty means global. Assigned from the `X-Gripmock-Session` request header — a value sent in the body is discarded.
+	Session string `json:"session,omitempty"`
 
 	// Source Source of the stub (file, rest, mcp, proxy)
 	Source *string `json:"source,omitempty,omitzero"`
@@ -1191,6 +1195,9 @@ type ServerInterface interface {
 	// Readiness Readiness check
 	// (GET /health/readiness)
 	Readiness(w http.ResponseWriter, r *http.Request)
+	// PurgeHistory Purge call history
+	// (DELETE /history)
+	PurgeHistory(w http.ResponseWriter, r *http.Request)
 	// ListHistory Get call history
 	// (GET /history)
 	ListHistory(w http.ResponseWriter, r *http.Request, params ListHistoryParams)
@@ -1212,7 +1219,7 @@ type ServerInterface interface {
 	// SessionsList Session options
 	// (GET /sessions)
 	SessionsList(w http.ResponseWriter, r *http.Request)
-	// PurgeStubs Remove all stubs
+	// PurgeStubs Remove stubs
 	// (DELETE /stubs)
 	PurgeStubs(w http.ResponseWriter, r *http.Request)
 	// ListStubs Getting a list of stubs
@@ -1348,6 +1355,20 @@ func (siw *ServerInterfaceWrapper) Readiness(w http.ResponseWriter, r *http.Requ
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.Readiness(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PurgeHistory operation middleware
+func (siw *ServerInterfaceWrapper) PurgeHistory(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PurgeHistory(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2054,6 +2075,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 	r.HandleFunc(options.BaseURL+"/stubs/search", wrapper.SearchStubs).Methods(http.MethodPost)
 
 	r.HandleFunc(options.BaseURL+"/stubs/inspect", wrapper.InspectStubs).Methods(http.MethodPost)
+
+	r.HandleFunc(options.BaseURL+"/history", wrapper.PurgeHistory).Methods(http.MethodDelete)
 
 	r.HandleFunc(options.BaseURL+"/history", wrapper.ListHistory).Methods(http.MethodGet)
 

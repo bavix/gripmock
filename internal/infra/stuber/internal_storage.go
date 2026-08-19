@@ -23,6 +23,7 @@ type stubStorage interface {
 	indexedCandidates(indexes []uint64, queryData map[string]any) ([]*Stub, bool)
 	posByPN(left, right string) ([]uint64, error)
 	values() iter.Seq[*Stub]
+	size() int
 	sessionsList() []string
 	clear()
 }

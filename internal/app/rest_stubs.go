@@ -46,8 +46,6 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 	h.writeResponse(r.Context(), w, h.budgerigar.PutMany(inputs...))
 }
 
-// ListDescriptors returns service IDs of descriptors added via POST /descriptors.
-
 func (h *RestServer) DeleteStubByID(w http.ResponseWriter, _ *http.Request, uuid rest.ID) {
 	h.budgerigar.DeleteByID(uuid)
 
@@ -119,7 +117,7 @@ func (h *RestServer) ValidateStub(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var result []map[string]any
-	if err := json.Unmarshal(raw, &result); err != nil {
+	if err := jsondecoder.Unmarshal(raw, &result); err != nil {
 		h.responseError(r.Context(), w, err)
 
 		return
@@ -140,7 +138,6 @@ func (h *RestServer) ListStubs(w http.ResponseWriter, r *http.Request, params re
 	stubs, total := h.budgerigar.List(listOptionsFromParams(params))
 	w.Header().Set("X-Total-Count", strconv.Itoa(total))
 
-	// Decorate shallow copies with the used flag — storage stays untouched.
 	usedIDs := h.budgerigar.UsedIDs()
 	out := make([]stuber.Stub, len(stubs))
 
@@ -172,8 +169,6 @@ func listOptionsFromParams(params rest.ListStubsParams) stuber.ListOptions {
 	return options
 }
 
-// parseMatcherKinds splits a comma-separated matcher filter into known kinds,
-// dropping unknown tokens. Empty input yields no filter.
 func parseMatcherKinds(s string) []string {
 	if s == "" {
 		return nil
@@ -195,8 +190,18 @@ func parseMatcherKinds(s string) []string {
 	return out
 }
 
-// PurgeStubs removes all stubs.
-func (h *RestServer) PurgeStubs(w http.ResponseWriter, _ *http.Request) {
+// PurgeStubs removes stubs, scoped to the request's session when one is set.
+// Without the scope a session-bound client would wipe every other session's
+// stubs, which is not what DELETE /api/history or the MCP stubs_purge tool do.
+func (h *RestServer) PurgeStubs(w http.ResponseWriter, r *http.Request) {
+	if session := muxmiddleware.FromRequest(r); session != "" {
+		h.budgerigar.DeleteSession(session)
+
+		w.WriteHeader(http.StatusNoContent)
+
+		return
+	}
+
 	h.budgerigar.Clear()
 
 	w.WriteHeader(http.StatusNoContent)

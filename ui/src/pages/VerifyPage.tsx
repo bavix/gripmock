@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { byTimestampDesc } from '../lib/format';
+import { byTimestampDesc, callTime } from '../lib/format';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { MethodSelect } from '../components/shared/MethodSelect';
 import { useVerify } from '../hooks/useVerify';
@@ -52,7 +52,7 @@ function ActualCalls({ calls, navigate }: Readonly<{ calls: CallRecord[]; naviga
         return (
           <button type="button" key={i} onClick={() => c.stubId && navigate(`/stubs/${c.stubId}`)}
             style={{ display: 'flex', alignItems: 'center', gap: 8, font: 'inherit', fontSize: 11.5, color: 'inherit', textAlign: 'inherit', width: '100%', padding: '3px 6px', borderRadius: 4, cursor: c.stubId ? 'pointer' : 'default', border: 'none', borderLeft: `2px solid ${ok ? colors.success : colors.error}`, background: 'var(--bg)' }}>
-            <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>{new Date(c.timestamp).toLocaleTimeString()}</span>
+            <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>{callTime(c.timestamp)}</span>
             <span style={{ color: ok ? colors.success : colors.error, fontWeight: 600 }}>{ok ? 'OK' : `err ${c.code}`}</span>
             {c.stubId ? <code style={{ color: 'var(--accent-text)' }}>{c.stubId.slice(0, 8)}</code> : <span style={{ color: 'var(--text-muted)' }}>no match</span>}
           </button>
@@ -139,9 +139,7 @@ export function VerifyPage() {
   const [count, setCount] = useState(1);
   const [result, setResult] = useState<VerifyOutcome | null>(null);
 
-  // Evidence: the endpoint's calls, fetched with the server-side scope filter
-  // (only after a verify run) so the list matches the server's count basis.
-  const { data: scoped } = useScopedHistory(service, method, !!result);
+  const { data: scoped } = useScopedHistory(service, method, !!service && !!method);
   const actualCalls = useMemo(() => {
     if (!result || !scoped) return [];
     return [...scoped].sort(byTimestampDesc);
@@ -162,7 +160,12 @@ export function VerifyPage() {
       <h1 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Verify Calls</h1>
       <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
         Verify that a specific endpoint received the expected number of calls.
-        Results are scoped to the active session.
+      </p>
+
+      <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+        {session
+          ? <>Counting this session's calls plus global ones — the same scope its stubs match in.</>
+          : <>Counting every call, including those made under a session. Activate a session to narrow it.</>}
       </p>
 
       {dash && !dash.historyEnabled && (
@@ -186,6 +189,11 @@ export function VerifyPage() {
                   <button key={n} onClick={() => setCount(n)} style={presetBtn(n, count)}>{n}</button>
                 ))}
               </div>
+              {service && method && scoped && (
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
+                  recorded now: <strong style={{ color: 'var(--text-secondary)' }}>{scoped.length}</strong>
+                </span>
+              )}
             </div>
           </div>
 

@@ -33,6 +33,10 @@ func TestConfigDefaults(t *testing.T) {
 	require.Empty(t, conf.HTTPTLS.KeyFile)
 	require.False(t, conf.HTTPTLS.ClientAuth)
 	require.Empty(t, conf.HTTPTLS.CAFile)
+
+	require.Equal(t, "0.0.0.0", conf.Gateway.Host)
+	require.Equal(t, "4769", conf.Gateway.Port)
+	require.Equal(t, "0.0.0.0:4769", conf.Gateway.Addr)
 }
 
 //nolint:paralleltest

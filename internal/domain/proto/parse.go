@@ -1,12 +1,13 @@
 package proto
 
 import (
+	"slices"
 	"strings"
 
 	protosetdom "github.com/bavix/gripmock/v3/internal/domain/protoset"
 )
 
-// ParseArgumentsWithBindings parses raw command-line arguments to extract per-proxy source bindings.
+// ParseArgumentsWithBindings extracts per-proxy source bindings from the command line.
 // It detects -S flags before proxy URLs and binds them to that specific proxy.
 //
 // The cmdSources parameter contains -S flags collected by Cobra's flag system.
@@ -22,33 +23,61 @@ import (
 //
 //	grpc+proxy://up1:4111 -S a.proto grpc+proxy://up2:4222
 //	  → up1:4111 uses reflection, up2:4222 gets [a.proto]
-func ParseArgumentsWithBindings(args []string, imports []string, cmdSources []string) *Arguments { //nolint:cyclop
-	var protoPath []string
+func ParseArgumentsWithBindings(positional, rawArgs, imports, cmdSources []string) *Arguments {
+	bindings, trailingSources, sawSourceFlag := scanBindings(rawArgs)
+	protoPath := protoPathFrom(positional)
 
-	var pendingSources []string
+	if len(bindings) == 0 {
+		// cmdSources and the sources scanned off the line are the same -S flags
+		// seen from two angles: Cobra collected them, and the scan found them
+		// again. Concatenating would build every source twice.
+		return New(protoPath, imports, mergeSources(cmdSources, trailingSources))
+	}
 
-	var bindings []ProxySourceBinding
+	if !sawSourceFlag && len(cmdSources) > 0 && len(bindings[0].Sources) == 0 {
+		bindings[0].Sources = append(cmdSources, bindings[0].Sources...)
+	}
 
-	for i := 0; i < len(args); i++ {
+	return NewWithBindings(protoPath, imports, bindings)
+}
+
+func mergeSources(cmdSources, scanned []string) []string {
+	merged := make([]string, 0, len(cmdSources)+len(scanned))
+	seen := make(map[string]struct{}, len(cmdSources)+len(scanned))
+
+	for _, source := range slices.Concat(cmdSources, scanned) {
+		if _, duplicate := seen[source]; duplicate {
+			continue
+		}
+
+		seen[source] = struct{}{}
+
+		merged = append(merged, source)
+	}
+
+	if len(merged) == 0 {
+		return nil
+	}
+
+	return merged
+}
+
+func scanBindings(args []string) ([]ProxySourceBinding, []string, bool) {
+	var (
+		bindings       []ProxySourceBinding
+		pendingSources []string
+		sawSourceFlag  bool
+	)
+
+	for i := range args {
 		arg := args[i]
 
-		if arg == "-S" || arg == "--source" {
-			if i+1 < len(args) {
-				i++
-				pendingSources = append(pendingSources, args[i])
+		if source, ok := sourceFlagValue(args, i); ok {
+			sawSourceFlag = true
+
+			if source != "" {
+				pendingSources = append(pendingSources, source)
 			}
-
-			continue
-		}
-
-		if value, ok := strings.CutPrefix(arg, "-S="); ok {
-			pendingSources = append(pendingSources, value)
-
-			continue
-		}
-
-		if value, ok := strings.CutPrefix(arg, "--source="); ok {
-			pendingSources = append(pendingSources, value)
 
 			continue
 		}
@@ -59,26 +88,62 @@ func ParseArgumentsWithBindings(args []string, imports []string, cmdSources []st
 				Sources:  append([]string{}, pendingSources...),
 			})
 			pendingSources = nil
+		}
+	}
 
+	return bindings, pendingSources, sawSourceFlag
+}
+
+func sourceFlagValue(args []string, i int) (string, bool) {
+	if value, ok := inlineSourceValue(args[i]); ok {
+		return value, true
+	}
+
+	if isBareSourceFlag(args[i]) {
+		if i+1 < len(args) {
+			return args[i+1], true
+		}
+
+		return "", true
+	}
+
+	if i > 0 && isBareSourceFlag(args[i-1]) {
+		return "", true
+	}
+
+	return "", false
+}
+
+func isBareSourceFlag(arg string) bool {
+	return arg == "-S" || arg == "--source"
+}
+
+func inlineSourceValue(arg string) (string, bool) {
+	for _, prefix := range []string{"-S=", "--source=", "-S"} {
+		if value, ok := strings.CutPrefix(arg, prefix); ok && value != "" {
+			return value, true
+		}
+	}
+
+	return "", false
+}
+
+func protoPathFrom(positional []string) []string {
+	var protoPath []string
+
+	for i := range positional {
+		if _, isSource := sourceFlagValue(positional, i); isSource {
 			continue
 		}
 
-		protoPath = append(protoPath, arg)
+		if IsProxyURL(positional[i]) {
+			continue
+		}
+
+		protoPath = append(protoPath, positional[i])
 	}
 
-	if len(bindings) == 0 {
-		allSources := make([]string, 0, len(pendingSources)+len(cmdSources))
-		allSources = append(allSources, cmdSources...)
-		allSources = append(allSources, pendingSources...)
-
-		return New(protoPath, imports, allSources)
-	}
-
-	if len(cmdSources) > 0 && len(bindings) > 0 && len(bindings[0].Sources) == 0 {
-		bindings[0].Sources = append(cmdSources, bindings[0].Sources...)
-	}
-
-	return NewWithBindings(protoPath, imports, bindings)
+	return protoPath
 }
 
 // IsProxyURL checks if the argument is a proxy URL by attempting to parse it

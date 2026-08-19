@@ -1,16 +1,19 @@
 package stuber
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"os"
 	"path/filepath"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/cockroachdb/errors"
 	"github.com/goccy/go-yaml"
+	"github.com/google/uuid"
 )
 
 const (
@@ -137,58 +140,172 @@ func DumpToDir(outDir string, stubs []*Stub, format string) (int, error) {
 }
 
 func WriteDump(writer io.Writer, stubs []*Stub, format string) error {
-	type dumpMeta struct {
-		Source string `json:"source,omitempty" yaml:"source,omitempty"`
-	}
+	records := make([]map[string]any, 0, len(stubs))
 
-	type dumpRecord struct {
-		Service string      `json:"service"          yaml:"service"`
-		Method  string      `json:"method"           yaml:"method"`
-		Input   InputData   `json:"input"            yaml:"input"`
-		Inputs  []InputData `json:"inputs,omitempty" yaml:"inputs,omitempty"`
-		Output  Output      `json:"output"           yaml:"output"`
-		Headers InputHeader `json:"headers"          yaml:"headers"`
-		Meta    *dumpMeta   `json:"_meta,omitempty"  yaml:"_meta,omitempty"` //nolint:tagliatelle
-	}
-
-	data := make([]dumpRecord, 0, len(stubs))
 	for stub := range slices.Values(stubs) {
 		if stub == nil {
 			continue
 		}
 
-		rec := dumpRecord{
-			Service: stub.Service,
-			Method:  stub.Method,
-			Input:   stub.Input,
-			Inputs:  stub.Inputs,
-			Output:  stub.Output,
-			Headers: stub.Headers,
-		}
-
-		if stub.Source != "" {
-			rec.Meta = &dumpMeta{Source: stub.Source}
-		}
-
-		data = append(data, rec)
+		records = append(records, dumpRecordOf(stub))
 	}
 
 	if format == DumpFormatJSON {
 		encoder := json.NewEncoder(writer)
 		encoder.SetIndent("", "  ")
 
-		return encoder.Encode(data)
+		return encoder.Encode(records)
 	}
 
 	encoder := yaml.NewEncoder(writer)
 
-	if err := encoder.Encode(data); err != nil {
+	if err := encoder.Encode(records); err != nil {
 		_ = encoder.Close()
 
 		return err
 	}
 
 	return encoder.Close()
+}
+
+func dumpRecordOf(stub *Stub) map[string]any {
+	record := map[string]any{
+		"service": stub.Service,
+		"method":  stub.Method,
+		"output":  dumpOutput(stub.Output),
+	}
+
+	addDumpScalars(record, stub)
+	addDumpMatchers(record, stub)
+
+	if len(stub.Effects) > 0 {
+		record["effects"] = stub.Effects
+	}
+
+	if stub.Source != "" {
+		record["_meta"] = map[string]any{"source": stub.Source}
+	}
+
+	return record
+}
+
+func dumpOutput(output Output) map[string]any {
+	out := pruneNulls(structToMap(output))
+
+	if output.Code == nil {
+		if msg, ok := out["error"].(string); ok && msg == "" {
+			delete(out, "error")
+		}
+	}
+
+	return out
+}
+
+func addDumpScalars(record map[string]any, stub *Stub) {
+	if stub.ID != uuid.Nil {
+		record["id"] = stub.ID.String()
+	}
+
+	if stub.Session != "" {
+		record["session"] = stub.Session
+	}
+
+	if stub.Priority != 0 {
+		record["priority"] = stub.Priority
+	}
+
+	if stub.Options.Times != 0 {
+		record["options"] = map[string]any{"times": stub.Options.Times}
+	}
+}
+
+func addDumpMatchers(record map[string]any, stub *Stub) {
+	if headers := pruneNulls(structToMap(stub.Headers)); len(headers) > 0 {
+		record["headers"] = headers
+	}
+
+	if input := pruneNulls(structToMap(stub.Input)); len(input) > 0 {
+		record["input"] = input
+	}
+
+	if inputs := dumpInputs(stub.Inputs); len(inputs) > 0 {
+		record["inputs"] = inputs
+	}
+}
+
+func dumpInputs(inputs []InputData) []map[string]any {
+	out := make([]map[string]any, 0, len(inputs))
+	for _, in := range inputs {
+		out = append(out, pruneNulls(structToMap(in)))
+	}
+
+	return out
+}
+
+func structToMap(v any) map[string]any {
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return nil
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+
+	var out map[string]any
+	if err := decoder.Decode(&out); err != nil {
+		return nil
+	}
+
+	normalized, _ := normalizeNumbers(out).(map[string]any)
+
+	return normalized
+}
+
+func narrowNumber(value json.Number) any {
+	if integer, err := value.Int64(); err == nil {
+		return integer
+	}
+
+	if unsigned, err := strconv.ParseUint(value.String(), 10, 64); err == nil {
+		return unsigned
+	}
+
+	if float, err := value.Float64(); err == nil {
+		return float
+	}
+
+	return value.String()
+}
+
+func normalizeNumbers(value any) any {
+	switch typed := value.(type) {
+	case map[string]any:
+		for key, nested := range typed {
+			typed[key] = normalizeNumbers(nested)
+		}
+
+		return typed
+	case []any:
+		for i, nested := range typed {
+			typed[i] = normalizeNumbers(nested)
+		}
+
+		return typed
+	case json.Number:
+		return narrowNumber(typed)
+	default:
+		return value
+	}
+}
+
+func pruneNulls(m map[string]any) map[string]any {
+	for key, value := range m {
+		if value == nil {
+			delete(m, key)
+		}
+	}
+
+	return m
 }
 
 func sanitizeDumpFileName(name string) string {

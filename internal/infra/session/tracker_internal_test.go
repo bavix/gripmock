@@ -46,7 +46,7 @@ func TestTrackerExpiredAndForget(t *testing.T) {
 
 	// Act
 	expired := tracker.Expired(now, time.Minute)
-	tracker.Forget("A")
+	tracker.ForgetIfExpired("A", time.Now(), 0)
 	expiredAfterForget := tracker.Expired(now, 0)
 
 	// Assert
@@ -67,6 +67,6 @@ func TestTrackerIDs(t *testing.T) {
 
 	require.Equal(t, []string{"A", "Z"}, tracker.IDs())
 
-	tracker.Forget("A")
+	tracker.ForgetIfExpired("A", time.Now(), 0)
 	require.Equal(t, []string{"Z"}, tracker.IDs())
 }

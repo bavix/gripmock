@@ -16,7 +16,7 @@ import { stashClone } from '../lib/clone';
 import { DataTable } from '../components/table/DataTable';
 import { stubCountLabel } from './stubCount';
 import { useToast } from '../components/shared/Toast';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { Column } from '../components/table/tableFeatures';
 
 interface Props { filter?: string; }
 
@@ -279,7 +279,7 @@ export function StubsList({ filter }: Props) {
   );
 }
 
-function makeColumns(selected: Set<string>, setSelected: (fn: (prev: Set<string>) => Set<string>) => void): ColumnDef<Stub>[] {
+function makeColumns(selected: Set<string>, setSelected: (fn: (prev: Set<string>) => Set<string>) => void): Column<Stub>[] {
   return [
     { id: '_sel', header: '', cell: ({ row }) => (
       <input type="checkbox" checked={selected.has(row.original.id)} onChange={() => setSelected((p) => { const n = new Set(p); if (n.has(row.original.id)) n.delete(row.original.id); else n.add(row.original.id); return n; })} />

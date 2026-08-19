@@ -44,19 +44,26 @@ headers:
 
 ### 2. Partial Match (`contains`)
 
-Matches headers that **contain** the specified values.
+Matches a **subset of the headers**: the ones you list must be equal, the rest are
+ignored. Containment applies to the set of headers, not to the inside of a value.
 
 ```yaml
 headers:
   contains:
-    user-agent: "Mozilla"
-    authorization: "Bearer"
+    x-tenant: "acme"
 ```
 
 **Behavior:**
-- Checks if header value contains the specified substring
+- Only the listed headers are checked; every other header is ignored
+- Each listed header value must be equal — including multi-value headers, which
+  are compared as the whole `;`-separated string
 - Case-sensitive by default
-- Missing headers are ignored
+
+::: warning
+`contains` does **not** match part of a header value. `contains: {authorization: "Bearer"}`
+will not match `Bearer eyJhbGci…` — use [`matches`](#_3-regex-match-matches), for example
+`authorization: "^Bearer "`.
+:::
 
 ### 3. Regex Match (`matches`)
 

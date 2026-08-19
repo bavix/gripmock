@@ -7,11 +7,51 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
+
+type fileRegistration int
+
+const (
+	fileNotRegistered fileRegistration = iota
+	fileRegisteredIdentical
+	fileRegisteredDifferent
+)
+
+func registeredFileState(name string, candidate *descriptorpb.FileDescriptorProto) fileRegistration {
+	existing, err := protoregistry.GlobalFiles.FindFileByPath(name)
+	if err != nil || existing == nil {
+		return fileNotRegistered
+	}
+
+	if candidate == nil || proto.Equal(protodesc.ToFileDescriptorProto(existing), candidate) {
+		return fileRegisteredIdentical
+	}
+
+	return fileRegisteredDifferent
+}
+
+func logAlreadyRegistered(ctx context.Context, name, path string, state fileRegistration) {
+	if state != fileRegisteredDifferent {
+		zerolog.Ctx(ctx).Debug().
+			Str("name", name).
+			Str("path", path).
+			Msg("file already registered with identical content; skipping")
+
+		return
+	}
+
+	zerolog.Ctx(ctx).Warn().
+		Str("name", name).
+		Str("path", path).
+		Msg("a different file is already registered under this name: its services will be served " +
+			"and the ones defined here will be missing. Proto files are identified by the name they " +
+			"were compiled under, so give the two files distinct names or distinct import paths")
+}
 
 //nolint:gochecknoglobals // shared lock is required for GlobalFiles concurrent registration safety
 var protoRegistryMu sync.Mutex
@@ -37,13 +77,10 @@ func RegisterDescriptorSetFiles(
 		for _, fd := range pending {
 			protoRegistryMu.Lock()
 
-			if value, _ := protoregistry.GlobalFiles.FindFileByPath(fd.GetName()); value != nil {
+			if state := registeredFileState(fd.GetName(), fd); state != fileNotRegistered {
 				protoRegistryMu.Unlock()
 
-				zerolog.Ctx(ctx).Warn().
-					Str("name", fd.GetName()).
-					Str("path", descriptorPath).
-					Msg("File already registered")
+				logAlreadyRegistered(ctx, fd.GetName(), descriptorPath, state)
 
 				progress = true
 
@@ -124,11 +161,8 @@ func registerGlobalFileOnce(
 	protoRegistryMu.Lock()
 	defer protoRegistryMu.Unlock()
 
-	if value, _ := protoregistry.GlobalFiles.FindFileByPath(fileName); value != nil {
-		zerolog.Ctx(ctx).Warn().
-			Str("name", fileName).
-			Str("path", filePath).
-			Msg("File already registered")
+	if state := registeredFileState(fileName, protodesc.ToFileDescriptorProto(file)); state != fileNotRegistered {
+		logAlreadyRegistered(ctx, fileName, filePath, state)
 
 		return nil
 	}

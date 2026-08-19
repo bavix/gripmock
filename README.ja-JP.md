@@ -37,9 +37,9 @@ GripMock は `.proto` ファイルまたはコンパイル済みの `.pb` 記述
 - **OpenTelemetry トレーシング** - gRPC および HTTP パスの OTLP トレーシング（`otelgrpc` + `otelhttp`）
 - **Prometheus メトリクス（`/metrics`）** - ランタイム/プロセスメトリクス（`go_*`、`process_*`）および GripMock メトリクス
 - **運用 API** - ヘルスエンドポイント、descriptors API、stubs API、Web ダッシュボード
-- **Embedded SDK（試験運用）** - Go テスト内で GripMock を実行し、検証ヘルパーを提供
-- **MCP API（試験運用）** - エージェントおよびツール統合のためのストリーム可能な MCP エンドポイント
-- **Upstream Modes（試験運用）** - 実際のアップストリームサービスからローカルモックへの段階的移行のための `proxy`、`replay`、`capture` モード
+- **Embedded SDK** - Go テスト内で GripMock を実行し、検証ヘルパーを提供
+- **MCP API** - エージェントおよびツール統合のためのストリーム可能な MCP エンドポイント
+- **Upstream Modes** - 実際のアップストリームサービスからローカルモックへの段階的移行のための `proxy`、`replay`、`capture` モード
 
 ## 📚 ドキュメント
 
@@ -47,8 +47,8 @@ GripMock は `.proto` ファイルまたはコンパイル済みの `.pb` 記述
 
 新しい機能の詳細：
 [Descriptor API](https://bavix.github.io/gripmock/guide/api/descriptors) ·
-[Upstream Modes（試験運用）](https://bavix.github.io/gripmock/guide/modes) ·
-[Embedded SDK（試験運用）](https://bavix.github.io/gripmock/guide/embedded-sdk) ·
+[Upstream Modes](https://bavix.github.io/gripmock/guide/modes) ·
+[Embedded SDK](https://bavix.github.io/gripmock/guide/embedded-sdk) ·
 [Faker Reference](https://bavix.github.io/gripmock/guide/stubs/faker) ·
 [OpenTelemetry + Metrics](https://bavix.github.io/gripmock/guide/introduction/advanced-usage) ·
 [GitHub Actions](https://bavix.github.io/gripmock/guide/ci-cd/github-actions) ·
@@ -128,7 +128,7 @@ gripmock grpcs://10.0.0.5:8443?serverName=api.company.local
 gripmock grpc://localhost:50051?bearer=<token>
 ```
 
-**reflection 上のアップストリームモード（試験運用）：**
+**reflection 上のアップストリームモード：**
 ```bash
 # GripMock を通じた純粋なリバースプロキシ
 gripmock grpc+proxy://localhost:50051
@@ -496,9 +496,7 @@ gripmock grpcs://10.0.0.5:8443?serverName=api.company.local
 
 完全なガイド：[gRPC Reflection ソース](https://bavix.github.io/gripmock/guide/sources/grpc-reflection)
 
-## 🔁 Upstream Modes（試験運用）
-
-⚠️ **試験運用機能**：Upstream modes は予告なく変更される可能性があります。
+## 🔁 Upstream Modes
 
 Upstream modes は reflection ソース上で動作し、ランタイムの動作を定義します：
 

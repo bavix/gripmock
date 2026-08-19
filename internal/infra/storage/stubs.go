@@ -11,9 +11,9 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
-	"github.com/samber/lo"
 
 	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
+	"github.com/bavix/gripmock/v3/internal/infra/slicesx"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
 	"github.com/bavix/gripmock/v3/internal/infra/yaml2json"
@@ -63,8 +63,6 @@ func (s *Extender) SignalLoaded() {
 }
 
 // ReadFromPathSync loads stubs from the given path synchronously.
-// Unlike ReadFromPath, this method blocks until all initial stubs are loaded.
-// File watching continues asynchronously after initial load.
 func (s *Extender) ReadFromPathSync(ctx context.Context, pathDir string) {
 	if pathDir == "" {
 		close(s.ch)
@@ -77,14 +75,12 @@ func (s *Extender) ReadFromPathSync(ctx context.Context, pathDir string) {
 	s.readFromPath(ctx, pathDir)
 	close(s.ch)
 
-	// Continue watching for changes asynchronously (don't block on watcher)
 	if isDirectory(pathDir) {
 		ch, err := s.watcher.Watch(ctx, pathDir)
 		if err != nil {
 			return
 		}
 
-		// Process file changes asynchronously without blocking
 		go func() {
 			for file := range ch {
 				zerolog.Ctx(ctx).
@@ -107,52 +103,6 @@ func (s *Extender) ReadFromPathSync(ctx context.Context, pathDir string) {
 				}()
 			}
 		}()
-	}
-}
-
-// ReadFromPath loads stubs from the given path asynchronously (legacy behavior).
-func (s *Extender) ReadFromPath(ctx context.Context, pathDir string) {
-	if pathDir == "" {
-		close(s.ch)
-
-		return
-	}
-
-	zerolog.Ctx(ctx).Info().Msg("Loading stubs from directory (preserving API stubs)")
-
-	s.readFromPath(ctx, pathDir)
-	close(s.ch)
-
-	if isDirectory(pathDir) {
-		ch, err := s.watcher.Watch(ctx, pathDir)
-		if err != nil {
-			return
-		}
-
-		var wg sync.WaitGroup
-
-		for file := range ch {
-			zerolog.Ctx(ctx).
-				Debug().
-				Str("path", file).
-				Msg("Updating stub")
-
-			wg.Go(func() {
-				defer func() {
-					if r := recover(); r != nil {
-						zerolog.Ctx(ctx).
-							Error().
-							Interface("panic", r).
-							Str("file", file).
-							Msg("Panic recovered while processing stub file")
-					}
-				}()
-
-				s.readByFile(ctx, file)
-			})
-		}
-
-		wg.Wait()
 	}
 }
 
@@ -256,10 +206,10 @@ func (s *Extender) handleExistingFileUpdate(filePath string, stubs []*stuber.Stu
 	}
 
 	currentIDs := s.extractCurrentIDs(stubs)
-	unusedIDs := lo.Without(existingIDs, currentIDs...)
+	unusedIDs := slicesx.Without(existingIDs, currentIDs...)
 	newIDs := s.generateNewIDs(stubs, unusedIDs)
 
-	if removedIDs := lo.Without(existingIDs, newIDs...); len(removedIDs) > 0 {
+	if removedIDs := slicesx.Without(existingIDs, newIDs...); len(removedIDs) > 0 {
 		s.storage.DeleteByID(removedIDs...)
 	}
 

@@ -375,6 +375,21 @@ func mcpHistoryErrors(h *RestServer, args map[string]any) (map[string]any, error
 	return map[string]any{"records": errorsOnly}, nil
 }
 
+func mcpHistoryPurge(h *RestServer, args map[string]any) (map[string]any, error) {
+	session, _ := args["session"].(string)
+
+	if h.history == nil {
+		return map[string]any{"deletedCount": 0}, nil
+	}
+
+	result := map[string]any{"deletedCount": h.purgeHistoryRecords(session)}
+	if session != "" {
+		result["session"] = session
+	}
+
+	return result, nil
+}
+
 func mcpVerifyCalls(h *RestServer, args map[string]any) (map[string]any, error) {
 	service, _ := args["service"].(string)
 	if service == "" {
@@ -400,8 +415,7 @@ func mcpVerifyCalls(h *RestServer, args map[string]any) (map[string]any, error) 
 	}
 
 	session, _ := args["session"].(string)
-	calls := h.history.Filter(history.FilterOpts{Service: service, Method: method, Session: session})
-	actual := len(calls)
+	actual := countHistory(h.history, history.FilterOpts{Service: service, Method: method, Session: session})
 
 	if actual != expectedCount {
 		return map[string]any{

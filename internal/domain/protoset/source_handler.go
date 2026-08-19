@@ -3,7 +3,12 @@ package protoset
 import (
 	"context"
 	"path/filepath"
+	"strings"
+
+	"github.com/cockroachdb/errors"
 )
+
+var errUnknownSourceScheme = errors.New("unknown source scheme")
 
 // resolveSourceImportPath resolves source.Path to an absolute path and registers
 // its directory as an import path, returning the absolute file path.
@@ -44,6 +49,12 @@ func ParseSource(raw string) (*Source, error) {
 		if handler.CanHandle(raw) {
 			return handler.Parse(raw)
 		}
+	}
+
+	if scheme, _, hasScheme := strings.Cut(raw, "://"); hasScheme {
+		return nil, errors.Wrapf(errUnknownSourceScheme,
+			"%q: use grpc:// or grpcs:// for reflection, "+
+				"or {grpc,grpcs}+{proxy,replay,capture}:// for an upstream mode", scheme)
 	}
 
 	return &Source{Type: SourceProto, Path: raw, Raw: raw}, nil

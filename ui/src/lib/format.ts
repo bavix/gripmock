@@ -4,3 +4,11 @@ export const versionLabel = (version: string): string => `${/^\d/.test(version) 
 // Comparator: newest timestamp first.
 export const byTimestampDesc = (a: { timestamp: string }, b: { timestamp: string }): number =>
   new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+
+export const callTime = (timestamp: string): string =>
+  new Date(timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    fractionalSecondDigits: 3,
+  });

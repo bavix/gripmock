@@ -158,6 +158,8 @@ export default defineConfig({
         items: [
           { text: 'MCP API', link: '/guide/api/mcp/' },
           { text: 'Descriptors API', link: '/guide/api/descriptors' },
+          { text: 'History API', link: '/guide/api/history' },
+          { text: 'Verify API', link: '/guide/api/verify' },
           {
             text: 'Stubs',
             items: [
@@ -167,7 +169,7 @@ export default defineConfig({
               { text: 'List Used', link: '/guide/api/stubs/used-list' },
               { text: 'List Unused', link: '/guide/api/stubs/unused-list' },
               { text: 'Delete by ID', link: '/guide/api/stubs/delete' },
-              { text: 'Purge All', link: '/guide/api/stubs/purge' },
+              { text: 'Purge', link: '/guide/api/stubs/purge' },
             ],
             collapsed: false,
           },

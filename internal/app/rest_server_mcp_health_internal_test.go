@@ -1,7 +1,6 @@
 package app
 
 func (s *RestServerTestSuite) TestMCPStubsUpsertAllowsProtectedHealthServiceDefinition() {
-	// Arrange
 	payload := map[string]any{
 		"stubs": map[string]any{
 			"service": "grpc.health.v1.Health",
@@ -15,10 +14,8 @@ func (s *RestServerTestSuite) TestMCPStubsUpsertAllowsProtectedHealthServiceDefi
 		},
 	}
 
-	// Act
 	response := s.mcpToolCall(s.server, 1001, "stubs_upsert", payload)
 
-	// Assert
 	structured := s.mcpStructuredContent(response)
 	ids, ok := structured["ids"].([]any)
 	s.Require().True(ok)

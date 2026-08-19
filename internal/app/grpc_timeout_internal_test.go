@@ -18,10 +18,8 @@ func TestGrpcMockerDelayRespectsContextTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Millisecond)
 	defer cancel()
 
-	// Act
 	err := delayResponse(ctx, types.Duration(200*time.Millisecond))
 
-	// Assert
 	require.Error(t, err)
 	require.Equal(t, codes.DeadlineExceeded, status.Code(err))
 }
@@ -32,9 +30,7 @@ func TestGrpcMockerDelayCompletesBeforeTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 
-	// Act
 	err := delayResponse(ctx, types.Duration(5*time.Millisecond))
 
-	// Assert
 	require.NoError(t, err)
 }

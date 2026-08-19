@@ -11,7 +11,6 @@ import (
 func TestListToolsContainsAllExpectedTools(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	expected := map[string]struct{}{
 		mcpusecase.ToolHealthLiveness:  {},
 		mcpusecase.ToolHealthReadiness: {},
@@ -32,15 +31,14 @@ func TestListToolsContainsAllExpectedTools(t *testing.T) {
 		mcpusecase.ToolServicesDelete:  {},
 		mcpusecase.ToolHistoryList:     {},
 		mcpusecase.ToolHistoryErrors:   {},
+		mcpusecase.ToolHistoryPurge:    {},
 		mcpusecase.ToolVerifyCalls:     {},
 		mcpusecase.ToolDebugCall:       {},
 		mcpusecase.ToolSchemaStub:      {},
 	}
 
-	// Act
 	tools := mcpusecase.ListTools()
 
-	// Assert
 	require.Len(t, tools, len(expected))
 
 	for _, tool := range tools {
@@ -59,10 +57,8 @@ func TestListToolsContainsAllExpectedTools(t *testing.T) {
 func TestListToolsDebugCallRequiresService(t *testing.T) {
 	t.Parallel()
 
-	// Act
 	tools := mcpusecase.ListTools()
 
-	// Assert
 	for _, tool := range tools {
 		name, _ := tool["name"].(string)
 		if name != mcpusecase.ToolDebugCall {

@@ -19,6 +19,12 @@ linters:
     generated: strict  # skip *.gen.go (oapi-codegen) entirely
     paths:
       - node_modules  # third-party JS deps ship stray Go files
+    rules:
+      # protoc-gen-go-grpc emits clients and streams as interfaces, so a helper
+      # that hands one to a test has no concrete type to return.
+      - path: examples/sdk/
+        linters:
+          - ireturn
   settings:
     lll:
       tab-width: 1

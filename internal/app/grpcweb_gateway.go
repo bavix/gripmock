@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -22,12 +23,12 @@ import (
 
 	"github.com/bavix/gripmock/v3/internal/domain/descriptors"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
-	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 const (
+	grpcwebContentType      = "application/grpc-web"
 	grpcwebContentTypeProto = "application/grpc-web+proto"
 	grpcwebContentTypeJSON  = "application/grpc-web+json"
 
@@ -43,6 +44,7 @@ type GRPCWebGateway struct {
 }
 
 func NewGRPCWebGateway(
+	ctx context.Context,
 	budgerigar *stuber.Budgerigar,
 	descriptorRegistry *descriptors.Registry,
 	recorder history.Recorder,
@@ -51,13 +53,19 @@ func NewGRPCWebGateway(
 	errorFormatter *ErrorFormatter,
 ) *GRPCWebGateway {
 	return &GRPCWebGateway{
-		gatewayHandler: newGatewayHandler(budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
+		gatewayHandler: newGatewayHandler(ctx, budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
 	}
 }
 
 func (g *GRPCWebGateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+
+		return
+	}
+
+	if !grpcWebContentTypeSupported(r.Header.Get(headerContentType)) {
+		http.Error(w, "unsupported media type", http.StatusUnsupportedMediaType)
 
 		return
 	}
@@ -259,8 +267,27 @@ func (grpcwebResponse) WriteSuccess(w http.ResponseWriter, r *http.Request) {
 	writeGRPCWebTrailers(w, codes.OK, "")
 }
 
+func grpcWebContentTypeSupported(ct string) bool {
+	if ct == "" {
+		return true
+	}
+
+	switch normalizeContentType(ct) {
+	case grpcwebContentType, grpcwebContentTypeProto, grpcwebContentTypeJSON,
+		grpcwebContentTypeText, grpcwebContentTypeTextProto, grpcwebContentTypeTextJSON:
+		return true
+	default:
+		return false
+	}
+}
+
 func isGRPCWebJSONContentType(ct string) bool {
-	return ct == contentTypeJSON || ct == grpcwebContentTypeJSON || ct == grpcwebContentTypeTextJSON
+	switch normalizeContentType(ct) {
+	case contentTypeJSON, grpcwebContentTypeJSON, grpcwebContentTypeTextJSON:
+		return true
+	default:
+		return false
+	}
 }
 
 func setGRPCWebContentType(w http.ResponseWriter, r *http.Request) {
@@ -284,15 +311,6 @@ func writeGRPCWebError(w http.ResponseWriter, code codes.Code, msg string) {
 
 // writeDataFrame writes a gRPC-Web data frame (flag 0x00) to w.
 // The data is written as a 5-byte header (flag + big-endian length) followed by payload.
-func writeDataFrame(w http.ResponseWriter, data []byte) {
-	var header [ConnectEnvelopeHeaderSize]byte
-
-	header[0] = 0x00                                           // data frame flag
-	binary.BigEndian.PutUint32(header[1:5], uint32(len(data))) //nolint:gosec
-	_, _ = w.Write(header[:])
-	_, _ = w.Write(data)
-}
-
 // writeGRPCWebTrailers writes a gRPC-Web trailers frame containing
 // grpc-status and optionally grpc-message (percent-encoded), plus any
 // additional trailer lines from extra.
@@ -485,14 +503,26 @@ func (a *grpcwebAdapter) writeError(code codes.Code, msg string) {
 func (a *grpcwebAdapter) writeErrorStatus(st *status.Status) {
 	a.sendHeader()
 
-	// gRPC-Web unary errors: write a data frame with the full google.rpc.Status
-	// (including @type-annotated details), then a trailers frame.
-	statusJSON, _ := protosetinfra.GlobalTypeResolver().Marshal(st.Proto())
-	if len(statusJSON) > 0 {
-		writeDataFrame(a.w, statusJSON)
+	extra := a.trailerExtra
+
+	if details := encodeStatusDetailsTrailer(st); details != "" {
+		extra = append(append([]string{}, extra...), details)
 	}
 
-	writeGRPCWebTrailers(a.w, st.Code(), st.Message(), a.trailerExtra...)
+	writeGRPCWebTrailers(a.w, st.Code(), st.Message(), extra...)
+}
+
+func encodeStatusDetailsTrailer(st *status.Status) string {
+	if len(st.Proto().GetDetails()) == 0 {
+		return ""
+	}
+
+	encoded, err := proto.Marshal(st.Proto())
+	if err != nil {
+		return ""
+	}
+
+	return "grpc-status-details-bin: " + base64.RawStdEncoding.EncodeToString(encoded)
 }
 
 func (a *grpcwebAdapter) writeTrailers(code codes.Code, msg string) {

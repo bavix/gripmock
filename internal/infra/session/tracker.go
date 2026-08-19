@@ -25,16 +25,6 @@ func (t *Tracker) Touch(sessionID string, at time.Time) {
 	t.mu.Unlock()
 }
 
-func (t *Tracker) Forget(sessionID string) {
-	if sessionID == "" {
-		return
-	}
-
-	t.mu.Lock()
-	delete(t.lastSeen, sessionID)
-	t.mu.Unlock()
-}
-
 // ForgetIfExpired atomically forgets the session only if it is still expired
 // (last seen at or before now-ttl), returning whether it was forgotten. This
 // closes the TOCTOU window in the GC: a session re-touched after the expiry
@@ -98,10 +88,6 @@ var defaultTracker = NewTracker()
 
 func Touch(sessionID string) {
 	defaultTracker.Touch(sessionID, time.Now())
-}
-
-func Forget(sessionID string) {
-	defaultTracker.Forget(sessionID)
 }
 
 func ForgetIfExpired(sessionID string, now time.Time, ttl time.Duration) bool {

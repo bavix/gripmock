@@ -2,8 +2,6 @@
 
 Upstream modes define how GripMock handles requests when reflection sources are used.
 
-⚠️ **EXPERIMENTAL FEATURE**: Upstream modes (`proxy`, `replay`, `capture`) are experimental and may change without notice.
-
 ## Modes at a glance
 
 - `proxy`: pure reverse proxy through GripMock.

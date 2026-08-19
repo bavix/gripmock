@@ -34,7 +34,6 @@ func newHealthTestEnv(stubs ...*stuber.Stub) *mockableHealthServer {
 func TestMockableHealthServerCheckUsesStubForGripmockService(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	handler := newHealthTestEnv(&stuber.Stub{
 		Service: HealthServiceFullName,
 		Method:  "Check",
@@ -42,11 +41,9 @@ func TestMockableHealthServerCheckUsesStubForGripmockService(t *testing.T) {
 		Output:  stuber.Output{Data: map[string]any{"status": "NOT_SERVING"}},
 	})
 
-	// Act
 	gripmockResp, gripmockErr := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: HealthServiceName})
 	globalResp, globalErr := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: ""})
 
-	// Assert
 	require.NoError(t, gripmockErr)
 	require.Equal(t, healthgrpc.HealthCheckResponse_NOT_SERVING, gripmockResp.GetStatus())
 	require.NoError(t, globalErr)
@@ -56,7 +53,6 @@ func TestMockableHealthServerCheckUsesStubForGripmockService(t *testing.T) {
 func TestMockableHealthServerCheckReturnsMockedStatus(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	handler := newHealthTestEnv(&stuber.Stub{
 		Service: HealthServiceFullName,
 		Method:  "Check",
@@ -64,10 +60,8 @@ func TestMockableHealthServerCheckReturnsMockedStatus(t *testing.T) {
 		Output:  stuber.Output{Data: map[string]any{"status": "NOT_SERVING"}},
 	})
 
-	// Act
 	resp, err := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "orders.v1.OrderService"})
 
-	// Assert
 	require.NoError(t, err)
 	require.Equal(t, healthgrpc.HealthCheckResponse_NOT_SERVING, resp.GetStatus())
 }
@@ -75,13 +69,10 @@ func TestMockableHealthServerCheckReturnsMockedStatus(t *testing.T) {
 func TestMockableHealthServerCheckFallbackToRealHealthServer(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	handler := newHealthTestEnv()
 
-	// Act
 	resp, err := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "inventory.v1.InventoryService"})
 
-	// Assert
 	require.Nil(t, resp)
 	require.Error(t, err)
 	require.Equal(t, codes.NotFound, status.Code(err))
@@ -90,7 +81,6 @@ func TestMockableHealthServerCheckFallbackToRealHealthServer(t *testing.T) {
 func TestMockableHealthServerCheckRespectsSessionMetadata(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	handler := newHealthTestEnv(&stuber.Stub{
 		Service: HealthServiceFullName,
 		Method:  "Check",
@@ -101,10 +91,8 @@ func TestMockableHealthServerCheckRespectsSessionMetadata(t *testing.T) {
 
 	ctx := metadata.NewIncomingContext(t.Context(), metadata.New(map[string]string{"x-gripmock-session": "s-42"}))
 
-	// Act
 	resp, err := handler.Check(ctx, &healthgrpc.HealthCheckRequest{Service: "billing.v1.BillingService"})
 
-	// Assert
 	require.NoError(t, err)
 	require.Equal(t, healthgrpc.HealthCheckResponse_NOT_SERVING, resp.GetStatus())
 }
@@ -112,7 +100,6 @@ func TestMockableHealthServerCheckRespectsSessionMetadata(t *testing.T) {
 func TestMockableHealthServerCheckReturnsOutputError(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	realServer := health.NewServer()
 	budgerigar := stuber.NewBudgerigar()
 	c := codes.Unavailable
@@ -126,10 +113,8 @@ func TestMockableHealthServerCheckReturnsOutputError(t *testing.T) {
 
 	handler := newMockableHealthServer(realServer, budgerigar, nil, nil)
 
-	// Act
 	resp, err := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "search.v1.SearchService"})
 
-	// Assert
 	require.Nil(t, resp)
 	require.Error(t, err)
 	require.Equal(t, codes.Unavailable, status.Code(err))
@@ -139,7 +124,6 @@ func TestMockableHealthServerCheckReturnsOutputError(t *testing.T) {
 func TestMockableHealthServerCheckReturnsOutputErrorWithDetails(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	realServer := health.NewServer()
 	budgerigar := stuber.NewBudgerigar()
 	c := codes.InvalidArgument
@@ -163,10 +147,8 @@ func TestMockableHealthServerCheckReturnsOutputErrorWithDetails(t *testing.T) {
 
 	handler := newMockableHealthServer(realServer, budgerigar, nil, nil)
 
-	// Act
 	resp, err := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "profile.v1.ProfileService"})
 
-	// Assert
 	require.Nil(t, resp)
 	require.Error(t, err)
 	require.Equal(t, codes.InvalidArgument, status.Code(err))
@@ -183,7 +165,6 @@ func TestMockableHealthServerCheckReturnsOutputErrorWithDetails(t *testing.T) {
 func TestMockableHealthServerCheckReturnsErrorOnInvalidOutputDetails(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	realServer := health.NewServer()
 	budgerigar := stuber.NewBudgerigar()
 	c := codes.InvalidArgument
@@ -203,10 +184,8 @@ func TestMockableHealthServerCheckReturnsErrorOnInvalidOutputDetails(t *testing.
 
 	handler := newMockableHealthServer(realServer, budgerigar, nil, nil)
 
-	// Act
 	resp, err := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "profile.v1.ProfileService"})
 
-	// Assert
 	require.Nil(t, resp)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "output.details[0]")
@@ -215,7 +194,6 @@ func TestMockableHealthServerCheckReturnsErrorOnInvalidOutputDetails(t *testing.
 func TestMockableHealthServerWatchStreamsMockedResponses(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	realServer := health.NewServer()
 	budgerigar := stuber.NewBudgerigar()
 
@@ -234,7 +212,6 @@ func TestMockableHealthServerWatchStreamsMockedResponses(t *testing.T) {
 
 	errCh := make(chan error, 1)
 
-	// Act
 	go func() {
 		errCh <- handler.Watch(&healthgrpc.HealthCheckRequest{Service: "payments.v1.PaymentsService"}, stream)
 	}()
@@ -250,7 +227,6 @@ func TestMockableHealthServerWatchStreamsMockedResponses(t *testing.T) {
 		t.Fatal("timeout waiting for Watch handler to complete")
 	}
 
-	// Assert
 	require.NoError(t, err)
 	require.Equal(t, []healthgrpc.HealthCheckResponse_ServingStatus{
 		healthgrpc.HealthCheckResponse_NOT_SERVING,
@@ -261,7 +237,6 @@ func TestMockableHealthServerWatchStreamsMockedResponses(t *testing.T) {
 func TestMockableHealthServerWatchUsesStubForGripmockService(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	realServer := health.NewServer()
 	realServer.SetServingStatus(HealthServiceName, healthgrpc.HealthCheckResponse_SERVING)
 
@@ -270,7 +245,6 @@ func TestMockableHealthServerWatchUsesStubForGripmockService(t *testing.T) {
 
 	errCh := make(chan error, 1)
 
-	// Act
 	go func() {
 		errCh <- handler.Watch(&healthgrpc.HealthCheckRequest{Service: HealthServiceName}, stream)
 	}()
@@ -286,7 +260,6 @@ func TestMockableHealthServerWatchUsesStubForGripmockService(t *testing.T) {
 		t.Fatal("timeout waiting for Watch handler to complete")
 	}
 
-	// Assert
 	require.NoError(t, err)
 	require.Equal(t, []healthgrpc.HealthCheckResponse_ServingStatus{
 		healthgrpc.HealthCheckResponse_NOT_SERVING,
@@ -296,7 +269,6 @@ func TestMockableHealthServerWatchUsesStubForGripmockService(t *testing.T) {
 func TestMockableHealthServerWatchSupportsDelay(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
 	realServer := health.NewServer()
 	budgerigar := stuber.NewBudgerigar()
 
@@ -315,10 +287,8 @@ func TestMockableHealthServerWatchSupportsDelay(t *testing.T) {
 
 	start := time.Now()
 
-	// Act
 	err := handler.Watch(&healthgrpc.HealthCheckRequest{Service: "gateway.v1.GatewayService"}, stream)
 
-	// Assert
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, time.Since(start), 25*time.Millisecond)
 }
@@ -328,7 +298,6 @@ func TestMockableHealthServerWatchAppliesDelayOnlyBeforeFirstMessage(t *testing.
 
 	const delayMs = 80
 
-	// Arrange
 	realServer := health.NewServer()
 	budgerigar := stuber.NewBudgerigar()
 
@@ -350,19 +319,15 @@ func TestMockableHealthServerWatchAppliesDelayOnlyBeforeFirstMessage(t *testing.
 
 	start := time.Now()
 
-	// Act
 	err := handler.Watch(&healthgrpc.HealthCheckRequest{Service: "gateway.v1.SequenceService"}, stream)
 	duration := time.Since(start)
 
-	// Assert
 	require.NoError(t, err)
 	require.Equal(t, []healthgrpc.HealthCheckResponse_ServingStatus{
 		healthgrpc.HealthCheckResponse_NOT_SERVING,
 		healthgrpc.HealthCheckResponse_SERVING,
 	}, stream.Statuses())
 
-	// Delay applies before first message, not between messages.
-	// Total duration ~= delay + overhead for sending all messages.
 	require.GreaterOrEqual(t, duration, delayMs*time.Millisecond,
 		"total duration should include initial delay")
 }

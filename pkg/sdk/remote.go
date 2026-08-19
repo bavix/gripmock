@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
-	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -24,38 +22,18 @@ import (
 
 //nolint:containedctx
 type remoteMock struct {
-	ctx           context.Context
-	conn          *grpc.ClientConn
-	addr          string
-	restBaseURL   string
-	httpClient    *http.Client
-	session       string
-	sessionTTL    time.Duration
-	ttlTimer      *time.Timer
-	expectedTotal atomic.Int32
-	expectedMu    sync.Mutex
-	expectedByMth map[string]int
-	stubIDsMu     sync.Mutex
-	stubIDs       []uuid.UUID
-	opErrMu       sync.Mutex
-	opErr         error
-}
-
-func (m *remoteMock) Conn() *grpc.ClientConn { return m.conn }
-func (m *remoteMock) Addr() string           { return m.addr }
-
-//nolint:ireturn
-func (m *remoteMock) History() HistoryReader { return &remoteHistory{mock: m} }
-
-//nolint:ireturn
-func (m *remoteMock) Verify() Verifier { return &remoteVerifier{mock: m} }
-
-func (m *remoteMock) Stub(service, method string) StubBuilder { //nolint:ireturn
-	if strings.TrimSpace(service) == "" || strings.TrimSpace(method) == "" {
-		panic("sdk.Mock.Stub: service and method must be non-empty")
-	}
-
-	return m.stubBuilderCore(service, method)
+	ctx         context.Context
+	conn        *grpc.ClientConn
+	addr        string
+	restBaseURL string
+	httpClient  *http.Client
+	session     string
+	sessionTTL  time.Duration
+	ttlTimer    *time.Timer
+	stubIDsMu   sync.Mutex
+	stubIDs     []uuid.UUID
+	opErrMu     sync.Mutex
+	opErr       error
 }
 
 func (m *remoteMock) Close() error {
@@ -74,6 +52,8 @@ func (m *remoteMock) Close() error {
 
 	return stderrors.Join(opErr, cleanupErr, connErr)
 }
+
+func (m *remoteMock) history() *remoteHistory { return &remoteHistory{mock: m} }
 
 func (m *remoteMock) setOpErr(err error) {
 	if err == nil {
@@ -133,6 +113,10 @@ func (m *remoteMock) deleteOwnedStubs() error {
 	return m.batchDelete(ids)
 }
 
+func (m *remoteMock) purgeHistory() error {
+	return m.api().PurgeHistory()
+}
+
 func (m *remoteMock) api() remoteapi.Client {
 	return m.apiWithContext(context.Background())
 }
@@ -164,33 +148,6 @@ func (m *remoteMock) uploadDescriptors(files []*descriptorpb.FileDescriptorProto
 	return m.api().UploadDescriptors(files)
 }
 
-func (m *remoteMock) commitStubs(stubs []*stuber.Stub) error {
-	if len(stubs) == 0 {
-		return nil
-	}
-
-	if opErr := m.getOpErr(); opErr != nil {
-		return opErr
-	}
-
-	if err := m.api().AddStubs(stubs); err != nil {
-		m.setOpErr(err)
-
-		return err
-	}
-
-	for _, stub := range stubs {
-		if stub.Options.Times > 0 {
-			m.recordExpected(stub.Service, stub.Method, stub.Options.Times)
-		}
-
-		m.appendStubID(stub.ID)
-	}
-
-	return nil
-}
-
-// commitStubsBatch sends all stubs in a single REST call.
 func (m *remoteMock) commitStubsBatch(stubs []*stuber.Stub) error {
 	if len(stubs) == 0 {
 		return nil
@@ -207,10 +164,6 @@ func (m *remoteMock) commitStubsBatch(stubs []*stuber.Stub) error {
 	}
 
 	for _, stub := range stubs {
-		if stub.Options.Times > 0 {
-			m.recordExpected(stub.Service, stub.Method, stub.Options.Times)
-		}
-
 		m.appendStubID(stub.ID)
 	}
 
@@ -218,19 +171,50 @@ func (m *remoteMock) commitStubsBatch(stubs []*stuber.Stub) error {
 }
 
 func (m *remoteMock) compressAndSend(stubs []*stuber.Stub) error {
-	return m.api().AddStubs(stubs)
-}
+	for _, session := range m.sessionOrder(stubs) {
+		batch := make([]*stuber.Stub, 0, len(stubs))
 
-func (m *remoteMock) recordExpected(service, method string, times int) {
-	m.expectedTotal.Add(int32(times)) //nolint:gosec
+		for _, stub := range stubs {
+			if m.sessionOf(stub) == session {
+				batch = append(batch, stub)
+			}
+		}
 
-	m.expectedMu.Lock()
-	if m.expectedByMth == nil {
-		m.expectedByMth = make(map[string]int)
+		client := m.api()
+		client.Session = session
+
+		if err := client.AddStubs(batch); err != nil {
+			return err
+		}
 	}
 
-	m.expectedByMth[methodKey(service, method)] += times
-	m.expectedMu.Unlock()
+	return nil
+}
+
+func (m *remoteMock) sessionOf(stub *stuber.Stub) string {
+	if stub.Session != "" {
+		return stub.Session
+	}
+
+	return m.session
+}
+
+func (m *remoteMock) sessionOrder(stubs []*stuber.Stub) []string {
+	seen := make(map[string]struct{}, len(stubs))
+	order := make([]string, 0, len(stubs))
+
+	for _, stub := range stubs {
+		session := m.sessionOf(stub)
+		if _, ok := seen[session]; ok {
+			continue
+		}
+
+		seen[session] = struct{}{}
+
+		order = append(order, session)
+	}
+
+	return order
 }
 
 func (m *remoteMock) appendStubID(id uuid.UUID) {
@@ -239,7 +223,7 @@ func (m *remoteMock) appendStubID(id uuid.UUID) {
 	m.stubIDsMu.Unlock()
 }
 
-func runRemote(ctx context.Context, o *options) (Mock, error) { //nolint:ireturn
+func runRemote(ctx context.Context, o *options) (*remoteMock, error) {
 	o.remoteAddr = normalizeRemoteAddr(o.remoteAddr)
 	o.remoteRestURL = normalizeRemoteRestURL(o.remoteRestURL)
 
@@ -291,12 +275,4 @@ func runRemote(ctx context.Context, o *options) (Mock, error) { //nolint:ireturn
 	rm.armSessionTTL() //nolint:contextcheck
 
 	return rm, nil
-}
-
-func (m *remoteMock) stubBuilderCore(service, method string) *stubBuilderCore {
-	return &stubBuilderCore{
-		service:  service,
-		method:   method,
-		onCommit: func(stub *stuber.Stub) error { return m.commitStubs([]*stuber.Stub{stub}) },
-	}
 }

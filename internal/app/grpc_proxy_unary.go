@@ -64,19 +64,7 @@ func (m *grpcMocker) proxyUnary(
 	setStreamMetadata(ctx, stream, header, trailer)
 
 	if ta, ok := stream.(grpcWebTrailerAdder); ok {
-		for _, md := range []metadata.MD{header, trailer} {
-			for k, v := range md {
-				switch strings.ToLower(k) {
-				case "content-type", "content-encoding", "content-length",
-					"grpc-status", "grpc-message", "grpc-status-details-bin",
-					":authority", "user-agent", "accept-encoding",
-					"grpc-accept-encoding":
-					continue
-				}
-
-				ta.setTrailerExtra(k + ": " + strings.Join(v, ","))
-			}
-		}
+		forwardTrailerExtras(ta, header, trailer)
 	}
 
 	if capture {
@@ -86,6 +74,14 @@ func (m *grpcMocker) proxyUnary(
 	m.recordUnaryProxyHistory(ctx, startTime, req, resp, header, trailer, err)
 
 	return resp, err
+}
+
+func forwardTrailerExtras(adder grpcWebTrailerAdder, mds ...metadata.MD) {
+	for _, md := range mds {
+		for key, values := range ssmFilterMD(md) {
+			adder.setTrailerExtra(key + ": " + strings.Join(values, ","))
+		}
+	}
 }
 
 func (m *grpcMocker) recordUnaryProxyHistory(
@@ -159,6 +155,10 @@ func (m *grpcMocker) recordUnaryStub(
 	callErr error,
 	elapsed time.Duration,
 ) {
+	if !capturableResult(ctx, 1, 1, callErr) {
+		return
+	}
+
 	captureCtx := m.newCaptureRequestContext(ctx)
 	requestData := m.convertToMap(req)
 	responseMeta := captureMetadata(header, trailer)

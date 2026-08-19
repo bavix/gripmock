@@ -1,14 +1,17 @@
 package sdk
 
 import (
+	"maps"
+	"time"
+
+	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
 // Effect is a side effect that executes after a stub is matched.
-// Use Effect() on a unary expectation to attach effects.
-// Created via Upsert(service, method).Match(...).Return(...).Build() or DeleteStub(id).
 type Effect struct {
 	effect stuber.Effect
 }
@@ -31,55 +34,166 @@ func DeleteStub(id string) *Effect {
 }
 
 // EffectBuilder builds a stub that is registered when the triggering stub is matched.
-// Created via Upsert(service, method). Chain Match/Return/ReturnError, then call Build().
 type EffectBuilder struct {
 	stub    stuber.Stub
 	matcher stuber.InputData
+	headers stuber.InputHeader
+	id      *uuid.UUID
+
+	respHeaders  map[string]string
+	respTrailers map[string]string
 }
 
+// Match adds an exact-equality matcher. Use MatchAny for contains/matches/glob.
 func (b *EffectBuilder) Match(key string, value any) *EffectBuilder {
-	b.matcher = mergeInputData(b.matcher, Equals(key, value).compilePayload())
+	return b.MatchAny(Equals(key, value))
+}
+
+func (b *EffectBuilder) MatchAny(matchers ...Matcher) *EffectBuilder {
+	for _, m := range matchers {
+		b.matcher = mergeInputData(b.matcher, m.compilePayload())
+	}
+
+	return b
+}
+
+// WithHeader matches request metadata on the effect stub.
+func (b *EffectBuilder) WithHeader(headers ...Matcher) *EffectBuilder {
+	for _, h := range headers {
+		b.headers = mergeInputHeader(b.headers, h.compileHeader())
+	}
+
+	return b
+}
+
+// WithID pins the effect stub's identifier so a later DeleteStub can target it.
+func (b *EffectBuilder) WithID(id uuid.UUID) *EffectBuilder {
+	b.id = &id
+
+	return b
+}
+
+// Session scopes the effect stub to one session.
+func (b *EffectBuilder) Session(id string) *EffectBuilder {
+	b.stub.Session = id
+
+	return b
+}
+
+// Priority ranks the effect stub against others for the same method.
+func (b *EffectBuilder) Priority(n int) *EffectBuilder {
+	b.stub.Priority = n
+
+	return b
+}
+
+// Times limits how many calls the effect stub may answer.
+func (b *EffectBuilder) Times(n int) *EffectBuilder {
+	b.stub.Options.Times = n
 
 	return b
 }
 
 func (b *EffectBuilder) Return(kv ...any) *EffectBuilder {
-	b.stub.Output = stuber.Output{Data: parseKVPairs(kv, "sdk.Effect.Return")}
+	delay, data := extractDelay(kv, "sdk.Effect.Return")
+	b.stub.Output = stuber.Output{Data: data}
+
+	if delay > 0 {
+		b.stub.Output.Delay = types.Duration(delay)
+	}
+
+	return b
+}
+
+// SendStream makes the effect stub answer with a server stream.
+func (b *EffectBuilder) SendStream(items ...any) *EffectBuilder {
+	stream := make([]any, 0, len(items))
+	for _, item := range items {
+		stream = append(stream, injectStreamDelay(item))
+	}
+
+	b.stub.Output = stuber.Output{Stream: stream}
+
+	return b
+}
+
+// ReturnHeaders sets response metadata on the effect stub.
+func (b *EffectBuilder) ReturnHeaders(headers map[string]string) *EffectBuilder {
+	if b.respHeaders == nil {
+		b.respHeaders = make(map[string]string, len(headers))
+	}
+
+	maps.Copy(b.respHeaders, headers)
+
+	return b
+}
+
+// ReturnTrailers sets trailing metadata on the effect stub.
+func (b *EffectBuilder) ReturnTrailers(trailers map[string]string) *EffectBuilder {
+	if b.respTrailers == nil {
+		b.respTrailers = make(map[string]string, len(trailers))
+	}
+
+	maps.Copy(b.respTrailers, trailers)
 
 	return b
 }
 
 func (b *EffectBuilder) ReturnError(code codes.Code, msg string) *EffectBuilder {
+	return b.ReturnErrorWithDetails(code, msg)
+}
+
+// ReturnErrorWithDetails fails the effect stub with google.rpc.* details.
+func (b *EffectBuilder) ReturnErrorWithDetails(code codes.Code, msg string, details ...map[string]any) *EffectBuilder {
 	c := code
-	b.stub.Output = stuber.Output{Code: &c, Error: msg}
+	b.stub.Output = stuber.Output{Code: &c, Error: msg, Details: details}
 
 	return b
 }
 
 func (b *EffectBuilder) Build() *Effect {
 	b.stub.Input = b.matcher
+	b.stub.Headers = b.headers
+
+	if len(b.respHeaders) > 0 {
+		b.stub.Output.Headers = b.respHeaders
+	}
+
+	if len(b.respTrailers) > 0 {
+		b.stub.Output.Trailers = b.respTrailers
+	}
 
 	stubData := map[string]any{
 		"service": b.stub.Service,
 		"method":  b.stub.Method,
 	}
 
-	output := map[string]any{}
-	if data, ok := b.stub.Output.Data.(map[string]any); ok && len(data) > 0 {
-		output["data"] = b.stub.Output.Data
+	if b.id != nil {
+		stubData["id"] = b.id.String()
 	}
 
-	if b.stub.Output.Code != nil {
-		output["code"] = uint32(*b.stub.Output.Code)
-		output["error"] = b.stub.Output.Error
+	if b.stub.Session != "" {
+		stubData["session"] = b.stub.Session
 	}
 
-	if len(output) > 0 {
+	if b.stub.Priority != 0 {
+		stubData["priority"] = b.stub.Priority
+	}
+
+	if b.stub.Options.Times != 0 {
+		stubData["options"] = map[string]any{"times": b.stub.Options.Times}
+	}
+
+	if input := inputDataToMap(b.matcher); len(input) > 0 {
+		stubData["input"] = input
+	}
+
+	if headers := inputHeaderToMap(b.headers); len(headers) > 0 {
+		stubData["headers"] = headers
+	}
+
+	if output := outputToMap(b.stub.Output); len(output) > 0 {
 		stubData["output"] = output
-	}
-
-	if len(b.matcher.Equals) > 0 {
-		stubData["input"] = map[string]any{"equals": b.matcher.Equals}
 	}
 
 	return &Effect{
@@ -90,34 +204,87 @@ func (b *EffectBuilder) Build() *Effect {
 	}
 }
 
-// Effect must be called before or after Return/Run — both ways work via re-registration.
+func inputDataToMap(in stuber.InputData) map[string]any {
+	out := map[string]any{}
+	putIfAny(out, "equals", in.Equals)
+	putIfAny(out, "contains", in.Contains)
+	putIfAny(out, "matches", in.Matches)
+	putIfAny(out, "glob", in.Glob)
+
+	if len(in.AnyOf) > 0 {
+		out["anyOf"] = in.AnyOf
+	}
+
+	if in.IgnoreArrayOrder {
+		out["ignoreArrayOrder"] = true
+	}
+
+	return out
+}
+
+func inputHeaderToMap(in stuber.InputHeader) map[string]any {
+	out := map[string]any{}
+	putIfAny(out, "equals", in.Equals)
+	putIfAny(out, "contains", in.Contains)
+	putIfAny(out, "matches", in.Matches)
+	putIfAny(out, "glob", in.Glob)
+
+	if len(in.AnyOf) > 0 {
+		out["anyOf"] = in.AnyOf
+	}
+
+	return out
+}
+
+func outputToMap(o stuber.Output) map[string]any {
+	out := map[string]any{}
+
+	if o.Data != nil {
+		out["data"] = o.Data
+	}
+
+	if len(o.Stream) > 0 {
+		out["stream"] = o.Stream
+	}
+
+	if len(o.Headers) > 0 {
+		out["headers"] = o.Headers
+	}
+
+	if len(o.Trailers) > 0 {
+		out["trailers"] = o.Trailers
+	}
+
+	if o.Code != nil {
+		out["code"] = uint32(*o.Code)
+		out["error"] = o.Error
+	}
+
+	if len(o.Details) > 0 {
+		out["details"] = o.Details
+	}
+
+	if o.Delay > 0 {
+		out["delay"] = time.Duration(o.Delay).String()
+	}
+
+	return out
+}
+
+func putIfAny(dst map[string]any, key string, src map[string]any) {
+	if len(src) > 0 {
+		dst[key] = src
+	}
+}
+
+// Effect attaches side effects to a unary expectation.
 func (e *UnaryExpectation) Effect(effects ...*Effect) *UnaryExpectation {
-	for _, ef := range effects {
-		e.effects = append(e.effects, ef.effect)
-	}
-	// If already committed, rebuild the stub with effects and re-register
-	if e.committed {
-		output := e.buildOutput()
-		stub := &stuber.Stub{
-			ID:       e.first,
-			Service:  e.svc,
-			Method:   e.method,
-			Input:    mergeInputData(e.matchers...),
-			Headers:  e.headers,
-			Output:   output,
-			Priority: e.priority,
-			Session:  e.session,
-			Options:  stuber.StubOptions{Times: e.times},
-			Effects:  e.effects,
-		}
-		e.srv.budgerigar.PutMany(stub)
-	}
+	e.appendEffects(effects...)
 
 	return e
 }
 
 // Effect attaches side effects to a server-stream expectation.
-// Call before or after the terminal SendStream — both work via re-registration.
 func (e *ServerStreamExpectation) Effect(effects ...*Effect) *ServerStreamExpectation {
 	e.appendEffects(effects...)
 
@@ -125,7 +292,6 @@ func (e *ServerStreamExpectation) Effect(effects ...*Effect) *ServerStreamExpect
 }
 
 // Effect attaches side effects to a client-stream expectation.
-// Call before or after the terminal Return/ReturnError — both work via re-registration.
 func (e *ClientStreamExpectation) Effect(effects ...*Effect) *ClientStreamExpectation {
 	e.appendEffects(effects...)
 
@@ -133,26 +299,21 @@ func (e *ClientStreamExpectation) Effect(effects ...*Effect) *ClientStreamExpect
 }
 
 // Effect attaches side effects to a bidirectional-stream expectation.
-// Call before or after the terminal Run — both work via re-registration.
 func (e *BidirectionalExpectation) Effect(effects ...*Effect) *BidirectionalExpectation {
 	e.appendEffects(effects...)
 
 	return e
 }
 
-// appendEffects records effects on the shared base and, when the stub has
-// already been committed, re-registers it so the effects take hold.
 func (b *expectationBase) appendEffects(effects ...*Effect) {
 	for _, ef := range effects {
 		b.effects = append(b.effects, ef.effect)
 	}
 
-	if !b.committed {
+	if !b.committed || b.stub == nil {
 		return
 	}
 
-	if existing := b.srv.budgerigar.FindByID(b.stubID); existing != nil {
-		existing.Effects = b.effects
-		b.srv.budgerigar.PutMany(existing)
-	}
+	b.stub.Effects = b.effects
+	b.srv.upsertStub(b.stub)
 }

@@ -11,7 +11,7 @@ import (
 type StreamCaptureState struct {
 	mu               sync.Mutex
 	requests         []map[string]any
-	responses        []map[string]any
+	responses        []any
 	lastResponseTime time.Time
 	startTime        time.Time
 	recordDelay      bool
@@ -20,30 +20,37 @@ type StreamCaptureState struct {
 func NewStreamCaptureState() *StreamCaptureState {
 	return &StreamCaptureState{
 		requests:  make([]map[string]any, 0, proxyMessagesInitCap),
-		responses: make([]map[string]any, 0, proxyMessagesInitCap),
+		responses: make([]any, 0, proxyMessagesInitCap),
 	}
 }
 
 func (s *StreamCaptureState) AppendRequest(req map[string]any) {
+	if s == nil {
+		return
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.requests = append(s.requests, req)
 }
 
-func (s *StreamCaptureState) AppendResponseWithTiming(resp map[string]any, now time.Time) {
+func (s *StreamCaptureState) AppendResponseWithTiming(resp any, now time.Time) {
+	if s == nil {
+		return
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.recordDelay && !s.lastResponseTime.IsZero() {
-		delay := now.Sub(s.lastResponseTime)
-		resp[stuber.GripMockKey] = map[string]any{
-			"delay": delay.String(),
+	if respMap, ok := resp.(map[string]any); ok && s.recordDelay {
+		since := s.lastResponseTime
+		if since.IsZero() {
+			since = s.startTime
 		}
-	} else if s.recordDelay && s.lastResponseTime.IsZero() {
-		delay := now.Sub(s.startTime)
-		resp[stuber.GripMockKey] = map[string]any{
-			"delay": delay.String(),
+
+		respMap[stuber.GripMockKey] = map[string]any{
+			"delay": now.Sub(since).String(),
 		}
 	}
 
@@ -51,7 +58,11 @@ func (s *StreamCaptureState) AppendResponseWithTiming(resp map[string]any, now t
 	s.lastResponseTime = now
 }
 
-func (s *StreamCaptureState) Snapshot() ([]map[string]any, []map[string]any) {
+func (s *StreamCaptureState) Snapshot() ([]map[string]any, []any) {
+	if s == nil {
+		return nil, nil
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -61,6 +72,10 @@ func (s *StreamCaptureState) Snapshot() ([]map[string]any, []map[string]any) {
 
 // HasTimedResponses returns true if at least one response was captured with per-element delay.
 func (s *StreamCaptureState) HasTimedResponses() bool {
+	if s == nil {
+		return false
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

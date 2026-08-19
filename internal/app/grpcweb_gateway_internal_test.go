@@ -219,7 +219,7 @@ func TestIsGRPCWebJSONContentType(t *testing.T) {
 func TestGRPCWebGateway_MethodNotAllowed(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewGRPCWebGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewGRPCWebGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/TestService/TestMethod", nil)
 
@@ -231,7 +231,7 @@ func TestGRPCWebGateway_MethodNotAllowed(t *testing.T) {
 func TestGRPCWebGateway_MethodNotFound(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewGRPCWebGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewGRPCWebGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/UnknownService/UnknownMethod", nil)
 
@@ -251,7 +251,7 @@ func TestGRPCWebGateway_MethodNotFound(t *testing.T) {
 func TestGRPCWebGateway_StubNotFoundWithoutDescriptor(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewGRPCWebGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewGRPCWebGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/UnknownService/UnknownMethod",
 		bytes.NewReader([]byte(`{}`)))
@@ -270,7 +270,7 @@ func TestGRPCWebGateway_StubNotFoundWithoutDescriptor(t *testing.T) {
 func TestGRPCWebGateway_RoutedRequest(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewGRPCWebGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewGRPCWebGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 
 	router := mux.NewRouter()
 	router.Handle("/{service}/{method}", gateway).Methods(http.MethodPost)
@@ -299,7 +299,7 @@ func TestGRPCWebGateway_RoutedRequest(t *testing.T) {
 func TestMultiProtocolGateway_ConnectRPCContentType(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewMultiProtocolGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewMultiProtocolGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/Svc/Method", nil)
 	r.Header.Set("Content-Type", "application/json")
@@ -313,7 +313,7 @@ func TestMultiProtocolGateway_ConnectRPCContentType(t *testing.T) {
 func TestMultiProtocolGateway_GRPCWebContentType(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewMultiProtocolGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewMultiProtocolGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/Svc/Method", nil)
 	r.Header.Set("Content-Type", grpcwebContentTypeProto)
@@ -333,7 +333,7 @@ func TestMultiProtocolGateway_GRPCWebContentType(t *testing.T) {
 func TestMultiProtocolGateway_GRPCWebTextRoutedToGRPCWeb(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewMultiProtocolGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewMultiProtocolGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/Svc/Method", nil)
 	r.Header.Set("Content-Type", "application/grpc-web-text+proto")
@@ -355,7 +355,7 @@ func TestMultiProtocolGateway_RejectsNonPost(t *testing.T) {
 
 	// GET is reserved for Connect's cacheable methods, so the refusal is
 	// demonstrated with a verb no protocol accepts.
-	gateway := NewMultiProtocolGateway(nil, nil, nil, nil, nil, nil)
+	gateway := NewMultiProtocolGateway(t.Context(), nil, nil, nil, nil, nil, nil)
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(t.Context(), http.MethodPut, "/Svc/Method", nil)
 

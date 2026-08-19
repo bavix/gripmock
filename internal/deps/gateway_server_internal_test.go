@@ -78,8 +78,6 @@ func TestGatewayServe_RejectsMethodNotAllowed(t *testing.T) {
 	addr, teardown := startGatewayServer(t)
 	defer teardown()
 
-	// GET is routed now, because Connect serves it for methods marked
-	// NO_SIDE_EFFECTS; PUT is refused by every protocol.
 	req, err := http.NewRequestWithContext(t.Context(), http.MethodPut,
 		"http://"+addr+"/test.Service/TestMethod", nil)
 	require.NoError(t, err)
@@ -110,9 +108,6 @@ func TestGatewayServe_AcceptsPostToUnknownRoute(t *testing.T) {
 	require.NotEqual(t, http.StatusMethodNotAllowed, resp.StatusCode)
 }
 
-// TestGatewayServe_ConnectRPCErrorFormat verifies that a request with
-// Content-Type: application/json is routed to the ConnectRPC handler and
-// returns a Connect-style JSON error (non-200 status, JSON body).
 func TestGatewayServe_ConnectRPCErrorFormat(t *testing.T) {
 	t.Parallel()
 
@@ -129,16 +124,15 @@ func TestGatewayServe_ConnectRPCErrorFormat(t *testing.T) {
 	defer resp.Body.Close() //nolint:errcheck
 
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
-	require.Equal(t, "application/connect+json", resp.Header.Get("Content-Type"))
+	// The protocol pins error bodies to application/json whatever codec the
+	// request used.
+	require.Equal(t, "application/json", resp.Header.Get("Content-Type"))
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Contains(t, string(body), `"code":"not_found"`)
 }
 
-// TestGatewayServe_GRPCWebRoutedByContentType verifies that a request with
-// Content-Type: application/grpc-web+proto is routed to the GRPCWeb handler
-// and returns a gRPC-web-style response (HTTP 200 with trailers).
 func TestGatewayServe_GRPCWebRoutedByContentType(t *testing.T) {
 	t.Parallel()
 
@@ -160,23 +154,18 @@ func TestGatewayServe_GRPCWebRoutedByContentType(t *testing.T) {
 
 	defer resp.Body.Close() //nolint:errcheck
 
-	// gRPC-web always returns 200, status is in trailers
 	require.Equal(t, http.StatusOK, resp.StatusCode)
 	require.Equal(t, "application/grpc-web+proto", resp.Header.Get("Content-Type"))
 
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	// Response should be a trailers frame (flag 0x80) with grpc-status
 	require.GreaterOrEqual(t, len(body), 5, "expected at least a frame header")
 
-	// First byte should be the trailers flag (0x80)
 	require.Equal(t, byte(0x80), body[0], "expected gRPC-web trailers flag")
 	require.Contains(t, string(body), "grpc-status")
 }
 
-// TestGatewayServe_CompressionRequestAccepted verifies that gzip-encoded
-// requests are accepted and decoded by the GzipRequestMiddleware.
 func TestGatewayServe_CompressionRequestAccepted(t *testing.T) {
 	t.Parallel()
 
@@ -204,8 +193,6 @@ func TestGatewayServe_CompressionRequestAccepted(t *testing.T) {
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
-// TestGatewayServe_CompressionResponse verifies that the client receives
-// a gzipped response when Accept-Encoding: gzip is sent.
 func TestGatewayServe_CompressionResponse(t *testing.T) {
 	t.Parallel()
 
@@ -235,9 +222,6 @@ func TestGatewayServe_CompressionResponse(t *testing.T) {
 	require.Contains(t, string(decoded), `"code":"not_found"`)
 }
 
-// TestGatewayServe_RespectsContextCancellation verifies that the server
-// is reachable while running and that context cancellation does not
-// deadlock the calling goroutine.
 func TestGatewayServe_RespectsContextCancellation(t *testing.T) {
 	t.Parallel()
 
@@ -293,4 +277,60 @@ func gunzipResponse(resp *http.Response) ([]byte, error) {
 	defer gr.Close() //nolint:errcheck
 
 	return io.ReadAll(gr)
+}
+
+// gRPC-Web exists so a browser can call gRPC, and a browser calls nothing without
+// CORS: it sends a preflight first and drops any reply that does not name its
+// origin. The gateway answered the preflight with 405 until this was wired.
+func TestGatewayServe_CORSPreflight(t *testing.T) {
+	t.Parallel()
+
+	addr, teardown := startGatewayServer(t)
+	defer teardown()
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodOptions,
+		"http://"+addr+"/helloworld.Greeter/SayHello", nil)
+	require.NoError(t, err)
+
+	req.Header.Set("Origin", "http://localhost:3000")
+	req.Header.Set("Access-Control-Request-Method", http.MethodPost)
+	req.Header.Set("Access-Control-Request-Headers", "content-type,x-grpc-web")
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	defer resp.Body.Close() //nolint:errcheck
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.NotEmpty(t, resp.Header.Get("Access-Control-Allow-Origin"))
+	require.Contains(t, strings.ToLower(resp.Header.Get("Access-Control-Allow-Headers")), "x-grpc-web",
+		"the browser must be allowed to send the gRPC-Web control headers")
+}
+
+// A gRPC-Web client reads the call's outcome from headers the browser hides unless
+// the server exposes them.
+func TestGatewayServe_CORSExposesStatusHeaders(t *testing.T) {
+	t.Parallel()
+
+	addr, teardown := startGatewayServer(t)
+	defer teardown()
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPost,
+		"http://"+addr+"/unknown.Service/UnknownMethod", strings.NewReader("{}"))
+	require.NoError(t, err)
+
+	req.Header.Set("Origin", "http://localhost:3000")
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+
+	defer resp.Body.Close() //nolint:errcheck
+
+	require.NotEmpty(t, resp.Header.Get("Access-Control-Allow-Origin"))
+
+	exposed := strings.ToLower(resp.Header.Get("Access-Control-Expose-Headers"))
+	for _, header := range []string{"grpc-status", "grpc-message", "grpc-status-details-bin"} {
+		require.Contains(t, exposed, header)
+	}
 }

@@ -14,29 +14,30 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-func TestRunWithReflection(t *testing.T) {
+func TestNewServerWithReflection(t *testing.T) {
 	t.Parallel()
 
-	mock1 := mustRunWithProto(t,
+	srv1 := mustServerWithProto(t,
 		sdkProtoPath("greeter"),
 		WithListenAddr("tcp", ":0"),
-		WithHealthCheckTimeout(5*time.Second),
 	)
 
-	mock2, err := Run(t,
-		WithReflection(mock1.Addr()),
-		WithHealthCheckTimeout(5*time.Second),
+	srv2 := NewTestServer(t,
+		WithReflection(srv1.Address()),
 	)
 
-	require.NoError(t, err)
-	require.NotNil(t, mock2)
-	require.Contains(t, mock2.Addr(), "127.0.0.1:")
+	require.Contains(t, srv2.Address(), "127.0.0.1:")
 }
 
-func TestRunWithReflectionNoServices(t *testing.T) {
+func TestNewServerPanicsWithoutDescriptors(t *testing.T) {
 	t.Parallel()
 
-	// Arrange
+	require.Panics(t, func() { NewServer(t) })
+}
+
+func TestInitServerWithReflectionNoServices(t *testing.T) {
+	t.Parallel()
+
 	lc := net.ListenConfig{}
 	lis, err := lc.Listen(t.Context(), "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
@@ -56,21 +57,17 @@ func TestRunWithReflectionNoServices(t *testing.T) {
 
 	defer server.GracefulStop()
 
-	// Act
-	_, err = Run(t, WithReflection(addr), WithHealthCheckTimeout(2*time.Second))
+	_, err = initServer(t, WithReflection(addr), WithHealthCheckTimeout(2*time.Second))
 
-	// Assert
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no services found via reflection")
 }
 
-func TestRunWithReflectionInvalidAddr(t *testing.T) {
+func TestInitServerWithReflectionInvalidAddr(t *testing.T) {
 	t.Parallel()
 
-	// Act
-	_, err := Run(t, WithReflection("localhost:59999"), WithHealthCheckTimeout(100*time.Millisecond))
+	_, err := initServer(t, WithReflection("localhost:59999"), WithHealthCheckTimeout(100*time.Millisecond))
 
-	// Assert
 	require.Error(t, err)
 	errStr := err.Error()
 	require.True(t,

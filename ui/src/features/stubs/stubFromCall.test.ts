@@ -11,7 +11,7 @@ const base: CallRecord = {
 
 describe('stubFromCall', () => {
   it('maps a unary call to input.equals + output.data', () => {
-    const stub = stubFromCall({ ...base, request: { name: 'a' }, response: { message: 'hi' } });
+    const stub = stubFromCall({ ...base, requests: [{ name: 'a' }], responses: [{ message: 'hi' }] });
     expect(stub).toEqual({
       service: 'greeter.Greeter',
       method: 'SayHello',
@@ -33,7 +33,7 @@ describe('stubFromCall', () => {
   });
 
   it('carries response headers into output.headers', () => {
-    const stub = stubFromCall({ ...base, response: { ok: true }, responseHeaders: { 'x-trace': 'abc' } });
+    const stub = stubFromCall({ ...base, responses: [{ ok: true }], responseHeaders: { 'x-trace': 'abc' } });
     expect((stub.output as Record<string, unknown>).headers).toEqual({ 'x-trace': 'abc' });
   });
 

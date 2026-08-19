@@ -38,8 +38,7 @@ under their own prefixes — `HTTP_TLS_` and `GATEWAY_TLS_`:
 | `CA_FILE` | CA bundle for client certificate verification |
 | `MIN_VERSION` | Minimal TLS version (`1.2` or `1.3`) |
 
-The older `CONNECTRPC_TLS_*` names are still read as fallbacks for
-`GATEWAY_TLS_*`, and will be removed in a future release.
+The older `CONNECTRPC_TLS_*` names were removed in v3.20.0; use `GATEWAY_TLS_*`.
 
 ## Examples
 

@@ -9,8 +9,6 @@ import (
 	infraTLS "github.com/bavix/gripmock/v3/internal/infra/tls"
 )
 
-// Guards regression where HTTP_TLS_MIN_VERSION / GATEWAY_TLS_MIN_VERSION were
-// ignored (hardcoded to 1.2) instead of read from config.
 func TestHTTPGatewayTLSMinVersionFromConfig(t *testing.T) {
 	t.Parallel()
 

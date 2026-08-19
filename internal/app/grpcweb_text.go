@@ -14,11 +14,11 @@ const (
 )
 
 func isGRPCWebTextContentType(ct string) bool {
-	return strings.HasPrefix(ct, grpcwebContentTypeText)
+	return strings.HasPrefix(normalizeContentType(ct), grpcwebContentTypeText)
 }
 
 func grpcwebTextResponseContentType(ct string) string {
-	if ct == grpcwebContentTypeTextJSON {
+	if normalizeContentType(ct) == grpcwebContentTypeTextJSON {
 		return grpcwebContentTypeTextJSON
 	}
 

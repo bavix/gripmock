@@ -1,14 +1,10 @@
 # Remote Mode <VersionTag version="v3.16.0" />
 
-::: warning
-⚠️ **EXPERIMENTAL FEATURE**: The GripMock Embedded SDK is currently experimental. The API is subject to change without notice, and functionality may be modified in future versions. Use at your own risk.
-:::
-
 ::: info
 **Minimum Requirements**: Go 1.26 or later
 :::
 
-> **Version history:** Remote mode introduced in <VersionTag version="v3.16.0" />. Not available in the legacy API.
+> **Version history:** Embedded SDK introduced in <VersionTag version="v3.7.0" />. Current API since <VersionTag version="v3.16.0" />; the legacy `sdk.Run` / `mock.Stub` / `mock.Verify` API was **removed in v3.20.0**. See the [Upgrade Guide](./upgrade.md).
 
 Connect to a remote GripMock instance instead of running embedded. When using remote mode, you must provide both the gRPC endpoint (for mock server) and HTTP endpoint (for management operations).
 
@@ -276,6 +272,27 @@ func TestMyService_RemoteWithGRPCTimeout(t *testing.T) {
     require.Equal(t, codes.DeadlineExceeded, status.Code(err))
 }
 ```
+
+## Differences from embedded mode
+
+These are deliberate, not bugs. A test that relies on them behaves differently
+per mode.
+
+| Behaviour | Embedded | Remote |
+|---|---|---|
+| Descriptors | frozen at `NewServer` | left registered on `Close`; the registry is keyed by file path, so the same files replace |
+| `Run(fn)` handlers | supported | **panics** — handlers are in-process and cannot be serialised |
+| Bidi | `Run` or a static `Match` + `SendStream` stub | static stub only |
+
+`Reset()` means the same in both modes: it drops the stubs the SDK registered and
+the calls it recorded. Remotely it sends `DELETE /api/history`, scoped to the
+session, so a parallel session keeps its own calls. Without `WithSession` there is
+nothing to scope by, and the purge clears the shared server's whole history — one
+more reason to give every remote test its own session.
+
+Verification also differs from the server's own `POST /api/verify`: the SDK
+counts per stub ID, so several stubs sharing one method are checked
+independently, while `/api/verify` counts per service and method.
 
 ## When to use it
 

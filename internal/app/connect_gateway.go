@@ -38,6 +38,7 @@ const (
 )
 
 func NewConnectRPCGateway(
+	ctx context.Context,
 	budgerigar *stuber.Budgerigar,
 	descriptorRegistry *descriptors.Registry,
 	recorder history.Recorder,
@@ -46,7 +47,7 @@ func NewConnectRPCGateway(
 	errorFormatter *ErrorFormatter,
 ) *ConnectRPCGateway {
 	return &ConnectRPCGateway{
-		gatewayHandler: newGatewayHandler(budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
+		gatewayHandler: newGatewayHandler(ctx, budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
 	}
 }
 
@@ -54,6 +55,40 @@ func NewConnectRPCGateway(
 // carries one of the enveloped codecs. The protocol requires
 // application/connect+{codec} for every streaming RPC; the plain
 // application/{codec} forms are unary-only.
+func acceptableContentType(streaming bool, ct string) bool {
+	if streaming {
+		return isConnectStreamContentType(ct)
+	}
+
+	if ct == "" || isConnectStreamContentType(ct) {
+		return true
+	}
+
+	switch normalizeContentType(ct) {
+	case contentTypeJSON, contentTypeProto:
+		return true
+	default:
+		return false
+	}
+}
+
+func unsupportedStreamEncoding(header http.Header) (string, bool) {
+	encoding := strings.ToLower(strings.TrimSpace(header.Get("Connect-Content-Encoding")))
+	if encoding == "" || encoding == "identity" {
+		return "", true
+	}
+
+	return encoding, false
+}
+
+func normalizeContentType(ct string) string {
+	if i := strings.IndexByte(ct, ';'); i >= 0 {
+		ct = ct[:i]
+	}
+
+	return strings.ToLower(strings.TrimSpace(ct))
+}
+
 func isConnectStreamContentType(ct string) bool {
 	if i := strings.IndexByte(ct, ';'); i >= 0 {
 		ct = ct[:i]
@@ -150,6 +185,29 @@ func (g *ConnectRPCGateway) resolveMethod(
 	return methodDesc, true
 }
 
+func (g *ConnectRPCGateway) acceptRequestEncoding(
+	w http.ResponseWriter, r *http.Request, adapter *httpStreamAdapter,
+) bool {
+	if !acceptableContentType(adapter.streaming, r.Header.Get(headerContentType)) {
+		http.Error(w, "unsupported media type", http.StatusUnsupportedMediaType)
+
+		return false
+	}
+
+	if !adapter.streaming {
+		return true
+	}
+
+	if encoding, ok := unsupportedStreamEncoding(r.Header); !ok {
+		adapter.writeError(codes.Unimplemented,
+			"stream compression "+encoding+" is not supported; send identity")
+
+		return false
+	}
+
+	return true
+}
+
 func (g *ConnectRPCGateway) serveMethod(
 	w http.ResponseWriter, r *http.Request, service, method string, methodDesc protoreflect.MethodDescriptor,
 ) {
@@ -166,9 +224,7 @@ func (g *ConnectRPCGateway) serveMethod(
 		streaming: mocker.serverStream || mocker.clientStream,
 	}
 
-	if adapter.streaming && !isConnectStreamContentType(r.Header.Get(headerContentType)) {
-		http.Error(w, "unsupported media type", http.StatusUnsupportedMediaType)
-
+	if !g.acceptRequestEncoding(w, r, adapter) {
 		return
 	}
 
@@ -299,10 +355,9 @@ func (g *ConnectRPCGateway) writeError(w http.ResponseWriter, code codes.Code, m
 	body, _ := json.Marshal(connectError{
 		Code:    ErrorCodeToString(code),
 		Message: msg,
-		Details: []map[string]any{},
 	})
 
-	w.Header().Set(headerContentType, contentTypeConnectJSON)
+	w.Header().Set(headerContentType, contentTypeJSON)
 	w.WriteHeader(ErrorCodeToHTTPStatus(code))
 	_, _ = w.Write(body)
 }
@@ -314,10 +369,11 @@ func (connectResponse) WriteError(w http.ResponseWriter, r *http.Request, code c
 	body, _ := json.Marshal(connectError{
 		Code:    ErrorCodeToString(code),
 		Message: msg,
-		Details: []map[string]any{},
 	})
 
-	w.Header().Set(headerContentType, contentTypeConnectJSON)
+	// The protocol pins error bodies to application/json whatever the request
+	// asked for, so a client that cannot read the codec can still read the error.
+	w.Header().Set(headerContentType, contentTypeJSON)
 	w.WriteHeader(ErrorCodeToHTTPStatus(code))
 	_, _ = w.Write(body)
 }
@@ -335,7 +391,12 @@ func (connectResponse) WriteSuccess(w http.ResponseWriter, r *http.Request) {
 }
 
 func isJSONContentType(ct string) bool {
-	return ct == contentTypeJSON || ct == contentTypeConnectJSON
+	switch normalizeContentType(ct) {
+	case contentTypeJSON, contentTypeConnectJSON:
+		return true
+	default:
+		return false
+	}
 }
 
 type httpStreamAdapter struct {
@@ -480,7 +541,8 @@ func (a *httpStreamAdapter) recvStreamingMessage(msg proto.Message, ct string) e
 	// endpoint: treat the entire body as a single stream message.
 	// This matches gRPC-Web behaviour and improves interop with clients
 	// that do not frame every message when they only send one.
-	if ct == contentTypeJSON || ct == contentTypeProto {
+	if unaryContentType := normalizeContentType(ct); unaryContentType == contentTypeJSON ||
+		unaryContentType == contentTypeProto {
 		data, err := io.ReadAll(a.req.Body)
 		if err != nil {
 			return err
@@ -528,7 +590,6 @@ func (a *httpStreamAdapter) writeError(code codes.Code, msg string) {
 	body, _ := json.Marshal(connectError{
 		Code:    ErrorCodeToString(code),
 		Message: msg,
-		Details: []map[string]any{},
 	})
 	a.writeBody(code, body)
 }
@@ -553,7 +614,7 @@ func (a *httpStreamAdapter) writeBody(code codes.Code, body []byte) {
 
 		_ = writeConnectFrameEncoded(a.w, body, true, a.frameEncoding)
 	} else {
-		a.w.Header().Set(headerContentType, contentTypeConnectJSON)
+		a.w.Header().Set(headerContentType, contentTypeJSON)
 		a.w.WriteHeader(ErrorCodeToHTTPStatus(code))
 		_, _ = a.w.Write(body)
 	}

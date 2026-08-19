@@ -55,16 +55,13 @@ func splitConnectFrames(t *testing.T, body []byte) [][]byte {
 	return frames
 }
 
-// A schema-less Connect client cannot tell a one-response server stream from a
-// unary call, and the two use different content types and framing. Reflection
-// on the gateway port is what closes that gap.
 func TestGatewayReflectionAnswersOverConnect(t *testing.T) {
 	t.Parallel()
 
 	registry := descriptors.NewRegistry()
 	registerMultiverseDescriptors(t, t.Context(), registry)
 
-	gateway := NewConnectRPCGateway(stuber.NewBudgerigar(), registry, nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), stuber.NewBudgerigar(), registry, nil, nil, nil, nil)
 	router := mux.NewRouter()
 	router.Handle("/{service:.+}/{method}", gateway).Methods(http.MethodPost)
 
@@ -102,7 +99,7 @@ func TestGatewayReflectionAnswersOverConnect(t *testing.T) {
 func TestGatewayReflectionRejectsUnaryContentType(t *testing.T) {
 	t.Parallel()
 
-	gateway := NewConnectRPCGateway(stuber.NewBudgerigar(), descriptors.NewRegistry(), nil, nil, nil, nil)
+	gateway := NewConnectRPCGateway(t.Context(), stuber.NewBudgerigar(), descriptors.NewRegistry(), nil, nil, nil, nil)
 	router := mux.NewRouter()
 	router.Handle("/{service:.+}/{method}", gateway).Methods(http.MethodPost)
 

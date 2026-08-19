@@ -46,10 +46,12 @@ input:
 - Nested object matching
 
 **Behavior:**
-- All fields must match exactly
+- Every declared field must be present and equal; fields the request carries but
+  the stub does not declare are ignored
 - Case-sensitive string comparison
-- Arrays require exact order (unless `ignoreArrayOrder: true`)
-- Nested objects are compared recursively
+- Arrays require exact order and the same elements (unless `ignoreArrayOrder: true`,
+  which still compares them as a multiset — `["a","a"]` does not match `["a","b"]`)
+- Nested objects and arrays are compared exactly, without the top-level leniency
 
 **Array Example** — exact match with `repeated` field, order matters:
 
@@ -75,28 +77,34 @@ Request `{"ips": ["10.64.0.2", "10.64.0.1"], ...}` will **not** match — same e
 
 ### 2. Partial Match (`contains`)
 
-Matches requests that **contain** the specified values. Great for flexible matching scenarios.
+Matches requests whose body **contains** the specified structure. Containment is
+structural: it ignores fields you did not mention, not parts of the values you did.
 
 **Example:**
 ```yaml
 input:
   contains:
-    name: "grip"
+    name: "gripmock"
     tags: ["grpc"]
     details:
       category: "test"
 ```
 
 **When to use:**
-- Partial string matching
-- Array element checking
-- Optional field validation
+- Checking a few fields of a large request and ignoring the rest
+- Asserting that an array carries certain elements
+- Matching a nested object partially
 
 **Behavior:**
-- String values are checked for substring inclusion
-- Array values check if elements exist (order doesn't matter)
-- Nested objects are matched recursively
-- Missing fields are ignored
+- Objects are matched recursively as a subset — unlisted fields are ignored
+- Arrays match when every listed element is present, in any order
+- Every other value, **strings included**, must be equal
+
+::: warning
+`contains` does **not** do substring matching. `contains: {name: "grip"}` will not
+match `"gripmock"` — use [`matches`](#_3-regex-match-matches) with a regular
+expression, or [`glob`](#_4-glob-match-glob) with a wildcard, for that.
+:::
 
 **Array Example** — `repeated` field contains specified elements:
 

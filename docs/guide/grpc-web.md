@@ -45,7 +45,9 @@ Content-Type: application/grpc-web+proto
 
 ### Errors
 
-Errors are communicated via trailers in a trailers-only response:
+Errors are communicated via trailers in a trailers-only response — no data frame is
+sent, since a data frame is the response message. `output.details`, when present,
+travel in the `grpc-status-details-bin` trailer as a base64-encoded `google.rpc.Status`:
 
 ```http
 HTTP/1.1 200 OK
@@ -119,3 +121,11 @@ Configured via `GATEWAY_TLS_*` variables. See [Environment Variables](/guide/int
 - [ConnectRPC](connect-rpc)
 - [Environment Variables](/guide/introduction/environment-variables)
 - [Quick Start](/guide/introduction/quick-usage)
+
+## Browser access
+
+The gateway answers CORS preflights and names the caller's origin, so a page can
+call it cross-origin. Origins and methods come from `CORS_ALLOWED_ORIGINS` and
+`CORS_ALLOWED_METHODS` — the same settings the admin API uses, `*` by default.
+`grpc-status`, `grpc-message` and `grpc-status-details-bin` are exposed, since a
+gRPC-Web client reads the call's outcome from them.

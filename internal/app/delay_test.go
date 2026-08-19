@@ -14,7 +14,6 @@ import (
 func TestDelayWithTypesDuration(t *testing.T) {
 	t.Parallel()
 
-	// Test JSON marshaling/unmarshaling with delay using types.Duration
 	stub := &stuber.Stub{
 		Service: "test.Service",
 		Method:  "TestMethod",
@@ -27,17 +26,14 @@ func TestDelayWithTypesDuration(t *testing.T) {
 		},
 	}
 
-	// Marshal to JSON
 	data, err := json.Marshal(stub)
 	require.NoError(t, err)
 
-	// Unmarshal back
 	var unmarshaledStub stuber.Stub
 
 	err = json.Unmarshal(data, &unmarshaledStub)
 	require.NoError(t, err)
 
-	// Check that delay was preserved
 	require.Equal(t, types.Duration(100*time.Millisecond), unmarshaledStub.Output.Delay)
 	require.Equal(t, 100*time.Millisecond, time.Duration(unmarshaledStub.Output.Delay))
 }
@@ -45,7 +41,6 @@ func TestDelayWithTypesDuration(t *testing.T) {
 func TestDelayStringFormat(t *testing.T) {
 	t.Parallel()
 
-	// Test with string format (e.g., "100ms", "2.5s", "1h30m")
 	jsonData := `{
 		"service": "test.Service",
 		"method": "TestMethod",

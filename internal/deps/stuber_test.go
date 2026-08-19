@@ -10,7 +10,7 @@ import (
 
 func TestBuilderBudgerigar(t *testing.T) {
 	t.Parallel()
-	// Test budgerigar creation
+
 	builder := deps.NewBuilder()
 	budgerigar := builder.Budgerigar()
 	require.NotNil(t, budgerigar)
@@ -18,7 +18,7 @@ func TestBuilderBudgerigar(t *testing.T) {
 
 func TestBuilderExtender(t *testing.T) {
 	t.Parallel()
-	// Test extender creation
+
 	builder := deps.NewBuilder()
 	extender := builder.Extender(t.Context())
 	require.NotNil(t, extender)
@@ -26,7 +26,7 @@ func TestBuilderExtender(t *testing.T) {
 
 func TestBuilderSingletonPattern(t *testing.T) {
 	t.Parallel()
-	// Test that budgerigar and extender are singletons
+
 	builder := deps.NewBuilder()
 
 	budgerigar1 := builder.Budgerigar()

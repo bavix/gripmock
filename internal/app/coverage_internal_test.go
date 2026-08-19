@@ -31,14 +31,14 @@ func TestMethodCoverage(t *testing.T) {
 	}
 
 	stubs := []*stuber.Stub{
-		{Service: "pkg.SvcA", Method: "M1"}, // matches by FQN
-		{Service: "SvcB", Method: "N1"},     // matches by bare name (package omitted)
-		{Service: "SvcA", Method: "GHOST"},  // method not in schema — ignored
+		{Service: "pkg.SvcA", Method: "M1"},
+		{Service: "SvcB", Method: "N1"},
+		{Service: "SvcA", Method: "GHOST"},
 	}
 
 	covered, total := methodCoverage(services, stubs)
 	require.Equal(t, 3, total)
-	require.Equal(t, 2, covered) // M1 + N1; M2 uncovered
+	require.Equal(t, 2, covered)
 }
 
 func TestMethodCoverageEmpty(t *testing.T) {

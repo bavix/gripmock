@@ -6,12 +6,10 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-// ConstantsTestSuite provides test suite for application constants.
 type ConstantsTestSuite struct {
 	suite.Suite
 }
 
-// TestConstants tests that all constants are properly defined.
 func (s *ConstantsTestSuite) TestConstants() {
 	s.Require().NotEmpty(excludedHeaders)
 	s.Require().Contains(excludedHeaders, ":authority")
@@ -21,7 +19,6 @@ func (s *ConstantsTestSuite) TestConstants() {
 	s.Require().Contains(excludedHeaders, "accept-encoding")
 }
 
-// TestExcludedHeadersContent tests the content of excluded headers.
 func (s *ConstantsTestSuite) TestExcludedHeadersContent() {
 	expected := []string{
 		":authority",
@@ -38,16 +35,13 @@ func (s *ConstantsTestSuite) TestExcludedHeadersContent() {
 	}
 }
 
-// TestLoggingFieldsFormat tests logging fields format constants.
 func (s *ConstantsTestSuite) TestLoggingFieldsFormat() {
-	// Test that logging fields are properly formatted strings
 	s.Require().Equal("peer.address", LogFieldPeerAddress)
 	s.Require().Equal("service", LogFieldService)
 	s.Require().Equal("method", LogFieldMethod)
 	s.Require().Equal("grpc.component", LogFieldComponent)
 }
 
-// TestConstantsTestSuite runs the constants test suite.
 func TestConstantsTestSuite(t *testing.T) {
 	t.Parallel()
 

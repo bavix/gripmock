@@ -2,6 +2,8 @@ package waiter
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -55,10 +57,19 @@ func (s *Service) WaitForReady(ctx context.Context, timeout, interval time.Durat
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
+	started := time.Now()
+	lastCause := "no ping response yet"
+
 	for time.Now().Before(deadline) {
 		code, err := s.Ping(ctx, service)
-		if err == nil && code == Serving {
+
+		switch {
+		case err != nil:
+			lastCause = err.Error()
+		case code == Serving:
 			return nil
+		default:
+			lastCause = "status " + strconv.Itoa(int(code))
 		}
 
 		select {
@@ -68,5 +79,6 @@ func (s *Service) WaitForReady(ctx context.Context, timeout, interval time.Durat
 		}
 	}
 
-	return ErrServerNotReady
+	return fmt.Errorf("%w: %s within %s (waited %s, last check: %s)",
+		ErrServerNotReady, service, timeout, time.Since(started).Round(time.Millisecond), lastCause)
 }

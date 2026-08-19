@@ -84,7 +84,6 @@ func setContextMetadata(ctx context.Context, header, trailer metadata.MD) {
 
 const (
 	proxyMessagesInitCap     = 8
-	proxyErrChanCap          = 2
 	proxyBidiTimeoutFallback = 5 * time.Second
 )
 

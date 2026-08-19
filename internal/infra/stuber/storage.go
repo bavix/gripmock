@@ -8,13 +8,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/zeebo/xxh3"
-)
-
-const (
-	// stringCacheSize is the maximum number of string hashes to cache.
-	stringCacheSize = 10000
 )
 
 // ErrLeftNotFound is returned when the left value is not found.
@@ -40,13 +34,10 @@ type storage struct {
 	unindexed    map[uint64][]*Stub
 	itemsByID    map[uuid.UUID]*Stub
 	sessions     map[string]int
-	stringCache  *lru.Cache[string, uint32]
 }
 
 // newStorage creates a new instance of the storage struct.
 func newStorage() *storage {
-	cache, _ := lru.New[string, uint32](stringCacheSize)
-
 	return &storage{
 		lefts:        make(map[uint32]struct{}),
 		methodSorted: make(map[uint32]map[string][]*Stub),
@@ -55,7 +46,6 @@ func newStorage() *storage {
 		unindexed:    make(map[uint64][]*Stub),
 		itemsByID:    make(map[uuid.UUID]*Stub),
 		sessions:     make(map[string]int),
-		stringCache:  cache,
 	}
 }
 
@@ -145,6 +135,13 @@ func (s *storage) findAllAvailable(left, right, session string) (iter.Seq[*Stub]
 }
 
 // values returns an iterator sequence of all Stub items stored in the storage.
+func (s *storage) size() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	return len(s.itemsByID)
+}
+
 func (s *storage) values() iter.Seq[*Stub] {
 	return func(yield func(*Stub) bool) {
 		s.mu.RLock()
@@ -230,18 +227,7 @@ func (s *storage) findByIDs(ids iter.Seq[uuid.UUID]) iter.Seq[*Stub] {
 }
 
 func (s *storage) id(value string) uint32 {
-	if s.stringCache != nil {
-		if hash, exists := s.stringCache.Get(value); exists {
-			return hash
-		}
-	}
-
-	hash := uint32(xxh3.HashString(value)) //nolint:gosec
-	if s.stringCache != nil {
-		s.stringCache.Add(value, hash)
-	}
-
-	return hash
+	return uint32(xxh3.HashString(value)) //nolint:gosec
 }
 
 func (s *storage) pos(a, b uint32) uint64 {

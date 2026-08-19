@@ -9,6 +9,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -28,28 +30,53 @@ type Client struct {
 }
 
 type HistoryCall struct {
+	Service         string
+	Method          string
+	Session         string
+	Requests        []map[string]any
+	Responses       []map[string]any
+	ResponseHeaders map[string]string
+	Error           string
+	Code            uint32
+	ElapsedMS       int64
+	StubID          uuid.UUID
+	Timestamp       time.Time
+}
+
+const maxErrorBodyBytes = 4096
+
+type HistoryFilter struct {
 	Service   string
 	Method    string
-	Request   map[string]any
-	Requests  []map[string]any
-	Response  map[string]any
-	Responses []map[string]any
-	Error     string
-	Code      uint32
-	StubID    uuid.UUID
-	Timestamp time.Time
+	Limit     int
+	Offset    int
+	ErrorOnly bool
 }
 
-type VerifyBadRequestError struct {
-	Message string
-}
+func (f HistoryFilter) query() url.Values {
+	q := url.Values{}
 
-func (e VerifyBadRequestError) Error() string {
-	if e.Message == "" {
-		return "verification failed"
+	if f.Service != "" {
+		q.Set("service", f.Service)
 	}
 
-	return e.Message
+	if f.Method != "" {
+		q.Set("method", f.Method)
+	}
+
+	if f.Limit > 0 {
+		q.Set("limit", strconv.Itoa(f.Limit))
+	}
+
+	if f.Offset > 0 {
+		q.Set("offset", strconv.Itoa(f.Offset))
+	}
+
+	if f.ErrorOnly {
+		q.Set("error", "true")
+	}
+
+	return q
 }
 
 //nolint:funcorder
@@ -59,7 +86,6 @@ func (c Client) getHTTPClient() *http.Client {
 		cli = http.DefaultClient
 	}
 
-	// Wrap transport with gzip compression middleware
 	transport := cli.Transport
 	if transport == nil {
 		transport = http.DefaultTransport
@@ -73,13 +99,11 @@ func (c Client) getHTTPClient() *http.Client {
 	}
 }
 
-// gzipRoundTripper compresses request bodies and decompresses response bodies.
 type gzipRoundTripper struct {
 	next http.RoundTripper
 }
 
 func (rt *gzipRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	// Compress request body if present
 	if req.Body != nil && req.Body != http.NoBody {
 		origBody, err := io.ReadAll(req.Body)
 		_ = req.Body.Close()
@@ -109,7 +133,6 @@ func (rt *gzipRoundTripper) RoundTrip(req *http.Request) (*http.Response, error)
 		return nil, err
 	}
 
-	// Decompress response body if gzip encoded
 	if resp.Header.Get("Content-Encoding") == "gzip" {
 		reader, err := gzip.NewReader(resp.Body)
 		if err != nil {
@@ -161,11 +184,25 @@ func (c Client) buildAPIURL(path string) (string, error) {
 	return apiURL, nil
 }
 
-//nolint:funcorder
+//nolint:funcorder // GET requests go through sendRequestQuery instead.
 func (c Client) sendRequest(method, path string, body []byte, contentType string) (*http.Response, error) {
+	return c.sendRequestQuery(method, path, nil, body, contentType)
+}
+
+//nolint:funcorder
+func (c Client) sendRequestQuery(
+	method, path string,
+	query url.Values,
+	body []byte,
+	contentType string,
+) (*http.Response, error) {
 	apiURL, err := c.buildAPIURL(path)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(query) > 0 {
+		apiURL += "?" + query.Encode()
 	}
 
 	req, err := c.newRequest(method, apiURL, body, contentType)
@@ -207,7 +244,7 @@ func (c Client) AddStubs(stubs []*stuber.Stub) error {
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("sdk: add stubs failed with status %d", resp.StatusCode) //nolint:err113
+		return describeFailure("add stubs", resp)
 	}
 
 	return nil
@@ -263,99 +300,101 @@ func (c Client) UploadDescriptors(files []*descriptorpb.FileDescriptorProto) err
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("sdk: upload descriptors failed with status %d", resp.StatusCode) //nolint:err113
+		return describeFailure("upload descriptors", resp)
 	}
 
 	return nil
 }
 
 func (c Client) FetchHistory() ([]HistoryCall, error) {
-	resp, err := c.sendRequest(
-		http.MethodGet,
-		"api/history",
-		nil,
-		"",
-	)
+	calls, _, err := c.FetchHistoryFiltered(HistoryFilter{})
+
+	return calls, err
+}
+
+func (c Client) FetchHistoryFiltered(filter HistoryFilter) ([]HistoryCall, int, error) {
+	resp, err := c.sendRequestQuery(http.MethodGet, "api/history", filter.query(), nil, "")
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("sdk: fetch history failed with status %d", resp.StatusCode) //nolint:err113
+		return nil, 0, describeFailure("fetch history", resp)
 	}
 
-	var list []struct {
-		Service   *string             `json:"service"`
-		Method    *string             `json:"method"`
-		Request   *map[string]any     `json:"request"`
-		Requests  *[]map[string]any   `json:"requests"`
-		Response  *map[string]any     `json:"response"`
-		Responses *[]map[string]any   `json:"responses"`
-		Code      *uint32             `json:"code"`
-		Error     *string             `json:"error"`
-		StubID    *openapi_types.UUID `json:"stubId"`
-		Timestamp *time.Time          `json:"timestamp"`
+	out, err := decodeHistory(resp.Body)
+	if err != nil {
+		return nil, 0, err
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
+
+	return out, totalFromHeader(resp.Header, len(out)), nil
+}
+
+func (c Client) PurgeHistory() error {
+	resp, err := c.sendRequest(http.MethodDelete, "api/history", nil, "")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		return describeFailure("purge history", resp)
+	}
+
+	return nil
+}
+
+func decodeHistory(body io.Reader) ([]HistoryCall, error) {
+	var list []struct {
+		Service         *string             `json:"service"`
+		Method          *string             `json:"method"`
+		Session         *string             `json:"session"`
+		Requests        *[]map[string]any   `json:"requests"`
+		Responses       *[]map[string]any   `json:"responses"`
+		ResponseHeaders *map[string]string  `json:"responseHeaders"`
+		Code            *uint32             `json:"code"`
+		Error           *string             `json:"error"`
+		ElapsedMS       *int64              `json:"elapsedMs"`
+		StubID          *openapi_types.UUID `json:"stubId"`
+		Timestamp       *time.Time          `json:"timestamp"`
+	}
+	if err := json.NewDecoder(body).Decode(&list); err != nil {
 		return nil, fmt.Errorf("sdk: failed to decode history: %w", err)
 	}
 
 	out := make([]HistoryCall, len(list))
 	for i, call := range list {
 		out[i] = HistoryCall{
-			Service:   ptrOrZero(call.Service),
-			Method:    ptrOrZero(call.Method),
-			Request:   ptrOrZero(call.Request),
-			Requests:  ptrOrZero(call.Requests),
-			Response:  ptrOrZero(call.Response),
-			Responses: ptrOrZero(call.Responses),
-			Code:      ptrOrZero(call.Code),
-			Error:     ptrOrZero(call.Error),
-			StubID:    ptrOrZero(call.StubID),
-			Timestamp: ptrOrZero(call.Timestamp),
+			Service:         ptrOrZero(call.Service),
+			Method:          ptrOrZero(call.Method),
+			Session:         ptrOrZero(call.Session),
+			Requests:        ptrOrZero(call.Requests),
+			Responses:       ptrOrZero(call.Responses),
+			ResponseHeaders: ptrOrZero(call.ResponseHeaders),
+			Code:            ptrOrZero(call.Code),
+			Error:           ptrOrZero(call.Error),
+			ElapsedMS:       ptrOrZero(call.ElapsedMS),
+			StubID:          ptrOrZero(call.StubID),
+			Timestamp:       ptrOrZero(call.Timestamp),
 		}
 	}
 
 	return out, nil
 }
 
-func (c Client) VerifyMethodCalled(service, method string, expectedCount int) error {
-	body, err := json.Marshal(map[string]any{
-		"service":       service,
-		"method":        method,
-		"expectedCount": expectedCount,
-	})
-	if err != nil {
-		return fmt.Errorf("sdk: failed to marshal verify request: %w", err)
+func totalFromHeader(h http.Header, fallback int) int {
+	raw := h.Get("X-Total-Count")
+	if raw == "" {
+		return fallback
 	}
 
-	resp, err := c.sendRequest(
-		http.MethodPost,
-		"api/verify",
-		body,
-		"application/json",
-	)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode == http.StatusBadRequest {
-		var errBody struct {
-			Message *string `json:"message"`
-		}
-
-		_ = json.NewDecoder(resp.Body).Decode(&errBody)
-
-		return VerifyBadRequestError{Message: ptrOrZero(errBody.Message)}
+	parsed, err := strconv.Atoi(raw)
+	if err != nil || parsed < 0 {
+		return fallback
 	}
 
-	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		return fmt.Errorf("sdk: verify request failed with status %d", resp.StatusCode) //nolint:err113
-	}
-
-	return nil
+	return parsed
 }
 
 func ptrOrZero[T any](p *T) T { //nolint:ireturn
@@ -366,4 +405,15 @@ func ptrOrZero[T any](p *T) T { //nolint:ireturn
 	}
 
 	return *p
+}
+
+func describeFailure(op string, resp *http.Response) error {
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
+
+	detail := strings.TrimSpace(string(body))
+	if detail == "" {
+		return fmt.Errorf("sdk: %s failed with status %d", op, resp.StatusCode) //nolint:err113
+	}
+
+	return fmt.Errorf("sdk: %s failed with status %d: %s", op, resp.StatusCode, detail) //nolint:err113
 }
