@@ -3,7 +3,8 @@ package storage
 import (
 	"context"
 	"os"
-	"path"
+	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -13,7 +14,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
-	"github.com/bavix/gripmock/v3/internal/infra/slicesx"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/watcher"
 	"github.com/bavix/gripmock/v3/internal/infra/yaml2json"
@@ -122,6 +122,20 @@ func (s *Extender) handleFilePath(ctx context.Context, filePath string) {
 	}
 }
 
+// stubFileKey normalises the path a file is tracked under. The initial directory
+// walk and the watcher reach the same file by different routes, and on Windows
+// they spell it differently: a key that does not match means a reload adds a
+// second copy of the file's stubs instead of replacing them.
+func withoutIDs(ids, exclude uuid.UUIDs) uuid.UUIDs {
+	return slices.DeleteFunc(slices.Clone(ids), func(id uuid.UUID) bool {
+		return slices.Contains(exclude, id)
+	})
+}
+
+func stubFileKey(filePath string) string {
+	return filepath.Clean(filePath)
+}
+
 func (s *Extender) handleDirectoryPath(ctx context.Context, pathDir string) {
 	files, err := os.ReadDir(pathDir)
 	if err != nil {
@@ -134,13 +148,13 @@ func (s *Extender) handleDirectoryPath(ctx context.Context, pathDir string) {
 
 	for _, file := range files {
 		if file.IsDir() {
-			s.readFromPath(ctx, path.Join(pathDir, file.Name()))
+			s.readFromPath(ctx, filepath.Join(pathDir, file.Name()))
 
 			continue
 		}
 
 		if s.isStubFile(file.Name()) {
-			s.readByFile(ctx, path.Join(pathDir, file.Name()))
+			s.readByFile(ctx, filepath.Join(pathDir, file.Name()))
 		}
 	}
 }
@@ -151,7 +165,9 @@ func (s *Extender) isStubFile(filename string) bool {
 		strings.HasSuffix(filename, ".yml")
 }
 
-func (s *Extender) readByFile(ctx context.Context, filePath string) {
+func (s *Extender) readByFile(ctx context.Context, rawPath string) {
+	filePath := stubFileKey(rawPath)
+
 	stubs, err := s.readStub(ctx, filePath)
 	if err != nil {
 		s.muMapIDs.Lock()
@@ -206,10 +222,10 @@ func (s *Extender) handleExistingFileUpdate(filePath string, stubs []*stuber.Stu
 	}
 
 	currentIDs := s.extractCurrentIDs(stubs)
-	unusedIDs := slicesx.Without(existingIDs, currentIDs...)
+	unusedIDs := withoutIDs(existingIDs, currentIDs)
 	newIDs := s.generateNewIDs(stubs, unusedIDs)
 
-	if removedIDs := slicesx.Without(existingIDs, newIDs...); len(removedIDs) > 0 {
+	if removedIDs := withoutIDs(existingIDs, newIDs); len(removedIDs) > 0 {
 		s.storage.DeleteByID(removedIDs...)
 	}
 

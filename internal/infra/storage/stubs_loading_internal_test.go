@@ -181,3 +181,21 @@ func TestLoaderReadsASingleFilePath(t *testing.T) {
 
 	require.Len(t, budgerigar.All(), 1, "the stub path may be a file, not only a directory")
 }
+
+func TestLoaderTracksAFileByOneKeyHoweverItIsSpelled(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeStubFile(t, dir, "one.json", jsonStub)
+
+	loader, budgerigar := newLoader(t)
+	loader.readFromPath(t.Context(), dir)
+	require.Len(t, budgerigar.All(), 1)
+
+	loader.readByFile(t.Context(), filepath.Join(dir, ".", "one.json"))
+	require.Len(t, budgerigar.All(), 1, "an equivalent path must not add a second copy")
+
+	loader.readByFile(t.Context(), dir+string(filepath.Separator)+"."+string(filepath.Separator)+"one.json")
+	require.Len(t, budgerigar.All(), 1,
+		"the loader and the watcher reach the same file by different routes")
+}
