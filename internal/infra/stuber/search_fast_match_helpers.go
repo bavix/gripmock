@@ -35,24 +35,28 @@ func matchQueryHeaders(query Query, stub *Stub) bool {
 }
 
 func (s *searcher) fastMatchBody(query Query, stub *Stub) bool {
-	if stub.Inputs != nil {
-		if len(stub.Inputs) == 0 {
+	matchers := stub.Matchers()
+
+	if stub.DeclaresStreamMatchers() {
+		if len(matchers) == 0 {
 			return false
 		}
 
-		return s.fastMatchStream(query.Input, stub.Inputs)
+		return s.fastMatchStream(query.Input, matchers)
 	}
 
+	unary := matchers[0]
+
 	if len(query.Input) == 0 {
-		return !inputHasConditions(stub.Input)
+		return !inputHasConditions(unary)
 	}
 
 	if len(query.Input) == 1 {
-		return s.fastMatchInput(query.Input[0], stub.Input)
+		return s.fastMatchInput(query.Input[0], unary)
 	}
 
 	for _, v := range slices.Backward(query.Input) {
-		if s.fastMatchInput(v, stub.Input) {
+		if s.fastMatchInput(v, unary) {
 			return true
 		}
 	}
@@ -67,29 +71,33 @@ func (s *searcher) fastRankV2(query Query, stub *Stub) float64 {
 
 	headersRank := rankHeaders(query.Headers, stub.Headers)
 
-	if stub.Inputs != nil {
-		if len(stub.Inputs) == 0 {
+	matchers := stub.Matchers()
+
+	if stub.DeclaresStreamMatchers() {
+		if len(matchers) == 0 {
 			return headersRank
 		}
 
 		inputsBonus := 1000.0
 
-		return headersRank + s.fastRankStream(query.Input, stub.Inputs) + inputsBonus
+		return headersRank + s.fastRankStream(query.Input, matchers) + inputsBonus
 	}
+
+	unary := matchers[0]
 
 	if len(query.Input) == 0 {
 		return headersRank
 	}
 
 	if len(query.Input) == 1 {
-		return headersRank + s.fastRankInput(query.Input[0], stub.Input)
+		return headersRank + s.fastRankInput(query.Input[0], unary)
 	}
 
 	n := len(query.Input)
 	best := 0.0
 
 	for i := n - 1; i >= 0; i-- {
-		r := s.fastRankInput(query.Input[i], stub.Input)
+		r := s.fastRankInput(query.Input[i], unary)
 		if r > 0 {
 			weighted := r * (float64(i+1) / float64(n))
 			if weighted > best {

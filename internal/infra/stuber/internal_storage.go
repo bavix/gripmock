@@ -36,17 +36,8 @@ type InternalStubStorage interface {
 	// This is the ONLY way to add internal stubs.
 	PutInternal(stubs ...*Stub) []uuid.UUID
 
-	// FindByIDInternal finds a stub by ID in internal storage.
-	FindByIDInternal(id uuid.UUID) *Stub
-
 	// FindAllAvailable finds stubs by service/method in internal storage.
 	FindAllAvailable(service, method, session string) (iter.Seq[*Stub], error)
-
-	// FindByMethodAvailable finds stubs by method in internal storage.
-	FindByMethodAvailable(method, session string) iter.Seq[*Stub]
-
-	// HasMethodAvailable checks if method exists in internal storage.
-	HasMethodAvailable(method, session string) bool
 }
 
 // internalStorageAdapter wraps *storage to implement InternalStubStorage.
@@ -63,18 +54,6 @@ func (a *internalStorageAdapter) PutInternal(stubs ...*Stub) []uuid.UUID {
 	return a.storage.upsert(stubs...)
 }
 
-func (a *internalStorageAdapter) FindByIDInternal(id uuid.UUID) *Stub {
-	return a.storage.findByID(id)
-}
-
 func (a *internalStorageAdapter) FindAllAvailable(service, method, session string) (iter.Seq[*Stub], error) {
 	return a.storage.findAllAvailable(service, method, session)
-}
-
-func (a *internalStorageAdapter) FindByMethodAvailable(method, session string) iter.Seq[*Stub] {
-	return a.storage.findByMethodAvailable(method, session)
-}
-
-func (a *internalStorageAdapter) HasMethodAvailable(method, session string) bool {
-	return a.storage.hasMethodAvailable(method, session)
 }

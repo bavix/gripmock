@@ -19,12 +19,17 @@ func NewBudgerigar() *Budgerigar {
 	}
 }
 
-// InternalStorage returns the internal storage interface for adding internal stubs.
-// Internal stubs are hidden from user-facing APIs and take precedence in matching.
-//
-//nolint:ireturn
-func (b *Budgerigar) InternalStorage() InternalStubStorage {
-	return b.searcher.internalStorage
+// UpdateMany updates stubs that have non-nil IDs.
+func (b *Budgerigar) UpdateMany(values ...*Stub) []uuid.UUID {
+	updates := make([]*Stub, 0, len(values))
+
+	for _, value := range values {
+		if value.ID != uuid.Nil {
+			updates = append(updates, value)
+		}
+	}
+
+	return b.searcher.upsert(updates...)
 }
 
 // SetAlive marks internal gripmock health stubs as SERVING.
@@ -41,19 +46,6 @@ func (b *Budgerigar) PutMany(values ...*Stub) []uuid.UUID {
 	}
 
 	return b.searcher.upsert(values...)
-}
-
-// UpdateMany updates stubs that have non-nil IDs.
-func (b *Budgerigar) UpdateMany(values ...*Stub) []uuid.UUID {
-	updates := make([]*Stub, 0, len(values))
-
-	for _, value := range values {
-		if value.ID != uuid.Nil {
-			updates = append(updates, value)
-		}
-	}
-
-	return b.searcher.upsert(updates...)
 }
 
 // DeleteByID deletes the Stub values with the given IDs from the Budgerigar's searcher.

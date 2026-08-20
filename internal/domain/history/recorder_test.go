@@ -8,6 +8,15 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 )
 
+func responseMap(t *testing.T, response any) map[string]any {
+	t.Helper()
+
+	out, ok := response.(map[string]any)
+	require.True(t, ok, "response must be an object")
+
+	return out
+}
+
 func TestMemoryStoreREcordUnlimited(t *testing.T) {
 	t.Parallel()
 
@@ -46,8 +55,8 @@ func TestMemoryStoreRedactsPluralMessages(t *testing.T) {
 			{"user": "a", "password": "sekret1"},
 			{"user": "b", "password": "sekret2"},
 		},
-		Responses: []map[string]any{
-			{"token": "t", "password": "resp-secret"},
+		Responses: []any{
+			map[string]any{"token": "t", "password": "resp-secret"},
 		},
 	})
 
@@ -55,7 +64,7 @@ func TestMemoryStoreRedactsPluralMessages(t *testing.T) {
 
 	require.Equal(t, "[REDACTED]", rec.Requests[0]["password"])
 	require.Equal(t, "[REDACTED]", rec.Requests[1]["password"], "every streaming message must be redacted")
-	require.Equal(t, "[REDACTED]", rec.Responses[0]["password"])
+	require.Equal(t, "[REDACTED]", responseMap(t, rec.Responses[0])["password"])
 	require.Equal(t, "[REDACTED]", rec.Requests[0]["password"])
 	require.Equal(t, "a", rec.Requests[0]["user"])
 }
@@ -68,13 +77,13 @@ func TestMemoryStoreTruncatesPluralMessages(t *testing.T) {
 	store.Record(history.CallRecord{
 		Service: "svc", Method: "M",
 		Requests:  []map[string]any{big},
-		Responses: []map[string]any{big},
+		Responses: []any{big},
 	})
 
 	rec := store.All()[0]
 
 	require.Equal(t, true, rec.Requests[0]["_truncated"], "oversized request message must be truncated")
-	require.Equal(t, true, rec.Responses[0]["_truncated"])
+	require.Equal(t, true, responseMap(t, rec.Responses[0])["_truncated"])
 	require.Equal(t, true, rec.Requests[0]["_truncated"])
 }
 
@@ -100,7 +109,7 @@ func TestMemoryStoreOwnsRecordedMaps(t *testing.T) {
 	store.Record(history.CallRecord{
 		Service: "s", Method: "m",
 		Requests:  []map[string]any{reqMap},
-		Responses: []map[string]any{{"list": arr}},
+		Responses: []any{map[string]any{"list": arr}},
 	})
 
 	reqMap["name"] = "mutated"
@@ -111,7 +120,7 @@ func TestMemoryStoreOwnsRecordedMaps(t *testing.T) {
 	require.Equal(t, "alice", rec.Requests[0]["name"], "stored request must not reflect caller mutation")
 	require.Equal(t, "v", rec.Requests[0]["nested"].(map[string]any)["k"]) //nolint:forcetypeassert
 
-	list, ok := rec.Responses[0]["list"].([]any)
+	list, ok := responseMap(t, rec.Responses[0])["list"].([]any)
 	require.True(t, ok)
 	require.Equal(t, 1, list[0].(map[string]any)["x"], "nested slice elements must be cloned too") //nolint:forcetypeassert
 }
@@ -192,7 +201,7 @@ func TestMemoryStoreREcordRedactsSensitiveKeys(t *testing.T) {
 				"token":   "jwt-xxx",
 			},
 		}},
-		Responses: []map[string]any{{
+		Responses: []any{map[string]any{
 			"Token":  "bearer-xxx",
 			"secret": "confidential",
 		}},
@@ -210,8 +219,8 @@ func TestMemoryStoreREcordRedactsSensitiveKeys(t *testing.T) {
 	require.Equal(t, "sk-xxx", nested["api_key"])
 	require.Equal(t, "[REDACTED]", nested["token"])
 
-	require.Equal(t, "[REDACTED]", r.Responses[0]["Token"])
-	require.Equal(t, "[REDACTED]", r.Responses[0]["secret"])
+	require.Equal(t, "[REDACTED]", responseMap(t, r.Responses[0])["Token"])
+	require.Equal(t, "[REDACTED]", responseMap(t, r.Responses[0])["secret"])
 }
 
 func TestMemoryStoreREcordRedactsInArrays(t *testing.T) {

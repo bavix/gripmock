@@ -261,7 +261,7 @@ func servedBidiTier(t *testing.T, headers map[string]any) string {
 	require.NoError(t, err)
 	require.NotNil(t, stub)
 
-	message, ok := stub.Output.Stream[0].(map[string]any)
+	message, ok := stub.Output.Messages()[0].(map[string]any)
 	require.True(t, ok)
 
 	tier, ok := message["tier"].(string)

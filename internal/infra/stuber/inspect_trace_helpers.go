@@ -16,22 +16,12 @@ func reasonIf(condition bool, reason string) string {
 	return ""
 }
 
-func isStubVisibleForSession(stubSession, querySession string) bool {
+// VisibleForSession reports whether a stub is visible to a caller in querySession:
+// global stubs are visible to everyone, session stubs only to their own session.
+func VisibleForSession(stubSession, querySession string) bool {
 	if querySession == "" {
 		return stubSession == ""
 	}
 
 	return stubSession == "" || stubSession == querySession
-}
-
-func doesQueryMatchStubHeaders(query Query, stub *Stub) bool {
-	if stub.Headers.Len() > 0 && len(query.Headers) == 0 {
-		return false
-	}
-
-	if len(query.Headers) > 0 && !matchHeaders(query.Headers, stub.Headers) {
-		return false
-	}
-
-	return true
 }

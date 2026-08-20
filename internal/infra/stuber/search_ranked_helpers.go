@@ -97,15 +97,12 @@ func sortRankedMatches(matches []rankedMatch) {
 }
 
 func countStubFields(stub *Stub) int {
-	count := len(stub.Input.Equals) + len(stub.Input.Contains) + len(stub.Input.Matches) + len(stub.Input.Glob)
-	count += len(stub.Headers.Equals) + len(stub.Headers.Contains) + len(stub.Headers.Matches) + len(stub.Headers.Glob)
+	count := len(stub.Headers.Equals) + len(stub.Headers.Contains) + len(stub.Headers.Matches) + len(stub.Headers.Glob)
 
-	for _, input := range stub.Inputs {
+	for _, input := range stub.Matchers() {
 		count += len(input.Equals) + len(input.Contains) + len(input.Matches) + len(input.Glob)
 		count += countAnyOfFields(input.AnyOf)
 	}
-
-	count += countAnyOfFields(stub.Input.AnyOf)
 
 	for _, alt := range stub.Headers.AnyOf {
 		count += len(alt.Equals) + len(alt.Contains) + len(alt.Matches) + len(alt.Glob)

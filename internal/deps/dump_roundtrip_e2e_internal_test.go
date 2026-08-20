@@ -88,6 +88,14 @@ func seedDumpStubs(t *testing.T, srv *e2eServer) {
 
 	srv.putStub(t, map[string]any{
 		"service": "e2e.Greeter",
+		"method":  "SayHello",
+		"input":   map[string]any{"equals": map[string]any{"name": "Templated"}},
+		"output": map[string]any{"template": true, "data": `{{ $who := .Request.name }}
+{{ dict "message" (printf "Hello %s" $who) }}`},
+	}, "")
+
+	srv.putStub(t, map[string]any{
+		"service": "e2e.Greeter",
 		"method":  "Collect",
 		"inputs": []any{
 			map[string]any{"equals": map[string]any{"part": "a"}},
@@ -125,6 +133,10 @@ func assertDumpedBehaviour(t *testing.T, srv *e2eServer) {
 	require.Len(t, frames, 3)
 	require.Contains(t, string(frameBody(t, frames[0])), "one")
 	require.Contains(t, string(frameBody(t, frames[1])), "two")
+
+	templated := connectJSON(t, srv, "SayHello", `{"name":"Templated"}`)
+	require.Equal(t, http.StatusOK, templated.status, string(templated.body))
+	require.JSONEq(t, `{"message":"Hello Templated"}`, string(templated.body))
 
 	chunk, summary := messagePair(t, srv.protoPath, "Chunk", "Summary")
 	conn := srv.dial(t)

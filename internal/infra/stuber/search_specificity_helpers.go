@@ -13,13 +13,14 @@ func (s *searcher) calcSpecificity(stub *Stub, query Query) int {
 		return specificity
 	}
 
-	// Priority to Inputs (newer functionality) over Input (legacy)
-	if len(stub.Inputs) > 0 {
-		return specificity + s.calcSpecificityStream(stub.Inputs, query.Input)
+	matchers := stub.Matchers()
+
+	if stub.DeclaresStreamMatchers() && len(matchers) > 0 {
+		return specificity + s.calcSpecificityStream(matchers, query.Input)
 	}
 
-	if len(query.Input) == 1 {
-		return specificity + s.calcSpecificityUnary(stub.Input, query.Input[0])
+	if !stub.DeclaresStreamMatchers() && len(query.Input) == 1 {
+		return specificity + s.calcSpecificityUnary(matchers[0], query.Input[0])
 	}
 
 	return specificity

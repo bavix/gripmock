@@ -3,6 +3,7 @@ package stuber
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -216,9 +217,20 @@ func (s *Stub) EffectiveTimes() int {
 	return s.Options.Times
 }
 
-// IsUnary returns true if this stub is for unary requests (has Input data).
-func (s *Stub) IsUnary() bool {
-	return len(s.Inputs) == 0
+// Matchers returns the request matchers in one shape: a unary stub has exactly one,
+// a client-streaming stub keeps the declared order.
+func (s *Stub) Matchers() []InputData {
+	if s.Inputs != nil {
+		return s.Inputs
+	}
+
+	return []InputData{s.Input}
+}
+
+// DeclaresStreamMatchers reports whether the stub declared `inputs`, which selects the
+// stream matcher: every message must match, and an empty list matches nothing.
+func (s *Stub) DeclaresStreamMatchers() bool {
+	return s.Inputs != nil
 }
 
 // IsClientStream returns true if this stub is for client streaming requests (has Inputs data).
@@ -226,9 +238,10 @@ func (s *Stub) IsClientStream() bool {
 	return len(s.Inputs) > 0
 }
 
-// IsServerStream returns true if this stub is for server streaming responses (has Output.Stream data).
+// IsServerStream returns true if this stub answers with a stream: literal messages
+// in Output.Stream, or a template in that slot.
 func (s *Stub) IsServerStream() bool {
-	return len(s.Output.Stream) > 0
+	return s.Output.IsServerStream()
 }
 
 // IsBidirectional returns true if this stub can handle bidirectional streaming.
@@ -239,16 +252,6 @@ func (s *Stub) IsBidirectional() bool {
 // Key returns the unique identifier of the stub.
 func (s *Stub) Key() uuid.UUID {
 	return s.ID
-}
-
-// Left returns the service name of the stub.
-func (s *Stub) Left() string {
-	return s.Service
-}
-
-// Right returns the method name of the stub.
-func (s *Stub) Right() string {
-	return s.Method
 }
 
 // Score returns the priority score of the stub.
@@ -290,11 +293,6 @@ func (i InputData) GetMatches() map[string]any {
 	return i.Matches
 }
 
-// GetGlob returns the data to match using glob patterns.
-func (i InputData) GetGlob() map[string]any {
-	return i.Glob
-}
-
 // InputHeader represents the headers of a gRPC request.
 type InputHeader struct {
 	Equals   map[string]any       `json:"equals"`
@@ -327,11 +325,6 @@ func (i InputHeader) GetMatches() map[string]any {
 	return i.Matches
 }
 
-// GetGlob returns the headers to match using glob patterns.
-func (i InputHeader) GetGlob() map[string]any {
-	return i.Glob
-}
-
 // Len returns the total number of headers to match.
 func (i InputHeader) Len() int {
 	n := len(i.Equals) + len(i.Matches) + len(i.Contains) + len(i.Glob)
@@ -343,14 +336,70 @@ func (i InputHeader) Len() int {
 	return n
 }
 
-// Output represents the output data of a gRPC response.
+// Output represents the output data of a gRPC response. With Template set, Data or
+// Stream holds a Go template instead of a literal payload; which of the two holds it
+// decides whether the stub answers with one message or with a stream.
 type Output struct {
 	Headers  map[string]string `json:"headers"`
 	Trailers map[string]string `json:"trailers,omitempty"`
 	Data     any               `json:"data,omitempty"`
-	Stream   []any             `json:"stream,omitempty"`
+	Stream   any               `json:"stream,omitempty"`
+	Template bool              `json:"template,omitempty"`
 	Error    string            `json:"error"`
 	Code     *codes.Code       `json:"code,omitempty"`
 	Details  []map[string]any  `json:"details,omitempty"`
 	Delay    types.Delay       `json:"delay,omitempty"`
+}
+
+// Messages returns the response messages in one shape: a unary payload is the only
+// element, a stream keeps its order, a template has none until it is rendered.
+func (o Output) Messages() []any {
+	if o.Template {
+		return nil
+	}
+
+	if messages, ok := o.Stream.([]any); ok {
+		return messages
+	}
+
+	if o.Stream != nil || o.Data == nil {
+		return nil
+	}
+
+	return []any{o.Data}
+}
+
+// IsServerStream reports whether the stub answers with a stream. It is declared by
+// the wire shape (stream vs data), never inferred from the payload.
+func (o Output) IsServerStream() bool {
+	return o.Stream != nil
+}
+
+// Document returns the template text and whether it renders the stream.
+func (o Output) Document() (string, bool) {
+	if text, ok := o.document(o.Stream); ok {
+		return text, true
+	}
+
+	text, _ := o.document(o.Data)
+
+	return text, false
+}
+
+// HasTemplate reports whether the output is computed from a template.
+func (o Output) HasTemplate() bool {
+	return o.Template
+}
+
+func (o Output) document(slot any) (string, bool) {
+	if !o.Template {
+		return "", false
+	}
+
+	text, ok := slot.(string)
+	if !ok || strings.TrimSpace(text) == "" {
+		return "", false
+	}
+
+	return text, true
 }

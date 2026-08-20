@@ -79,12 +79,19 @@ func DumpFileKey(stub *Stub) string {
 	return sanitizeDumpFileName(stub.Service + "_" + stub.Method)
 }
 
+// dumpFileGroup is DumpFileKey folded to lower case: a case-insensitive filesystem
+// (macOS, Windows) would otherwise let `Service_sendMessage` overwrite the file of
+// `Service_SendMessage` and drop those stubs from the dump.
+func dumpFileGroup(stub *Stub) string {
+	return strings.ToLower(DumpFileKey(stub))
+}
+
 func SortForDump(stubs []*Stub) {
 	sort.Slice(stubs, func(i, j int) bool {
 		leftKey := DumpFileKey(stubs[i])
 		rightKey := DumpFileKey(stubs[j])
 
-		if leftKey != rightKey {
+		if !strings.EqualFold(leftKey, rightKey) {
 			return leftKey < rightKey
 		}
 
@@ -106,10 +113,10 @@ func DumpToDir(outDir string, stubs []*Stub, format string) (int, error) {
 	filesCount := 0
 
 	for i := 0; i < len(stubs); {
-		key := DumpFileKey(stubs[i])
+		key, group := DumpFileKey(stubs[i]), dumpFileGroup(stubs[i])
 		j := i + 1
 
-		for j < len(stubs) && DumpFileKey(stubs[j]) == key {
+		for j < len(stubs) && dumpFileGroup(stubs[j]) == group {
 			j++
 		}
 
@@ -157,7 +164,7 @@ func WriteDump(writer io.Writer, stubs []*Stub, format string) error {
 		return encoder.Encode(records)
 	}
 
-	encoder := yaml.NewEncoder(writer)
+	encoder := yaml.NewEncoder(writer, yaml.UseLiteralStyleIfMultiline(true))
 
 	if err := encoder.Encode(records); err != nil {
 		_ = encoder.Close()
@@ -179,7 +186,7 @@ func dumpRecordOf(stub *Stub) map[string]any {
 	addDumpMatchers(record, stub)
 
 	if len(stub.Effects) > 0 {
-		record["effects"] = stub.Effects
+		record["effects"] = normalizeForDump(stub.Effects)
 	}
 
 	if stub.Source != "" {
@@ -240,6 +247,26 @@ func dumpInputs(inputs []InputData) []map[string]any {
 	}
 
 	return out
+}
+
+// normalizeForDump narrows the json.Number values a raw payload carries. The YAML
+// encoder writes json.Number as a quoted string, so an effect stub would come back with
+// "priority": "50" and fail to decode.
+func normalizeForDump(v any) any {
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return v
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+
+	var out any
+	if err := decoder.Decode(&out); err != nil {
+		return v
+	}
+
+	return normalizeNumbers(out)
 }
 
 func structToMap(v any) map[string]any {
