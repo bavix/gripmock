@@ -1,8 +1,9 @@
 package plugins
 
 import (
+	"crypto/rand"
 	"math"
-	"math/rand/v2"
+	"math/big"
 	"time"
 )
 
@@ -60,7 +61,12 @@ func jitterDelay(low, high any) string {
 		return from.String()
 	}
 
-	return (from + time.Duration(rand.Int64N(int64(to-from)))).String() //nolint:gosec
+	span, err := rand.Int(rand.Reader, big.NewInt(int64(to-from)))
+	if err != nil {
+		return from.String()
+	}
+
+	return (from + time.Duration(span.Int64())).String()
 }
 
 func toDuration(v any) (time.Duration, bool) {

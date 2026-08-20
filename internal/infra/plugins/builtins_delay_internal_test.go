@@ -44,3 +44,9 @@ func TestJitterStaysInRange(t *testing.T) {
 		require.Less(t, got.Milliseconds(), int64(250))
 	}
 }
+
+func BenchmarkJitterDelay(b *testing.B) {
+	for b.Loop() {
+		_ = jitterDelay("50ms", "250ms")
+	}
+}
