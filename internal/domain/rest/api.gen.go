@@ -770,10 +770,10 @@ type StubOutput struct {
 	// Data Response body for unary and client-streaming calls. Usually an object matching the proto message; may be a scalar when the method returns a well-known type directly.
 	Data any `json:"data,omitempty"`
 
-	// Delay Delay before sending the response
+	// Delay Delay before sending the response. A Go duration, or a template rendering one.
 	//
 	// Example: 1s
-	Delay gptypes.Duration `json:"delay,omitempty,omitzero"`
+	Delay gptypes.Delay `json:"delay,omitempty,omitzero"`
 
 	// Details gRPC status details packed into google.protobuf.Any (each item must contain type URL in `type`)
 	Details []StubOutput_Details_Item `json:"details,omitempty"`

@@ -28,7 +28,8 @@ Use <code v-pre>`{{.Request.field}}`</code> to access request data:
 :::
 
 ### Header Access
-Use <code v-pre>`{{.Headers.field}}`</code> to access request headers:
+Use <code v-pre>`{{.Headers.field}}`</code> to access request headers. Keys with a dash — most gRPC
+metadata — are only reachable as <code v-pre>`{{index .Headers "x-user"}}`</code>:
 
 ::: v-pre
 ```yaml
@@ -66,6 +67,9 @@ GripMock adds these:
 
 ### Time Functions
 - `now()`: current time, re-evaluated per message
+- `duration(n, unit?)`: number to duration string, `ms` by default
+- `regressive(attempt, start, step)`, `backoff(attempt, base, cap?)`, `jitter(min, max)`: ready-made
+  [delay](./delay#computed-delay) curves
 - `unix(t)`: time to Unix timestamp
 - `format(t, layout)`: format a time
 
@@ -149,6 +153,8 @@ Example:
 - <code v-pre>`{{.MessageIndex}}`</code>: Current message index (0-based) for streaming
 - <code v-pre>`{{.RequestTime}}`</code>: Request time, identical for every template in one request (alias: <code v-pre>`{{.Timestamp}}`</code>)
 - <code v-pre>`{{.StubID}}`</code>: UUID of the stub that matched (alias: <code v-pre>`{{.RequestID}}`</code>)
+- <code v-pre>`{{.AttemptNumber}}`</code>: Matches of this stub in the session, 1-based (alias <code v-pre>`{{.AttemptIndex}}`</code>)
+- <code v-pre>`{{.MaxAttempts}}`</code>: `options.times`, 0 when unlimited (alias <code v-pre>`{{.TotalAttempts}}`</code>)
 
 ### Streaming Context
 - <code v-pre>`{{.Requests}}`</code>: Slice of all non-empty client messages for client streaming
