@@ -36,8 +36,7 @@ type Builder struct {
 	config config.Config
 	ender  *lifecycle.Manager
 
-	promReg   *prometheus.Registry
-	otelInstr *telemetry.Instruments
+	promReg *prometheus.Registry
 
 	// eagerly initialized
 	stubValidator      *validator.Validate
@@ -76,7 +75,7 @@ func newStubValidator() *validator.Validate {
 
 func NewBuilder(opts ...Option) *Builder {
 	b := &Builder{
-		ender:   lifecycle.New(nil),
+		ender:   lifecycle.New(),
 		promReg: prometheus.NewRegistry(),
 	}
 	for _, opt := range opts {
@@ -113,8 +112,7 @@ func WithPlugins(paths []string) Option {
 
 func (b *Builder) LoadPlugins(ctx context.Context) {
 	b.pluginOnce.Do(func() {
-		reg := internalplugins.NewRegistry()
-		internalplugins.RegisterBuiltins(reg)
+		reg := internalplugins.Default()
 
 		allPaths := slices.Concat(b.config.TemplatePluginPaths, b.pluginPaths)
 		loader := internalplugins.NewLoader(allPaths)
@@ -133,7 +131,7 @@ func (b *Builder) TemplateEngine(ctx context.Context) *template.Engine {
 }
 
 func (b *Builder) InitTelemetry(ctx context.Context) {
-	b.otelInstr = telemetry.InitMetrics(ctx, build.Version, b.promReg)
+	telemetry.InitMetrics(ctx, build.Version, b.promReg)
 
 	if b.config.OTel.Enabled {
 		cfg := telemetry.Config{

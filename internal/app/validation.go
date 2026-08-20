@@ -1,11 +1,13 @@
 package app
 
 import (
+	stderrors "errors"
 	"fmt"
 
 	"github.com/go-playground/validator/v10"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
 func NewStubValidator() (*validator.Validate, error) {
@@ -44,6 +46,58 @@ func (e ValidationError) Error() string {
 	return e.Message
 }
 
+func StubValidator(v *validator.Validate, engine *template.Engine) func(*stuber.Stub) error {
+	return func(stub *stuber.Stub) error {
+		return checkStub(v, engine, stub)
+	}
+}
+
+func checkStub(v *validator.Validate, engine *template.Engine, stub *stuber.Stub) error {
+	if err := v.Struct(stub); err != nil {
+		validationErrors, ok := stderrors.AsType[validator.ValidationErrors](err)
+		if !ok || len(validationErrors) == 0 {
+			return err
+		}
+
+		fieldError := validationErrors[0]
+
+		return &ValidationError{
+			Field:   fieldError.Field(),
+			Tag:     fieldError.Tag(),
+			Value:   fieldError.Value(),
+			Message: getValidationMessage(fieldError),
+		}
+	}
+
+	if !stub.Output.HasTemplate() {
+		return nil
+	}
+
+	if stub.Service == HealthServiceFullName {
+		return templateError(errHealthTemplate)
+	}
+
+	document, _ := stub.Output.Document()
+	if document == "" {
+		return templateError("template output requires data or stream to hold the template text")
+	}
+
+	if err := engine.Validate(document); err != nil {
+		return templateError("Invalid output template: " + err.Error())
+	}
+
+	return nil
+}
+
+func templateError(message string) error {
+	return &ValidationError{
+		Field:   "Template",
+		Tag:     "valid_template",
+		Value:   true,
+		Message: message,
+	}
+}
+
 func validateInputConfiguration(fl validator.FieldLevel) bool {
 	v := stubFromFieldLevel(fl)
 	if v == nil {
@@ -62,10 +116,26 @@ func validateOutputConfiguration(fl validator.FieldLevel) bool {
 		return false
 	}
 
-	hasDataOutput := v.Output.Error != "" || v.Output.Data != nil || v.Output.Code != nil || len(v.Output.Details) > 0
-	hasStreamOutput := len(v.Output.Stream) > 0
+	return isValidOutputConfiguration(v.Output)
+}
 
-	return hasDataOutput != hasStreamOutput
+func isValidOutputConfiguration(output stuber.Output) bool {
+	if output.Data != nil && output.Stream != nil {
+		return false
+	}
+
+	if output.HasTemplate() {
+		document, _ := output.Document()
+
+		return document != ""
+	}
+
+	if _, isText := output.Stream.(string); isText {
+		return false
+	}
+
+	return output.Data != nil || output.Stream != nil ||
+		output.Error != "" || output.Code != nil || len(output.Details) > 0
 }
 
 func validateEffectsConfiguration(fl validator.FieldLevel) bool {
@@ -121,7 +191,8 @@ func getValidationMessage(fe validator.FieldError) string {
 	case "valid_input_config":
 		return "Invalid input configuration: must have either 'input' or 'inputs', but not both"
 	case "valid_output_config":
-		return "Invalid output configuration: must have either 'data' or 'stream', but not both"
+		return "Invalid output configuration: 'data' and 'stream' are mutually exclusive, " +
+			"and 'template: true' requires the chosen one to hold the template text"
 	case "valid_effects":
 		return "Invalid effects configuration: upsert requires 'stub', delete requires 'id'"
 	case "gte":

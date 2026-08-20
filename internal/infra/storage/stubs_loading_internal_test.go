@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,7 +21,7 @@ func newLoader(t *testing.T) (*Extender, *stuber.Budgerigar) {
 
 	budgerigar := stuber.NewBudgerigar()
 
-	return NewStub(budgerigar, yaml2json.New(plugintest.NewRegistry()), nil), budgerigar
+	return NewStub(budgerigar, yaml2json.New(plugintest.NewRegistry()), nil, nil), budgerigar
 }
 
 func writeStubFile(t *testing.T, dir, name, body string) string {
@@ -64,6 +65,34 @@ func TestLoaderReadsJSONYAMLAndNestedDirectories(t *testing.T) {
 	loader.readFromPath(t.Context(), dir)
 
 	require.Len(t, budgerigar.All(), 3, "only .json/.yaml/.yml files are stubs")
+}
+
+var errRejectedStub = errors.New("invalid stub")
+
+func TestLoaderSkipsStubsRejectedByValidation(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeStubFile(t, dir, "mixed.json", `[
+		{"service": "svc.Service", "method": "Method", "input": {"equals": {"id": "1"}}, "output": {"data": {"ok": true}}},
+		{"service": "svc.Service", "method": "Rejected", "input": {"equals": {"id": "2"}}, "output": {"data": {"ok": true}}}
+	]`)
+
+	budgerigar := stuber.NewBudgerigar()
+	validate := func(stub *stuber.Stub) error {
+		if stub.Method == "Rejected" {
+			return errRejectedStub
+		}
+
+		return nil
+	}
+
+	loader := NewStub(budgerigar, yaml2json.New(plugintest.NewRegistry()), nil, validate)
+	loader.readFromPath(t.Context(), dir)
+
+	stubs := budgerigar.All()
+	require.Len(t, stubs, 1, "an invalid stub is skipped, the rest of the file still loads")
+	require.Equal(t, "Method", stubs[0].Method)
 }
 
 func TestLoaderSkipsUnreadableFileAndKeepsTheRest(t *testing.T) {

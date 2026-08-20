@@ -51,7 +51,6 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 	}
 
 	grpcServer := app.NewGRPCServer(
-		b.config.GRPCNetwork,
 		b.config.GRPC.Addr,
 		param,
 		b.Budgerigar(),
