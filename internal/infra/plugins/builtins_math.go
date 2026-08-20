@@ -137,144 +137,120 @@ func parseIntString(s string) (int, bool) {
 	return i, true
 }
 
-func add(values ...any) float64 {
-	nums, ok := convertAllToFloat64(values...)
+func foldFloats(nums []float64, seed float64, seedFromFirst bool, op func(a, b float64) float64) (float64, int) {
+	acc, count := seed, 0
+
+	for _, f := range nums {
+		if seedFromFirst && count == 0 {
+			acc = f
+		} else {
+			acc = op(acc, f)
+		}
+
+		count++
+	}
+
+	return acc, count
+}
+
+func flattenNumbers(values []any) []any {
+	if len(values) == 1 {
+		if nested, ok := values[0].([]any); ok {
+			return nested
+		}
+	}
+
+	return values
+}
+
+func foldNumbers(values []any, seed float64, seedFromFirst bool, op func(a, b float64) float64) (float64, int, bool) {
+	if len(values) == 1 {
+		if nums, ok := values[0].([]float64); ok {
+			acc, count := foldFloats(nums, seed, seedFromFirst, op)
+
+			return acc, count, true
+		}
+	}
+
+	acc, count := seed, 0
+
+	for _, raw := range flattenNumbers(values) {
+		f, ok := convertToFloat64(raw)
+		if !ok {
+			return 0, 0, false
+		}
+
+		if seedFromFirst && count == 0 {
+			acc = f
+		} else {
+			acc = op(acc, f)
+		}
+
+		count++
+	}
+
+	return acc, count, true
+}
+
+func fold(values []any, seed float64, seedFromFirst bool, op func(a, b float64) float64) float64 {
+	acc, _, ok := foldNumbers(values, seed, seedFromFirst, op)
 	if !ok {
 		return 0
 	}
 
-	sum := 0.0
-	for _, v := range nums {
-		sum += v
-	}
+	return acc
+}
 
-	return sum
+func add(values ...any) float64 {
+	return fold(values, 0, false, func(a, b float64) float64 { return a + b })
 }
 
 func subtract(values ...any) float64 {
-	nums, ok := convertAllToFloat64(values...)
-	if !ok || len(nums) == 0 {
-		return 0
-	}
-
-	result := nums[0]
-
-	for _, v := range nums[1:] {
-		result -= v
-	}
-
-	return result
+	return fold(values, 0, true, func(a, b float64) float64 { return a - b })
 }
 
 func divide(values ...any) float64 {
-	nums, ok := convertAllToFloat64(values...)
-	if !ok || len(nums) == 0 {
-		return 0
-	}
-
-	result := nums[0]
-
-	for _, v := range nums[1:] {
-		if v != 0 {
-			result /= v
+	return fold(values, 0, true, func(a, b float64) float64 {
+		if b == 0 {
+			return a
 		}
-	}
 
-	return result
+		return a / b
+	})
 }
 
 func modulo(values ...any) float64 {
-	nums, ok := convertAllToFloat64(values...)
-	if !ok || len(nums) < 2 || nums[1] == 0 {
+	if len(values) < 2 { //nolint:mnd
 		return 0
 	}
 
-	return math.Mod(nums[0], nums[1])
+	first, okFirst := convertToFloat64(values[0])
+	second, okSecond := convertToFloat64(values[1])
+
+	if !okFirst || !okSecond || second == 0 {
+		return 0
+	}
+
+	return math.Mod(first, second)
 }
 
 func product(values ...any) float64 {
-	nums, ok := convertAllToFloat64(values...)
-	if !ok {
-		return 0
-	}
-
-	prod := 1.0
-	for _, v := range nums {
-		prod *= v
-	}
-
-	return prod
+	return fold(values, 1, false, func(a, b float64) float64 { return a * b })
 }
 
 func average(values ...any) float64 {
-	nums, ok := convertAllToFloat64(values...)
-	if !ok || len(nums) == 0 {
+	total, count, ok := foldNumbers(values, 0, false, func(a, b float64) float64 { return a + b })
+	if !ok || count == 0 {
 		return 0
 	}
 
-	total := 0.0
-	for _, v := range nums {
-		total += v
-	}
-
-	return total / float64(len(nums))
+	return total / float64(count)
 }
 
 func minValue(values ...any) float64 {
-	nums, ok := convertAllToFloat64(values...)
-	if !ok || len(nums) == 0 {
-		return 0
-	}
-
-	minVal := nums[0]
-
-	for _, v := range nums[1:] {
-		minVal = min(minVal, v)
-	}
-
-	return minVal
+	return fold(values, 0, true, math.Min)
 }
 
 func maxValue(values ...any) float64 {
-	nums, ok := convertAllToFloat64(values...)
-	if !ok || len(nums) == 0 {
-		return 0
-	}
-
-	maxVal := nums[0]
-
-	for _, v := range nums[1:] {
-		maxVal = max(maxVal, v)
-	}
-
-	return maxVal
-}
-
-func convertAllToFloat64(values ...any) ([]float64, bool) {
-	// A single slice argument (e.g. {{ sum .Numbers }}) is flattened, so the math
-	// helpers accept either an array OR spread scalars ({{ sum 1 2 3 }}). This
-	// keeps the array-spread behavior local to the aggregates instead of a global
-	// wrapper that would corrupt unary helpers like {{ json .arr }}.
-	if len(values) == 1 {
-		switch v := values[0].(type) {
-		case []any:
-			values = v
-		case []float64:
-			nums := make([]float64, len(v))
-			copy(nums, v)
-
-			return nums, true
-		}
-	}
-
-	nums := make([]float64, 0, len(values))
-	for _, v := range values {
-		if f, ok := convertToFloat64(v); ok {
-			nums = append(nums, f)
-		} else {
-			return nil, false
-		}
-	}
-
-	return nums, true
+	return fold(values, 0, true, math.Max)
 }
