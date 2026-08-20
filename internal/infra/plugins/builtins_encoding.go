@@ -76,6 +76,49 @@ func timeFuncs() map[string]any {
 		"now":    time.Now,
 		"unix":   time.Time.Unix,
 		"format": time.Time.Format,
+		"duration": func(v any, unit ...any) string {
+			f, ok := convertToFloat64(v)
+			if !ok {
+				return "0s"
+			}
+
+			suffix := "ms"
+
+			if len(unit) > 0 {
+				s, ok := unit[0].(string)
+				if !ok {
+					return "0s"
+				}
+
+				suffix = s
+			}
+
+			scale := durationUnit(suffix)
+			if scale == 0 {
+				return "0s"
+			}
+
+			return time.Duration(f * float64(scale)).String()
+		},
+	}
+}
+
+func durationUnit(suffix string) time.Duration {
+	switch suffix {
+	case "ns":
+		return time.Nanosecond
+	case "us", "µs":
+		return time.Microsecond
+	case "ms":
+		return time.Millisecond
+	case "s":
+		return time.Second
+	case "m":
+		return time.Minute
+	case "h":
+		return time.Hour
+	default:
+		return 0
 	}
 }
 
