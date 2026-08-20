@@ -137,8 +137,10 @@ func (s *searcher) searchByID(query Query) (*Result, error) {
 	}
 
 	_, found := s.lookupVisibleByID(query.Session, *query.ID)
-	if found != nil && s.tryReserve(query, found) {
-		return &Result{found: found}, nil
+	if found != nil {
+		if matchNumber, ok := s.tryReserve(query, found); ok {
+			return &Result{found: found, matchNumber: matchNumber}, nil
+		}
 	}
 
 	return nil, ErrServiceNotFound
@@ -146,10 +148,9 @@ func (s *searcher) searchByID(query Query) (*Result, error) {
 
 // tryReserve atomically checks if the stub can be used (under Times limit) and increments the count.
 // When query.Session is set, the count is per-session (parallel test isolation).
-// Returns true if the reservation succeeded, false if the stub is exhausted.
-func (s *searcher) tryReserve(query Query, stub *Stub) bool {
+func (s *searcher) tryReserve(query Query, stub *Stub) (int, bool) {
 	if query.RequestInternal() {
-		return true
+		return 1, true
 	}
 
 	s.mu.Lock()
@@ -159,10 +160,10 @@ func (s *searcher) tryReserve(query Query, stub *Stub) bool {
 
 	times := stub.EffectiveTimes()
 	if times > 0 && s.stubCallCount[key] >= times {
-		return false
+		return 0, false
 	}
 
 	s.stubCallCount[key]++
 
-	return true
+	return s.stubCallCount[key], true
 }

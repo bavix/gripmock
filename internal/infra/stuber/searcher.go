@@ -47,11 +47,17 @@ type searcher struct {
 type Result struct {
 	found   *Stub // The exact match found in the search
 	similar *Stub // The most similar match found
+
+	matchNumber int
 }
 
 // Found returns the exact match found in the search.
 func (r *Result) Found() *Stub {
 	return r.found
+}
+
+func (r *Result) MatchNumber() int {
+	return r.matchNumber
 }
 
 // Similar returns the most similar match found in the search.
