@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.21.0 - 2026-08-20
+
+### What's Changed
+
+* feat: computed delay by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/969
+* chore(deps): bump sourcemeta/jsonschema from 16.7.0 to 16.8.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/968
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.20.0...v3.21.0
+
 ## v3.20.0 - 2026-08-19
 
 ### What's Changed
