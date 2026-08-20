@@ -61,6 +61,7 @@ func builtinGroups() []groupDef {
 		compareGroup(),
 		mathGroup(),
 		timeGroup(),
+		delayGroup(),
 		uuidGroup(),
 		encodingGroup(),
 		fakerGroup(),
@@ -184,9 +185,23 @@ func timeGroup() groupDef {
 		defaultDesc: "time helper",
 		funcs:       timeFuncs(),
 		overrides: map[string]string{
-			"now":    "current time",
-			"unix":   "timestamp seconds",
-			"format": "format time with layout",
+			"now":      "current time",
+			"unix":     "timestamp seconds",
+			"format":   "format time with layout",
+			"duration": "number to duration string (unit defaults to ms)",
+		},
+	}
+}
+
+func delayGroup() groupDef {
+	return groupDef{
+		group:       "delay",
+		defaultDesc: "delay helper",
+		funcs:       delayFuncs(),
+		overrides: map[string]string{
+			"regressive": "shrinking delay: start minus step per attempt, floored at zero",
+			"backoff":    "doubling delay from base, optionally capped",
+			"jitter":     "random delay between two durations",
 		},
 	}
 }

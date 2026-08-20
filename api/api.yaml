@@ -2123,11 +2123,11 @@ components:
           x-go-type-skip-optional-pointer: true
         delay:
           type: string
-          x-go-type: gptypes.Duration
+          x-go-type: gptypes.Delay
           x-go-type-import:
             name: gptypes
             path: github.com/bavix/gripmock/v3/internal/infra/types
-          description: Delay before sending the response
+          description: Delay before sending the response. A Go duration, or a template rendering one.
           example: "1s"
           x-omitzero: true
           x-go-type-skip-optional-pointer: true

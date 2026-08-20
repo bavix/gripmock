@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/goccy/go-json"
 	"github.com/gorilla/mux"
@@ -25,6 +26,8 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
+	"github.com/bavix/gripmock/v3/pkg/plugins"
+	"github.com/bavix/gripmock/v3/pkg/plugintest"
 )
 
 func TestConnectRPCGateway_MethodNotAllowed(t *testing.T) {
@@ -822,4 +825,65 @@ func TestConnectRPCGateway_RequireProtocolVersion(t *testing.T) {
 			require.NotEqual(t, http.StatusBadRequest, rec.Code)
 		})
 	}
+}
+
+func TestConnectRPCGateway_HandleWithoutDescriptor_ComputedDelay(t *testing.T) {
+	t.Parallel()
+
+	bg := stuber.NewBudgerigar()
+	bg.PutMany(&stuber.Stub{
+		Service: "delay.Service",
+		Method:  "TestMethod",
+		Output:  stuber.Output{Delay: "{{ duration (sub 150 (mul 150 (sub .AttemptNumber 1))) }}"},
+	})
+
+	gateway := NewConnectRPCGateway(t.Context(), bg, nil, nil, nil, nil, nil)
+
+	call := func() time.Duration {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost,
+			"/delay.Service/TestMethod", bytes.NewReader([]byte(`{}`)))
+		req.Header.Set("Content-Type", "application/json")
+
+		started := time.Now()
+
+		gateway.handleWithoutDescriptor(rec, req, "delay.Service", "TestMethod", connectResponse{})
+		require.Equal(t, http.StatusOK, rec.Code)
+
+		return time.Since(started)
+	}
+
+	require.GreaterOrEqual(t, call(), 150*time.Millisecond)
+	require.Less(t, call(), 150*time.Millisecond)
+}
+
+func TestConnectRPCGateway_UsesInjectedTemplateEngine(t *testing.T) {
+	t.Parallel()
+
+	registry := plugintest.NewRegistryWith(
+		plugins.PluginInfo{Name: "test", Kind: "external"},
+		plugins.Specs(plugins.FuncSpec{Name: "twice", Fn: func(v int) int { return v * 2 }}),
+	)
+
+	bg := stuber.NewBudgerigar()
+	bg.PutMany(&stuber.Stub{
+		Service: "plugin.Service",
+		Method:  "TestMethod",
+		Output:  stuber.Output{Delay: "{{ twice 60 }}ms"},
+	})
+
+	gateway := NewConnectRPCGateway(t.Context(), bg, nil, nil, nil, nil, nil,
+		template.New(t.Context(), registry))
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost,
+		"/plugin.Service/TestMethod", bytes.NewReader([]byte(`{}`)))
+	req.Header.Set("Content-Type", "application/json")
+
+	started := time.Now()
+
+	gateway.handleWithoutDescriptor(rec, req, "plugin.Service", "TestMethod", connectResponse{})
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.GreaterOrEqual(t, time.Since(started), 120*time.Millisecond)
 }

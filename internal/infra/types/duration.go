@@ -3,6 +3,7 @@ package types
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -33,4 +34,52 @@ func (d *Duration) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements json.Marshaler interface.
 func (d Duration) MarshalJSON() ([]byte, error) {
 	return json.Marshal(time.Duration(d).String())
+}
+
+type Delay string //nolint:recvcheck
+
+func NewDelay(d time.Duration) Delay {
+	return Delay(d.String())
+}
+
+func (d Delay) IsTemplate() bool {
+	return strings.Contains(string(d), "{{")
+}
+
+func (d Delay) Parse() (Duration, error) {
+	if d == "" || d.IsTemplate() {
+		return 0, nil
+	}
+
+	parsed, err := time.ParseDuration(string(d))
+
+	return Duration(parsed), err
+}
+
+func (d Delay) Static() Duration {
+	parsed, _ := d.Parse()
+
+	return parsed
+}
+
+func (d *Delay) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		var ns time.Duration
+		if err := json.Unmarshal(data, &ns); err != nil {
+			return err
+		}
+
+		*d = NewDelay(ns)
+
+		return nil
+	}
+
+	if _, err := Delay(s).Parse(); err != nil {
+		return err
+	}
+
+	*d = Delay(s)
+
+	return nil
 }

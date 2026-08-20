@@ -191,8 +191,10 @@ func (s *searcher) processStubsSequential(query Query, stubs []*Stub) (*Result, 
 }
 
 func (s *searcher) processSingleStub(query Query, stub *Stub) (*Result, error) {
-	if s.fastMatchV2(query, stub) && s.tryReserve(query, stub) {
-		return &Result{found: stub}, nil
+	if s.fastMatchV2(query, stub) {
+		if matchNumber, ok := s.tryReserve(query, stub); ok {
+			return &Result{found: stub, matchNumber: matchNumber}, nil
+		}
 	}
 
 	return &Result{similar: stub}, nil
@@ -240,22 +242,22 @@ func (s *searcher) bestSimilarCandidate(query Query, stubs []*Stub) similarCandi
 	return best
 }
 
-func (s *searcher) reserveFirstRankedMatch(query Query, matches []rankedMatch) *Stub {
+func (s *searcher) reserveFirstRankedMatch(query Query, matches []rankedMatch) (*Stub, int) {
 	for _, match := range matches {
-		if s.tryReserve(query, match.stub) {
-			return match.stub
+		if matchNumber, ok := s.tryReserve(query, match.stub); ok {
+			return match.stub, matchNumber
 		}
 	}
 
-	return nil
+	return nil, 0
 }
 
 // resultFromRankedMatches reserves the best ranked match, falling back to the
 // closest similar stub. similarFn is only invoked on that fallback path, so
 // callers can skip computing it while a match looks reservable.
 func (s *searcher) resultFromRankedMatches(query Query, matches []rankedMatch, similarFn func() *Stub) (*Result, error) {
-	if found := s.reserveFirstRankedMatch(query, matches); found != nil {
-		return &Result{found: found}, nil
+	if found, matchNumber := s.reserveFirstRankedMatch(query, matches); found != nil {
+		return &Result{found: found, matchNumber: matchNumber}, nil
 	}
 
 	if similar := similarFn(); similar != nil {

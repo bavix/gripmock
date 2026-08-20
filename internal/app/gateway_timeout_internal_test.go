@@ -97,7 +97,7 @@ func TestConnectGatewayAppliesRequestTimeout(t *testing.T) {
 		Input:   stuber.InputData{Equals: map[string]any{"message": "slow"}},
 		Output: stuber.Output{
 			Data:  map[string]any{"reply": "Pong"},
-			Delay: types.Duration(time.Second),
+			Delay: types.NewDelay(time.Second),
 		},
 	})
 

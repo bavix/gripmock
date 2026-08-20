@@ -71,6 +71,7 @@ func NewRestServer(
 	stubValidator *validator.Validate,
 	registry *descriptors.Registry,
 	errorFormatter *ErrorFormatter,
+	engines ...*template.Engine,
 ) (*RestServer, error) {
 	v := stubValidator
 	if v == nil {
@@ -101,7 +102,7 @@ func NewRestServer(
 		errorFormatter:  e,
 		// Built once with the server's lifetime context and reused for mock_call
 		// response rendering, so no context is fabricated per request.
-		templateEngine: template.New(ctx, nil),
+		templateEngine: engineOr(ctx, engines),
 	}
 
 	go func() {
@@ -304,6 +305,15 @@ func (h *RestServer) validateStub(stub *stuber.Stub) error {
 		}
 
 		return err
+	}
+
+	if err := validateDelay(h.templateEngine, stub.Output.Delay); err != nil {
+		return &ValidationError{
+			Field:   "delay",
+			Tag:     "delay",
+			Value:   string(stub.Output.Delay),
+			Message: err.Error(),
+		}
 	}
 
 	return nil

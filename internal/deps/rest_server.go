@@ -94,6 +94,7 @@ func (b *Builder) RestServe(
 		b.StubValidator(),
 		b.DescriptorRegistry(),
 		b.ErrorFormatter(),
+		b.TemplateEngine(ctx),
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create rest server")

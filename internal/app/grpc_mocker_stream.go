@@ -157,12 +157,6 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 
 	found := result.Found()
 
-	if !streamDelaysPerMessage(found) {
-		if err := delayResponse(stream.Context(), found.Output.Delay); err != nil {
-			return err
-		}
-	}
-
 	outputToUse := found.Output
 	requestData := m.convertToMap(inputMsg)
 
@@ -171,7 +165,15 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		headers = processHeaders(md)
 	}
 
-	templateData := newTemplateData(requestData, headers, 0, requestTime, []any{requestData}, found.ID.String())
+	matchNumber := result.MatchNumber()
+	templateData := newTemplateData(requestData, headers, 0, requestTime,
+		[]any{requestData}, found, matchNumber)
+
+	if !streamDelaysPerMessage(found) {
+		if err := delayTemplated(stream.Context(), m.templateEngine, found.Output.Delay, templateData); err != nil {
+			return err
+		}
+	}
 
 	if template.HasTemplatesInHeaders(outputToUse.Headers) {
 		headersCopy := deepCopyStringMap(outputToUse.Headers)
@@ -213,7 +215,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 	}
 
 	if found.Output.Stream == nil {
-		return m.handleServerStreamOutput(stream, found, requestData, outputToUse, requestTime)
+		return m.handleServerStreamOutput(stream, found, requestData, outputToUse, requestTime, matchNumber)
 	}
 
 	if len(found.Output.Stream) == 0 {
@@ -225,7 +227,7 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		return callErr //nolint:wrapcheck
 	}
 
-	sent, callErr := m.handleArrayStreamData(stream, found, inputMsg, requestTime)
+	sent, callErr := m.handleArrayStreamData(stream, found, inputMsg, requestTime, matchNumber)
 	if callErr == nil {
 		callErr = m.handleOutputError(stream.Context(), stream, outputToUse)
 	}
@@ -321,8 +323,9 @@ func (m *grpcMocker) handleServerStreamOutput(
 	requestData map[string]any,
 	outputToUse stuber.Output,
 	requestTime time.Time,
+	matchNumber int,
 ) error {
-	callErr := m.handleNonArrayStreamData(stream, found, outputToUse, requestData, requestTime)
+	callErr := m.handleNonArrayStreamData(stream, found, outputToUse, requestData, requestTime, matchNumber)
 
 	m.recordServerStreamUnlessProxied(stream.Context(), found, requestTime,
 		requestData, []any{outputToUse.Data}, recordedMetadata(outputToUse), callErr)
@@ -351,6 +354,7 @@ func (m *grpcMocker) handleArrayStreamData(
 	found *stuber.Stub,
 	inputMsg *dynamicpb.Message,
 	requestTime time.Time,
+	matchNumber int,
 ) (int, error) {
 	done := stream.Context().Done()
 
@@ -361,7 +365,7 @@ func (m *grpcMocker) handleArrayStreamData(
 		default:
 		}
 
-		if err := m.handleStreamElement(stream, found, streamData, i, inputMsg, requestTime); err != nil {
+		if err := m.handleStreamElement(stream, found, streamData, i, inputMsg, requestTime, matchNumber); err != nil {
 			return i, err
 		}
 	}
@@ -376,6 +380,7 @@ func (m *grpcMocker) handleStreamElement(
 	i int,
 	inputMsg *dynamicpb.Message,
 	requestTime time.Time,
+	matchNumber int,
 ) error {
 	outputData, ok := streamData.(map[string]any)
 	if !ok {
@@ -385,15 +390,6 @@ func (m *grpcMocker) handleStreamElement(
 	outputDataCopy := deepCopyMapAny(outputData)
 	element := stuber.ExtractGripMock(outputDataCopy)
 
-	delay := found.Output.Delay
-	if d, ok := element.Delay, element.HasDelay; ok {
-		delay = d
-	}
-
-	if err := delayResponse(stream.Context(), delay); err != nil {
-		return err
-	}
-
 	requestData := m.convertToMap(inputMsg)
 
 	headers := make(map[string]any)
@@ -401,7 +397,12 @@ func (m *grpcMocker) handleStreamElement(
 		headers = processHeaders(md)
 	}
 
-	templateData := newTemplateData(requestData, headers, i, requestTime, []any{requestData}, found.ID.String())
+	templateData := newTemplateData(requestData, headers, i, requestTime,
+		[]any{requestData}, found, matchNumber)
+
+	if err := delayTemplated(stream.Context(), m.templateEngine, elementDelay(found.Output.Delay, element), templateData); err != nil {
+		return err
+	}
 
 	if element.HasError {
 		return m.streamElementError(element, templateData)
@@ -430,6 +431,7 @@ func (m *grpcMocker) handleNonArrayStreamData(
 	outputToUse stuber.Output,
 	requestData map[string]any,
 	requestTime time.Time,
+	matchNumber int,
 ) error {
 	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil {
 		return err
@@ -442,10 +444,6 @@ func (m *grpcMocker) handleNonArrayStreamData(
 		case <-done:
 			return stream.Context().Err()
 		default:
-		}
-
-		if err := delayResponse(stream.Context(), found.Output.Delay); err != nil {
-			return err
 		}
 
 		outputDataCopy := copyForTemplates(found.Output.Data)
@@ -463,7 +461,13 @@ func (m *grpcMocker) handleNonArrayStreamData(
 			headers = processHeaders(md)
 		}
 
-		templateData := newTemplateData(msgData, headers, 0, msgTime, []any{msgData}, found.ID.String())
+		templateData := newTemplateData(msgData, headers, 0, msgTime,
+			[]any{msgData}, found, matchNumber)
+
+		if err := delayTemplated(stream.Context(), m.templateEngine, found.Output.Delay, templateData); err != nil {
+			return err
+		}
+
 		if dataMap, ok := outputDataCopy.(map[string]any); ok {
 			if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
 				return errors.Wrap(err, "failed to process dynamic templates")

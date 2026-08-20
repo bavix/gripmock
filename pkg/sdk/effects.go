@@ -2,7 +2,6 @@ package sdk
 
 import (
 	"maps"
-	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -99,7 +98,7 @@ func (b *EffectBuilder) Return(kv ...any) *EffectBuilder {
 	b.stub.Output = stuber.Output{Data: data}
 
 	if delay > 0 {
-		b.stub.Output.Delay = types.Duration(delay)
+		b.stub.Output.Delay = types.NewDelay(delay)
 	}
 
 	return b
@@ -264,8 +263,8 @@ func outputToMap(o stuber.Output) map[string]any {
 		out["details"] = o.Details
 	}
 
-	if o.Delay > 0 {
-		out["delay"] = time.Duration(o.Delay).String()
+	if o.Delay != "" {
+		out["delay"] = string(o.Delay)
 	}
 
 	return out

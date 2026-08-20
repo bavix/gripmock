@@ -13,6 +13,7 @@ type BidiResult struct {
 	reserveQuery  Query
 	inputBuf      [1]map[string]any
 	matchingStubs []*Stub
+	matchNumber   int
 	messageCount  atomic.Int32
 	mu            sync.Mutex
 }
@@ -46,6 +47,13 @@ func (br *BidiResult) Next(messageData map[string]any) (*Stub, error) {
 
 		br.removeStubFromMatchingByIndex(bestIndex)
 	}
+}
+
+func (br *BidiResult) MatchNumber() int {
+	br.mu.Lock()
+	defer br.mu.Unlock()
+
+	return br.matchNumber
 }
 
 // GetMessageIndex returns the current message index in the bidirectional stream (0-based).
@@ -116,9 +124,12 @@ func (br *BidiResult) selectBestStub(itemQuery Query, messageIndex int) (*Stub, 
 }
 
 func (br *BidiResult) tryReserveAndFinalize(bestStub *Stub, itemQuery Query, isFirstMessage bool) bool {
-	if !br.searcher.tryReserve(itemQuery, bestStub) {
+	matchNumber, ok := br.searcher.tryReserve(itemQuery, bestStub)
+	if !ok {
 		return false
 	}
+
+	br.matchNumber = matchNumber
 
 	if !bestStub.IsClientStream() && isFirstMessage {
 		br.matchingStubs = nil

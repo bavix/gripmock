@@ -18,6 +18,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/proxycapture"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/internal/infra/template"
 	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
@@ -29,10 +30,11 @@ const (
 type mockableHealthServer struct {
 	healthgrpc.UnimplementedHealthServer
 
-	real     *health.Server
-	storage  *stuber.Budgerigar
-	resolver protodesc.Resolver
-	proxies  *proxyroutes.Registry
+	real           *health.Server
+	templateEngine *template.Engine
+	storage        *stuber.Budgerigar
+	resolver       protodesc.Resolver
+	proxies        *proxyroutes.Registry
 }
 
 func newMockableHealthServer(
@@ -40,12 +42,14 @@ func newMockableHealthServer(
 	storage *stuber.Budgerigar,
 	resolver protodesc.Resolver,
 	proxies *proxyroutes.Registry,
+	templateEngine *template.Engine,
 ) *mockableHealthServer {
 	return &mockableHealthServer{
-		real:     healthServer,
-		storage:  storage,
-		resolver: resolver,
-		proxies:  proxies,
+		real:           healthServer,
+		templateEngine: templateEngine,
+		storage:        storage,
+		resolver:       resolver,
+		proxies:        proxies,
 	}
 }
 
@@ -53,7 +57,7 @@ func (s *mockableHealthServer) Check(
 	ctx context.Context,
 	req *healthgrpc.HealthCheckRequest,
 ) (*healthgrpc.HealthCheckResponse, error) {
-	stub, ok := s.findStub(ctx, healthMethodCheck, req.GetService())
+	stub, matchNumber, ok := s.findStub(ctx, healthMethodCheck, req.GetService())
 
 	if !ok {
 		if route := s.proxyRoute(); route != nil && route.Conn != nil {
@@ -63,7 +67,8 @@ func (s *mockableHealthServer) Check(
 		return s.real.Check(ctx, req)
 	}
 
-	if err := delayResponse(ctx, stub.Output.Delay); err != nil {
+	td := healthTemplateData(ctx, req.GetService(), stub, matchNumber)
+	if err := delayTemplated(ctx, s.templateEngine, stub.Output.Delay, td); err != nil {
 		return nil, err
 	}
 
@@ -90,8 +95,9 @@ func (s *mockableHealthServer) Check(
 }
 
 func (s *mockableHealthServer) Watch(req *healthgrpc.HealthCheckRequest, stream healthgrpc.Health_WatchServer) error {
-	if stub, ok := s.findStub(stream.Context(), healthMethodWatch, req.GetService()); ok {
-		return s.watchFromStub(stream.Context(), stream, stub)
+	if stub, matchNumber, ok := s.findStub(stream.Context(), healthMethodWatch, req.GetService()); ok {
+		return s.watchFromStub(stream.Context(), stream, stub,
+			healthTemplateData(stream.Context(), req.GetService(), stub, matchNumber))
 	}
 
 	return s.watchFromProxyOrFallback(req, stream)
@@ -112,6 +118,7 @@ func (s *mockableHealthServer) watchFromStub(
 	ctx context.Context,
 	stream healthgrpc.Health_WatchServer,
 	stub *stuber.Stub,
+	td template.Data,
 ) error {
 	st, err := statusFromHealthOutput(stub.Output, s.resolver)
 	if err != nil {
@@ -131,7 +138,7 @@ func (s *mockableHealthServer) watchFromStub(
 		return status.Error(codes.Internal, "health watch stub output is empty")
 	}
 
-	if err := delayResponse(ctx, stub.Output.Delay); err != nil {
+	if err := delayTemplated(ctx, s.templateEngine, stub.Output.Delay, td); err != nil {
 		return err
 	}
 
@@ -291,7 +298,7 @@ func (s *mockableHealthServer) captureProxyHealthStub(
 	}
 
 	if route.Source != nil && route.Source.RecordDelay && elapsed > 0 {
-		stub.Output.Delay = types.Duration(elapsed)
+		stub.Output.Delay = types.NewDelay(elapsed)
 	}
 
 	s.storage.PutMany(stub)

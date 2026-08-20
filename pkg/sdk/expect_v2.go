@@ -261,7 +261,7 @@ func (e *UnaryExpectation) NextWillReturn(kv ...any) *UnaryExpectation {
 
 	output := stuber.Output{Data: data}
 	if delay > 0 {
-		output.Delay = types.Duration(delay)
+		output.Delay = types.NewDelay(delay)
 	}
 
 	e.registerOutput(output, e.priority-e.chainIdx)
@@ -410,7 +410,7 @@ func (e *UnaryExpectation) buildOutput() stuber.Output {
 
 		out := stuber.Output{Code: &c, Error: e.err.msg, Details: e.err.details}
 		if e.delay > 0 {
-			out.Delay = types.Duration(e.delay)
+			out.Delay = types.NewDelay(e.delay)
 		}
 
 		return out
@@ -423,7 +423,7 @@ func (e *UnaryExpectation) buildOutput() stuber.Output {
 
 	out := stuber.Output{Data: data}
 	if e.delay > 0 {
-		out.Delay = types.Duration(e.delay)
+		out.Delay = types.NewDelay(e.delay)
 	}
 
 	return out
@@ -548,7 +548,7 @@ func (e *ServerStreamExpectation) ReturnErrorWithDetails(
 	output := stuber.Output{Code: &c, Error: msg, Details: details}
 
 	if e.delay > 0 {
-		output.Delay = types.Duration(e.delay)
+		output.Delay = types.NewDelay(e.delay)
 	}
 
 	e.applyResponseMeta(&output)
@@ -597,7 +597,7 @@ func (e *ServerStreamExpectation) register(output stuber.Output, handler stuber.
 	e.committed = true
 
 	if e.delay > 0 {
-		output.Delay = types.Duration(e.delay)
+		output.Delay = types.NewDelay(e.delay)
 	}
 
 	e.applyResponseMeta(&output)
@@ -884,7 +884,7 @@ func (e *ClientStreamExpectation) register() {
 	}
 
 	if e.delay > 0 {
-		output.Delay = types.Duration(e.delay)
+		output.Delay = types.NewDelay(e.delay)
 	}
 
 	e.applyResponseMeta(&output)
@@ -1163,7 +1163,7 @@ func (e *BidirectionalExpectation) register(
 	e.committed = true
 
 	if e.delay > 0 {
-		output.Delay = types.Duration(e.delay)
+		output.Delay = types.NewDelay(e.delay)
 	}
 
 	e.applyResponseMeta(&output)

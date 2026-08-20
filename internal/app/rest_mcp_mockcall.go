@@ -55,7 +55,7 @@ func mcpMockCall(h *RestServer, args map[string]any) (map[string]any, error) {
 		return response, nil
 	}
 
-	return mcpRenderMockResponse(h, found, service, method, session, input, headers), nil
+	return mcpRenderMockResponse(h, found, service, method, session, input, headers, result.MatchNumber()), nil
 }
 
 //nolint:cyclop,funlen
@@ -65,6 +65,7 @@ func mcpRenderMockResponse(
 	service, method, session string,
 	input []map[string]any,
 	headers map[string]any,
+	matchNumber int,
 ) map[string]any {
 	requestTime := time.Now()
 	output := found.Output
@@ -79,7 +80,8 @@ func mcpRenderMockResponse(
 		firstRequest = input[0]
 	}
 
-	templateData := newTemplateData(firstRequest, headers, 0, requestTime, requests, found.ID.String())
+	templateData := newTemplateData(firstRequest, headers, 0, requestTime,
+		requests, found, matchNumber)
 
 	engine := h.templateEngine
 
@@ -157,7 +159,8 @@ func mcpRenderMockResponse(
 		response["trailers"] = output.Trailers
 	}
 
-	if delay := time.Duration(output.Delay); delay > 0 {
+	resolvedDelay, _ := resolveDelay(h.templateEngine, output.Delay, templateData)
+	if delay := time.Duration(resolvedDelay); delay > 0 {
 		response["delayMs"] = delay.Milliseconds()
 	}
 

@@ -65,6 +65,7 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		b.StubValidator(),
 		b.ErrorFormatter(),
 		b.serverLimits(),
+		b.TemplateEngine(ctx),
 	)
 
 	server, err := grpcServer.Build(ctx)

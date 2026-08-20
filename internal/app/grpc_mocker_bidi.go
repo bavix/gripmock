@@ -16,7 +16,6 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
-	"github.com/bavix/gripmock/v3/internal/infra/types"
 )
 
 const (
@@ -116,12 +115,6 @@ func (m *grpcMocker) processBidiStreamMessage(
 		return wrappedErr
 	}
 
-	if len(stub.Output.Stream) == 0 {
-		if err := delayResponse(stream.Context(), stub.Output.Delay); err != nil {
-			return err
-		}
-	}
-
 	return m.sendBidiResponse(stream, stub, inputMsg, bidiResult, requestTime)
 }
 
@@ -140,7 +133,14 @@ func (m *grpcMocker) sendBidiResponse(
 		headers = processHeaders(md)
 	}
 
-	td := newTemplateData(requestData, headers, bidiResult.GetMessageIndex(), requestTime, []any{requestData}, stub.ID.String())
+	td := newTemplateData(requestData, headers, bidiResult.GetMessageIndex(), requestTime,
+		[]any{requestData}, stub, bidiResult.MatchNumber())
+
+	if len(stub.Output.Stream) == 0 {
+		if err := delayTemplated(stream.Context(), m.templateEngine, stub.Output.Delay, td); err != nil {
+			return err
+		}
+	}
 
 	outputToUse, err := m.prepareBidiOutput(stub, td)
 	if err != nil {
@@ -167,7 +167,7 @@ func (m *grpcMocker) sendBidiResponse(
 		recStream.setStubID(stub.ID)
 	}
 
-	return m.sendBidiResponses(stream, outputToUse, stub, bidiResult.GetMessageIndex())
+	return m.sendBidiResponses(stream, outputToUse, stub, bidiResult.GetMessageIndex(), td)
 }
 
 func (m *grpcMocker) recordBidiStreamUnlessProxied(
@@ -289,9 +289,10 @@ func (m *grpcMocker) sendBidiResponses(
 	output stuber.Output,
 	stub *stuber.Stub,
 	messageIndex int,
+	td template.Data,
 ) error {
 	if len(output.Stream) > 0 {
-		return m.sendStreamResponses(stream, output, stub, messageIndex)
+		return m.sendStreamResponses(stream, output, stub, messageIndex, td)
 	}
 
 	outputMsg, err := m.newOutputMessage(output.Data)
@@ -307,12 +308,13 @@ func (m *grpcMocker) sendStreamResponses(
 	output stuber.Output,
 	stub *stuber.Stub,
 	messageIndex int,
+	td template.Data,
 ) error {
 	if stub.IsClientStream() {
-		return m.sendClientStreamResponses(stream, output, stub, messageIndex)
+		return m.sendClientStreamResponses(stream, output, stub, messageIndex, td)
 	}
 
-	return m.sendServerStreamResponses(stream, output)
+	return m.sendServerStreamResponses(stream, output, td)
 }
 
 //nolint:cyclop
@@ -321,6 +323,7 @@ func (m *grpcMocker) sendClientStreamResponses(
 	output stuber.Output,
 	stub *stuber.Stub,
 	messageIndex int,
+	td template.Data,
 ) error {
 	streamLen := len(output.Stream)
 	if streamLen == 0 {
@@ -352,7 +355,7 @@ func (m *grpcMocker) sendClientStreamResponses(
 			continue
 		}
 
-		payload, err := m.prepareStreamElement(stream.Context(), streamElement, output.Delay)
+		payload, err := m.prepareStreamElement(stream.Context(), streamElement, output, td)
 		if err != nil {
 			return err
 		}
@@ -377,45 +380,45 @@ func exhaustedBidiScriptError(stub *stuber.Stub, messageIndex, inputLen int) err
 		stub.ID, inputLen, stub.Service, stub.Method, messageIndex+1)
 }
 
-func (m *grpcMocker) prepareStreamElement(ctx context.Context, element any, outputDelay types.Duration) (any, error) {
+func (m *grpcMocker) prepareStreamElement(
+	ctx context.Context,
+	element any,
+	output stuber.Output,
+	td template.Data,
+) (any, error) {
 	data, ok := element.(map[string]any)
 	if !ok {
 		return element, nil
 	}
 
-	if _, marked := data[stuber.GripMockKey]; !marked {
-		if err := delayResponse(ctx, outputDelay); err != nil {
-			return nil, err
-		}
+	payload := copyForTemplates(data)
 
-		return copyForTemplates(data), nil
+	var marker stuber.GripMockElement
+
+	if _, marked := data[stuber.GripMockKey]; marked {
+		copied := deepCopyMapAny(data)
+		marker = stuber.ExtractGripMock(copied)
+		payload = copied
 	}
 
-	copied := deepCopyMapAny(data)
-
-	marker := stuber.ExtractGripMock(copied)
 	if marker.HasError {
-		return nil, m.streamElementError(marker, template.Data{})
+		return nil, m.streamElementError(marker, td)
 	}
 
-	delay := outputDelay
-	if marker.HasDelay {
-		delay = marker.Delay
-	}
-
-	if err := delayResponse(ctx, delay); err != nil {
+	if err := delayTemplated(ctx, m.templateEngine, elementDelay(output.Delay, marker), td); err != nil {
 		return nil, err
 	}
 
-	return copied, nil
+	return payload, nil
 }
 
 func (m *grpcMocker) sendServerStreamResponses(
 	stream grpc.ServerStream,
 	output stuber.Output,
+	td template.Data,
 ) error {
 	for _, streamElement := range output.Stream {
-		payload, err := m.prepareStreamElement(stream.Context(), streamElement, output.Delay)
+		payload, err := m.prepareStreamElement(stream.Context(), streamElement, output, td)
 		if err != nil {
 			return err
 		}

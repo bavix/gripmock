@@ -362,7 +362,7 @@ func TestHandleNonArrayStreamDataSendsMessages(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now())
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now(), 1)
 	require.NoError(t, err)
 	require.Len(t, stream.sentMessages, 1)
 }
@@ -381,12 +381,12 @@ func TestHandleNonArrayStreamDataWithDelay(t *testing.T) {
 		ID: uuid.New(),
 		Output: stuber.Output{
 			Data:  map[string]any{"message": "test"},
-			Delay: types.Duration(10 * time.Millisecond),
+			Delay: types.NewDelay(10 * time.Millisecond),
 		},
 	}
 
 	start := time.Now()
-	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now())
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now(), 1)
 	duration := time.Since(start)
 
 	require.NoError(t, err)
@@ -412,7 +412,7 @@ func TestHandleNonArrayStreamDataWithTemplates(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now())
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now(), 1)
 	require.NoError(t, err)
 	require.Len(t, stream.sentMessages, 1)
 }
@@ -432,7 +432,7 @@ func TestHandleNonArrayStreamDataRendersFromCapturedRequest(t *testing.T) {
 		Output: stuber.Output{Data: map[string]any{"message": "Hello, {{.Request.name}}!"}},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{"name": "Bob"}, time.Now())
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{"name": "Bob"}, time.Now(), 1)
 	require.NoError(t, err)
 	require.Len(t, stream.sentMessages, 1)
 
@@ -462,7 +462,7 @@ func TestHandleNonArrayStreamDataContextCancelled(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now())
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now(), 1)
 	require.Error(t, err)
 	require.ErrorIs(t, err, context.Canceled)
 }
@@ -485,7 +485,7 @@ func TestHandleNonArrayStreamDataWithError(t *testing.T) {
 		},
 	}
 
-	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now())
+	err := mocker.handleNonArrayStreamData(stream, stub, stub.Output, map[string]any{}, time.Now(), 1)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "test error")
 }
@@ -511,7 +511,7 @@ func TestHandleNonArrayStreamDataUsesTemplatedError(t *testing.T) {
 	rendered := stub.Output
 	rendered.Error = "RENDERED-ERROR"
 
-	err := mocker.handleNonArrayStreamData(stream, stub, rendered, map[string]any{}, time.Now())
+	err := mocker.handleNonArrayStreamData(stream, stub, rendered, map[string]any{}, time.Now(), 1)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "RENDERED-ERROR")
 	require.NotContains(t, err.Error(), "RAW")
@@ -535,7 +535,7 @@ func TestSendClientStreamResponseRendersErrorTemplate(t *testing.T) {
 		},
 	}
 
-	err := mocker.sendClientStreamResponse(stream, stub, []map[string]any{{"id": "1"}}, time.Now())
+	err := mocker.sendClientStreamResponse(stream, stub, []map[string]any{{"id": "1"}}, time.Now(), 1)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), id.String())
 	require.NotContains(t, err.Error(), "{{")
@@ -559,7 +559,7 @@ func TestSendClientStreamResponseRendersHeaderTemplate(t *testing.T) {
 		},
 	}
 
-	err := mocker.sendClientStreamResponse(stream, stub, []map[string]any{{"id": "1"}}, time.Now())
+	err := mocker.sendClientStreamResponse(stream, stub, []map[string]any{{"id": "1"}}, time.Now(), 1)
 	require.NoError(t, err)
 	require.NotNil(t, stream.headers)
 	require.Equal(t, id.String(), stream.headers.Get("x-stub")[0])
@@ -585,7 +585,7 @@ func TestSendClientStreamResponseSetsHeadersOnError(t *testing.T) {
 		},
 	}
 
-	err := mocker.sendClientStreamResponse(stream, stub, []map[string]any{{"id": "1"}}, time.Now())
+	err := mocker.sendClientStreamResponse(stream, stub, []map[string]any{{"id": "1"}}, time.Now(), 1)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "boom")
 	require.NotNil(t, stream.headers, "headers must be sent before the error trailer")
@@ -619,7 +619,7 @@ func TestSendClientStreamResponseAppliesEffectsOnError(t *testing.T) {
 		Effects: []stuber.Effect{{Action: stuber.EffectActionDelete, ID: victim.ID.String()}},
 	}
 
-	err := mocker.sendClientStreamResponse(stream, stub, []map[string]any{{"id": "1"}}, time.Now())
+	err := mocker.sendClientStreamResponse(stream, stub, []map[string]any{{"id": "1"}}, time.Now(), 1)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "boom")
 	require.Nil(t, mocker.budgerigar.FindByID(victim.ID), "delete effect must run despite error status")

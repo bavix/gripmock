@@ -84,6 +84,7 @@ func (b *Builder) newMultiProtocolGateway(ctx context.Context) *app.MultiProtoco
 		b.ProxyRoutesRef(),
 		b.StubValidator(),
 		b.ErrorFormatter(),
+		b.TemplateEngine(ctx),
 	)
 
 	g.RequireProtocolVersion(b.config.ConnectRequireProtocolVersion)

@@ -18,6 +18,7 @@ type Registry struct {
 	mu sync.RWMutex
 
 	funcs     map[string]any
+	rawFuncs  map[string]any
 	funcOwner map[string]string
 
 	plugins     map[string]pkgplugins.PluginInfo
@@ -33,6 +34,7 @@ type Option func(*Registry)
 func NewRegistry(opts ...Option) *Registry {
 	r := &Registry{
 		funcs:       make(map[string]any),
+		rawFuncs:    make(map[string]any),
 		funcOwner:   make(map[string]string),
 		plugins:     make(map[string]pkgplugins.PluginInfo),
 		pluginFuncs: make(map[string][]pkgplugins.FunctionInfo),
@@ -68,6 +70,16 @@ func (r *Registry) Funcs() map[string]any {
 
 	copyMap := make(map[string]any, len(r.funcs))
 	maps.Copy(copyMap, r.funcs)
+
+	return copyMap
+}
+
+func (r *Registry) RawFuncs() map[string]any {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	copyMap := make(map[string]any, len(r.rawFuncs))
+	maps.Copy(copyMap, r.rawFuncs)
 
 	return copyMap
 }
@@ -214,6 +226,12 @@ func (r *Registry) addSpec(info pkgplugins.PluginInfo, spec pkgplugins.FuncSpec)
 	}
 
 	r.funcs[name] = fn
+
+	if spec.Decorates == "" {
+		r.rawFuncs[name] = spec.Fn
+	} else {
+		delete(r.rawFuncs, name)
+	}
 
 	if decorPlugin != "" {
 		infoEntry.Decorates = targetName

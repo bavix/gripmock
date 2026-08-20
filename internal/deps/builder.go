@@ -26,6 +26,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/storage"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/telemetry"
+	"github.com/bavix/gripmock/v3/internal/infra/template"
 	pkgplugins "github.com/bavix/gripmock/v3/pkg/plugins"
 )
 
@@ -49,6 +50,8 @@ type Builder struct {
 	remoteClient   protosetdom.RemoteClient
 	extender       *storage.Extender
 	pluginRegistry *internalplugins.Registry
+	templateEngine *template.Engine
+	templateOnce   sync.Once
 	pluginPaths    []string
 
 	budgerigarOnce   sync.Once
@@ -118,6 +121,15 @@ func (b *Builder) LoadPlugins(ctx context.Context) {
 		loader.Load(ctx, reg)
 		b.pluginRegistry = reg
 	})
+}
+
+func (b *Builder) TemplateEngine(ctx context.Context) *template.Engine {
+	b.templateOnce.Do(func() {
+		b.LoadPlugins(ctx)
+		b.templateEngine = template.New(context.WithoutCancel(ctx), b.pluginRegistry)
+	})
+
+	return b.templateEngine
 }
 
 func (b *Builder) InitTelemetry(ctx context.Context) {

@@ -155,6 +155,7 @@ func newGatewayHandler(
 	proxyRoutesRef *atomic.Pointer[proxyroutes.Registry],
 	validator *validator.Validate,
 	errorFormatter *ErrorFormatter,
+	engines ...*template.Engine,
 ) gatewayHandler {
 	e := errorFormatter
 	if e == nil {
@@ -169,7 +170,7 @@ func newGatewayHandler(
 		validator:      validator,
 		errorFormatter: e,
 		reflection:     newGatewayReflection(descriptorRegistry),
-		templateEngine: template.New(context.WithoutCancel(ctx), nil),
+		templateEngine: engineOr(context.WithoutCancel(ctx), engines),
 		typeResolver: protosetinfra.NewTypeResolver(&dynamicDescriptorResolver{
 			static:  protoregistry.GlobalFiles,
 			dynamic: descriptorRegistry,
@@ -245,7 +246,10 @@ func (h *gatewayHandler) handleWithoutDescriptor(
 
 	found := result.Found()
 
-	if err := delayResponse(r.Context(), found.Output.Delay); err != nil {
+	td := newTemplateData(emptyInput, query.Headers, 0, requestTime,
+		[]any{emptyInput}, found, result.MatchNumber())
+
+	if err := delayTemplated(r.Context(), h.templateEngine, found.Output.Delay, td); err != nil {
 		st, _ := status.FromError(err)
 		recordCall(h.recorder, serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
 			requestTime, []map[string]any{emptyInput}, nil, nil, st.Message())

@@ -134,7 +134,7 @@ Each message gets its own delay instead of the global `output.delay`:
 
 The `_gripmock` key is **reserved** — it does not conflict with protobuf field names
 and is stripped before the message is sent to the client. The `_gripmock.delay` value
-uses the same duration format as the top-level `delay` field (`100ms`, `1s`, etc.).
+takes a duration (`100ms`, `1s`) or a [template](#computed-delay).
 
 When a stream element contains `_gripmock.delay`, the per-element delay takes
 **priority** over the global `output.delay`. Elements without `_gripmock` still
@@ -143,6 +143,61 @@ use the global delay.
 This is especially useful for captured streams where `recordDelay` records
 the actual inter-message timing from the upstream service. See
 [Capture Mode](../modes/capture) for details.
+
+## Computed Delay <VersionTag version="v3.21.0" />
+
+`delay` also takes a [template](./dynamic-templates), rendered per request into a duration.
+Three helpers cover the usual cases:
+
+::: v-pre
+```yaml
+output:
+  delay: '{{ regressive .AttemptNumber "3s" "500ms" }}'   # 3s, 2.5s, 2s ... 0
+  delay: '{{ backoff .AttemptNumber "100ms" "5s" }}'      # 100ms, 200ms, 400ms ... 5s
+  delay: '{{ jitter "50ms" "250ms" }}'                    # random in the range
+```
+:::
+
+`.AttemptNumber` counts matches of this stub per session, from 1, and is capped by `options.times`.
+`regressive` never drops below zero, `backoff` doubles and stops at the cap (the cap is optional).
+Single-quote the YAML value — then the durations inside need no escaping.
+
+Anything else is plain template math over milliseconds, wrapped in `duration`:
+
+::: v-pre
+```yaml
+delay: '{{ duration (mul 100 .MessageIndex) }}'   # ramp over an output.stream array
+delay: '{{ index .Headers "x-delay" }}'          # client dictates the pause
+```
+:::
+
+Empty or negative result means no pause. A broken template is rejected on registration with `400`;
+a result that is not a duration fails the call with `Internal`.
+
+### Custom Curves
+
+A [plugin](../plugins/) can add its own curve — any function returning a duration string works:
+
+```go
+func Register(reg plugins.Registry) {
+	reg.AddPlugin(
+		plugins.PluginInfo{Name: "delay", Kind: "external", Capabilities: []string{"template-funcs"}},
+		[]plugins.SpecProvider{plugins.Specs(
+			plugins.FuncSpec{Name: "fibonacci", Fn: fibonacci},
+		)},
+	)
+}
+```
+
+::: v-pre
+```yaml
+output:
+  delay: '{{ fibonacci .AttemptNumber "60ms" }}'   # 60ms, 60ms, 120ms, 180ms, 300ms
+```
+:::
+
+Full example: `examples/plugins/delay`. A plugin function reusing a built-in name is ignored unless it
+declares `Decorates: "@gripmock/<name>"`, which wraps the original instead of replacing it.
 
 ## Use Cases
 

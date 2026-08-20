@@ -210,6 +210,21 @@ func (e *Engine) ProcessError(errorStr string, templateData Data) (string, error
 	return processErrorField(errorStr, templateData, e)
 }
 
+func (e *Engine) Validate(tmpl string) error {
+	if tmpl == "" {
+		return nil
+	}
+
+	parsed, err := e.parseTemplate(tmpl)
+	if err != nil {
+		return err
+	}
+
+	e.cache.Add(tmpl, parsed)
+
+	return nil
+}
+
 // parseTemplate parses tmpl, falling back to an unescaped form only when the raw
 // template fails to parse. This preserves JSON-escaped templates (where \" reached
 // the engine literally) WITHOUT corrupting legitimate escaped quotes inside a

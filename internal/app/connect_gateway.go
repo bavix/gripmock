@@ -23,6 +23,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
 type ConnectRPCGateway struct {
@@ -45,9 +46,11 @@ func NewConnectRPCGateway(
 	proxyRoutesRef *atomic.Pointer[proxyroutes.Registry],
 	validator *validator.Validate,
 	errorFormatter *ErrorFormatter,
+	engines ...*template.Engine,
 ) *ConnectRPCGateway {
 	return &ConnectRPCGateway{
-		gatewayHandler: newGatewayHandler(ctx, budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
+		gatewayHandler: newGatewayHandler(ctx, budgerigar, descriptorRegistry, recorder,
+			proxyRoutesRef, validator, errorFormatter, engines...),
 	}
 }
 

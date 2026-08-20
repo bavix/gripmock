@@ -731,9 +731,9 @@
           }
         },
         "delay": {
-          "description": "How long to wait before sending. Applies before every message, including the first, so three stream messages at 200ms take 600ms. Accepts Go duration strings such as '100ms', '2.5s', '1m'.",
+          "description": "How long to wait before sending. Applies before every message, including the first, so three stream messages at 200ms take 600ms. Accepts a Go duration such as '100ms', '2.5s', '1m', or a template rendering one, e.g. {{ regressive .AttemptNumber '3s' '500ms' }}.",
           "type": "string",
-          "pattern": "^(\\d+(\\.\\d+)?(ms|s|m|h))+$"
+          "pattern": "^(\\d+(\\.\\d+)?(ns|us|ms|s|m|h))+$|\\{\\{"
         },
         "headers": {
           "description": "Response metadata.",
@@ -757,9 +757,9 @@
       "type": "object",
       "properties": {
         "delay": {
-          "description": "Wait this long before sending this message.",
+          "description": "Wait this long before sending this message. Accepts a duration or a template rendering one.",
           "type": "string",
-          "pattern": "^(\\d+(\\.\\d+)?(ms|s|m|h))+$"
+          "pattern": "^(\\d+(\\.\\d+)?(ns|us|ms|s|m|h))+$|\\{\\{"
         },
         "error": {
           "description": "gRPC status message ending the stream here.",

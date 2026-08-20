@@ -12,6 +12,7 @@ import (
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/infra/proxyroutes"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
 // MultiProtocolGateway dispatches to the ConnectRPC or gRPC-Web handler
@@ -37,10 +38,13 @@ func NewMultiProtocolGateway(
 	proxyRoutesRef *atomic.Pointer[proxyroutes.Registry],
 	validator *validator.Validate,
 	errorFormatter *ErrorFormatter,
+	engines ...*template.Engine,
 ) *MultiProtocolGateway {
 	return &MultiProtocolGateway{
-		connect: NewConnectRPCGateway(ctx, budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
-		grpcweb: NewGRPCWebGateway(ctx, budgerigar, descriptorRegistry, recorder, proxyRoutesRef, validator, errorFormatter),
+		connect: NewConnectRPCGateway(ctx, budgerigar, descriptorRegistry, recorder,
+			proxyRoutesRef, validator, errorFormatter, engines...),
+		grpcweb: NewGRPCWebGateway(ctx, budgerigar, descriptorRegistry, recorder,
+			proxyRoutesRef, validator, errorFormatter, engines...),
 	}
 }
 
