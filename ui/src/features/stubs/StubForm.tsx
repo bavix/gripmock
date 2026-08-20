@@ -240,7 +240,7 @@ export function StubForm({ initial, onSaved }: Props) {
           {f.outputDelay && (
             <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 6 }}>
               <Label>Delay:</Label>
-              <input value={f.outputDelay} onChange={(e) => patch({ outputDelay: e.target.value })} placeholder="500ms, 2s, 1m30s" className="input" style={{ fontFamily: 'monospace', width: 130, fontSize: 11 }} />
+              <input value={f.outputDelay} onChange={(e) => patch({ outputDelay: e.target.value })} placeholder="500ms, 2s, or {{ regressive .AttemptNumber &quot;3s&quot; &quot;500ms&quot; }}" className="input" style={{ fontFamily: 'monospace', flex: 1, minWidth: 130, fontSize: 11 }} />
             </div>
           )}
 
