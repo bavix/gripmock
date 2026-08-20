@@ -1,10 +1,11 @@
 package plugins
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"strconv"
+
+	"github.com/goccy/go-json"
 )
 
 func numberFuncs() map[string]any {
@@ -155,7 +156,10 @@ func foldFloats(nums []float64, seed float64, seedFromFirst bool, op func(a, b f
 
 func flattenNumbers(values []any) []any {
 	if len(values) == 1 {
-		if nested, ok := values[0].([]any); ok {
+		switch nested := values[0].(type) {
+		case []any:
+			return nested
+		case jsonList:
 			return nested
 		}
 	}

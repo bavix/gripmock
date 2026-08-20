@@ -14,8 +14,7 @@ type rawFuncProvider interface {
 
 func Functions(ctx context.Context, reg pkgplugins.Registry) map[string]any {
 	if reg == nil {
-		reg = internalplugins.NewRegistry()
-		internalplugins.RegisterBuiltins(reg)
+		reg = internalplugins.Default()
 	}
 
 	raw := reg.Funcs()

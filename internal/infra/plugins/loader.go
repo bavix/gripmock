@@ -20,16 +20,13 @@ func NewLoader(paths []string) *Loader {
 	return &Loader{paths: paths}
 }
 
-//nolint:cyclop,gocognit,funlen
 func (l *Loader) Load(ctx context.Context, reg pkgplugins.Registry) {
 	logger := zerolog.Ctx(ctx)
 
 	for _, p := range l.expandPaths() {
 		stat, err := os.Stat(p)
 		if err != nil {
-			if logger != nil {
-				logger.Warn().Str("path", p).Err(err).Msg("plugin load skip")
-			}
+			logger.Warn().Str("path", p).Err(err).Msg("plugin load skip")
 
 			continue
 		}
@@ -40,18 +37,14 @@ func (l *Loader) Load(ctx context.Context, reg pkgplugins.Registry) {
 
 		lp, err := plugin.Open(p)
 		if err != nil {
-			if logger != nil {
-				logger.Warn().Str("path", p).Err(err).Msg("plugin load skip")
-			}
+			logger.Warn().Str("path", p).Err(err).Msg("plugin load skip")
 
 			continue
 		}
 
 		sym, err := lp.Lookup("Register")
 		if err != nil {
-			if logger != nil {
-				logger.Warn().Str("path", p).Err(err).Msg("plugin register symbol not found")
-			}
+			logger.Warn().Str("path", p).Err(err).Msg("plugin register symbol not found")
 
 			continue
 		}
@@ -65,9 +58,7 @@ func (l *Loader) Load(ctx context.Context, reg pkgplugins.Registry) {
 
 		if fn, ok := sym.(func(pkgplugins.Registry) error); ok {
 			if registerErr := fn(reg); registerErr != nil {
-				if logger != nil {
-					logger.Warn().Str("path", p).Err(registerErr).Msg("plugin register error, skipping")
-				}
+				logger.Warn().Str("path", p).Err(registerErr).Msg("plugin register error, skipping")
 			}
 
 			continue
@@ -76,9 +67,7 @@ func (l *Loader) Load(ctx context.Context, reg pkgplugins.Registry) {
 		if fn, ok := sym.(func(pkgplugins.Registry)); ok {
 			fn(reg)
 		} else {
-			if logger != nil {
-				logger.Warn().Str("path", p).Msg("plugin register symbol has unsupported signature")
-			}
+			logger.Warn().Str("path", p).Msg("plugin register symbol has unsupported signature")
 
 			if !existsPlugin(ctx, reg, info.Name) {
 				reg.AddPlugin(info, nil)

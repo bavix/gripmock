@@ -2,29 +2,168 @@ package plugins
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
+	"maps"
+	"strconv"
+
+	"github.com/goccy/go-json"
 )
+
+const maxSeq = 10_000
+
+var (
+	errOddDictPairs = errors.New("dict requires an even number of arguments")
+	errSetArgs      = errors.New("set requires a map, a key and a value")
+	errSeqArgs      = errors.New("seq requires a count")
+	errSeqTooLarge  = fmt.Errorf("seq supports at most %d indexes", maxSeq)
+	errAppendArgs   = errors.New("append requires a list")
+)
+
+type jsonList []any
+
+type jsonMap map[string]any
+
+func (l jsonList) Format(state fmt.State, _ rune) { writeJSON(state, l) }
+
+func (m jsonMap) Format(state fmt.State, _ rune) { writeJSON(state, m) }
+
+func writeJSON(state fmt.State, value any) {
+	if err := json.NewEncoder(state).Encode(value); err != nil {
+		_, _ = state.Write([]byte(err.Error()))
+	}
+}
+
+func stringOf(value any) string {
+	switch text := value.(type) {
+	case string:
+		return text
+	case json.Number:
+		return text.String()
+	default:
+		return fmt.Sprint(value)
+	}
+}
+
+func asList(value any) jsonList {
+	switch v := value.(type) {
+	case jsonList:
+		return v
+	case []any:
+		return v[:len(v):len(v)]
+	default:
+		return nil
+	}
+}
+
+func asMap(value any) jsonMap {
+	switch v := value.(type) {
+	case jsonMap:
+		return v
+	case map[string]any:
+		return v
+	default:
+		return nil
+	}
+}
 
 func arrayFuncs() map[string]any {
 	return map[string]any{
 		"extract": extract,
+		"list":    func(items ...any) (any, error) { return list(items...), nil },
+		"append":  appendItems,
+		"dict":    dict,
+		"set":     set,
+		"seq":     seq,
 	}
 }
 
-func extract(collection any, key any) any {
-	k := fmt.Sprint(key)
+func seq(args ...any) (any, error) {
+	if len(args) != 1 {
+		return nil, errSeqArgs
+	}
 
-	switch c := collection.(type) {
-	case map[string]any:
-		return c[k]
-	case map[string]string:
-		return c[k]
-	case []any:
+	n, ok := convertToInt(args[0])
+	if !ok || n <= 0 {
+		return jsonList{}, nil
+	}
+
+	if n > maxSeq {
+		return nil, errSeqTooLarge
+	}
+
+	out := make(jsonList, 0, n)
+	for i := range n {
+		out = append(out, json.Number(strconv.Itoa(i)))
+	}
+
+	return out, nil
+}
+
+func list(items ...any) jsonList {
+	out := make(jsonList, 0, len(items))
+
+	return append(out, items...)
+}
+
+func appendItems(args ...any) (any, error) {
+	if len(args) == 0 {
+		return nil, errAppendArgs
+	}
+
+	return append(asList(args[0]), args[1:]...), nil
+}
+
+func dict(pairs ...any) (any, error) {
+	const pairSize = 2
+
+	if len(pairs)%pairSize != 0 {
+		return nil, errOddDictPairs
+	}
+
+	out := make(jsonMap, len(pairs)/pairSize)
+
+	for i := pairSize - 1; i < len(pairs); i += pairSize {
+		out[stringOf(pairs[i-1])] = pairs[i]
+	}
+
+	return out, nil
+}
+
+func set(args ...any) (any, error) {
+	const setArity = 3
+
+	if len(args) != setArity {
+		return nil, errSetArgs
+	}
+
+	current := asMap(args[0])
+
+	out := make(jsonMap, len(current)+1)
+	maps.Copy(out, current)
+	out[stringOf(args[1])] = args[2]
+
+	return out, nil
+}
+
+func extract(collection any, key any) any {
+	k := stringOf(key)
+
+	if values := asMap(collection); values != nil {
+		return values[k]
+	}
+
+	if items := asList(collection); items != nil {
 		if _, ok := convertToInt(key); ok {
-			return extractFromSlice(len(c), key, func(i int) any { return c[i] })
+			return extractFromSlice(len(items), key, func(i int) any { return items[i] })
 		}
 
-		return extractFromObjects(c, k)
+		return extractFromObjects(items, k)
+	}
+
+	switch c := collection.(type) {
+	case map[string]string:
+		return c[k]
 	case []string:
 		return extractFromSlice(len(c), key, func(i int) any { return c[i] })
 	}
@@ -41,16 +180,19 @@ func extractFromSlice(length int, key any, getter func(int) any) any {
 	return getter(idx)
 }
 
-func extractFromObjects(items []any, key string) any {
-	out := make([]any, 0, len(items))
+func extractFromObjects(items jsonList, key string) any {
+	out := make(jsonList, 0, len(items))
 
 	for _, item := range items {
-		switch m := item.(type) {
-		case map[string]any:
-			if v, ok := m[key]; ok {
+		if values := asMap(item); values != nil {
+			if v, ok := values[key]; ok {
 				out = append(out, v)
 			}
-		case map[string]string:
+
+			continue
+		}
+
+		if m, ok := item.(map[string]string); ok {
 			if v, ok := m[key]; ok {
 				out = append(out, v)
 			}

@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"log"
 	"maps"
 	"slices"
 	"sort"
@@ -90,9 +89,7 @@ func (r *Registry) Plugins(ctx context.Context) []pkgplugins.PluginInfo {
 
 	order, skipped := r.sortedPluginOrder()
 	if len(skipped) > 0 {
-		if logger := zerolog.Ctx(ctx); logger != nil {
-			logger.Warn().Strs("plugins", skipped).Msg("plugin dependency cycle detected; skipping")
-		}
+		zerolog.Ctx(ctx).Warn().Strs("plugins", skipped).Msg("plugin dependency cycle detected; skipping")
 	}
 
 	result := make([]pkgplugins.PluginInfo, 0, len(order))
@@ -114,9 +111,7 @@ func (r *Registry) Groups(ctx context.Context) []pkgplugins.PluginWithFuncs {
 
 	order, skipped := r.sortedPluginOrder()
 	if len(skipped) > 0 {
-		if logger := zerolog.Ctx(ctx); logger != nil {
-			logger.Warn().Strs("plugins", skipped).Msg("plugin dependency cycle detected; skipping")
-		}
+		zerolog.Ctx(ctx).Warn().Strs("plugins", skipped).Msg("plugin dependency cycle detected; skipping")
 	}
 
 	result := make([]pkgplugins.PluginWithFuncs, 0, len(order))
@@ -382,17 +377,26 @@ func (r *Registry) collectCycles(registered map[string]struct{}, indegree map[st
 }
 
 func (r *Registry) warnDuplicate(ctx context.Context, name, plugin, existing string) {
-	logger := zerolog.Ctx(ctx)
-	if logger != nil {
-		logger.Warn().
-			Str("plugin", plugin).
-			Str("function", name).
-			Str("owner", existing).
-			Msg("function ignored (implicit override); use Decorates=@owner/function to decorate explicitly")
+	zerolog.Ctx(ctx).Warn().
+		Str("plugin", plugin).
+		Str("function", name).
+		Str("owner", existing).
+		Msg("function ignored (implicit override); use Decorates=@owner/function to decorate explicitly")
+}
 
-		return
-	}
+var (
+	defaultOnce     sync.Once //nolint:gochecknoglobals
+	defaultRegistry *Registry //nolint:gochecknoglobals
+)
 
-	log.Printf("[gripmock] function %q from plugin %q ignored (implicit override by %q); "+
-		"use Decorates=@owner/function to decorate explicitly", name, plugin, existing)
+// Default is the registry every template engine falls back to. External plugins are
+// loaded into it once at startup, so an engine built without an explicit registry
+// still answers with the plugin function table rather than builtins alone.
+func Default() *Registry {
+	defaultOnce.Do(func() {
+		defaultRegistry = NewRegistry()
+		RegisterBuiltins(defaultRegistry)
+	})
+
+	return defaultRegistry
 }

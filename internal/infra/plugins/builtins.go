@@ -58,6 +58,7 @@ func builtinGroups() []groupDef {
 		formatGroup(),
 		numberGroup(),
 		arrayGroup(),
+		queryGroup(),
 		compareGroup(),
 		mathGroup(),
 		timeGroup(),
@@ -100,7 +101,8 @@ func jsonGroup() groupDef {
 		defaultDesc: "json helper",
 		funcs:       jsonFuncs(),
 		overrides: map[string]string{
-			"json": "encode value as JSON string",
+			"json":   "encode value as JSON string",
+			"toJson": "encode value as JSON string",
 		},
 	}
 }
@@ -138,6 +140,24 @@ func arrayGroup() groupDef {
 		funcs:       arrayFuncs(),
 		overrides: map[string]string{
 			"extract": "get element by key or index",
+			"list":    "build a list from the arguments",
+			"append":  "append items to a list and return the new list",
+			"dict":    "build a map from key/value pairs",
+			"set":     "return a copy of the map with one key set",
+			"seq":     "build a list of indexes 0..n-1",
+		},
+	}
+}
+
+func queryGroup() groupDef {
+	return groupDef{
+		group:       "query",
+		defaultDesc: "collection query helper",
+		funcs:       queryFuncs(),
+		overrides: map[string]string{
+			"where":   "keep items whose field matches: eq, ne, gt, gte, lt, lte",
+			"page":    "take a clamped offset/limit window; limit 0 means until the end",
+			"countBy": "count items per field value",
 		},
 	}
 }

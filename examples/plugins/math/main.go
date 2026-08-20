@@ -59,16 +59,10 @@ func Register(reg plugins.Registry) {
 	})
 }
 
-var (
-	errInvalidArgs = errors.New("invalid args")
-	errDeactivated = errors.New("function deactivated")
-)
+var errDeactivated = errors.New("function deactivated")
 
 func roundDeactivated(ctx context.Context, _ ...any) (any, error) {
-	logger := zerolog.Ctx(ctx)
-	if logger != nil {
-		logger.Error().Err(errDeactivated).Msg("math.round is deactivated")
-	}
+	zerolog.Ctx(ctx).Error().Err(errDeactivated).Msg("math.round is deactivated")
 
 	return nil, errDeactivated
 }

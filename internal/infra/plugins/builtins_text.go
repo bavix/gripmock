@@ -1,12 +1,16 @@
 package plugins
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/goccy/go-json"
+
 	infrafaker "github.com/bavix/gripmock/v3/internal/infra/faker"
 )
+
+var errJSONArgs = errors.New("json requires a single value")
 
 func fakerFuncs() map[string]any {
 	return map[string]any{
@@ -29,15 +33,22 @@ func titleCase(s string) string {
 }
 
 func jsonFuncs() map[string]any {
-	return map[string]any{
-		"json": func(v any) string {
-			b, err := json.Marshal(v)
-			if err != nil {
-				return ""
-			}
+	encode := func(args ...any) (any, error) {
+		if len(args) != 1 {
+			return nil, errJSONArgs
+		}
 
-			return string(b)
-		},
+		b, err := json.Marshal(args[0])
+		if err != nil {
+			return nil, err
+		}
+
+		return string(b), nil
+	}
+
+	return map[string]any{
+		"json":   encode,
+		"toJson": encode,
 	}
 }
 
