@@ -184,9 +184,10 @@ func findMethodInFiles(files methodFilesLister, serviceName, methodName string) 
 	return found
 }
 
-func (s *GRPCServer) setupHealthCheck(server *grpc.Server, descResolver *protoregistry.Files) {
+func (s *GRPCServer) setupHealthCheck(ctx context.Context, server *grpc.Server, descResolver *protoregistry.Files) {
 	healthServer := health.NewServer()
-	healthgrpc.RegisterHealthServer(server, newMockableHealthServer(healthServer, s.budgerigar, descResolver, s.proxies))
+	healthgrpc.RegisterHealthServer(server,
+		newMockableHealthServer(healthServer, s.budgerigar, descResolver, s.proxies, s.templates(ctx)))
 
 	provider := &dynamicServiceInfoProvider{base: server, registry: s.descriptors}
 

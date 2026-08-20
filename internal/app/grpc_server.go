@@ -148,6 +148,7 @@ func NewGRPCServer(
 	stubValidator *validator.Validate,
 	errorFormatter *ErrorFormatter,
 	limits ServerLimits,
+	engines ...*template.Engine,
 ) *GRPCServer {
 	registry := descriptorRegistry
 	if registry == nil {
@@ -169,7 +170,13 @@ func NewGRPCServer(
 		healthState = budgerigar
 	}
 
+	var engine *template.Engine
+	if len(engines) > 0 {
+		engine = engines[0]
+	}
+
 	return &GRPCServer{
+		templateEngine:  engine,
 		network:         network,
 		address:         address,
 		params:          params,
@@ -246,7 +253,7 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 	}
 
 	server := s.createServer(ctx)
-	s.setupHealthCheck(server, nil)
+	s.setupHealthCheck(ctx, server, nil)
 	s.registerServices(ctx, server, descriptors, nil)
 	s.markServerReady(ctx)
 
@@ -258,7 +265,9 @@ func (s *GRPCServer) Build(ctx context.Context) (*grpc.Server, error) {
 // call to a dynamically registered service.
 func (s *GRPCServer) templates(ctx context.Context) *template.Engine {
 	s.templateOnce.Do(func() {
-		s.templateEngine = template.New(context.WithoutCancel(ctx), nil)
+		if s.templateEngine == nil {
+			s.templateEngine = template.New(context.WithoutCancel(ctx), nil)
+		}
 	})
 
 	return s.templateEngine

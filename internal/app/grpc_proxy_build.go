@@ -151,7 +151,7 @@ func BuildFromDescriptorSet(
 		limits:         DefaultServerLimits(),
 	}
 	server := s.createServer(ctx)
-	s.setupHealthCheck(server, reg)
+	s.setupHealthCheck(ctx, server, reg)
 	s.registerServices(ctx, server, []*descriptorpb.FileDescriptorSet{fds}, reg)
 
 	// Mark server as ready synchronously after all descriptors and stubs are loaded.
