@@ -82,7 +82,7 @@ func TestOutputFields(t *testing.T) {
 			"type":   "type.googleapis.com/google.rpc.ErrorInfo",
 			"reason": "UNIT_TEST",
 		}},
-		Delay: types.Duration(100),
+		Delay: types.NewDelay(100),
 	}
 
 	require.Equal(t, map[string]string{"header1": "value1"}, output.Headers)
@@ -91,7 +91,7 @@ func TestOutputFields(t *testing.T) {
 	require.Equal(t, "test error", output.Error)
 	require.Equal(t, &code, output.Code)
 	require.Len(t, output.Details, 1)
-	require.Equal(t, 100, int(output.Delay))
+	require.Equal(t, 100, int(output.Delay.Static()))
 }
 
 func TestOutputFieldsEmptyStream(t *testing.T) {
@@ -119,7 +119,7 @@ func TestOutputFieldsOptionalDelay(t *testing.T) {
 
 	require.Equal(t, map[string]string{"header1": "value1"}, output.Headers)
 	require.Equal(t, map[string]any{"data1": "value1"}, output.Data)
-	require.Equal(t, types.Duration(0), output.Delay)
+	require.Zero(t, output.Delay.Static())
 }
 
 func TestExtractGripMockDelay(t *testing.T) {
@@ -141,7 +141,7 @@ func TestExtractGripMockDelay(t *testing.T) {
 		m := map[string]any{"status": "OK", "_gripmock": map[string]any{"delay": "150ms"}}
 		d, ok := stuber.ExtractGripMockDelay(m)
 		require.True(t, ok)
-		require.Equal(t, types.Duration(150*time.Millisecond), d)
+		require.Equal(t, types.Duration(150*time.Millisecond), d.Static())
 
 		_, has := m["_gripmock"]
 		require.False(t, has)
@@ -184,7 +184,7 @@ func TestOutputDelayJsonSerialization(t *testing.T) {
 	output := stuber.Output{
 		Headers: map[string]string{"content-type": "application/json"},
 		Data:    map[string]any{"message": "Hello World"},
-		Delay:   types.Duration(100 * time.Millisecond),
+		Delay:   types.NewDelay(100 * time.Millisecond),
 	}
 
 	jsonData, err := json.Marshal(output)
@@ -197,5 +197,5 @@ func TestOutputDelayJsonSerialization(t *testing.T) {
 	err = json.Unmarshal([]byte(`{"headers":{"content-type":"application/json"},"data":{"message":"Hello World"},"delay":"200ms"}`),
 		&decodedOutput)
 	require.NoError(t, err)
-	require.Equal(t, types.Duration(200*time.Millisecond), decodedOutput.Delay)
+	require.Equal(t, types.Duration(200*time.Millisecond), decodedOutput.Delay.Static())
 }

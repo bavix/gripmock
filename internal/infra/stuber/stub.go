@@ -3,7 +3,6 @@ package stuber
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -81,7 +80,7 @@ type Effect struct {
 const GripMockKey = "_gripmock"
 
 type GripMockElement struct {
-	Delay    types.Duration
+	Delay    types.Delay
 	HasDelay bool
 
 	Error    string
@@ -115,18 +114,18 @@ func ExtractGripMock(m map[string]any) GripMockElement {
 	return out
 }
 
-func gripMockDelay(gk map[string]any) (types.Duration, bool) {
+func gripMockDelay(gk map[string]any) (types.Delay, bool) {
 	s, ok := gk["delay"].(string)
 	if !ok {
-		return 0, false
+		return "", false
 	}
 
-	d, err := time.ParseDuration(s)
-	if err != nil {
-		return 0, false
+	delay := types.Delay(s)
+	if _, err := delay.Parse(); err != nil {
+		return "", false
 	}
 
-	return types.Duration(d), true
+	return delay, true
 }
 
 func gripMockError(gk map[string]any) (string, *codes.Code, []map[string]any, bool) {
@@ -206,7 +205,7 @@ func toDetailList(raw any) []map[string]any {
 	return details
 }
 
-func ExtractGripMockDelay(m map[string]any) (types.Duration, bool) {
+func ExtractGripMockDelay(m map[string]any) (types.Delay, bool) {
 	el := ExtractGripMock(m)
 
 	return el.Delay, el.HasDelay
@@ -353,5 +352,5 @@ type Output struct {
 	Error    string            `json:"error"`
 	Code     *codes.Code       `json:"code,omitempty"`
 	Details  []map[string]any  `json:"details,omitempty"`
-	Delay    types.Duration    `json:"delay,omitempty"`
+	Delay    types.Delay       `json:"delay,omitempty"`
 }

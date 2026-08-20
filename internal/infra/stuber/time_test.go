@@ -23,7 +23,7 @@ func TestDelayWithGo125TimeAPI(t *testing.T) {
 		Data: map[string]any{
 			"message": "Hello with delay",
 		},
-		Delay: types.Duration(100 * time.Millisecond),
+		Delay: types.NewDelay(100 * time.Millisecond),
 	}
 
 	// Simulate processing with delay
@@ -32,10 +32,10 @@ func TestDelayWithGo125TimeAPI(t *testing.T) {
 
 	// In a real scenario, this would be the actual delay processing
 	// For testing, we can simulate it with deterministic time
-	actualEnd := start.Add(time.Duration(output.Delay))
+	actualEnd := start.Add(time.Duration(output.Delay.Static()))
 
 	require.Equal(t, expectedEnd, actualEnd)
-	require.Equal(t, types.Duration(100*time.Millisecond), output.Delay)
+	require.Equal(t, types.Duration(100*time.Millisecond), output.Delay.Static())
 }
 
 // TestDelaySerializationWithDeterministicTime tests delay serialization with deterministic time.
@@ -50,7 +50,7 @@ func TestDelaySerializationWithDeterministicTime(t *testing.T) {
 			"timestamp": baseTime.Format(time.RFC3339),
 			"message":   "Timestamped response",
 		},
-		Delay: types.Duration(200 * time.Millisecond),
+		Delay: types.NewDelay(200 * time.Millisecond),
 	}
 
 	// Verify the timestamp is deterministic
@@ -58,7 +58,7 @@ func TestDelaySerializationWithDeterministicTime(t *testing.T) {
 	require.Equal(t, expectedTimestamp, output.Data.(map[string]any)["timestamp"]) //nolint:forcetypeassert
 
 	// Verify delay is correct
-	require.Equal(t, types.Duration(200*time.Millisecond), output.Delay)
+	require.Equal(t, types.Duration(200*time.Millisecond), output.Delay.Static())
 }
 
 // TestDelayComparisonWithGo125API demonstrates time comparison using Go 1.25 API.
@@ -113,7 +113,7 @@ func TestDelayWithTemplateFunctions(t *testing.T) {
 			"timestamp":        "{{.RequestTime | format \"2006-01-02T15:04:05Z\"}}",
 			"delay_multiplier": "{{.State.request_count}}",
 		},
-		Delay: types.Duration(10 * time.Millisecond),
+		Delay: types.NewDelay(10 * time.Millisecond),
 	}
 
 	// Verify template data is deterministic

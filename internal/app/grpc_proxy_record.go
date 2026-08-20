@@ -144,7 +144,7 @@ func (m *grpcMocker) recordCapturedStub(
 	}
 
 	if recordDelay && elapsed > 0 {
-		stub.Output.Delay = types.Duration(elapsed)
+		stub.Output.Delay = types.NewDelay(elapsed)
 	}
 
 	m.budgerigar.PutMany(stub)

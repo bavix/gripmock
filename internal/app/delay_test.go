@@ -22,7 +22,7 @@ func TestDelayWithTypesDuration(t *testing.T) {
 		},
 		Output: stuber.Output{
 			Data:  map[string]any{"result": "success"},
-			Delay: types.Duration(100 * time.Millisecond),
+			Delay: types.NewDelay(100 * time.Millisecond),
 		},
 	}
 
@@ -34,8 +34,8 @@ func TestDelayWithTypesDuration(t *testing.T) {
 	err = json.Unmarshal(data, &unmarshaledStub)
 	require.NoError(t, err)
 
-	require.Equal(t, types.Duration(100*time.Millisecond), unmarshaledStub.Output.Delay)
-	require.Equal(t, 100*time.Millisecond, time.Duration(unmarshaledStub.Output.Delay))
+	require.Equal(t, types.Duration(100*time.Millisecond), unmarshaledStub.Output.Delay.Static())
+	require.Equal(t, 100*time.Millisecond, time.Duration(unmarshaledStub.Output.Delay.Static()))
 }
 
 func TestDelayStringFormat(t *testing.T) {
@@ -56,6 +56,6 @@ func TestDelayStringFormat(t *testing.T) {
 	err := json.Unmarshal([]byte(jsonData), &stub)
 	require.NoError(t, err)
 
-	require.Equal(t, types.Duration(100*time.Millisecond), stub.Output.Delay)
-	require.Equal(t, 100*time.Millisecond, time.Duration(stub.Output.Delay))
+	require.Equal(t, types.Duration(100*time.Millisecond), stub.Output.Delay.Static())
+	require.Equal(t, 100*time.Millisecond, time.Duration(stub.Output.Delay.Static()))
 }

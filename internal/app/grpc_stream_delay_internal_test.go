@@ -24,7 +24,7 @@ func newDelayStreamMocker(t *testing.T, output stuber.Output) (*grpcMocker, *moc
 
 	stream := createTestStream(t, mocker)
 
-	output.Delay = types.Duration(streamDelayStep)
+	output.Delay = types.NewDelay(streamDelayStep)
 
 	mocker.budgerigar.PutMany(&stuber.Stub{
 		ID:      uuid.New(),
@@ -91,7 +91,7 @@ func TestBidiDelayAppliesOncePerSentMessage(t *testing.T) {
 		Method:  testMethodName,
 		Inputs:  []stuber.InputData{{Contains: map[string]any{}}},
 		Output: stuber.Output{
-			Delay:  types.Duration(streamDelayStep),
+			Delay:  types.NewDelay(streamDelayStep),
 			Stream: []any{map[string]any{"message": "one"}},
 		},
 	})

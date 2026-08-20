@@ -1522,9 +1522,9 @@ func (s *RestServerTestSuite) TestAddStubWithDelay() {
 				s.Equal("test.Service", stub.Service)
 
 				if tt.name == "unary stub without delay" || tt.name == "unary stub with zero delay" {
-					s.Zero(stub.Output.Delay, "delay should be zero for this test case")
+					s.Zero(stub.Output.Delay.Static(), "delay should be zero for this test case")
 				} else {
-					s.NotZero(stub.Output.Delay, "delay should be set for this test case")
+					s.NotZero(stub.Output.Delay.Static(), "delay should be set for this test case")
 				}
 			}
 		})
