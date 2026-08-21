@@ -1,0 +1,20 @@
+--- META ---
+name: 64-bit numbers survive JSON
+summary: GetLargeNumbers returns int64/uint64 maxima as strings, without precision loss
+tags: [types, numbers]
+
+--- ENDPOINT ---
+types.TypeService/GetLargeNumbers
+
+--- REQUEST ---
+{
+  "name": "large"
+}
+
+--- RESPONSE ---
+{
+  "large_int64": "9223372036854775807",
+  "large_uint64": "18446744073709551615",
+  "very_large_int64": "9223372036854775807",
+  "very_large_uint64": "18446744073709551615"
+}

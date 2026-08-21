@@ -1,0 +1,23 @@
+--- META ---
+name: integer boundaries
+summary: GetInts returns int32/int64 limits; zero fields stay absent as proto3 defaults
+tags: [types, numbers]
+
+--- ENDPOINT ---
+types.TypeService/GetInts
+
+--- REQUEST ---
+{
+  "name": "ints"
+}
+
+--- RESPONSE ---
+{
+  "int32_neg": -2147483648,
+  "int32_pos": 2147483647,
+  "int64_large": "9007199254740992",
+  "int64_max": "9223372036854775807",
+  "int64_min": "-9223372036854775808",
+  "int64_neg": "-9223372036854775808",
+  "int64_pos": "9223372036854775807"
+}

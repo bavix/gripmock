@@ -1,0 +1,20 @@
+--- META ---
+name: unsigned boundaries
+summary: GetUints returns uint32/uint64 limits, including values above int64
+tags: [types, numbers]
+
+--- ENDPOINT ---
+types.TypeService/GetUints
+
+--- REQUEST ---
+{
+  "name": "uints"
+}
+
+--- RESPONSE ---
+{
+  "uint32_pos": 4294967295,
+  "uint64_large": "9007199254740992",
+  "uint64_max": "18446744073709551615",
+  "uint64_pos": "18446744073709551615"
+}
