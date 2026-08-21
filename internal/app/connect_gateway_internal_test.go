@@ -529,6 +529,39 @@ func TestConnectRPCGateway_HandleWithoutDescriptor_WithData(t *testing.T) {
 	require.Equal(t, "unimplemented", body.Code)
 }
 
+// TestConnectRPCGateway_HandleWithoutDescriptor_WithTemplate verifies the fallback
+// path refuses a template stub instead of answering with an empty body: without a
+// descriptor there is nothing to encode the rendered document into.
+func TestConnectRPCGateway_HandleWithoutDescriptor_WithTemplate(t *testing.T) {
+	t.Parallel()
+
+	bg := stuber.NewBudgerigar()
+	stub := &stuber.Stub{
+		Service: "test.Service",
+		Method:  "TestMethod",
+		Output:  stuber.Output{Template: true, Data: `{{ dict "name" "Alice" }}`},
+	}
+	bg.PutMany(stub)
+
+	gateway := NewConnectRPCGateway(t.Context(), bg, nil, nil, nil, nil, nil)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost,
+		"/test.Service/TestMethod", bytes.NewReader([]byte(`{}`)))
+	req.Header.Set("Content-Type", "application/json")
+
+	gateway.handleWithoutDescriptor(rec, req, "test.Service", "TestMethod", connectResponse{})
+
+	require.Equal(t, http.StatusNotImplemented, rec.Code)
+
+	var body struct {
+		Code string `json:"code"`
+	}
+
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	require.Equal(t, "unimplemented", body.Code)
+}
+
 // TestHttpStreamAdapter_EndStreamFrameReturnsEOF verifies that recvStreamingMessage
 // returns io.EOF when the client sends an endStream-only frame (empty data + endStream
 // flag). Previously the frame was decoded as a zero-value message, hiding the end-of-stream

@@ -231,3 +231,78 @@ func TestWalkAwayIsReportedAsAnError(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, codes.Aborted, status.Code(err))
 }
+
+func TestTemplateCountersEveryOffer(t *testing.T) {
+	t.Parallel()
+
+	srv, client := newClient(t)
+
+	srv.ExpectBidirectionalStream(negotiationv1.NegotiationService_Haggle_FullMethodName).
+		Match("deal_id", "DEAL-T").
+		SendStreamTemplate(`{{ dict "price_cents" (add .Request.price_cents 500) "verdict" "counter" }}`)
+
+	counters, err := haggle(t, t.Context(), client,
+		offer("DEAL-T", 7000),
+		offer("DEAL-T", 8000),
+	)
+
+	require.NoError(t, err)
+	require.Len(t, counters, 2)
+	require.EqualValues(t, 7500, counters[0].GetPriceCents())
+	require.EqualValues(t, 8500, counters[1].GetPriceCents())
+}
+
+func TestRequestDataIsNotRenderedAgain(t *testing.T) {
+	t.Parallel()
+
+	srv, client := newClient(t)
+
+	srv.ExpectBidirectionalStream(negotiationv1.NegotiationService_Haggle_FullMethodName).
+		Match("deal_id", "{{ uuid }}").
+		SendStream(map[string]any{"price_cents": 1, "verdict": "{{ .Request.deal_id }}"})
+
+	counters, err := haggle(t, t.Context(), client, offer("{{ uuid }}", 100))
+
+	require.NoError(t, err)
+	require.Len(t, counters, 1)
+	require.Equal(t, "{{ uuid }}", counters[0].GetVerdict())
+}
+
+func TestBidiTemplateDelayIsPerMessageOnly(t *testing.T) {
+	t.Parallel()
+
+	srv, client := newClient(t)
+
+	const gap = 60 * time.Millisecond
+
+	srv.ExpectBidirectionalStream(negotiationv1.NegotiationService_Haggle_FullMethodName).
+		Match("deal_id", "DEAL-D").
+		Delay(gap).
+		SendStreamTemplate(`{{ range $i := seq 2 }}{{ dict "price_cents" (add 1000 $i) "verdict" "counter" }}{{ end }}`)
+
+	started := time.Now()
+
+	counters, err := haggle(t, t.Context(), client, offer("DEAL-D", 900))
+
+	require.NoError(t, err)
+	require.Len(t, counters, 2)
+
+	elapsed := time.Since(started)
+	require.GreaterOrEqual(t, elapsed, 2*gap)
+	require.Less(t, elapsed, 4*gap)
+}
+
+func TestTemplateRenderingNothingSendsNoMessages(t *testing.T) {
+	t.Parallel()
+
+	srv, client := newClient(t)
+
+	srv.ExpectBidirectionalStream(negotiationv1.NegotiationService_Haggle_FullMethodName).
+		Match("deal_id", "DEAL-E").
+		SendStreamTemplate(`{{ range $i := seq 0 }}{{ dict "price_cents" $i }}{{ end }}`)
+
+	counters, err := haggle(t, t.Context(), client, offer("DEAL-E", 100))
+
+	require.NoError(t, err)
+	require.Empty(t, counters)
+}

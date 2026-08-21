@@ -17,7 +17,10 @@ info:
 
     **Sessions.** Send `X-Gripmock-Session: <id>` to scope a request to one session. Stubs
     created within a session are visible only there, and call history is kept apart. Without
-    the header the request works against the global scope.
+    the header the request works against the global scope. The header is the only thing that
+    decides scope here: a `session` field inside a posted stub is ignored, so no caller can
+    place stubs into someone else's session. Stub files loaded from disk keep their own
+    `session` field.
 
     **Not in this document.** `POST /api/mcp` speaks the Model Context Protocol for agent
     tooling, and `GET /metrics` — outside `/api` — serves Prometheus metrics.
@@ -1159,10 +1162,10 @@ components:
             additionalProperties: true
         responses:
           type: array
-          description: Response messages; a unary call carries exactly one
-          items:
-            type: object
-            additionalProperties: true
+          description: >-
+            Response messages; a unary call carries exactly one. Usually an object, but a method
+            returning a well-known type directly records the scalar or array it answered with.
+          items: {}
         responseHeaders:
           type: object
           description: Normalized response metadata (header+trailer) the call answered with
@@ -2061,6 +2064,34 @@ components:
         One alternative of a header `anyOf`. Its own blocks are AND-ed together.
     StubOutput:
       type: object
+      allOf:
+        - if:
+            required: [template]
+            properties:
+              template:
+                const: true
+          then:
+            oneOf:
+              - required: [data]
+                properties:
+                  data:
+                    type: string
+                    minLength: 1
+                not:
+                  required: [stream]
+              - required: [stream]
+                properties:
+                  stream:
+                    type: string
+                    minLength: 1
+                not:
+                  required: [data]
+          else:
+            properties:
+              stream:
+                type: array
+        - not:
+            required: [data, stream]
       properties:
         data:
           x-go-type-skip-optional-pointer: true
@@ -2068,12 +2099,18 @@ components:
             Response body for unary and client-streaming calls. Usually an object matching the proto message;
             may be a scalar when the method returns a well-known type directly.
         stream:
-          type: array
-          items: {}
           x-go-type-skip-optional-pointer: true
           description: >-
-            Response messages for server and bidirectional streaming, sent in order. Cannot be combined
-            with `data`, `error`, `code` or `details` on this endpoint.
+            Response messages for server and bidirectional streaming, sent in order. May be combined with
+            `error`, `code` and `details`; cannot be combined with `data`. With `template: true` this holds
+            the template text instead of the messages.
+        template:
+          type: boolean
+          x-go-type-skip-optional-pointer: true
+          description: >-
+            Marks `data` or `stream` as a Go template rendered per request. The template in `data` answers
+            with one message and must print exactly one JSON value; the template in `stream` answers with a
+            stream and may print any number of values, or a single array of messages.
         headers:
           type: object
           additionalProperties:

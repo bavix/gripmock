@@ -4,6 +4,7 @@ package app
 import (
 	"context"
 	"io"
+	"maps"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -54,7 +55,7 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 	recordingStream := &bidiRecordingStream{
 		ServerStream:  stream,
 		requests:      make([]map[string]any, 0, bidiRecordingStreamInitCap),
-		responses:     make([]map[string]any, 0, bidiRecordingStreamResponsesCap),
+		responses:     make([]any, 0, bidiRecordingStreamResponsesCap),
 		maxItems:      maxHistoryStreamMsgs,
 		recordHeaders: m.recorder != nil,
 	}
@@ -136,7 +137,7 @@ func (m *grpcMocker) sendBidiResponse(
 	td := newTemplateData(requestData, headers, bidiResult.GetMessageIndex(), requestTime,
 		[]any{requestData}, stub, bidiResult.MatchNumber())
 
-	if len(stub.Output.Stream) == 0 {
+	if !stub.Output.IsServerStream() {
 		if err := delayTemplated(stream.Context(), m.templateEngine, stub.Output.Delay, td); err != nil {
 			return err
 		}
@@ -222,64 +223,16 @@ func (m *grpcMocker) recordBidiStream(
 	recordOwned(m.recorder, rec)
 }
 
-//nolint:cyclop
 func (m *grpcMocker) prepareBidiOutput(stub *stuber.Stub, templateData template.Data) (stuber.Output, error) {
-	outputDataCopy := copyForTemplates(stub.Output.Data)
-	if dataMap, ok := outputDataCopy.(map[string]any); ok {
-		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
-			return stuber.Output{}, errors.Wrap(err, errMsgProcessTemplates)
-		}
-
-		outputDataCopy = dataMap
+	outputToUse, err := renderOutput(m.templateEngine, stub.Output, templateData,
+		renderOptions{})
+	if err != nil {
+		return stuber.Output{}, status.Error(codes.Internal, err.Error())
 	}
 
-	headersCopy := deepCopyStringMap(stub.Output.Headers)
-	if template.HasTemplatesInHeaders(headersCopy) {
-		if err := m.templateEngine.ProcessHeaders(headersCopy, templateData); err != nil {
-			return stuber.Output{}, errors.Wrap(err, "failed to process header templates")
-		}
-	}
-
-	trailersCopy := deepCopyStringMap(stub.Output.Trailers)
-	if template.HasTemplatesInHeaders(trailersCopy) {
-		if err := m.templateEngine.ProcessHeaders(trailersCopy, templateData); err != nil {
-			return stuber.Output{}, errors.Wrap(err, "failed to process trailer templates")
-		}
-	}
-
-	streamCopy := make([]any, len(stub.Output.Stream))
-	for i, item := range stub.Output.Stream {
-		if itemMap, ok := item.(map[string]any); ok {
-			itemCopy := deepCopyMapAny(itemMap)
-			if err := m.templateEngine.ProcessMap(itemCopy, templateData); err != nil {
-				return stuber.Output{}, errors.Wrap(err, "failed to process stream template")
-			}
-
-			streamCopy[i] = itemCopy
-		} else {
-			streamCopy[i] = item
-		}
-	}
-
-	outputToUse := stuber.Output{
-		Data:     outputDataCopy,
-		Stream:   streamCopy,
-		Headers:  headersCopy,
-		Trailers: trailersCopy,
-		Error:    stub.Output.Error,
-		Code:     stub.Output.Code,
-		Details:  deepCopyDetails(stub.Output.Details),
-		Delay:    stub.Output.Delay,
-	}
-
-	if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
-		errorStr, err := m.templateEngine.ProcessError(outputToUse.Error, templateData)
-		if err != nil {
-			return stuber.Output{}, errors.Wrap(err, "failed to process error template")
-		}
-
-		outputToUse.Error = errorStr
-	}
+	outputToUse.Headers = maps.Clone(outputToUse.Headers)
+	outputToUse.Trailers = maps.Clone(outputToUse.Trailers)
+	outputToUse.Details = deepCopyDetails(outputToUse.Details)
 
 	return outputToUse, nil
 }
@@ -289,18 +242,23 @@ func (m *grpcMocker) sendBidiResponses(
 	output stuber.Output,
 	stub *stuber.Stub,
 	messageIndex int,
-	td template.Data,
+	templateData template.Data,
 ) error {
-	if len(output.Stream) > 0 {
-		return m.sendStreamResponses(stream, output, stub, messageIndex, td)
+	if !stub.Output.IsServerStream() {
+		outputMsg, err := m.newOutputMessage(singleMessage(output))
+		if err != nil {
+			return errors.Wrap(err, errMsgConvertToDynamic)
+		}
+
+		return sendStreamMessage(stream, outputMsg)
 	}
 
-	outputMsg, err := m.newOutputMessage(output.Data)
-	if err != nil {
-		return errors.Wrap(err, errMsgConvertToDynamic)
+	messages := output.Messages()
+	if len(messages) == 0 {
+		return nil
 	}
 
-	return sendStreamMessage(stream, outputMsg)
+	return m.sendStreamResponses(stream, output, stub, messageIndex, messages, templateData)
 }
 
 func (m *grpcMocker) sendStreamResponses(
@@ -308,13 +266,23 @@ func (m *grpcMocker) sendStreamResponses(
 	output stuber.Output,
 	stub *stuber.Stub,
 	messageIndex int,
-	td template.Data,
+	messages []any,
+	templateData template.Data,
 ) error {
-	if stub.IsClientStream() {
-		return m.sendClientStreamResponses(stream, output, stub, messageIndex, td)
+	if stub.Output.HasTemplate() {
+		return m.sendServerStreamResponses(stream, output, messages, templateData)
 	}
 
-	return m.sendServerStreamResponses(stream, output, td)
+	if stub.IsClientStream() {
+		return m.sendClientStreamResponses(stream, output, stub, messageIndex, messages, templateData)
+	}
+
+	elements, err := renderStreamElements(m.templateEngine, messages, templateData)
+	if err != nil {
+		return err
+	}
+
+	return m.sendServerStreamResponses(stream, output, elements, templateData)
 }
 
 //nolint:cyclop
@@ -323,9 +291,10 @@ func (m *grpcMocker) sendClientStreamResponses(
 	output stuber.Output,
 	stub *stuber.Stub,
 	messageIndex int,
-	td template.Data,
+	messages []any,
+	templateData template.Data,
 ) error {
-	streamLen := len(output.Stream)
+	streamLen := len(messages)
 	if streamLen == 0 {
 		return nil
 	}
@@ -334,7 +303,7 @@ func (m *grpcMocker) sendClientStreamResponses(
 		return nil
 	}
 
-	inputLen := len(stub.Inputs)
+	inputLen := len(stub.Matchers())
 	if inputLen == 0 {
 		return nil
 	}
@@ -350,12 +319,17 @@ func (m *grpcMocker) sendClientStreamResponses(
 		end = streamLen
 	}
 
-	for _, streamElement := range output.Stream[start:end] {
+	elements, err := renderStreamElements(m.templateEngine, messages[start:end], templateData)
+	if err != nil {
+		return err
+	}
+
+	for _, streamElement := range elements {
 		if _, ok := streamElement.(map[string]any); !ok {
 			continue
 		}
 
-		payload, err := m.prepareStreamElement(stream.Context(), streamElement, output, td)
+		payload, err := m.prepareStreamElement(stream.Context(), streamElement, output, templateData)
 		if err != nil {
 			return err
 		}
@@ -415,10 +389,11 @@ func (m *grpcMocker) prepareStreamElement(
 func (m *grpcMocker) sendServerStreamResponses(
 	stream grpc.ServerStream,
 	output stuber.Output,
-	td template.Data,
+	elements []any,
+	templateData template.Data,
 ) error {
-	for _, streamElement := range output.Stream {
-		payload, err := m.prepareStreamElement(stream.Context(), streamElement, output, td)
+	for _, streamElement := range elements {
+		payload, err := m.prepareStreamElement(stream.Context(), streamElement, output, templateData)
 		if err != nil {
 			return err
 		}

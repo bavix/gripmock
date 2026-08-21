@@ -18,7 +18,7 @@ import (
 // ErrMaxRecursionDepthExceeded is returned when structure nesting exceeds MaxRecursionDepth.
 var ErrMaxRecursionDepthExceeded = errors.New("maximum recursion depth exceeded")
 
-// MaxRecursionDepth is the maximum allowed nesting depth for ProcessMap/ProcessStream.
+// MaxRecursionDepth is the maximum allowed nesting depth for ProcessValue/ProcessStream.
 const (
 	MaxRecursionDepth = 250
 	templateCacheSize = 1024
@@ -98,6 +98,58 @@ func (e *Engine) Render(tmpl string, data Data) (result string, err error) {
 	e.cache.Add(tmpl, parsed)
 
 	return result, exec(parsed)
+}
+
+// ErrRenderLimit is returned when a template writes more than the caller allows.
+var ErrRenderLimit = errors.New("template rendered past the size limit")
+
+type limitedWriter struct {
+	buf   bytes.Buffer
+	limit int
+}
+
+func (w *limitedWriter) Write(p []byte) (int, error) {
+	if w.buf.Len()+len(p) > w.limit {
+		return 0, ErrRenderLimit
+	}
+
+	return w.buf.Write(p) //nolint:wrapcheck
+}
+
+// RenderLimited renders like Render but stops as soon as the output exceeds limit
+// bytes, so a runaway template cannot buffer the whole document first.
+//
+//nolint:nonamedreturns
+func (e *Engine) RenderLimited(tmpl string, data Data, limit int) (result string, err error) {
+	if tmpl == "" {
+		return "", nil
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("template execution panic: %v", r) //nolint:err113
+		}
+	}()
+
+	parsed, ok := e.cache.Get(tmpl)
+	if !ok {
+		if parsed, err = e.parseTemplate(tmpl); err != nil {
+			return "", err
+		}
+
+		e.cache.Add(tmpl, parsed)
+	}
+
+	writer := &limitedWriter{limit: limit}
+	if err := parsed.Execute(writer, data); err != nil {
+		if errors.Is(err, ErrRenderLimit) {
+			return "", ErrRenderLimit
+		}
+
+		return "", fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	return writer.buf.String(), nil
 }
 
 // unescapeTemplateQuotes removes escape sequences from quotes inside template expressions.
@@ -195,9 +247,21 @@ func HasTemplatesInHeaders(headers map[string]string) bool {
 	return false
 }
 
-// ProcessMap processes templates in a map recursively.
-func (e *Engine) ProcessMap(data map[string]any, templateData Data) error {
-	return processMapTemplates(data, templateData, e, 0)
+func (e *Engine) ProcessValue(value any, templateData Data) (any, error) {
+	switch v := value.(type) {
+	case string:
+		if !IsTemplateString(v) {
+			return v, nil
+		}
+
+		return e.Render(v, templateData)
+	case map[string]any:
+		return v, processMapTemplates(v, templateData, e, 0)
+	case []any:
+		return v, processArrayTemplates(v, templateData, e, 0)
+	default:
+		return value, nil
+	}
 }
 
 // ProcessHeaders processes templates in headers.

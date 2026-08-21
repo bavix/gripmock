@@ -8,11 +8,16 @@ Reference for all output fields in stub configuration.
 |---|---|---|
 | `data` | object | Response payload for successful requests |
 | `stream` | array | Server streaming messages |
+| `template` | bool | Marks `data` or `stream` as a template; see [Response Templates](./dynamic-structure) <VersionTag version="v3.22.0" /> |
 | `error` | string | Error message |
 | `code` | int | gRPC status code |
 | `headers` | object | Response metadata |
+| `trailers` | object | Trailing metadata, sent with the status |
 | `delay` | duration | Response delay |
 | `details` | array | Error details (gRPC status details) |
+
+`data` and `stream` are mutually exclusive; with `template: true` the chosen one holds
+the template text. `error`, `code` and `details` may accompany any of them.
 
 ## `data` — Success Response <VersionTag version="v1.13.0" />
 
@@ -32,7 +37,9 @@ output:
     - message: "Second"
 ```
 
-See [Streaming](./streaming) for full streaming guide.
+See [Streaming](./streaming) for full streaming guide, and
+[Response Templates](./dynamic-structure) for arrays and stream lengths that follow
+the request.
 
 ## `error` + `code` — Error Response <VersionTag version="v2.0.0" />
 

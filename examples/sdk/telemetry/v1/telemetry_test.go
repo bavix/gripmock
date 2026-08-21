@@ -177,3 +177,76 @@ func TestSamplesCanBeAppendedAfterTheFirstBatch(t *testing.T) {
 	require.Len(t, samples, 2)
 	require.InDelta(t, 20, samples[1].GetValue(), 0.001)
 }
+
+func TestTemplateSendsOneSamplePerRequestedMetric(t *testing.T) {
+	t.Parallel()
+
+	srv, client := newClient(t)
+
+	srv.ExpectServerStream(telemetryv1.TelemetryService_StreamSamples_FullMethodName).
+		Match("device_id", "sensor-6").
+		SendStreamTemplate(`
+{{ range $i, $metric := split .Request.metric "," }}
+  {{ dict "sequence" (add $i 1) "value" (mul (add $i 1) 1.5) "unit" $metric }}
+{{ end }}`)
+
+	samples, err := drain(openStream(t, client, "sensor-6", "C,V,A"))
+
+	require.NoError(t, err)
+	require.Len(t, samples, 3)
+	require.Equal(t, "A", samples[2].GetUnit())
+	require.EqualValues(t, 3, samples[2].GetSequence())
+	require.InDelta(t, 4.5, samples[2].GetValue(), 0.001)
+}
+
+func TestTemplateStreamDelayIsPerMessageOnly(t *testing.T) {
+	t.Parallel()
+
+	srv, client := newClient(t)
+
+	const gap = 60 * time.Millisecond
+
+	srv.ExpectServerStream(telemetryv1.TelemetryService_StreamSamples_FullMethodName).
+		Match("device_id", "sensor-7").
+		Delay(gap).
+		SendStreamTemplate(`{{ range $i := seq 2 }}{{ dict "sequence" $i "value" 1 "unit" "C" }}{{ end }}`)
+
+	started := time.Now()
+
+	samples, err := drain(openStream(t, client, "sensor-7", "temperature"))
+
+	require.NoError(t, err)
+	require.Len(t, samples, 2)
+
+	elapsed := time.Since(started)
+	require.GreaterOrEqual(t, elapsed, 2*gap)
+	require.Less(t, elapsed, 4*gap)
+}
+
+func TestEffectCreatesAStreamTemplateStub(t *testing.T) {
+	t.Parallel()
+
+	srv, client := newClient(t)
+
+	unlockLive := sdk.Upsert("telemetry.v1.TelemetryService", "StreamSamples").
+		Match("device_id", "sensor-9").
+		SendStreamTemplate(`{{ range $i := seq 2 }}{{ dict "sequence" $i "value" 7 "unit" "C" }}{{ end }}`).
+		Build()
+
+	srv.ExpectServerStream(telemetryv1.TelemetryService_StreamSamples_FullMethodName).
+		Match("device_id", "sensor-8").
+		Effect(unlockLive).
+		SendStream(map[string]any{"sequence": 1, "value": 1, "unit": "C"})
+
+	_, err := drain(openStream(t, client, "sensor-9", "temperature"))
+	require.Error(t, err, "the child stub does not exist yet")
+
+	primed, err := drain(openStream(t, client, "sensor-8", "temperature"))
+	require.NoError(t, err)
+	require.Len(t, primed, 1)
+
+	samples, err := drain(openStream(t, client, "sensor-9", "temperature"))
+	require.NoError(t, err)
+	require.Len(t, samples, 2)
+	require.EqualValues(t, 1, samples[1].GetSequence())
+}

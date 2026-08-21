@@ -14,6 +14,11 @@ type convertScope struct {
 	seen  []protoreflect.Message
 	depth int
 	max   int
+
+	// keepUnsetSingular keeps a field the client did not set in the result, as its
+	// zero value. A captured stub matches by the fields it lists, so leaving an
+	// unset field out would make it match requests that do set it.
+	keepUnsetSingular bool
 }
 
 func newConvertScope(maxDepth int) *convertScope {
@@ -22,6 +27,13 @@ func newConvertScope(maxDepth int) *convertScope {
 	}
 
 	return &convertScope{max: maxDepth}
+}
+
+func newCaptureScope(maxDepth int) *convertScope {
+	scope := newConvertScope(maxDepth)
+	scope.keepUnsetSingular = true
+
+	return scope
 }
 
 func (c *convertScope) enter(msg protoreflect.Message) bool {
@@ -48,20 +60,22 @@ func (c *convertScope) exit() {
 	c.seen = c.seen[:len(c.seen)-1]
 }
 
-func convertToMap(msg proto.Message) map[string]any {
-	if msg == nil {
-		return nil
-	}
-
-	return convertToMapVisited(msg.ProtoReflect(), newConvertScope(defaultConvertDepth))
-}
-
 func convertToMapWithDepth(msg proto.Message, maxDepth int) map[string]any {
 	if msg == nil {
 		return nil
 	}
 
 	return convertToMapVisited(msg.ProtoReflect(), newConvertScope(maxDepth))
+}
+
+// convertRequestForCapture renders a request the way a captured stub must remember
+// it: every singular field the message declares, set or not.
+func convertRequestForCapture(msg proto.Message, maxDepth int) map[string]any {
+	if msg == nil {
+		return nil
+	}
+
+	return convertToMapVisited(msg.ProtoReflect(), newCaptureScope(maxDepth))
 }
 
 func convertToMapVisited(message protoreflect.Message, scope *convertScope) map[string]any {
@@ -76,7 +90,8 @@ func convertToMapVisited(message protoreflect.Message, scope *convertScope) map[
 	for i := range desc.Fields().Len() {
 		fd := desc.Fields().Get(i)
 
-		if fd.Cardinality() == protoreflect.Repeated && !message.Has(fd) {
+		if !message.Has(fd) && (fd.Cardinality() == protoreflect.Repeated ||
+			(fd.ContainingOneof() != nil && !scope.keepUnsetSingular)) {
 			continue
 		}
 
@@ -107,7 +122,7 @@ func convertListVisited(fd protoreflect.FieldDescriptor, list protoreflect.List,
 
 		if elemType != nil {
 			if m := elem.Message(); m.IsValid() {
-				result[i] = convertToMapVisited(m, scope)
+				result[i] = convertMessageVisited(m, scope)
 			}
 		} else {
 			result[i] = convertScalarVisited(fd, elem, scope)
@@ -130,7 +145,7 @@ func convertMapVisited(fd protoreflect.FieldDescriptor, m protoreflect.Map, scop
 
 		if valType != nil {
 			if m := val.Message(); m.IsValid() {
-				result[convertedKey] = convertToMapVisited(m, scope)
+				result[convertedKey] = convertMessageVisited(m, scope)
 			}
 		} else {
 			result[convertedKey] = convertScalar(fd.MapValue(), val)
@@ -181,16 +196,16 @@ func convertScalarVisited(fd protoreflect.FieldDescriptor, value protoreflect.Va
 
 		return ""
 	case protoreflect.MessageKind, protoreflect.GroupKind:
-		if scope == nil {
-			return convertToMap(value.Message().Interface())
-		}
-
 		m := value.Message()
 		if !m.IsValid() {
 			return nil
 		}
 
-		return convertToMapVisited(m, scope)
+		if scope == nil {
+			scope = newConvertScope(defaultConvertDepth)
+		}
+
+		return convertMessageVisited(m, scope)
 	default:
 		return nil
 	}

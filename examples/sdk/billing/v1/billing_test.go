@@ -47,6 +47,29 @@ func TestChargeInvoiceMatchesOnRequestFields(t *testing.T) {
 	require.Equal(t, "settled", resp.GetStatus())
 }
 
+func TestTemplateComputesTheRemainingBalance(t *testing.T) {
+	t.Parallel()
+
+	srv, client := newClient(t)
+
+	srv.ExpectUnary(billingv1.BillingService_ChargeInvoice_FullMethodName).
+		Match("invoice_id", "INV-T").
+		ReturnTemplate(`{{ dict
+     "transaction_id"  (printf "TX-%s" .Request.customer_id)
+     "status"          "settled"
+     "remaining_cents" (sub 10000 .Request.amount_cents) }}`)
+
+	resp, err := client.ChargeInvoice(t.Context(), &billingv1.ChargeInvoiceRequest{
+		InvoiceId:   "INV-T",
+		CustomerId:  "CUST-9",
+		AmountCents: 2500,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "TX-CUST-9", resp.GetTransactionId())
+	require.EqualValues(t, 7500, resp.GetRemainingCents())
+}
+
 func TestChargeInvoiceRejectsUnmatchedRequest(t *testing.T) {
 	t.Parallel()
 

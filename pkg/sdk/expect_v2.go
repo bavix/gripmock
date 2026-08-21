@@ -359,6 +359,15 @@ func (e *UnaryExpectation) ReturnStatus(code codes.Code) *UnaryExpectation {
 	return e.ReturnError(code, "")
 }
 
+func (e *UnaryExpectation) ReturnTemplate(document string) *UnaryExpectation {
+	e.committed = true
+	e.firstStub = e.registerOutput(stuber.Output{Template: true, Data: document}, e.priority)
+	e.stub = e.firstStub
+	e.stubID = e.firstStub.ID
+
+	return e
+}
+
 func (e *UnaryExpectation) register() {
 	e.committed = true
 	output := e.buildOutput()
@@ -593,6 +602,12 @@ func (e *ServerStreamExpectation) ReturnTrailers(trailers map[string]string) *Se
 	return e
 }
 
+func (e *ServerStreamExpectation) SendStreamTemplate(document string) *ServerStreamExpectation {
+	e.register(stuber.Output{Template: true, Stream: document}, nil)
+
+	return e
+}
+
 func (e *ServerStreamExpectation) register(output stuber.Output, handler stuber.ServerStreamHandler) *stuber.Stub {
 	e.committed = true
 
@@ -707,11 +722,12 @@ func (b *ServerStreamBuilder) upsert() {
 type ClientStreamExpectation struct {
 	expectationBase
 
-	delay   time.Duration
-	kv      map[string]any
-	value   *any
-	err     *stuberError
-	handler ClientStreamHandler
+	delay    time.Duration
+	kv       map[string]any
+	value    *any
+	template string
+	err      *stuberError
+	handler  ClientStreamHandler
 }
 
 func newClientStreamExpectation(srv *Server, fullMethod string) *ClientStreamExpectation {
@@ -868,12 +884,21 @@ func (e *ClientStreamExpectation) MatchSequence(matchers ...Matcher) *ClientStre
 	return e
 }
 
+func (e *ClientStreamExpectation) ReturnTemplate(document string) *ClientStreamExpectation {
+	e.template = document
+	e.register()
+
+	return e
+}
+
 func (e *ClientStreamExpectation) register() {
 	e.committed = true
 
 	var output stuber.Output
 
 	switch {
+	case e.template != "":
+		output = stuber.Output{Template: true, Data: e.template}
 	case e.err != nil:
 		c := e.err.code
 		output = stuber.Output{Code: &c, Error: e.err.msg, Details: e.err.details}
@@ -966,6 +991,10 @@ func (e *BidirectionalExpectation) ReturnErrorWithDetails(
 // ReturnStatus fails the exchange with a bare gRPC status code and no message.
 func (e *BidirectionalExpectation) ReturnStatus(code codes.Code) *BidirectionalExpectation {
 	return e.ReturnError(code, "")
+}
+
+func (e *BidirectionalExpectation) SendStreamTemplate(document string) *BidirectionalExpectation {
+	return e.register(stuber.Output{Template: true, Stream: document}, e.streamInputs(), nil)
 }
 
 func (e *BidirectionalExpectation) Times(n int) *BidirectionalExpectation {

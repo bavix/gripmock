@@ -22,7 +22,17 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
+// convertToMap renders a request for matching, recording and history.
+//
+// A method behind a proxy keeps every singular field the request declares, set or
+// not. Both sides of a capture must speak the same vocabulary: a stub recorded
+// without the fields the caller left unset would answer requests that do set them,
+// and one recorded with fields the lookup never sends would never match again.
 func (m *grpcMocker) convertToMap(msg proto.Message) map[string]any {
+	if m.proxyRoute() != nil {
+		return convertRequestForCapture(msg, int(m.maxNestingDepth))
+	}
+
 	return convertToMapWithDepth(msg, int(m.maxNestingDepth))
 }
 
@@ -175,30 +185,14 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		}
 	}
 
-	if template.HasTemplatesInHeaders(outputToUse.Headers) {
-		headersCopy := deepCopyStringMap(outputToUse.Headers)
-		if err := m.templateEngine.ProcessHeaders(headersCopy, templateData); err != nil {
-			return errors.Wrap(err, "failed to process header templates")
-		}
-
-		outputToUse.Headers = headersCopy
-	}
-
-	if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
-		errorStr, err := m.templateEngine.ProcessError(outputToUse.Error, templateData)
-		if err != nil {
-			return errors.Wrap(err, "failed to process error template")
-		}
-
-		outputToUse.Error = errorStr
+	outputToUse, err = renderOutput(m.templateEngine, outputToUse, templateData,
+		renderOptions{skipData: true})
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
 		return errors.Wrap(err, "failed to set headers")
-	}
-
-	if err := m.renderTrailers(&outputToUse, templateData); err != nil {
-		return errors.Wrap(err, "failed to process trailer templates")
 	}
 
 	m.setResponseTrailersAny(stream.Context(), stream, outputToUse.Trailers)
@@ -214,26 +208,28 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		return callErr
 	}
 
-	if found.Output.Stream == nil {
+	if !found.Output.IsServerStream() {
 		return m.handleServerStreamOutput(stream, found, requestData, outputToUse, requestTime, matchNumber)
 	}
 
-	if len(found.Output.Stream) == 0 {
+	messages := outputToUse.Messages()
+	if len(messages) == 0 {
 		callErr := m.handleOutputError(stream.Context(), stream, outputToUse)
 
 		m.recordServerStreamUnlessProxied(stream.Context(), found, requestTime,
-			requestData, []any{outputToUse.Data}, recordedMetadata(outputToUse), callErr)
+			requestData, nil, recordedMetadata(outputToUse), callErr)
 
 		return callErr //nolint:wrapcheck
 	}
 
-	sent, callErr := m.handleArrayStreamData(stream, found, inputMsg, requestTime, matchNumber)
+	sent, callErr := m.handleArrayStreamData(stream, found, messages, inputMsg, requestTime,
+		matchNumber, found.Output.HasTemplate())
 	if callErr == nil {
 		callErr = m.handleOutputError(stream.Context(), stream, outputToUse)
 	}
 
 	m.recordServerStreamUnlessProxied(stream.Context(), found, requestTime,
-		requestData, cleanStreamResponses(found.Output.Stream[:sent]), recordedMetadata(outputToUse), callErr)
+		requestData, cleanStreamResponses(messages[:sent]), recordedMetadata(outputToUse), callErr)
 
 	return callErr //nolint:wrapcheck
 }
@@ -243,7 +239,7 @@ func streamDelaysPerMessage(found *stuber.Stub) bool {
 		return false
 	}
 
-	return found.Output.Stream == nil || len(found.Output.Stream) > 0
+	return !found.Output.IsServerStream() || found.Output.HasTemplate() || len(found.Output.Messages()) > 0
 }
 
 func (m *grpcMocker) streamElementError(element stuber.GripMockElement, templateData template.Data) error {
@@ -352,25 +348,27 @@ func (m *grpcMocker) ensureServerStreamResult(
 func (m *grpcMocker) handleArrayStreamData(
 	stream grpc.ServerStream,
 	found *stuber.Stub,
+	elements []any,
 	inputMsg *dynamicpb.Message,
 	requestTime time.Time,
 	matchNumber int,
+	prerendered bool,
 ) (int, error) {
 	done := stream.Context().Done()
 
-	for i, streamData := range found.Output.Stream {
+	for i, streamData := range elements {
 		select {
 		case <-done:
 			return i, stream.Context().Err()
 		default:
 		}
 
-		if err := m.handleStreamElement(stream, found, streamData, i, inputMsg, requestTime, matchNumber); err != nil {
+		if err := m.handleStreamElement(stream, found, streamData, i, inputMsg, requestTime, matchNumber, prerendered); err != nil {
 			return i, err
 		}
 	}
 
-	return len(found.Output.Stream), nil
+	return len(elements), nil
 }
 
 func (m *grpcMocker) handleStreamElement(
@@ -381,14 +379,17 @@ func (m *grpcMocker) handleStreamElement(
 	inputMsg *dynamicpb.Message,
 	requestTime time.Time,
 	matchNumber int,
+	prerendered bool,
 ) error {
-	outputData, ok := streamData.(map[string]any)
-	if !ok {
-		return status.Errorf(codes.Internal, "invalid data format in stream array at index %d", i)
-	}
+	payload := streamData
 
-	outputDataCopy := deepCopyMapAny(outputData)
-	element := stuber.ExtractGripMock(outputDataCopy)
+	var element stuber.GripMockElement
+
+	if outputData, ok := streamData.(map[string]any); ok {
+		outputDataCopy := deepCopyMapAny(outputData)
+		element = stuber.ExtractGripMock(outputDataCopy)
+		payload = outputDataCopy
+	}
 
 	requestData := m.convertToMap(inputMsg)
 
@@ -408,11 +409,16 @@ func (m *grpcMocker) handleStreamElement(
 		return m.streamElementError(element, templateData)
 	}
 
-	if err := m.templateEngine.ProcessMap(outputDataCopy, templateData); err != nil {
-		return errors.Wrap(err, "failed to process dynamic templates")
+	if !prerendered {
+		rendered, err := renderData(m.templateEngine, payload, templateData)
+		if err != nil {
+			return err
+		}
+
+		payload = rendered
 	}
 
-	outputMsg, err := m.newOutputMessage(outputDataCopy)
+	outputMsg, err := m.newOutputMessage(payload)
 	if err != nil {
 		return errors.Wrap(err, "failed to convert response to dynamic message")
 	}
@@ -424,7 +430,7 @@ func (m *grpcMocker) handleStreamElement(
 	return nil
 }
 
-//nolint:cyclop,funlen
+//nolint:cyclop
 func (m *grpcMocker) handleNonArrayStreamData(
 	stream grpc.ServerStream,
 	found *stuber.Stub,
@@ -446,53 +452,69 @@ func (m *grpcMocker) handleNonArrayStreamData(
 		default:
 		}
 
-		outputDataCopy := copyForTemplates(found.Output.Data)
-
-		msgData, msgTime := requestData, requestTime
-
-		inputMsg := dynamicpb.NewMessage(m.inputDesc)
-		if err := stream.RecvMsg(inputMsg); err == nil {
-			msgData = m.convertToMap(inputMsg)
-			msgTime = time.Now()
-		}
-
-		headers := make(map[string]any)
-		if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
-			headers = processHeaders(md)
-		}
-
-		templateData := newTemplateData(msgData, headers, 0, msgTime,
-			[]any{msgData}, found, matchNumber)
-
-		if err := delayTemplated(stream.Context(), m.templateEngine, found.Output.Delay, templateData); err != nil {
+		finished, err := m.sendNonArrayStreamReply(stream, found, requestData, requestTime, matchNumber)
+		if err != nil {
 			return err
 		}
 
-		if dataMap, ok := outputDataCopy.(map[string]any); ok {
-			if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
-				return errors.Wrap(err, "failed to process dynamic templates")
-			}
-
-			outputDataCopy = dataMap
-		}
-
-		outputMsg, err := m.newOutputMessage(outputDataCopy)
-		if err != nil {
-			return errors.Wrap(err, "failed to convert response to dynamic message")
-		}
-
-		if err := sendStreamMessage(stream, outputMsg); err != nil {
-			return err //nolint:wrapcheck
-		}
-
-		if err := stream.RecvMsg(nil); err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
-
-			return errors.Wrap(err, "failed to receive message")
+		if finished {
+			return nil
 		}
 	}
+}
+
+// sendNonArrayStreamReply renders and sends one reply of a non-array server stream
+// and reports whether the client finished the call afterwards.
+func (m *grpcMocker) sendNonArrayStreamReply(
+	stream grpc.ServerStream,
+	found *stuber.Stub,
+	requestData map[string]any,
+	requestTime time.Time,
+	matchNumber int,
+) (bool, error) {
+	msgData, msgTime := requestData, requestTime
+
+	inputMsg := dynamicpb.NewMessage(m.inputDesc)
+	if err := stream.RecvMsg(inputMsg); err == nil {
+		msgData = m.convertToMap(inputMsg)
+		msgTime = time.Now()
+	}
+
+	headers := make(map[string]any)
+	if md, ok := metadata.FromIncomingContext(stream.Context()); ok {
+		headers = processHeaders(md)
+	}
+
+	templateData := newTemplateData(msgData, headers, 0, msgTime,
+		[]any{msgData}, found, matchNumber)
+
+	if err := delayTemplated(stream.Context(), m.templateEngine, found.Output.Delay, templateData); err != nil {
+		return false, err
+	}
+
+	outputDataCopy, err := m.renderSingleMessage(found.Output, templateData)
+	if err != nil {
+		return false, err
+	}
+
+	outputMsg, err := m.newOutputMessage(outputDataCopy)
+	if err != nil {
+		return false, errors.Wrap(err, "failed to convert response to dynamic message")
+	}
+
+	if err := sendStreamMessage(stream, outputMsg); err != nil {
+		return false, err //nolint:wrapcheck
+	}
+
+	if err := stream.RecvMsg(nil); err != nil {
+		if errors.Is(err, io.EOF) {
+			return true, nil
+		}
+
+		return false, errors.Wrap(err, "failed to receive message")
+	}
+
+	return false, nil
 }
 
 func (m *grpcMocker) newOutputMessage(data any) (*dynamicpb.Message, error) {
@@ -527,4 +549,27 @@ func (m *grpcMocker) newOutputMessage(data any) (*dynamicpb.Message, error) {
 	}
 
 	return msg, nil
+}
+
+const errStreamOutputOnUnary = "stub answers with a stream, but this method answers with a single message; use output.data"
+
+// singleMessage is the payload of a stub that answers with one message; a stream stub
+// has no single payload and yields nil.
+func (m *grpcMocker) renderSingleMessage(output stuber.Output, templateData template.Data) (any, error) {
+	if output.HasTemplate() {
+		document, _ := output.Document()
+
+		return renderDocumentData(m.templateEngine, document, templateData)
+	}
+
+	return renderData(m.templateEngine, singleMessage(output), templateData)
+}
+
+func singleMessage(output stuber.Output) any {
+	messages := output.Messages()
+	if len(messages) == 0 {
+		return nil
+	}
+
+	return messages[0]
 }

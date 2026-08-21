@@ -183,7 +183,7 @@
           }
         },
         "session": {
-          "description": "Session this stub belongs to. A stub with a session is invisible outside it; empty means the global scope.",
+          "description": "Session this stub belongs to. A stub with a session is invisible outside it; empty means the global scope. In a stub file this field decides the scope; over the REST and MCP APIs the caller decides it instead (the X-Gripmock-Session header or the tool's session argument), and this field is ignored.",
           "type": "string"
         },
         "_meta": {
@@ -259,7 +259,7 @@
             }
           },
           "session": {
-            "description": "Session this stub belongs to. A stub with a session is invisible outside it; empty means the global scope.",
+            "description": "Session this stub belongs to. A stub with a session is invisible outside it; empty means the global scope. In a stub file this field decides the scope; over the REST and MCP APIs the caller decides it instead (the X-Gripmock-Session header or the tool's session argument), and this field is ignored.",
             "type": "string"
           },
           "_meta": {
@@ -692,6 +692,58 @@
     "output": {
       "description": "The stub response: data, a stream, an error, or a combination.",
       "type": "object",
+      "allOf": [
+        {
+          "if": {
+            "required": [ "template" ],
+            "properties": {
+              "template": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "oneOf": [
+              {
+                "not": {
+                  "required": [ "stream" ]
+                },
+                "required": [ "data" ],
+                "properties": {
+                  "data": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              {
+                "not": {
+                  "required": [ "data" ]
+                },
+                "required": [ "stream" ],
+                "properties": {
+                  "stream": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "properties": {
+              "stream": {
+                "type": "array"
+              }
+            }
+          }
+        },
+        {
+          "not": {
+            "required": [ "data", "stream" ]
+          }
+        }
+      ],
       "minProperties": 1,
       "properties": {
         "data": {
@@ -699,11 +751,23 @@
           "$ref": "#/$defs/outputData"
         },
         "stream": {
-          "description": "Response messages for server and bidirectional streaming, sent in order. In a stub file it may be combined with error: every message is sent first, then the error closes the stream. The REST API rejects that combination — POST /api/stubs requires either the unary side or stream, not both.",
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/streamMessage"
-          }
+          "description": "Response messages for server and bidirectional streaming, sent in order. May be combined with error: every message is sent first, then the error closes the stream. With template: true this is the template text instead.",
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/streamMessage"
+              }
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        },
+        "template": {
+          "description": "Marks data or stream as a Go template rendered per request: the template in data answers with one message, the template in stream answers with a stream.",
+          "type": "boolean"
         },
         "error": {
           "description": "gRPC status message. Returned instead of data when set.",

@@ -55,7 +55,8 @@ func recordCall(
 	stubID uuid.UUID,
 	code uint32,
 	ts time.Time,
-	requests, responses []map[string]any,
+	requests []map[string]any,
+	responses []any,
 	respHeaders map[string]string,
 	errMsg string,
 ) {
@@ -268,7 +269,7 @@ func (h *gatewayHandler) handleWithoutDescriptor(
 		return
 	}
 
-	if outputToUse.Data != nil {
+	if outputToUse.Data != nil || outputToUse.HasTemplate() {
 		recordCall(h.recorder, serviceName, methodName, query.Session, found.ID, uint32(codes.Unimplemented),
 			requestTime, []map[string]any{emptyInput}, nil, nil,
 			"proto descriptor required to encode non-empty output for "+serviceName+"/"+methodName)
@@ -285,7 +286,7 @@ func (h *gatewayHandler) handleWithoutDescriptor(
 	resp.WriteSuccess(w, r)
 
 	recordCall(h.recorder, serviceName, methodName, query.Session, found.ID, uint32(codes.OK),
-		requestTime, []map[string]any{emptyInput}, []map[string]any{{}}, outputToUse.Headers, "")
+		requestTime, []map[string]any{emptyInput}, []any{map[string]any{}}, outputToUse.Headers, "")
 }
 
 func collectFieldMaskNames(msg proto.Message) map[string]struct{} {

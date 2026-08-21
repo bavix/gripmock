@@ -4,32 +4,20 @@ import (
 	stderrors "errors"
 	"fmt"
 
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	errorFormatter "github.com/bavix/gripmock/v3/internal/infra/errors"
 	localstuber "github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
 // Validation errors.
 var (
-	ErrInputCannotBeEmpty           = stderrors.New("input/inputs cannot be empty")
-	ErrOutputCannotBeEmpty          = stderrors.New("output/output.stream cannot be empty")
-	ErrInputsCannotBeEmptyForClient = stderrors.New("inputs cannot be empty for client streaming")
-	ErrStreamCannotBeEmptyForServer = stderrors.New("output.stream cannot be empty for server streaming")
-	ErrInputsCannotBeEmptyForBidi   = stderrors.New("inputs cannot be empty for bidirectional streaming")
-	ErrStreamCannotBeEmptyForBidi   = stderrors.New("output.stream cannot be empty for bidirectional streaming")
-	ErrInvalidStubConfiguration     = stderrors.New("invalid stub configuration")
-	ErrInvalidInputConfiguration    = stderrors.New("cannot have both input and inputs configured")
-	ErrInvalidOutputConfiguration   = stderrors.New("cannot have both output.data and output.stream configured")
-	ErrServiceIsMissing             = stderrors.New("service name is missing")
-	ErrMethodIsMissing              = stderrors.New("method name is missing")
-	ErrServiceNotRemovable          = stderrors.New("service not found or not removable")
-	ErrEmptyBody                    = stderrors.New("empty body")
-	ErrFileDescriptorSetNoFiles     = stderrors.New("FileDescriptorSet does not contain files")
-	ErrResolveDescriptorDeps        = stderrors.New("failed to resolve FileDescriptorSet dependencies")
-	ErrInvalidFileDescriptorSet     = stderrors.New("invalid FileDescriptorSet")
-	ErrRegisterDescriptorFile       = stderrors.New("failed to register descriptor file")
+	ErrServiceIsMissing         = stderrors.New("service name is missing")
+	ErrMethodIsMissing          = stderrors.New("method name is missing")
+	ErrServiceNotRemovable      = stderrors.New("service not found or not removable")
+	ErrEmptyBody                = stderrors.New("empty body")
+	ErrFileDescriptorSetNoFiles = stderrors.New("FileDescriptorSet does not contain files")
+	ErrResolveDescriptorDeps    = stderrors.New("failed to resolve FileDescriptorSet dependencies")
+	ErrInvalidFileDescriptorSet = stderrors.New("invalid FileDescriptorSet")
+	ErrRegisterDescriptorFile   = stderrors.New("failed to register descriptor file")
 
 	ErrMCPInvalidArgument = stderrors.New("mcp invalid argument")
 	ErrMCPToolNotFound    = stderrors.New("mcp tool not found")
@@ -48,28 +36,6 @@ func (f *ErrorFormatter) FormatStubNotFoundError(expect localstuber.Query, resul
 	formatter := errorFormatter.NewStubNotFoundFormatter()
 
 	return formatter.Format(expect, result)
-}
-
-// CreateStubNotFoundError creates a gRPC status error for stub not found scenarios.
-func (f *ErrorFormatter) CreateStubNotFoundError(serviceName, methodName string, details ...string) error {
-	msg := fmt.Sprintf("Failed to find response (service: %s, method: %s)", serviceName, methodName)
-
-	if len(details) > 0 {
-		msg += " - " + details[0]
-	}
-
-	return status.Error(codes.NotFound, msg)
-}
-
-// CreateClientStreamError creates a gRPC status error for client stream scenarios.
-func (f *ErrorFormatter) CreateClientStreamError(serviceName, methodName string, err error) error {
-	msg := fmt.Sprintf("Failed to find response for client stream (service: %s, method: %s)", serviceName, methodName)
-
-	if err != nil {
-		msg += fmt.Sprintf(" - Error: %v", err)
-	}
-
-	return status.Error(codes.NotFound, msg)
 }
 
 type kindError struct {

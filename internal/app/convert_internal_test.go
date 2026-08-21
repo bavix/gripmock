@@ -56,7 +56,7 @@ func TestConvertToMapKeepsLargeIntegersExact(t *testing.T) {
 	msg.Set(desc.Fields().ByName("blob"), protoreflect.ValueOfBytes([]byte{1, 2, 3}))
 	msg.Set(desc.Fields().ByName("text"), protoreflect.ValueOfString("plain"))
 
-	converted := convertToMap(msg)
+	converted := convertToMapWithDepth(msg, defaultConvertDepth)
 
 	require.Equal(t, json.Number("18446744073709551615"), converted["big"])
 	require.Equal(t, json.Number("-9223372036854775808"), converted["negative"])
@@ -92,7 +92,7 @@ func TestConvertToMapWalksRepeatedAndMapFields(t *testing.T) {
 	counters.Append(protoreflect.ValueOfUint64(1))
 	counters.Append(protoreflect.ValueOfUint64(18446744073709551615))
 
-	converted := convertToMap(msg)
+	converted := convertToMapWithDepth(msg, defaultConvertDepth)
 
 	list, ok := converted["items"].([]any)
 	require.True(t, ok)

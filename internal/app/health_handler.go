@@ -67,6 +67,10 @@ func (s *mockableHealthServer) Check(
 		return s.real.Check(ctx, req)
 	}
 
+	if stub.Output.HasTemplate() {
+		return nil, status.Error(codes.Internal, errHealthTemplate)
+	}
+
 	td := healthTemplateData(ctx, req.GetService(), stub, matchNumber)
 	if err := delayTemplated(ctx, s.templateEngine, stub.Output.Delay, td); err != nil {
 		return nil, err
@@ -81,7 +85,16 @@ func (s *mockableHealthServer) Check(
 		return nil, st.Err()
 	}
 
-	data, ok := stub.Output.Data.(map[string]any)
+	return healthCheckResponse(stub.Output)
+}
+
+func healthCheckResponse(output stuber.Output) (*healthgrpc.HealthCheckResponse, error) {
+	messages := output.Messages()
+	if output.IsServerStream() || len(messages) == 0 {
+		return nil, status.Error(codes.Internal, "health stub output.data must be an object")
+	}
+
+	data, ok := messages[0].(map[string]any)
 	if !ok {
 		return nil, status.Error(codes.Internal, "health stub output.data must be an object")
 	}

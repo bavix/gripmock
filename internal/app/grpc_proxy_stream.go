@@ -43,7 +43,7 @@ func (m *grpcMocker) proxyServerStreamWithRequest(
 
 	var (
 		requestData      map[string]any
-		historyResponses []map[string]any
+		historyResponses []any
 		clientStream     grpc.ClientStream
 	)
 
@@ -196,7 +196,7 @@ func (m *grpcMocker) proxyClientStreamWithRequests(
 	requests := make([]map[string]any, 0, proxyMessagesInitCap)
 
 	var (
-		historyResponses []map[string]any
+		historyResponses []any
 		clientStream     grpc.ClientStream
 	)
 
@@ -527,11 +527,11 @@ func forwardUpstreamTrailer(stream grpc.ServerStream, clientStream grpc.ClientSt
 // marked=true when a delay marker was written.
 func bufferProxyStreamMessage(
 	responses []any,
-	historyResponses []map[string]any,
+	historyResponses []any,
 	entry any,
 	capture, historyEnabled, recordDelay bool,
 	delay time.Duration,
-) ([]any, []map[string]any, bool) {
+) ([]any, []any, bool) {
 	entryMap, isMap := entry.(map[string]any)
 	marked := false
 
@@ -571,7 +571,7 @@ func (m *grpcMocker) recordBidiProxyHistory(
 
 	requests, responses := state.Snapshot()
 
-	historyResponses := make([]map[string]any, 0, min(len(responses), maxHistoryStreamMsgs))
+	historyResponses := make([]any, 0, min(len(responses), maxHistoryStreamMsgs))
 
 	for _, r := range responses {
 		if len(historyResponses) == maxHistoryStreamMsgs {
