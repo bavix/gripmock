@@ -31,7 +31,6 @@ func (h *ProxyHandler) CanHandle(raw string) bool {
 	return parseErr == nil
 }
 
-//nolint:cyclop
 func (h *ProxyHandler) Parse(raw string) (*Source, error) {
 	parsed, err := url.Parse(raw)
 	if err != nil {
@@ -51,28 +50,14 @@ func (h *ProxyHandler) Parse(raw string) (*Source, error) {
 		return nil, errGRPCSourceHasPath
 	}
 
-	timeout := defaultReflectTimeout
-	if rawTimeout := parsed.Query().Get("timeout"); rawTimeout != "" {
-		timeout, err = time.ParseDuration(rawTimeout)
-		if err != nil {
-			return nil, errors.Wrap(err, "invalid timeout")
-		}
+	timeout, insecure, recordDelay, err := parseProxyQuery(parsed.Query())
+	if err != nil {
+		return nil, err
 	}
 
-	insecure := false
-	if rawInsecure := parsed.Query().Get("insecureSkipVerify"); rawInsecure != "" {
-		insecure, err = strconv.ParseBool(rawInsecure)
-		if err != nil {
-			return nil, errProxySourceInvalidTLS
-		}
-	}
-
-	recordDelay := false
-	if rawRecordDelay := parsed.Query().Get("recordDelay"); rawRecordDelay != "" {
-		recordDelay, err = strconv.ParseBool(rawRecordDelay)
-		if err != nil {
-			return nil, errors.Wrap(err, "invalid recordDelay")
-		}
+	tlsFiles, err := parseUpstreamTLSFiles(parsed.Query(), tlsEnabled)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Source{
@@ -84,6 +69,9 @@ func (h *ProxyHandler) Parse(raw string) (*Source, error) {
 		ReflectBearer:     parsed.Query().Get("bearer"),
 		ReflectTimeout:    timeout,
 		ReflectInsecure:   insecure,
+		ReflectClientCert: tlsFiles.ClientCert,
+		ReflectClientKey:  tlsFiles.ClientKey,
+		ReflectCAFile:     tlsFiles.CAFile,
 		ProxyMode:         proxyMode,
 		RecordDelay:       recordDelay,
 	}, nil
@@ -91,6 +79,44 @@ func (h *ProxyHandler) Parse(raw string) (*Source, error) {
 
 func (h *ProxyHandler) Process(_ context.Context, _ *Source, _ SourceProcessor) error {
 	return nil
+}
+
+// parseProxyQuery reads the switches a proxy URL may carry.
+func parseProxyQuery(query url.Values) (time.Duration, bool, bool, error) {
+	timeout := defaultReflectTimeout
+
+	if raw := query.Get("timeout"); raw != "" {
+		parsed, err := time.ParseDuration(raw)
+		if err != nil {
+			return 0, false, false, errors.Wrap(err, "invalid timeout")
+		}
+
+		timeout = parsed
+	}
+
+	insecure := false
+
+	if raw := query.Get("insecureSkipVerify"); raw != "" {
+		parsed, err := strconv.ParseBool(raw)
+		if err != nil {
+			return 0, false, false, errProxySourceInvalidTLS
+		}
+
+		insecure = parsed
+	}
+
+	recordDelay := false
+
+	if raw := query.Get("recordDelay"); raw != "" {
+		parsed, err := strconv.ParseBool(raw)
+		if err != nil {
+			return 0, false, false, errors.Wrap(err, "invalid recordDelay")
+		}
+
+		recordDelay = parsed
+	}
+
+	return timeout, insecure, recordDelay, nil
 }
 
 func parseProxyScheme(scheme string) (string, bool, error) {

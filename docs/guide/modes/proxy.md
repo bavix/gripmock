@@ -25,12 +25,40 @@ For descriptor loading options, see [Upstreams with gRPC reflection](/guide/mode
 | `bearer`             | —       | Bearer token to include in upstream requests. |
 | `serverName`         | —       | Override TLS server name (SNI).               |
 | `insecureSkipVerify` | `false` | Skip upstream TLS certificate verification.   |
+| `clientCert`         | —       | Client certificate presented to an upstream that requires mTLS. |
+| `clientKey`          | —       | Private key for `clientCert`; both must be given together.      |
+| `caFile`             | —       | CA that signs the upstream certificate (private PKI).           |
 
 Example:
 
 ```bash
 gripmock "grpcs+proxy://10.0.0.5:8443?serverName=api.company.local&timeout=10s"
 ```
+
+## Upstream that requires mTLS <VersionTag version="v3.22.0" />
+
+Point GripMock at the client certificate the upstream expects. The three file
+parameters need a TLS scheme (`grpcs`) — on a plaintext upstream they are rejected
+rather than ignored, so a connection never looks authenticated without being it:
+
+```bash
+gripmock "grpcs+proxy://orders.api.local:8443?clientCert=/certs/client.pem&clientKey=/certs/client.key&caFile=/certs/ca.pem"
+```
+
+The same parameters work for `grpc+capture://` and for a reflection source
+(`grpcs://host:port`). A bad path fails at startup, not on the first proxied call.
+
+Certificates belong to the URL, not to the process, so several upstreams behind
+different PKIs work side by side:
+
+```bash
+gripmock \
+  "grpcs+proxy://orders.api.local:8443?clientCert=/certs/orders.pem&clientKey=/certs/orders.key&caFile=/certs/orders-ca.pem" \
+  "grpcs+proxy://billing.api.local:8443?clientCert=/certs/billing.pem&clientKey=/certs/billing.key&caFile=/certs/billing-ca.pem"
+```
+
+If one upstream rejects its certificate, GripMock stops at startup and names that
+URL instead of serving half of the services.
 
 ## Order Service example
 

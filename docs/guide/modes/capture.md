@@ -44,6 +44,9 @@ For descriptor loading options, see [Upstreams with gRPC reflection](/guide/mode
 | `serverName`         | —       | Override TLS server name (SNI).                       |
 | `insecureSkipVerify` | `false` | Skip upstream TLS certificate verification.           |
 | `recordDelay`        | `false` | Record response latency as `delay` in captured stubs. |
+| `clientCert`         | —       | Client certificate presented to an upstream that requires mTLS. |
+| `clientKey`          | —       | Private key for `clientCert`; both must be given together.      |
+| `caFile`             | —       | CA that signs the upstream certificate (private PKI).           |
 
 Example with delay recording enabled:
 
