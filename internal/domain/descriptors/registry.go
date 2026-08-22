@@ -29,19 +29,16 @@ func (r *Registry) Register(fd protoreflect.FileDescriptor) {
 	r.gen++
 }
 
-// UnregisterByPath removes a file by path.
-func (r *Registry) UnregisterByPath(path string) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+// FileByPath returns the file registered under path, if any.
+//
+//nolint:ireturn // protoreflect models descriptors as interfaces.
+func (r *Registry) FileByPath(path string) (protoreflect.FileDescriptor, bool) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
 
-	if _, ok := r.files[path]; ok {
-		delete(r.files, path)
-		r.gen++
+	file, ok := r.files[path]
 
-		return true
-	}
-
-	return false
+	return file, ok
 }
 
 // UnregisterByService removes file(s) that contain the given service.

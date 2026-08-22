@@ -49,14 +49,24 @@ func (h *GRPCHandler) Parse(raw string) (*Source, error) {
 		}
 	}
 
+	tlsEnabled := parsed.Scheme == "grpcs"
+
+	tlsFiles, err := parseUpstreamTLSFiles(parsed.Query(), tlsEnabled)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Source{
 		Type:              SourceReflect,
 		Raw:               raw,
 		ReflectAddress:    parsed.Host,
-		ReflectTLS:        parsed.Scheme == "grpcs",
+		ReflectTLS:        tlsEnabled,
 		ReflectServerName: parsed.Query().Get("serverName"),
 		ReflectBearer:     parsed.Query().Get("bearer"),
 		ReflectTimeout:    timeout,
+		ReflectClientCert: tlsFiles.ClientCert,
+		ReflectClientKey:  tlsFiles.ClientKey,
+		ReflectCAFile:     tlsFiles.CAFile,
 	}, nil
 }
 
