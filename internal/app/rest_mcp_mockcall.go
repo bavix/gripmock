@@ -8,10 +8,9 @@ import (
 
 	"github.com/bavix/gripmock/v3/internal/domain/history"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
-	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
-func mcpMockCall(h *RestServer, args map[string]any) (map[string]any, error) {
+func mcpMockCall(ctx context.Context, h *RestServer, args map[string]any) (map[string]any, error) {
 	service, _ := args["service"].(string)
 	if service == "" {
 		return nil, mcpRequiredArgError("service")
@@ -55,11 +54,12 @@ func mcpMockCall(h *RestServer, args map[string]any) (map[string]any, error) {
 		return response, nil
 	}
 
-	return mcpRenderMockResponse(h, found, service, method, session, input, headers, result.MatchNumber()), nil
+	return mcpRenderMockResponse(ctx, h, found, service, method, session, input, headers, result.MatchNumber()), nil
 }
 
 //nolint:cyclop,funlen
 func mcpRenderMockResponse(
+	ctx context.Context,
 	h *RestServer,
 	found *stuber.Stub,
 	service, method, session string,
@@ -83,42 +83,14 @@ func mcpRenderMockResponse(
 	templateData := newTemplateData(firstRequest, headers, 0, requestTime,
 		requests, found, matchNumber)
 
-	engine := h.templateEngine
-
-	dataCopy := copyForTemplates(output.Data)
-	if dataMap, ok := dataCopy.(map[string]any); ok {
-		if err := engine.ProcessMap(dataMap, templateData); err != nil {
-			return h.mockTemplateError(found, service, method, session, input, requestTime, err)
-		}
-
-		dataCopy = dataMap
+	output, err := renderOutput(h.templateEngine, output, templateData,
+		renderOptions{renderStream: true})
+	if err != nil {
+		return h.mockTemplateError(found, service, method, session, input, requestTime, err)
 	}
 
-	if template.HasTemplatesInHeaders(output.Headers) {
-		headersCopy := deepCopyStringMap(output.Headers)
-		if err := engine.ProcessHeaders(headersCopy, templateData); err != nil {
-			return h.mockTemplateError(found, service, method, session, input, requestTime, err)
-		}
-
-		output.Headers = headersCopy
-	}
-
-	if template.HasTemplatesInHeaders(output.Trailers) {
-		trailersCopy := deepCopyStringMap(output.Trailers)
-		if err := engine.ProcessHeaders(trailersCopy, templateData); err != nil {
-			return h.mockTemplateError(found, service, method, session, input, requestTime, err)
-		}
-
-		output.Trailers = trailersCopy
-	}
-
-	if output.Error != "" && template.IsTemplateString(output.Error) {
-		errorStr, err := engine.ProcessError(output.Error, templateData)
-		if err != nil {
-			return h.mockTemplateError(found, service, method, session, input, requestTime, err)
-		}
-
-		output.Error = errorStr
+	if err := delayTemplated(ctx, h.templateEngine, output.Delay, templateData); err != nil {
+		return h.mockTemplateError(found, service, method, session, input, requestTime, err)
 	}
 
 	code := codes.OK
@@ -136,12 +108,18 @@ func mcpRenderMockResponse(
 		"codeName": code.String(),
 	}
 
-	var recordedData any
+	var recordedData []any
 
 	if errMsg == "" {
-		if dataCopy != nil {
-			response["data"] = dataCopy
-			recordedData = dataCopy
+		messages := output.Messages()
+
+		switch {
+		case output.IsServerStream():
+			response["stream"] = messages
+			recordedData = cleanStreamResponses(messages)
+		case len(messages) > 0:
+			response["data"] = messages[0]
+			recordedData = messages
 		}
 	} else {
 		response["error"] = errMsg
@@ -165,7 +143,7 @@ func mcpRenderMockResponse(
 	}
 
 	h.recordMockCall(found, service, method, session, input, recordedData, uint32(code), errMsg, requestTime)
-	h.effects().apply(context.Background(), found, templateData)
+	h.effects().apply(ctx, found, templateData)
 
 	return response
 }
@@ -194,7 +172,7 @@ func (h *RestServer) recordMockCall(
 	found *stuber.Stub,
 	service, method, session string,
 	input []map[string]any,
-	data any,
+	responses []any,
 	code uint32,
 	errMsg string,
 	requestTime time.Time,
@@ -215,8 +193,10 @@ func (h *RestServer) recordMockCall(
 		Timestamp: requestTime,
 	}
 
-	if dataMap, ok := data.(map[string]any); ok {
-		record.Responses = []map[string]any{dataMap}
+	for _, response := range responses {
+		if dataMap, ok := response.(map[string]any); ok {
+			record.Responses = append(record.Responses, dataMap)
+		}
 	}
 
 	recordOwned(recorder, record)

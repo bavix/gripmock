@@ -67,7 +67,7 @@ func newMCPToolHandler(h *RestServer, name string) mcp.ToolHandler {
 
 		args = mcpusecase.ApplySession(name, args, mcpSessionFromContext(ctx, req))
 
-		result, err := callMCPToolDispatch(h, name, args)
+		result, err := callMCPToolDispatch(ctx, h, name, args)
 		if err != nil {
 			return nil, mcpJSONRPCError(name, err)
 		}
@@ -124,10 +124,15 @@ func mcpJSONRPCError(toolName string, err error) error {
 	return &jsonrpc.Error{Code: jsonrpc.CodeInternalError, Message: err.Error(), Data: data}
 }
 
-func callMCPToolDispatch(h *RestServer, name string, args map[string]any) (map[string]any, error) {
+func callMCPToolDispatch(
+	ctx context.Context,
+	h *RestServer,
+	name string,
+	args map[string]any,
+) (map[string]any, error) {
 	handlers := mcpToolHandlers(h)
 
-	result, err, found := mcpusecase.DispatchTool(name, args, handlers)
+	result, err, found := mcpusecase.DispatchTool(ctx, name, args, handlers)
 	if !found {
 		return nil, mcpUnknownTool(name)
 	}
@@ -137,9 +142,17 @@ func callMCPToolDispatch(h *RestServer, name string, args map[string]any) (map[s
 
 type mcpToolFunc func(*RestServer, map[string]any) (map[string]any, error)
 
+type mcpToolCtxFunc func(context.Context, *RestServer, map[string]any) (map[string]any, error)
+
 func bindTool(h *RestServer, fn mcpToolFunc) mcpusecase.ToolHandler {
-	return func(args map[string]any) (map[string]any, error) {
+	return func(_ context.Context, args map[string]any) (map[string]any, error) {
 		return fn(h, args)
+	}
+}
+
+func bindCtxTool(h *RestServer, fn mcpToolCtxFunc) mcpusecase.ToolHandler {
+	return func(ctx context.Context, args map[string]any) (map[string]any, error) {
+		return fn(ctx, h, args)
 	}
 }
 
@@ -179,13 +192,14 @@ func mcpToolHandlers(h *RestServer) map[string]mcpusecase.ToolHandler {
 		mcpusecase.ToolStubsInspect:     mcpStubsInspect,
 		mcpusecase.ToolStubsUsed:        mcpStubsUsed,
 		mcpusecase.ToolStubsUnused:      mcpStubsUnused,
-		mcpusecase.ToolMockCall:         mcpMockCall,
 	}
 
-	handlers := make(map[string]mcpusecase.ToolHandler, len(funcs))
+	handlers := make(map[string]mcpusecase.ToolHandler, len(funcs)+1)
 	for name, fn := range funcs {
 		handlers[name] = bindTool(h, fn)
 	}
+
+	handlers[mcpusecase.ToolMockCall] = bindCtxTool(h, mcpMockCall)
 
 	return handlers
 }

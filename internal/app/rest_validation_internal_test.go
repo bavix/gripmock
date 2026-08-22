@@ -79,7 +79,7 @@ func (s *RestValidationTestSuite) TestAddStubValidationErrors() {
 				"output": {"data": {"result": "success"}, "stream": [{"result": "stream"}]}
 			}]`,
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "must have either 'data' or 'stream', but not both",
+			expectedError:  "'data' and 'stream' are mutually exclusive",
 		},
 		{
 			name: "unary stub without input",
@@ -99,7 +99,7 @@ func (s *RestValidationTestSuite) TestAddStubValidationErrors() {
 				"input": {"contains": {"key": "value"}}
 			}]`,
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "must have either 'data' or 'stream', but not both",
+			expectedError:  "'data' and 'stream' are mutually exclusive",
 		},
 		{
 			name: "client streaming stub without inputs",
@@ -174,7 +174,7 @@ func (s *RestValidationTestSuite) TestAddStubValidationErrors() {
 				"output": {"data": null, "error": ""}
 			}]`,
 			expectedStatus: http.StatusBadRequest,
-			expectedError:  "must have either 'data' or 'stream', but not both",
+			expectedError:  "'data' and 'stream' are mutually exclusive",
 		},
 		{
 			name: "invalid effect action",
