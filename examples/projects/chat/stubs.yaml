@@ -68,3 +68,15 @@
     data:
       user: Julie
       text: "Yes, John"
+
+# A single reply paired with `inputs` answers every received message.
+- service: ChatService
+  method: Chat
+  inputs:
+    - equals:
+        user: Dana
+        text: "ping"
+  output:
+    data:
+      user: Bot
+      text: "pong"

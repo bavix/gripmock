@@ -38,3 +38,15 @@
   output:
     data:
       isValid: true
+
+# An unset proto3 optional is absent from the request, so `equals` must not
+# mention min/max here.
+- service: Validator
+  method: Validate
+  input:
+    equals:
+      data: "user@example.com"
+      validation_type: EMAIL
+  output:
+    data:
+      isValid: true

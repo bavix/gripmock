@@ -1,0 +1,35 @@
+--- META ---
+name: bidirectional streaming - task chat
+summary: Chat answers every incoming message with the stub that matches it
+tags: [streaming, bidirectional]
+
+--- ENDPOINT ---
+tasktracker.TaskService/Chat
+
+--- REQUEST ---
+{
+  "message": "who is on it?",
+  "sender": "alice",
+  "task_id": "task-42"
+}
+
+--- RESPONSE ---
+{
+  "message": "bob picked it up",
+  "sender": "bot",
+  "task_id": "task-42"
+}
+
+--- REQUEST ---
+{
+  "message": "when is it due?",
+  "sender": "alice",
+  "task_id": "task-42"
+}
+
+--- RESPONSE ---
+{
+  "message": "friday",
+  "sender": "bot",
+  "task_id": "task-42"
+}

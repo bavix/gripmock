@@ -1,0 +1,26 @@
+--- ENDPOINT ---
+chat.ChatService/Chat
+
+--- REQUEST ---
+{
+  "text": "ping",
+  "user": "Dana"
+}
+
+--- RESPONSE ---
+{
+  "text": "pong",
+  "user": "Bot"
+}
+
+--- REQUEST ---
+{
+  "text": "ping",
+  "user": "Dana"
+}
+
+--- RESPONSE ---
+{
+  "text": "pong",
+  "user": "Bot"
+}

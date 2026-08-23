@@ -1,0 +1,37 @@
+--- META ---
+name: CreateTask picks the stub by priority value
+summary: high and normal are served by their own stubs, not by the critical one that carries the effect
+tags: [priority]
+
+--- ENDPOINT ---
+tasktracker.TaskService/CreateTask
+
+--- REQUEST ---
+{
+  "assignee": "dev2",
+  "priority": "high",
+  "title": "Investigate flaky test"
+}
+
+--- RESPONSE ---
+{
+  "task_id": "high-created",
+  "ok": true
+}
+// The same method with another priority must fall to the other stub
+
+--- ENDPOINT ---
+tasktracker.TaskService/CreateTask
+
+--- REQUEST ---
+{
+  "assignee": "dev3",
+  "priority": "normal",
+  "title": "Update changelog"
+}
+
+--- RESPONSE ---
+{
+  "task_id": "normal-created",
+  "ok": true
+}

@@ -1,0 +1,21 @@
+--- META ---
+name: anyOf header matching - request without headers
+summary: The same task_id without x-env/x-role falls through to the header-less stub
+tags: [anyOf, headers]
+
+--- ENDPOINT ---
+tasktracker.TaskService/GetTask
+
+--- REQUEST ---
+{
+  "task_id": "admin-task"
+}
+
+--- RESPONSE ---
+{
+  "ok": false,
+  "priority": "low",
+  "status": "restricted",
+  "task_id": "admin-task",
+  "title": "Admin Task (no header)"
+}
