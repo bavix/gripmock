@@ -1,0 +1,37 @@
+--- ENDPOINT ---
+catalog.CatalogService/WatchStock
+
+--- REQUEST ---
+{
+  "skus": [
+    "a",
+    "b"
+  ],
+  "ticks": 2
+}
+
+--- RESPONSE ---
+{
+  "sku": "a",
+  "stock": 100
+}
+
+--- RESPONSE ---
+{
+  "sku": "b",
+  "stock": 100
+}
+
+--- RESPONSE ---
+{
+  "sku": "a",
+  "seq": 1,
+  "stock": 99
+}
+
+--- RESPONSE ---
+{
+  "sku": "b",
+  "seq": 1,
+  "stock": 99
+}

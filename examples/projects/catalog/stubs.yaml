@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+- service: catalog.CatalogService
+  method: Search
+  input:
+    contains: {}
+  output:
+    template: true
+    data: |
+      {{ $matched := .Request.catalog | where "stock" "gte" .Request.min_stock }}
+      {{ $page := $matched | page .Request.offset .Request.limit }}
+      {{ dict "items"     $page
+              "matched"   (len $matched)
+              "pageTotal" (sum (extract $page "price"))
+              "facets"    (countBy "category" $page) }}
+
+- service: catalog.CatalogService
+  method: WatchStock
+  input:
+    contains: {}
+  output:
+    template: true
+    stream: |
+      {{ range $tick := seq .Request.ticks }}
+        {{ range $sku := $.Request.skus }}
+          {{ dict "_gripmock" (dict "delay" "5ms")
+                  "sku"       $sku
+                  "seq"       $tick
+                  "stock"     (sub 100 $tick) }}
+        {{ end }}
+      {{ end }}

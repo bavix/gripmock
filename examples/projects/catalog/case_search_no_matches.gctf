@@ -1,0 +1,18 @@
+--- ENDPOINT ---
+catalog.CatalogService/Search
+
+--- REQUEST ---
+{
+  "catalog": [
+    {
+      "sku": "a",
+      "category": "tools",
+      "stock": 0,
+      "price": 10
+    }
+  ],
+  "min_stock": 5
+}
+
+--- RESPONSE ---
+{}

@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package catalog;
+
+option go_package = "github.com/bavix/gripmock/examples/catalog";
+
+service CatalogService {
+  rpc Search (SearchRequest) returns (SearchResponse);
+
+  rpc WatchStock (WatchRequest) returns (stream StockEvent);
+}
+
+message Product {
+  string sku = 1;
+  string category = 2;
+  int32 stock = 3;
+  double price = 4;
+}
+
+message SearchRequest {
+  repeated Product catalog = 1;
+  int32 min_stock = 2;
+  int32 offset = 3;
+  int32 limit = 4;
+}
+
+message SearchResponse {
+  repeated Product items = 1;
+  int32 matched = 2;
+  double page_total = 3;
+  map<string, int32> facets = 4;
+}
+
+message WatchRequest {
+  repeated string skus = 1;
+  int32 ticks = 2;
+}
+
+message StockEvent {
+  string sku = 1;
+  int32 seq = 2;
+  int32 stock = 3;
+}
