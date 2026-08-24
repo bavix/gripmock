@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine3.23
+FROM golang:1.27-alpine3.23
 
 LABEL org.opencontainers.image.title="GripMock Builder"
 LABEL org.opencontainers.image.description="Builder image for GripMock runtime and Go plugins"
