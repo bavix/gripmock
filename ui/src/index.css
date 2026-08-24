@@ -29,9 +29,6 @@
   --error-bg: rgba(229,72,77,0.12);
   --warning: #d97706;
   --warning-bg: rgba(217,119,6,0.12);
-  --cyan: #0891b2;
-  --purple: #9333ea;
-  --pink: #db2777;
   /* shape + motion */
   --radius-sm: 5px;
   --radius: 7px;
@@ -67,9 +64,6 @@
   --error-bg: rgba(255,92,96,0.15);
   --warning: #f0a338;
   --warning-bg: rgba(240,163,56,0.15);
-  --cyan: #2dd4bf;
-  --purple: #b57bf5;
-  --pink: #f472b6;
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.30);
   --shadow: 0 2px 10px rgba(0,0,0,0.35);
   --shadow-lg: 0 16px 40px rgba(0,0,0,0.50), 0 4px 12px rgba(0,0,0,0.35);
@@ -88,7 +82,7 @@ html, body, #root {
   text-rendering: optimizeLegibility;
 }
 
-code, pre, .mono { font-family: var(--mono); }
+code, pre { font-family: var(--mono); }
 ::selection { background: var(--accent-bg); }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -246,8 +240,13 @@ select.input { cursor: pointer; }
   color: var(--text-secondary);
 }
 
-/* ── Divider ── */
-.divider { height: 1px; background: var(--border); border: none; margin: 0; }
-
 /* ── Sidebar ── */
 .sidebar-link:not(.active):hover { background: var(--bg-tertiary); color: var(--text); }
+
+/* ── Top bar ── */
+/* Counters are the first thing to go on a narrow window: the session switcher and
+   the controls next to it must stay reachable. */
+.topbar-counters { display: flex; align-items: center; gap: 8px; }
+@media (max-width: 760px) {
+  .topbar-counters { display: none; }
+}

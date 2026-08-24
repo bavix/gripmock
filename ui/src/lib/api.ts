@@ -44,16 +44,21 @@ export function setApiUrl(u: string) {
 }
 export function resetApiUrl() { try { localStorage.removeItem(STORAGE_KEY); } catch {} }
 
+// The active session, pushed here by the store (on a switch and on rehydrate).
+// Reading it from storage instead would tie the transport to the persistence
+// format — and the key it used to read was one nobody wrote, so every request
+// went out unscoped.
+let activeSession: string | null = null;
+
+export function setActiveSession(session: string | null) { activeSession = session; }
+
 // Shared transport: builds headers (session, content-type), issues the request,
 // and throws ApiError (with status + parsed body) on a non-2xx response.
 async function sendRequest(path: string, opts: RequestInit = {}): Promise<Response> {
   const h: Record<string, string> = { Accept: 'application/json', ...(opts.headers as Record<string, string>) };
   if (!(opts.body instanceof Blob)) h['Content-Type'] = 'application/json';
   h['X-GripMock-RequestInternal'] = '92b4d5a9-c74b-4ac0-989c-717f80acba22';
-  try {
-    const s = localStorage.getItem('gripmock.ui.session');
-    if (s) h['X-Gripmock-Session'] = s;
-  } catch {}
+  if (activeSession) h['X-Gripmock-Session'] = activeSession;
 
   const res = await fetch(`${base()}${path.startsWith('/') ? '' : '/'}${path}`, { ...opts, headers: h });
   if (!res.ok) {

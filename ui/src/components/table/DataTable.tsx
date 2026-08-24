@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, Fragment, type ReactNode, type CSSProperties } from 'react';
 import {
   useTable, flexRender,
-  type SortingState, type ColumnVisibilityState, type SortDirection, type RowData,
+  type SortingState, type SortDirection, type RowData,
 } from '@tanstack/react-table';
 import { tableFeatures, type Column, type RowOf, type TableOf } from './tableFeatures';
 import { ChevronDown, ChevronUp, ChevronsUpDown, ChevronRight } from 'lucide-react';
@@ -22,9 +22,6 @@ interface DataTableProps<T extends RowData> {
   emptyMessage?: string;
   getRowId?: (row: T) => string;
   renderExpanded?: (row: T) => ReactNode;
-  density?: Density;
-  onDensityChange?: (d: Density) => void;
-  onRowClick?: (row: T) => void;
   /** Server-side pagination: total row count + controlled page state. */
   manualPagination?: boolean;
   rowCount?: number;
@@ -90,22 +87,19 @@ interface RowProps<T extends RowData> {
   canExpand: boolean;
   expandedId: string | null;
   setExpandedId: (id: string | null) => void;
-  onRowClick?: (row: T) => void;
   renderExpanded?: (row: T) => ReactNode;
   colCount: number;
 }
 
-function TableRow<T extends RowData>({ row, density, canExpand, expandedId, setExpandedId, onRowClick, renderExpanded, colCount }: Readonly<RowProps<T>>) {
+function TableRow<T extends RowData>({ row, density, canExpand, expandedId, setExpandedId, renderExpanded, colCount }: Readonly<RowProps<T>>) {
   const isExpanded = expandedId === row.id;
-  const clickable = canExpand || !!onRowClick;
   const handleRowClick = () => {
     if (canExpand) setExpandedId(isExpanded ? null : row.id);
-    onRowClick?.(row.original);
   };
   return (
     <Fragment>
-      <tr className={clickable ? 'hover-row' : undefined}
-        style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--border)', cursor: clickable ? 'pointer' : undefined, background: isExpanded ? 'var(--bg-secondary)' : undefined }}
+      <tr className={canExpand ? 'hover-row' : undefined}
+        style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--border)', cursor: canExpand ? 'pointer' : undefined, background: isExpanded ? 'var(--bg-secondary)' : undefined }}
         onClick={handleRowClick}>
         {row.getVisibleCells().map((cell) => (
           <td key={cell.id} onClick={cell.column.id === '_sel' ? (e) => e.stopPropagation() : undefined}
@@ -136,7 +130,6 @@ interface BodyProps<T extends RowData> {
   canExpand: boolean;
   expandedId: string | null;
   setExpandedId: (id: string | null) => void;
-  onRowClick?: (row: T) => void;
   renderExpanded?: (row: T) => ReactNode;
 }
 
@@ -148,14 +141,14 @@ function messageRow(colCount: number, message: ReactNode) {
   );
 }
 
-function DataTableBody<T extends RowData>({ loading, rows, colCount, emptyMessage, density, canExpand, expandedId, setExpandedId, onRowClick, renderExpanded }: Readonly<BodyProps<T>>) {
+function DataTableBody<T extends RowData>({ loading, rows, colCount, emptyMessage, density, canExpand, expandedId, setExpandedId, renderExpanded }: Readonly<BodyProps<T>>) {
   if (loading) return messageRow(colCount, 'Loading...');
   if (rows.length === 0) return messageRow(colCount, emptyMessage);
   return (
     <tbody>
       {rows.map((row) => (
         <TableRow key={row.id} row={row} density={density} canExpand={canExpand}
-          expandedId={expandedId} setExpandedId={setExpandedId} onRowClick={onRowClick}
+          expandedId={expandedId} setExpandedId={setExpandedId}
           renderExpanded={renderExpanded} colCount={colCount} />
       ))}
     </tbody>
@@ -164,19 +157,11 @@ function DataTableBody<T extends RowData>({ loading, rows, colCount, emptyMessag
 
 export function DataTable<T extends RowData = any>({
   data, columns, loading, emptyMessage = 'No data', getRowId, renderExpanded,
-  density: extDensity, onDensityChange, onRowClick,
   manualPagination, rowCount, pageIndex = 0, pageSize = 50, onPageChange,
 }: Readonly<DataTableProps<T>>) {
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [internalVisibility, setInternalVisibility] = useState<ColumnVisibilityState>({});
-  const [density, setDensity] = useState<Density>(extDensity || 'normal');
+  const [density, setDensity] = useState<Density>('normal');
   const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // Sync when the parent changes the controlled density after mount (the initial
-  // useState seed only reads it once).
-  useEffect(() => {
-    if (extDensity) setDensity(extDensity);
-  }, [extDensity]);
 
   const expandCol: Column<T> | undefined = renderExpanded ? {
     id: '_exp',
@@ -198,11 +183,10 @@ export function DataTable<T extends RowData = any>({
     // interactive sorting off in that mode rather than mislead.
     enableSorting: !manualPagination,
     state: {
-      sorting, columnVisibility: internalVisibility,
+      sorting,
       ...(manualPagination ? { pagination: { pageIndex, pageSize } } : {}),
     },
     onSortingChange: setSorting,
-    onColumnVisibilityChange: setInternalVisibility,
     ...(manualPagination
       ? {
           manualPagination: true,
@@ -217,8 +201,8 @@ export function DataTable<T extends RowData = any>({
 
   const handleDensity = useCallback(() => {
     const m: Record<string, Density> = { compact: 'normal', normal: 'comfortable', comfortable: 'compact' };
-    const d = m[density]; setDensity(d); onDensityChange?.(d);
-  }, [density, onDensityChange]);
+    setDensity(m[density]);
+  }, [density]);
 
   const rows = table.getRowModel().rows;
 
@@ -236,7 +220,7 @@ export function DataTable<T extends RowData = any>({
           <TableHead table={table} />
           <DataTableBody loading={loading} rows={rows} colCount={allCols.length}
             emptyMessage={emptyMessage} density={density} canExpand={!!renderExpanded}
-            expandedId={expandedId} setExpandedId={setExpandedId} onRowClick={onRowClick}
+            expandedId={expandedId} setExpandedId={setExpandedId}
             renderExpanded={renderExpanded} />
         </table>
       </div>

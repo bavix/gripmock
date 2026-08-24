@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useStore } from '../lib/store';
 import { useSessions, usePurgeSession } from '../hooks/useSessions';
+import { sessionOptions } from '../components/layout/sessionList';
 import { useStubs } from '../hooks/useStubs';
 import { colors } from '../lib/theme';
 import { Fingerprint, Globe, Plus, Copy, History, ListOrdered, ShieldCheck, Trash2 } from 'lucide-react';
@@ -26,7 +27,7 @@ export function SessionPage() {
   }, [stubs]);
 
   // Union of local recent + server-reported sessions, de-duplicated.
-  const all = Array.from(new Set([...(recent ?? []), ...(backend?.sessions ?? [])]));
+  const all = sessionOptions(recent ?? [], backend?.sessions ?? [], session, Number.MAX_SAFE_INTEGER);
 
   const activate = (s: string) => { setSession(s); trackSession(s); };
   const newSession = () => { const id = `sess-${crypto.randomUUID().slice(0, 8)}`; activate(id); toast.show(`Switched to ${id}`); };
@@ -40,9 +41,11 @@ export function SessionPage() {
       <div style={{ display: 'flex', gap: 8, padding: '10px 14px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--bg-secondary)', fontSize: 12.5, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
         <ShieldCheck size={16} style={{ color: colors.accent, flexShrink: 0, marginTop: 1 }} />
         <span>
-          The active session sends an <code>X-Gripmock-Session</code> header on every UI request. It scopes
-          <strong> session-specific stubs</strong>, and the counters/records used by <strong>Verify</strong>, <strong>Inspect</strong> and <strong>History</strong>.
-          <em style={{ color: 'var(--text-muted)' }}> Global</em> means no header — you see only global stubs and calls.
+          The active session sends an <code>X-Gripmock-Session</code> header on every UI request. What you
+          <strong> do</strong> is scoped by it: stubs you create belong to the session, a purge clears only that session,
+          and <strong>Inspect</strong> and <strong>Verify</strong> answer as a call carrying that header would.
+          Listings are not filtered — the stub list and <strong>History</strong> show global entries and every session's,
+          whichever scope is active.
         </span>
       </div>
 

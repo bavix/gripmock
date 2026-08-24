@@ -48,7 +48,8 @@ interface StubHeadersAnyOfElement {
 
 interface StubOutput {
   data?: unknown;
-  stream?: unknown[];
+  stream?: unknown[] | string;
+  template?: boolean;
   headers?: Record<string, string>;
   error?: string;
   code?: number;
@@ -119,7 +120,7 @@ export interface CallRecord {
   stubId?: string;
   timestamp: string;
   requests?: Record<string, unknown>[];
-  responses?: Record<string, unknown>[];
+  responses?: unknown[];
   responseHeaders?: Record<string, string>;
   code: number;
   error?: string;

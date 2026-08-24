@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { api } from './api';
+import { api, setActiveSession } from './api';
 
 afterEach(() => { vi.restoreAllMocks(); });
 
@@ -33,5 +33,46 @@ describe('api.getWithMeta empty-body handling', () => {
 
     const r = await api.getWithMeta<{ id: string }[]>('/stubs');
     expect(r.total).toBe(1);
+  });
+});
+
+describe('session scope', () => {
+  it('sends the active session as a header and stops once it is cleared', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      headers: { get: () => null },
+      text: async () => '{}',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    setActiveSession('team-a');
+    await api.get('/stubs');
+    expect(fetchMock.mock.calls[0][1].headers['X-Gripmock-Session']).toBe('team-a');
+
+    setActiveSession(null);
+    await api.get('/stubs');
+    expect(fetchMock.mock.calls[1][1].headers).not.toHaveProperty('X-Gripmock-Session');
+
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('postBinary', () => {
+  it('sends the blob untouched so a descriptor is not JSON-stringified into "{}"', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      headers: { get: () => null },
+      text: async () => '{}',
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const blob = new Blob([new Uint8Array([10, 20, 30])]);
+    await api.postBinary('/descriptors', blob);
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.body).toBe(blob);
+    expect(init.headers['Content-Type']).toBe('application/octet-stream');
+
+    vi.unstubAllGlobals();
   });
 });

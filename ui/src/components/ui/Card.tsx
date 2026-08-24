@@ -8,7 +8,7 @@ interface CardProps {
 }
 
 export function Card({ children, style, className, onClick }: Readonly<CardProps>) {
-  const cls = ['card', onClick ? 'card-clickable' : '', className ?? ''].filter(Boolean).join(' ');
+  const cls = ['card', className ?? ''].filter(Boolean).join(' ');
   if (onClick) {
     return (
       <div
