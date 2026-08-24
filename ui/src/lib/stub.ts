@@ -24,7 +24,7 @@ export function requestMessages(stub: Stub): StubInput[] {
 // unary/client-streaming use the single `output.data`.
 export function responseMessages(stub: Stub): unknown[] {
   const o = stub.output;
-  if (o?.stream && o.stream.length > 0) return o.stream;
+  if (Array.isArray(o?.stream) && o.stream.length > 0) return o.stream;
   if (o?.data !== undefined && o.data !== null) return [o.data];
   return [];
 }
@@ -235,11 +235,21 @@ export function shadowers(stub: Stub, all: Stub[]): Stub[] {
   return methodPeers(stub, all).filter((s) => s.priority > stub.priority);
 }
 
+// The template text a stub answers with, or '' when the output is literal.
+export function outputTemplate(stub: Stub): string {
+  const o = stub.output;
+  if (!o?.template) return '';
+  if (typeof o.stream === 'string') return o.stream;
+
+  return typeof o.data === 'string' ? o.data : '';
+}
+
 // Classify a stub's output into a single badge kind.
 export function outputKind(s: Stub): OutputKind {
   const o = s.output;
-  if (o?.stream?.length) return { label: `Stream ${o.stream.length}`, color: '#06b6d4' };
+  if (Array.isArray(o?.stream) && o.stream.length) return { label: `Stream ${o.stream.length}`, color: '#06b6d4' };
   if (o?.error || (o?.code && o.code > 0)) return { label: 'Error', color: '#ef4444' };
+  if (o?.template) return { label: 'Template', color: '#a855f7' };
   if (o?.data !== undefined) return { label: 'Data', color: '#22c55e' };
   return { label: 'Empty', color: '#64748b' };
 }

@@ -4,19 +4,20 @@ import { useCreateStub, useUpdateStub, useStubs } from '../../hooks/useStubs';
 import { useServiceMethod } from '../../hooks/useServices';
 import { MethodSelect } from '../../components/shared/MethodSelect';
 import { MonacoEditor } from '../../components/json/MonacoEditor';
-import { Save, Plus, X, ChevronDown, ChevronRight, ArrowLeft, Sparkles, Copy, Loader2, AlertCircle, Play, Trophy } from 'lucide-react';
+import { Save, Plus, X, ChevronDown, ChevronRight, ArrowLeft, Sparkles, Copy, Loader2, AlertCircle, Play, Trophy, Fingerprint } from 'lucide-react';
 import { api } from '../../lib/api';
 import { colors } from '../../lib/theme';
-import { shadowers, isRequestStream } from '../../lib/stub';
+import { shadowers, isRequestStream, isResponseStream } from '../../lib/stub';
+import { useStore } from '../../lib/store';
 import { MessageSequenceEditor } from './MessageSequenceEditor';
 import { toYaml } from './toYaml';
 import { generateSample } from './generateSample';
 import { highlightYaml } from './highlightYaml';
-import { parse } from './buildStubOutput';
+import { parse, type OutputMode } from './buildStubOutput';
 import { GRPC_CODES } from '../../lib/grpc';
 import {
   type StubFormData, INPUT_MODES, HEADER_MODES,
-  empty, fromInit, buildBody, collectJsonErrors,
+  empty, fromInit, buildBody, collectJsonErrors, matcherMode,
 } from './buildStubBody';
 
 /* ── Types ── */
@@ -50,16 +51,20 @@ export function StubForm({ initial, onSaved }: Props) {
   const [f, setF] = useState<StubFormData>(() => initial ? fromInit(initial) : empty());
   const [sub, setSub] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [outMode, setOutMode] = useState<'data' | 'stream'>('data');
-  const [inpMode, setInpMode] = useState('equals');
-  const [hdrMode, setHdrMode] = useState('equals');
+  const [outMode, setOutMode] = useState<OutputMode>(() => (typeof (initial?.output as any)?.stream === 'string' ? 'stream' : 'data'));
+  const [isTemplate, setIsTemplate] = useState<boolean>(() => !!(initial?.output as any)?.template);
+  const [inpMode, setInpMode] = useState(() => matcherMode(initial?.input, INPUT_MODES));
+  const [hdrMode, setHdrMode] = useState(() => matcherMode(initial?.headers, HEADER_MODES));
   const { data: methodSchema } = useServiceMethod(f.service || null, f.method || null);
   const { data: allStubs } = useStubs();
   const initId = (initial as any)?.id;
-  const isStreamMethod = methodSchema?.methodType === 'server_streaming' || methodSchema?.methodType === 'bidi_streaming';
+  const isStreamMethod = isResponseStream(methodSchema?.methodType);
   const isReqStreamMethod = isRequestStream(methodSchema?.methodType);
 
   // Stubs on the same method with higher priority — they'd be matched first.
+  const session = useStore((st) => st.session);
+  const initialSession = (initial?.session as string | undefined) ?? '';
+
   const shadows = useMemo(() => {
     if (!allStubs || !f.service || !f.method) return [];
     return shadowers({ id: initId ?? '', service: f.service, method: f.method, priority: f.priority } as any, allStubs);
@@ -68,6 +73,8 @@ export function StubForm({ initial, onSaved }: Props) {
   useEffect(() => {
     if (!initial) return;
     setF(fromInit(initial));
+    setInpMode(matcherMode(initial.input, INPUT_MODES));
+    setHdrMode(matcherMode(initial.headers, HEADER_MODES));
     const o = (initial.output || {}) as Record<string, unknown>;
     if ((o as any).stream) setOutMode('stream');
   }, [initial]);
@@ -112,7 +119,7 @@ export function StubForm({ initial, onSaved }: Props) {
     if (jsonErrors.length > 0) { setErr(`Invalid JSON in: ${jsonErrors.join(', ')}`); return; }
     setSub(true); setErr(null);
     try {
-      const body = buildBody(f, initId, outMode);
+      const body = buildBody(f, initId, outMode, isTemplate);
       if (initId) await update.mutateAsync(body as any);
       else await create.mutateAsync(body);
       if (onSaved) onSaved(); else navigate('/stubs');
@@ -127,7 +134,7 @@ export function StubForm({ initial, onSaved }: Props) {
   const [validBusy, setValidBusy] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const bodySnapshot = useMemo(() => buildBody(f, initId, outMode), [f, initId, outMode]);
+  const bodySnapshot = useMemo(() => buildBody(f, initId, outMode, isTemplate), [f, initId, outMode, isTemplate]);
 
   useEffect(() => {
     if (!f.service || !f.method) { setValidJson(null); setValidErr(null); return; }
@@ -173,6 +180,15 @@ export function StubForm({ initial, onSaved }: Props) {
             <AlertCircle size={13} /> Invalid JSON in: {jsonErrors.join(', ')} — fix before saving.
           </div>
         )}
+        {session && (
+          <div style={{ padding: '7px 10px', borderRadius: 5, background: 'var(--accent-bg)', color: 'var(--accent-text)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Fingerprint size={13} style={{ flexShrink: 0 }} />
+            <span>
+              Saving in session <code>{session}</code> — the stub will belong to it
+              {initId && initialSession !== session ? ' (it is currently ' + (initialSession ? `in ${initialSession}` : 'global') + ')' : ''}.
+            </span>
+          </div>
+        )}
         {shadows.length > 0 && (
           <div style={{ padding: '7px 10px', borderRadius: 5, background: 'var(--warning-bg)', color: colors.warning, fontSize: 12, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
             <Trophy size={13} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -216,6 +232,7 @@ export function StubForm({ initial, onSaved }: Props) {
             {['data', 'stream'].map((m) => (
               <button type="button" key={m} onClick={() => setOutMode(m as any)} className={`btn ${outMode === m ? 'btn-primary' : ''}`} style={{ fontSize: 11, padding: '2px 8px' }}>{m}</button>
             ))}
+            <button type="button" onClick={() => setIsTemplate(!isTemplate)} className={`btn ${isTemplate ? 'btn-primary' : ''}`} style={{ fontSize: 11, padding: '2px 8px' }}>template</button>
             <div style={{ flex: 1 }} />
             {methodSchema?.responseSchema && (
               <button type="button" onClick={handleGenerateResponse} className="btn" style={{ fontSize: 11, padding: '2px 8px' }}><Sparkles size={10} /> Generate</button>
@@ -223,8 +240,16 @@ export function StubForm({ initial, onSaved }: Props) {
             <button type="button" onClick={() => patch({ outputError: f.outputError ? '' : 'error' })} className={`btn ${f.outputError ? 'btn-danger' : ''}`} style={{ fontSize: 11, padding: '2px 8px' }}>Error</button>
             <button type="button" onClick={() => patch({ outputDelay: f.outputDelay ? '' : '500ms' })} className="btn" style={{ fontSize: 11, padding: '2px 8px' }}>Delay</button>
           </div>
-          {outMode === 'data' && <MonacoEditor value={f.outputData} onChange={(v) => patch({ outputData: v })} height={140} />}
-          {outMode === 'stream' && <MonacoEditor value={f.outputStream} onChange={(v) => patch({ outputStream: v })} height={140} />}
+          {!isTemplate && outMode === 'data' && <MonacoEditor value={f.outputData} onChange={(v) => patch({ outputData: v })} height={140} />}
+          {!isTemplate && outMode === 'stream' && <MonacoEditor value={f.outputStream} onChange={(v) => patch({ outputStream: v })} height={140} />}
+          {isTemplate && (
+            <>
+              <MonacoEditor value={f.outputTemplate} onChange={(v) => patch({ outputTemplate: v })} height={140} language="plaintext" />
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                Go template rendered per request; it fills {outMode === 'stream' ? 'the response stream' : 'the single response message'}.
+              </div>
+            </>
+          )}
 
           {f.outputError && (
             <div style={{ marginTop: 6, padding: 8, borderRadius: 5, border: '1px solid var(--error)', background: 'var(--error-bg)' }}>

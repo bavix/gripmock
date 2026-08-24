@@ -10,6 +10,16 @@ describe('clone stash/take', () => {
     expect(takeClone()).toEqual({ service: 'S', method: 'M', input: { equals: { a: 1 } } });
   });
 
+  it('drops the id so a clone does not overwrite its source', () => {
+    stashClone({ id: 'abc', service: 'S', method: 'M' });
+
+    const clone = takeClone();
+
+    expect(clone).not.toBeNull();
+    expect(clone).not.toHaveProperty('id');
+    expect(clone?.service).toBe('S');
+  });
+
   it('take consumes the stored value (one-shot)', () => {
     stashClone({ x: 1 });
     expect(takeClone()).not.toBeNull();

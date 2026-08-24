@@ -73,4 +73,9 @@ describe('toYaml', () => {
     // A reserved char mid-string stays unquoted.
     expect(toYaml({ v: 'user@host' })).toBe('v: user@host');
   });
+
+  it('emits a multi-line string as a block scalar', () => {
+    const yaml = toYaml({ output: { template: '{{ $x := 1 }}\n{{ dict "a" $x }}' } });
+    expect(yaml).toBe('output:\n  template: |-\n    {{ $x := 1 }}\n    {{ dict "a" $x }}');
+  });
 });

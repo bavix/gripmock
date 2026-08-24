@@ -33,9 +33,10 @@ interface MonacoEditorProps {
   readOnly?: boolean;
   height?: string | number;
   label?: string;
+  language?: string;
 }
 
-export function MonacoEditor({ value = '', onChange, readOnly = false, height = 200, label }: Readonly<MonacoEditorProps>) {
+export function MonacoEditor({ value = '', onChange, readOnly = false, height = 200, label, language = 'json' }: Readonly<MonacoEditorProps>) {
   const [ready, setReady] = useState(false);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const theme = useStore((s) => s.theme);
@@ -64,12 +65,15 @@ export function MonacoEditor({ value = '', onChange, readOnly = false, height = 
     <Editor
       value={value}
       onChange={(v) => onChange?.(v ?? '')}
-      language="json"
+      language={language}
       height={height}
       theme={monacoTheme}
       options={{
         readOnly, minimap: { enabled: false }, fontSize: 13, fontFamily: 'ui-monospace, monospace',
         wordWrap: 'on', tabSize: 2, bracketPairColorization: { enabled: true },
+        // A Go template is typed as `{{ … }}`; auto-closing would leave the braces doubled.
+        autoClosingBrackets: language === 'plaintext' ? 'never' : 'languageDefined',
+        autoClosingQuotes: language === 'plaintext' ? 'never' : 'languageDefined',
         lineNumbers: 'on', scrollBeyondLastLine: false, automaticLayout: true, padding: { top: 6, bottom: 6 },
       }}
       onMount={handleMount}

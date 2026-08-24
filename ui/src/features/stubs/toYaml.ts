@@ -32,6 +32,19 @@ function quoteKey(s: string): string {
   return dquote(s);
 }
 
+// A multi-line string must not be emitted as a double-quoted scalar: the raw
+// newlines land at column 0 and break the document. A block scalar keeps it
+// readable and pastable into a stub file.
+function blockScalar(s: string, pad: string): string {
+  const keepsNewline = s.endsWith('\n');
+  const body = (keepsNewline ? s.slice(0, -1) : s)
+    .split('\n')
+    .map((line) => (line ? pad + line : ''))
+    .join('\n');
+
+  return `${keepsNewline ? '|' : '|-'}\n${body}`;
+}
+
 function isEmpty(v: unknown): boolean {
   if (v === null || v === undefined) return true;
   if (typeof v === 'string' && v === '') return true;
@@ -62,7 +75,7 @@ function clean(val: unknown): unknown {
 function toYamlVal(val: unknown, indent: number): string {
   const pad = '  '.repeat(indent);
   if (val === null || val === undefined) return 'null';
-  if (typeof val === 'string') return quoteStr(val);
+  if (typeof val === 'string') return val.includes('\n') ? blockScalar(val, pad) : quoteStr(val);
   if (typeof val === 'number' || typeof val === 'boolean') return String(val);
   if (Array.isArray(val)) {
     if (val.length === 0) return '[]';

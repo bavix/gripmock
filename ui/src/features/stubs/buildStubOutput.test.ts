@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildOutput, type StubOutputFields } from './buildStubOutput';
 
 const base: StubOutputFields = {
-  outputData: '', outputStream: '', outputHeaders: '{\n  \n}',
+  outputData: '', outputStream: '', outputTemplate: '', outputHeaders: '{\n  \n}',
   outputError: '', outputCode: 0, outputDelay: '', outputDetails: '',
 };
 
@@ -22,6 +22,13 @@ describe('buildOutput', () => {
 
   it('falls back to { data: {} } when nothing meaningful is set', () => {
     expect(buildOutput(base, 'data')).toEqual({ data: {} });
+  });
+
+  it('puts the template document in the chosen slot', () => {
+    const document = '{{ dict "a" 1 }}';
+    expect(buildOutput({ ...base, outputTemplate: document }, 'data', true)).toEqual({ template: true, data: document });
+    expect(buildOutput({ ...base, outputTemplate: document }, 'stream', true)).toEqual({ template: true, stream: document });
+    expect(buildOutput({ ...base, outputTemplate: '   ' }, 'data', true)).toEqual({ data: {} });
   });
 
   it('drops invalid JSON (parse fails → no field)', () => {

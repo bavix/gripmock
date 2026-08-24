@@ -7,10 +7,11 @@ import { MethodSelect } from '../components/shared/MethodSelect';
 import { MonacoEditor } from '../components/json/MonacoEditor';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { Bug, ArrowRight, CheckCircle2, XCircle, MinusCircle, Eye, Search, RotateCcw, Fingerprint, Crosshair, Trophy, AlertCircle } from 'lucide-react';
+import { Bug, ChevronRight, CheckCircle2, XCircle, MinusCircle, Eye, Search, RotateCcw, Fingerprint, Crosshair, Trophy, AlertCircle } from 'lucide-react';
 import { colors } from '../lib/theme';
-import { requestMessages, responseMessages, prettyJson, hasContent, evalMatcherFields, type FieldRule } from '../lib/stub';
+import { requestMessages, responseMessages, prettyJson, hasContent, evalMatcherFields, outputTemplate, type FieldRule } from '../lib/stub';
 import type { InspectReport, InspectCandidate, InspectStage, Stub } from '../lib/types';
+import { chainSummary, explainOutcome, stageLabel, STAGE_LABEL } from './inspectChain';
 
 function jsonErr(s: string): string | null {
   const t = (s ?? '').trim();
@@ -26,17 +27,6 @@ function mismatches(input: Record<string, unknown>, matcher?: Parameters<typeof 
   const rows = evalMatcherFields(input, matcher).filter((r) => !r.ok);
   return rows.length ? rows : null;
 }
-
-const STAGE_LABEL: Record<string, string> = {
-  id: 'Stub ID lookup',
-  service_method: 'Service / method',
-  fallback_method: 'Method fallback',
-  session: 'Session scope',
-  times: 'Times limit',
-  headers: 'Header matcher',
-  input: 'Input matcher',
-  selected: 'Selection',
-};
 
 const REASON_TEXT: Record<string, string> = {
   id: 'stub ID did not match',
@@ -180,8 +170,8 @@ export function InspectPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {result.error && <div style={banner('var(--warning)', colors.warning)}>{result.error}</div>}
 
-          <ResultHeader result={result} />
-          {result.stages && result.stages.length > 0 && <PipelineFlow stages={result.stages} />}
+          <ResultHeader result={result} explanation={explainOutcome(result, ranked)} />
+          {result.stages && result.stages.length > 0 && <MatchChain stages={result.stages} />}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.1fr)', gap: 10, alignItems: 'start' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -208,7 +198,7 @@ export function InspectPage() {
             </div>
 
             {selected
-              ? <Diagnosis candidate={selected} winner={winner} isTarget={selected.id === targetId} navigate={navigate} stub={selectedStub && selectedStub.id === selected.id ? selectedStub : undefined} payloadText={payload} headersText={headers} />
+              ? <Diagnosis candidate={selected} winner={winner} isTarget={selected.id === targetId} navigate={navigate} stub={selectedStub && selectedStub.id === selected.id ? selectedStub : undefined} payloadText={payload} headersText={headers} fallbackToMethod={result.fallbackToMethod} />
               : <Card><div className="card-body" style={{ color: 'var(--text-muted)', fontSize: 13 }}>Select a candidate to see the criterion-by-criterion diagnosis.</div></Card>}
           </div>
         </div>
@@ -223,9 +213,9 @@ function banner(border: string, color: string): React.CSSProperties {
   return { padding: 10, borderRadius: 'var(--radius)', border: `1px solid ${border}`, background: `${color}12`, color, fontSize: 12.5 };
 }
 
-function ResultHeader({ result }: Readonly<{ result: InspectReport }>) {
+function ResultHeader({ result, explanation }: Readonly<{ result: InspectReport; explanation: string }>) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
       {result.matchedStubId ? (
         <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 14, color: colors.success, fontWeight: 650 }}>
           <CheckCircle2 size={18} /> Matched
@@ -242,30 +232,54 @@ function ResultHeader({ result }: Readonly<{ result: InspectReport }>) {
       {result.fallbackToMethod && <span className="chip" style={{ background: 'var(--accent-bg)', color: 'var(--accent-text)' }}>method fallback</span>}
       <div style={{ flex: 1 }} />
       <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--mono)' }}>{result.service}/{result.method}</span>
+      <div style={{ flexBasis: '100%', fontSize: 12.5, color: 'var(--text-secondary)' }}>{explanation}</div>
     </div>
   );
 }
 
-function PipelineFlow({ stages }: Readonly<{ stages: InspectStage[] }>) {
+function MatchChain({ stages }: Readonly<{ stages: InspectStage[] }>) {
+  const [open, setOpen] = useState(false);
+  const summary = chainSummary(stages);
+
   return (
-    <div style={{ padding: 12, borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
-      <div className="section-title" style={{ marginBottom: 10 }}>Filter pipeline</div>
-      <div style={{ display: 'flex', alignItems: 'center', overflowX: 'auto' }}>
-        {stages.map((s, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-            <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 12px', borderRadius: 'var(--radius)', minWidth: 58,
-              background: s.removed > 0 ? 'var(--warning-bg)' : 'var(--success-bg)',
-              border: `1px solid ${s.removed > 0 ? colors.warning : colors.success}30`,
-            }}>
-              <span style={{ fontSize: 16, fontWeight: 700 }}>{s.after}</span>
-              <span style={{ fontSize: 9.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 1 }}>{STAGE_LABEL[s.name] ?? s.name}</span>
-              {s.removed > 0 && <span style={{ fontSize: 10, color: colors.warning, fontWeight: 600 }}>−{s.removed}</span>}
-            </div>
-            {i < stages.length - 1 && <ArrowRight size={13} style={{ color: 'var(--text-muted)', margin: '0 3px', flexShrink: 0 }} />}
-          </div>
-        ))}
-      </div>
+    <div style={{ borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+          padding: '8px 12px', font: 'inherit', fontSize: 12, color: 'inherit',
+          background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+        }}>
+        <ChevronRight size={13} style={{ color: 'var(--text-muted)', flexShrink: 0, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .12s' }} />
+        <span className="section-title">Match chain</span>
+        <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--mono)', fontSize: 11.5 }}>{summary.text}</span>
+        <div style={{ flex: 1 }} />
+        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{stages.length} step{stages.length === 1 ? '' : 's'}</span>
+      </button>
+
+      {open && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '0 12px 10px' }}>
+          {stages.map((s, i) => {
+            const delta = s.after - s.before;
+
+            return (
+              <div key={`${s.name}-${i}`} style={{
+                display: 'flex', alignItems: 'baseline', gap: 6,
+                padding: '4px 8px', borderRadius: 'var(--radius)', fontSize: 11.5,
+                background: delta < 0 ? 'var(--warning-bg)' : delta > 0 ? 'var(--success-bg)' : 'var(--bg-tertiary)',
+                border: `1px solid ${delta < 0 ? colors.warning + '35' : delta > 0 ? colors.success + '35' : 'var(--border)'}`,
+              }}>
+                <span style={{ color: 'var(--text-muted)' }}>{stageLabel(s.name)}</span>
+                <span style={{ fontFamily: 'var(--mono)' }}>{s.before}→{s.after}</span>
+                {delta !== 0 && (
+                  <span style={{ color: delta < 0 ? colors.warning : colors.success, fontWeight: 600 }}>
+                    {delta > 0 ? '+' : '−'}{Math.abs(delta)}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -313,14 +327,24 @@ function computeInputDiff(candidate: InspectCandidate, stub: Stub | undefined, p
   return mismatches(payload, matcher);
 }
 
-function buildChecks(candidate: InspectCandidate): Check[] {
+function buildChecks(candidate: InspectCandidate, fallbackToMethod = false): Check[] {
   if (candidate.events && candidate.events.length > 0) {
-    const checks: Check[] = candidate.events.map((e) => ({
-      stage: e.stage,
-      label: STAGE_LABEL[e.stage] ?? e.stage,
-      state: e.result === 'passed' ? 'passed' : e.result === 'skipped' ? 'skipped' : 'failed',
-      reason: e.reason && e.result !== 'passed' ? reasonText(e.reason) : '',
-    }));
+    const checks: Check[] = candidate.events.map((e) => {
+      // A stub reached by the method fallback fails the service check by design;
+      // showing that as a red cross on the stub that served the response reads as
+      // a contradiction.
+      const viaFallback = fallbackToMethod && candidate.matched
+        && e.stage === 'service_method' && e.result !== 'passed' && e.reason === 'service';
+
+      return {
+        stage: e.stage,
+        label: STAGE_LABEL[e.stage] ?? e.stage,
+        state: viaFallback ? 'skipped' : e.result === 'passed' ? 'passed' : e.result === 'skipped' ? 'skipped' : 'failed',
+        reason: viaFallback
+          ? 'matched by method (service fallback)'
+          : e.reason && e.result !== 'passed' ? reasonText(e.reason) : '',
+      } as Check;
+    });
 
     const failedEarlier = checks.some((c) => c.stage !== 'selected' && c.state === 'failed');
 
@@ -381,12 +405,12 @@ function OutrankedNote({ candidate, winner, outranked }: Readonly<{ candidate: I
   );
 }
 
-function Diagnosis({ candidate, winner, isTarget, navigate, stub, payloadText, headersText }: Readonly<{ candidate: InspectCandidate; winner: InspectCandidate | null; isTarget: boolean; navigate: (p: string) => void; stub?: Stub; payloadText: string; headersText: string }>) {
+function Diagnosis({ candidate, winner, isTarget, navigate, stub, payloadText, headersText, fallbackToMethod }: Readonly<{ candidate: InspectCandidate; winner: InspectCandidate | null; isTarget: boolean; navigate: (p: string) => void; stub?: Stub; payloadText: string; headersText: string; fallbackToMethod?: boolean }>) {
   const excluded = (candidate.excludedBy?.length ?? 0) > 0;
   const outranked = !candidate.matched && !excluded;
   const headerDiff = useMemo(() => computeHeaderDiff(candidate, stub, headersText), [candidate.headersMatched, stub, headersText]);
   const diff = useMemo(() => computeInputDiff(candidate, stub, payloadText), [candidate.inputMatched, stub, payloadText]);
-  const checks = buildChecks(candidate);
+  const checks = buildChecks(candidate, fallbackToMethod);
   const verdict = computeVerdict(candidate, excluded);
 
   return (
@@ -462,7 +486,7 @@ function StubDefinition({ stub, candidate }: Readonly<{ stub?: Stub; candidate: 
   const reqMsgs = requestMessages(stub);
   const resMsgs = responseMessages(stub);
   const reqStream = reqMsgs.length > 1;
-  const resStream = (stub.output?.stream?.length ?? 0) > 0;
+  const resStream = (Array.isArray(stub.output?.stream) ? stub.output.stream.length : 0) > 0;
   const isErr = !!stub.output?.error || (stub.output?.code ?? 0) > 0;
   const headersJson = hasContent(stub.headers) ? prettyJson(stub.headers) : '';
 
@@ -485,10 +509,12 @@ function StubDefinition({ stub, candidate }: Readonly<{ stub?: Stub; candidate: 
         : reqMsgs.map((m, i) => <pre key={i} className="json-block">{reqStream ? `# ${i + 1}\n` : ''}{prettyJson(m) || '{}'}</pre>)}
 
       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-        {isErr ? 'Error response' : resStream ? `Response stream · ${resMsgs.length} msgs` : 'Response'}
+        {isErr ? 'Error response' : stub.output?.template ? 'Response template' : resStream ? `Response stream · ${resMsgs.length} msgs` : 'Response'}
       </div>
       {isErr
         ? <pre className="json-block" style={{ color: colors.error }}>{`code ${stub.output?.code ?? 0}${stub.output?.error ? '\n' + stub.output.error : ''}`}</pre>
+        : outputTemplate(stub)
+        ? <pre className="json-block">{outputTemplate(stub)}</pre>
         : resMsgs.length === 0
           ? <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>empty</div>
           : resMsgs.map((rm, i) => <pre key={i} className="json-block">{resStream ? `# ${i + 1}\n` : ''}{prettyJson(rm) || '{}'}</pre>)}
