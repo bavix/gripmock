@@ -107,6 +107,7 @@ export default defineConfig({
           { text: 'Streaming', link: '/guide/stubs/streaming' },
           { text: 'Health Service', link: '/guide/stubs/health' },
           { text: 'Dynamic Templates', link: '/guide/stubs/dynamic-templates' },
+          { text: 'Response Templates', link: '/guide/stubs/dynamic-structure' },
           { text: 'Effects', link: '/guide/stubs/effects' },
           { text: 'Faker Reference', link: '/guide/stubs/faker' }
         ],
