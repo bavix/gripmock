@@ -430,7 +430,6 @@ func (m *grpcMocker) handleStreamElement(
 	return nil
 }
 
-//nolint:cyclop
 func (m *grpcMocker) handleNonArrayStreamData(
 	stream grpc.ServerStream,
 	found *stuber.Stub,
