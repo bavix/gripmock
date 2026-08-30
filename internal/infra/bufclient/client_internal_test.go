@@ -102,7 +102,9 @@ func newFDSServer(auth, ref *string) *httptest.Server {
 		*auth = r.Header.Get("Authorization")
 
 		var body map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+
+		err := json.NewDecoder(r.Body).Decode(&body)
+		if err != nil {
 			return
 		}
 

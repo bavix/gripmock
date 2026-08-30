@@ -176,7 +176,8 @@ func (s *StubWatcher) notify(ctx context.Context, folderPath string) (<-chan str
 
 			d.stopAll()
 
-			if err := watcher.Close(); err != nil {
+			err := watcher.Close()
+			if err != nil {
 				zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to close file watcher")
 			}
 		}()

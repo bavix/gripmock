@@ -58,7 +58,8 @@ func setStreamMetadata(ctx context.Context, stream grpc.ServerStream, header, tr
 	}
 
 	if h := ssmFilterMD(header); len(h) > 0 {
-		if err := stream.SetHeader(h); err != nil {
+		err := stream.SetHeader(h)
+		if err != nil {
 			zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to set stream header metadata")
 		}
 	}
@@ -70,13 +71,15 @@ func setStreamMetadata(ctx context.Context, stream grpc.ServerStream, header, tr
 
 func setContextMetadata(ctx context.Context, header, trailer metadata.MD) {
 	if len(header) > 0 {
-		if err := grpc.SetHeader(ctx, header); err != nil {
+		err := grpc.SetHeader(ctx, header)
+		if err != nil {
 			zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to set header metadata")
 		}
 	}
 
 	if len(trailer) > 0 {
-		if err := grpc.SetTrailer(ctx, trailer); err != nil {
+		err := grpc.SetTrailer(ctx, trailer)
+		if err != nil {
 			zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to set trailer metadata")
 		}
 	}

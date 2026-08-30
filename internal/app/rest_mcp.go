@@ -88,7 +88,9 @@ func decodeToolArguments(raw []byte) (map[string]any, error) {
 	decoder.UseNumber()
 
 	var args map[string]any
-	if err := decoder.Decode(&args); err != nil {
+
+	err := decoder.Decode(&args)
+	if err != nil {
 		return nil, mcpInvalidArgError("arguments must be an object")
 	}
 

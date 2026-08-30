@@ -268,7 +268,9 @@ func TestConcurrentAddVerifyDelete(t *testing.T) {
 				Input:  stuber.InputData{Equals: map[string]any{"id": float64(id)}},
 				Output: stuber.Output{Data: map[string]any{"n": float64(id)}},
 			}
-			if err := client.AddStubs([]*stuber.Stub{stub}); err != nil {
+
+			err := client.AddStubs([]*stuber.Stub{stub})
+			if err != nil {
 				t.Errorf("add stub %d: %v", id, err)
 			}
 		}(i)

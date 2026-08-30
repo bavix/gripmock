@@ -72,7 +72,9 @@ func (s *mockableHealthServer) Check(
 	}
 
 	td := healthTemplateData(ctx, req.GetService(), stub, matchNumber)
-	if err := delayTemplated(ctx, s.templateEngine, stub.Output.Delay, td); err != nil {
+
+	err := delayTemplated(ctx, s.templateEngine, stub.Output.Delay, td)
+	if err != nil {
 		return nil, err
 	}
 
@@ -151,12 +153,14 @@ func (s *mockableHealthServer) watchFromStub(
 		return status.Error(codes.Internal, "health watch stub output is empty")
 	}
 
-	if err := delayTemplated(ctx, s.templateEngine, stub.Output.Delay, td); err != nil {
+	err = delayTemplated(ctx, s.templateEngine, stub.Output.Delay, td)
+	if err != nil {
 		return err
 	}
 
 	for _, response := range responses {
-		if err := stream.Send(response); err != nil {
+		err := stream.Send(response)
+		if err != nil {
 			return err
 		}
 	}
@@ -213,13 +217,15 @@ func (s *mockableHealthServer) proxyCheck(
 	elapsed := time.Since(startTime)
 
 	if len(header) > 0 {
-		if err := grpc.SetHeader(ctx, header); err != nil {
+		err := grpc.SetHeader(ctx, header)
+		if err != nil {
 			zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to set header metadata")
 		}
 	}
 
 	if len(trailer) > 0 {
-		if err := grpc.SetTrailer(ctx, trailer); err != nil {
+		err := grpc.SetTrailer(ctx, trailer)
+		if err != nil {
 			zerolog.Ctx(ctx).Warn().Err(err).Msg("failed to set trailer metadata")
 		}
 	}
@@ -253,8 +259,10 @@ func (s *mockableHealthServer) proxyWatch(
 		return err
 	}
 
-	if header, headerErr := clientStream.Header(); headerErr == nil && len(header) > 0 {
-		if setErr := stream.SetHeader(header); setErr != nil {
+	header, headerErr := clientStream.Header()
+	if headerErr == nil && len(header) > 0 {
+		setErr := stream.SetHeader(header)
+		if setErr != nil {
 			return setErr
 		}
 	}
@@ -282,7 +290,8 @@ func (s *mockableHealthServer) proxyWatch(
 
 		responses = append(responses, proxycapture.MessageToMap(resp))
 
-		if sendErr := stream.Send(resp); sendErr != nil {
+		sendErr := stream.Send(resp)
+		if sendErr != nil {
 			return sendErr
 		}
 	}

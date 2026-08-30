@@ -163,7 +163,8 @@ func processHeaders(md metadata.MD) map[string]any {
 }
 
 func sendStreamMessage(stream grpc.ServerStream, msg *dynamicpb.Message) error {
-	if err := stream.SendMsg(msg); err != nil {
+	err := stream.SendMsg(msg)
+	if err != nil {
 		return errors.Wrap(err, "failed to send response")
 	}
 

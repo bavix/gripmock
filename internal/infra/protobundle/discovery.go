@@ -73,7 +73,8 @@ func Discover(params DiscoverParams) (*DiscoverResult, error) {
 	}
 
 	for _, root := range params.Roots {
-		if err := ctx.walkRoot(root); err != nil {
+		err := ctx.walkRoot(root)
+		if err != nil {
 			return nil, err
 		}
 	}

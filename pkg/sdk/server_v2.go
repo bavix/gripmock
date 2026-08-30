@@ -77,16 +77,19 @@ func initServer(t TestingT, opts ...Option) (*Server, error) {
 		session:   o.session,
 	}
 
-	if err := startServer(t.Context(), o, srv); err != nil {
+	err := startServer(t.Context(), o, srv)
+	if err != nil {
 		return nil, err
 	}
 
 	t.Cleanup(func() {
-		if verr := srv.ExpectationsWereMetContext(srv.bg); verr != nil {
+		verr := srv.ExpectationsWereMetContext(srv.bg)
+		if verr != nil {
 			t.Error(verr)
 		}
 
-		if cerr := srv.Close(); cerr != nil {
+		cerr := srv.Close()
+		if cerr != nil {
 			t.Error(cerr)
 		}
 	})
@@ -302,11 +305,13 @@ func (s *Server) Reset() {
 	}
 
 	if s.remote != nil {
-		if err := s.remote.deleteOwnedStubs(); err != nil {
+		err := s.remote.deleteOwnedStubs()
+		if err != nil {
 			s.t.Error("gripmock: Reset failed to delete remote stubs: ", err)
 		}
 
-		if err := s.remote.purgeHistory(); err != nil {
+		err = s.remote.purgeHistory()
+		if err != nil {
 			s.t.Error("gripmock: Reset failed to purge remote history: ", err)
 		}
 	}
@@ -448,7 +453,8 @@ func startServer(ctx context.Context, o *options, srv *Server) error {
 		return nil
 	}
 
-	if err := resolveEmbeddedDescriptors(ctx, o); err != nil {
+	err := resolveEmbeddedDescriptors(ctx, o)
+	if err != nil {
 		return err
 	}
 

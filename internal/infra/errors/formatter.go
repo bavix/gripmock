@@ -245,7 +245,8 @@ func sanitizeSlice(rv reflect.Value) (any, bool) {
 }
 
 func sanitizePrimitive(rv reflect.Value) (any, bool) {
-	if _, err := json.Marshal(rv.Interface()); err != nil {
+	_, err := json.Marshal(rv.Interface())
+	if err != nil {
 		return nil, false
 	}
 

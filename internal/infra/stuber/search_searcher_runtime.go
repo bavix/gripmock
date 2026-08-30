@@ -132,7 +132,8 @@ func (s *searcher) find(query Query) (*Result, error) {
 
 // searchByID retrieves the Stub value associated with the given ID from the searcher.
 func (s *searcher) searchByID(query Query) (*Result, error) {
-	if err := s.ensureServiceMethodExists(query.Service, query.Method); err != nil {
+	err := s.ensureServiceMethodExists(query.Service, query.Method)
+	if err != nil {
 		return nil, err
 	}
 

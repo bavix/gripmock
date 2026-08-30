@@ -313,7 +313,7 @@ func TestHttpHeadersToGRPCContext_PreservesAllHeaders(t *testing.T) {
 	ctx := context.Background()
 	hdr := http.Header{}
 	hdr.Set("X-Tenant-Id", "tenant-42")
-	hdr.Set("X-Request-Id", "req-abc")
+	hdr.Set("X-Request-ID", "req-abc")
 	hdr.Set("Authorization", "Bearer token")
 
 	out := httpHeadersToGRPCContext(ctx, hdr)

@@ -99,7 +99,9 @@ func startSlowBidiUpstream(t *testing.T, replyAfter time.Duration) *grpc.ClientC
 	handler := func(_ any, stream grpc.ServerStream) error {
 		for {
 			var in []byte
-			if err := stream.RecvMsg(&in); err != nil {
+
+			err := stream.RecvMsg(&in)
+			if err != nil {
 				break
 			}
 		}
@@ -330,14 +332,18 @@ func startRawUpstream(t *testing.T, payloads ...string) *grpc.ClientConn {
 	handler := func(_ any, stream grpc.ServerStream) error {
 		for {
 			var in []byte
-			if err := stream.RecvMsg(&in); err != nil {
+
+			err := stream.RecvMsg(&in)
+			if err != nil {
 				break
 			}
 		}
 
 		for _, payload := range payloads {
 			out := []byte(payload)
-			if err := stream.SendMsg(&out); err != nil {
+
+			err := stream.SendMsg(&out)
+			if err != nil {
 				return err
 			}
 		}

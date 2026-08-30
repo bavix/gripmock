@@ -71,7 +71,8 @@ func (m effectApplier) apply(
 	}
 
 	for i, op := range prepared {
-		if err := m.applyEffectOperation(op); err != nil {
+		err := m.applyEffectOperation(op)
+		if err != nil {
 			zerolog.Ctx(ctx).Err(err).
 				Str("stub_id", matched.ID.String()).
 				Int("effect_index", i).
@@ -152,7 +153,8 @@ func (m effectApplier) prepareUpsertEffect(
 	stub.Session = parentSession
 	stub.Source = stuber.SourceRest
 
-	if err := checkStub(m.validator, m.templateEngine, stub); err != nil {
+	err = checkStub(m.validator, m.templateEngine, stub)
+	if err != nil {
 		return nil, errors.Wrap(err, "invalid generated upsert effect stub")
 	}
 
@@ -248,7 +250,9 @@ func decodeEffectStub(payload any) (*stuber.Stub, error) {
 	}
 
 	generated := &stuber.Stub{}
-	if err := jsondecoder.Unmarshal(body, generated); err != nil {
+
+	err = jsondecoder.Unmarshal(body, generated)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to decode effect stub payload")
 	}
 

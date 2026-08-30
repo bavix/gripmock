@@ -40,7 +40,9 @@ func wellKnownValue(message protoreflect.Message) (any, bool) {
 	}
 
 	var decoded any
-	if err := jsondecoder.Unmarshal(encoded, &decoded); err != nil {
+
+	err = jsondecoder.Unmarshal(encoded, &decoded)
+	if err != nil {
 		return nil, false
 	}
 

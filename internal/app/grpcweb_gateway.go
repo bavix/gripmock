@@ -143,7 +143,8 @@ func (g *GRPCWebGateway) serveMethod(
 		return
 	}
 
-	if err := mocker.streamHandler(adapter.ctx, adapter); err != nil {
+	err = mocker.streamHandler(adapter.ctx, adapter)
+	if err != nil {
 		st, _ := status.FromError(err)
 		adapter.writeErrorStatus(normalizeHealthError(st, mocker.serviceName))
 
@@ -173,7 +174,8 @@ func (g *GRPCWebGateway) serveReflection(w http.ResponseWriter, r *http.Request,
 		},
 	}
 
-	if err := g.reflection.serve(service, adapter); err != nil && !errors.Is(err, io.EOF) {
+	err := g.reflection.serve(service, adapter)
+	if err != nil && !errors.Is(err, io.EOF) {
 		st, _ := status.FromError(err)
 		adapter.writeErrorStatus(st)
 
@@ -218,7 +220,8 @@ func (g *GRPCWebGateway) handleUnary(mocker *grpcMocker, a *grpcwebAdapter) {
 		return
 	}
 
-	if err := a.SendMsg(resp); err != nil {
+	err = a.SendMsg(resp)
+	if err != nil {
 		zerolog.Ctx(a.ctx).Debug().Err(err).Msg("grpcweb.gateway: send unary response")
 
 		return
@@ -335,11 +338,13 @@ func writeGRPCWebTrailers(w http.ResponseWriter, code codes.Code, msg string, ex
 	header[0] = grpcwebEnvelopeFlagTrailers
 	binary.BigEndian.PutUint32(header[1:5], uint32(len(data))) //nolint:gosec
 
-	if _, err := w.Write(header[:]); err != nil {
+	_, err := w.Write(header[:])
+	if err != nil {
 		return
 	}
 
-	if _, err := io.WriteString(w, data); err != nil {
+	_, err = io.WriteString(w, data)
+	if err != nil {
 		return
 	}
 
@@ -407,7 +412,8 @@ func (a *grpcwebAdapter) SendMsg(m any) error {
 		return err
 	}
 
-	if err := writeConnectFrameEncoded(a.w, data, false, a.frameEncoding); err != nil {
+	err = writeConnectFrameEncoded(a.w, data, false, a.frameEncoding)
+	if err != nil {
 		return err
 	}
 

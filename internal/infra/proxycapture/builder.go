@@ -27,7 +27,9 @@ func MessageToMap(message proto.Message) map[string]any {
 	decoder.UseNumber()
 
 	out := make(map[string]any)
-	if err = decoder.Decode(&out); err != nil {
+
+	err = decoder.Decode(&out)
+	if err != nil {
 		return nil
 	}
 
@@ -52,7 +54,9 @@ func MessageToAny(message proto.Message) any {
 	decoder.UseNumber()
 
 	var out any
-	if err = decoder.Decode(&out); err != nil {
+
+	err = decoder.Decode(&out)
+	if err != nil {
 		return nil
 	}
 

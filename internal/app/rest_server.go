@@ -280,18 +280,21 @@ func (h *RestServer) writeResponseError(ctx context.Context, w http.ResponseWrit
 
 // writeResponse writes a successful response to the HTTP writer.
 func (h *RestServer) writeResponse(ctx context.Context, w http.ResponseWriter, data any) {
-	if err := json.NewEncoder(w).Encode(data); err != nil {
+	err := json.NewEncoder(w).Encode(data)
+	if err != nil {
 		zerolog.Ctx(ctx).Err(err).Msg("failed to encode JSON response")
 	}
 }
 
 // validateStub validates if the stub is valid or not.
 func (h *RestServer) validateStub(stub *stuber.Stub) error {
-	if err := checkStub(h.validator, h.templateEngine, stub); err != nil {
+	err := checkStub(h.validator, h.templateEngine, stub)
+	if err != nil {
 		return err
 	}
 
-	if err := validateDelay(h.templateEngine, stub.Output.Delay); err != nil {
+	err = validateDelay(h.templateEngine, stub.Output.Delay)
+	if err != nil {
 		return &ValidationError{
 			Field:   "delay",
 			Tag:     "delay",

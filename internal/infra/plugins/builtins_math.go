@@ -117,7 +117,8 @@ func convertToInt(v any) (int, bool) {
 	case float32:
 		return int(value), true
 	case json.Number:
-		if i, err := value.Int64(); err == nil {
+		i, err := value.Int64()
+		if err == nil {
 			return int(i), true
 		}
 	case string:

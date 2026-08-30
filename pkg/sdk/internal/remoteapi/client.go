@@ -115,11 +115,14 @@ func (rt *gzipRoundTripper) RoundTrip(req *http.Request) (*http.Response, error)
 		var buf bytes.Buffer
 
 		gw := gzip.NewWriter(&buf)
-		if _, err := gw.Write(origBody); err != nil {
+
+		_, err = gw.Write(origBody)
+		if err != nil {
 			return nil, err
 		}
 
-		if err := gw.Close(); err != nil {
+		err = gw.Close()
+		if err != nil {
 			return nil, err
 		}
 
@@ -359,7 +362,9 @@ func decodeHistory(body io.Reader) ([]HistoryCall, error) {
 		StubID          *openapi_types.UUID `json:"stubId"`
 		Timestamp       *time.Time          `json:"timestamp"`
 	}
-	if err := json.NewDecoder(body).Decode(&list); err != nil {
+
+	err := json.NewDecoder(body).Decode(&list)
+	if err != nil {
 		return nil, fmt.Errorf("sdk: failed to decode history: %w", err)
 	}
 

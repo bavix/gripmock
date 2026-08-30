@@ -117,7 +117,9 @@ func (s *GRPCServer) registerProxyDescriptors(ctx context.Context) {
 
 	for i, fds := range proxyFiles {
 		source := fmt.Sprintf("proxy-descriptor-set-%d", i)
-		if err := protosetdom.RegisterDescriptorSetFiles(ctx, source, fds); err != nil {
+
+		err := protosetdom.RegisterDescriptorSetFiles(ctx, source, fds)
+		if err != nil {
 			zerolog.Ctx(ctx).Err(err).Int("index", i).Msg("failed to register proxy descriptor set")
 		}
 	}

@@ -89,7 +89,8 @@ func mcpRenderMockResponse(
 		return h.mockTemplateError(found, service, method, session, input, requestTime, err)
 	}
 
-	if err := delayTemplated(ctx, h.templateEngine, output.Delay, templateData); err != nil {
+	err = delayTemplated(ctx, h.templateEngine, output.Delay, templateData)
+	if err != nil {
 		return h.mockTemplateError(found, service, method, session, input, requestTime, err)
 	}
 

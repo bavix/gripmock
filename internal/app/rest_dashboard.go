@@ -275,7 +275,9 @@ func (h *RestServer) VerifyCalls(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req rest.VerifyRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		h.writeResponseError(r.Context(), w, errors.Wrap(err, "invalid verify request"))
 

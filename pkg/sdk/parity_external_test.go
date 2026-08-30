@@ -846,7 +846,8 @@ func drainToEnd(t *testing.T, stream grpc.ClientStream, d msgDesc) {
 	t.Helper()
 
 	for {
-		if err := stream.RecvMsg(dynamicpb.NewMessage(d.out)); err != nil {
+		err := stream.RecvMsg(dynamicpb.NewMessage(d.out))
+		if err != nil {
 			return
 		}
 	}
@@ -888,7 +889,9 @@ func chatExchange(
 	stream := chatStream(t, srv, fds, text)
 
 	out := dynamicpb.NewMessage(d.out)
-	if err := stream.RecvMsg(out); err != nil {
+
+	err := stream.RecvMsg(out)
+	if err != nil {
 		return "", err
 	}
 
@@ -927,7 +930,9 @@ func sumNumbersErr(
 	require.NoError(t, stream.CloseSend())
 
 	out := dynamicpb.NewMessage(d.out)
-	if err := stream.RecvMsg(out); err != nil {
+
+	err = stream.RecvMsg(out)
+	if err != nil {
 		return 0, err
 	}
 
@@ -1489,7 +1494,8 @@ func runCallerLoop(ctx context.Context, conn *grpc.ClientConn, d msgDesc, name s
 			return "got " + reply
 		}
 
-		if _, err := invokeHello(ctx, conn, d, "static"); err != nil {
+		_, err = invokeHello(ctx, conn, d, "static")
+		if err != nil {
 			return err.Error()
 		}
 	}
@@ -1503,7 +1509,9 @@ func invokeHello(ctx context.Context, conn *grpc.ClientConn, d msgDesc, name str
 	in.Set(d.in.Fields().ByName("name"), protoreflect.ValueOfString(name))
 
 	out := dynamicpb.NewMessage(d.out)
-	if err := conn.Invoke(ctx, "/test.Greeter/SayHello", in, out); err != nil {
+
+	err := conn.Invoke(ctx, "/test.Greeter/SayHello", in, out)
+	if err != nil {
 		return "", err
 	}
 

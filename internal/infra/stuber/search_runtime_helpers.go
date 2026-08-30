@@ -40,7 +40,8 @@ func (s *searcher) searchIndexed(query Query) *Result {
 	}
 
 	if len(visible) > 0 {
-		if result, err := s.processStubs(query, visible); err == nil && result != nil && result.Found() != nil {
+		result, err := s.processStubs(query, visible)
+		if err == nil && result != nil && result.Found() != nil {
 			return result
 		}
 	}

@@ -125,7 +125,9 @@ func sayHelloTo(
 	request.Set(in.Fields().ByName("name"), protoreflect.ValueOfString(name))
 
 	reply := dynamicpb.NewMessage(out)
-	if err := conn.Invoke(t.Context(), "/e2e.Greeter/SayHello", request, reply); err != nil {
+
+	err = conn.Invoke(t.Context(), "/e2e.Greeter/SayHello", request, reply)
+	if err != nil {
 		return nil, err
 	}
 

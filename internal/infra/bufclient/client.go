@@ -117,7 +117,8 @@ func (c *Client) parseResponse(body []byte) (*descriptorpb.FileDescriptorSet, er
 		FileDescriptorSet json.RawMessage `json:"fileDescriptorSet"`
 	}
 
-	if err := json.Unmarshal(body, &envelope); err != nil {
+	err := json.Unmarshal(body, &envelope)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to decode BSR response")
 	}
 
@@ -126,7 +127,9 @@ func (c *Client) parseResponse(body []byte) (*descriptorpb.FileDescriptorSet, er
 	}
 
 	fds := &descriptorpb.FileDescriptorSet{}
-	if err := protojson.Unmarshal(envelope.FileDescriptorSet, fds); err != nil {
+
+	err = protojson.Unmarshal(envelope.FileDescriptorSet, fds)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse descriptor set from BSR response")
 	}
 

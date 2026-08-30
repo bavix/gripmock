@@ -221,7 +221,8 @@ func redactValue(v any, keys map[string]struct{}) any {
 }
 
 func truncateValue(v any, maxBytes int64) any {
-	if b, err := json.Marshal(v); err == nil && int64(len(b)) > maxBytes {
+	b, err := json.Marshal(v)
+	if err == nil && int64(len(b)) > maxBytes {
 		return freshTruncatedMarker()
 	}
 
@@ -343,7 +344,8 @@ func truncateMaps(ms []map[string]any, maxBytes int64) []map[string]any {
 }
 
 func truncateMessage(m map[string]any, maxBytes int64) map[string]any {
-	if b, err := json.Marshal(m); err == nil && int64(len(b)) > maxBytes {
+	b, err := json.Marshal(m)
+	if err == nil && int64(len(b)) > maxBytes {
 		return freshTruncatedMarker()
 	}
 

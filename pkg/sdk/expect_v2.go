@@ -1083,7 +1083,9 @@ func protoToMap(msg proto.Message) map[string]any {
 	}
 
 	var m map[string]any
-	if err := json.Unmarshal(raw, &m); err != nil {
+
+	err = json.Unmarshal(raw, &m)
+	if err != nil {
 		panic("gripmock: failed to unmarshal proto JSON: " + err.Error())
 	}
 

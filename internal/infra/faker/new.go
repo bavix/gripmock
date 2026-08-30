@@ -51,7 +51,9 @@ func NewWithSeed(seed uint64) Generator {
 
 func randomSeed() uint64 {
 	var b [8]byte
-	if _, err := rand.Read(b[:]); err == nil {
+
+	_, err := rand.Read(b[:])
+	if err == nil {
 		return binary.LittleEndian.Uint64(b[:])
 	}
 

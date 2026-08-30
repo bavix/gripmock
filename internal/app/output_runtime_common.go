@@ -130,7 +130,8 @@ func delayResponse(ctx context.Context, delayDur types.Duration) error {
 		return nil
 	}
 
-	if err := ctx.Err(); err != nil {
+	err := ctx.Err()
+	if err != nil {
 		return status.FromContextError(err).Err()
 	}
 
@@ -141,7 +142,8 @@ func delayResponse(ctx context.Context, delayDur types.Duration) error {
 	case <-ctx.Done():
 		return status.FromContextError(ctx.Err()).Err()
 	case <-timer.C:
-		if err := ctx.Err(); err != nil {
+		err := ctx.Err()
+		if err != nil {
 			return status.FromContextError(ctx.Err()).Err()
 		}
 

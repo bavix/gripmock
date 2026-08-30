@@ -107,7 +107,8 @@ func symbolsAlreadyRegistered(file *descriptorpb.FileDescriptorProto) bool {
 			full = protoreflect.FullName(pkg + "." + name)
 		}
 
-		if _, err := protoregistry.GlobalFiles.FindDescriptorByName(full); err == nil {
+		_, err := protoregistry.GlobalFiles.FindDescriptorByName(full)
+		if err == nil {
 			return true
 		}
 	}

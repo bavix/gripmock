@@ -121,7 +121,9 @@ func (m *grpcMocker) proxyHealthCheck(
 	}
 
 	var healthReq healthgrpc.HealthCheckRequest
-	if unmarshalErr := proto.Unmarshal(raw, &healthReq); unmarshalErr != nil {
+
+	unmarshalErr := proto.Unmarshal(raw, &healthReq)
+	if unmarshalErr != nil {
 		return nil, unmarshalErr
 	}
 
@@ -138,7 +140,8 @@ func (m *grpcMocker) proxyHealthCheck(
 		return nil, fmt.Errorf("marshal health response: %w", marshalErr)
 	}
 
-	if unmarshalErr := proto.Unmarshal(respData, resp); unmarshalErr != nil {
+	unmarshalErr = proto.Unmarshal(respData, resp)
+	if unmarshalErr != nil {
 		return nil, fmt.Errorf("unmarshal health response: %w", unmarshalErr)
 	}
 

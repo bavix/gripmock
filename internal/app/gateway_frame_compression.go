@@ -97,11 +97,14 @@ func compressFrame(data []byte, encoding string) ([]byte, byte, error) {
 	var buf bytes.Buffer
 
 	writer := gzip.NewWriter(&buf)
-	if _, err := writer.Write(data); err != nil {
+
+	_, err := writer.Write(data)
+	if err != nil {
 		return nil, 0, err
 	}
 
-	if err := writer.Close(); err != nil {
+	err = writer.Close()
+	if err != nil {
 		return nil, 0, err
 	}
 

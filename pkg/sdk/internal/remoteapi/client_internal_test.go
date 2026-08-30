@@ -65,7 +65,9 @@ func TestClientAddStub(t *testing.T) {
 		}
 
 		var payload []map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+
+		err := json.NewDecoder(r.Body).Decode(&payload)
+		if err != nil {
 			t.Error(err)
 
 			return
@@ -162,7 +164,9 @@ func TestClientUploadDescriptors(t *testing.T) {
 		}
 
 		var fds descriptorpb.FileDescriptorSet
-		if err := proto.Unmarshal(raw, &fds); err != nil {
+
+		err = proto.Unmarshal(raw, &fds)
+		if err != nil {
 			t.Errorf("unexpected error: %v", err)
 
 			return
@@ -282,7 +286,9 @@ func TestClientAddStubsBatchPayload(t *testing.T) {
 		}
 
 		var payload []map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+
+		err := json.NewDecoder(r.Body).Decode(&payload)
+		if err != nil {
 			t.Error(err)
 
 			return
@@ -460,7 +466,8 @@ func TestClientFetchHistoryErrorBranches(t *testing.T) {
 
 			w.WriteHeader(http.StatusOK)
 
-			if err := json.NewEncoder(w).Encode([]map[string]any{{}}); err != nil {
+			err := json.NewEncoder(w).Encode([]map[string]any{{}})
+			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 
 				return

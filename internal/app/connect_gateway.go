@@ -251,7 +251,8 @@ func (g *ConnectRPCGateway) serveMethod(
 		return
 	}
 
-	if err := mocker.streamHandler(adapter.ctx, adapter); err != nil { //nolint:contextcheck
+	err = mocker.streamHandler(adapter.ctx, adapter) //nolint:contextcheck
+	if err != nil {
 		st, _ := status.FromError(err)
 		adapter.writeErrorStatus(normalizeHealthError(st, service))
 
@@ -261,7 +262,9 @@ func (g *ConnectRPCGateway) serveMethod(
 	adapter.sendHeader()
 
 	body, _ := json.Marshal(connectEndStream{Metadata: adapter.takeTrailerMetadata()})
-	if err := writeConnectFrameEncoded(adapter.w, body, true, adapter.frameEncoding); err != nil {
+
+	err = writeConnectFrameEncoded(adapter.w, body, true, adapter.frameEncoding)
+	if err != nil {
 		zerolog.Ctx(r.Context()).Debug().Err(err).Msg("connect.gateway: send end stream")
 	}
 }
@@ -295,7 +298,8 @@ func (g *ConnectRPCGateway) serveReflection(w http.ResponseWriter, r *http.Reque
 		streaming: true,
 	}
 
-	if err := g.reflection.serve(service, adapter); err != nil && !errors.Is(err, io.EOF) {
+	err := g.reflection.serve(service, adapter)
+	if err != nil && !errors.Is(err, io.EOF) {
 		st, _ := status.FromError(err)
 		adapter.writeErrorStatus(st)
 
@@ -305,7 +309,9 @@ func (g *ConnectRPCGateway) serveReflection(w http.ResponseWriter, r *http.Reque
 	adapter.sendHeader()
 
 	body, _ := json.Marshal(connectEndStream{Metadata: adapter.takeTrailerMetadata()})
-	if err := writeConnectFrameEncoded(adapter.w, body, true, adapter.frameEncoding); err != nil {
+
+	err = writeConnectFrameEncoded(adapter.w, body, true, adapter.frameEncoding)
+	if err != nil {
 		zerolog.Ctx(r.Context()).Debug().Err(err).Msg("connect.gateway: send reflection end stream")
 	}
 }
@@ -327,7 +333,8 @@ func (g *ConnectRPCGateway) handleUnary(mocker *grpcMocker, a *httpStreamAdapter
 		return
 	}
 
-	if err := a.SendMsg(resp); err != nil {
+	err = a.SendMsg(resp)
+	if err != nil {
 		zerolog.Ctx(a.ctx).Debug().Err(err).Msg("connect.gateway: send unary response")
 	}
 }
@@ -451,11 +458,13 @@ func (a *httpStreamAdapter) SendMsg(m any) error {
 	}
 
 	if a.streaming {
-		if err := writeConnectFrameEncoded(a.w, data, false, a.frameEncoding); err != nil {
+		err := writeConnectFrameEncoded(a.w, data, false, a.frameEncoding)
+		if err != nil {
 			return err
 		}
 	} else {
-		if _, err = a.w.Write(data); err != nil {
+		_, err = a.w.Write(data)
+		if err != nil {
 			return err
 		}
 	}

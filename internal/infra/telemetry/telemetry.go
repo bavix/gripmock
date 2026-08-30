@@ -132,7 +132,8 @@ func InitTracing(ctx context.Context, cfg Config) func(context.Context) error {
 		Msg("OpenTelemetry tracer provider initialized")
 
 	return func(shutdownCtx context.Context) error {
-		if err := tp.Shutdown(shutdownCtx); err != nil {
+		err := tp.Shutdown(shutdownCtx)
+		if err != nil {
 			zerolog.Ctx(shutdownCtx).Err(err).Msg("failed to shutdown Otel tracer provider")
 
 			return err

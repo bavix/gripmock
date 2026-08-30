@@ -72,19 +72,7 @@ func runProtoExport(cmd *cobra.Command, roots, importRoots []string, output stri
 
 	files := result.Sorted()
 
-	logger.Info().
-		Int("files", len(files)).
-		Int("skipped", len(result.Skipped)).
-		Int("unsupported_edition", len(result.UnsupportedEdition)).
-		Msg("discovery complete")
-
-	for _, s := range result.Skipped {
-		logger.Debug().Str("skipped", s).Msg("file shadowed by deduplication")
-	}
-
-	for _, s := range result.UnsupportedEdition {
-		logger.Debug().Str("file", s).Msg("skipped: unsupported edition")
-	}
+	logDiscovery(logger, result, files)
 
 	if len(files) == 0 {
 		return errors.New("no proto files found")
@@ -109,13 +97,30 @@ func runProtoExport(cmd *cobra.Command, roots, importRoots []string, output stri
 		Str("out", output).
 		Msg("writing descriptor set")
 
-	if err = protobundle.Write(fds, output); err != nil {
+	err = protobundle.Write(fds, output)
+	if err != nil {
 		return errors.Wrap(err, "write failed")
 	}
 
 	logger.Info().Str("out", output).Msg("done")
 
 	return nil
+}
+
+func logDiscovery(logger *zerolog.Logger, result *protobundle.DiscoverResult, files []string) {
+	logger.Info().
+		Int("files", len(files)).
+		Int("skipped", len(result.Skipped)).
+		Int("unsupported_edition", len(result.UnsupportedEdition)).
+		Msg("discovery complete")
+
+	for _, s := range result.Skipped {
+		logger.Debug().Str("skipped", s).Msg("file shadowed by deduplication")
+	}
+
+	for _, s := range result.UnsupportedEdition {
+		logger.Debug().Str("file", s).Msg("skipped: unsupported edition")
+	}
 }
 
 func filterToDiscovered(fds *descriptorpb.FileDescriptorSet, discovered map[string]string) *descriptorpb.FileDescriptorSet {

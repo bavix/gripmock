@@ -45,7 +45,8 @@ func writeBodyError(w http.ResponseWriter, err error) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httputil.BodyErrorStatus(err))
 
-	if encodeErr := json.NewEncoder(w).Encode(map[string]string{"error": err.Error()}); encodeErr != nil {
+	encodeErr := json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+	if encodeErr != nil {
 		return
 	}
 }

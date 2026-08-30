@@ -73,7 +73,7 @@ func handleReflectCallResult(out []reflect.Value, typ reflect.Type) (any, error)
 		var err error
 
 		if !out[1].IsNil() {
-			if errVal, ok := out[1].Interface().(error); ok {
+			if errVal, ok := reflect.TypeAssert[error](out[1]); ok {
 				err = errVal
 			} else {
 				err = fmt.Errorf("second return value of %s does not implement error", typ)

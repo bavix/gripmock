@@ -58,7 +58,8 @@ func (h *DirectoryHandler) Process(ctx context.Context, source *Source, processo
 			}
 			// Also check on disk (in case .proto was already registered via walk order
 			// or in a different handler earlier)
-			if _, statErr := os.Stat(protoPath); statErr == nil {
+			_, statErr := os.Stat(protoPath)
+			if statErr == nil {
 				return nil
 			}
 

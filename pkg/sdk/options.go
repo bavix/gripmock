@@ -145,7 +145,8 @@ func WithReflection(addr string) Option {
 func normalizeRemoteAddr(addr string) string {
 	addr = strings.TrimSpace(addr)
 	if strings.Contains(addr, "://") {
-		if parsed, err := url.Parse(addr); err == nil && parsed.Host != "" {
+		parsed, err := url.Parse(addr)
+		if err == nil && parsed.Host != "" {
 			addr = parsed.Host
 		}
 	}

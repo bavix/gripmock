@@ -37,11 +37,13 @@ func runDump(cmd *cobra.Command, _ []string) error {
 	filterSrc, _ := cmd.Flags().GetString("source")
 	scheme, _ := cmd.Flags().GetString("scheme")
 
-	if err := stuber.ValidateDumpSource(filterSrc); err != nil {
+	err := stuber.ValidateDumpSource(filterSrc)
+	if err != nil {
 		return err
 	}
 
-	if err := stuber.ValidateDumpFormat(format); err != nil {
+	err = stuber.ValidateDumpFormat(format)
+	if err != nil {
 		return err
 	}
 
@@ -102,7 +104,8 @@ func fetchStubs(ctx context.Context, baseURL string, source string) ([]*stuber.S
 	decoder := json.NewDecoder(resp.Body)
 	decoder.UseNumber()
 
-	if err = decoder.Decode(&payload); err != nil {
+	err = decoder.Decode(&payload)
+	if err != nil {
 		return nil, err
 	}
 

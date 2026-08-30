@@ -64,11 +64,12 @@ func connectGetRequest(r *http.Request, desc protoreflect.MethodDescriptor) ([]b
 	}
 
 	if q.Get(connectQueryBase64) == "1" {
-		if decoded, err := base64.RawURLEncoding.DecodeString(raw); err == nil {
+		decoded, err := base64.RawURLEncoding.DecodeString(raw)
+		if err == nil {
 			return decoded, nil
 		}
 
-		decoded, err := base64.URLEncoding.DecodeString(raw)
+		decoded, err = base64.URLEncoding.DecodeString(raw)
 		if err != nil {
 			return nil, errConnectGetMalformed
 		}

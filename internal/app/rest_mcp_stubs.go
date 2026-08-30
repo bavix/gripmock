@@ -25,7 +25,8 @@ func decodeAndValidateMCPStubs(h *RestServer, args map[string]any) ([]*stuber.St
 		// Same rule as the REST endpoint: the tool argument decides the scope.
 		stub.Session = sessionID
 
-		if err = h.validateStub(stub); err != nil {
+		err = h.validateStub(stub)
+		if err != nil {
 			return nil, mcpInvalidArgErrorWithCause(err.Error(), err)
 		}
 	}
@@ -65,7 +66,9 @@ func normalizeMCPStubs(stubs []*stuber.Stub) ([]map[string]any, error) {
 	}
 
 	var result []map[string]any
-	if err = jsondecoder.Unmarshal(raw, &result); err != nil {
+
+	err = jsondecoder.Unmarshal(raw, &result)
+	if err != nil {
 		return nil, mcpStubPayloadArgError(err)
 	}
 
@@ -315,7 +318,9 @@ func decodeMCPStubsArg(raw any) ([]*stuber.Stub, error) {
 	}
 
 	var items []*stuber.Stub
-	if err = jsondecoder.UnmarshalSlice(payload, &items); err != nil {
+
+	err = jsondecoder.UnmarshalSlice(payload, &items)
+	if err != nil {
 		return nil, mcpStubPayloadArgError(err)
 	}
 

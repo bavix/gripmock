@@ -271,7 +271,8 @@ func convertStringValue(val string, fd protoreflect.FieldDescriptor) any {
 		return val
 	}
 
-	if f, err := strconv.ParseFloat(val, 64); err == nil {
+	f, err := strconv.ParseFloat(val, 64)
+	if err == nil {
 		return convertFloat64(f)
 	}
 

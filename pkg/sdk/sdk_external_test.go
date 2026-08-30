@@ -143,7 +143,8 @@ func compileInline(t *testing.T, source, name string) *descriptorpb.FileDescript
 				continue
 			}
 
-			if fd, err := protoregistry.GlobalFiles.FindFileByPath(dep); err == nil {
+			fd, err := protoregistry.GlobalFiles.FindFileByPath(dep)
+			if err == nil {
 				depFdp := protodesc.ToFileDescriptorProto(fd)
 				seen[dep] = true
 
@@ -593,7 +594,9 @@ func TestBidiStream(t *testing.T) {
 			}
 
 			msg := dynamicpb.NewMessage(d.in)
-			if err := srvStream.RecvMsg(msg); err != nil {
+
+			err := srvStream.RecvMsg(msg)
+			if err != nil {
 				return err
 			}
 
@@ -628,7 +631,9 @@ func TestBidiStreamWithHandler(t *testing.T) {
 			}
 
 			msg := dynamicpb.NewMessage(d.in)
-			if err := s.RecvMsg(msg); err != nil {
+
+			err := s.RecvMsg(msg)
+			if err != nil {
 				received <- ""
 
 				return nil //nolint:nilerr

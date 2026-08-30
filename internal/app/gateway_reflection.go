@@ -108,7 +108,9 @@ func (s *reflectionStream[Req, Resp]) Send(m *Resp) error {
 
 func (s *reflectionStream[Req, Resp]) Recv() (*Req, error) {
 	m := new(Req)
-	if err := s.RecvMsg(m); err != nil {
+
+	err := s.RecvMsg(m)
+	if err != nil {
 		return nil, err
 	}
 

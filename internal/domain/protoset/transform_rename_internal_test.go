@@ -95,7 +95,8 @@ func registerForTest(t *testing.T, fd *descriptorpb.FileDescriptorProto) {
 
 	// The global registry outlives a single test run, so a repeated `-count` pass
 	// finds its own file already there.
-	if _, lookupErr := protoregistry.GlobalFiles.FindFileByPath(fd.GetName()); lookupErr == nil {
+	_, lookupErr := protoregistry.GlobalFiles.FindFileByPath(fd.GetName())
+	if lookupErr == nil {
 		return
 	}
 

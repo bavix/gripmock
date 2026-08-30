@@ -86,7 +86,8 @@ func (m *grpcMocker) handleBidiStream(stream grpc.ServerStream) error {
 			return err
 		}
 
-		if err := m.processBidiStreamMessage(recordingStream, bidiResult, inputMsg); err != nil {
+		err = m.processBidiStreamMessage(recordingStream, bidiResult, inputMsg)
+		if err != nil {
 			m.recordBidiStreamUnlessProxied(recordingStream, bidiResult, requestTime, err)
 
 			return err
@@ -138,7 +139,8 @@ func (m *grpcMocker) sendBidiResponse(
 		[]any{requestData}, stub, bidiResult.MatchNumber())
 
 	if !stub.Output.IsServerStream() {
-		if err := delayTemplated(stream.Context(), m.templateEngine, stub.Output.Delay, td); err != nil {
+		err := delayTemplated(stream.Context(), m.templateEngine, stub.Output.Delay, td)
+		if err != nil {
 			return err
 		}
 	}
@@ -151,7 +153,8 @@ func (m *grpcMocker) sendBidiResponse(
 	m.applyEffects(stream.Context(), stub, td)
 
 	if bidiResult.GetMessageIndex() == 0 {
-		if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
+		err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers)
+		if err != nil {
 			return errors.Wrap(err, "failed to set headers")
 		}
 	}
@@ -160,7 +163,8 @@ func (m *grpcMocker) sendBidiResponse(
 		recStream.mergeStubTrailers(outputToUse.Trailers)
 	}
 
-	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil {
+	err = m.handleOutputError(stream.Context(), stream, outputToUse)
+	if err != nil {
 		return err
 	}
 
@@ -339,7 +343,8 @@ func (m *grpcMocker) sendClientStreamResponses(
 			return errors.Wrap(err, errMsgConvertToDynamic)
 		}
 
-		if err := sendStreamMessage(stream, outputMsg); err != nil {
+		err = sendStreamMessage(stream, outputMsg)
+		if err != nil {
 			return err //nolint:wrapcheck
 		}
 	}
@@ -379,7 +384,8 @@ func (m *grpcMocker) prepareStreamElement(
 		return nil, m.streamElementError(marker, td)
 	}
 
-	if err := delayTemplated(ctx, m.templateEngine, elementDelay(output.Delay, marker), td); err != nil {
+	err := delayTemplated(ctx, m.templateEngine, elementDelay(output.Delay, marker), td)
+	if err != nil {
 		return nil, err
 	}
 
@@ -403,7 +409,8 @@ func (m *grpcMocker) sendServerStreamResponses(
 			return errors.Wrap(err, errMsgConvertToDynamic)
 		}
 
-		if err := sendStreamMessage(stream, outputMsg); err != nil {
+		err = sendStreamMessage(stream, outputMsg)
+		if err != nil {
 			return err //nolint:wrapcheck
 		}
 	}

@@ -58,11 +58,13 @@ func decodeGRPCWebText(raw []byte) ([]byte, error) {
 		return nil, nil
 	}
 
-	if decoded, err := base64.StdEncoding.DecodeString(trimmed); err == nil {
+	decoded, err := base64.StdEncoding.DecodeString(trimmed)
+	if err == nil {
 		return decoded, nil
 	}
 
-	if decoded, err := base64.RawStdEncoding.DecodeString(trimmed); err == nil {
+	decoded, err = base64.RawStdEncoding.DecodeString(trimmed)
+	if err == nil {
 		return decoded, nil
 	}
 

@@ -36,7 +36,7 @@ func (d Duration) MarshalJSON() ([]byte, error) {
 	return json.Marshal(time.Duration(d).String())
 }
 
-type Delay string //nolint:recvcheck
+type Delay string
 
 func NewDelay(d time.Duration) Delay {
 	return Delay(d.String())
@@ -64,9 +64,13 @@ func (d Delay) Static() Duration {
 
 func (d *Delay) UnmarshalJSON(data []byte) error {
 	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
+
+	err := json.Unmarshal(data, &s)
+	if err != nil {
 		var ns time.Duration
-		if err := json.Unmarshal(data, &ns); err != nil {
+
+		err := json.Unmarshal(data, &ns)
+		if err != nil {
 			return err
 		}
 
@@ -75,7 +79,8 @@ func (d *Delay) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
-	if _, err := Delay(s).Parse(); err != nil {
+	_, err = Delay(s).Parse()
+	if err != nil {
 		return err
 	}
 

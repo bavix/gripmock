@@ -321,7 +321,9 @@ func (s *Extender) readStub(ctx context.Context, path string) ([]*stuber.Stub, e
 	}
 
 	var stubs []*stuber.Stub
-	if err := jsondecoder.UnmarshalSlice(file, &stubs); err != nil {
+
+	err = jsondecoder.UnmarshalSlice(file, &stubs)
+	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal file %s", path)
 	}
 
@@ -336,7 +338,8 @@ func (s *Extender) acceptStubs(ctx context.Context, path string, stubs []*stuber
 	accepted := make([]*stuber.Stub, 0, len(stubs))
 
 	for _, stub := range stubs {
-		if err := s.validate(stub); err != nil {
+		err := s.validate(stub)
+		if err != nil {
 			zerolog.Ctx(ctx).
 				Warn().
 				Err(err).

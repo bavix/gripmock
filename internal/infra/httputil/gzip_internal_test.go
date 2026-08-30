@@ -37,7 +37,9 @@ type encodeFunc func(buf *bytes.Buffer, payload []byte) error
 // the encoder factories used in the table-driven decompress tests.
 func encodeGzip(buf *bytes.Buffer, payload []byte) error {
 	w := gzip.NewWriter(buf)
-	if _, err := w.Write(payload); err != nil {
+
+	_, err := w.Write(payload)
+	if err != nil {
 		return err
 	}
 
@@ -50,7 +52,8 @@ func encodeDeflate(buf *bytes.Buffer, payload []byte) error {
 		return err
 	}
 
-	if _, err := w.Write(payload); err != nil {
+	_, err = w.Write(payload)
+	if err != nil {
 		return err
 	}
 
@@ -63,7 +66,8 @@ func encodeZstd(buf *bytes.Buffer, payload []byte) error {
 		return err
 	}
 
-	if _, err := w.Write(payload); err != nil {
+	_, err = w.Write(payload)
+	if err != nil {
 		return err
 	}
 
@@ -72,7 +76,9 @@ func encodeZstd(buf *bytes.Buffer, payload []byte) error {
 
 func encodeSnappy(buf *bytes.Buffer, payload []byte) error {
 	w := snappy.NewBufferedWriter(buf)
-	if _, err := w.Write(payload); err != nil {
+
+	_, err := w.Write(payload)
+	if err != nil {
 		return err
 	}
 
@@ -81,7 +87,9 @@ func encodeSnappy(buf *bytes.Buffer, payload []byte) error {
 
 func encodeBrotli(buf *bytes.Buffer, payload []byte) error {
 	w := brotli.NewWriter(buf)
-	if _, err := w.Write(payload); err != nil {
+
+	_, err := w.Write(payload)
+	if err != nil {
 		return err
 	}
 
