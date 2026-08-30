@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.22.1 - 2026-08-30
+
+### What's Changed
+
+* bump all by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/975
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.22.0...v3.22.1
+
 ## v3.22.0 - 2026-08-30
 
 ### What's Changed
