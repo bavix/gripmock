@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.22.0 - 2026-08-30
+
+### What's Changed
+
+* Support structural response templates for dynamically sized arrays by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/973
+* chore(deps): bump github.com/brianvoe/gofakeit/v7 from 7.15.0 to 7.16.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/972
+* chore(deps): bump hadolint/hadolint-action from 3.4.0 to 3.5.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/974
+* chore(deps): bump github.com/stretchr/testify from 1.12.0 to 1.12.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/970
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.21.0...v3.22.0
+
 ## v3.21.0 - 2026-08-20
 
 ### What's Changed
