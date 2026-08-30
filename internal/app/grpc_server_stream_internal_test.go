@@ -748,7 +748,7 @@ func TestConvertToMapProto3DefaultValues(t *testing.T) {
 		t.Parallel()
 
 		msg := &wrapperspb.DoubleValue{}
-		result := convertToMap(msg)
+		result := convertToMapWithDepth(msg, defaultConvertDepth)
 		require.NotNil(t, result)
 		require.Contains(t, result, "value")
 		require.InDelta(t, 0.0, result["value"], 1e-9)
@@ -759,7 +759,7 @@ func TestConvertToMapProto3DefaultValues(t *testing.T) {
 
 		desc := (&wrapperspb.DoubleValue{}).ProtoReflect().Descriptor()
 		msg := dynamicpb.NewMessage(desc)
-		result := convertToMap(msg)
+		result := convertToMapWithDepth(msg, defaultConvertDepth)
 		require.NotNil(t, result)
 		require.Contains(t, result, "value")
 		require.InDelta(t, 0.0, result["value"], 1e-9)

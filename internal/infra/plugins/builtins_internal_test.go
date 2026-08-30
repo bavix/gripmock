@@ -3,6 +3,7 @@ package plugins
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"text/template"
@@ -59,18 +60,57 @@ func TestJsonFuncs(t *testing.T) {
 
 	// Arrange
 	funcs := jsonFuncs()
-	jsonFunc, ok := funcs["json"].(func(any) string)
+	jsonFunc, ok := funcs["json"].(func(...any) (any, error))
 	require.True(t, ok)
 
 	input := map[string]any{"key": "value"}
 
 	// Act
-	result := jsonFunc(input)
+	result, err := jsonFunc(input)
 
 	// Assert
+	require.NoError(t, err)
 	require.Contains(t, funcs, "json")
+	require.Contains(t, funcs, "toJson")
 	require.Contains(t, result, "key")
 	require.Contains(t, result, "value")
+}
+
+func TestCollectionFuncs(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, jsonList{}, list())
+	require.Equal(t, jsonList{"a", "b"}, list("a", "b"))
+
+	grown, err := appendItems(list("a"), "b")
+	require.NoError(t, err)
+	require.Equal(t, jsonList{"a", "b"}, grown)
+
+	fresh, err := appendItems(nil, "x")
+	require.NoError(t, err)
+	require.Equal(t, jsonList{"x"}, fresh)
+
+	_, err = appendItems()
+	require.Error(t, err)
+
+	built, err := dict("a", 1, "b", "two")
+	require.NoError(t, err)
+	require.Equal(t, jsonMap{"a": 1, "b": "two"}, built)
+
+	_, err = dict("a")
+	require.Error(t, err)
+
+	updated, err := set(built, "c", true)
+	require.NoError(t, err)
+	require.Equal(t, jsonMap{"a": 1, "b": "two", "c": true}, updated)
+	require.NotContains(t, built, "c")
+
+	_, err = set(built, "c")
+	require.Error(t, err)
+
+	counted, err := seq(3)
+	require.NoError(t, err)
+	require.Equal(t, jsonList{json.Number("0"), json.Number("1"), json.Number("2")}, counted)
 }
 
 func TestFormatFuncs(t *testing.T) {
@@ -627,8 +667,8 @@ func TestExtractFromObjects(t *testing.T) {
 	result := extractFromObjects(items, key)
 
 	// Assert
-	require.IsType(t, []any{}, result)
-	names, ok := result.([]any)
+	require.IsType(t, jsonList{}, result)
+	names, ok := result.(jsonList)
 	require.True(t, ok)
 	require.Len(t, names, 2)
 	require.Contains(t, names, "a")
@@ -690,4 +730,53 @@ func TestBuiltinInfo(t *testing.T) {
 	require.Equal(t, "gripmock", info.Name)
 	require.Equal(t, "builtin", info.Kind)
 	require.Contains(t, info.Capabilities, "template-funcs")
+}
+
+func TestQueryFuncs(t *testing.T) {
+	t.Parallel()
+
+	items := []any{
+		map[string]any{"sku": "a", "category": "tools", "stock": json.Number("5")},
+		map[string]any{"sku": "b", "category": "tools", "stock": json.Number("0")},
+		map[string]any{"sku": "c", "category": "toys", "stock": json.Number("3")},
+	}
+
+	kept, err := where("stock", "gte", 1, items)
+	require.NoError(t, err)
+	require.Len(t, kept, 2)
+
+	none, err := where("category", "eq", "missing", items)
+	require.NoError(t, err)
+	require.Empty(t, none)
+
+	_, err = where("stock", "like", 1, items)
+	require.ErrorIs(t, err, errWhereOp)
+
+	_, err = where("stock", items)
+	require.ErrorIs(t, err, errWhereArgs)
+
+	window, err := page(1, 1, items)
+	require.NoError(t, err)
+	require.Equal(t, jsonList{items[1]}, window)
+
+	all, err := page(0, 0, items)
+	require.NoError(t, err)
+	require.Len(t, all, 3)
+
+	clamped, err := page(99, 5, items)
+	require.NoError(t, err)
+	require.Empty(t, clamped)
+
+	counts, err := countBy("category", items)
+	require.NoError(t, err)
+	require.Equal(t, jsonMap{"tools": json.Number("2"), "toys": json.Number("1")}, counts)
+
+	_, err = countBy(items)
+	require.ErrorIs(t, err, errCountArgs)
+
+	require.InDelta(t, 8, add(extract(kept, "stock")), 0.001)
+
+	nested, err := dict("items", list(1, 2))
+	require.NoError(t, err)
+	require.JSONEq(t, `{"items":[1,2]}`, fmt.Sprint(nested))
 }

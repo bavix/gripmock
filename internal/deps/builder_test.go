@@ -27,7 +27,7 @@ func TestBuilderHIstoryStoreWithRedactKeys(t *testing.T) {
 		Service:   "svc",
 		Method:    "M",
 		Requests:  []map[string]any{{"user": "alice", "password": "secret"}},
-		Responses: []map[string]any{{"ok": true}},
+		Responses: []any{map[string]any{"ok": true}},
 	})
 
 	all := store.All()

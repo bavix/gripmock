@@ -42,6 +42,29 @@ grpcurl localhost:4770 list
 grpcurl -d '{"order_id":"123"}' localhost:4770 orders.OrderService.GetOrder
 ```
 
+### Several upstreams at once <VersionTag version="v3.22.0" />
+
+Upstreams are independent: each URL carries its own certificates, and two of them may
+ship descriptor files with the same name (`service.proto` is the usual case). GripMock
+registers the second one under a name derived from its source and logs the substitution,
+so no service is lost. A genuine symbol clash — two upstreams exporting the same
+service — is still reported and skipped.
+
+### Upstream behind TLS or mTLS <VersionTag version="v3.22.0" />
+
+Use a `grpcs` scheme and hand GripMock the certificate material the upstream expects:
+
+```bash
+# private CA only
+gripmock "grpcs+capture://orders.api.internal:8443?caFile=/certs/ca.pem"
+
+# upstream requires a client certificate
+gripmock "grpcs+capture://orders.api.internal:8443?clientCert=/certs/client.pem&clientKey=/certs/client.key&caFile=/certs/ca.pem"
+```
+
+`clientCert` and `clientKey` go together, and none of the three is accepted on a
+plaintext (`grpc`) scheme. See [Proxy Mode](/guide/modes/proxy) for the full parameter list.
+
 ## Upstreams without gRPC reflection <VersionTag version="v3.13.0" />
 
 If the upstream does **not** expose `grpc.reflection.v1.ServerReflection`, pass local descriptor sources via the `-S` flag:

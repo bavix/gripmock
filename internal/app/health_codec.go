@@ -15,43 +15,40 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
+const errHealthTemplate = "health stubs do not support output.template; use a literal data or stream"
+
 var (
 	errUnsupportedHealthStatus     = stderrors.New("unsupported health status")
 	errUnsupportedHealthStatusType = stderrors.New("unsupported health status type")
 )
 
 func healthResponsesFromOutput(output stuber.Output) ([]*healthgrpc.HealthCheckResponse, error) {
-	if len(output.Stream) > 0 {
-		responses := make([]*healthgrpc.HealthCheckResponse, 0, len(output.Stream))
-
-		for i, item := range output.Stream {
-			itemMap, ok := item.(map[string]any)
-			if !ok {
-				return nil, status.Errorf(codes.Internal, "health watch stream[%d] has invalid type %T", i, item)
-			}
-
-			healthStatus, err := healthStatusFromMap(itemMap)
-			if err != nil {
-				return nil, err
-			}
-
-			responses = append(responses, &healthgrpc.HealthCheckResponse{Status: healthStatus})
-		}
-
-		return responses, nil
+	if output.HasTemplate() {
+		return nil, status.Error(codes.Internal, errHealthTemplate)
 	}
 
-	data, ok := output.Data.(map[string]any)
-	if !ok {
+	messages := output.Messages()
+	if len(messages) == 0 {
 		return nil, status.Error(codes.Internal, "health stub output.data must be an object")
 	}
 
-	healthStatus, err := healthStatusFromMap(data)
-	if err != nil {
-		return nil, err
+	responses := make([]*healthgrpc.HealthCheckResponse, 0, len(messages))
+
+	for i, item := range messages {
+		itemMap, ok := item.(map[string]any)
+		if !ok {
+			return nil, status.Errorf(codes.Internal, "health watch stream[%d] has invalid type %T", i, item)
+		}
+
+		healthStatus, err := healthStatusFromMap(itemMap)
+		if err != nil {
+			return nil, err
+		}
+
+		responses = append(responses, &healthgrpc.HealthCheckResponse{Status: healthStatus})
 	}
 
-	return []*healthgrpc.HealthCheckResponse{{Status: healthStatus}}, nil
+	return responses, nil
 }
 
 func healthStatusFromMap(data map[string]any) (healthgrpc.HealthCheckResponse_ServingStatus, error) {

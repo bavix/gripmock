@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -19,9 +20,12 @@ import (
 	"github.com/bavix/gripmock/v3/internal/infra/yaml2json"
 )
 
+type Validate func(*stuber.Stub) error
+
 type Extender struct {
 	storage      *stuber.Budgerigar
 	converter    *yaml2json.Convertor
+	validate     Validate
 	ch           chan struct{}
 	watcher      *watcher.StubWatcher
 	mapIDsByFile map[string]uuid.UUIDs
@@ -35,10 +39,12 @@ func NewStub(
 	storage *stuber.Budgerigar,
 	converter *yaml2json.Convertor,
 	watcher *watcher.StubWatcher,
+	validate Validate,
 ) *Extender {
 	return &Extender{
 		storage:      storage,
 		converter:    converter,
+		validate:     validate,
 		ch:           make(chan struct{}),
 		watcher:      watcher,
 		mapIDsByFile: make(map[string]uuid.UUIDs),
@@ -303,6 +309,10 @@ func (s *Extender) readStub(ctx context.Context, path string) ([]*stuber.Stub, e
 		return nil, errors.Wrapf(err, "failed to read file %s", path)
 	}
 
+	// Windows editors save stub files with a UTF-8 BOM, which neither the YAML nor the
+	// JSON decoder accepts.
+	file = bytes.TrimPrefix(file, []byte("\xef\xbb\xbf"))
+
 	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
 		file, err = s.converter.Execute(ctx, path, file)
 		if err != nil {
@@ -315,7 +325,33 @@ func (s *Extender) readStub(ctx context.Context, path string) ([]*stuber.Stub, e
 		return nil, errors.Wrapf(err, "failed to unmarshal file %s", path)
 	}
 
-	return stubs, nil
+	return s.acceptStubs(ctx, path, stubs), nil
+}
+
+func (s *Extender) acceptStubs(ctx context.Context, path string, stubs []*stuber.Stub) []*stuber.Stub {
+	if s.validate == nil {
+		return stubs
+	}
+
+	accepted := make([]*stuber.Stub, 0, len(stubs))
+
+	for _, stub := range stubs {
+		if err := s.validate(stub); err != nil {
+			zerolog.Ctx(ctx).
+				Warn().
+				Err(err).
+				Str("file", path).
+				Str("service", stub.Service).
+				Str("method", stub.Method).
+				Msg("stub skipped")
+
+			continue
+		}
+
+		accepted = append(accepted, stub)
+	}
+
+	return accepted
 }
 
 func isDirectory(path string) bool {

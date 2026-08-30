@@ -20,7 +20,7 @@ type CallRecord struct {
 	Method          string            `json:"method,omitempty"`
 	Session         string            `json:"session,omitempty"`
 	Requests        []map[string]any  `json:"requests,omitempty"`
-	Responses       []map[string]any  `json:"responses,omitempty"`
+	Responses       []any             `json:"responses,omitempty"`
 	ResponseHeaders map[string]string `json:"responseHeaders,omitempty"`
 	Code            uint32            `json:"code,omitempty"`
 	Error           string            `json:"error,omitempty"`
@@ -154,7 +154,7 @@ func freshTruncatedMarker() map[string]any {
 
 func redactRecord(c CallRecord, keys map[string]struct{}) CallRecord {
 	c.Requests = redactMaps(c.Requests, keys)
-	c.Responses = redactMaps(c.Responses, keys)
+	c.Responses = valueEach(c.Responses, func(v any) any { return redactValue(v, keys) })
 	c.ResponseHeaders = redactStringMap(c.ResponseHeaders, keys)
 
 	return c
@@ -162,7 +162,7 @@ func redactRecord(c CallRecord, keys map[string]struct{}) CallRecord {
 
 func cloneRecordMessages(c CallRecord) CallRecord {
 	c.Requests = cloneMaps(c.Requests)
-	c.Responses = cloneMaps(c.Responses)
+	c.Responses = valueEach(c.Responses, cloneValue)
 	c.ResponseHeaders = maps.Clone(c.ResponseHeaders)
 
 	return c
@@ -197,6 +197,35 @@ func mapEach(ms []map[string]any, fn func(map[string]any) map[string]any) []map[
 	}
 
 	return out
+}
+
+func valueEach(vs []any, fn func(any) any) []any {
+	if len(vs) == 0 {
+		return vs
+	}
+
+	out := make([]any, len(vs))
+	for i, v := range vs {
+		out[i] = fn(v)
+	}
+
+	return out
+}
+
+func redactValue(v any, keys map[string]struct{}) any {
+	if m, ok := v.(map[string]any); ok {
+		return redactMap(m, keys)
+	}
+
+	return v
+}
+
+func truncateValue(v any, maxBytes int64) any {
+	if b, err := json.Marshal(v); err == nil && int64(len(b)) > maxBytes {
+		return freshTruncatedMarker()
+	}
+
+	return v
 }
 
 func cloneMaps(ms []map[string]any) []map[string]any {
@@ -304,7 +333,7 @@ func asSlice(v any) []any {
 
 func truncateRecord(c CallRecord, maxBytes int64) CallRecord {
 	c.Requests = truncateMaps(c.Requests, maxBytes)
-	c.Responses = truncateMaps(c.Responses, maxBytes)
+	c.Responses = valueEach(c.Responses, func(v any) any { return truncateValue(v, maxBytes) })
 
 	return c
 }
@@ -334,8 +363,8 @@ func estimateRecordSize(c CallRecord) int64 {
 		size += estimateMapSize(m)
 	}
 
-	for _, m := range c.Responses {
-		size += estimateMapSize(m)
+	for _, v := range c.Responses {
+		size += estimateValueSize(v, 0)
 	}
 
 	for k, v := range c.ResponseHeaders {

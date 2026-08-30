@@ -66,16 +66,39 @@ type e2eServer struct {
 	protoPath   string
 }
 
-func freeAddr(t *testing.T) string {
+// fatalBootError aborts the test as soon as a transport reports a startup failure,
+// instead of letting the test talk to whatever else ended up on the address.
+func fatalBootError(t *testing.T, bootErr <-chan error) {
 	t.Helper()
 
-	listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
-	require.NoError(t, err)
+	select {
+	case err := <-bootErr:
+		t.Fatalf("transport failed to start: %v", err)
+	default:
+	}
+}
 
-	addr := listener.Addr().String()
-	require.NoError(t, listener.Close())
+// reserveAddrs holds n loopback listeners open so concurrent port allocators
+// cannot claim the addresses in between, then releases the ports.
+func reserveAddrs(t *testing.T, n int) ([]string, func()) {
+	t.Helper()
 
-	return addr
+	listeners := make([]net.Listener, 0, n)
+	addrs := make([]string, 0, n)
+
+	for range n {
+		listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+
+		listeners = append(listeners, listener)
+		addrs = append(addrs, listener.Addr().String())
+	}
+
+	return addrs, func() {
+		for _, listener := range listeners {
+			_ = listener.Close()
+		}
+	}
 }
 
 func startAllTransports(t *testing.T) *e2eServer {
@@ -86,36 +109,30 @@ func startAllTransports(t *testing.T) *e2eServer {
 	require.NoError(t, os.WriteFile(protoPath, []byte(e2eProto), 0o600))
 
 	cfg := config.Load()
-	cfg.GRPC.Addr = freeAddr(t)
-	cfg.HTTP.Addr = freeAddr(t)
-	cfg.Gateway.Addr = freeAddr(t)
+
+	addrs, releaseAddrs := reserveAddrs(t, 3)
+	cfg.GRPC.Addr, cfg.HTTP.Addr, cfg.Gateway.Addr = addrs[0], addrs[1], addrs[2]
 
 	builder := NewBuilder(WithConfig(cfg))
 
 	ctx, cancel := context.WithCancel(t.Context())
 
-	errs := make(chan error, 3)
+	bootErr := make(chan error, 3)
 
 	go func() {
 		rest, err := builder.RestServe(ctx, "")
 		if err != nil {
-			errs <- err
+			bootErr <- err
 
 			return
 		}
 
-		errs <- rest.ListenAndServe()
+		bootErr <- rest.ListenAndServe()
 	}()
-	go func() { errs <- builder.GatewayServe(ctx) }()
-	go func() { errs <- builder.GRPCServe(ctx, protodom.New([]string{protoPath}, nil, nil)) }()
+	go func() { bootErr <- builder.GatewayServe(ctx) }()
+	go func() { bootErr <- builder.GRPCServe(ctx, protodom.New([]string{protoPath}, nil, nil)) }()
 
-	go func() {
-		for err := range errs {
-			if err != nil && ctx.Err() == nil {
-				t.Log("transport server stopped: ", err)
-			}
-		}
-	}()
+	releaseAddrs()
 
 	t.Cleanup(func() {
 		cancel()
@@ -133,13 +150,15 @@ func startAllTransports(t *testing.T) *e2eServer {
 		protoPath:   protoPath,
 	}
 
-	waitReady(t, srv)
+	waitReady(t, srv, bootErr)
 
 	return srv
 }
 
-func waitReady(t *testing.T, srv *e2eServer) {
+func waitReady(t *testing.T, srv *e2eServer, bootErr <-chan error) {
 	t.Helper()
+
+	fatalBootError(t, bootErr)
 
 	deadline := time.Now().Add(20 * time.Second)
 	dialer := net.Dialer{Timeout: 100 * time.Millisecond}
@@ -347,6 +366,7 @@ func TestAllTransportsServeTheSameStub(t *testing.T) { //nolint:paralleltest // 
 		{"connect get", checkConnectGet},
 		{"grpc error details", checkGRPCErrorDetails},
 		{"mcp", checkMCP},
+		{"mcp unary template", checkMCPUnaryTemplate},
 		{"mcp stub workflow", checkMCPStubWorkflow},
 		{"rest stub lifecycle", checkRestStubLifecycle},
 		{"gateway templates and headers", checkGatewayTemplatesAndHeaders},
@@ -820,6 +840,29 @@ func checkGRPCErrorDetails(t *testing.T, srv *e2eServer, in, out protoreflect.Me
 	require.True(t, ok)
 	require.Equal(t, "QUOTA", info.GetReason())
 	require.Equal(t, "e2e", info.GetDomain())
+}
+
+func checkMCPUnaryTemplate(t *testing.T, srv *e2eServer, _, _ protoreflect.MessageDescriptor) {
+	t.Helper()
+
+	srv.putStub(t, map[string]any{
+		"service": "e2e.Greeter",
+		"method":  "SayHello",
+		"input":   map[string]any{"equals": map[string]any{"name": "Template"}},
+		"output":  map[string]any{"template": true, "data": `{{ dict "message" (printf "Hello %s" .Request.name) }}`},
+	}, "")
+
+	mocked := srv.mcpCall(t, "mock_call", map[string]any{
+		"service": "e2e.Greeter",
+		"method":  "SayHello",
+		"payload": map[string]any{"name": "Template"},
+	})
+
+	require.NotContains(t, mocked, "stream")
+
+	data, ok := mocked["data"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "Hello Template", data["message"])
 }
 
 func checkMCPStubWorkflow(t *testing.T, srv *e2eServer, in, out protoreflect.MessageDescriptor) {

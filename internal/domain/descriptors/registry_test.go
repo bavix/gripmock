@@ -28,24 +28,6 @@ func mustFileDesc(t *testing.T, protoPath string) protoreflect.FileDescriptor { 
 	return fileDesc
 }
 
-func TestRegistryREgisterUnregisterByPath(t *testing.T) {
-	t.Parallel()
-
-	reg := descriptors.NewRegistry()
-	path := filepath.Join("..", "..", "..", "examples", "projects", "greeter", "service.proto")
-	fd := mustFileDesc(t, path)
-
-	reg.Register(fd)
-	require.ElementsMatch(t, []string{fd.Path()}, reg.Paths())
-
-	ok := reg.UnregisterByPath(fd.Path())
-	require.True(t, ok)
-	require.Empty(t, reg.Paths())
-
-	ok = reg.UnregisterByPath(fd.Path())
-	require.False(t, ok)
-}
-
 func TestRegistryUnregisterByService(t *testing.T) {
 	t.Parallel()
 
@@ -81,7 +63,7 @@ func TestRegistryRangeFiles(t *testing.T) {
 	})
 	require.Equal(t, 1, count)
 
-	reg.UnregisterByPath(fd.Path())
+	reg.UnregisterByService("helloworld.Greeter")
 
 	count = 0
 

@@ -456,7 +456,7 @@ func TestProxyStreamRecordsHistory(t *testing.T) {
 			require.Equal(t, uuid.Nil, calls[0].StubID, "a proxied call is served by no stub")
 			require.Equal(t, uint32(0), calls[0].Code)
 			require.Equal(t,
-				[]map[string]any{{"message": "one"}, {"message": "two"}},
+				[]any{map[string]any{"message": "one"}, map[string]any{"message": "two"}},
 				calls[0].Responses,
 				"every upstream message belongs in the record, not just the first")
 		})

@@ -1,0 +1,17 @@
+--- META ---
+name: mutate over gRPC
+summary: Mutate is the non-idempotent sibling of Lookup; only Lookup is exposed over Connect GET
+tags: [connectget]
+
+--- ENDPOINT ---
+connectget.v1.LookupService/Mutate
+
+--- REQUEST ---
+{
+  "key": "alpha"
+}
+
+--- RESPONSE ---
+{
+  "value": "mutated"
+}

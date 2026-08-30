@@ -26,6 +26,12 @@ type Source struct {
 	ReflectBearer     string
 	ReflectTimeout    time.Duration
 	ReflectInsecure   bool
+
+	// Client certificate presented to an upstream that requires mTLS, plus the CA
+	// that signs the upstream certificate.
+	ReflectClientCert string
+	ReflectClientKey  string
+	ReflectCAFile     string
 	ProxyMode         string
 	RecordDelay       bool
 }

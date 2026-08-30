@@ -1,0 +1,21 @@
+--- META ---
+name: double boundaries
+summary: GetFloats keeps float64 extremes intact through the stub
+tags: [types, numbers]
+
+--- ENDPOINT ---
+types.TypeService/GetFloats
+
+--- REQUEST ---
+{
+  "name": "floats"
+}
+// Only the float64 fields are asserted. A float32 reaches the client widened to a
+// double over gRPC (3.14 reads as 3.140000104904175) and shortened by protojson
+// over grpc-web and Connect (3.14), so no single expectation fits every protocol.
+
+--- ASSERTS ---
+.double_pos == 1.7976931348623157e+308
+.double_neg == -1.7976931348623157e+308
+.double_pi == 3.14159265358979
+.double_large == 1e+307

@@ -54,6 +54,96 @@ func TestWriteDumpKeepsEveryMatchingField(t *testing.T) {
 	require.Equal(t, map[string]any{"source": "rest"}, rec["_meta"])
 }
 
+func TestWriteDumpKeepsTemplateReadableAndReloadable(t *testing.T) {
+	t.Parallel()
+
+	document := "{{ $page := .Request.items }}\n{{ dict \"items\" $page }}"
+	stub := &Stub{
+		ID:      uuid.MustParse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
+		Service: "svc.Service",
+		Method:  "Method",
+		Output:  Output{Template: true, Data: document},
+	}
+
+	var yamlBuf bytes.Buffer
+	require.NoError(t, WriteDump(&yamlBuf, []*Stub{stub}, DumpFormatYAML))
+	require.Contains(t, yamlBuf.String(), "data: |-")
+
+	var reloaded []*Stub
+	require.NoError(t, yaml.Unmarshal(yamlBuf.Bytes(), &reloaded))
+	require.Len(t, reloaded, 1)
+	require.Equal(t, document, reloaded[0].Output.Data)
+
+	var jsonBuf bytes.Buffer
+	require.NoError(t, WriteDump(&jsonBuf, []*Stub{stub}, DumpFormatJSON))
+
+	var records []map[string]any
+	require.NoError(t, json.Unmarshal(jsonBuf.Bytes(), &records))
+
+	dumped, ok := records[0]["output"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, document, dumped["data"])
+}
+
+func TestWriteDumpKeepsEffectNumbersNumeric(t *testing.T) {
+	t.Parallel()
+
+	stub := &Stub{
+		Service: "svc.Service",
+		Method:  "Method",
+		Output:  Output{Data: map[string]any{"ok": true}},
+		Effects: []Effect{{
+			Action: EffectActionUpsert,
+			Stub: map[string]any{
+				"service":  "svc.Service",
+				"method":   "Other",
+				"priority": json.Number("50"),
+				"output":   map[string]any{"data": map[string]any{"ok": true}},
+			},
+		}},
+	}
+
+	var buf bytes.Buffer
+	require.NoError(t, WriteDump(&buf, []*Stub{stub}, DumpFormatYAML))
+	require.NotContains(t, buf.String(), `priority: "50"`, "a number must not become a string")
+
+	var reloaded []*Stub
+
+	require.NoError(t, yaml.Unmarshal(buf.Bytes(), &reloaded))
+	require.Len(t, reloaded, 1)
+
+	child, err := json.Marshal(reloaded[0].Effects[0].Stub)
+	require.NoError(t, err)
+	require.Contains(t, string(child), `"priority":50`)
+}
+
+func TestDumpToDirKeepsMethodsThatDifferOnlyByCase(t *testing.T) {
+	t.Parallel()
+
+	stubs := []*Stub{
+		{Service: "echo.EchoService", Method: "SendMessage", Output: Output{Data: map[string]any{"n": 1}}},
+		{Service: "echo.EchoService", Method: "sendMessage", Output: Output{Data: map[string]any{"n": 2}}},
+	}
+
+	dir := t.TempDir()
+
+	files, err := DumpToDir(dir, stubs, DumpFormatJSON)
+	require.NoError(t, err)
+	require.Equal(t, 1, files, "a case-insensitive filesystem must not let one file overwrite the other")
+
+	entries, err := os.ReadDir(dir)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+
+	body, err := os.ReadFile(filepath.Clean(filepath.Join(dir, entries[0].Name())))
+	require.NoError(t, err)
+
+	var records []map[string]any
+
+	require.NoError(t, json.Unmarshal(body, &records))
+	require.Len(t, records, 2, "both stubs belong in the dump")
+}
+
 func TestWriteDumpKeepsIntegersIntegral(t *testing.T) {
 	t.Parallel()
 

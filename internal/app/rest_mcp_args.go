@@ -51,7 +51,7 @@ func mcpStubMatchesFilters(stub *stuber.Stub, f mcpStubListFilter) bool {
 		return false
 	}
 
-	return stubVisibleForSession(stub.Session, f.session)
+	return stuber.VisibleForSession(stub.Session, f.session)
 }
 
 func mcpStubMatchesQuery(stub *stuber.Stub, query string) bool {
@@ -191,7 +191,7 @@ func collectDebugStubs(h *RestServer, service, method, session string, stubsLimi
 			continue
 		}
 
-		if !stubVisibleForSession(stub.Session, session) {
+		if !stuber.VisibleForSession(stub.Session, session) {
 			continue
 		}
 
@@ -215,14 +215,6 @@ func collectDebugStubs(h *RestServer, service, method, session string, stubsLimi
 	}
 
 	return stubCount, stubRecords
-}
-
-func stubVisibleForSession(stubSession, querySession string) bool {
-	if querySession == "" {
-		return stubSession == ""
-	}
-
-	return stubSession == "" || stubSession == querySession
 }
 
 func extractErrorRecords(records []rest.CallRecord) []rest.CallRecord {

@@ -25,8 +25,6 @@ func TestStubMethods(t *testing.T) {
 	}
 
 	require.Equal(t, id, stub.Key())
-	require.Equal(t, "TestService", stub.Left())
-	require.Equal(t, "TestMethod", stub.Right())
 	require.Equal(t, 10, stub.Score())
 }
 

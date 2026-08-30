@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Bidirectional streaming: Chat. Every incoming message is matched on its own, so
+# each stub answers the message it describes.
+
+- service: tasktracker.TaskService
+  method: Chat
+  input:
+    equals:
+      task_id: "task-42"
+      message: "who is on it?"
+      sender: "alice"
+  output:
+    data:
+      task_id: "task-42"
+      message: "bob picked it up"
+      sender: "bot"
+
+- service: tasktracker.TaskService
+  method: Chat
+  input:
+    equals:
+      task_id: "task-42"
+      message: "when is it due?"
+      sender: "alice"
+  output:
+    data:
+      task_id: "task-42"
+      message: "friday"
+      sender: "bot"

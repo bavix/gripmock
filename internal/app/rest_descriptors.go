@@ -2,7 +2,9 @@ package app
 
 import (
 	"net/http"
+	"path"
 	"sort"
+	"strconv"
 	"time"
 
 	"google.golang.org/protobuf/proto"
@@ -11,6 +13,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/descriptorpb"
 
+	protosetdom "github.com/bavix/gripmock/v3/internal/domain/protoset"
 	"github.com/bavix/gripmock/v3/internal/domain/rest"
 	"github.com/bavix/gripmock/v3/internal/infra/httputil"
 	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
@@ -85,6 +88,8 @@ func registerDescriptorBytes(h *RestServer, byt []byte) ([]string, error) {
 		return nil, ErrFileDescriptorSetNoFiles
 	}
 
+	renameRestCollisions(h, &fds)
+
 	files, err := decodeDescriptorFiles(&fds)
 	if err != nil {
 		return nil, err
@@ -104,6 +109,44 @@ func registerDescriptorBytes(h *RestServer, byt []byte) ([]string, error) {
 	sort.Strings(serviceIDs)
 
 	return serviceIDs, nil
+}
+
+// renameRestCollisions keeps an uploaded descriptor from evicting an earlier one
+// that happens to share its file name: the registry is keyed by path, so a second
+// "service.proto" used to replace the first and take its services with it.
+func renameRestCollisions(h *RestServer, fds *descriptorpb.FileDescriptorSet) {
+	renames := make(map[string]string)
+
+	for _, fd := range fds.GetFile() {
+		if !restDescriptorConflicts(h, fd.GetName(), fd) {
+			continue
+		}
+
+		prefix := protosetdom.UniqueFilePrefix("rest")
+		candidate := path.Join(prefix, fd.GetName())
+
+		for attempt := 2; restDescriptorConflicts(h, candidate, fd); attempt++ {
+			candidate = path.Join(prefix+"-"+strconv.Itoa(attempt), fd.GetName())
+		}
+
+		renames[fd.GetName()] = candidate
+	}
+
+	if len(renames) == 0 {
+		return
+	}
+
+	protosetdom.ApplyFileRenames(fds.GetFile(), renames)
+}
+
+// restDescriptorConflicts reports whether path already holds a different file.
+func restDescriptorConflicts(h *RestServer, path string, candidate *descriptorpb.FileDescriptorProto) bool {
+	existing, ok := h.restDescriptors.FileByPath(path)
+	if !ok {
+		return false
+	}
+
+	return !proto.Equal(protodesc.ToFileDescriptorProto(existing), candidate)
 }
 
 func decodeDescriptorFiles(fds *descriptorpb.FileDescriptorSet) ([]protoreflect.FileDescriptor, error) {

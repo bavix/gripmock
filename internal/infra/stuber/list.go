@@ -115,11 +115,7 @@ func filterStubs(stubs iter.Seq[*Stub], options ListOptions, hint int) []*Stub {
 // stubHasMatcherKind reports whether the stub's input (unary Input, stream
 // Inputs, or their AnyOf alternatives) declares the given matcher kind.
 func stubHasMatcherKind(stub *Stub, kind string) bool {
-	if inputHasKind(stub.Input, kind) {
-		return true
-	}
-
-	for _, in := range stub.Inputs {
+	for _, in := range stub.Matchers() {
 		if inputHasKind(in, kind) {
 			return true
 		}

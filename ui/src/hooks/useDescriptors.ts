@@ -11,7 +11,9 @@ export function useDescriptors() {
 export function useUploadDescriptor() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (file: Blob) => api.post<{ serviceIDs: string[] }>('/descriptors', file),
+    // The endpoint takes a raw FileDescriptorSet; api.post would JSON.stringify the
+    // File into "{}" and the server would reject an empty descriptor.
+    mutationFn: (file: Blob) => api.postBinary<{ serviceIDs: string[] }>('/descriptors', file),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['descriptors'] }),
   });
 }

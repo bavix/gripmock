@@ -11,7 +11,7 @@ import { useServices } from '../hooks/useServices';
 import { useSmartSearch, isUuid } from '../hooks/useSearch';
 import { btn, colors } from '../lib/theme';
 import type { Stub } from '../lib/types';
-import { compactPreview, prettyJson, matcherTypes, MATCHER_COLORS, outputKind, stubRequestExample, streamKind, hasContent, requestMessages, responseMessages, matcherEntries } from '../lib/stub';
+import { compactPreview, prettyJson, matcherTypes, MATCHER_COLORS, outputKind, outputTemplate, stubRequestExample, streamKind, hasContent, requestMessages, responseMessages, matcherEntries } from '../lib/stub';
 import { stashClone } from '../lib/clone';
 import { DataTable } from '../components/table/DataTable';
 import { stubCountLabel } from './stubCount';
@@ -23,7 +23,6 @@ interface Props { filter?: string; }
 const MATCHER_TYPES = ['equals', 'contains', 'matches', 'glob', 'anyOf', 'any'] as const;
 const CARDS_PAGE = 60;
 const TABLE_PAGE = 50;
-const iconBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', cursor: 'pointer' };
 const smallBtn: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', fontSize: 11, borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)' };
 
 function LoadMoreSentinel({ onVisible, active }: { onVisible: () => void; active: boolean }) {
@@ -381,7 +380,8 @@ function SearchRow({ searchText, setSearchText, showFilters, setShowFilters, has
         {smartSearching && <span style={{ position: 'absolute', right: 32, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: 'var(--text-muted)' }}>searching...</span>}
       </div>
       <button onClick={() => setShowFilters(!showFilters)}
-        style={{ ...iconBtn, color: showFilters || hasFilters ? colors.accent : 'var(--text-muted)', background: hasFilters ? `${colors.accent}10` : 'transparent' }}>
+        className="icon-btn"
+        style={{ color: showFilters || hasFilters ? colors.accent : 'var(--text-muted)', background: hasFilters ? `${colors.accent}10` : 'transparent' }}>
         <Filter size={14} />
       </button>
     </div>
@@ -544,7 +544,7 @@ function ExpandedContent({ stub, navigate, onDelete, methodType }: { stub: Stub;
   const reqMsgs = requestMessages(stub);
   const resMsgs = responseMessages(stub);
   const reqStream = reqMsgs.length > 1;
-  const resStream = (stub.output?.stream?.length ?? 0) > 0;
+  const resStream = (Array.isArray(stub.output?.stream) ? stub.output.stream.length : 0) > 0;
   const isErr = !!stub.output?.error || (stub.output?.code ?? 0) > 0;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
@@ -561,9 +561,11 @@ function ExpandedContent({ stub, navigate, onDelete, methodType }: { stub: Stub;
       {reqMsgs.length === 0
         ? <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>any request</div>
         : reqMsgs.map((m, i) => <pre key={i} className="json-block">{reqStream ? `# ${i + 1}\n` : ''}{prettyJson(m) || '{}'}</pre>)}
-      <div className="section-title" style={{ marginBottom: 2 }}>{isErr ? 'Error response' : resStream ? `Response stream · ${resMsgs.length} msgs` : 'Response'}</div>
+      <div className="section-title" style={{ marginBottom: 2 }}>{isErr ? 'Error response' : stub.output?.template ? 'Response template' : resStream ? `Response stream · ${resMsgs.length} msgs` : 'Response'}</div>
       {isErr
         ? <pre className="json-block" style={{ color: colors.error }}>{`code ${stub.output?.code ?? 0}${stub.output?.error ? '\n' + stub.output.error : ''}`}</pre>
+        : outputTemplate(stub)
+        ? <pre className="json-block">{outputTemplate(stub)}</pre>
         : resMsgs.length === 0
           ? <div style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>empty</div>
           : resMsgs.map((r, i) => <pre key={i} className="json-block">{resStream ? `# ${i + 1}\n` : ''}{prettyJson(r) || JSON.stringify(r, null, 2)}</pre>)}

@@ -14,6 +14,12 @@ type StubsTestSuite struct {
 }
 
 // TestStubInputValidation tests StubInput validation.
+func streamMessages(stream any) int {
+	messages, _ := stream.([]any)
+
+	return len(messages)
+}
+
 func (s *StubsTestSuite) TestStubInputValidation() {
 	tests := []struct {
 		name  string
@@ -135,7 +141,7 @@ func (s *StubsTestSuite) TestStubOutputValidation() {
 	for _, tt := range tests {
 		s.Run(tt.name, func() {
 			hasData := tt.output.Data != nil
-			hasStream := len(tt.output.Stream) > 0
+			hasStream := streamMessages(tt.output.Stream) > 0
 			hasError := tt.output.Error != ""
 			hasCode := tt.output.Code != 0
 
@@ -248,7 +254,7 @@ func (s *StubsTestSuite) TestStubValidation() {
 			hasMethod := tt.stub.Method != ""
 			hasInput := (len(tt.stub.Input.Contains) > 0) || (len(tt.stub.Input.Equals) > 0) || (len(tt.stub.Input.Matches) > 0)
 			hasInputs := len(tt.stub.Inputs) > 0
-			hasValidOutput := tt.stub.Output.Data != nil || len(tt.stub.Output.Stream) > 0 ||
+			hasValidOutput := tt.stub.Output.Data != nil || streamMessages(tt.stub.Output.Stream) > 0 ||
 				tt.stub.Output.Error != "" || tt.stub.Output.Code != 0
 
 			isValid := hasService && hasMethod && (hasInput || hasInputs) && (!hasInput || !hasInputs) && hasValidOutput

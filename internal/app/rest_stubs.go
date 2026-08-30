@@ -33,6 +33,9 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 
 	sess := muxmiddleware.FromRequest(r)
 	for _, stub := range inputs {
+		// Scope is transport-level on purpose: the caller's header decides it, so a
+		// payload cannot smuggle stubs into someone else's session. Stub files keep
+		// their own `session` — only this endpoint overrides it.
 		stub.Session = sess
 		stub.Source = stuber.SourceRest
 

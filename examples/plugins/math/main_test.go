@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"math"
 	"testing"
 
@@ -9,6 +10,8 @@ import (
 
 	"github.com/bavix/gripmock/v3/pkg/plugintest"
 )
+
+var errInvalidArgs = errors.New("invalid args")
 
 func TestRoundDeactivated(t *testing.T) {
 	t.Parallel()

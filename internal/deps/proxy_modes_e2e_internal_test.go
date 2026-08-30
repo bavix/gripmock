@@ -31,9 +31,9 @@ func startGripmockWith(t *testing.T, protoPath string, args *protodom.Arguments)
 	t.Helper()
 
 	cfg := config.Load()
-	cfg.GRPC.Addr = freeAddr(t)
-	cfg.HTTP.Addr = freeAddr(t)
-	cfg.Gateway.Addr = freeAddr(t)
+
+	addrs, releaseAddrs := reserveAddrs(t, 3)
+	cfg.GRPC.Addr, cfg.HTTP.Addr, cfg.Gateway.Addr = addrs[0], addrs[1], addrs[2]
 
 	builder := NewBuilder(WithConfig(cfg))
 
@@ -43,15 +43,21 @@ func startGripmockWith(t *testing.T, protoPath string, args *protodom.Arguments)
 		args = protodom.New([]string{protoPath}, nil, nil)
 	}
 
+	bootErr := make(chan error, 3)
+
 	go func() {
 		rest, err := builder.RestServe(ctx, "")
 		if err != nil {
+			bootErr <- err
+
 			return
 		}
 
-		_ = rest.ListenAndServe()
+		bootErr <- rest.ListenAndServe()
 	}()
-	go func() { _ = builder.GRPCServe(ctx, args) }()
+	go func() { bootErr <- builder.GRPCServe(ctx, args) }()
+
+	releaseAddrs()
 
 	t.Cleanup(func() {
 		cancel()
@@ -68,17 +74,19 @@ func startGripmockWith(t *testing.T, protoPath string, args *protodom.Arguments)
 		protoPath: protoPath,
 	}
 
-	waitServing(t, srv)
+	waitServing(t, srv, bootErr)
 
 	return srv
 }
 
-func waitServing(t *testing.T, srv *e2eServer) {
+func waitServing(t *testing.T, srv *e2eServer, bootErr <-chan error) {
 	t.Helper()
 
 	deadline := time.Now().Add(20 * time.Second)
 
 	for {
+		fatalBootError(t, bootErr)
+
 		if serviceKnown(t, srv) {
 			return
 		}

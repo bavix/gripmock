@@ -1,8 +1,6 @@
 package app
 
 import (
-	"maps"
-
 	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
@@ -57,17 +55,6 @@ func deepCopySliceAny(src []any) []any {
 			dst[i] = v
 		}
 	}
-
-	return dst
-}
-
-func deepCopyStringMap(src map[string]string) map[string]string {
-	if src == nil {
-		return nil
-	}
-
-	dst := make(map[string]string, len(src))
-	maps.Copy(dst, src)
 
 	return dst
 }

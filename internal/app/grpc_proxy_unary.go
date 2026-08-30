@@ -97,7 +97,7 @@ func (m *grpcMocker) recordUnaryProxyHistory(
 		return
 	}
 
-	var responses []map[string]any
+	var responses []any
 
 	if callErr == nil {
 		if respData := m.convertToMap(resp); respData != nil {

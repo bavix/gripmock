@@ -287,23 +287,7 @@ func (h *RestServer) writeResponse(ctx context.Context, w http.ResponseWriter, d
 
 // validateStub validates if the stub is valid or not.
 func (h *RestServer) validateStub(stub *stuber.Stub) error {
-	if err := h.validator.Struct(stub); err != nil {
-		validationErrors, ok := stderrors.AsType[validator.ValidationErrors](err)
-		if !ok {
-			return err
-		}
-
-		if len(validationErrors) > 0 {
-			fieldError := validationErrors[0]
-
-			return &ValidationError{
-				Field:   fieldError.Field(),
-				Tag:     fieldError.Tag(),
-				Value:   fieldError.Value(),
-				Message: getValidationMessage(fieldError),
-			}
-		}
-
+	if err := checkStub(h.validator, h.templateEngine, stub); err != nil {
 		return err
 	}
 

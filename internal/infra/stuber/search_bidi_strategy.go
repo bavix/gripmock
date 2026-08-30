@@ -29,23 +29,13 @@ func matchBidiStubMessage(stub *Stub, queryHeaders map[string]any, messageData m
 		return false
 	}
 
-	if stub.IsBidirectional() {
-		if len(stub.Inputs) == 0 {
-			return matchInputData(stub.Input, messageData)
-		}
+	matchers := stub.Matchers()
 
-		return matchAnyStreamInput(stub.Inputs, messageData)
+	if stub.DeclaresStreamMatchers() {
+		return matchAnyStreamInput(matchers, messageData)
 	}
 
-	if stub.IsClientStream() {
-		return matchAnyStreamInput(stub.Inputs, messageData)
-	}
-
-	if stub.IsUnary() || stub.IsServerStream() {
-		return matchInputData(stub.Input, messageData)
-	}
-
-	return false
+	return matchInputData(matchers[0], messageData)
 }
 
 func matchAnyStreamInput(inputs []InputData, messageData map[string]any) bool {
@@ -185,12 +175,14 @@ func rankInputByComparator(
 func rankStub(query Query, stub *Stub) float64 {
 	headersRank := rankHeaders(query.Headers, stub.Headers)
 
-	if len(stub.Inputs) > 0 {
-		return headersRank + rankStreamElements(query.Input, stub.Inputs)
+	matchers := stub.Matchers()
+
+	if stub.DeclaresStreamMatchers() && len(matchers) > 0 {
+		return headersRank + rankStreamElements(query.Input, matchers)
 	}
 
-	if len(query.Input) == 1 {
-		return headersRank + rankInput(query.Input[0], stub.Input)
+	if !stub.DeclaresStreamMatchers() && len(query.Input) == 1 {
+		return headersRank + rankInput(query.Input[0], matchers[0])
 	}
 
 	return headersRank

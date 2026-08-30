@@ -33,7 +33,7 @@ func benchServerWith(b *testing.B, stubs, calls int) *RestServer {
 			Service:   "svc.Service",
 			Method:    "Method",
 			Requests:  []map[string]any{{"id": i}},
-			Responses: []map[string]any{{"ok": true}},
+			Responses: []any{map[string]any{"ok": true}},
 		})
 	}
 

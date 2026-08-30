@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { setActiveSession } from './api';
 
 export interface AppState {
   theme: 'light' | 'dark';
@@ -22,7 +23,7 @@ export const useStore = create<AppState>()(
       },
       session: null,
       setSession: (session) => {
-        if (session) window.dispatchEvent(new CustomEvent('gripmock:session-changed', { detail: session }));
+        setActiveSession(session);
         set({ session });
       },
       recentSessions: [],
@@ -40,7 +41,10 @@ export const useStore = create<AppState>()(
     {
       name: 'gripmock-ui-store',
       partialize: (state) => ({ theme: state.theme, session: state.session, recentSessions: state.recentSessions, pinnedStubs: state.pinnedStubs }),
-      onRehydrateStorage: () => (state) => { if (state?.theme) document.documentElement.dataset.theme = state.theme; },
+      onRehydrateStorage: () => (state) => {
+        if (state?.theme) document.documentElement.dataset.theme = state.theme;
+        setActiveSession(state?.session ?? null);
+      },
     },
   ),
 );

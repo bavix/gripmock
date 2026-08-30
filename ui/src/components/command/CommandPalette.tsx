@@ -1,19 +1,15 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, LayoutDashboard, ListOrdered, Layers, History, Bug, ShieldCheck, Plus, ArrowRight, Hash, CornerDownLeft, Waypoints } from 'lucide-react';
+import { Search, LayoutDashboard, Plus, ArrowRight, Hash, CornerDownLeft, Waypoints } from 'lucide-react';
 import { useStubs } from '../../hooks/useStubs';
 import { useServices } from '../../hooks/useServices';
 import { compactPreview } from '../../lib/stub';
+import { ROUTES } from '../../lib/routes';
 import { colors } from '../../lib/theme';
 import type { Stub } from '../../lib/types';
 
 const PAGES = [
-  { id: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { id: '/stubs', icon: ListOrdered, label: 'Stubs' },
-  { id: '/services', icon: Layers, label: 'Services' },
-  { id: '/history', icon: History, label: 'History' },
-  { id: '/inspect', icon: Bug, label: 'Inspect' },
-  { id: '/verify', icon: ShieldCheck, label: 'Verify' },
+  ...ROUTES.map((r) => ({ id: r.to, icon: r.icon, label: r.label })),
   { id: '/stubs/create', icon: Plus, label: 'New Stub' },
 ];
 

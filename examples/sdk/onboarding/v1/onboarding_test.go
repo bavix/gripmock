@@ -58,6 +58,35 @@ func TestConfirmationIsUnlockedBySignup(t *testing.T) {
 	require.Equal(t, "confirmed", confirmed.GetStatus())
 }
 
+func TestEffectStubKeepsItsOwnTemplate(t *testing.T) {
+	t.Parallel()
+
+	srv, client := newClient(t)
+
+	unlockConfirmation := sdk.Upsert("onboarding.v1.OnboardingService", "ConfirmEmail").
+		Match("email", "bob@example.com").
+		ReturnTemplate(`{{ dict "status" "confirmed" "next_step" (printf "welcome-%s" .Request.token) }}`).
+		Build()
+
+	srv.ExpectUnary(onboardingv1.OnboardingService_StartSignup_FullMethodName).
+		Match("email", "bob@example.com").
+		Effect(unlockConfirmation).
+		Return("status", "pending", "next_step", "confirm_email")
+
+	_, err := client.StartSignup(t.Context(), &onboardingv1.StartSignupRequest{Email: "bob@example.com"})
+	require.NoError(t, err)
+
+	first, err := client.ConfirmEmail(t.Context(),
+		&onboardingv1.ConfirmEmailRequest{Email: "bob@example.com", Token: "T-1"})
+	require.NoError(t, err)
+	require.Equal(t, "welcome-T-1", first.GetNextStep())
+
+	second, err := client.ConfirmEmail(t.Context(),
+		&onboardingv1.ConfirmEmailRequest{Email: "bob@example.com", Token: "T-2"})
+	require.NoError(t, err)
+	require.Equal(t, "welcome-T-2", second.GetNextStep())
+}
+
 func TestSpecificPlanWinsOverTheFallback(t *testing.T) {
 	t.Parallel()
 

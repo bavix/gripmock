@@ -79,9 +79,9 @@ func TestTLSAcrossEveryServer(t *testing.T) { //nolint:paralleltest // boots rea
 	certFile, keyFile, pool := selfSignedCert(t)
 
 	cfg := config.Load()
-	cfg.GRPC.Addr = freeAddr(t)
-	cfg.HTTP.Addr = freeAddr(t)
-	cfg.Gateway.Addr = freeAddr(t)
+
+	addrs, releaseAddrs := reserveAddrs(t, 3)
+	cfg.GRPC.Addr, cfg.HTTP.Addr, cfg.Gateway.Addr = addrs[0], addrs[1], addrs[2]
 	cfg.GRPCTLS.CertFile = certFile
 	cfg.GRPCTLS.KeyFile = keyFile
 	cfg.HTTPTLS.CertFile = certFile
@@ -93,16 +93,22 @@ func TestTLSAcrossEveryServer(t *testing.T) { //nolint:paralleltest // boots rea
 
 	ctx, cancel := context.WithCancel(t.Context())
 
+	bootErr := make(chan error, 3)
+
 	go func() {
 		rest, err := builder.RestServe(ctx, "")
 		if err != nil {
+			bootErr <- err
+
 			return
 		}
 
-		_ = rest.ListenAndServe()
+		bootErr <- rest.ListenAndServe()
 	}()
-	go func() { _ = builder.GatewayServe(ctx) }()
-	go func() { _ = builder.GRPCServe(ctx, protodom.New([]string{protoPath}, nil, nil)) }()
+	go func() { bootErr <- builder.GatewayServe(ctx) }()
+	go func() { bootErr <- builder.GRPCServe(ctx, protodom.New([]string{protoPath}, nil, nil)) }()
+
+	releaseAddrs()
 
 	t.Cleanup(func() {
 		cancel()
@@ -246,23 +252,29 @@ func TestStubsAreLoadedFromDiskAtStartup(t *testing.T) { //nolint:paralleltest /
 	}`), 0o600))
 
 	cfg := config.Load()
-	cfg.GRPC.Addr = freeAddr(t)
-	cfg.HTTP.Addr = freeAddr(t)
-	cfg.Gateway.Addr = freeAddr(t)
+
+	addrs, releaseAddrs := reserveAddrs(t, 3)
+	cfg.GRPC.Addr, cfg.HTTP.Addr, cfg.Gateway.Addr = addrs[0], addrs[1], addrs[2]
 
 	builder := NewBuilder(WithConfig(cfg))
 
 	ctx, cancel := context.WithCancel(t.Context())
 
+	bootErr := make(chan error, 3)
+
 	go func() {
 		rest, err := builder.RestServe(ctx, stubDir)
 		if err != nil {
+			bootErr <- err
+
 			return
 		}
 
-		_ = rest.ListenAndServe()
+		bootErr <- rest.ListenAndServe()
 	}()
-	go func() { _ = builder.GRPCServe(ctx, protodom.New([]string{protoPath}, nil, nil)) }()
+	go func() { bootErr <- builder.GRPCServe(ctx, protodom.New([]string{protoPath}, nil, nil)) }()
+
+	releaseAddrs()
 
 	t.Cleanup(func() {
 		cancel()
@@ -279,7 +291,7 @@ func TestStubsAreLoadedFromDiskAtStartup(t *testing.T) { //nolint:paralleltest /
 		protoPath: protoPath,
 	}
 
-	waitServing(t, srv)
+	waitServing(t, srv, bootErr)
 
 	in, out := compileE2EDescriptors(t, protoPath)
 
@@ -294,7 +306,9 @@ func TestTLSMinVersionIsEnforcedOnTheWire(t *testing.T) { //nolint:paralleltest 
 	certFile, keyFile, pool := selfSignedCert(t)
 
 	cfg := config.Load()
-	cfg.HTTP.Addr = freeAddr(t)
+
+	httpAddrs, releaseHTTPAddr := reserveAddrs(t, 1)
+	cfg.HTTP.Addr = httpAddrs[0]
 	cfg.HTTPTLS.CertFile = certFile
 	cfg.HTTPTLS.KeyFile = keyFile
 	cfg.HTTPTLS.MinVersion = infraTLS.MinTLSVersion13
@@ -302,6 +316,8 @@ func TestTLSMinVersionIsEnforcedOnTheWire(t *testing.T) { //nolint:paralleltest 
 	builder := NewBuilder(WithConfig(cfg))
 
 	ctx, cancel := context.WithCancel(t.Context())
+
+	releaseHTTPAddr()
 
 	go func() {
 		rest, err := builder.RestServe(ctx, "")

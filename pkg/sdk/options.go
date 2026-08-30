@@ -1,7 +1,6 @@
 package sdk
 
 import (
-	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -143,15 +142,6 @@ func WithReflection(addr string) Option {
 	}
 }
 
-func deriveRestURLFromGrpcAddr(grpcAddr string) string {
-	host := extractHost(normalizeRemoteAddr(grpcAddr))
-	if host == "" {
-		host = "127.0.0.1"
-	}
-
-	return (&url.URL{Scheme: "http", Host: net.JoinHostPort(host, "4771")}).String()
-}
-
 func normalizeRemoteAddr(addr string) string {
 	addr = strings.TrimSpace(addr)
 	if strings.Contains(addr, "://") {
@@ -183,17 +173,4 @@ func normalizeRemoteRestURL(restURL string) string {
 	parsed.Path = strings.TrimRight(parsed.Path, "/")
 
 	return parsed.String()
-}
-
-func extractHost(addr string) string {
-	host, _, err := net.SplitHostPort(addr)
-	if err == nil {
-		return host
-	}
-
-	if strings.HasPrefix(addr, "[") && strings.HasSuffix(addr, "]") {
-		return strings.Trim(addr, "[]")
-	}
-
-	return strings.TrimSuffix(addr, "/")
 }

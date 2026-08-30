@@ -101,7 +101,8 @@ func sanitizeCapturedStreamError(err error, hasResponses bool) error {
 func (m *grpcMocker) recordProxyCall(
 	ctx context.Context,
 	startTime time.Time,
-	requests, responses []map[string]any,
+	requests []map[string]any,
+	responses []any,
 	respHeaders map[string]string,
 	callErr error,
 ) {

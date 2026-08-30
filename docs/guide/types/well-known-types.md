@@ -560,6 +560,11 @@ working setup.
 - **Direct WKT Return**: When a method returns a WKT, the stub `data` must be the **canonical protojson** form
   (RFC3339 string for `Timestamp`, `"1.5s"` for `Duration`, a plain object for `Struct`) — never the proto-wire
   `seconds`/`nanos` shape.
+- **Matching a WKT inside a request** <VersionTag version="v3.22.0" />: a well-known message nested in the request is
+  matched in its protojson form too, so `equals: {event_time: "2024-01-01T12:00:00Z"}`, not
+  `equals: {event_time: {seconds: 1704110400}}`. `FieldMask` is the exception and keeps its `{paths: [...]}` shape.
+- **Unset fields** <VersionTag version="v3.22.0" />: a field the client did not set — an unset `oneof` member, a proto3 `optional`, an empty repeated
+  field — is absent from the request map, so `input.equals` must not mention it.
 
 ## Further Reading
 - [Well-Known Types Reference](https://protobuf.dev/reference/protobuf/google.protobuf/)

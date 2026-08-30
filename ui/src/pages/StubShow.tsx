@@ -9,7 +9,7 @@ import { ArrowLeft, Edit3, Copy, Play, Hash, Bug, Trash2, Files, AlertTriangle, 
 import { colors } from '../lib/theme';
 import { grpcCodeName } from '../lib/grpc';
 import { prettyJson, methodPeers, shadowers, stubRequestExample, streamKind, serviceRefMatches,
-  requestMessages, responseMessages, isRequestStream, isResponseStream, matcherEntries, hasContent, MATCHER_COLORS, inspectLink } from '../lib/stub';
+  requestMessages, responseMessages, isRequestStream, isResponseStream, matcherEntries, hasContent, MATCHER_COLORS, inspectLink, outputTemplate } from '../lib/stub';
 import { toYaml } from '../features/stubs/toYaml';
 import { stashClone } from '../lib/clone';
 import { FileCode } from 'lucide-react';
@@ -199,12 +199,12 @@ function RequestSection({ stub, methodType, stream }: Readonly<{ stub: Stub; met
 function ResponseSection({ stub, methodType }: Readonly<{ stub: Stub; methodType?: string }>) {
   const out = stub.output;
   const resMsgs = responseMessages(stub);
-  const resStream = isResponseStream(methodType) || (stub.output?.stream?.length ?? 0) > 0;
+  const resStream = isResponseStream(methodType) || (Array.isArray(stub.output?.stream) ? stub.output.stream.length : 0) > 0;
   const isError = !!out.error || (out.code ?? 0) > 0;
   return (
     <SectionCard
-      title={isError ? 'Error response' : resStream ? `Response stream · ${resMsgs.length} message${resMsgs.length === 1 ? '' : 's'}` : 'Response'}
-      hint={resStream && !isError ? 'Server streams these messages back in order.' : undefined}
+      title={isError ? 'Error response' : out.template ? 'Response template' : resStream ? `Response stream · ${resMsgs.length} message${resMsgs.length === 1 ? '' : 's'}` : 'Response'}
+      hint={out.template ? 'Rendered per request; what it prints is the response.' : resStream && !isError ? 'Server streams these messages back in order.' : undefined}
       color={isError ? colors.error : '#06b6d4'}
     >
       {isError ? (
@@ -213,6 +213,10 @@ function ResponseSection({ stub, methodType }: Readonly<{ stub: Stub; methodType
           <span style={{ color: 'var(--text-muted)' }}>(code {out.code ?? 0})</span>
           {out.error && <div style={{ marginTop: 4, color: 'var(--text)', fontFamily: 'var(--mono)', fontSize: 12 }}>{out.error}</div>}
         </div>
+      ) : out.template ? (
+        <MessageBlock label="Template">
+          <pre className="json-block">{outputTemplate(stub)}</pre>
+        </MessageBlock>
       ) : resMsgs.length === 0 ? (
         <Empty>Empty response.</Empty>
       ) : (

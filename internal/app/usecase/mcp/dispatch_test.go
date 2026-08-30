@@ -1,6 +1,7 @@
 package mcp_test
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -15,12 +16,12 @@ func TestDispatchToolCallsMatchingHandler(t *testing.T) {
 	t.Parallel()
 
 	handlers := map[string]mcpusecase.ToolHandler{
-		"x.tool": func(args map[string]any) (map[string]any, error) {
+		"x.tool": func(_ context.Context, args map[string]any) (map[string]any, error) {
 			return map[string]any{"echo": args["v"]}, nil
 		},
 	}
 
-	result, err, found := mcpusecase.DispatchTool("x.tool", map[string]any{"v": 7}, handlers)
+	result, err, found := mcpusecase.DispatchTool(t.Context(), "x.tool", map[string]any{"v": 7}, handlers)
 
 	require.True(t, found)
 	require.NoError(t, err)
@@ -30,7 +31,7 @@ func TestDispatchToolCallsMatchingHandler(t *testing.T) {
 func TestDispatchToolReturnsNotFoundForUnknownTool(t *testing.T) {
 	t.Parallel()
 
-	result, err, found := mcpusecase.DispatchTool("missing", nil, map[string]mcpusecase.ToolHandler{})
+	result, err, found := mcpusecase.DispatchTool(t.Context(), "missing", nil, map[string]mcpusecase.ToolHandler{})
 
 	require.False(t, found)
 	require.NoError(t, err)
@@ -41,12 +42,12 @@ func TestDispatchToolPropagatesHandlerError(t *testing.T) {
 	t.Parallel()
 
 	handlers := map[string]mcpusecase.ToolHandler{
-		"x.tool": func(map[string]any) (map[string]any, error) {
+		"x.tool": func(context.Context, map[string]any) (map[string]any, error) {
 			return nil, errDispatchBoom
 		},
 	}
 
-	result, err, found := mcpusecase.DispatchTool("x.tool", nil, handlers)
+	result, err, found := mcpusecase.DispatchTool(t.Context(), "x.tool", nil, handlers)
 
 	require.True(t, found)
 	require.ErrorIs(t, err, errDispatchBoom)

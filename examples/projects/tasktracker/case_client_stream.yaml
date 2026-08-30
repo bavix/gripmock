@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Client streaming: SubmitTaskUpdates. `inputs` matches the messages in the order
+# the client sends them, so the summary belongs to this exact sequence.
+
+- service: tasktracker.TaskService
+  method: SubmitTaskUpdates
+  inputs:
+    - equals:
+        task_id: "task-42"
+        status: "in_progress"
+    - equals:
+        task_id: "task-42"
+        status: "review"
+    - equals:
+        task_id: "task-42"
+        status: "done"
+  output:
+    data:
+      processed: 3
+      status: "accepted"

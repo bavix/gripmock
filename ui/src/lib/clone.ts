@@ -29,10 +29,17 @@ export function stashClone(stub: unknown): void {
   try { sessionStorage.setItem(KEY, JSON.stringify(sanitize(stub))); } catch { /* ignore */ }
 }
 
+// The id is dropped on the way out: a clone that kept it would overwrite the
+// stub it was cloned from as soon as the form is saved.
 export function takeClone(): Record<string, unknown> | null {
   try {
     const v = sessionStorage.getItem(KEY);
     sessionStorage.removeItem(KEY);
-    return v ? (sanitize(JSON.parse(v)) as Record<string, unknown>) : null;
+    if (!v) return null;
+
+    const stub = sanitize(JSON.parse(v)) as Record<string, unknown>;
+    delete stub.id;
+
+    return stub;
   } catch { return null; }
 }

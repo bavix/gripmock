@@ -4,7 +4,6 @@ package app
 import (
 	"context"
 	stderrors "errors"
-	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -19,7 +18,6 @@ import (
 	"google.golang.org/protobuf/types/dynamicpb"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
-	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
 
 func (m *grpcMocker) unaryHandler() grpc.MethodHandler {
@@ -151,42 +149,21 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 		return nil, err
 	}
 
-	outputDataCopy := copyForTemplates(outputToUse.Data)
+	outputToUse, err = renderOutput(m.templateEngine, outputToUse, templateData, renderOptions{})
+	if err != nil {
+		zerolog.Ctx(ctx).Err(err).Msg(errMsgProcessTemplates)
 
-	if dataMap, ok := outputDataCopy.(map[string]any); ok {
-		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
-			zerolog.Ctx(ctx).Err(err).Msg("failed to process dynamic templates")
-
-			return nil, status.Error(codes.Internal, fmt.Sprintf("failed to process dynamic templates: %v", err))
-		}
-
-		outputDataCopy = dataMap
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	if template.HasTemplatesInHeaders(outputToUse.Headers) {
-		headersCopy := deepCopyStringMap(outputToUse.Headers)
-		if err := m.templateEngine.ProcessHeaders(headersCopy, templateData); err != nil {
-			return nil, status.Error(codes.Internal, fmt.Sprintf("failed to process header templates: %v", err))
-		}
-
-		outputToUse.Headers = headersCopy
+	if found.Output.IsServerStream() && found.Output.Error == "" {
+		return nil, status.Error(codes.Internal, errStreamOutputOnUnary)
 	}
 
-	if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
-		errorStr, err := m.templateEngine.ProcessError(outputToUse.Error, templateData)
-		if err != nil {
-			return nil, status.Error(codes.Internal, fmt.Sprintf("failed to process error template: %v", err))
-		}
-
-		outputToUse.Error = errorStr
-	}
+	outputDataCopy := singleMessage(outputToUse)
 
 	if err := m.setResponseHeadersAny(ctx, stream, outputToUse.Headers); err != nil {
 		return nil, err //nolint:wrapcheck
-	}
-
-	if err := m.renderTrailers(&outputToUse, templateData); err != nil {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("failed to process trailer templates: %v", err))
 	}
 
 	m.setResponseTrailersAny(ctx, stream, outputToUse.Trailers)
@@ -218,21 +195,6 @@ func recordedMetadata(output stuber.Output) map[string]string {
 	}
 
 	return responseHeadersFromMetadata(buildResponseMD(output.Headers), buildResponseMD(output.Trailers))
-}
-
-func (m *grpcMocker) renderTrailers(output *stuber.Output, templateData template.Data) error {
-	if !template.HasTemplatesInHeaders(output.Trailers) {
-		return nil
-	}
-
-	trailersCopy := deepCopyStringMap(output.Trailers)
-	if err := m.templateEngine.ProcessHeaders(trailersCopy, templateData); err != nil {
-		return err //nolint:wrapcheck
-	}
-
-	output.Trailers = trailersCopy
-
-	return nil
 }
 
 func buildResponseMD(values map[string]string) metadata.MD {
@@ -452,59 +414,52 @@ func (m *grpcMocker) sendClientStreamResponse(
 		return err
 	}
 
-	if template.HasTemplatesInHeaders(outputToUse.Headers) {
-		headersCopy := deepCopyStringMap(outputToUse.Headers)
-		if err := m.templateEngine.ProcessHeaders(headersCopy, templateData); err != nil {
-			return errors.Wrap(err, "failed to process header templates")
-		}
-
-		outputToUse.Headers = headersCopy
-	}
-
-	if outputToUse.Error != "" && template.IsTemplateString(outputToUse.Error) {
-		errorStr, err := m.templateEngine.ProcessError(outputToUse.Error, templateData)
-		if err != nil {
-			return errors.Wrap(err, "failed to process error template")
-		}
-
-		outputToUse.Error = errorStr
+	outputToUse, err := renderOutput(m.templateEngine, outputToUse, templateData, renderOptions{})
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
 	}
 
 	if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
 		return errors.Wrap(err, "failed to set headers")
 	}
 
-	if err := m.renderTrailers(&outputToUse, templateData); err != nil {
-		return errors.Wrap(err, "failed to process trailer templates")
-	}
-
 	m.setResponseTrailersAny(stream.Context(), stream, outputToUse.Trailers)
 
-	outputDataCopy := copyForTemplates(outputToUse.Data)
-	if dataMap, ok := outputDataCopy.(map[string]any); ok {
-		if err := m.templateEngine.ProcessMap(dataMap, templateData); err != nil {
-			return errors.Wrap(err, "failed to process dynamic templates")
-		}
-
-		outputDataCopy = dataMap
+	if found.Output.IsServerStream() && found.Output.Error == "" {
+		return status.Error(codes.Internal, errStreamOutputOnUnary)
 	}
+
+	outputDataCopy := singleMessage(outputToUse)
 
 	m.applyEffects(stream.Context(), found, templateData)
 
-	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil { //nolint:wrapcheck
-		return err
+	// A client-streaming call that ends with an error is still a call: recording
+	// only the successful ones hid every failure from history and the error count.
+	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil {
+		m.recordCall(stream.Context(), found.ID, uint32(status.Code(err)), requestTime,
+			messages, nil, recordedMetadata(outputToUse), err.Error())
+
+		return err //nolint:wrapcheck
 	}
 
 	outputMsg, err := m.newOutputMessage(outputDataCopy)
 	if err != nil {
-		return errors.Wrap(err, "failed to convert response to dynamic message")
+		wrapped := errors.Wrap(err, "failed to convert response to dynamic message")
+		m.recordCall(stream.Context(), found.ID, uint32(codes.Unknown), requestTime,
+			messages, nil, recordedMetadata(outputToUse), wrapped.Error())
+
+		return wrapped
 	}
 
-	err = stream.SendMsg(outputMsg)
-	if err == nil {
-		m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime,
-			messages, []any{outputDataCopy}, recordedMetadata(outputToUse), "")
+	if err := stream.SendMsg(outputMsg); err != nil {
+		m.recordCall(stream.Context(), found.ID, uint32(status.Code(err)), requestTime,
+			messages, nil, recordedMetadata(outputToUse), err.Error())
+
+		return err //nolint:wrapcheck
 	}
 
-	return err
+	m.recordCall(stream.Context(), found.ID, uint32(codes.OK), requestTime,
+		messages, []any{outputDataCopy}, recordedMetadata(outputToUse), "")
+
+	return nil
 }

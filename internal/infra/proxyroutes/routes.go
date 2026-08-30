@@ -169,13 +169,12 @@ func buildRoute(
 		return nil, nil, nil, err
 	}
 
-	conn, err := grpc.NewClient("passthrough:///"+source.ReflectAddress, grpcclient.DialOptions(
-		source.ReflectTimeout,
-		source.ReflectTLS,
-		source.ReflectServerName,
-		source.ReflectBearer,
-		source.ReflectInsecure,
-	)...)
+	dialOptions, err := grpcclient.DialOptions(grpcclient.UpstreamFromSource(source))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	conn, err := grpc.NewClient("passthrough:///"+source.ReflectAddress, dialOptions...)
 	if err != nil {
 		return nil, nil, nil, errors.Wrapf(err, "failed to connect proxy upstream: %s", source.ReflectAddress)
 	}

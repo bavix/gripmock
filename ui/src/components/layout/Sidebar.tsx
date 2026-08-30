@@ -1,18 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ListOrdered, History, FileSearch, FileUp, Users, Layers, CheckCheck, ShieldCheck, SearchCode } from 'lucide-react';
-
-const NAV = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/services', icon: Layers, label: 'Services' },
-  { to: '/stubs', icon: ListOrdered, label: 'Stubs' },
-  { to: '/stubs/used', icon: CheckCheck, label: 'Used' },
-  { to: '/stubs/unused', icon: FileSearch, label: 'Unused' },
-  { to: '/history', icon: History, label: 'History' },
-  { to: '/inspect', icon: SearchCode, label: 'Inspect' },
-  { to: '/verify', icon: ShieldCheck, label: 'Verify' },
-  { to: '/descriptors', icon: FileUp, label: 'Descriptors' },
-  { to: '/session', icon: Users, label: 'Session' },
-];
+import { ROUTES } from '../../lib/routes';
 
 // Visual separators after these routes group the nav.
 const SEP_AFTER = new Set(['/services', '/stubs/unused', '/verify']);
@@ -23,7 +10,7 @@ export function Sidebar({ collapsed }: Readonly<{ collapsed: boolean }>) {
       display: 'flex', flexDirection: 'column', gap: 2,
       padding: collapsed ? '8px 6px' : '8px 8px',
     }}>
-      {NAV.map((item) => (
+      {ROUTES.map((item) => (
         <div key={item.to} style={{ display: 'contents' }}>
           <NavLink to={item.to} end={item.to === '/' || item.to === '/stubs'}
             title={collapsed ? item.label : undefined}

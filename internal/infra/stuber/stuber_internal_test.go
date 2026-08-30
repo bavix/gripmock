@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	healthgrpc "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
@@ -115,20 +114,20 @@ func TestInternalHealthWatchStatusTransition(t *testing.T) {
 	require.NotNil(t, before)
 	require.NotNil(t, before.Found())
 
-	beforeMap, ok := before.Found().Output.Stream[0].(map[string]any)
+	beforeMap, ok := before.Found().Output.Messages()[0].(map[string]any)
 	require.True(t, ok)
 
 	beforeStatus := beforeMap["status"]
 	require.Equal(t, "NOT_SERVING", beforeStatus)
 
-	stuber.UpdateGripmockHealthStatus(s.InternalStorage(), healthgrpc.HealthCheckResponse_SERVING)
+	s.SetAlive()
 
 	after, err := s.FindByQuery(query)
 	require.NoError(t, err)
 	require.NotNil(t, after)
 	require.NotNil(t, after.Found())
 
-	afterMap, ok := after.Found().Output.Stream[0].(map[string]any)
+	afterMap, ok := after.Found().Output.Messages()[0].(map[string]any)
 	require.True(t, ok)
 
 	afterStatus := afterMap["status"]
@@ -152,7 +151,7 @@ func TestInternalHealthCheckStatusTransition(t *testing.T) {
 	require.NotNil(t, before.Found())
 	require.Equal(t, map[string]any{"status": "NOT_SERVING"}, before.Found().Output.Data)
 
-	stuber.UpdateGripmockHealthStatus(s.InternalStorage(), healthgrpc.HealthCheckResponse_SERVING)
+	s.SetAlive()
 
 	after, err := s.FindByQuery(query)
 	require.NoError(t, err)

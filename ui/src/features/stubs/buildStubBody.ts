@@ -1,6 +1,8 @@
 // Pure stub-form <-> API payload builders, extracted from StubForm so they can
 // be unit-tested without pulling in Monaco (which StubForm imports).
-import { parse, hasKeys, buildOutput } from './buildStubOutput';
+import { parse, hasKeys, buildOutput, type OutputMode } from './buildStubOutput';
+import { outputTemplate } from '../../lib/stub';
+import type { Stub } from '../../lib/types';
 
 export interface StubFormData {
   service: string; method: string; priority: number; times: number;
@@ -10,7 +12,7 @@ export interface StubFormData {
   inputsAlt: { type: string; value: string; ignoreArrayOrder: boolean; _k?: string }[];
   headersEquals: string; headersContains: string; headersMatches: string;
   headersAnyOf: { type: string; value: string; _k?: string }[];
-  outputData: string; outputStream: string;
+  outputData: string; outputStream: string; outputTemplate: string;
   outputError: string; outputCode: number; outputDelay: string;
   outputHeaders: string; outputDetails: string;
   effects: { action: 'upsert' | 'delete'; id?: string; stub?: string; _k?: string }[];
@@ -23,12 +25,21 @@ function pickKind(a: Record<string, unknown>, kinds: readonly string[], fallback
   return kinds.find((k) => a[k]) ?? fallback;
 }
 
+// The tab an existing matcher should open on, so editing a `contains` stub does not
+// start on an empty `equals` editor.
+export function matcherMode(matcher: unknown, modes: readonly string[]): string {
+  const m = (matcher || {}) as Record<string, unknown>;
+  if (Array.isArray(m.anyOf) && m.anyOf.length > 0) return 'anyOf';
+
+  return pickKind(m, modes.filter((k) => k !== 'anyOf'), 'equals');
+}
+
 export function empty(): StubFormData {
   return {
     service: '', method: '', priority: 0, times: 0,
     inputEquals: '{}', inputContains: '{}', inputMatches: '{}', inputGlob: '{}', inputIgnoreArrayOrder: false, inputAnyOf: [], inputsAlt: [],
     headersEquals: '{}', headersContains: '{}', headersMatches: '{}', headersAnyOf: [],
-    outputData: '{\n  \n}', outputStream: '', outputError: '', outputCode: 0, outputDelay: '', outputHeaders: '{\n  \n}', outputDetails: '',
+    outputData: '{\n  \n}', outputStream: '', outputTemplate: '', outputError: '', outputCode: 0, outputDelay: '', outputHeaders: '{\n  \n}', outputDetails: '',
     effects: [],
   };
 }
@@ -76,6 +87,7 @@ export function fromInit(init: Record<string, unknown>): StubFormData {
     }),
     outputData: o.data !== undefined ? JSON.stringify(o.data, null, 2) : '{\n  \n}',
     outputStream: (o as any).stream ? JSON.stringify((o as any).stream, null, 2) : '',
+    outputTemplate: outputTemplate({ output: o } as unknown as Stub),
     outputError: (o as any).error || '', outputCode: (o as any).code ?? 0,
     outputDelay: (o as any).delay || '',
     outputHeaders: (o as any).headers ? JSON.stringify((o as any).headers, null, 2) : '{\n  \n}',
@@ -133,7 +145,7 @@ export function buildEffects(f: StubFormData): Record<string, unknown>[] {
   });
 }
 
-export function buildBody(f: StubFormData, initId: string | undefined, outMode: 'data' | 'stream'): Record<string, unknown> {
+export function buildBody(f: StubFormData, initId: string | undefined, outMode: OutputMode, isTemplate = false): Record<string, unknown> {
   const body: Record<string, unknown> = {};
   if (initId) body.id = initId;
   body.service = f.service;
@@ -151,7 +163,7 @@ export function buildBody(f: StubFormData, initId: string | undefined, outMode: 
   const alts = buildInputs(f);
   if (alts.length > 0) body.inputs = alts;
 
-  body.output = buildOutput(f, outMode);
+  body.output = buildOutput(f, outMode, isTemplate);
 
   if (f.effects.length) body.effects = buildEffects(f);
 

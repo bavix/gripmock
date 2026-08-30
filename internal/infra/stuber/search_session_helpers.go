@@ -19,7 +19,7 @@ func (s *searcher) collectUsedIDs() map[uuid.UUID]struct{} {
 }
 
 func (s *searcher) isVisibleAndNotExhausted(stub *Stub, session string) bool {
-	if !isStubVisibleForSession(stub.Session, session) {
+	if !VisibleForSession(stub.Session, session) {
 		return false
 	}
 
@@ -76,7 +76,7 @@ func (s *searcher) notExhausted(stub *Stub, session string) bool {
 func filterBySession(stubs []*Stub, session string) []*Stub {
 	filtered := make([]*Stub, 0, len(stubs))
 	for _, stub := range stubs {
-		if isStubVisibleForSession(stub.Session, session) {
+		if VisibleForSession(stub.Session, session) {
 			filtered = append(filtered, stub)
 		}
 	}

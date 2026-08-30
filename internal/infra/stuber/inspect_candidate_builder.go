@@ -74,8 +74,8 @@ func (s *searcher) evalTraceCandidate(
 	used := s.stubCallCount[callCountKey{id: stub.ID, session: query.Session}]
 	times := stub.EffectiveTimes()
 	withinTimes := times <= 0 || used < times
-	visible := isStubVisibleForSession(stub.Session, query.Session)
-	headersMatched := doesQueryMatchStubHeaders(query, stub)
+	visible := VisibleForSession(stub.Session, query.Session)
+	headersMatched := matchQueryHeaders(query, stub)
 	inputMatched := s.fastMatchBody(query, stub)
 	ranked := s.rankedMatchFor(query, stub)
 

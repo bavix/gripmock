@@ -17,7 +17,7 @@ go test ./examples/sdk/...
 Regenerate after changing a `.proto`:
 
 ```bash
-make gen-sdk-examples
+make gen-sdk-examples-protos
 ```
 
 See the [Embedded SDK guide](https://bavix.github.io/gripmock/guide/embedded-sdk/).

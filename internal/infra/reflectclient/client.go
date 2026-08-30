@@ -60,16 +60,12 @@ func (c *Client) FetchDescriptorSet(ctx context.Context, source *protoset.Source
 		defer cancel()
 	}
 
-	conn, err := grpc.NewClient(
-		"passthrough:///"+source.ReflectAddress,
-		grpcclient.DialOptions(
-			source.ReflectTimeout,
-			source.ReflectTLS,
-			source.ReflectServerName,
-			source.ReflectBearer,
-			source.ReflectInsecure,
-		)...,
-	)
+	dialOptions, err := grpcclient.DialOptions(grpcclient.UpstreamFromSource(source))
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := grpc.NewClient("passthrough:///"+source.ReflectAddress, dialOptions...)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to connect to %s", source.ReflectAddress)
 	}

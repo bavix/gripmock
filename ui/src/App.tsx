@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useStore } from './lib/store';
 import { AppShell } from './components/layout/AppShell';
 import { CommandPalette } from './components/command/CommandPalette';
@@ -20,6 +21,12 @@ import { StubTestPage } from './pages/StubTestPage';
 export function App() {
   const theme = useStore((s) => s.theme);
   const setTheme = useStore((s) => s.setTheme);
+  const session = useStore((s) => s.session);
+  const queryClient = useQueryClient();
+
+  // Every cached answer was fetched under the previous scope, so switching the
+  // session invalidates all of them rather than leaving stale rows on screen.
+  useEffect(() => { queryClient.invalidateQueries(); }, [session, queryClient]);
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
   // Optional ?theme=light|dark override for shareable/embedded links.
   useEffect(() => {

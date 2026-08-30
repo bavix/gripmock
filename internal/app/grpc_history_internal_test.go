@@ -2,6 +2,7 @@ package app
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -360,4 +361,39 @@ func TestHistoryServerStreamRecordsPartialStream(t *testing.T) {
 	require.Equal(t, stub.ID, calls[0].StubID)
 	require.Len(t, calls[0].Responses, 2, "only the sent messages are recorded, not all three")
 	require.NotEmpty(t, calls[0].Error)
+}
+
+func TestHistoryRecordsFailedClientStream(t *testing.T) {
+	t.Parallel()
+
+	mocker := createTestMockerWithRecorder(t)
+	mocker.fullMethod = testServiceName + "/" + testMethodName
+	mocker.fullServiceName = testServiceName
+	mocker.serviceName = testServiceName
+	mocker.methodName = testMethodName
+
+	code := codes.InvalidArgument
+	stub := &stuber.Stub{
+		ID:      uuid.New(),
+		Service: testServiceName,
+		Method:  testMethodName,
+		Output:  stuber.Output{Error: "bad request", Code: &code},
+	}
+
+	stream := &mockServerStream{ctx: t.Context()}
+
+	// The call fails, but it happened: history used to keep only the successful
+	// client-stream calls, so every failure was invisible.
+	err := mocker.sendClientStreamResponse(stream, stub, []map[string]any{{"id": "1"}}, time.Now(), 0)
+	require.Error(t, err)
+	require.Equal(t, codes.InvalidArgument, status.Code(err))
+
+	store, ok := mocker.recorder.(*history.MemoryStore)
+	require.True(t, ok)
+
+	records := store.All()
+	require.Len(t, records, 1)
+	require.Equal(t, uint32(codes.InvalidArgument), records[0].Code)
+	require.Contains(t, records[0].Error, "bad request")
+	require.Len(t, records[0].Requests, 1)
 }

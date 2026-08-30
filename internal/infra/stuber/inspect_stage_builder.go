@@ -38,7 +38,7 @@ func countHeadersAndInputMatches(s *searcher, query Query, stubs []*Stub) (int, 
 	inputCount := 0
 
 	for _, stub := range stubs {
-		headersMatched := doesQueryMatchStubHeaders(query, stub)
+		headersMatched := matchQueryHeaders(query, stub)
 		if !headersMatched {
 			continue
 		}

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
+	"github.com/bavix/gripmock/v3/internal/infra/jsondecoder"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 	"github.com/bavix/gripmock/v3/internal/infra/template"
 )
@@ -121,14 +122,27 @@ func (m effectApplier) prepareUpsertEffect(
 		return nil, errors.New("upsert effect requires stub payload")
 	}
 
-	payload := deepCopyMapAny(effect.Stub)
-	if err := m.templateEngine.ProcessMap(payload, templateData); err != nil {
+	source := deepCopyMapAny(effect.Stub)
+	document, documentSlot := takeOutputDocument(source)
+
+	payload, err := m.templateEngine.ProcessValue(source, templateData)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to process effect upsert templates")
 	}
 
 	stub, err := decodeEffectStub(payload)
 	if err != nil {
 		return nil, err
+	}
+
+	if documentSlot != "" {
+		stub.Output.Template = true
+
+		if documentSlot == "stream" {
+			stub.Output.Stream = document
+		} else {
+			stub.Output.Data = document
+		}
 	}
 
 	if stub.ID == uuid.Nil {
@@ -138,11 +152,35 @@ func (m effectApplier) prepareUpsertEffect(
 	stub.Session = parentSession
 	stub.Source = stuber.SourceRest
 
-	if err := m.validator.Struct(stub); err != nil {
+	if err := checkStub(m.validator, m.templateEngine, stub); err != nil {
 		return nil, errors.Wrap(err, "invalid generated upsert effect stub")
 	}
 
 	return stub, nil
+}
+
+func takeOutputDocument(payload map[string]any) (string, string) {
+	output, ok := payload["output"].(map[string]any)
+	if !ok {
+		return "", ""
+	}
+
+	if enabled, _ := output["template"].(bool); !enabled {
+		return "", ""
+	}
+
+	for _, slot := range []string{"stream", "data"} {
+		document, isText := output[slot].(string)
+		if !isText {
+			continue
+		}
+
+		delete(output, slot)
+
+		return document, slot
+	}
+
+	return "", ""
 }
 
 func (m effectApplier) prepareDeleteEffect(
@@ -203,14 +241,14 @@ func effectCanDeleteStub(stub *stuber.Stub, targetSession string) bool {
 	return stub.Session == targetSession
 }
 
-func decodeEffectStub(payload map[string]any) (*stuber.Stub, error) {
+func decodeEffectStub(payload any) (*stuber.Stub, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal effect stub payload")
 	}
 
 	generated := &stuber.Stub{}
-	if err := json.Unmarshal(body, generated); err != nil {
+	if err := jsondecoder.Unmarshal(body, generated); err != nil {
 		return nil, errors.Wrap(err, "failed to decode effect stub payload")
 	}
 

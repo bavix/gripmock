@@ -1,0 +1,46 @@
+--- ENDPOINT ---
+catalog.CatalogService/Search
+
+--- REQUEST ---
+{
+  "catalog": [
+    {
+      "sku": "a",
+      "category": "tools",
+      "stock": 5,
+      "price": 10
+    },
+    {
+      "sku": "c",
+      "category": "toys",
+      "stock": 3,
+      "price": 20
+    },
+    {
+      "sku": "d",
+      "category": "toys",
+      "stock": 9,
+      "price": 2
+    }
+  ],
+  "min_stock": 1,
+  "offset": 1,
+  "limit": 1
+}
+
+--- RESPONSE ---
+{
+  "items": [
+    {
+      "sku": "c",
+      "category": "toys",
+      "stock": 3,
+      "price": 20
+    }
+  ],
+  "matched": 3,
+  "page_total": 20,
+  "facets": {
+    "toys": 1
+  }
+}

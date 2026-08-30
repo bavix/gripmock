@@ -1417,7 +1417,8 @@ func TestStaticStubDataStaysImmutableAcrossCalls(t *testing.T) {
 	require.Len(t, history, 6)
 
 	for _, record := range history {
-		msg, _ := record.Responses[0]["message"].(string)
+		response, _ := record.Responses[0].(map[string]any)
+		msg, _ := response["message"].(string)
 		require.NotContains(t, msg, "{{", "history must hold the rendered response")
 	}
 }

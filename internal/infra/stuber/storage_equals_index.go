@@ -90,8 +90,12 @@ func anchoredLiteral(pattern string) (string, bool) {
 // isIndexableInput reports whether a stub's input is a plain equals block --
 // the only shape the index can reason about exactly.
 func indexableFields(stub *Stub) (map[string]any, bool, bool) {
-	in := stub.Input
-	if stub.Inputs != nil || len(in.Glob) > 0 || len(in.AnyOf) > 0 {
+	if stub.DeclaresStreamMatchers() {
+		return nil, false, false
+	}
+
+	in := stub.Matchers()[0]
+	if len(in.Glob) > 0 || len(in.AnyOf) > 0 {
 		return nil, false, false
 	}
 
@@ -192,14 +196,14 @@ func (s *storage) indexedCandidates(indexes []uint64, queryData map[string]any) 
 	)
 
 	for _, index := range indexes {
+		candidates = append(candidates, s.unindexed[index]...)
+
 		byField, exists := s.equalsIndex[index]
 		if !exists {
 			continue
 		}
 
 		usable = true
-
-		candidates = append(candidates, s.unindexed[index]...)
 
 		for queryKey, queryValue := range queryData {
 			value, isString := queryValue.(string)

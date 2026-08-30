@@ -15,8 +15,6 @@ var ErrBodyTooLarge = errors.New("request body exceeds the maximum size")
 
 type bodyKey struct{}
 
-type bodyErrKey struct{}
-
 // ContextWithBody stores body bytes in context. Used by middleware that pre-reads body.
 func ContextWithBody(ctx context.Context, body []byte) context.Context {
 	return context.WithValue(ctx, bodyKey{}, body)
@@ -27,12 +25,6 @@ func BodyFromContext(ctx context.Context) []byte {
 	b, _ := ctx.Value(bodyKey{}).([]byte)
 
 	return b
-}
-
-// ContextWithBodyError records why middleware could not read the body, so the
-// handler reports that instead of blaming the empty payload it was handed.
-func ContextWithBodyError(ctx context.Context, err error) context.Context {
-	return context.WithValue(ctx, bodyErrKey{}, err)
 }
 
 // BodyErrorStatus maps a failed body read onto the status the caller should see.
@@ -46,18 +38,8 @@ func BodyErrorStatus(err error) int {
 	return http.StatusBadRequest
 }
 
-func BodyErrorFromContext(ctx context.Context) error {
-	err, _ := ctx.Value(bodyErrKey{}).(error)
-
-	return err
-}
-
 // RequestBody returns body bytes: from context if set, otherwise reads from r.Body.
 func RequestBody(r *http.Request) ([]byte, error) {
-	if err := BodyErrorFromContext(r.Context()); err != nil {
-		return nil, err
-	}
-
 	if b := BodyFromContext(r.Context()); b != nil {
 		return b, nil
 	}

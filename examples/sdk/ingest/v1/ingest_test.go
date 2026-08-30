@@ -212,6 +212,33 @@ func TestOversizedBatchIsRefused(t *testing.T) {
 	require.NotEmpty(t, status.Convert(err).Details())
 }
 
+func TestTemplateCountsEntriesFromTheWholeBatch(t *testing.T) {
+	t.Parallel()
+
+	srv, client := newClient(t)
+
+	srv.ExpectClientStream(ingestv1.IngestService_UploadBatch_FullMethodName).
+		Match(sdk.Equals("source", source)).
+		ReturnTemplate(`
+{{ $rejected := .Requests | where "level" "eq" "error" }}
+{{ dict
+     "batch_id" (printf "BATCH-%d" (len .Requests))
+     "accepted" (sub (len .Requests) (len $rejected))
+     "rejected" (len $rejected) }}`)
+
+	receipt, err := upload(t, client,
+		entry("info", "started"),
+		entry("error", "gateway timeout"),
+		entry("warn", "slow response"),
+		entry("error", "upstream reset"),
+	)
+
+	require.NoError(t, err)
+	require.Equal(t, "BATCH-4", receipt.GetBatchId())
+	require.EqualValues(t, 2, receipt.GetAccepted())
+	require.EqualValues(t, 2, receipt.GetRejected())
+}
+
 func field(message any, key string) string {
 	fields, ok := message.(map[string]any)
 	if !ok {

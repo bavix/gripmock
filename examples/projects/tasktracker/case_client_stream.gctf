@@ -1,0 +1,31 @@
+--- META ---
+name: client streaming - submit task updates
+summary: SubmitTaskUpdates answers one summary for the whole ordered sequence
+tags: [streaming, client-streaming]
+
+--- ENDPOINT ---
+tasktracker.TaskService/SubmitTaskUpdates
+
+--- REQUEST ---
+{
+  "status": "in_progress",
+  "task_id": "task-42"
+}
+
+--- REQUEST ---
+{
+  "status": "review",
+  "task_id": "task-42"
+}
+
+--- REQUEST ---
+{
+  "status": "done",
+  "task_id": "task-42"
+}
+
+--- RESPONSE ---
+{
+  "processed": 3,
+  "status": "accepted"
+}

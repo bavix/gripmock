@@ -51,33 +51,132 @@ var chainedCallTemplatePattern = regexp.MustCompile(`\{\{\s*\(?\s*[A-Za-z_][A-Za
 
 // executeTemplates executes static template functions at load time and escapes runtime templates.
 func (e *engine) executeTemplates(ctx context.Context, name string, data []byte) []byte {
-	// Get template functions from registry
 	funcs := e.getTemplateFuncs(ctx)
-
-	// Process line by line
 	lines := strings.Split(string(data), "\n")
+	result := make([]string, 0, len(lines))
 
-	var result []string
+	blocks := blockScanner{deferAnchors: anchorsReferencedFromOutput(lines)}
 
 	for _, line := range lines {
-		if !containsTemplateMarkers([]byte(line)) {
+		mode := blocks.mode(line)
+
+		switch {
+		case mode == modeVerbatim || !containsTemplateMarkers([]byte(line)):
 			result = append(result, line)
-
-			continue
-		}
-
-		// Check if this line contains runtime-only templates.
-		if runtimeTemplatePattern.MatchString(line) || chainedCallTemplatePattern.MatchString(line) {
-			// Escape runtime templates for later processing
+		case mode == modeDefer || runtimeTemplatePattern.MatchString(line) || chainedCallTemplatePattern.MatchString(line):
 			result = append(result, escapeTemplateInLine(line))
-		} else {
-			// Execute static template functions at load time
-			executed := e.executeStaticTemplate(name, line, funcs)
-			result = append(result, executed)
+		default:
+			result = append(result, e.executeStaticTemplate(name, line, funcs))
 		}
 	}
 
 	return []byte(strings.Join(result, "\n"))
+}
+
+type lineMode int
+
+const (
+	modeExecute lineMode = iota
+	modeDefer
+	modeVerbatim
+)
+
+var (
+	blockScalarPattern = regexp.MustCompile(`^(\s*)(-\s+)?[A-Za-z_][\w.-]*\s*:\s*[|>][0-9+-]*\s*(?:#.*)?$`)
+	outputKeyPattern   = regexp.MustCompile(`^(\s*)(-\s+)?output\s*:\s*(?:\{.*)?(?:#.*)?$`)
+	// anchoredBlockPattern matches a key whose value is an anchored block scalar
+	// (`doc: &shared |`), whose body may be aliased into an output block.
+	anchoredBlockPattern = regexp.MustCompile(`^(\s*)(-\s+)?[A-Za-z_][\w.-]*\s*:\s*&([\w-]+)\s*(?:[|>][0-9+-]*)?\s*(?:#.*)?$`)
+	anchorRefPattern     = regexp.MustCompile(`\*([\w-]+)`)
+)
+
+type blockScanner struct {
+	verbatim     blockRange
+	deferred     blockRange
+	deferAnchors map[string]bool
+}
+
+func (b *blockScanner) mode(line string) lineMode {
+	if b.verbatim.holds(line) {
+		return modeVerbatim
+	}
+
+	deferred := b.deferred.holds(line)
+
+	if b.deferred.open && b.verbatim.opens(blockScalarPattern, line) {
+		return modeVerbatim
+	}
+
+	if !b.deferred.open && len(b.deferAnchors) > 0 {
+		if match := anchoredBlockPattern.FindStringSubmatch(line); match != nil && b.deferAnchors[match[3]] {
+			b.deferred.opens(anchoredBlockPattern, line)
+
+			return modeDefer
+		}
+	}
+
+	if b.deferred.opens(outputKeyPattern, line) || deferred {
+		return modeDefer
+	}
+
+	return modeExecute
+}
+
+// anchorsReferencedFromOutput collects anchor names aliased anywhere inside an
+// output block. The scanner is textual and YAML resolves aliases only at parse
+// time, so a document anchored under another key and referenced from output has
+// to defer together with it.
+func anchorsReferencedFromOutput(lines []string) map[string]bool {
+	var blocks blockScanner
+
+	anchors := map[string]bool{}
+
+	for _, line := range lines {
+		if blocks.mode(line) != modeDefer {
+			continue
+		}
+
+		for _, match := range anchorRefPattern.FindAllStringSubmatch(line, -1) {
+			anchors[match[1]] = true
+		}
+	}
+
+	return anchors
+}
+
+type blockRange struct {
+	indent int
+	open   bool
+}
+
+func (r *blockRange) holds(line string) bool {
+	if !r.open {
+		return false
+	}
+
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" || strings.HasPrefix(trimmed, "#") || leadingWhitespace(line) > r.indent {
+		return true
+	}
+
+	r.open = false
+
+	return false
+}
+
+func (r *blockRange) opens(pattern *regexp.Regexp, line string) bool {
+	matches := pattern.FindStringSubmatch(line)
+	if matches == nil {
+		return false
+	}
+
+	r.indent, r.open = len(matches[1])+len(matches[2]), true
+
+	return true
+}
+
+func leadingWhitespace(line string) int {
+	return len(line) - len(strings.TrimLeft(line, " \t"))
 }
 
 // getTemplateFuncs returns template functions from the registry.
@@ -130,7 +229,7 @@ func (e *engine) executeStaticTemplate(name, line string, funcs template.FuncMap
 	}
 
 	// Replace template with executed result
-	return replaceTemplateInLine(line, buf.String())
+	return replaceTemplateInLine(line, strings.TrimSpace(buf.String()))
 }
 
 // extractTemplateContent extracts the template content from a line.

@@ -67,6 +67,8 @@ func RegisterDescriptorSetFiles(
 	descriptorPath string,
 	fds *descriptorpb.FileDescriptorSet,
 ) error {
+	renameCollidingFiles(ctx, descriptorPath, fds)
+
 	pending := slices.Clone(fds.GetFile())
 
 	for len(pending) > 0 {

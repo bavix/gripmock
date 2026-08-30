@@ -1,0 +1,13 @@
+--- ENDPOINT ---
+validator.Validator/Validate
+
+--- REQUEST ---
+{
+  "data": "user@example.com",
+  "validation_type": "EMAIL"
+}
+
+--- RESPONSE ---
+{
+  "is_valid": true
+}

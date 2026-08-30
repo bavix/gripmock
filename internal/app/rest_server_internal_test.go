@@ -1023,7 +1023,7 @@ func (s *RestServerTestSuite) TestListHistory_RedactsSensitiveKeys() {
 		Service:   "svc",
 		Method:    "M",
 		Requests:  []map[string]any{{"user": "alice", "password": "secret123"}},
-		Responses: []map[string]any{{"token": "jwt-xxx"}},
+		Responses: []any{map[string]any{"token": "jwt-xxx"}},
 	})
 
 	server := s.newRestServerWithStore(store)
@@ -1579,6 +1579,54 @@ func (s *RestServerTestSuite) TestMcpMockCallAppliesEffects() {
 	s.Equal("unlocked", data["status"])
 }
 
+func (s *RestServerTestSuite) TestWireShapeSurvivesARoundTrip() {
+	server := s.newRestServerWithHistory()
+
+	shapes := map[string]string{
+		"unary":         `{"service":"wire.Svc","method":"Unary","input":{"equals":{"id":"1"}},"output":{"data":{"ok":true}}}`,
+		"client stream": `{"service":"wire.Svc","method":"Client","inputs":[{"equals":{"id":"2"}}],"output":{"data":{"ok":true}}}`,
+		"server stream": `{"service":"wire.Svc","method":"Server","input":{"equals":{"id":"3"}},"output":{"stream":[{"ok":true}]}}`,
+		"data template": `{"service":"wire.Svc","method":"Doc","input":{"equals":{"id":"4"}},` +
+			`"output":{"template":true,"data":"{{ dict \"ok\" true }}"}}`,
+		"stream template": `{"service":"wire.Svc","method":"Docs","input":{"equals":{"id":"5"}},` +
+			`"output":{"template":true,"stream":"{{ dict \"ok\" true }}"}}`,
+	}
+
+	for name, payload := range shapes {
+		s.Run(name, func() {
+			s.addStubJSON(server, "["+payload+"]")
+
+			var sent map[string]any
+
+			s.Require().NoError(json.Unmarshal([]byte(payload), &sent))
+
+			w := httptest.NewRecorder()
+			server.ListStubs(w, httptest.NewRequestWithContext(s.T().Context(), http.MethodGet, "/", nil), rest.ListStubsParams{})
+			s.Require().Equal(http.StatusOK, w.Code)
+
+			var listed []map[string]any
+
+			s.Require().NoError(json.Unmarshal(w.Body.Bytes(), &listed))
+
+			stored := s.findStubByMethod(listed, sent["method"].(string)) //nolint:forcetypeassert
+			s.Require().NotNil(stored)
+
+			for _, key := range []string{"input", "inputs", "output"} {
+				want, ok := sent[key]
+				if !ok {
+					continue
+				}
+
+				s.Equal(want, withoutEmptyValues(stored[key]), "%s must come back in the shape it was sent", key)
+			}
+
+			if _, hasInputs := sent["inputs"]; !hasInputs {
+				s.NotContains(stored, "inputs", "a unary stub must not grow an inputs list")
+			}
+		})
+	}
+}
+
 func (s *RestServerTestSuite) mcpCall(server *RestServer, payload map[string]any, expectedStatus int) map[string]any {
 	return s.mcpCallWithRequest(server, payload, expectedStatus, nil)
 }
@@ -1844,3 +1892,52 @@ func TestErrorStatusMapsOversizedBodies(t *testing.T) {
 }
 
 var errStatusProbe = stderrors.New("something else")
+
+// withoutEmptyValues drops the null and empty-string keys the API always emits, so a
+// shape comparison sees only what the caller actually declared.
+func withoutEmptyValues(value any) any {
+	if items, ok := value.([]any); ok {
+		out := make([]any, len(items))
+		for i, item := range items {
+			out[i] = withoutEmptyValues(item)
+		}
+
+		return out
+	}
+
+	source, ok := value.(map[string]any)
+	if !ok {
+		return value
+	}
+
+	out := make(map[string]any, len(source))
+
+	for key, item := range source {
+		switch item := item.(type) {
+		case nil:
+			continue
+		case string:
+			if item == "" {
+				continue
+			}
+
+			out[key] = item
+		case map[string]any:
+			out[key] = withoutEmptyValues(item)
+		default:
+			out[key] = item
+		}
+	}
+
+	return out
+}
+
+func (s *RestServerTestSuite) findStubByMethod(stubs []map[string]any, method string) map[string]any {
+	for _, stub := range stubs {
+		if stub["method"] == method {
+			return stub
+		}
+	}
+
+	return nil
+}

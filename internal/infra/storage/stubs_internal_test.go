@@ -10,7 +10,7 @@ func TestStubsStorageExtenderStruct(t *testing.T) {
 	t.Parallel()
 
 	// Test Extender struct fields
-	storage := NewStub(nil, nil, nil)
+	storage := NewStub(nil, nil, nil, nil)
 	require.NotNil(t, storage)
 	require.NotNil(t, storage.ch)
 	require.NotNil(t, storage.mapIDsByFile)
@@ -21,7 +21,7 @@ func TestStubsStorageMapOperations(t *testing.T) {
 	t.Parallel()
 
 	// Test map operations
-	storage := NewStub(nil, nil, nil)
+	storage := NewStub(nil, nil, nil, nil)
 
 	// Test map initialization
 	require.NotNil(t, storage.mapIDsByFile)
@@ -35,7 +35,7 @@ func TestStubsStorageAtomicOperations(t *testing.T) {
 	t.Parallel()
 
 	// Test atomic operations
-	storage := NewStub(nil, nil, nil)
+	storage := NewStub(nil, nil, nil, nil)
 
 	// Test loaded field
 	require.False(t, storage.loaded.Load())
@@ -53,7 +53,7 @@ func TestStubsStorageChannelOperations(t *testing.T) {
 	t.Parallel()
 
 	// Test channel operations
-	storage := NewStub(nil, nil, nil)
+	storage := NewStub(nil, nil, nil, nil)
 
 	// Test that channel is created
 	require.NotNil(t, storage.ch)
@@ -71,7 +71,7 @@ func TestStubsStorageMutexOperations(t *testing.T) {
 	t.Parallel()
 
 	// Test mutex operations
-	storage := NewStub(nil, nil, nil)
+	storage := NewStub(nil, nil, nil, nil)
 
 	// Test that mutex protects shared resources
 	storage.muUniqueIDs.Lock()

@@ -1,8 +1,6 @@
 import { type CallRecord, isCallOk } from '../../lib/types';
 
 export interface Bucket {
-  /** Bucket start, ms since epoch. */
-  t: number;
   /** Human label (HH:MM). */
   label: string;
   ok: number;
@@ -64,7 +62,7 @@ export function bucketCalls(records: CallRecord[], bucketMs = 60_000, now = Date
     const t = end - i * bucketMs;
     const b = counts.get(t) ?? { ok: 0, errors: 0 };
     const d = new Date(t);
-    out.push({ t, label: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`, ok: b.ok, errors: b.errors });
+    out.push({ label: `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`, ok: b.ok, errors: b.errors });
   }
   return out;
 }

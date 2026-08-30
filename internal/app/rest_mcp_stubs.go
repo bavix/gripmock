@@ -22,6 +22,7 @@ func decodeAndValidateMCPStubs(h *RestServer, args map[string]any) ([]*stuber.St
 	sessionID, _ := args["session"].(string)
 
 	for _, stub := range stubs {
+		// Same rule as the REST endpoint: the tool argument decides the scope.
 		stub.Session = sessionID
 
 		if err = h.validateStub(stub); err != nil {

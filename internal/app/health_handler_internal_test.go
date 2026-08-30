@@ -436,3 +436,31 @@ func TestMockableHealthServerCheckComputesDelay(t *testing.T) {
 	require.GreaterOrEqual(t, call(), 120*time.Millisecond)
 	require.Less(t, call(), 120*time.Millisecond)
 }
+
+func TestMockableHealthServerRejectsTemplateOutput(t *testing.T) {
+	t.Parallel()
+
+	handler := newHealthTestEnv(t, &stuber.Stub{
+		Service: HealthServiceFullName,
+		Method:  "Check",
+		Input:   stuber.InputData{Equals: map[string]any{"service": "orders.v1.OrderService"}},
+		Output:  stuber.Output{Template: true, Data: `{{ dict "status" "SERVING" }}`},
+	})
+
+	_, err := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "orders.v1.OrderService"})
+	require.ErrorContains(t, err, errHealthTemplate)
+}
+
+func TestMockableHealthServerCheckRejectsStreamOutput(t *testing.T) {
+	t.Parallel()
+
+	handler := newHealthTestEnv(t, &stuber.Stub{
+		Service: HealthServiceFullName,
+		Method:  "Check",
+		Input:   stuber.InputData{Equals: map[string]any{"service": "orders.v1.OrderService"}},
+		Output:  stuber.Output{Stream: []any{map[string]any{"status": "SERVING"}}},
+	})
+
+	_, err := handler.Check(t.Context(), &healthgrpc.HealthCheckRequest{Service: "orders.v1.OrderService"})
+	require.ErrorContains(t, err, "health stub output.data must be an object")
+}

@@ -40,7 +40,7 @@ type bidiRecordingStream struct {
 	grpc.ServerStream
 
 	requests      []map[string]any
-	responses     []map[string]any
+	responses     []any
 	respHeader    metadata.MD
 	respTrailer   metadata.MD
 	stubID        uuid.UUID
@@ -109,7 +109,7 @@ func (s *bidiRecordingStream) getResponseHeaders() map[string]string {
 
 func (s *bidiRecordingStream) getRequests() []map[string]any { return s.requests }
 
-func (s *bidiRecordingStream) getResponses() []map[string]any { return s.responses }
+func (s *bidiRecordingStream) getResponses() []any { return s.responses }
 
 func (s *bidiRecordingStream) setStubID(id uuid.UUID) { s.stubID = id }
 
@@ -129,15 +129,8 @@ func (m *grpcMocker) recordCall(
 		return
 	}
 
-	recordedResponses := make([]map[string]any, 0, len(responses))
-	for _, r := range responses {
-		if rm, ok := r.(map[string]any); ok {
-			recordedResponses = append(recordedResponses, rm)
-		}
-	}
-
 	recordCall(m.recorder, m.fullServiceName, m.methodName, sessionFromContext(ctx),
-		stubID, code, timestamp, requests, recordedResponses, respHeaders, errMsg)
+		stubID, code, timestamp, requests, responses, respHeaders, errMsg)
 }
 
 func (m *grpcMocker) recordUnmatched(

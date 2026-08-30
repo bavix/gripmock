@@ -104,6 +104,22 @@ func (b *EffectBuilder) Return(kv ...any) *EffectBuilder {
 	return b
 }
 
+// ReturnTemplate makes the effect stub answer with a Go template, rendered per
+// request against the child's own request rather than the parent's.
+func (b *EffectBuilder) ReturnTemplate(document string) *EffectBuilder {
+	b.stub.Output = stuber.Output{Template: true, Data: document}
+
+	return b
+}
+
+// SendStreamTemplate makes the effect stub answer with a stream computed by a Go
+// template.
+func (b *EffectBuilder) SendStreamTemplate(document string) *EffectBuilder {
+	b.stub.Output = stuber.Output{Template: true, Stream: document}
+
+	return b
+}
+
 // SendStream makes the effect stub answer with a server stream.
 func (b *EffectBuilder) SendStream(items ...any) *EffectBuilder {
 	stream := make([]any, 0, len(items))
@@ -242,8 +258,12 @@ func outputToMap(o stuber.Output) map[string]any {
 		out["data"] = o.Data
 	}
 
-	if len(o.Stream) > 0 {
+	if o.Stream != nil {
 		out["stream"] = o.Stream
+	}
+
+	if o.HasTemplate() {
+		out["template"] = true
 	}
 
 	if len(o.Headers) > 0 {

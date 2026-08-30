@@ -200,48 +200,6 @@ func TestIsTemplateString(t *testing.T) {
 	}
 }
 
-func TestEngineProcessMap(t *testing.T) {
-	t.Parallel()
-
-	engine := New(t.Context(), nil)
-
-	data := map[string]any{
-		"name": "{{.Request.name}}",
-		"age":  "{{.Request.age}}",
-		"nested": map[string]any{
-			"title": "{{.Request.title}}",
-		},
-		"array": []any{
-			"{{.Request.item1}}",
-			"{{.Request.item2}}",
-		},
-	}
-
-	templateData := Data{
-		Request: map[string]any{
-			"name":  "John",
-			"age":   "30",
-			"title": "Mr",
-			"item1": "first",
-			"item2": "second",
-		},
-	}
-
-	err := engine.ProcessMap(data, templateData)
-	require.NoError(t, err)
-
-	require.Equal(t, "John", data["name"])
-	require.Equal(t, "30", data["age"])
-	nested, ok := data["nested"].(map[string]any)
-	require.True(t, ok)
-	require.Equal(t, "Mr", nested["title"])
-
-	array, ok := data["array"].([]any)
-	require.True(t, ok)
-	require.Equal(t, "first", array[0])
-	require.Equal(t, "second", array[1])
-}
-
 func TestEngineProcessHeaders(t *testing.T) {
 	t.Parallel()
 
@@ -344,7 +302,7 @@ func TestProcessMapMaxRecursionDepthExceeded(t *testing.T) {
 		current = nested
 	}
 
-	err := engine.ProcessMap(data, Data{})
+	_, err := engine.ProcessValue(data, Data{})
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrMaxRecursionDepthExceeded)
 }
@@ -366,7 +324,7 @@ func TestProcessMapAtMaxRecursionDepth(t *testing.T) {
 
 	current["leaf"] = "value"
 
-	err := engine.ProcessMap(data, Data{})
+	_, err := engine.ProcessValue(data, Data{})
 	require.NoError(t, err)
 }
 

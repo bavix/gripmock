@@ -47,6 +47,22 @@ metadata — are only reachable as <code v-pre>`{{index .Headers "x-user"}}`</co
 ```
 :::
 
+Templates render leaf values only: `range` inside a template cannot add or remove
+array elements. To make an array — or the number of stream messages — follow the
+request, use [Response Templates](./dynamic-structure).
+
+A key whose value is `null` is dropped from the response <VersionTag version="v3.22.0" />, so an optional field can
+be left out and a `oneof` can be selected by writing the branches you do not want as
+`null`:
+
+```yaml
+output:
+  data:
+    success:
+      taskId: "T-1"
+    error: null
+```
+
 ## Template Functions
 
 Go's own template builtins (`len`, `index`, `if`, `range`, …) are available.
@@ -83,6 +99,8 @@ the `.RequestTime` field rather than `now()`.
 - `uuid`, `uuid2base64`, `uuid2bytes`, `uuid2int64`, `string2base64`,
   `bytes2base64`, `bytes`: identifier and encoding conversion
 - `faker.*`: see the [Faker reference](./faker)
+- `where`, `page`, `countBy`, `dict`, `list`, `seq`: build and query
+  collections <VersionTag version="v3.22.0" /> — see [Response Templates](./dynamic-structure)
 
 ### Plugin Functions <VersionTag version="v3.5.0" />
 Custom functions provided by plugins are also available in templates. Load plugins using the `--plugins` flag and use their functions just like built-in functions.

@@ -112,8 +112,8 @@ type CallRecord struct {
 	// ResponseHeaders Normalized response metadata (header+trailer) the call answered with
 	ResponseHeaders map[string]string `json:"responseHeaders,omitempty"`
 
-	// Responses Response messages; a unary call carries exactly one
-	Responses *[]map[string]any `json:"responses,omitempty"`
+	// Responses Response messages; a unary call carries exactly one. Usually an object, but a method returning a well-known type directly records the scalar or array it answered with.
+	Responses *[]any `json:"responses,omitempty"`
 
 	// Service Fully qualified gRPC service name.
 	Service *string `json:"service,omitempty"`
@@ -786,8 +786,11 @@ type StubOutput struct {
 	// Headers Response metadata.
 	Headers map[string]string `json:"headers,omitempty"`
 
-	// Stream Response messages for server and bidirectional streaming, sent in order. Cannot be combined with `data`, `error`, `code` or `details` on this endpoint.
-	Stream []any `json:"stream,omitempty"`
+	// Stream Response messages for server and bidirectional streaming, sent in order. May be combined with `error`, `code` and `details`; cannot be combined with `data`. With `template: true` this holds the template text instead of the messages.
+	Stream any `json:"stream,omitempty"`
+
+	// Template Marks `data` or `stream` as a Go template rendered per request. The template in `data` answers with one message and must print exactly one JSON value; the template in `stream` answers with a stream and may print any number of values, or a single array of messages.
+	Template bool `json:"template,omitempty"`
 
 	// Trailers Trailing metadata, sent after the last message with the status. Independent of `headers`: the same key may appear in both, and each is delivered on its own channel.
 	Trailers map[string]string `json:"trailers,omitempty"`
