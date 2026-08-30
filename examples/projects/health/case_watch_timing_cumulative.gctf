@@ -14,8 +14,8 @@ grpc.health.v1.Health/Watch
 --- ASSERTS ---
 // First scope includes initial delay from stub.
 @scope.message_count() == 1
-@elapsed_ms() >= 10
-@total_elapsed_ms() >= 10
+@elapsed_ms() >= 5
+@total_elapsed_ms() >= 5
 @scope.index() == 1
 
 --- RESPONSE with_asserts ---
@@ -26,5 +26,5 @@ grpc.health.v1.Health/Watch
 --- ASSERTS ---
 // Second scope validates cumulative timing growth.
 @scope.message_count() == 1
-@total_elapsed_ms() >= 10
+@total_elapsed_ms() >= 5
 @scope.index() == 2

@@ -32,7 +32,7 @@ func startGripmockWith(t *testing.T, protoPath string, args *protodom.Arguments)
 
 	cfg := config.Load()
 
-	addrs, releaseAddrs := reserveAddrs(t, 3)
+	addrs := reserveAddrs(t, 3)
 	cfg.GRPC.Addr, cfg.HTTP.Addr, cfg.Gateway.Addr = addrs[0], addrs[1], addrs[2]
 
 	builder := NewBuilder(WithConfig(cfg))
@@ -56,8 +56,6 @@ func startGripmockWith(t *testing.T, protoPath string, args *protodom.Arguments)
 		bootErr <- rest.ListenAndServe()
 	}()
 	go func() { bootErr <- builder.GRPCServe(ctx, args) }()
-
-	releaseAddrs()
 
 	t.Cleanup(func() {
 		cancel()

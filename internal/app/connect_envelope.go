@@ -127,9 +127,6 @@ func writeConnectFrameEncoded(w io.Writer, data []byte, endStream bool, encoding
 	}
 
 	_, err = w.Write(data)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return err
 }

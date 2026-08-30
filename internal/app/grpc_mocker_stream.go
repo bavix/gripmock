@@ -427,12 +427,7 @@ func (m *grpcMocker) handleStreamElement(
 		return errors.Wrap(err, "failed to convert response to dynamic message")
 	}
 
-	err = sendStreamMessage(stream, outputMsg)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return sendStreamMessage(stream, outputMsg)
 }
 
 func (m *grpcMocker) handleNonArrayStreamData(

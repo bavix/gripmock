@@ -80,7 +80,7 @@ func TestTLSAcrossEveryServer(t *testing.T) { //nolint:paralleltest // boots rea
 
 	cfg := config.Load()
 
-	addrs, releaseAddrs := reserveAddrs(t, 3)
+	addrs := reserveAddrs(t, 3)
 	cfg.GRPC.Addr, cfg.HTTP.Addr, cfg.Gateway.Addr = addrs[0], addrs[1], addrs[2]
 	cfg.GRPCTLS.CertFile = certFile
 	cfg.GRPCTLS.KeyFile = keyFile
@@ -107,8 +107,6 @@ func TestTLSAcrossEveryServer(t *testing.T) { //nolint:paralleltest // boots rea
 	}()
 	go func() { bootErr <- builder.GatewayServe(ctx) }()
 	go func() { bootErr <- builder.GRPCServe(ctx, protodom.New([]string{protoPath}, nil, nil)) }()
-
-	releaseAddrs()
 
 	t.Cleanup(func() {
 		cancel()
@@ -253,7 +251,7 @@ func TestStubsAreLoadedFromDiskAtStartup(t *testing.T) { //nolint:paralleltest /
 
 	cfg := config.Load()
 
-	addrs, releaseAddrs := reserveAddrs(t, 3)
+	addrs := reserveAddrs(t, 3)
 	cfg.GRPC.Addr, cfg.HTTP.Addr, cfg.Gateway.Addr = addrs[0], addrs[1], addrs[2]
 
 	builder := NewBuilder(WithConfig(cfg))
@@ -273,8 +271,6 @@ func TestStubsAreLoadedFromDiskAtStartup(t *testing.T) { //nolint:paralleltest /
 		bootErr <- rest.ListenAndServe()
 	}()
 	go func() { bootErr <- builder.GRPCServe(ctx, protodom.New([]string{protoPath}, nil, nil)) }()
-
-	releaseAddrs()
 
 	t.Cleanup(func() {
 		cancel()
@@ -307,7 +303,7 @@ func TestTLSMinVersionIsEnforcedOnTheWire(t *testing.T) { //nolint:paralleltest 
 
 	cfg := config.Load()
 
-	httpAddrs, releaseHTTPAddr := reserveAddrs(t, 1)
+	httpAddrs := reserveAddrs(t, 1)
 	cfg.HTTP.Addr = httpAddrs[0]
 	cfg.HTTPTLS.CertFile = certFile
 	cfg.HTTPTLS.KeyFile = keyFile
@@ -316,8 +312,6 @@ func TestTLSMinVersionIsEnforcedOnTheWire(t *testing.T) { //nolint:paralleltest 
 	builder := NewBuilder(WithConfig(cfg))
 
 	ctx, cancel := context.WithCancel(t.Context())
-
-	releaseHTTPAddr()
 
 	go func() {
 		rest, err := builder.RestServe(ctx, "")
