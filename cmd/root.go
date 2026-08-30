@@ -58,7 +58,8 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 				}
 			}()
 
-			if err := restServe(ctx, builder); err != nil {
+			err := restServe(ctx, builder)
+			if err != nil {
 				zerolog.Ctx(ctx).Fatal().Err(err).Msg("Fatal error in REST server - terminating server")
 			}
 		}()
@@ -73,7 +74,8 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 				}
 			}()
 
-			if err := builder.GatewayServe(ctx); err != nil {
+			err := builder.GatewayServe(ctx)
+			if err != nil {
 				zerolog.Ctx(ctx).Fatal().Err(err).Msg("Fatal error in gateway server - terminating server")
 			}
 		}()
@@ -124,7 +126,8 @@ func restServe(ctx context.Context, builder *deps.Builder) error {
 		}
 	}()
 
-	if err := <-ch; !errors.Is(err, http.ErrServerClosed) {
+	err = <-ch
+	if !errors.Is(err, http.ErrServerClosed) {
 		return errors.Wrap(err, "http server failed")
 	}
 
@@ -162,7 +165,8 @@ func init() { //nolint:gochecknoinits
 
 // Execute runs the root command with the given context.
 func Execute(ctx context.Context) {
-	if err := rootCmd.ExecuteContext(ctx); err != nil {
+	err := rootCmd.ExecuteContext(ctx)
+	if err != nil {
 		os.Exit(1)
 	}
 }

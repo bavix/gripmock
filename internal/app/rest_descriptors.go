@@ -80,7 +80,9 @@ func registerDescriptorBytes(h *RestServer, byt []byte) ([]string, error) {
 	defer h.descriptorOpsMu.Unlock()
 
 	var fds descriptorpb.FileDescriptorSet
-	if err := proto.Unmarshal(byt, &fds); err != nil {
+
+	err := proto.Unmarshal(byt, &fds)
+	if err != nil {
 		return nil, invalidFileDescriptorSetError(err)
 	}
 
@@ -173,7 +175,8 @@ func decodeDescriptorFiles(fds *descriptorpb.FileDescriptorSet) ([]protoreflect.
 				continue
 			}
 
-			if err := registry.RegisterFile(fileDesc); err != nil {
+			err = registry.RegisterFile(fileDesc)
+			if err != nil {
 				return nil, registerDescriptorFileError(fd.GetName(), err)
 			}
 

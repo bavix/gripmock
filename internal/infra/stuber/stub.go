@@ -122,7 +122,9 @@ func gripMockDelay(gk map[string]any) (types.Delay, bool) {
 	}
 
 	delay := types.Delay(s)
-	if _, err := delay.Parse(); err != nil {
+
+	_, err := delay.Parse()
+	if err != nil {
 		return "", false
 	}
 

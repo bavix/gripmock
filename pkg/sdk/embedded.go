@@ -92,7 +92,8 @@ func runEmbedded(ctx context.Context, o *options) (*embeddedMock, error) {
 		return nil, err
 	}
 
-	if err := waitForHealthy(ctx, conn, timeout); err != nil {
+	err = waitForHealthy(ctx, conn, timeout)
+	if err != nil {
 		_ = conn.Close()
 		_ = lis.Close()
 

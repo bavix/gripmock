@@ -621,7 +621,9 @@ func collect(
 	require.NoError(t, stream.CloseSend())
 
 	out := dynamicpb.NewMessage(d.out)
-	if err := stream.RecvMsg(out); err != nil {
+
+	err = stream.RecvMsg(out)
+	if err != nil {
 		return nil, d, err
 	}
 
@@ -644,7 +646,9 @@ func exchange(t *testing.T, srv *sdk.Server, fds *descriptorpb.FileDescriptorSet
 	require.NoError(t, stream.CloseSend())
 
 	out := dynamicpb.NewMessage(d.out)
-	if err := stream.RecvMsg(out); err != nil {
+
+	err = stream.RecvMsg(out)
+	if err != nil {
 		return "", err
 	}
 

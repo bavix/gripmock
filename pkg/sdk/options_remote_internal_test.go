@@ -114,7 +114,8 @@ func TestRemoteArmSessionTTLStoresCleanupError(t *testing.T) {
 
 	deadline := time.Now().Add(500 * time.Millisecond)
 	for time.Now().Before(deadline) {
-		if err := m.getOpErr(); err != nil {
+		err := m.getOpErr()
+		if err != nil {
 			require.Contains(t, err.Error(), "session TTL cleanup failed")
 
 			return

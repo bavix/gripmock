@@ -104,7 +104,8 @@ func SortForDump(stubs []*Stub) {
 }
 
 func DumpToDir(outDir string, stubs []*Stub, format string) (int, error) {
-	if err := os.MkdirAll(outDir, dumpDirPerm); err != nil {
+	err := os.MkdirAll(outDir, dumpDirPerm)
+	if err != nil {
 		return 0, err
 	}
 
@@ -166,7 +167,8 @@ func WriteDump(writer io.Writer, stubs []*Stub, format string) error {
 
 	encoder := yaml.NewEncoder(writer, yaml.UseLiteralStyleIfMultiline(true))
 
-	if err := encoder.Encode(records); err != nil {
+	err := encoder.Encode(records)
+	if err != nil {
 		_ = encoder.Close()
 
 		return err
@@ -262,7 +264,9 @@ func normalizeForDump(v any) any {
 	decoder.UseNumber()
 
 	var out any
-	if err := decoder.Decode(&out); err != nil {
+
+	err = decoder.Decode(&out)
+	if err != nil {
 		return v
 	}
 
@@ -279,7 +283,9 @@ func structToMap(v any) map[string]any {
 	decoder.UseNumber()
 
 	var out map[string]any
-	if err := decoder.Decode(&out); err != nil {
+
+	err = decoder.Decode(&out)
+	if err != nil {
 		return nil
 	}
 
@@ -289,15 +295,18 @@ func structToMap(v any) map[string]any {
 }
 
 func narrowNumber(value json.Number) any {
-	if integer, err := value.Int64(); err == nil {
+	integer, err := value.Int64()
+	if err == nil {
 		return integer
 	}
 
-	if unsigned, err := strconv.ParseUint(value.String(), 10, 64); err == nil {
+	unsigned, err := strconv.ParseUint(value.String(), 10, 64)
+	if err == nil {
 		return unsigned
 	}
 
-	if float, err := value.Float64(); err == nil {
+	float, err := value.Float64()
+	if err == nil {
 		return float
 	}
 

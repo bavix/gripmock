@@ -134,7 +134,9 @@ func protoToMap(msg any) map[string]any {
 	}
 
 	var result map[string]any
-	if err := json.Unmarshal(data, &result); err != nil {
+
+	err := json.Unmarshal(data, &result)
+	if err != nil {
 		return nil
 	}
 

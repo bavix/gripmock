@@ -57,7 +57,8 @@ func (l *Loader) Load(ctx context.Context, reg pkgplugins.Registry) {
 		}
 
 		if fn, ok := sym.(func(pkgplugins.Registry) error); ok {
-			if registerErr := fn(reg); registerErr != nil {
+			registerErr := fn(reg)
+			if registerErr != nil {
 				logger.Warn().Str("path", p).Err(registerErr).Msg("plugin register error, skipping")
 			}
 
@@ -79,7 +80,8 @@ func (l *Loader) Load(ctx context.Context, reg pkgplugins.Registry) {
 func (l *Loader) expandPaths() []string {
 	paths := make([]string, 0, len(l.paths))
 	for _, p := range l.paths {
-		if stat, err := os.Stat(p); err == nil && stat.IsDir() {
+		stat, err := os.Stat(p)
+		if err == nil && stat.IsDir() {
 			matches, globErr := filepath.Glob(filepath.Join(p, "*.so"))
 			if globErr == nil {
 				paths = append(paths, matches...)

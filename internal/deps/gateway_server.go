@@ -429,7 +429,8 @@ func (b *Builder) serveGateway(ctx context.Context, srv *http.Server, listener n
 	go func() {
 		defer close(ch)
 
-		if err := srv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		err := srv.Serve(listener)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			ch <- err
 		}
 	}()

@@ -16,12 +16,16 @@ func FuzzEquals(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, expectedBytes, actualBytes []byte, orderIgnore bool) {
 		var expected map[string]any
-		if err := json.Unmarshal(expectedBytes, &expected); err != nil {
+
+		err := json.Unmarshal(expectedBytes, &expected)
+		if err != nil {
 			return // Skip invalid JSON
 		}
 
 		var actual any
-		if err := json.Unmarshal(actualBytes, &actual); err != nil {
+
+		err = json.Unmarshal(actualBytes, &actual)
+		if err != nil {
 			return // Skip invalid JSON
 		}
 
@@ -39,12 +43,16 @@ func FuzzContains(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, expectedBytes, actualBytes []byte, orderIgnore bool) {
 		var expected map[string]any
-		if err := json.Unmarshal(expectedBytes, &expected); err != nil {
+
+		err := json.Unmarshal(expectedBytes, &expected)
+		if err != nil {
 			return // Skip invalid JSON
 		}
 
 		var actual any
-		if err := json.Unmarshal(actualBytes, &actual); err != nil {
+
+		err = json.Unmarshal(actualBytes, &actual)
+		if err != nil {
 			return // Skip invalid JSON
 		}
 
@@ -61,12 +69,16 @@ func FuzzMatches(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, expectedBytes, actualBytes []byte, orderIgnore bool) {
 		var expected map[string]any
-		if err := json.Unmarshal(expectedBytes, &expected); err != nil {
+
+		err := json.Unmarshal(expectedBytes, &expected)
+		if err != nil {
 			return // Skip invalid JSON
 		}
 
 		var actual any
-		if err := json.Unmarshal(actualBytes, &actual); err != nil {
+
+		err = json.Unmarshal(actualBytes, &actual)
+		if err != nil {
 			return // Skip invalid JSON
 		}
 
@@ -84,12 +96,16 @@ func FuzzGlob(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, expectedBytes, actualBytes []byte) {
 		var expected map[string]any
-		if err := json.Unmarshal(expectedBytes, &expected); err != nil {
+
+		err := json.Unmarshal(expectedBytes, &expected)
+		if err != nil {
 			return // Skip invalid JSON
 		}
 
 		var actual any
-		if err := json.Unmarshal(actualBytes, &actual); err != nil {
+
+		err = json.Unmarshal(actualBytes, &actual)
+		if err != nil {
 			return // Skip invalid JSON
 		}
 
@@ -105,12 +121,16 @@ func FuzzRankMatch(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, expectedBytes, actualBytes []byte) {
 		var expected map[string]any
-		if err := json.Unmarshal(expectedBytes, &expected); err != nil {
+
+		err := json.Unmarshal(expectedBytes, &expected)
+		if err != nil {
 			return // Skip invalid JSON
 		}
 
 		var actual any
-		if err := json.Unmarshal(actualBytes, &actual); err != nil {
+
+		err = json.Unmarshal(actualBytes, &actual)
+		if err != nil {
 			return // Skip invalid JSON
 		}
 

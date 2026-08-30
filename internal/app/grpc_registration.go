@@ -122,7 +122,9 @@ func (s *GRPCServer) handleUnknownService(_ any, stream grpc.ServerStream) error
 	}
 
 	req := dynamicpb.NewMessage(methodDesc.Input())
-	if err := stream.RecvMsg(req); err != nil {
+
+	err = stream.RecvMsg(req)
+	if err != nil {
 		return err
 	}
 
@@ -322,7 +324,8 @@ func (s *GRPCServer) registerServices(
 					continue
 				}
 
-				if err := s.registerServiceMethods(ctx, &serviceDesc, svc, reg); err != nil {
+				err := s.registerServiceMethods(ctx, &serviceDesc, svc, reg)
+				if err != nil {
 					logger.Warn().Err(err).Str("service", serviceDesc.ServiceName).Msg("Skipping service due to descriptor error")
 
 					continue

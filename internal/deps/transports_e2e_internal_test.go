@@ -13,7 +13,9 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -78,27 +80,66 @@ func fatalBootError(t *testing.T, bootErr <-chan error) {
 	}
 }
 
-// reserveAddrs holds n loopback listeners open so concurrent port allocators
-// cannot claim the addresses in between, then releases the ports.
-func reserveAddrs(t *testing.T, n int) ([]string, func()) {
+// Ports come from a band the kernel never hands out on its own: the ephemeral
+// range starts at 32768 on Linux and 49152 on macOS. Asking for port 0 and
+// releasing the listener before the server binds loses the race against every
+// other socket the test binaries open, which surfaces as EADDRINUSE.
+const (
+	portBandStart = 20000
+	portBandEnd   = 30000
+	portBuckets   = 40
+)
+
+//nolint:gochecknoglobals // the port cursor is shared by every e2e boot in this binary
+var (
+	portMu     sync.Mutex
+	portCursor = portBandStart + (os.Getpid()%portBuckets)*((portBandEnd-portBandStart)/portBuckets)
+	portTaken  = map[int]struct{}{}
+)
+
+// reserveAddrs returns n free loopback addresses, each probed once and never
+// handed out twice within this test binary.
+func reserveAddrs(t *testing.T, n int) []string {
 	t.Helper()
 
-	listeners := make([]net.Listener, 0, n)
+	portMu.Lock()
+	defer portMu.Unlock()
+
 	addrs := make([]string, 0, n)
 
-	for range n {
-		listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
-		require.NoError(t, err)
-
-		listeners = append(listeners, listener)
-		addrs = append(addrs, listener.Addr().String())
-	}
-
-	return addrs, func() {
-		for _, listener := range listeners {
-			_ = listener.Close()
+	for range portBandEnd - portBandStart {
+		if len(addrs) == n {
+			return addrs
 		}
+
+		port := portCursor
+
+		portCursor++
+		if portCursor >= portBandEnd {
+			portCursor = portBandStart
+		}
+
+		if _, taken := portTaken[port]; taken {
+			continue
+		}
+
+		addr := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+
+		listener, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", addr)
+		if err != nil {
+			continue
+		}
+
+		require.NoError(t, listener.Close())
+
+		portTaken[port] = struct{}{}
+
+		addrs = append(addrs, addr)
 	}
+
+	require.Len(t, addrs, n, "no free ports left in the reserved band")
+
+	return addrs
 }
 
 func startAllTransports(t *testing.T) *e2eServer {
@@ -110,7 +151,7 @@ func startAllTransports(t *testing.T) *e2eServer {
 
 	cfg := config.Load()
 
-	addrs, releaseAddrs := reserveAddrs(t, 3)
+	addrs := reserveAddrs(t, 3)
 	cfg.GRPC.Addr, cfg.HTTP.Addr, cfg.Gateway.Addr = addrs[0], addrs[1], addrs[2]
 
 	builder := NewBuilder(WithConfig(cfg))
@@ -131,8 +172,6 @@ func startAllTransports(t *testing.T) *e2eServer {
 	}()
 	go func() { bootErr <- builder.GatewayServe(ctx) }()
 	go func() { bootErr <- builder.GRPCServe(ctx, protodom.New([]string{protoPath}, nil, nil)) }()
-
-	releaseAddrs()
 
 	t.Cleanup(func() {
 		cancel()

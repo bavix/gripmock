@@ -93,7 +93,9 @@ func detailMessage(detail map[string]any, resolver *protosetinfra.TypeResolver) 
 	}
 
 	msg := dynamicpb.NewMessage(desc)
-	if err := protojson.Unmarshal(data, msg); err == nil {
+
+	err = protojson.Unmarshal(data, msg)
+	if err == nil {
 		return msg, nil
 	}
 

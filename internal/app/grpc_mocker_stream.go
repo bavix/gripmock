@@ -180,7 +180,8 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		[]any{requestData}, found, matchNumber)
 
 	if !streamDelaysPerMessage(found) {
-		if err := delayTemplated(stream.Context(), m.templateEngine, found.Output.Delay, templateData); err != nil {
+		err := delayTemplated(stream.Context(), m.templateEngine, found.Output.Delay, templateData)
+		if err != nil {
 			return err
 		}
 	}
@@ -191,7 +192,8 @@ func (m *grpcMocker) handleServerStream(stream grpc.ServerStream) error {
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
+	err = m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers)
+	if err != nil {
 		return errors.Wrap(err, "failed to set headers")
 	}
 
@@ -363,7 +365,8 @@ func (m *grpcMocker) handleArrayStreamData(
 		default:
 		}
 
-		if err := m.handleStreamElement(stream, found, streamData, i, inputMsg, requestTime, matchNumber, prerendered); err != nil {
+		err := m.handleStreamElement(stream, found, streamData, i, inputMsg, requestTime, matchNumber, prerendered)
+		if err != nil {
 			return i, err
 		}
 	}
@@ -401,7 +404,8 @@ func (m *grpcMocker) handleStreamElement(
 	templateData := newTemplateData(requestData, headers, i, requestTime,
 		[]any{requestData}, found, matchNumber)
 
-	if err := delayTemplated(stream.Context(), m.templateEngine, elementDelay(found.Output.Delay, element), templateData); err != nil {
+	err := delayTemplated(stream.Context(), m.templateEngine, elementDelay(found.Output.Delay, element), templateData)
+	if err != nil {
 		return err
 	}
 
@@ -423,11 +427,7 @@ func (m *grpcMocker) handleStreamElement(
 		return errors.Wrap(err, "failed to convert response to dynamic message")
 	}
 
-	if err := sendStreamMessage(stream, outputMsg); err != nil {
-		return err
-	}
-
-	return nil
+	return sendStreamMessage(stream, outputMsg)
 }
 
 func (m *grpcMocker) handleNonArrayStreamData(
@@ -438,7 +438,8 @@ func (m *grpcMocker) handleNonArrayStreamData(
 	requestTime time.Time,
 	matchNumber int,
 ) error {
-	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil {
+	err := m.handleOutputError(stream.Context(), stream, outputToUse)
+	if err != nil {
 		return err
 	}
 
@@ -474,7 +475,9 @@ func (m *grpcMocker) sendNonArrayStreamReply(
 	msgData, msgTime := requestData, requestTime
 
 	inputMsg := dynamicpb.NewMessage(m.inputDesc)
-	if err := stream.RecvMsg(inputMsg); err == nil {
+
+	err := stream.RecvMsg(inputMsg)
+	if err == nil {
 		msgData = m.convertToMap(inputMsg)
 		msgTime = time.Now()
 	}
@@ -487,7 +490,8 @@ func (m *grpcMocker) sendNonArrayStreamReply(
 	templateData := newTemplateData(msgData, headers, 0, msgTime,
 		[]any{msgData}, found, matchNumber)
 
-	if err := delayTemplated(stream.Context(), m.templateEngine, found.Output.Delay, templateData); err != nil {
+	err = delayTemplated(stream.Context(), m.templateEngine, found.Output.Delay, templateData)
+	if err != nil {
 		return false, err
 	}
 
@@ -501,11 +505,13 @@ func (m *grpcMocker) sendNonArrayStreamReply(
 		return false, errors.Wrap(err, "failed to convert response to dynamic message")
 	}
 
-	if err := sendStreamMessage(stream, outputMsg); err != nil {
+	err = sendStreamMessage(stream, outputMsg)
+	if err != nil {
 		return false, err //nolint:wrapcheck
 	}
 
-	if err := stream.RecvMsg(nil); err != nil {
+	err = stream.RecvMsg(nil)
+	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return true, nil
 		}
@@ -535,7 +541,9 @@ func (m *grpcMocker) newOutputMessage(data any) (*dynamicpb.Message, error) {
 	}
 
 	enc := json.NewEncoder(pooled)
-	if err := enc.Encode(payload); err != nil {
+
+	err := enc.Encode(payload)
+	if err != nil {
 		return nil, fmt.Errorf("failed to marshal output to JSON: %w", err)
 	}
 
@@ -543,7 +551,8 @@ func (m *grpcMocker) newOutputMessage(data any) (*dynamicpb.Message, error) {
 
 	jsonBytes := pooled.Bytes()
 
-	if err := m.typeResolver.Unmarshal(jsonBytes, msg); err != nil {
+	err = m.typeResolver.Unmarshal(jsonBytes, msg)
+	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal JSON into dynamic message: %w (json=%s)", err, string(jsonBytes))
 	}
 

@@ -19,7 +19,8 @@ func fixturesDir(t *testing.T) string {
 	require.NoError(t, err)
 
 	for {
-		if _, statErr := os.Stat(filepath.Join(dir, "go.mod")); statErr == nil {
+		_, statErr := os.Stat(filepath.Join(dir, "go.mod"))
+		if statErr == nil {
 			return filepath.Join(dir, "third_party", "protobundle")
 		}
 

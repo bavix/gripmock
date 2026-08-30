@@ -267,7 +267,8 @@ func (r *Registry) Close() {
 			continue
 		}
 
-		if err := route.Conn.Close(); err != nil {
+		err := route.Conn.Close()
+		if err != nil {
 			log.Printf("[gripmock] failed to close proxy connection: %v", err)
 		}
 	}

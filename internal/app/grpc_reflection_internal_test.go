@@ -104,7 +104,9 @@ func reflectionListServices(ctx context.Context, conn *grpc.ClientConn) ([]strin
 	req := &reflectiongrpc.ServerReflectionRequest{
 		MessageRequest: &reflectiongrpc.ServerReflectionRequest_ListServices{ListServices: "*"},
 	}
-	if err := stream.Send(req); err != nil {
+
+	err = stream.Send(req)
+	if err != nil {
 		return nil, err
 	}
 
@@ -140,7 +142,9 @@ func reflectionFileContainingSymbol(
 	req := &reflectiongrpc.ServerReflectionRequest{
 		MessageRequest: &reflectiongrpc.ServerReflectionRequest_FileContainingSymbol{FileContainingSymbol: string(protoreflect.FullName(symbol))},
 	}
-	if err := stream.Send(req); err != nil {
+
+	err = stream.Send(req)
+	if err != nil {
 		return nil, err
 	}
 

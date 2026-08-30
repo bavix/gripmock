@@ -81,7 +81,9 @@ func readConnectFrame(r io.Reader) (connectFrame, error) {
 	}
 
 	data := make([]byte, length)
-	if _, err := io.ReadFull(r, data); err != nil {
+
+	_, err = io.ReadFull(r, data)
+	if err != nil {
 		return connectFrame{}, err
 	}
 
@@ -115,7 +117,8 @@ func writeConnectFrameEncoded(w io.Writer, data []byte, endStream bool, encoding
 	header[0] = flags
 	binary.BigEndian.PutUint32(header[1:5], uint32(len(data))) //nolint:gosec
 
-	if _, err := w.Write(header[:]); err != nil {
+	_, err = w.Write(header[:])
+	if err != nil {
 		return err
 	}
 
@@ -123,9 +126,7 @@ func writeConnectFrameEncoded(w io.Writer, data []byte, endStream bool, encoding
 		return nil
 	}
 
-	if _, err := w.Write(data); err != nil {
-		return err
-	}
+	_, err = w.Write(data)
 
-	return nil
+	return err
 }

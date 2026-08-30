@@ -26,7 +26,8 @@ func spaHandler(assets fs.FS) http.Handler {
 		}
 
 		if fs.ValidPath(upath) {
-			if f, err := assets.Open(upath); err == nil {
+			f, err := assets.Open(upath)
+			if err == nil {
 				_ = f.Close()
 
 				fileServer.ServeHTTP(w, r)

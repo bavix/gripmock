@@ -51,7 +51,9 @@ func BenchmarkUnaryCallEndToEnd(b *testing.B) {
 
 			for b.Loop() {
 				reply := dynamicpb.NewMessage(d.out)
-				if err := conn.Invoke(b.Context(), "/test.Greeter/SayHello", request, reply); err != nil {
+
+				err := conn.Invoke(b.Context(), "/test.Greeter/SayHello", request, reply)
+				if err != nil {
 					b.Fatal(err)
 				}
 			}
@@ -79,7 +81,9 @@ func BenchmarkUnaryCallWithTemplate(b *testing.B) {
 
 	for b.Loop() {
 		reply := dynamicpb.NewMessage(d.out)
-		if err := conn.Invoke(b.Context(), "/test.Greeter/SayHello", request, reply); err != nil {
+
+		err := conn.Invoke(b.Context(), "/test.Greeter/SayHello", request, reply)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -100,7 +104,8 @@ func compileInlineBench(b *testing.B, source, name string) *descriptorpb.FileDes
 	dir := b.TempDir()
 	path := filepath.Join(dir, name)
 
-	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+	err := os.WriteFile(path, []byte(source), 0o600)
+	if err != nil {
 		b.Fatal(err)
 	}
 
@@ -185,17 +190,21 @@ func BenchmarkServerStreamEndToEnd(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		if err := stream.SendMsg(request); err != nil {
+		err = stream.SendMsg(request)
+		if err != nil {
 			b.Fatal(err)
 		}
 
-		if err := stream.CloseSend(); err != nil {
+		err = stream.CloseSend()
+		if err != nil {
 			b.Fatal(err)
 		}
 
 		for {
 			out := dynamicpb.NewMessage(d.out)
-			if err := stream.RecvMsg(out); err != nil {
+
+			err := stream.RecvMsg(out)
+			if err != nil {
 				break
 			}
 		}
@@ -232,17 +241,21 @@ func BenchmarkClientStreamEndToEnd(b *testing.B) {
 		}
 
 		for _, msg := range msgs {
-			if err := stream.SendMsg(msg); err != nil {
+			err := stream.SendMsg(msg)
+			if err != nil {
 				b.Fatal(err)
 			}
 		}
 
-		if err := stream.CloseSend(); err != nil {
+		err = stream.CloseSend()
+		if err != nil {
 			b.Fatal(err)
 		}
 
 		out := dynamicpb.NewMessage(d.out)
-		if err := stream.RecvMsg(out); err != nil {
+
+		err = stream.RecvMsg(out)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -274,17 +287,21 @@ func BenchmarkBidiStreamEndToEnd(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		if err := stream.SendMsg(request); err != nil {
+		err = stream.SendMsg(request)
+		if err != nil {
 			b.Fatal(err)
 		}
 
-		if err := stream.CloseSend(); err != nil {
+		err = stream.CloseSend()
+		if err != nil {
 			b.Fatal(err)
 		}
 
 		for {
 			out := dynamicpb.NewMessage(d.out)
-			if err := stream.RecvMsg(out); err != nil {
+
+			err := stream.RecvMsg(out)
+			if err != nil {
 				break
 			}
 		}
@@ -331,16 +348,19 @@ func BenchmarkBidiMultiTurnEndToEnd(b *testing.B) {
 		}
 
 		for _, msg := range msgs {
-			if err := stream.SendMsg(msg); err != nil {
+			err := stream.SendMsg(msg)
+			if err != nil {
 				b.Fatal(err)
 			}
 
-			if err := stream.RecvMsg(dynamicpb.NewMessage(d.out)); err != nil {
+			err = stream.RecvMsg(dynamicpb.NewMessage(d.out))
+			if err != nil {
 				b.Fatal(err)
 			}
 		}
 
-		if err := stream.CloseSend(); err != nil {
+		err = stream.CloseSend()
+		if err != nil {
 			b.Fatal(err)
 		}
 	}

@@ -32,7 +32,7 @@ func startGripmockWith(t *testing.T, protoPath string, args *protodom.Arguments)
 
 	cfg := config.Load()
 
-	addrs, releaseAddrs := reserveAddrs(t, 3)
+	addrs := reserveAddrs(t, 3)
 	cfg.GRPC.Addr, cfg.HTTP.Addr, cfg.Gateway.Addr = addrs[0], addrs[1], addrs[2]
 
 	builder := NewBuilder(WithConfig(cfg))
@@ -56,8 +56,6 @@ func startGripmockWith(t *testing.T, protoPath string, args *protodom.Arguments)
 		bootErr <- rest.ListenAndServe()
 	}()
 	go func() { bootErr <- builder.GRPCServe(ctx, args) }()
-
-	releaseAddrs()
 
 	t.Cleanup(func() {
 		cancel()
@@ -125,7 +123,9 @@ func sayHelloTo(
 	request.Set(in.Fields().ByName("name"), protoreflect.ValueOfString(name))
 
 	reply := dynamicpb.NewMessage(out)
-	if err := conn.Invoke(t.Context(), "/e2e.Greeter/SayHello", request, reply); err != nil {
+
+	err = conn.Invoke(t.Context(), "/e2e.Greeter/SayHello", request, reply)
+	if err != nil {
 		return nil, err
 	}
 

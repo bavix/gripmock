@@ -250,7 +250,8 @@ func (h *gatewayHandler) handleWithoutDescriptor(
 	td := newTemplateData(emptyInput, query.Headers, 0, requestTime,
 		[]any{emptyInput}, found, result.MatchNumber())
 
-	if err := delayTemplated(r.Context(), h.templateEngine, found.Output.Delay, td); err != nil {
+	err := delayTemplated(r.Context(), h.templateEngine, found.Output.Delay, td)
+	if err != nil {
 		st, _ := status.FromError(err)
 		recordCall(h.recorder, serviceName, methodName, query.Session, found.ID, uint32(st.Code()),
 			requestTime, []map[string]any{emptyInput}, nil, nil, st.Message())
@@ -313,7 +314,39 @@ func collectFieldMaskNames(msg proto.Message) map[string]struct{} {
 	return result
 }
 
-//nolint:cyclop
+// fieldMaskPathsToString flattens a decoded FieldMask object into its comma-separated JSON form.
+//
+
+func fieldMaskPathsToString(val any) (string, bool) {
+	obj, ok := val.(map[string]any)
+	if !ok {
+		return "", false
+	}
+
+	pathsRaw, ok := obj["paths"]
+	if !ok {
+		return "", false
+	}
+
+	pathsArr, ok := pathsRaw.([]any)
+	if !ok || len(pathsArr) == 0 {
+		return "", false
+	}
+
+	paths := make([]string, 0, len(pathsArr))
+	for _, p := range pathsArr {
+		if s, ok := p.(string); ok {
+			paths = append(paths, s)
+		}
+	}
+
+	if len(paths) == 0 {
+		return "", false
+	}
+
+	return strings.Join(paths, ","), true
+}
+
 func normalizeFieldMaskJSON(data []byte, msg proto.Message) []byte {
 	fieldMaskNames := collectFieldMaskNames(msg)
 	if len(fieldMaskNames) == 0 {
@@ -324,7 +357,9 @@ func normalizeFieldMaskJSON(data []byte, msg proto.Message) []byte {
 	decoder.UseNumber()
 
 	var rawMap map[string]any
-	if err := decoder.Decode(&rawMap); err != nil {
+
+	err := decoder.Decode(&rawMap)
+	if err != nil {
 		return data
 	}
 
@@ -335,33 +370,12 @@ func normalizeFieldMaskJSON(data []byte, msg proto.Message) []byte {
 			continue
 		}
 
-		obj, ok := val.(map[string]any)
+		joined, ok := fieldMaskPathsToString(val)
 		if !ok {
 			continue
 		}
 
-		pathsRaw, ok := obj["paths"]
-		if !ok {
-			continue
-		}
-
-		pathsArr, ok := pathsRaw.([]any)
-		if !ok || len(pathsArr) == 0 {
-			continue
-		}
-
-		paths := make([]string, 0, len(pathsArr))
-		for _, p := range pathsArr {
-			if s, ok := p.(string); ok {
-				paths = append(paths, s)
-			}
-		}
-
-		if len(paths) == 0 {
-			continue
-		}
-
-		rawMap[key] = strings.Join(paths, ",")
+		rawMap[key] = joined
 		modified = true
 	}
 
@@ -419,7 +433,8 @@ func debugRenderedDetails(sp *spb.Status) []json.RawMessage {
 		Details []json.RawMessage `json:"details"`
 	}
 
-	if err := json.Unmarshal(statusData, &rendered); err != nil {
+	err = json.Unmarshal(statusData, &rendered)
+	if err != nil {
 		return nil
 	}
 
@@ -460,7 +475,9 @@ func handleUnaryCore(
 	writeError func(*status.Status),
 ) (any, error) {
 	inputMsg := dynamicpb.NewMessage(mocker.inputDesc)
-	if err := decodeMessageData(data, inputMsg, contentType, isJSONType, mocker.typeResolver); err != nil {
+
+	err := decodeMessageData(data, inputMsg, contentType, isJSONType, mocker.typeResolver)
+	if err != nil {
 		writeError(status.New(codes.InvalidArgument, "failed to unmarshal: "+err.Error()))
 
 		return nil, err

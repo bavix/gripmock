@@ -3,6 +3,7 @@ package app
 import (
 	stderrors "errors"
 	"fmt"
+	"reflect"
 
 	"github.com/go-playground/validator/v10"
 
@@ -18,7 +19,8 @@ func NewStubValidator() (*validator.Validate, error) {
 		"valid_output_config": validateOutputConfiguration,
 		"valid_effects":       validateEffectsConfiguration,
 	} {
-		if err := v.RegisterValidation(name, fn); err != nil {
+		err := v.RegisterValidation(name, fn)
+		if err != nil {
 			return nil, fmt.Errorf("register validation %q: %w", name, err)
 		}
 	}
@@ -53,7 +55,8 @@ func StubValidator(v *validator.Validate, engine *template.Engine) func(*stuber.
 }
 
 func checkStub(v *validator.Validate, engine *template.Engine, stub *stuber.Stub) error {
-	if err := v.Struct(stub); err != nil {
+	err := v.Struct(stub)
+	if err != nil {
 		validationErrors, ok := stderrors.AsType[validator.ValidationErrors](err)
 		if !ok || len(validationErrors) == 0 {
 			return err
@@ -82,7 +85,8 @@ func checkStub(v *validator.Validate, engine *template.Engine, stub *stuber.Stub
 		return templateError("template output requires data or stream to hold the template text")
 	}
 
-	if err := engine.Validate(document); err != nil {
+	err = engine.Validate(document)
+	if err != nil {
 		return templateError("Invalid output template: " + err.Error())
 	}
 
@@ -163,7 +167,7 @@ func validateEffectsConfiguration(fl validator.FieldLevel) bool {
 }
 
 func stubFromFieldLevel(fl validator.FieldLevel) *stuber.Stub {
-	if v, ok := fl.Top().Interface().(*stuber.Stub); ok {
+	if v, ok := reflect.TypeAssert[*stuber.Stub](fl.Top()); ok {
 		return v
 	}
 

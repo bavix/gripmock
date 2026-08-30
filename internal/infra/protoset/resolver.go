@@ -15,7 +15,8 @@ type Fallback struct {
 //nolint:ireturn
 func (r *Fallback) FindFileByPath(path string) (protoreflect.FileDescriptor, error) {
 	if r.Primary != nil {
-		if fd, err := r.Primary.FindFileByPath(path); err == nil {
+		fd, err := r.Primary.FindFileByPath(path)
+		if err == nil {
 			return fd, nil
 		}
 	}
@@ -30,7 +31,8 @@ func (r *Fallback) FindFileByPath(path string) (protoreflect.FileDescriptor, err
 //nolint:ireturn
 func (r *Fallback) FindDescriptorByName(name protoreflect.FullName) (protoreflect.Descriptor, error) {
 	if r.Primary != nil {
-		if desc, err := r.Primary.FindDescriptorByName(name); err == nil {
+		desc, err := r.Primary.FindDescriptorByName(name)
+		if err == nil {
 			return desc, nil
 		}
 	}

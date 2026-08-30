@@ -71,7 +71,8 @@ func (c *Client) FetchDescriptorSet(ctx context.Context, source *protoset.Source
 	}
 
 	defer func() {
-		if err := conn.Close(); err != nil {
+		err := conn.Close()
+		if err != nil {
 			log.Printf("[gripmock] failed to close reflection connection: %v", err)
 		}
 	}()
@@ -98,7 +99,8 @@ func fetchDescriptorSet(ctx context.Context, conn *grpc.ClientConn) (*descriptor
 			continue
 		}
 
-		if err := fetchServiceDescriptors(stream, seen, name); err != nil {
+		err := fetchServiceDescriptors(stream, seen, name)
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -111,9 +113,10 @@ func fetchDescriptorSet(ctx context.Context, conn *grpc.ClientConn) (*descriptor
 }
 
 func listServices(stream reflectionpb.ServerReflection_ServerReflectionInfoClient) (*reflectionpb.ListServiceResponse, error) {
-	if err := stream.Send(&reflectionpb.ServerReflectionRequest{
+	err := stream.Send(&reflectionpb.ServerReflectionRequest{
 		MessageRequest: &reflectionpb.ServerReflectionRequest_ListServices{},
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to send ListServices")
 	}
 
@@ -135,9 +138,10 @@ func fetchServiceDescriptors(
 	seen map[string]*descriptorpb.FileDescriptorProto,
 	serviceName string,
 ) error {
-	if err := stream.Send(&reflectionpb.ServerReflectionRequest{
+	err := stream.Send(&reflectionpb.ServerReflectionRequest{
 		MessageRequest: &reflectionpb.ServerReflectionRequest_FileContainingSymbol{FileContainingSymbol: serviceName},
-	}); err != nil {
+	})
+	if err != nil {
 		return errors.Wrapf(err, "failed to send FileContainingSymbol for %s", serviceName)
 	}
 
@@ -169,7 +173,9 @@ func collectDescriptors(
 
 	for _, raw := range fd.GetFileDescriptorProto() {
 		var fdp descriptorpb.FileDescriptorProto
-		if err := proto.Unmarshal(raw, &fdp); err != nil {
+
+		err := proto.Unmarshal(raw, &fdp)
+		if err != nil {
 			return errors.Wrapf(err, "failed to unmarshal FileDescriptorProto for %s", serviceName)
 		}
 

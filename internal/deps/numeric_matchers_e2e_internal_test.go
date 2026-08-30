@@ -32,7 +32,9 @@ func callWithCount(
 	request.Set(in.Fields().ByName("count"), protoreflect.ValueOfInt64(count))
 
 	reply := dynamicpb.NewMessage(out)
-	if err := conn.Invoke(t.Context(), "/e2e.Greeter/SayHello", request, reply); err != nil {
+
+	err := conn.Invoke(t.Context(), "/e2e.Greeter/SayHello", request, reply)
+	if err != nil {
 		return "", err
 	}
 

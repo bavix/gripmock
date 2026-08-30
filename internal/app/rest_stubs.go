@@ -25,7 +25,8 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 
 	var inputs []*stuber.Stub
 
-	if err := jsondecoder.UnmarshalSlice(byt, &inputs); err != nil {
+	err = jsondecoder.UnmarshalSlice(byt, &inputs)
+	if err != nil {
 		h.responseError(r.Context(), w, err)
 
 		return
@@ -39,7 +40,8 @@ func (h *RestServer) AddStub(w http.ResponseWriter, r *http.Request) {
 		stub.Session = sess
 		stub.Source = stuber.SourceRest
 
-		if err := h.validateStub(stub); err != nil {
+		err := h.validateStub(stub)
+		if err != nil {
 			h.validationError(r.Context(), w, err)
 
 			return
@@ -66,7 +68,8 @@ func (h *RestServer) BatchStubsDelete(w http.ResponseWriter, r *http.Request) {
 
 	var inputs []uuid.UUID
 
-	if err := jsondecoder.UnmarshalSlice(byt, &inputs); err != nil {
+	err = jsondecoder.UnmarshalSlice(byt, &inputs)
+	if err != nil {
 		h.responseError(r.Context(), w, err)
 
 		return
@@ -98,14 +101,16 @@ func (h *RestServer) ValidateStub(w http.ResponseWriter, r *http.Request) {
 
 	var inputs []*stuber.Stub
 
-	if err := jsondecoder.UnmarshalSlice(byt, &inputs); err != nil {
+	err = jsondecoder.UnmarshalSlice(byt, &inputs)
+	if err != nil {
 		h.responseError(r.Context(), w, err)
 
 		return
 	}
 
 	for _, stub := range inputs {
-		if err := h.validateStub(stub); err != nil {
+		err := h.validateStub(stub)
+		if err != nil {
 			h.validationError(r.Context(), w, err)
 
 			return
@@ -120,7 +125,9 @@ func (h *RestServer) ValidateStub(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var result []map[string]any
-	if err := jsondecoder.Unmarshal(raw, &result); err != nil {
+
+	err = jsondecoder.Unmarshal(raw, &result)
+	if err != nil {
 		h.responseError(r.Context(), w, err)
 
 		return
@@ -248,7 +255,9 @@ func (h *RestServer) SearchStubs(w http.ResponseWriter, r *http.Request) {
 // InspectStubs returns detailed matching report for a query.
 func (h *RestServer) InspectStubs(w http.ResponseWriter, r *http.Request) {
 	var req rest.InspectRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
 		h.responseError(r.Context(), w, err)
 
 		return

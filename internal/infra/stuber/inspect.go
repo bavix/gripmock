@@ -170,7 +170,9 @@ func (s *searcher) detectFallbackToMethod(query Query) bool {
 	}
 
 	lookup := s.lookup(query.Session)
-	if _, err := lookup.LookupServiceAvailable(query.Service, query.Method); err != nil && lookup.HasMethodAvailable(query.Method) {
+
+	_, err := lookup.LookupServiceAvailable(query.Service, query.Method)
+	if err != nil && lookup.HasMethodAvailable(query.Method) {
 		return true
 	}
 

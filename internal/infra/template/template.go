@@ -77,7 +77,9 @@ func (e *Engine) Render(tmpl string, data Data) (result string, err error) {
 
 	exec := func(parsed *template.Template) error {
 		var buf bytes.Buffer
-		if err := parsed.Execute(&buf, data); err != nil {
+
+		err := parsed.Execute(&buf, data)
+		if err != nil {
 			return fmt.Errorf("failed to execute template: %w", err)
 		}
 
@@ -133,7 +135,8 @@ func (e *Engine) RenderLimited(tmpl string, data Data, limit int) (result string
 
 	parsed, ok := e.cache.Get(tmpl)
 	if !ok {
-		if parsed, err = e.parseTemplate(tmpl); err != nil {
+		parsed, err = e.parseTemplate(tmpl)
+		if err != nil {
 			return "", err
 		}
 
@@ -141,7 +144,9 @@ func (e *Engine) RenderLimited(tmpl string, data Data, limit int) (result string
 	}
 
 	writer := &limitedWriter{limit: limit}
-	if err := parsed.Execute(writer, data); err != nil {
+
+	err = parsed.Execute(writer, data)
+	if err != nil {
 		if errors.Is(err, ErrRenderLimit) {
 			return "", ErrRenderLimit
 		}
@@ -329,11 +334,13 @@ func processMapTemplates(data map[string]any, templateData Data, engine *Engine,
 				data[key] = rendered
 			}
 		case map[string]any:
-			if err := processMapTemplates(v, templateData, engine, depth+1); err != nil {
+			err := processMapTemplates(v, templateData, engine, depth+1)
+			if err != nil {
 				return err
 			}
 		case []any:
-			if err := processArrayTemplates(v, templateData, engine, depth+1); err != nil {
+			err := processArrayTemplates(v, templateData, engine, depth+1)
+			if err != nil {
 				return err
 			}
 		}
@@ -383,7 +390,8 @@ func processArrayTemplates(arr []any, templateData Data, engine *Engine, depth i
 	for i, item := range arr {
 		switch v := item.(type) {
 		case map[string]any:
-			if err := processMapTemplates(v, templateData, engine, depth+1); err != nil {
+			err := processMapTemplates(v, templateData, engine, depth+1)
+			if err != nil {
 				return err
 			}
 

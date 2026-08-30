@@ -42,7 +42,8 @@ func renderDocument(engine *template.Engine, document string, templateData templ
 	for {
 		var value any
 
-		if err := decoder.Decode(&value); err != nil {
+		err := decoder.Decode(&value)
+		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return values, text, nil
 			}

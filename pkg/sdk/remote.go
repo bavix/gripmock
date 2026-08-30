@@ -80,7 +80,8 @@ func (m *remoteMock) armSessionTTL() {
 	}
 
 	m.ttlTimer = time.AfterFunc(m.sessionTTL, func() {
-		if err := m.cleanupStubs(); err != nil {
+		err := m.cleanupStubs()
+		if err != nil {
 			m.setOpErr(fmt.Errorf("gripmock: session TTL cleanup failed: %w", err))
 		}
 	})
@@ -153,11 +154,13 @@ func (m *remoteMock) commitStubsBatch(stubs []*stuber.Stub) error {
 		return nil
 	}
 
-	if opErr := m.getOpErr(); opErr != nil {
+	opErr := m.getOpErr()
+	if opErr != nil {
 		return opErr
 	}
 
-	if err := m.compressAndSend(stubs); err != nil {
+	err := m.compressAndSend(stubs)
+	if err != nil {
 		m.setOpErr(err)
 
 		return err
@@ -183,7 +186,8 @@ func (m *remoteMock) compressAndSend(stubs []*stuber.Stub) error {
 		client := m.api()
 		client.Session = session
 
-		if err := client.AddStubs(batch); err != nil {
+		err := client.AddStubs(batch)
+		if err != nil {
 			return err
 		}
 	}
@@ -250,7 +254,8 @@ func runRemote(ctx context.Context, o *options) (*remoteMock, error) {
 		return nil, errors.Wrapf(err, "failed to connect to remote gripmock at %s", o.remoteAddr)
 	}
 
-	if err := waitForHealthy(ctx, conn, o.healthyTimeout); err != nil {
+	err = waitForHealthy(ctx, conn, o.healthyTimeout)
+	if err != nil {
 		_ = conn.Close()
 
 		return nil, err
@@ -266,7 +271,8 @@ func runRemote(ctx context.Context, o *options) (*remoteMock, error) {
 		sessionTTL:  o.sessionTTL,
 	}
 
-	if err := rm.uploadDescriptors(o.descriptorFiles); err != nil { //nolint:contextcheck
+	err = rm.uploadDescriptors(o.descriptorFiles) //nolint:contextcheck
+	if err != nil {
 		_ = conn.Close()
 
 		return nil, err

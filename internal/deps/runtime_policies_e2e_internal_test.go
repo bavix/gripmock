@@ -24,7 +24,7 @@ func startConfigured(t *testing.T, protoPath string, opts e2eOptions) *e2eServer
 
 	cfg := config.Load()
 
-	addrs, releaseAddrs := reserveAddrs(t, 3)
+	addrs := reserveAddrs(t, 3)
 	cfg.GRPC.Addr, cfg.HTTP.Addr, cfg.Gateway.Addr = addrs[0], addrs[1], addrs[2]
 
 	if opts.mutate != nil {
@@ -49,8 +49,6 @@ func startConfigured(t *testing.T, protoPath string, opts e2eOptions) *e2eServer
 	}()
 	go func() { bootErr <- builder.GatewayServe(ctx) }()
 	go func() { bootErr <- builder.GRPCServe(ctx, protodom.New([]string{protoPath}, nil, nil)) }()
-
-	releaseAddrs()
 
 	t.Cleanup(func() {
 		cancel()

@@ -94,12 +94,14 @@ func (r *TypeResolver) FindExtensionByNumber(
 //nolint:ireturn
 func (r *TypeResolver) findDescriptor(name protoreflect.FullName) protoreflect.Descriptor {
 	if r != nil && r.resolver != nil {
-		if desc, err := r.resolver.FindDescriptorByName(name); err == nil {
+		desc, err := r.resolver.FindDescriptorByName(name)
+		if err == nil {
 			return desc
 		}
 	}
 
-	if desc, err := protoregistry.GlobalFiles.FindDescriptorByName(name); err == nil {
+	desc, err := protoregistry.GlobalFiles.FindDescriptorByName(name)
+	if err == nil {
 		return desc
 	}
 

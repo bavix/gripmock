@@ -106,7 +106,9 @@ func compile(ctx context.Context, configure *Configure) ([]*descriptorpb.FileDes
 
 	for i, fds := range configure.DescriptorSets() {
 		source := "remote-descriptor-set"
-		if err := RegisterDescriptorSetFiles(ctx, source, fds); err != nil {
+
+		err := RegisterDescriptorSetFiles(ctx, source, fds)
+		if err != nil {
 			return nil, errors.Wrapf(err, "failed to register in-memory descriptor set: %d", i)
 		}
 

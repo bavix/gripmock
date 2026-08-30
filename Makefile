@@ -3,7 +3,7 @@ OPENAPI=api/api.yaml
 .PHONY: *
 
 version=latest
-GOLANGCI_LINT=go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+GOLANGCI_LINT=go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
 
 build:
 	docker buildx build --load -t bavix/gripmock:${version} .
@@ -102,4 +102,3 @@ gen-sdk-examples-protos:
 			--go-grpc_out=. --go-grpc_opt=paths=source_relative \
 			examples/sdk/$$name/v1/$$name.proto; \
 	done
-

@@ -160,7 +160,8 @@ func (s *searcher) findBidi(query QueryBidi) (*BidiResult, error) {
 		return s.searchByIDBidi(query)
 	}
 
-	if err := s.ensureServiceMethodExists(query.Service, query.Method); err != nil {
+	err := s.ensureServiceMethodExists(query.Service, query.Method)
+	if err != nil {
 		return nil, err
 	}
 
@@ -168,7 +169,8 @@ func (s *searcher) findBidi(query QueryBidi) (*BidiResult, error) {
 }
 
 func (s *searcher) searchByIDBidi(query QueryBidi) (*BidiResult, error) {
-	if err := s.ensureServiceMethodExists(query.Service, query.Method); err != nil {
+	err := s.ensureServiceMethodExists(query.Service, query.Method)
+	if err != nil {
 		return nil, err
 	}
 

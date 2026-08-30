@@ -224,7 +224,8 @@ func (e *engine) executeStaticTemplate(name, line string, funcs template.FuncMap
 
 	var buf bytes.Buffer
 
-	if err := tmpl.Execute(&buf, nil); err != nil {
+	err = tmpl.Execute(&buf, nil)
+	if err != nil {
 		return escapeTemplateInLine(line)
 	}
 

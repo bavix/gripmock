@@ -144,7 +144,8 @@ func TestNegotiationLoopIsDrivenByAHandler(t *testing.T) {
 			for {
 				var request negotiationv1.HaggleRequest
 
-				if err := serverStream.RecvMsg(&request); err != nil {
+				err := serverStream.RecvMsg(&request)
+				if err != nil {
 					if errors.Is(err, io.EOF) {
 						return nil
 					}
@@ -162,7 +163,8 @@ func TestNegotiationLoopIsDrivenByAHandler(t *testing.T) {
 					response.Verdict = "accepted"
 				}
 
-				if err := serverStream.SendMsg(response); err != nil {
+				err = serverStream.SendMsg(response)
+				if err != nil {
 					return err
 				}
 			}
@@ -195,7 +197,9 @@ func TestHandlerIsAlsoGatedByHeaders(t *testing.T) {
 			}
 
 			var request negotiationv1.HaggleRequest
-			if err := serverStream.RecvMsg(&request); err != nil {
+
+			err := serverStream.RecvMsg(&request)
+			if err != nil {
 				return err
 			}
 

@@ -23,7 +23,9 @@ import (
 func (m *grpcMocker) unaryHandler() grpc.MethodHandler {
 	return func(srv any, ctx context.Context, dec func(any) error, interceptor grpc.UnaryServerInterceptor) (any, error) {
 		req := dynamicpb.NewMessage(m.inputDesc)
-		if err := dec(req); err != nil {
+
+		err := dec(req)
+		if err != nil {
 			return nil, err //nolint:wrapcheck
 		}
 
@@ -145,7 +147,8 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 	templateData := newTemplateData(requestData, headers, 0, requestTime,
 		[]any{requestData}, found, result.MatchNumber())
 
-	if err := delayTemplated(ctx, m.templateEngine, found.Output.Delay, templateData); err != nil {
+	err = delayTemplated(ctx, m.templateEngine, found.Output.Delay, templateData)
+	if err != nil {
 		return nil, err
 	}
 
@@ -162,7 +165,8 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 
 	outputDataCopy := singleMessage(outputToUse)
 
-	if err := m.setResponseHeadersAny(ctx, stream, outputToUse.Headers); err != nil {
+	err = m.setResponseHeadersAny(ctx, stream, outputToUse.Headers)
+	if err != nil {
 		return nil, err //nolint:wrapcheck
 	}
 
@@ -170,7 +174,8 @@ func (m *grpcMocker) handleUnary(ctx context.Context, stream grpc.ServerStream, 
 
 	m.applyEffects(ctx, found, templateData)
 
-	if err := m.handleOutputError(ctx, stream, outputToUse); err != nil {
+	err = m.handleOutputError(ctx, stream, outputToUse)
+	if err != nil {
 		code := status.Code(err)
 		m.recordCall(ctx, found.ID, uint32(code), requestTime, []map[string]any{requestData}, nil, recordedMetadata(outputToUse), err.Error())
 		outputToUse.Error = err.Error()
@@ -410,16 +415,18 @@ func (m *grpcMocker) sendClientStreamResponse(
 	templateData := newTemplateData(nil, headers, 0, requestTime,
 		requestsAny, found, matchNumber)
 
-	if err := delayTemplated(stream.Context(), m.templateEngine, found.Output.Delay, templateData); err != nil {
+	err := delayTemplated(stream.Context(), m.templateEngine, found.Output.Delay, templateData)
+	if err != nil {
 		return err
 	}
 
-	outputToUse, err := renderOutput(m.templateEngine, outputToUse, templateData, renderOptions{})
+	outputToUse, err = renderOutput(m.templateEngine, outputToUse, templateData, renderOptions{})
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	if err := m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers); err != nil {
+	err = m.setResponseHeadersAny(stream.Context(), stream, outputToUse.Headers)
+	if err != nil {
 		return errors.Wrap(err, "failed to set headers")
 	}
 
@@ -435,7 +442,8 @@ func (m *grpcMocker) sendClientStreamResponse(
 
 	// A client-streaming call that ends with an error is still a call: recording
 	// only the successful ones hid every failure from history and the error count.
-	if err := m.handleOutputError(stream.Context(), stream, outputToUse); err != nil {
+	err = m.handleOutputError(stream.Context(), stream, outputToUse)
+	if err != nil {
 		m.recordCall(stream.Context(), found.ID, uint32(status.Code(err)), requestTime,
 			messages, nil, recordedMetadata(outputToUse), err.Error())
 
@@ -451,7 +459,8 @@ func (m *grpcMocker) sendClientStreamResponse(
 		return wrapped
 	}
 
-	if err := stream.SendMsg(outputMsg); err != nil {
+	err = stream.SendMsg(outputMsg)
+	if err != nil {
 		m.recordCall(stream.Context(), found.ID, uint32(status.Code(err)), requestTime,
 			messages, nil, recordedMetadata(outputToUse), err.Error())
 

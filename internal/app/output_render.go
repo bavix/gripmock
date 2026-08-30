@@ -25,11 +25,13 @@ func renderOutput(
 		return stuber.Output{}, err
 	}
 
-	if rendered.Headers, err = renderMetadata(engine, output.Headers, templateData, "header"); err != nil {
+	rendered.Headers, err = renderMetadata(engine, output.Headers, templateData, "header")
+	if err != nil {
 		return stuber.Output{}, err
 	}
 
-	if rendered.Trailers, err = renderMetadata(engine, output.Trailers, templateData, "trailer"); err != nil {
+	rendered.Trailers, err = renderMetadata(engine, output.Trailers, templateData, "trailer")
+	if err != nil {
 		return stuber.Output{}, err
 	}
 
@@ -74,7 +76,8 @@ func renderPayload(
 
 	if output.IsServerStream() {
 		if opts.renderStream {
-			if rendered.Stream, err = renderStreamElements(engine, output.Messages(), templateData); err != nil {
+			rendered.Stream, err = renderStreamElements(engine, output.Messages(), templateData)
+			if err != nil {
 				return stuber.Output{}, err
 			}
 		}
@@ -83,7 +86,8 @@ func renderPayload(
 	}
 
 	if !opts.skipData {
-		if rendered.Data, err = renderData(engine, output.Data, templateData); err != nil {
+		rendered.Data, err = renderData(engine, output.Data, templateData)
+		if err != nil {
 			return stuber.Output{}, err
 		}
 	}
@@ -130,7 +134,9 @@ func renderMetadata(
 	}
 
 	rendered := maps.Clone(values)
-	if err := engine.ProcessHeaders(rendered, templateData); err != nil {
+
+	err := engine.ProcessHeaders(rendered, templateData)
+	if err != nil {
 		return nil, errors.Wrapf(err, "failed to process %s templates", kind)
 	}
 

@@ -90,7 +90,8 @@ type Config struct {
 func Load() Config {
 	var cfg Config
 
-	if err := env.Parse(&cfg); err != nil {
+	err := env.Parse(&cfg)
+	if err != nil {
 		panic("config: failed to parse environment: " + err.Error())
 	}
 

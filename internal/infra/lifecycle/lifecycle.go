@@ -43,7 +43,8 @@ func (m *Manager) Do(ctx context.Context) {
 	defer m.mu.Unlock()
 
 	for _, v := range slices.Backward(m.fns) {
-		if err := v(ctx); err != nil {
+		err := v(ctx)
+		if err != nil {
 			zerolog.Ctx(ctx).Err(err).Msg("shutdown callback failed")
 		}
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strconv"
 
 	"github.com/goccy/go-json"
@@ -29,7 +30,8 @@ func (l jsonList) Format(state fmt.State, _ rune) { writeJSON(state, l) }
 func (m jsonMap) Format(state fmt.State, _ rune) { writeJSON(state, m) }
 
 func writeJSON(state fmt.State, value any) {
-	if err := json.NewEncoder(state).Encode(value); err != nil {
+	err := json.NewEncoder(state).Encode(value)
+	if err != nil {
 		_, _ = state.Write([]byte(err.Error()))
 	}
 }
@@ -50,7 +52,7 @@ func asList(value any) jsonList {
 	case jsonList:
 		return v
 	case []any:
-		return v[:len(v):len(v)]
+		return slices.Clip(v)
 	default:
 		return nil
 	}

@@ -55,7 +55,8 @@ func globMatch(expected map[string]any, actual any) bool {
 			return false
 		}
 
-		if err := matchGlobValue(pattern, actualValue); err != nil {
+		err := matchGlobValue(pattern, actualValue)
+		if err != nil {
 			return false
 		}
 	}
@@ -87,7 +88,8 @@ func matchGlobValue(pattern, actual any) error {
 				return errFail
 			}
 
-			if err := matchGlobValue(pat, act); err != nil {
+			err := matchGlobValue(pat, act)
+			if err != nil {
 				return err
 			}
 		}

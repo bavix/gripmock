@@ -75,7 +75,8 @@ func (q *Query) UnmarshalJSON(data []byte) error {
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.UseNumber()
 
-	if err := decoder.Decode(&raw); err != nil {
+	err := decoder.Decode(&raw)
+	if err != nil {
 		return err
 	}
 

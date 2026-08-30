@@ -47,21 +47,23 @@ func (f *fakeReflectionServer) ServerReflectionInfo(stream reflectionpb.ServerRe
 
 		switch req.GetMessageRequest().(type) {
 		case *reflectionpb.ServerReflectionRequest_ListServices:
-			if err := stream.Send(&reflectionpb.ServerReflectionResponse{
+			err := stream.Send(&reflectionpb.ServerReflectionResponse{
 				MessageResponse: &reflectionpb.ServerReflectionResponse_ListServicesResponse{
 					ListServicesResponse: &reflectionpb.ListServiceResponse{
 						Service: []*reflectionpb.ServiceResponse{{Name: "grpc.health.v1.Health"}, {Name: "test.Echo"}},
 					},
 				},
-			}); err != nil {
+			})
+			if err != nil {
 				return err
 			}
 		case *reflectionpb.ServerReflectionRequest_FileContainingSymbol:
-			if err := stream.Send(&reflectionpb.ServerReflectionResponse{
+			err := stream.Send(&reflectionpb.ServerReflectionResponse{
 				MessageResponse: &reflectionpb.ServerReflectionResponse_FileDescriptorResponse{
 					FileDescriptorResponse: &reflectionpb.FileDescriptorResponse{FileDescriptorProto: [][]byte{f.rawFile}},
 				},
-			}); err != nil {
+			})
+			if err != nil {
 				return err
 			}
 		}

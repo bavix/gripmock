@@ -39,7 +39,9 @@ func Decode(compressed []byte) (*descriptorpb.FileDescriptorSet, error) {
 	}
 
 	fds := &descriptorpb.FileDescriptorSet{}
-	if err = proto.Unmarshal(raw, fds); err != nil {
+
+	err = proto.Unmarshal(raw, fds)
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal descriptor set")
 	}
 
@@ -55,17 +57,20 @@ func writeAtomic(path string, data []byte) error {
 
 	dir := filepath.Dir(absPath)
 
-	if err = os.MkdirAll(dir, 0o750); err != nil { //nolint:mnd
+	err = os.MkdirAll(dir, 0o750) //nolint:mnd
+	if err != nil {
 		return errors.Wrapf(err, "failed to create output directory: %s", dir)
 	}
 
 	tmp := absPath + ".tmp"
 
-	if err = os.WriteFile(tmp, data, 0o600); err != nil { //nolint:mnd
+	err = os.WriteFile(tmp, data, 0o600) //nolint:mnd
+	if err != nil {
 		return errors.Wrapf(err, "failed to write temporary file: %s", tmp)
 	}
 
-	if err = os.Rename(tmp, absPath); err != nil {
+	err = os.Rename(tmp, absPath)
+	if err != nil {
 		_ = os.Remove(tmp) // best-effort cleanup
 
 		return errors.Wrapf(err, "failed to rename %s to %s", tmp, absPath)

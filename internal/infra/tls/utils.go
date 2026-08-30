@@ -40,7 +40,8 @@ type TLSConfig struct {
 }
 
 func (t TLSConfig) BuildTLSConfig() (*tls.Config, error) {
-	if err := t.Validate(); err != nil {
+	err := t.Validate()
+	if err != nil {
 		return nil, err
 	}
 
@@ -73,7 +74,8 @@ func (t TLSConfig) BuildTLSConfig() (*tls.Config, error) {
 }
 
 func (t TLSConfig) BuildClientTLSConfig(target string) (*tls.Config, error) {
-	if err := t.ValidateClient(); err != nil {
+	err := t.ValidateClient()
+	if err != nil {
 		return nil, err
 	}
 
@@ -157,11 +159,13 @@ func (t TLSConfig) Validate() error {
 		return ErrKeyRequired
 	}
 
-	if err := ensureFile(t.CertFile); err != nil {
+	err := ensureFile(t.CertFile)
+	if err != nil {
 		return errors.Wrap(err, "invalid cert file")
 	}
 
-	if err := ensureFile(t.KeyFile); err != nil {
+	err = ensureFile(t.KeyFile)
+	if err != nil {
 		return errors.Wrap(err, "invalid key file")
 	}
 
@@ -170,12 +174,13 @@ func (t TLSConfig) Validate() error {
 	}
 
 	if t.CAFile != "" {
-		if err := ensureFile(t.CAFile); err != nil {
+		err := ensureFile(t.CAFile)
+		if err != nil {
 			return errors.Wrap(err, "invalid CA file")
 		}
 	}
 
-	_, err := parseMinVersion(t.MinVersion)
+	_, err = parseMinVersion(t.MinVersion)
 
 	return err
 }
@@ -185,23 +190,27 @@ func (t TLSConfig) ValidateClient() error {
 	keyFile := strings.TrimSpace(t.KeyFile)
 	caFile := strings.TrimSpace(t.CAFile)
 
-	if err := validateClientCertPair(certFile, keyFile); err != nil {
+	err := validateClientCertPair(certFile, keyFile)
+	if err != nil {
 		return err
 	}
 
-	if err := validateOptionalFile(certFile, "invalid cert file"); err != nil {
+	err = validateOptionalFile(certFile, "invalid cert file")
+	if err != nil {
 		return err
 	}
 
-	if err := validateOptionalFile(keyFile, "invalid key file"); err != nil {
+	err = validateOptionalFile(keyFile, "invalid key file")
+	if err != nil {
 		return err
 	}
 
-	if err := validateOptionalFile(caFile, "invalid CA file"); err != nil {
+	err = validateOptionalFile(caFile, "invalid CA file")
+	if err != nil {
 		return err
 	}
 
-	_, err := parseMinVersion(t.MinVersion)
+	_, err = parseMinVersion(t.MinVersion)
 
 	return err
 }
@@ -223,7 +232,8 @@ func validateOptionalFile(path, msg string) error {
 		return nil
 	}
 
-	if err := ensureFile(path); err != nil {
+	err := ensureFile(path)
+	if err != nil {
 		return errors.Wrap(err, msg)
 	}
 

@@ -47,7 +47,8 @@ func benchmarkRender(b *testing.B, output stuber.Output, size int, opts renderOp
 	b.ReportAllocs()
 
 	for b.Loop() {
-		if _, err := renderOutput(engine, output, templateData, opts); err != nil {
+		_, err := renderOutput(engine, output, templateData, opts)
+		if err != nil {
 			b.Fatal(err)
 		}
 	}

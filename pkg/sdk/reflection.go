@@ -30,9 +30,10 @@ func resolveDescriptorsFromReflection(ctx context.Context, addr string) (*descri
 	}
 
 	// ListServices
-	if err := stream.Send(&reflectionpb.ServerReflectionRequest{
+	err = stream.Send(&reflectionpb.ServerReflectionRequest{
 		MessageRequest: &reflectionpb.ServerReflectionRequest_ListServices{},
-	}); err != nil {
+	})
+	if err != nil {
 		return nil, errors.Wrap(err, "failed to send ListServices")
 	}
 
@@ -59,11 +60,12 @@ func resolveDescriptorsFromReflection(ctx context.Context, addr string) (*descri
 			continue
 		}
 
-		if err := stream.Send(&reflectionpb.ServerReflectionRequest{
+		err := stream.Send(&reflectionpb.ServerReflectionRequest{
 			MessageRequest: &reflectionpb.ServerReflectionRequest_FileContainingSymbol{
 				FileContainingSymbol: name,
 			},
-		}); err != nil {
+		})
+		if err != nil {
 			return nil, errors.Wrapf(err, "failed to send FileContainingSymbol for %s", name)
 		}
 
@@ -83,7 +85,9 @@ func resolveDescriptorsFromReflection(ctx context.Context, addr string) (*descri
 
 		for _, raw := range fd.GetFileDescriptorProto() {
 			var fdp descriptorpb.FileDescriptorProto
-			if err := proto.Unmarshal(raw, &fdp); err != nil {
+
+			err := proto.Unmarshal(raw, &fdp)
+			if err != nil {
 				return nil, errors.Wrapf(err, "failed to unmarshal FileDescriptorProto for %s", name)
 			}
 

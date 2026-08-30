@@ -73,7 +73,8 @@ func (s *searcher) wrap(err error) error {
 }
 
 func (s *searcher) ensureServiceMethodExists(service, method string) error {
-	if _, err := s.storage.posByPN(service, method); err != nil {
+	_, err := s.storage.posByPN(service, method)
+	if err != nil {
 		return s.wrap(err)
 	}
 
