@@ -127,6 +127,10 @@ func (b *Builder) newGatewayServer(ctx context.Context, router *mux.Router) *htt
 		handler = otelhttp.NewHandler(handler, "gripmock-gateway")
 	}
 
+	// Outermost on purpose: EnableFullDuplex walks ResponseWriter.Unwrap
+	// and gorilla's compress writer does not implement it.
+	handler = gatewayFullDuplexMiddleware(handler)
+
 	return &http.Server{
 		Addr:              b.config.Gateway.Addr,
 		Handler:           handler,
@@ -204,6 +208,27 @@ func setGatewayProtocols(srv *http.Server) {
 
 		return &p
 	}()
+}
+
+// gatewayFullDuplexMiddleware lets streaming handlers keep reading the
+// request body after the response has been flushed. Without it the
+// HTTP/1.x server drains and closes the body on the first flush, so the
+// second message of a gRPC-Web or Connect bidi stream fails with
+// "http: invalid Read on closed Body". HTTP/2 is unaffected.
+func gatewayFullDuplexMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.ProtoMajor == 1 && isStreamingGatewayContentType(r.Header.Get("Content-Type")) {
+			_ = http.NewResponseController(w).EnableFullDuplex()
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isStreamingGatewayContentType(ct string) bool {
+	ct = strings.ToLower(strings.TrimSpace(ct))
+
+	return strings.HasPrefix(ct, "application/grpc-web") || strings.HasPrefix(ct, "application/connect+")
 }
 
 // gatewayAccessLogMiddleware logs each gateway request on completion with

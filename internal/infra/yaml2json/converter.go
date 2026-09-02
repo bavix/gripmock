@@ -28,7 +28,8 @@ func New(reg plugins.Registry) *Convertor {
 // The byte slice contains the JSON representation of the executed YAML data.
 // The error is non-nil if there was an error during the execution.
 func (t *Convertor) Execute(ctx context.Context, name string, data []byte) ([]byte, error) {
-	if err := checkAliasExpansion(data); err != nil {
+	err := checkAliasExpansion(data)
+	if err != nil {
 		return nil, err
 	}
 

@@ -38,7 +38,8 @@ func checkAliasExpansion(data []byte) error {
 		budget.closeScopes(indent)
 		budget.declare(line, indent)
 
-		if err := budget.reference(line); err != nil {
+		err := budget.reference(line)
+		if err != nil {
 			return err
 		}
 	}
