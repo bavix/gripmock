@@ -6,8 +6,9 @@ ARG date
 
 WORKDIR /gripmock-src
 
+# build-base: CGO toolchain required for Go plugins.
 #hadolint ignore=DL3018
-RUN apk add --no-cache binutils
+RUN apk add --no-cache build-base
 
 # Module download is its own layer so a source-only change reuses it.
 COPY go.mod go.sum ./
@@ -15,8 +16,8 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o /usr/local/bin/gripmock -ldflags "-X 'github.com/bavix/gripmock/v3/internal/infra/build.Version=${version:-dev}' -X 'github.com/bavix/gripmock/v3/internal/infra/build.Commit=${commit:-unknown}' -X 'github.com/bavix/gripmock/v3/internal/infra/build.Date=${date:-}' -s -w" . \
-    && strip /usr/local/bin/gripmock \
+# Do not strip: it discards plugin module data and plugin.Open then aborts.
+RUN CGO_ENABLED=1 go build -o /usr/local/bin/gripmock -ldflags "-X 'github.com/bavix/gripmock/v3/internal/infra/build.Version=${version:-dev}' -X 'github.com/bavix/gripmock/v3/internal/infra/build.Commit=${commit:-unknown}' -X 'github.com/bavix/gripmock/v3/internal/infra/build.Date=${date:-}' -s -w" . \
     && chmod +x /usr/local/bin/gripmock
 
 FROM alpine:3.24
@@ -28,6 +29,9 @@ LABEL org.opencontainers.image.documentation="https://bavix.github.io/gripmock/"
 LABEL org.opencontainers.image.authors="Babichev Maxim <info@babichev.net>"
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.vendor="bavix"
+
+#hadolint ignore=DL3018
+RUN apk add --no-cache libgcc
 
 COPY --from=builder /usr/local/bin/gripmock /usr/local/bin/gripmock
 

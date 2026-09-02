@@ -4,15 +4,19 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
+	"github.com/bavix/gripmock/v3/internal/config"
 	"github.com/bavix/gripmock/v3/internal/deps"
 	"github.com/bavix/gripmock/v3/internal/domain/proto"
 	"github.com/bavix/gripmock/v3/internal/infra/build"
 )
+
+const defaultShutdownTimeout = 5 * time.Second
 
 var (
 	stubFlag    string   //nolint:gochecknoglobals
@@ -29,13 +33,15 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
+		cfg := config.Load()
+
 		builder := deps.NewBuilder(
-			deps.WithDefaultConfig(),
+			deps.WithConfig(cfg),
 			deps.WithPlugins(pluginsFlag),
 		)
 
-		ctx, cancel := builder.SignalNotify(cmd.Context())
-		defer cancel()
+		ctx, stop := builder.SignalNotify(cmd.Context())
+		defer stop()
 
 		ctx = builder.Logger(ctx)
 		builder.InitTelemetry(ctx)
@@ -80,7 +86,7 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 			}
 		}()
 
-		defer builder.Shutdown(context.WithoutCancel(ctx))
+		defer shutdownGracefully(ctx, stop, builder.Shutdown, cfg.ShutdownTimeout)
 
 		params := proto.ParseArgumentsWithBindings(args, os.Args[1:], importsFlag, sourceFlag)
 
@@ -91,6 +97,24 @@ var rootCmd = &cobra.Command{ //nolint:gochecknoglobals
 
 		return builder.GRPCServe(ctx, params)
 	},
+}
+
+func shutdownGracefully(
+	ctx context.Context,
+	stop context.CancelFunc,
+	shutdown func(context.Context),
+	timeout time.Duration,
+) {
+	stop()
+
+	if timeout <= 0 {
+		timeout = defaultShutdownTimeout
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
+	defer cancel()
+
+	shutdown(shutdownCtx)
 }
 
 func restServe(ctx context.Context, builder *deps.Builder) error {

@@ -81,6 +81,9 @@ type Config struct {
 	SessionGCInterval time.Duration `env:"SESSION_GC_INTERVAL" envDefault:"30s"`
 	SessionGCTTL      time.Duration `env:"SESSION_GC_TTL"      envDefault:"60s"`
 
+	// ShutdownTimeout bounds graceful shutdown.
+	ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"5s"`
+
 	TemplatePluginPaths []string `env:"TEMPLATE_PLUGIN_PATHS"`
 
 	BSR BSRConfig `envPrefix:"BSR_"`

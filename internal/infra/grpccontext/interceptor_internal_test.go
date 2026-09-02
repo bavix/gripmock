@@ -7,7 +7,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func TestUnaryInterceptor(t *testing.T) {
@@ -182,6 +184,10 @@ func TestPanicRecoveryStreamInterceptor(t *testing.T) {
 			panic("stream panic")
 		}
 		err := PanicRecoveryStreamInterceptor(nil, mockStream, info, handler)
-		require.NoError(t, err) // recover stops panic; return value is zero
+
+		// The client must see an error, not a truncated stream with status OK.
+		require.Error(t, err)
+		require.Equal(t, codes.Internal, status.Code(err))
+		require.Contains(t, err.Error(), "stream panic")
 	})
 }

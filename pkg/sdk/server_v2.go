@@ -58,13 +58,7 @@ func initServer(t TestingT, opts ...Option) (*Server, error) {
 		panic("gripmock: TestingT must not be nil")
 	}
 
-	o := &options{healthyTimeout: defaultHealthyTimeout, sessionTTL: defaultSessionTTL}
-
-	for _, opt := range opts {
-		if opt != nil {
-			opt(o)
-		}
-	}
+	o := newOptions(opts...)
 
 	if o.httpClient == nil {
 		o.httpClient = &http.Client{Timeout: 10 * time.Second} //nolint:mnd
@@ -336,12 +330,16 @@ func (s *Server) Close() error {
 
 // Flush is a no-op for embedded mode and non-batch remote mode.
 func (s *Server) Flush() error {
-	if s.remote == nil || len(s.pending) == 0 {
+	if s.remote == nil {
 		return nil
 	}
 
 	s.pendingMu.Lock()
 	defer s.pendingMu.Unlock()
+
+	if len(s.pending) == 0 {
+		return nil
+	}
 
 	err := s.remote.commitStubsBatch(s.pending)
 	s.pending = nil

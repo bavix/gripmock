@@ -15,6 +15,7 @@ import { generateSample } from './generateSample';
 import { highlightYaml } from './highlightYaml';
 import { parse, type OutputMode } from './buildStubOutput';
 import { GRPC_CODES } from '../../lib/grpc';
+import { copyText } from '../../lib/clipboard';
 import {
   type StubFormData, INPUT_MODES, HEADER_MODES,
   empty, fromInit, buildBody, collectJsonErrors, matcherMode,
@@ -313,7 +314,7 @@ export function StubForm({ initial, onSaved }: Props) {
         <div style={{ borderRadius: 6, border: '1px solid var(--border)', overflow: 'hidden', background: 'var(--bg)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
             <span style={{ flex: 1 }}>Preview</span>
-            {yaml && <button type="button" onClick={() => navigator.clipboard.writeText(yaml)} className="btn btn-ghost" style={{ fontSize: 11, padding: '1px 5px' }}><Copy size={9} /></button>}
+            {yaml && <button type="button" onClick={() => void copyText(yaml)} className="btn btn-ghost" style={{ fontSize: 11, padding: '1px 5px' }} title="Copy YAML"><Copy size={9} /></button>}
           </div>
           <pre style={{ margin: 0, padding: 10, fontSize: 11, lineHeight: 1.5, fontFamily: 'var(--mono)', overflow: 'auto', maxHeight: 'calc(100vh - 140px)', background: 'var(--bg)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
             {previewBody}

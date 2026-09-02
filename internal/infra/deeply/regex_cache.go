@@ -35,6 +35,53 @@ func hasRegexMeta(pattern string) bool {
 	return false
 }
 
+func hasTopLevelAlternation(pattern string) bool {
+	scan := alternationScanner{}
+
+	for i := range len(pattern) {
+		if scan.step(pattern[i]) {
+			return true
+		}
+	}
+
+	return false
+}
+
+type alternationScanner struct {
+	depth   int
+	inClass bool
+	escaped bool
+}
+
+func (a *alternationScanner) step(char byte) bool {
+	if a.escaped {
+		a.escaped = false
+
+		return false
+	}
+
+	if a.inClass {
+		a.inClass = char != ']'
+
+		return false
+	}
+
+	switch char {
+	case '\\':
+		a.escaped = true
+	case '[':
+		a.inClass = true
+	case '(':
+		a.depth++
+	case ')':
+		a.depth = max(a.depth-1, 0)
+	case '|':
+		return a.depth == 0
+	}
+
+	return false
+}
+
 func canMatch(pattern, subject string) bool {
 	prefix := anchoredPrefix(pattern)
 
@@ -43,6 +90,10 @@ func canMatch(pattern, subject string) bool {
 
 func anchoredPrefix(pattern string) string {
 	if pattern == "" || pattern[0] != '^' {
+		return ""
+	}
+
+	if hasTopLevelAlternation(pattern) {
 		return ""
 	}
 

@@ -7,6 +7,8 @@ import { useStubs } from '../hooks/useStubs';
 import { colors } from '../lib/theme';
 import { Fingerprint, Globe, Plus, Copy, History, ListOrdered, ShieldCheck, Trash2 } from 'lucide-react';
 import { useToast } from '../components/shared/Toast';
+import { copyText, COPY_FAILED } from '../lib/clipboard';
+import { newSessionId } from '../lib/ids';
 
 export function SessionPage() {
   const navigate = useNavigate();
@@ -30,8 +32,8 @@ export function SessionPage() {
   const all = sessionOptions(recent ?? [], backend?.sessions ?? [], session, Number.MAX_SAFE_INTEGER);
 
   const activate = (s: string) => { setSession(s); trackSession(s); };
-  const newSession = () => { const id = `sess-${crypto.randomUUID().slice(0, 8)}`; activate(id); toast.show(`Switched to ${id}`); };
-  const copy = (s: string) => { navigator.clipboard.writeText(s); toast.show('Copied session ID'); };
+  const newSession = () => { const id = newSessionId(); activate(id); toast.show(`Switched to ${id}`); };
+  const copy = async (s: string) => { toast.show(await copyText(s) ? 'Copied session ID' : COPY_FAILED); };
 
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 720 }}>

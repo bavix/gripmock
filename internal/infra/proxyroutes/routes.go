@@ -110,7 +110,8 @@ func NewWithPerProxyDescriptors(
 	for _, binding := range bindings {
 		source, err := protosetdom.ParseSource(binding.ProxyURL)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse proxy source: %s", binding.ProxyURL)
+			return nil, errors.Wrapf(err, "failed to parse proxy source: %s",
+				protosetdom.RedactURL(binding.ProxyURL))
 		}
 
 		if source.ProxyMode == "" {
@@ -145,7 +146,7 @@ func parseProxySources(paths []string) ([]*protosetdom.Source, error) {
 	for _, path := range paths {
 		source, err := protosetdom.ParseSource(path)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse source: %s", path)
+			return nil, errors.Wrapf(err, "failed to parse source: %s", protosetdom.RedactURL(path))
 		}
 
 		if source.ProxyMode == "" {
@@ -223,7 +224,8 @@ func resolveServiceMethods(
 
 	fds, err := remoteClient.FetchDescriptorSet(ctx, source)
 	if err != nil {
-		return nil, nil, errors.Wrapf(err, "failed to fetch proxy descriptors: %s", source.Raw)
+		return nil, nil, errors.Wrapf(err, "failed to fetch proxy descriptors: %s",
+			protosetdom.RedactURL(source.Raw))
 	}
 
 	return fds, collectServiceMethods(fds), nil

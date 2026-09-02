@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 )
 
 // UnaryTimeoutInterceptor sets timeout for unary gRPC client calls when timeout > 0.
@@ -52,10 +53,21 @@ func StreamTimeoutInterceptor(timeout time.Duration) grpc.StreamClientIntercepto
 			return streamer(ctx, desc, cc, method, opts...)
 		}
 
-		streamCtx, cancel := context.WithTimeout(ctx, timeout)
+		longLived := desc != nil && desc.ServerStreams
+
+		streamCtx, cancel := newStreamContext(ctx, timeout, longLived)
+
+		var watchdog *time.Timer
+		if longLived {
+			watchdog = time.AfterFunc(timeout, cancel)
+		}
 
 		clientStream, err := streamer(streamCtx, desc, cc, method, opts...)
 		if err != nil {
+			if watchdog != nil {
+				watchdog.Stop()
+			}
+
 			cancel()
 
 			return nil, err
@@ -64,9 +76,22 @@ func StreamTimeoutInterceptor(timeout time.Duration) grpc.StreamClientIntercepto
 		return &wrappedClientStream{
 			ClientStream:        clientStream,
 			cancel:              cancel,
-			cancelOnRecvSuccess: desc == nil || !desc.ServerStreams,
+			watchdog:            watchdog,
+			cancelOnRecvSuccess: !longLived,
 		}, nil
 	}
+}
+
+func newStreamContext(
+	ctx context.Context,
+	timeout time.Duration,
+	longLived bool,
+) (context.Context, context.CancelFunc) {
+	if longLived {
+		return context.WithCancel(ctx)
+	}
+
+	return context.WithTimeout(ctx, timeout)
 }
 
 type wrappedClientStream struct {
@@ -75,16 +100,22 @@ type wrappedClientStream struct {
 	cancel     context.CancelFunc
 	cancelOnce sync.Once
 
+	watchdog     *time.Timer
+	watchdogOnce sync.Once
+
 	cancelOnRecvSuccess bool
 }
 
 func (w *wrappedClientStream) RecvMsg(m any) error {
 	err := w.ClientStream.RecvMsg(m)
 	if err != nil {
+		w.stopWatchdog()
 		w.cancelContext()
 
 		return err
 	}
+
+	w.stopWatchdog()
 
 	if w.cancelOnRecvSuccess {
 		w.cancelContext()
@@ -93,8 +124,27 @@ func (w *wrappedClientStream) RecvMsg(m any) error {
 	return err
 }
 
+func (w *wrappedClientStream) Header() (metadata.MD, error) {
+	md, err := w.ClientStream.Header()
+	if err == nil {
+		w.stopWatchdog()
+	}
+
+	return md, err //nolint:wrapcheck // transparent passthrough.
+}
+
 func (w *wrappedClientStream) CloseSend() error {
 	return w.ClientStream.CloseSend()
+}
+
+func (w *wrappedClientStream) stopWatchdog() {
+	if w.watchdog == nil {
+		return
+	}
+
+	w.watchdogOnce.Do(func() {
+		w.watchdog.Stop()
+	})
 }
 
 func (w *wrappedClientStream) cancelContext() {

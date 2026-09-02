@@ -7,6 +7,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/rs/zerolog"
+	"google.golang.org/grpc"
 
 	"github.com/bavix/gripmock/v3/internal/app"
 	"github.com/bavix/gripmock/v3/internal/domain/history"
@@ -80,8 +81,8 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		b.SetProxyRoutes(p)
 	}
 
-	b.ender.Add(func(_ context.Context) error {
-		server.GracefulStop()
+	b.ender.Add(func(shutdownCtx context.Context) error {
+		stopGRPCServer(shutdownCtx, server)
 
 		return nil
 	})
@@ -113,6 +114,23 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 	}
 
 	return nil
+}
+
+func stopGRPCServer(ctx context.Context, server *grpc.Server) {
+	stopped := make(chan struct{})
+
+	go func() {
+		defer close(stopped)
+
+		server.GracefulStop()
+	}()
+
+	select {
+	case <-stopped:
+	case <-ctx.Done():
+		server.Stop()
+		<-stopped
+	}
 }
 
 func (b *Builder) serverLimits() app.ServerLimits {

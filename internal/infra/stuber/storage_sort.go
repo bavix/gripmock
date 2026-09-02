@@ -14,13 +14,22 @@ import (
 // whole set on each call.
 func (s *storage) yieldSortedValues(indexes []uint64, yield func(*Stub) bool) {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
+	snapshot := detachStubs(mergeSortedParts(s.sortedParts(indexes)))
+	s.mu.RUnlock()
 
-	for _, stub := range mergeSortedParts(s.sortedParts(indexes)) {
+	for _, stub := range snapshot {
 		if !yield(stub) {
 			return
 		}
 	}
+}
+
+func detachStubs(stubs []*Stub) []*Stub {
+	if len(stubs) == 0 {
+		return nil
+	}
+
+	return slices.Clone(stubs)
 }
 
 // sortedParts collects the sorted stub slices held for the given indexes,

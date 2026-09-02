@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/goccy/go-json"
@@ -42,16 +44,11 @@ func LogUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInf
 		Str("protocol", "grpc")
 
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		event.Interface("grpc.metadata", md)
+		event.Interface("grpc.metadata", redactMetadata(md))
 	}
 
-	if content := protoToJSON(req); content != nil {
-		event.RawJSON("grpc.request.content", content)
-	}
-
-	if content := protoToJSON(resp); content != nil {
-		event.RawJSON("grpc.response.content", content)
-	}
+	logMessageContent(event, "grpc.request.content", req)
+	logMessageContent(event, "grpc.response.content", resp)
 
 	event.Msg("gRPC call completed")
 
@@ -64,8 +61,10 @@ func LogStreamInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamSe
 	grpcPeer, _ := peer.FromContext(stream.Context())
 	service, method := splitMethodName(info.FullMethod)
 
-	wrapped := &loggingStream{stream, []any{}, []any{}}
+	wrapped := newLoggingStream(stream)
 	err := handler(srv, wrapped)
+
+	requests, responses := wrapped.snapshot()
 
 	level := zerolog.InfoLevel
 	if service == serviceReflection {
@@ -80,8 +79,8 @@ func LogStreamInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamSe
 		Str("grpc.code", status.Code(err).String()).
 		Dur("grpc.time_ms", time.Since(start)).
 		Str("peer.address", getPeerAddress(grpcPeer)).
-		Array("grpc.request.content", toLogArray(wrapped.requests...)).
-		Array("grpc.response.content", toLogArray(wrapped.responses...)).
+		Array("grpc.request.content", toLogArray(requests...)).
+		Array("grpc.response.content", toLogArray(responses...)).
 		Str("protocol", "grpc").
 		Msg("gRPC call completed")
 
@@ -179,8 +178,17 @@ func toLogArray(items ...any) *zerolog.Array {
 type loggingStream struct {
 	grpc.ServerStream
 
+	mu        sync.Mutex
 	requests  []any
 	responses []any
+}
+
+func newLoggingStream(stream grpc.ServerStream) *loggingStream {
+	return &loggingStream{
+		ServerStream: stream,
+		requests:     []any{},
+		responses:    []any{},
+	}
 }
 
 func (s *loggingStream) SendMsg(m any) error {
@@ -195,10 +203,20 @@ func (s *loggingStream) RecvMsg(m any) error {
 	return s.ServerStream.RecvMsg(m)
 }
 
+func (s *loggingStream) snapshot() ([]any, []any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return slices.Clone(s.requests), slices.Clone(s.responses)
+}
+
 func (s *loggingStream) appendRequest(m any) {
 	if m == nil || isNilInterface(m) {
 		return
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	if len(s.requests) < maxLoggingStreamMsgs {
 		s.requests = append(s.requests, m)
@@ -210,7 +228,54 @@ func (s *loggingStream) appendResponse(m any) {
 		return
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if len(s.responses) < maxLoggingStreamMsgs {
 		s.responses = append(s.responses, m)
 	}
+}
+
+//nolint:gochecknoglobals
+var sensitiveMetadataKeys = map[string]struct{}{
+	"authorization":       {},
+	"proxy-authorization": {},
+	"cookie":              {},
+	"set-cookie":          {},
+	"x-api-key":           {},
+	"api-key":             {},
+	"x-auth-token":        {},
+}
+
+const redactedValue = "[REDACTED]"
+
+func redactMetadata(md metadata.MD) metadata.MD {
+	redacted := make(metadata.MD, len(md))
+
+	for key, values := range md {
+		if _, sensitive := sensitiveMetadataKeys[strings.ToLower(key)]; sensitive {
+			redacted[key] = []string{redactedValue}
+
+			continue
+		}
+
+		redacted[key] = values
+	}
+
+	return redacted
+}
+
+func logMessageContent(event *zerolog.Event, key string, msg any) {
+	content := protoToJSON(msg)
+	if content == nil {
+		return
+	}
+
+	if len(content) > maxLoggedBodyBytes {
+		event.Str(key, fmt.Sprintf("[truncated: %d bytes]", len(content)))
+
+		return
+	}
+
+	event.RawJSON(key, content)
 }

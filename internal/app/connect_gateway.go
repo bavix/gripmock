@@ -351,9 +351,9 @@ func (g *ConnectRPCGateway) unaryRequestBody(a *httpStreamAdapter, methodDesc pr
 		return body, a.req.Header.Get(headerContentType), nil
 	}
 
-	body, err := io.ReadAll(a.req.Body)
+	body, err := readUnaryBody(a.req.Body)
 	if err != nil {
-		a.writeError(codes.Internal, "failed to read body")
+		a.writeErrorStatus(status.Convert(err))
 
 		return nil, "", err
 	}
@@ -540,7 +540,7 @@ func (a *httpStreamAdapter) sendHeader() {
 }
 
 func (a *httpStreamAdapter) recvUnaryMessage(msg proto.Message, ct string) error {
-	data, err := io.ReadAll(a.req.Body)
+	data, err := readUnaryBody(a.req.Body)
 	if err != nil {
 		return err
 	}
@@ -555,7 +555,7 @@ func (a *httpStreamAdapter) recvStreamingMessage(msg proto.Message, ct string) e
 	// that do not frame every message when they only send one.
 	if unaryContentType := normalizeContentType(ct); unaryContentType == contentTypeJSON ||
 		unaryContentType == contentTypeProto {
-		data, err := io.ReadAll(a.req.Body)
+		data, err := readUnaryBody(a.req.Body)
 		if err != nil {
 			return err
 		}

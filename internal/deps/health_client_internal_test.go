@@ -47,7 +47,7 @@ func TestNormalizePingAddress(t *testing.T) {
 
 			input := tt.input
 
-			actual := normalizePingAddress(input)
+			actual := NormalizePingAddress(input)
 
 			require.Equal(t, tt.expected, actual)
 		})

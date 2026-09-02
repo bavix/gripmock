@@ -9,7 +9,7 @@ import (
 )
 
 func (b *Builder) PingService() (*waiter.Service, error) {
-	addr := normalizePingAddress(b.config.GRPC.Addr)
+	addr := NormalizePingAddress(b.config.GRPC.Addr)
 
 	grpcConn, err := b.grpcClientConn(b.grpcTLSEnabled(), addr)
 	if err != nil {
@@ -19,7 +19,8 @@ func (b *Builder) PingService() (*waiter.Service, error) {
 	return waiter.NewService(healthv1.NewHealthClient(grpcConn)), nil
 }
 
-func normalizePingAddress(address string) string {
+// NormalizePingAddress maps a wildcard listen host to loopback for client use.
+func NormalizePingAddress(address string) string {
 	host, port, err := net.SplitHostPort(address)
 	if err != nil {
 		return address

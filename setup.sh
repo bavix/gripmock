@@ -96,17 +96,22 @@ detect_os_and_architecture() {
     log_success "Detected architecture: ${BLUE}$ARCH 💻${NC}"
 }
 
+# Token goes through a curl config on stdin: keeps it out of the process list.
+github_api_get() {
+    if [ -n "$GITHUB_TOKEN" ]; then
+        printf 'header = "Authorization: token %s"\n' "$GITHUB_TOKEN" | \
+            curl --retry 5 --retry-delay 3 --retry-all-errors \
+                --connect-timeout 30 --max-time 60 -s -K - "$1"
+    else
+        curl --retry 5 --retry-delay 3 --retry-all-errors \
+            --connect-timeout 30 --max-time 60 -s "$1"
+    fi
+}
+
 get_latest_version() {
     log_info "Fetching the latest version of GripMock from GitHub..."
-    
-    # Prepare curl command with authentication if token is available
-    CURL_CMD="curl --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 60 -s"
-    if [ -n "$GITHUB_TOKEN" ]; then
-        CURL_CMD="$CURL_CMD -H \"Authorization: token $GITHUB_TOKEN\""
-    fi
-    
-    LATEST_RELEASE=$($CURL_CMD https://api.github.com/repos/bavix/gripmock/releases/latest)
-    if [ $? -ne 0 ]; then
+
+    if ! LATEST_RELEASE=$(github_api_get "https://api.github.com/repos/bavix/gripmock/releases/latest"); then
         log_error "Failed to connect to GitHub API. Check your internet connection."
     fi
     

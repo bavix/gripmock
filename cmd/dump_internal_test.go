@@ -44,3 +44,26 @@ func TestFetchStubsPreservesLargeNumbersAsJSONNumber(t *testing.T) {
 	require.True(t, ok, "expected json.Number, got %T", value)
 	require.Equal(t, large, number.String())
 }
+
+func TestDumpEndpointNormalizesWildcardListenAddress(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		scheme   string
+		addr     string
+		expected string
+	}{
+		"ipv4 wildcard": {scheme: "http", addr: "0.0.0.0:4771", expected: "http://127.0.0.1:4771"},
+		"ipv6 wildcard": {scheme: "http", addr: "[::]:4771", expected: "http://[::1]:4771"},
+		"explicit host": {scheme: "https", addr: "gripmock.local:4771", expected: "https://gripmock.local:4771"},
+		"no port":       {scheme: "http", addr: "gripmock.local", expected: "http://gripmock.local"},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			require.Equal(t, tt.expected, dumpEndpoint(tt.scheme, tt.addr))
+		})
+	}
+}
