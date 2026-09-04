@@ -73,16 +73,17 @@ func (s *storage) findByMethodAvailable(method, session string) iter.Seq[*Stub] 
 		var all []*Stub
 
 		if session == "" {
-			all = sortedCopy(global)
+			all = slices.Clone(global)
 		} else {
 			sessionStubs := s.methodSorted[methodID][session]
 			all = make([]*Stub, 0, len(global)+len(sessionStubs))
 			all = append(all, global...)
 			all = append(all, sessionStubs...)
-			slices.SortFunc(all, compareStubsByPriorityAndID)
 		}
 
 		s.mu.RUnlock()
+
+		slices.SortFunc(all, compareStubsByPriorityAndID)
 
 		for _, stub := range all {
 			if !yield(stub) {

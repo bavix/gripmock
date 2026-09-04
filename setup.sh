@@ -2,6 +2,15 @@
 
 set -e
 
+# --slim (or GRIPMOCK_SLIM=1) installs the build without Go plugin support.
+SLIM="${GRIPMOCK_SLIM:-0}"
+for arg in "$@"; do
+    case "$arg" in
+        --slim) SLIM=1 ;;
+        *) ;;
+    esac
+done
+
 # Check if terminal supports colors using tput
 if tput colors >/dev/null 2>&1 && [ "$(tput colors)" -ge 8 ]; then
     # Enable colors if supported
@@ -92,6 +101,17 @@ detect_os_and_architecture() {
         *) log_error "Unsupported architecture: ${BLUE}$ARCH${NC}" ;;
     esac
 
+    # The default build is cgo (Go plugins work) and needs glibc. On musl the
+    # slim build is the only one that runs; it has no plugin support.
+    FLAVOR=""
+    if [ "$SLIM" = "1" ]; then
+        FLAVOR="-slim"
+        log_info "Installing the slim build (no plugin support)."
+    elif [ "$OS" = "linux" ] && { ls /lib/ld-musl-* >/dev/null 2>&1 || (ldd --version 2>&1 | grep -qi musl); }; then
+        FLAVOR="-slim"
+        log_info "musl detected: installing the slim build (no plugin support)."
+    fi
+
     log_success "Detected OS: ${BLUE}$OS 🌍${NC}"
     log_success "Detected architecture: ${BLUE}$ARCH 💻${NC}"
 }
@@ -159,7 +179,8 @@ download_checksums() {
 }
 
 download_gripmock() {
-    DOWNLOAD_URL="https://github.com/bavix/gripmock/releases/download/v${LATEST_VERSION}/gripmock_${LATEST_VERSION}_${OS}_${ARCH}.tar.gz"
+    ASSET_NAME="gripmock${FLAVOR}_${LATEST_VERSION}_${OS}_${ARCH}.tar.gz"
+    DOWNLOAD_URL="https://github.com/bavix/gripmock/releases/download/v${LATEST_VERSION}/${ASSET_NAME}"
 
     DOWNLOAD_FILE="$TMP_DIR/gripmock.tar.gz"
 
@@ -188,9 +209,9 @@ download_gripmock() {
 }
 
 verify_checksum() {
-    EXPECTED_CHECKSUM=$(grep "gripmock_${LATEST_VERSION}_${OS}_${ARCH}.tar.gz" "$CHECKSUM_FILE" | awk '{print $1}')
+    EXPECTED_CHECKSUM=$(grep "$ASSET_NAME" "$CHECKSUM_FILE" | awk '{print $1}')
     if [ -z "$EXPECTED_CHECKSUM" ]; then
-        log_error "Checksum not found for GripMock_${BLUE}${LATEST_VERSION}_${OS}_${ARCH}${NC}.tar.gz."
+        log_error "Checksum not found for ${BLUE}${ASSET_NAME}${NC}."
     fi
 
     ACTUAL_CHECKSUM=$($CHECKSUM_CMD "$DOWNLOAD_FILE" | awk '{print $1}')

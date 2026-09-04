@@ -11,3 +11,5 @@ bench/results/
 bench/results-*/
 bench/results-size/
 *.test
+
+dist/

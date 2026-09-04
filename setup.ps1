@@ -1,6 +1,9 @@
 param(
     [string]$InstallDir = "",
-    [switch]$NoPathUpdate
+    [switch]$NoPathUpdate,
+    # Installs the build without Go plugin support. Windows has no plugin
+    # support either way, so the two builds differ only in name.
+    [switch]$Slim
 )
 
 $ErrorActionPreference = "Stop"
@@ -73,7 +76,8 @@ $resolvedInstallDir = Resolve-InstallDir -Configured $InstallDir
 $arch = Get-Arch
 $version = Get-LatestVersion
 
-$assetName = "gripmock_${version}_windows_${arch}.zip"
+$flavor = if ($Slim) { "-slim" } else { "" }
+$assetName = "gripmock${flavor}_${version}_windows_${arch}.zip"
 $releaseBaseUrl = "https://github.com/bavix/gripmock/releases/download/v$version"
 $assetUrl = "$releaseBaseUrl/$assetName"
 $checksumUrl = "$releaseBaseUrl/checksums.txt"

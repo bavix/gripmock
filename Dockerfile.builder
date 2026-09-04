@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine3.23
+FROM golang:1.26-alpine3.24
 
 LABEL org.opencontainers.image.title="GripMock Builder"
 LABEL org.opencontainers.image.description="Builder image for GripMock runtime and Go plugins"
@@ -10,5 +10,7 @@ LABEL org.opencontainers.image.vendor="bavix"
 
 # hadolint ignore=DL3018
 RUN apk add --no-cache git build-base binutils
+
+COPY . /gripmock-src
 
 WORKDIR /work

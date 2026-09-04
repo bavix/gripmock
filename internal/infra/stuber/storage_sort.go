@@ -66,14 +66,6 @@ func mergeSortedParts(parts [][]*Stub) []*Stub {
 	return merged
 }
 
-func sortedCopy(stubs []*Stub) []*Stub {
-	sorted := make([]*Stub, len(stubs))
-	copy(sorted, stubs)
-	slices.SortFunc(sorted, compareStubsByPriorityAndID)
-
-	return sorted
-}
-
 func removeSortedStubByID(stubs []*Stub, id uuid.UUID) []*Stub {
 	for i, stub := range stubs {
 		if stub.ID == id {
