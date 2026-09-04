@@ -49,7 +49,7 @@ function Endpoint({ proto, addr }: Readonly<{ proto: string; addr: string }>) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
       <span style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{proto}</span>
-      <button type="button" onClick={() => copy(shown)} title={failed ? 'Copy failed — select the address and copy manually' : 'Click to copy'}
+      <button type="button" onClick={() => void copy(shown)} title={failed ? 'Copy failed — select the address and copy manually' : 'Click to copy'}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: 'var(--text)', background: 'var(--bg-tertiary)', border: 'none', padding: '2px 8px', borderRadius: 4, userSelect: 'all', textAlign: 'inherit' }}>
         {shown}
         {copied && <CheckCircle2 size={11} style={{ color: colors.success }} />}

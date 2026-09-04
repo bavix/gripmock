@@ -1,4 +1,3 @@
-import { byTimestampDesc } from '../lib/format';
 import type { CallRecord, Stub } from '../lib/types';
 
 export type Usage = { total: number; first: Date; last: Date } | null;
@@ -9,12 +8,18 @@ export function computeUsage(
 ): Usage {
   if (!history || !stub) return null;
 
-  const calls = history.filter((h) => h.stubId === stub.id).sort(byTimestampDesc);
-  if (calls.length === 0) return null;
+  let total = 0;
+  let first = 0;
+  let last = 0;
 
-  return {
-    total: calls.length,
-    first: new Date(calls[calls.length - 1].timestamp),
-    last: new Date(calls[0].timestamp),
-  };
+  for (const call of history) {
+    if (call.stubId !== stub.id) continue;
+    const at = new Date(call.timestamp).getTime();
+    if (total === 0 || at < first) first = at;
+    if (total === 0 || at > last) last = at;
+    total++;
+  }
+  if (total === 0) return null;
+
+  return { total, first: new Date(first), last: new Date(last) };
 }

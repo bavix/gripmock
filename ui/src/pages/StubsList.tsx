@@ -529,7 +529,7 @@ function StubCard({ stub, onDelete, expandedId, setExpandedId, navigate, methodT
 function CopyableId({ id }: { id: string }) {
   const { copied, copy } = useCopy();
   return (
-    <button type="button" onClick={() => copy(id)} title="Click to copy"
+    <button type="button" onClick={() => void copy(id)} title="Click to copy"
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--text-primary)', background: 'var(--bg-tertiary)', border: 'none', padding: '3px 8px', borderRadius: 4, userSelect: 'all', wordBreak: 'break-all', lineHeight: 1.4, textAlign: 'inherit' }}>
       {id}
       {copied

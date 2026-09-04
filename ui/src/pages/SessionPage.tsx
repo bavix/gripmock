@@ -57,7 +57,7 @@ export function SessionPage() {
         <div className="card-body" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {session
             ? <><Fingerprint size={16} style={{ color: colors.accent }} /><code style={{ color: 'var(--accent-text)', fontSize: 13 }}>{session}</code>
-                <button className="icon-btn" style={{ width: 26, height: 26 }} onClick={() => copy(session)} title="Copy"><Copy size={13} /></button></>
+                <button className="icon-btn" style={{ width: 26, height: 26 }} onClick={() => void copy(session)} title="Copy"><Copy size={13} /></button></>
             : <><Globe size={16} style={{ color: colors.success }} /><span style={{ color: colors.success, fontWeight: 600 }}>Global (no session)</span></>}
           <div style={{ flex: 1 }} />
           {session && <button className="btn btn-sm" onClick={() => setSession(null)}><Globe size={13} /> Use Global</button>}
@@ -90,7 +90,7 @@ export function SessionPage() {
                     }}>
                       <button onClick={() => activate(s)} title="Activate" style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, color: active ? 'var(--accent-text)' : 'var(--text)', padding: 0 }}>{s}</button>
                       {stubCount[s] > 0 && <span className="badge" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }} title="session-scoped stubs">{stubCount[s]}</span>}
-                      <button className="icon-btn" style={{ width: 20, height: 20 }} onClick={() => copy(s)} title="Copy"><Copy size={11} /></button>
+                      <button className="icon-btn" style={{ width: 20, height: 20 }} onClick={() => void copy(s)} title="Copy"><Copy size={11} /></button>
                       <button
                         className="icon-btn"
                         style={{ width: 20, height: 20, color: colors.error }}
