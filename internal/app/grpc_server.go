@@ -52,6 +52,7 @@ const (
 	defaultMaxRecvMsgSize = 4 << 20
 	maxLoggingStreamMsgs  = 32
 	maxHistoryStreamMsgs  = 100
+	maxLoggedBodyBytes    = 4 << 10
 	minStreamWorkers      = 4
 )
 

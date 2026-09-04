@@ -38,8 +38,8 @@ headers:
 ```
 
 **Behavior:**
-- Header name and value must match exactly
-- Case-sensitive comparison
+- The header value must match exactly (case-sensitive)
+- The header **name** is case-insensitive: `X-Api-Key`, `x-api-key` and `X-API-KEY` are the same header
 - All specified headers must be present
 
 ### 2. Partial Match (`contains`)
@@ -57,7 +57,7 @@ headers:
 - Only the listed headers are checked; every other header is ignored
 - Each listed header value must be equal — including multi-value headers, which
   are compared as the whole `;`-separated string
-- Case-sensitive by default
+- Header names are case-insensitive; values are compared case-sensitively
 
 ::: warning
 `contains` does **not** match part of a header value. `contains: {authorization: "Bearer"}`
@@ -78,7 +78,7 @@ headers:
 
 **Behavior:**
 - Uses Go's regex engine
-- Case-sensitive by default (use `(?i)` for case-insensitive)
+- Header names are case-insensitive; the pattern is applied to the value case-sensitively by default (use `(?i)` for a case-insensitive value)
 - Multiple values in header are matched individually
 
 ## Header-Specific Notes
@@ -94,9 +94,10 @@ headers:
     x-forwarded-for: "192.168.1.1; 10.0.0.1"
 ```
 
-### Case-Insensitive Matching
+### Case-Insensitive Value Matching
 
-Use regex with `(?i)` flag:
+Header *names* are always matched case-insensitively. To ignore case in the
+*value*, use regex with the `(?i)` flag:
 
 ```yaml
 headers:
@@ -107,13 +108,17 @@ headers:
 
 ### Header Names
 
-gRPC metadata keys are typically lowercase. Match against lowercase names:
+gRPC metadata keys always arrive lowercase, and stub header names are folded to
+lowercase when the stub is loaded, so the spelling you write does not matter:
 
 ```yaml
 headers:
   equals:
-    x-token: "abc123"   # not X-Token
+    x-token: "abc123"   # X-Token and X-TOKEN match the same header
 ```
+
+Lowercase is still the recommended spelling — it is what the wire and the
+`gripmock dump` output use.
 
 ## Real-World Examples
 

@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/bavix/gripmock/v3/internal/config"
+	"github.com/bavix/gripmock/v3/internal/deps"
 	"github.com/bavix/gripmock/v3/internal/infra/stuber"
 )
 
@@ -51,7 +52,7 @@ func runDump(cmd *cobra.Command, _ []string) error {
 		return errors.Newf("unsupported scheme %q, use http or https", scheme)
 	}
 
-	endpoint := scheme + "://" + cfg.HTTP.Addr
+	endpoint := dumpEndpoint(scheme, cfg.HTTP.Addr)
 
 	stubs, err := fetchStubs(cmd.Context(), endpoint, filterSrc)
 	if err != nil {
@@ -73,6 +74,10 @@ func runDump(cmd *cobra.Command, _ []string) error {
 	cmd.Printf("\ntotal: %d files, %d stubs\n", filesCount, len(stubs))
 
 	return nil
+}
+
+func dumpEndpoint(scheme, addr string) string {
+	return scheme + "://" + deps.NormalizePingAddress(addr)
 }
 
 func fetchStubs(ctx context.Context, baseURL string, source string) ([]*stuber.Stub, error) {

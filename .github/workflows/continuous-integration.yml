@@ -11,7 +11,7 @@ concurrency:
 
 env:
   GRPCTESTIFY_VERSION: "1.10.3"
-  GO_VERSION: "1.26.6"
+  GO_VERSION: "1.26.8"
 
 jobs:
   unit-tests:
@@ -185,6 +185,8 @@ jobs:
   goreleaser-check:
     name: "GoReleaser Check"
     runs-on: ubuntu-latest
+    outputs:
+      release_changed: ${{ steps.changes.outputs.release_changed }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -205,8 +207,55 @@ jobs:
       - name: Validate GoReleaser config
         run: goreleaser check
 
-      - name: Build snapshot with GoReleaser
-        run: goreleaser build --snapshot --clean
+      # The cgo builds need macOS and zig; the slim ones cover the config here.
+      - name: Build slim snapshot with GoReleaser
+        run: goreleaser build --snapshot --clean --id gripmock-slim
+
+      - name: Detect release-affecting changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "release_changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          base="origin/${{ github.base_ref }}"
+          git rev-parse --verify "$base" >/dev/null 2>&1 \
+            || git fetch --no-tags origin "${{ github.base_ref }}:refs/remotes/$base"
+          changed=$(git diff --name-only "$base...HEAD")
+          if printf '%s\n' "$changed" | grep -qE '^(\.goreleaser\.yml|go\.mod|go\.sum|\.github/workflows/(release\.yaml|continuous-integration\.yml))$'; then
+            echo "release_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  goreleaser-cgo-check:
+    name: "GoReleaser Check (cgo)"
+    needs: goreleaser-check
+    if: needs.goreleaser-check.outputs.release_changed == 'true'
+    # Same runner as the release: darwin cgo needs the macOS SDK.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install zig
+        run: brew install zig
+
+      - name: Setup GoReleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "~> 2.15.0"
+          install-only: true
+
+      - name: Build cgo snapshot with GoReleaser
+        run: goreleaser build --snapshot --clean --id gripmock
 
   e2e-tests:
     name: "E2E Tests (${{ matrix.platform }})"

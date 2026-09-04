@@ -93,6 +93,12 @@ fallbacks are gone. Use the `GATEWAY_*` variables above.
 | `SESSION_GC_INTERVAL` | `30s` | Session cleanup loop interval. |
 | `SESSION_GC_TTL` | `60s` | Session time-to-live. |
 
+## Shutdown
+
+| Variable | Default | Description |
+|---|---|---|
+| `SHUTDOWN_TIMEOUT` | `5s` | Graceful shutdown budget. When it expires the gRPC server is stopped forcefully and the HTTP servers drop open connections, so an in-flight stream cannot block the process. |
+
 ## Plugins
 
 | Variable | Default | Description |

@@ -235,6 +235,11 @@ export function shadowers(stub: Stub, all: Stub[]): Stub[] {
   return methodPeers(stub, all).filter((s) => s.priority > stub.priority);
 }
 
+export function stubRestoreBody(stub: Stub): Omit<Stub, 'id'> {
+  const { id: _id, ...rest } = stub;
+  return rest;
+}
+
 // The template text a stub answers with, or '' when the output is literal.
 export function outputTemplate(stub: Stub): string {
   const o = stub.output;

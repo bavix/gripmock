@@ -2,6 +2,15 @@
 
 set -e
 
+# --slim (or GRIPMOCK_SLIM=1) installs the build without Go plugin support.
+SLIM="${GRIPMOCK_SLIM:-0}"
+for arg in "$@"; do
+    case "$arg" in
+        --slim) SLIM=1 ;;
+        *) ;;
+    esac
+done
+
 # Check if terminal supports colors using tput
 if tput colors >/dev/null 2>&1 && [ "$(tput colors)" -ge 8 ]; then
     # Enable colors if supported
@@ -92,21 +101,37 @@ detect_os_and_architecture() {
         *) log_error "Unsupported architecture: ${BLUE}$ARCH${NC}" ;;
     esac
 
+    # The default build is cgo (Go plugins work) and needs glibc. On musl the
+    # slim build is the only one that runs; it has no plugin support.
+    FLAVOR=""
+    if [ "$SLIM" = "1" ]; then
+        FLAVOR="-slim"
+        log_info "Installing the slim build (no plugin support)."
+    elif [ "$OS" = "linux" ] && { ls /lib/ld-musl-* >/dev/null 2>&1 || (ldd --version 2>&1 | grep -qi musl); }; then
+        FLAVOR="-slim"
+        log_info "musl detected: installing the slim build (no plugin support)."
+    fi
+
     log_success "Detected OS: ${BLUE}$OS 🌍${NC}"
     log_success "Detected architecture: ${BLUE}$ARCH 💻${NC}"
 }
 
+# Token goes through a curl config on stdin: keeps it out of the process list.
+github_api_get() {
+    if [ -n "$GITHUB_TOKEN" ]; then
+        printf 'header = "Authorization: token %s"\n' "$GITHUB_TOKEN" | \
+            curl --retry 5 --retry-delay 3 --retry-all-errors \
+                --connect-timeout 30 --max-time 60 -s -K - "$1"
+    else
+        curl --retry 5 --retry-delay 3 --retry-all-errors \
+            --connect-timeout 30 --max-time 60 -s "$1"
+    fi
+}
+
 get_latest_version() {
     log_info "Fetching the latest version of GripMock from GitHub..."
-    
-    # Prepare curl command with authentication if token is available
-    CURL_CMD="curl --retry 5 --retry-delay 3 --retry-all-errors --connect-timeout 30 --max-time 60 -s"
-    if [ -n "$GITHUB_TOKEN" ]; then
-        CURL_CMD="$CURL_CMD -H \"Authorization: token $GITHUB_TOKEN\""
-    fi
-    
-    LATEST_RELEASE=$($CURL_CMD https://api.github.com/repos/bavix/gripmock/releases/latest)
-    if [ $? -ne 0 ]; then
+
+    if ! LATEST_RELEASE=$(github_api_get "https://api.github.com/repos/bavix/gripmock/releases/latest"); then
         log_error "Failed to connect to GitHub API. Check your internet connection."
     fi
     
@@ -154,7 +179,8 @@ download_checksums() {
 }
 
 download_gripmock() {
-    DOWNLOAD_URL="https://github.com/bavix/gripmock/releases/download/v${LATEST_VERSION}/gripmock_${LATEST_VERSION}_${OS}_${ARCH}.tar.gz"
+    ASSET_NAME="gripmock${FLAVOR}_${LATEST_VERSION}_${OS}_${ARCH}.tar.gz"
+    DOWNLOAD_URL="https://github.com/bavix/gripmock/releases/download/v${LATEST_VERSION}/${ASSET_NAME}"
 
     DOWNLOAD_FILE="$TMP_DIR/gripmock.tar.gz"
 
@@ -183,9 +209,9 @@ download_gripmock() {
 }
 
 verify_checksum() {
-    EXPECTED_CHECKSUM=$(grep "gripmock_${LATEST_VERSION}_${OS}_${ARCH}.tar.gz" "$CHECKSUM_FILE" | awk '{print $1}')
+    EXPECTED_CHECKSUM=$(grep "$ASSET_NAME" "$CHECKSUM_FILE" | awk '{print $1}')
     if [ -z "$EXPECTED_CHECKSUM" ]; then
-        log_error "Checksum not found for GripMock_${BLUE}${LATEST_VERSION}_${OS}_${ARCH}${NC}.tar.gz."
+        log_error "Checksum not found for ${BLUE}${ASSET_NAME}${NC}."
     fi
 
     ACTUAL_CHECKSUM=$($CHECKSUM_CMD "$DOWNLOAD_FILE" | awk '{print $1}')

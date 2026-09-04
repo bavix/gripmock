@@ -29,6 +29,7 @@ type remoteMock struct {
 	httpClient  *http.Client
 	session     string
 	sessionTTL  time.Duration
+	ttlMu       sync.Mutex
 	ttlTimer    *time.Timer
 	stubIDsMu   sync.Mutex
 	stubIDs     []uuid.UUID
@@ -37,9 +38,7 @@ type remoteMock struct {
 }
 
 func (m *remoteMock) Close() error {
-	if m.ttlTimer != nil {
-		m.ttlTimer.Stop()
-	}
+	m.stopSessionTTL()
 
 	cleanupErr := m.cleanupStubs()
 	opErr := m.getOpErr()
@@ -79,12 +78,38 @@ func (m *remoteMock) armSessionTTL() {
 		return
 	}
 
+	m.ttlMu.Lock()
+	defer m.ttlMu.Unlock()
+
 	m.ttlTimer = time.AfterFunc(m.sessionTTL, func() {
 		err := m.cleanupStubs()
 		if err != nil {
 			m.setOpErr(fmt.Errorf("gripmock: session TTL cleanup failed: %w", err))
 		}
 	})
+}
+
+func (m *remoteMock) touchSessionTTL() {
+	m.ttlMu.Lock()
+	defer m.ttlMu.Unlock()
+
+	if m.ttlTimer == nil {
+		return
+	}
+
+	m.ttlTimer.Reset(m.sessionTTL)
+}
+
+func (m *remoteMock) stopSessionTTL() {
+	m.ttlMu.Lock()
+	defer m.ttlMu.Unlock()
+
+	if m.ttlTimer == nil {
+		return
+	}
+
+	m.ttlTimer.Stop()
+	m.ttlTimer = nil
 }
 
 func (m *remoteMock) popStubIDs() []uuid.UUID {
@@ -115,6 +140,8 @@ func (m *remoteMock) deleteOwnedStubs() error {
 }
 
 func (m *remoteMock) purgeHistory() error {
+	m.touchSessionTTL()
+
 	return m.api().PurgeHistory()
 }
 
@@ -169,6 +196,8 @@ func (m *remoteMock) commitStubsBatch(stubs []*stuber.Stub) error {
 	for _, stub := range stubs {
 		m.appendStubID(stub.ID)
 	}
+
+	m.touchSessionTTL()
 
 	return nil
 }

@@ -70,15 +70,23 @@ brew tap gripmock/tap
 brew install --cask gripmock
 ```
 
+The cask is built with cgo, so `--plugins` works. `brew install --cask
+gripmock-slim` installs the same server without plugin support.
+
 #### Shell Script
 ```bash
 curl -s https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.sh | sh -s
 ```
 
+Add `-- --slim` to install the build without plugin support. On musl (Alpine) the
+slim build is selected automatically.
+
 #### PowerShell (Windows)
 ```powershell
 irm https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.ps1 | iex
 ```
+
+For the slim build: `&([scriptblock]::Create((irm https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.ps1))) -Slim`
 
 #### Docker
 ```bash
@@ -89,6 +97,13 @@ For plugin builds, use the paired builder image:
 
 ```bash
 docker pull bavix/gripmock:3.18.4-builder
+```
+
+If you never pass `--plugins`, use the slim image (built without cgo, so
+`plugin.Open` is unavailable):
+
+```bash
+docker pull bavix/gripmock:3.18.4-slim
 ```
 
 #### Go Install

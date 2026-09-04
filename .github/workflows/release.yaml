@@ -6,7 +6,8 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    # macOS runner: darwin artifacts are built with cgo for plugin support.
+    runs-on: macos-latest
     permissions:
       contents: write
     steps:
@@ -18,7 +19,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: '1.26.6'
+          go-version: '1.26.8'
+
+      - name: Install zig
+        run: brew install zig
 
       - name: Import GPG key
         uses: crazy-max/ghaction-import-gpg@v7

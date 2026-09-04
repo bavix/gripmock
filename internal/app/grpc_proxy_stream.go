@@ -321,6 +321,10 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 		state = NewStreamCaptureState()
 		state.startTime = startTime
 		state.recordDelay = capture && route.Source.RecordDelay
+
+		if !capture {
+			state.SetLimit(maxHistoryStreamMsgs)
+		}
 	}
 
 	var clientStream grpc.ClientStream
@@ -332,7 +336,10 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 		}()
 	}
 
-	clientStream, err = route.Conn.NewStream(proxyCtx, desc, m.fullMethod)
+	bidiCtx, bidiCancel := context.WithCancel(proxyCtx)
+	defer bidiCancel()
+
+	clientStream, err = route.Conn.NewStream(bidiCtx, desc, m.fullMethod)
 	if err != nil {
 		return err
 	}
@@ -341,9 +348,6 @@ func (m *grpcMocker) proxyBidiStreamWithRequests(
 
 	reqDone := make(chan error, 1)
 	respDone := make(chan error, 1)
-
-	bidiCtx, bidiCancel := context.WithCancel(proxyCtx)
-	defer bidiCancel()
 
 	go m.forwardBidiRequests(bidiCtx, stream, clientStream, prefetchedRequests, state, reqDone)
 	go m.forwardBidiResponses(bidiCtx, stream, clientStream, state, respDone)
@@ -369,20 +373,31 @@ func awaitBidiCompletion(reqDone, respDone <-chan error, guard time.Duration, ca
 			return nil, <-respDone
 		}
 
-		return reqErr, drainBidiSide(respDone, guard, cancel)
+		cancel()
+
+		return reqErr, drainBidiSide(respDone, guard)
 
 	case respErr := <-respDone:
-		return drainBidiSide(reqDone, guard, cancel), respErr
+		cancel()
+
+		return pollBidiSide(reqDone), respErr
 	}
 }
 
-func drainBidiSide(done <-chan error, guard time.Duration, cancel context.CancelFunc) error {
+func pollBidiSide(done <-chan error) error {
+	select {
+	case err := <-done:
+		return err
+	default:
+		return nil
+	}
+}
+
+func drainBidiSide(done <-chan error, guard time.Duration) error {
 	select {
 	case err := <-done:
 		return err
 	case <-time.After(guard):
-		cancel()
-
 		return nil
 	}
 }

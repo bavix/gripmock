@@ -7,6 +7,8 @@ import { useStubs } from '../hooks/useStubs';
 import { colors } from '../lib/theme';
 import { Fingerprint, Globe, Plus, Copy, History, ListOrdered, ShieldCheck, Trash2 } from 'lucide-react';
 import { useToast } from '../components/shared/Toast';
+import { copyText, COPY_FAILED } from '../lib/clipboard';
+import { newSessionId } from '../lib/ids';
 
 export function SessionPage() {
   const navigate = useNavigate();
@@ -30,8 +32,8 @@ export function SessionPage() {
   const all = sessionOptions(recent ?? [], backend?.sessions ?? [], session, Number.MAX_SAFE_INTEGER);
 
   const activate = (s: string) => { setSession(s); trackSession(s); };
-  const newSession = () => { const id = `sess-${crypto.randomUUID().slice(0, 8)}`; activate(id); toast.show(`Switched to ${id}`); };
-  const copy = (s: string) => { navigator.clipboard.writeText(s); toast.show('Copied session ID'); };
+  const newSession = () => { const id = newSessionId(); activate(id); toast.show(`Switched to ${id}`); };
+  const copy = async (s: string) => { toast.show(await copyText(s) ? 'Copied session ID' : COPY_FAILED); };
 
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 720 }}>
@@ -55,7 +57,7 @@ export function SessionPage() {
         <div className="card-body" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {session
             ? <><Fingerprint size={16} style={{ color: colors.accent }} /><code style={{ color: 'var(--accent-text)', fontSize: 13 }}>{session}</code>
-                <button className="icon-btn" style={{ width: 26, height: 26 }} onClick={() => copy(session)} title="Copy"><Copy size={13} /></button></>
+                <button className="icon-btn" style={{ width: 26, height: 26 }} onClick={() => void copy(session)} title="Copy"><Copy size={13} /></button></>
             : <><Globe size={16} style={{ color: colors.success }} /><span style={{ color: colors.success, fontWeight: 600 }}>Global (no session)</span></>}
           <div style={{ flex: 1 }} />
           {session && <button className="btn btn-sm" onClick={() => setSession(null)}><Globe size={13} /> Use Global</button>}
@@ -88,7 +90,7 @@ export function SessionPage() {
                     }}>
                       <button onClick={() => activate(s)} title="Activate" style={{ border: 'none', background: 'none', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, color: active ? 'var(--accent-text)' : 'var(--text)', padding: 0 }}>{s}</button>
                       {stubCount[s] > 0 && <span className="badge" style={{ background: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }} title="session-scoped stubs">{stubCount[s]}</span>}
-                      <button className="icon-btn" style={{ width: 20, height: 20 }} onClick={() => copy(s)} title="Copy"><Copy size={11} /></button>
+                      <button className="icon-btn" style={{ width: 20, height: 20 }} onClick={() => void copy(s)} title="Copy"><Copy size={11} /></button>
                       <button
                         className="icon-btn"
                         style={{ width: 20, height: 20, color: colors.error }}

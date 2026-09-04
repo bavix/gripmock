@@ -54,10 +54,13 @@ func TestWithSessionTTLAssignsTTL(t *testing.T) {
 	require.Equal(t, 2*time.Minute, o.sessionTTL)
 }
 
-func TestDefaultSessionTTL(t *testing.T) {
+func TestNewOptionsDisablesClientSideSessionTTL(t *testing.T) {
 	t.Parallel()
 
-	require.Equal(t, 60*time.Second, defaultSessionTTL)
+	require.Zero(t, newOptions().sessionTTL)
+	require.Zero(t, newOptions(WithSession("suite-1")).sessionTTL)
+	require.Equal(t, defaultHealthyTimeout, newOptions().healthyTimeout)
+	require.Equal(t, time.Minute, newOptions(WithSessionTTL(time.Minute)).sessionTTL)
 }
 
 func TestWithGRPCTimeoutAssignsTimeout(t *testing.T) {

@@ -1,6 +1,10 @@
 package stuber
 
-import "regexp/syntax"
+import (
+	"regexp/syntax"
+
+	"github.com/bavix/gripmock/v3/internal/infra/deeply"
+)
 
 // The equals index turns the common "one stub per input value" setup from a
 // full scan of every stub registered for a service/method into a map lookup.
@@ -206,8 +210,8 @@ func (s *storage) indexedCandidates(indexes []uint64, queryData map[string]any) 
 		usable = true
 
 		for queryKey, queryValue := range queryData {
-			value, isString := queryValue.(string)
-			if !isString {
+			value, probeable := indexProbeValue(queryValue)
+			if !probeable {
 				continue
 			}
 
@@ -226,6 +230,19 @@ func (s *storage) indexedCandidates(indexes []uint64, queryData map[string]any) 
 	}
 
 	return candidates, true
+}
+
+func indexProbeValue(value any) (string, bool) {
+	if str, isString := value.(string); isString {
+		return str, true
+	}
+
+	switch value.(type) {
+	case nil, bool, map[string]any, []any:
+		return "", false
+	}
+
+	return deeply.Stringify(value)
 }
 
 // keyVariations fills dst with the distinct stub-side spellings a query key can

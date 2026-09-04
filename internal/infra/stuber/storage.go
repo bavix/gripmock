@@ -67,26 +67,22 @@ func (s *storage) clear() {
 func (s *storage) findByMethodAvailable(method, session string) iter.Seq[*Stub] {
 	return func(yield func(*Stub) bool) {
 		s.mu.RLock()
-		defer s.mu.RUnlock()
-
 		methodID := s.id(method)
-
 		global := s.methodSorted[methodID][""]
-		if session == "" {
-			sorted := sortedCopy(global)
-			for _, stub := range sorted {
-				if !yield(stub) {
-					return
-				}
-			}
 
-			return
+		var all []*Stub
+
+		if session == "" {
+			all = slices.Clone(global)
+		} else {
+			sessionStubs := s.methodSorted[methodID][session]
+			all = make([]*Stub, 0, len(global)+len(sessionStubs))
+			all = append(all, global...)
+			all = append(all, sessionStubs...)
 		}
 
-		sessionStubs := s.methodSorted[methodID][session]
-		all := make([]*Stub, 0, len(global)+len(sessionStubs))
-		all = append(all, global...)
-		all = append(all, sessionStubs...)
+		s.mu.RUnlock()
+
 		slices.SortFunc(all, compareStubsByPriorityAndID)
 
 		for _, stub := range all {
@@ -124,9 +120,10 @@ func (s *storage) findAllAvailable(left, right, session string) (iter.Seq[*Stub]
 
 	return func(yield func(*Stub) bool) {
 		s.mu.RLock()
-		defer s.mu.RUnlock()
+		snapshot := detachStubs(collectAvailableSorted(s.itemSorted, indexes, session))
+		s.mu.RUnlock()
 
-		for _, stub := range collectAvailableSorted(s.itemSorted, indexes, session) {
+		for _, stub := range snapshot {
 			if !yield(stub) {
 				return
 			}
@@ -145,9 +142,15 @@ func (s *storage) size() int {
 func (s *storage) values() iter.Seq[*Stub] {
 	return func(yield func(*Stub) bool) {
 		s.mu.RLock()
-		defer s.mu.RUnlock()
+		snapshot := make([]*Stub, 0, len(s.itemsByID))
 
 		for _, v := range s.itemsByID {
+			snapshot = append(snapshot, v)
+		}
+
+		s.mu.RUnlock()
+
+		for _, v := range snapshot {
 			if !yield(v) {
 				return
 			}

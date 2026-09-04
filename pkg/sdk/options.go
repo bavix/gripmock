@@ -49,10 +49,19 @@ type options struct {
 	healthyTimeout  time.Duration
 }
 
-const (
-	defaultHealthyTimeout = 10 * time.Second
-	defaultSessionTTL     = 60 * time.Second
-)
+func newOptions(opts ...Option) *options {
+	o := &options{healthyTimeout: defaultHealthyTimeout}
+
+	for _, opt := range opts {
+		if opt != nil {
+			opt(o)
+		}
+	}
+
+	return o
+}
+
+const defaultHealthyTimeout = 10 * time.Second
 
 type Option func(*options)
 

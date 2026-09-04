@@ -53,7 +53,7 @@ jobs:
             version=${{ github.ref_name }}
             commit=${{ github.sha }}
             date=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
-          outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=zstd,compression-level=19
           cache-from: type=gha,scope=builder-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=builder-${{ matrix.arch }}
 
@@ -69,17 +69,38 @@ jobs:
             version=${{ github.ref_name }}
             commit=${{ github.sha }}
             date=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
-          outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true
+            BUILDER_IMAGE=ghcr.io/bavix/gripmock@${{ steps.build_builder.outputs.digest }}
+          outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=zstd,compression-level=19
           cache-from: type=gha,scope=runtime-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=runtime-${{ matrix.arch }}
 
+      - name: Build slim runtime image
+        id: build_slim
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            version=${{ github.ref_name }}
+            commit=${{ github.sha }}
+            date=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
+            BUILDER_IMAGE=ghcr.io/bavix/gripmock@${{ steps.build_builder.outputs.digest }}
+            cgo=0
+          outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=zstd,compression-level=19
+          cache-from: type=gha,scope=slim-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=slim-${{ matrix.arch }}
+
       - name: Export digests
         run: |
-          mkdir -p /tmp/digests/builder /tmp/digests/runtime
+          mkdir -p /tmp/digests/builder /tmp/digests/runtime /tmp/digests/slim
           builder='${{ steps.build_builder.outputs.digest }}'
           runtime='${{ steps.build_runtime.outputs.digest }}'
+          slim='${{ steps.build_slim.outputs.digest }}'
           touch "/tmp/digests/builder/${builder#sha256:}"
           touch "/tmp/digests/runtime/${runtime#sha256:}"
+          touch "/tmp/digests/slim/${slim#sha256:}"
 
       - name: Upload digests
         uses: actions/upload-artifact@v7
@@ -129,6 +150,21 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}-builder
             type=semver,pattern={{major}}-builder
 
+      - name: Docker meta (slim)
+        id: meta_slim
+        uses: docker/metadata-action@v6
+        with:
+          images: |
+            bavix/gripmock
+            ghcr.io/bavix/gripmock
+          flavor: |
+            latest=false
+          tags: |
+            type=ref,event=branch,suffix=-slim
+            type=semver,pattern={{version}}-slim
+            type=semver,pattern={{major}}.{{minor}}-slim
+            type=semver,pattern={{major}}-slim
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -159,4 +195,12 @@ jobs:
           docker buildx imagetools create \
             --annotation "index:org.opencontainers.image.description=gRPC Mock Server" \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< '${{ steps.meta.outputs.json }}') \
+            $(printf "ghcr.io/bavix/gripmock@sha256:%s " *)
+
+      - name: Push slim manifest list
+        working-directory: /tmp/digests/slim
+        run: |
+          docker buildx imagetools create \
+            --annotation "index:org.opencontainers.image.description=gRPC Mock Server (slim, no plugin support)" \
+            $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< '${{ steps.meta_slim.outputs.json }}') \
             $(printf "ghcr.io/bavix/gripmock@sha256:%s " *)

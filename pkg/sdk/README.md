@@ -184,7 +184,7 @@ srv.ExpectUnary("/svc/Method").
 | `WithListenAddr(network, addr)` | Listen on a specific address (default: `:0`) |
 | `WithRemote(grpcAddr, restURL)` | Connect to an external GripMock |
 | `WithSession(id)` | Session isolation for parallel tests |
-| `WithSessionTTL(d)` | Cleanup window for session resources |
+| `WithSessionTTL(d)` | Opt-in idle timer for session cleanup (off by default; reset by every SDK call) |
 | `WithGRPCTimeout(d)` | Per-RPC timeout for remote gRPC calls |
 | `WithHealthCheckTimeout(d)` | Readiness check timeout |
 | `WithReflection(addr)` | Load descriptors via gRPC reflection |
