@@ -3,6 +3,7 @@ param(
     [switch]$NoPathUpdate,
     # Installs the build without Go plugin support. Windows has no plugin
     # support either way, so the two builds differ only in name.
+    # Piped installs cannot pass switches, so $env:GRIPMOCK_SLIM=1 works too.
     [switch]$Slim
 )
 
@@ -76,7 +77,8 @@ $resolvedInstallDir = Resolve-InstallDir -Configured $InstallDir
 $arch = Get-Arch
 $version = Get-LatestVersion
 
-$flavor = if ($Slim) { "-slim" } else { "" }
+$useSlim = $Slim -or ($env:GRIPMOCK_SLIM -eq "1")
+$flavor = if ($useSlim) { "-slim" } else { "" }
 $assetName = "gripmock${flavor}_${version}_windows_${arch}.zip"
 $releaseBaseUrl = "https://github.com/bavix/gripmock/releases/download/v$version"
 $assetUrl = "$releaseBaseUrl/$assetName"

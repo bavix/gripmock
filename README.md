@@ -86,7 +86,11 @@ slim build is selected automatically.
 irm https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.ps1 | iex
 ```
 
-For the slim build: `&([scriptblock]::Create((irm https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.ps1))) -Slim`
+For the build without plugin support, set `GRIPMOCK_SLIM` first:
+```powershell
+$env:GRIPMOCK_SLIM=1
+irm https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.ps1 | iex
+```
 
 #### Docker
 ```bash
