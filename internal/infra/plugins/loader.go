@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"plugin"
+	"runtime"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -44,6 +45,21 @@ func (l *Loader) loadOne(
 	}
 
 	if stat.IsDir() {
+		return true
+	}
+
+	if strings.EqualFold(filepath.Ext(path), ".dll") {
+		dllErr := loadDLL(ctx, reg, path)
+		if dllErr != nil {
+			logger.Warn().Str("path", path).Err(dllErr).Msg("plugin load skip")
+		}
+
+		return true
+	}
+
+	if runtime.GOOS == "windows" {
+		logger.Warn().Str("path", path).Msg("windows loads .dll plugins only; build the plugin with gripmock plugin build")
+
 		return true
 	}
 
@@ -134,7 +150,7 @@ func (l *Loader) expandPaths() []string {
 	for _, p := range l.paths {
 		stat, err := os.Stat(p)
 		if err == nil && stat.IsDir() {
-			matches, globErr := filepath.Glob(filepath.Join(p, "*.so"))
+			matches, globErr := filepath.Glob(filepath.Join(p, pluginGlob()))
 			if globErr == nil {
 				paths = append(paths, matches...)
 			}
@@ -155,6 +171,14 @@ func (l *Loader) expandPaths() []string {
 	}
 
 	return paths
+}
+
+func pluginGlob() string {
+	if runtime.GOOS == "windows" {
+		return "*.dll"
+	}
+
+	return "*.so"
 }
 
 func existsPlugin(ctx context.Context, reg pkgplugins.Registry, name string) bool {

@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package com.bavix.plugins.v1;
+
+service PluginService {
+    rpc Apply (ApplyRequest) returns (ApplyResponse) {}
+}
+
+message ApplyRequest {
+    string value = 1;
+}
+
+message ApplyResponse {
+    string sha256 = 1;
+    string md5 = 2;
+    string pow = 3;
+    string delay = 4;
+}

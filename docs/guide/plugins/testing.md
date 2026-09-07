@@ -56,3 +56,29 @@ fn := plugintest.MustLookupFunc(t, reg, "divide")
 _, err := plugintest.Call(t.Context(), fn, 10.0, 0.0)
 require.Error(t, err)
 ```
+
+## End-to-end
+
+Unit tests cover `Register`. They do not prove the built artifact loads: that
+depends on the transport, the toolchain and, for `.so`, on matching build paths.
+Build it and let the server answer:
+
+```bash
+gripmock plugin build ./path/to/plugin --out ./plugins/myplugin.so
+gripmock info --plugins=./plugins
+```
+
+`info` prints every loaded plugin with its functions. A plugin that failed to
+load is absent from that list and the reason is in the log.
+
+For behaviour, run the server against a stub that calls the function and drive it
+with [grpctestify](https://github.com/gripmock/grpctestify):
+
+```bash
+gripmock --plugins=./plugins --stub=./testdata ./testdata/service.proto &
+gripmock check --timeout=60s --silent
+grpctestify ./testdata/
+```
+
+This repository runs exactly that for `examples/plugins/*` on Linux, macOS and
+Windows; the fixtures live in `third_party/plugins`.
