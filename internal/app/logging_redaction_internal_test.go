@@ -22,7 +22,7 @@ func TestRedactMetadataHidesCredentials(t *testing.T) {
 		"x-request-id":  []string{"req-42"},
 	}
 
-	redacted := redactMetadata(md)
+	redacted := DefaultLogOptions().redactMetadata(md)
 
 	require.Equal(t, []string{redactedValue}, redacted["authorization"])
 	require.Equal(t, []string{redactedValue}, redacted["cookie"])
@@ -40,10 +40,34 @@ func TestRedactMetadataHidesCredentials(t *testing.T) {
 	}
 }
 
+func TestRedactMetadataCanBeDisabled(t *testing.T) {
+	t.Parallel()
+
+	opts := DefaultLogOptions()
+	opts.RedactMetadata = false
+
+	md := metadata.MD{"authorization": []string{"Bearer super-secret"}}
+	require.Equal(t, md, opts.redactMetadata(md))
+}
+
+func TestRedactMetadataUsesConfiguredKeys(t *testing.T) {
+	t.Parallel()
+
+	opts := LogOptions{RedactMetadata: true, RedactKeys: []string{"X-Tenant "}}
+
+	redacted := opts.redactMetadata(metadata.MD{
+		"x-tenant":      []string{"acme"},
+		"authorization": []string{"Bearer x"},
+	})
+
+	require.Equal(t, []string{redactedValue}, redacted["x-tenant"])
+	require.Equal(t, []string{"Bearer x"}, redacted["authorization"])
+}
+
 func TestRedactMetadataIsCaseInsensitive(t *testing.T) {
 	t.Parallel()
 
-	redacted := redactMetadata(metadata.MD{"Authorization": []string{"Bearer x"}})
+	redacted := DefaultLogOptions().redactMetadata(metadata.MD{"Authorization": []string{"Bearer x"}})
 	require.Equal(t, []string{redactedValue}, redacted["Authorization"])
 }
 

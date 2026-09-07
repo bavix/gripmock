@@ -69,6 +69,8 @@ func (b *Builder) GRPCServe(ctx context.Context, param *proto.Arguments) error {
 		b.TemplateEngine(ctx),
 	)
 
+	grpcServer.SetLogOptions(b.LogOptions())
+
 	server, err := grpcServer.Build(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to build gRPC server")
@@ -130,6 +132,15 @@ func stopGRPCServer(ctx context.Context, server *grpc.Server) {
 	case <-ctx.Done():
 		server.Stop()
 		<-stopped
+	}
+}
+
+// LogOptions maps the logging configuration onto what the call log keeps.
+func (b *Builder) LogOptions() app.LogOptions {
+	return app.LogOptions{
+		RedactMetadata: b.config.LogRedactMetadata,
+		RedactKeys:     b.config.LogRedactKeys,
+		MessageContent: b.config.LogMessageContent,
 	}
 }
 

@@ -54,12 +54,12 @@ func (s *GRPCServer) createServer(ctx context.Context) *grpc.Server {
 		grpc.ChainUnaryInterceptor(
 			grpccontext.PanicRecoveryUnaryInterceptor,
 			grpccontext.UnaryInterceptor(logger),
-			LogUnaryInterceptor,
+			s.logUnaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
 			grpccontext.PanicRecoveryStreamInterceptor,
 			grpccontext.StreamInterceptor(logger),
-			LogStreamInterceptor,
+			s.logStreamInterceptor,
 		),
 		grpc.UnknownServiceHandler(s.handleUnknownService),
 	}

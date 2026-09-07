@@ -91,7 +91,7 @@ func TestWithRemoteKeepsEmptyRestURLWhenNotProvided(t *testing.T) {
 	WithRemote("localhost:4770", "")(o)
 
 	require.Equal(t, "localhost:4770", o.remoteAddr)
-	require.Equal(t, "", o.remoteRestURL) //nolint:testifylint
+	require.Empty(t, o.remoteRestURL)
 }
 
 func TestWithRemoteSetsExplicitRestURL(t *testing.T) {

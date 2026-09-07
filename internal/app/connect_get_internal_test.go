@@ -77,7 +77,10 @@ func TestConnectGetRequestDecodesQuery(t *testing.T) {
 		body, err := connectGetRequest(r, desc)
 		require.NoError(t, err)
 		require.Equal(t, payload, string(body))
-		require.Equal(t, contentTypeJSON, connectGetContentType(r)) //nolint:testifylint
+
+		want := contentTypeJSON
+
+		require.Equal(t, want, connectGetContentType(r))
 	})
 
 	t.Run("base64 payload", func(t *testing.T) {

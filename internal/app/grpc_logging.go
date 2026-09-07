@@ -20,8 +20,23 @@ import (
 	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
 )
 
-// LogUnaryInterceptor logs unary gRPC calls.
-func LogUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+// logUnaryInterceptor logs unary gRPC calls.
+func (s *GRPCServer) logUnaryInterceptor(
+	ctx context.Context,
+	req any,
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (any, error) {
+	return logUnaryCall(ctx, req, info, handler, s.logOptions)
+}
+
+func logUnaryCall(
+	ctx context.Context,
+	req any,
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+	opts LogOptions,
+) (any, error) {
 	start := time.Now()
 	resp, err := handler(ctx, req)
 
@@ -44,21 +59,37 @@ func LogUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInf
 		Str("protocol", "grpc")
 
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		event.Interface("grpc.metadata", redactMetadata(md))
+		event.Interface("grpc.metadata", opts.redactMetadata(md))
 	}
 
-	logMessageContent(event, "grpc.request.content", req)
-	logMessageContent(event, "grpc.response.content", resp)
+	opts.logMessageContent(event, "grpc.request.content", req)
+	opts.logMessageContent(event, "grpc.response.content", resp)
 
 	event.Msg("gRPC call completed")
 
 	return resp, err
 }
 
-// LogStreamInterceptor logs streaming gRPC calls.
-func LogStreamInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+// logStreamInterceptor logs streaming gRPC calls.
+func (s *GRPCServer) logStreamInterceptor(
+	srv any,
+	stream grpc.ServerStream,
+	info *grpc.StreamServerInfo,
+	handler grpc.StreamHandler,
+) error {
+	return logStreamCall(stream.Context(), srv, stream, info, handler, s.logOptions)
+}
+
+func logStreamCall(
+	ctx context.Context,
+	srv any,
+	stream grpc.ServerStream,
+	info *grpc.StreamServerInfo,
+	handler grpc.StreamHandler,
+	opts LogOptions,
+) error {
 	start := time.Now()
-	grpcPeer, _ := peer.FromContext(stream.Context())
+	grpcPeer, _ := peer.FromContext(ctx)
 	service, method := splitMethodName(info.FullMethod)
 
 	wrapped := newLoggingStream(stream)
@@ -71,7 +102,7 @@ func LogStreamInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamSe
 		level = zerolog.DebugLevel
 	}
 
-	zerolog.Ctx(stream.Context()).WithLevel(level).
+	event := zerolog.Ctx(ctx).WithLevel(level).
 		Str("grpc.component", "server").
 		Str("grpc.method", method).
 		Str("grpc.method_type", "stream").
@@ -79,10 +110,18 @@ func LogStreamInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamSe
 		Str("grpc.code", status.Code(err).String()).
 		Dur("grpc.time_ms", time.Since(start)).
 		Str("peer.address", getPeerAddress(grpcPeer)).
-		Array("grpc.request.content", toLogArray(requests...)).
-		Array("grpc.response.content", toLogArray(responses...)).
-		Str("protocol", "grpc").
-		Msg("gRPC call completed")
+		Str("protocol", "grpc")
+
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		event.Interface("grpc.metadata", opts.redactMetadata(md))
+	}
+
+	if opts.MessageContent {
+		event.Array("grpc.request.content", toLogArray(requests...)).
+			Array("grpc.response.content", toLogArray(responses...))
+	}
+
+	event.Msg("gRPC call completed")
 
 	return err
 }
@@ -236,24 +275,54 @@ func (s *loggingStream) appendResponse(m any) {
 	}
 }
 
-//nolint:gochecknoglobals
-var sensitiveMetadataKeys = map[string]struct{}{
-	"authorization":       {},
-	"proxy-authorization": {},
-	"cookie":              {},
-	"set-cookie":          {},
-	"x-api-key":           {},
-	"api-key":             {},
-	"x-auth-token":        {},
-}
-
 const redactedValue = "[REDACTED]"
 
-func redactMetadata(md metadata.MD) metadata.MD {
+// DefaultRedactKeys lists the metadata keys hidden from the call log unless the
+// configuration replaces them.
+func DefaultRedactKeys() []string {
+	return []string{
+		"authorization",
+		"proxy-authorization",
+		"cookie",
+		"set-cookie",
+		"x-api-key",
+		"api-key",
+		"x-auth-token",
+	}
+}
+
+// LogOptions controls how much of a call reaches the log. Build it with
+// DefaultLogOptions: the zero value neither redacts metadata nor logs bodies.
+type LogOptions struct {
+	RedactMetadata bool
+	RedactKeys     []string
+	MessageContent bool
+}
+
+// DefaultLogOptions redacts the well-known credential headers and logs bodies.
+func DefaultLogOptions() LogOptions {
+	return LogOptions{RedactMetadata: true, RedactKeys: DefaultRedactKeys(), MessageContent: true}
+}
+
+func (o LogOptions) redactMetadata(md metadata.MD) metadata.MD {
+	if !o.RedactMetadata {
+		return md
+	}
+
+	keys := o.RedactKeys
+	if keys == nil {
+		keys = DefaultRedactKeys()
+	}
+
+	sensitive := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		sensitive[strings.ToLower(strings.TrimSpace(key))] = struct{}{}
+	}
+
 	redacted := make(metadata.MD, len(md))
 
 	for key, values := range md {
-		if _, sensitive := sensitiveMetadataKeys[strings.ToLower(key)]; sensitive {
+		if _, hide := sensitive[strings.ToLower(key)]; hide {
 			redacted[key] = []string{redactedValue}
 
 			continue
@@ -265,7 +334,11 @@ func redactMetadata(md metadata.MD) metadata.MD {
 	return redacted
 }
 
-func logMessageContent(event *zerolog.Event, key string, msg any) {
+func (o LogOptions) logMessageContent(event *zerolog.Event, key string, msg any) {
+	if !o.MessageContent {
+		return
+	}
+
 	content := protoToJSON(msg)
 	if content == nil {
 		return

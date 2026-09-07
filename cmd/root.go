@@ -177,7 +177,7 @@ func init() { //nolint:gochecknoinits
 		&pluginsFlag,
 		"plugins",
 		[]string{},
-		"Template plugin paths (.so)")
+		"Template plugin paths (.so, .dll on windows)")
 
 	rootCmd.PersistentFlags().StringSliceVarP(
 		&sourceFlag,

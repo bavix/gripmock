@@ -740,7 +740,9 @@ func TestConnectStreamingEndFrameSetsContentType(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, writeConnectFrame(rec, body, true))
 
-	require.Equal(t, contentTypeConnectJSON, rec.Header().Get(headerContentType)) //nolint:testifylint
+	want := contentTypeConnectJSON
+
+	require.Equal(t, want, rec.Header().Get(headerContentType))
 	require.JSONEq(t, "{}", rec.Body.String()[ConnectEnvelopeHeaderSize:],
 		"the end-of-stream envelope must carry a JSON object")
 }

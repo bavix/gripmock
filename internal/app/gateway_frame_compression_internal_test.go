@@ -138,7 +138,7 @@ func TestDecompressFrameRejectsDecompressionBomb(t *testing.T) {
 	payload, err := decodeFramePayload(connectEnvelopeFlagCompressed, frame, hdr)
 	require.Error(t, err)
 	require.Equal(t, codes.ResourceExhausted, status.Code(err))
-	require.Zero(t, len(payload), "an oversized frame must yield no payload") //nolint:testifylint
+	require.Empty(t, payload, "an oversized frame must yield no payload")
 }
 
 func TestDecompressFrameAcceptsPayloadAtTheLimit(t *testing.T) {

@@ -49,6 +49,10 @@ type OTelConfig struct {
 type Config struct {
 	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
 
+	LogRedactMetadata bool     `env:"LOG_REDACT_METADATA" envDefault:"true"`
+	LogRedactKeys     []string `env:"LOG_REDACT_KEYS"`
+	LogMessageContent bool     `env:"LOG_MESSAGE_CONTENT" envDefault:"true"`
+
 	GRPCNetwork string           `env:"GRPC_NETWORK"    envDefault:"tcp"`
 	GRPC        ServerConfig     `envPrefix:"GRPC_"`
 	GRPCTLS     TLSConfig        `envPrefix:"GRPC_TLS_"`

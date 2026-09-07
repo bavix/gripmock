@@ -81,7 +81,10 @@ func TestGatewayReflectionAnswersOverConnect(t *testing.T) {
 	router.ServeHTTP(rec, req)
 
 	require.Equal(t, http.StatusOK, rec.Code)
-	require.Equal(t, contentTypeConnectJSON, rec.Header().Get(headerContentType)) //nolint:testifylint
+
+	want := contentTypeConnectJSON
+
+	require.Equal(t, want, rec.Header().Get(headerContentType))
 
 	frames := splitConnectFrames(t, rec.Body.Bytes())
 	require.Len(t, frames, 2, "one response frame plus the end-of-stream frame")

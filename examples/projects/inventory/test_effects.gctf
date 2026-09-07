@@ -1,0 +1,39 @@
+--- META ---
+name: effects scenario
+summary: First call warms the cache and upserts the stub that answers the second call
+tags: [effects, stateful]
+
+--- ENDPOINT ---
+inventory.InventoryService/GetResourceDecorationByIPsStream
+
+--- REQUEST ---
+{
+  "k8s_cluster_id": "effects-cluster",
+  "ips": [
+    "10.0.0.7"
+  ]
+}
+
+--- RESPONSE ---
+{}
+
+--- ENDPOINT ---
+inventory.InventoryService/GetResourceDecorationByIPsStream
+
+--- REQUEST ---
+{
+  "k8s_cluster_id": "effects-cluster",
+  "ips": [
+    "10.0.0.7"
+  ]
+}
+
+--- RESPONSE ---
+{
+  "ips_to_decorations": {
+    "10.0.0.7": {
+      "decoration": "warm-cache",
+      "environment": "staging"
+    }
+  }
+}
