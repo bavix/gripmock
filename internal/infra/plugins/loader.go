@@ -58,7 +58,7 @@ func (l *Loader) loadOne(
 	}
 
 	if runtime.GOOS == "windows" {
-		logger.Warn().Str("path", path).Msg("windows loads .dll plugins only; build the plugin with gripmock plugin build")
+		logger.Warn().Str("path", path).Msg("windows loads .dll plugins only; build the plugin with -buildmode=c-shared")
 
 		return true
 	}

@@ -5,6 +5,7 @@ gripmock
 temp
 node_modules/
 plugins/*.so
+.gripmock/
 
 bench/stubs*.json
 bench/results/

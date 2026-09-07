@@ -26,6 +26,12 @@ func samplePlugin(reg pkgplugins.Registry) {
 			pkgplugins.Specs(
 				pkgplugins.FuncSpec{Name: "upper", Fn: strings.ToUpper, Description: "upper case"},
 				pkgplugins.FuncSpec{Name: "sum", Fn: func(a, b float64) float64 { return a + b }},
+				pkgplugins.FuncSpec{Name: "count", Fn: func(s string) int { return len(s) }},
+				pkgplugins.FuncSpec{Name: "half", Fn: func(v float64) float64 { return v / 2 }},
+				pkgplugins.FuncSpec{Name: "twice", Fn: func(n int) int { return n * 2 }},
+				pkgplugins.FuncSpec{Name: "nested", Fn: func() any {
+					return map[string]any{"id": 891568578, "ratio": 2.5, "tags": []any{1, "a"}}
+				}},
 				pkgplugins.FuncSpec{
 					Name: "boom",
 					Fn: func(_ context.Context, _ ...any) (any, error) {
@@ -42,11 +48,11 @@ func linked(t *testing.T) (*Registry, context.Context) {
 	t.Helper()
 
 	reg := NewRegistry()
+	ctx := t.Context()
 	plug := &dllPlugin{path: "sample.dll", invoke: func(name string, argsJSON string) (string, error) {
-		return cshared.Call(name, argsJSON), nil
+		return cshared.Call(ctx, name, argsJSON), nil
 	}}
 
-	ctx := context.Background()
 	require.NoError(t, plug.register(ctx, reg, cshared.Describe()))
 
 	return reg, ctx
@@ -83,9 +89,71 @@ func TestDLLCallsCrossTheContract(t *testing.T) {
 	sum, ok := reg.Funcs()["sum"].(pkgplugins.Func)
 	require.True(t, ok)
 
-	total, err := sum(ctx, 2, 3)
+	total, err := sum(ctx, 2.0, 3.0)
 	require.NoError(t, err)
 	require.InEpsilon(t, 5.0, total, 1e-9)
+}
+
+func TestDLLKeepsIntegersWhole(t *testing.T) {
+	t.Parallel()
+
+	reg, ctx := linked(t)
+
+	count, ok := reg.Funcs()["count"].(pkgplugins.Func)
+	require.True(t, ok)
+
+	out, err := count(ctx, "abc")
+	require.NoError(t, err)
+	require.Equal(t, int64(3), out)
+
+	half, ok := reg.Funcs()["half"].(pkgplugins.Func)
+	require.True(t, ok)
+
+	ratio, err := half(ctx, 9.0)
+	require.NoError(t, err)
+	require.InEpsilon(t, 4.5, ratio, 1e-9)
+
+	whole, err := half(ctx, 8.0)
+	require.NoError(t, err)
+	require.InEpsilon(t, 4.0, whole, 1e-9)
+	require.IsType(t, float64(0), whole)
+}
+
+func TestDLLKeepsArgumentKinds(t *testing.T) {
+	t.Parallel()
+
+	reg, ctx := linked(t)
+
+	twice, ok := reg.Funcs()["twice"].(pkgplugins.Func)
+	require.True(t, ok)
+
+	out, err := twice(ctx, 21)
+	require.NoError(t, err)
+	require.Equal(t, int64(42), out)
+
+	sum, ok := reg.Funcs()["sum"].(pkgplugins.Func)
+	require.True(t, ok)
+
+	_, err = sum(ctx, 2, 3)
+	require.ErrorContains(t, err, "have int want float64")
+}
+
+func TestDLLKeepsIntegersInsideContainers(t *testing.T) {
+	t.Parallel()
+
+	reg, ctx := linked(t)
+
+	nested, ok := reg.Funcs()["nested"].(pkgplugins.Func)
+	require.True(t, ok)
+
+	out, err := nested(ctx)
+	require.NoError(t, err)
+
+	value, ok := out.(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, int64(891568578), value["id"])
+	require.InEpsilon(t, 2.5, value["ratio"], 1e-9)
+	require.Equal(t, []any{int64(1), "a"}, value["tags"])
 }
 
 func TestDLLPropagatesPluginError(t *testing.T) {
@@ -108,8 +176,8 @@ func TestDLLRejectsBrokenPayloads(t *testing.T) {
 		return "{", nil
 	}}
 
-	require.Error(t, plug.register(context.Background(), NewRegistry(), "{"))
+	require.Error(t, plug.register(t.Context(), NewRegistry(), "{"))
 
-	_, err := plug.proxy("upper")(context.Background(), "abc")
+	_, err := plug.proxy("upper")(t.Context(), "abc")
 	require.Error(t, err)
 }

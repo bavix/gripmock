@@ -6,6 +6,7 @@ package export
 import "C"
 
 import (
+	"context"
 	"unsafe"
 
 	"github.com/bavix/gripmock/v3/pkg/plugins"
@@ -24,14 +25,14 @@ func GripMockPluginDescribe(buf *C.char, capacity C.int) C.int {
 
 //export GripMockPluginCall
 func GripMockPluginCall(name *C.char, args *C.char, buf *C.char, capacity C.int) C.int {
-	return write(cshared.Call(C.GoString(name), C.GoString(args)), buf, capacity)
+	return write(cshared.Call(context.Background(), C.GoString(name), C.GoString(args)), buf, capacity)
 }
 
 // write fills the buffer the server owns and reports the length the answer
 // needs, so a short buffer is reported instead of overflowing.
 func write(out string, buf *C.char, capacity C.int) C.int {
 	if buf != nil && int(capacity) >= len(out) {
-		//nolint:gosec // the buffer belongs to the server and capacity bounds the write
+		//nolint:gosec
 		copy(unsafe.Slice((*byte)(unsafe.Pointer(buf)), int(capacity)), out)
 	}
 

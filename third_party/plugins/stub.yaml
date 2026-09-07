@@ -11,3 +11,4 @@
       md5: '{{ md5 .Request.value }}'
       pow: '{{ printf "%.0f" (pow 2.0 10.0) }}'
       delay: '{{ fibonacci 3 "1s" }}'
+      crc32: '{{ crc32 .Request.value }}'

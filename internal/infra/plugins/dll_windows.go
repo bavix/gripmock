@@ -38,7 +38,7 @@ func loadDLL(ctx context.Context, reg pkgplugins.Registry, path string) error {
 	}
 
 	manifest, err := read(func(buf []byte) uintptr {
-		//nolint:gosec // syscall arguments: the buffer is Go-owned and its length is passed alongside
+		//nolint:gosec
 		size, _, _ := describe.Call(uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
 
 		runtime.KeepAlive(buf)
@@ -67,7 +67,7 @@ func invoker(call *syscall.LazyProc) func(string, string) (string, error) {
 		}
 
 		return read(func(buf []byte) uintptr {
-			//nolint:gosec // syscall arguments: every pointer is Go-owned and kept alive below
+			//nolint:gosec
 			size, _, _ := call.Call(
 				uintptr(unsafe.Pointer(namePtr)),
 				uintptr(unsafe.Pointer(argsPtr)),
@@ -90,7 +90,7 @@ func read(fn func([]byte) uintptr) (string, error) {
 	buf := make([]byte, initialBufferSize)
 
 	for range 2 {
-		//nolint:gosec // the entry points return a C int, so the low 32 bits are the whole value
+		//nolint:gosec
 		size := int32(uint32(fn(buf)))
 
 		switch {

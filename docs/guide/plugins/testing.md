@@ -64,7 +64,7 @@ depends on the transport, the toolchain and, for `.so`, on matching build paths.
 Build it and let the server answer:
 
 ```bash
-gripmock plugin build ./path/to/plugin --out ./plugins/myplugin.so
+go build -buildmode=plugin -o ./plugins/myplugin.so ./path/to/plugin
 gripmock info --plugins=./plugins
 ```
 

@@ -28,7 +28,7 @@ lint-clean:
 plugins:
 	mkdir -p plugins; \
 	for dir in examples/plugins/*; do \
-		[ -d $$dir ] && go build -buildmode=plugin -o plugins/$$(basename $$dir).so $$dir/*.go; \
+		[ -d $$dir ] && go build -buildmode=plugin -o plugins/$$(basename $$dir).so ./$$dir; \
 	done
 
 semgrep:

@@ -72,10 +72,10 @@ func TestCall(t *testing.T) {
 		call  string
 		fails bool
 	}{
-		"result":           {cshared.Call("upper", `["abc"]`), false},
-		"unknown function": {cshared.Call("nope", `[]`), true},
-		"plugin error":     {cshared.Call("boom", `[]`), true},
-		"broken args":      {cshared.Call("upper", `{`), true},
+		"result":           {cshared.Call(t.Context(), "upper", `{"args":["abc"]}`), false},
+		"unknown function": {cshared.Call(t.Context(), "nope", `{"args":[]}`), true},
+		"plugin error":     {cshared.Call(t.Context(), "boom", `{"args":[]}`), true},
+		"broken args":      {cshared.Call(t.Context(), "upper", `{`), true},
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()

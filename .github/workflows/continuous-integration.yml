@@ -402,83 +402,47 @@ jobs:
           install-only: true
           version: ${{ env.GRPCTESTIFY_VERSION }}
 
-      - name: Run plugin suite (Linux/macOS)
-        if: matrix.platform != 'windows'
+      - name: Run plugin suite
+        shell: bash
         env:
           CGO_ENABLED: "1"
         run: |
-          bin="$RUNNER_TEMP/gripmock"
-          dir="$RUNNER_TEMP/plugins"
+          set -eu
+
+          bin="$PWD/.gripmock/bin"
+          dir="$PWD/.gripmock/plugins"
+          mode=plugin
+          ext=so
           mkdir -p "$dir"
 
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            bin="$bin.exe"
+            mode=c-shared
+            ext=dll
+            export PATH="/c/msys64/mingw64/bin:$PATH"
+            command -v gcc >/dev/null || choco install mingw -y --no-progress
+            gcc --version
+          fi
+
           go build -o "$bin" .
+
           for name in hash math delay; do
-            "$bin" plugin build "./examples/plugins/$name" --out "$dir/$name.so"
+            go build -buildmode="$mode" -o "$dir/$name.$ext" "./examples/plugins/$name"
           done
 
           "$bin" info --plugins="$dir"
 
-          "$bin" --plugins="$dir" \
-            --stub=third_party/plugins \
-            third_party/plugins/service.proto &
+          "$bin" --plugins="$dir" --stub=third_party/plugins third_party/plugins/service.proto &
           pid=$!
 
           cleanup() {
-            kill -INT "$pid" 2>/dev/null || true
-            wait "$pid" 2>/dev/null || true
+            kill "$pid" 2>/dev/null || true
           }
 
           trap cleanup EXIT
 
           "$bin" check --timeout=60s --silent
           grpctestify third_party/plugins/
-
-      - name: Run plugin suite (Windows)
-        if: matrix.platform == 'windows'
-        shell: pwsh
-        env:
-          CGO_ENABLED: "1"
-        run: |
-          $env:PATH = "C:\msys64\mingw64\bin;$env:PATH"
-          if (-not (Get-Command gcc -ErrorAction SilentlyContinue)) {
-            choco install mingw -y --no-progress
-            $env:PATH = "C:\ProgramData\mingw64\mingw64\bin;$env:PATH"
-          }
-          gcc --version
-
-          $bin = Join-Path $env:RUNNER_TEMP "gripmock.exe"
-          $dir = Join-Path $env:RUNNER_TEMP "plugins"
-          New-Item -ItemType Directory -Path $dir -Force | Out-Null
-
-          go build -o $bin .
-          if ($LASTEXITCODE -ne 0) { throw "gripmock build failed" }
-
-          foreach ($name in @("hash", "math", "delay")) {
-            & $bin plugin build "./examples/plugins/$name" --out (Join-Path $dir "$name.dll")
-            if ($LASTEXITCODE -ne 0) { throw "plugin build failed: $name" }
-          }
-
-          & $bin info --plugins=$dir
-          if ($LASTEXITCODE -ne 0) { throw "plugin info failed" }
-
-          $proc = Start-Process -FilePath $bin -PassThru -ArgumentList @(
-            "--plugins=$dir",
-            "--stub=third_party/plugins",
-            "third_party/plugins/service.proto"
-          )
-
-          try {
-            & $bin check --timeout=60s --silent
-            if ($LASTEXITCODE -ne 0) { throw "server did not become ready" }
-
-            grpctestify third_party\plugins\
-            if ($LASTEXITCODE -ne 0) { throw "grpctestify failed" }
-          }
-          finally {
-            if ($null -ne $proc) {
-              Stop-Process -Id $proc.Id -ErrorAction SilentlyContinue
-            }
-          }
 
   e2e-tls-tests:
     name: "E2E TLS (${{ matrix.tls_mode }})"

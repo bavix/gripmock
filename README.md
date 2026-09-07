@@ -30,7 +30,7 @@ GripMock builds a mock server from your `.proto` files or a compiled `.pb` descr
 - **TLS and mTLS Support** - Run secure gRPC/HTTP test environments with native TLS options
 - **Advanced Protobuf Type Support** - Handle well-known and extended protobuf types (`google.protobuf.*`, `google.type.*`)
 - **YAML/JSON + Schema** - Author stubs in either format with JSON Schema IDE validation
-- **Plugin Ecosystem** - Extend functions with Go plugins and matching builder image tags
+- **Plugin Ecosystem** - Extend functions with Go plugins on Linux, macOS and Windows, with matching builder image tags
 - **Built-in Faker Templates** - Generate realistic fake person/contact/geo/network data directly in templates (`faker.*`)
 - **OpenTelemetry Tracing** - OTLP tracing for gRPC and HTTP paths (`otelgrpc` + `otelhttp`)
 - **Prometheus Metrics (`/metrics`)** - Runtime/process metrics (`go_*`, `process_*`) plus GripMock metrics
