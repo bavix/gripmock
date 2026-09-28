@@ -3,7 +3,7 @@ module github.com/bavix/gripmock/v3
 go 1.26
 
 require (
-	github.com/andybalholm/brotli v1.2.3
+	github.com/andybalholm/brotli v1.2.5
 	github.com/bavix/features v1.0.4
 	github.com/bmatcuk/doublestar/v4 v4.10.0
 	github.com/brianvoe/gofakeit/v7 v7.16.0
