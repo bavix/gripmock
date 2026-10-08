@@ -1,5 +1,15 @@
 # Changelog
 
+## v3.23.0 - 2026-10-08
+
+### What's Changed
+
+* Plugin support added for Windows by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/976
+* bump all by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1003
+* chore(deps): bump sourcemeta/jsonschema from 16.8.0 to 17.1.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1002
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.22.1...v3.23.0
+
 ## v3.22.1 - 2026-08-30
 
 ### What's Changed
