@@ -96,46 +96,6 @@ changelog:
       - '^docs:'
       - '^test:'
 
-brews:
-  - name: gripmock
-    repository:
-      owner: gripmock
-      name: homebrew-tap
-      branch: master
-    directory: Formula
-    ids:
-      - default
-    homepage: https://bavix.github.io/gripmock/
-    description: "A mock server for gRPC services using .proto files or compiled .pb descriptors"
-    license: "MIT"
-    url_template: "https://github.com/bavix/gripmock/releases/download/v{{ .Version }}/gripmock_{{ .Version }}_{{ .Os }}_{{ .Arch }}.tar.gz"
-    commit_author:
-      name: Github bot
-      email: bot@babichev.net
-      signing:
-        enabled: true
-        key: "{{ .Env.GPG_FINGERPRINT }}"
-        program: gpg
-        format: openpgp
-    commit_msg_template: "Update GripMock to {{ .Version }}"
-
-    # Deprecated 2026-02-18. Distribution channels get a full year of support,
-    # so this formula block is removed no earlier than 2027-02-18.
-    custom_block: |
-      deprecate! date: "2026-02-18", because: "moved to cask. Please run `brew install --cask gripmock`"
-
-    caveats: |
-      The 'gripmock' formula is deprecated and will be removed in future versions.
-      Please migrate to the cask version:
-        brew uninstall gripmock
-        brew install --cask gripmock
-
-      Go plugins (--plugins) are supported on macOS and Linux. Build them with
-      the same Go version and `go build -trimpath -buildmode=plugin`.
-
-    test: |
-      assert_match "v#{version}", shell_output("#{bin}/gripmock --version")
-
 homebrew_casks:
   - name: gripmock
     repository:
@@ -150,7 +110,6 @@ homebrew_casks:
     description: "A mock server for gRPC services using .proto files or compiled .pb descriptors"
     license: "MIT"
     url:
-      verified: github.com/bavix/gripmock
       template: "https://github.com/bavix/gripmock/releases/download/v{{ .Version }}/gripmock_{{ .Version }}_{{ .Os }}_{{ .Arch }}.tar.gz"
     commit_author:
       name: Github bot
@@ -167,13 +126,14 @@ homebrew_casks:
       Built with cgo, so Go plugins (--plugins) are supported.
       For a plugin-free build run: brew install --cask gripmock-slim
 
-    # Optional: remove quarantine on macOS if the binary isn't signed/notarized
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gripmock"]
-          end
+    # Use Homebrew's structured postflight_steps; GoReleaser's hooks still
+    # generate the deprecated postflight stanza.
+    custom_block: |
+      postflight_steps do
+        on_macos do
+          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "gripmock"]
+        end
+      end
 
   - name: gripmock-slim
     repository:
@@ -187,7 +147,6 @@ homebrew_casks:
     description: "A mock server for gRPC services using .proto files or compiled .pb descriptors (no plugin support)"
     license: "MIT"
     url:
-      verified: github.com/bavix/gripmock
       template: "https://github.com/bavix/gripmock/releases/download/v{{ .Version }}/gripmock-slim_{{ .Version }}_{{ .Os }}_{{ .Arch }}.tar.gz"
     commit_author:
       name: Github bot
@@ -204,9 +163,9 @@ homebrew_casks:
       Built without cgo: Go plugins (--plugins) are not supported.
       For plugin support run: brew install --cask gripmock
 
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gripmock"]
-          end
+    custom_block: |
+      postflight_steps do
+        on_macos do
+          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "gripmock"]
+        end
+      end

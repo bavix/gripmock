@@ -3,7 +3,7 @@ OPENAPI=api/api.yaml
 .PHONY: *
 
 version=latest
-GOLANGCI_LINT=go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2
+GOLANGCI_LINT=go run github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
 
 build:
 	docker buildx build --load -t bavix/gripmock:${version} .

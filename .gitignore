@@ -14,3 +14,5 @@ bench/results-size/
 *.test
 
 dist/
+!ui/dist/
+!ui/dist/**
