@@ -126,14 +126,12 @@ homebrew_casks:
       Built with cgo, so Go plugins (--plugins) are supported.
       For a plugin-free build run: brew install --cask gripmock-slim
 
-    # Use Homebrew's structured postflight_steps; GoReleaser's hooks still
-    # generate the deprecated postflight stanza.
-    custom_block: |
-      postflight_steps do
-        on_macos do
-          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", staged_path/"gripmock"]
-        end
-      end
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gripmock"]
+          end
 
   - name: gripmock-slim
     repository:
@@ -163,9 +161,9 @@ homebrew_casks:
       Built without cgo: Go plugins (--plugins) are not supported.
       For plugin support run: brew install --cask gripmock
 
-    custom_block: |
-      postflight_steps do
-        on_macos do
-          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", staged_path/"gripmock-slim"]
-        end
-      end
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gripmock"]
+          end
