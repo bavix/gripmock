@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.23.1 - 2026-10-08
+
+### What's Changed
+
+* patch xattr by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1004
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.23.0...v3.23.1
+
 ## v3.23.0 - 2026-10-08
 
 ### What's Changed
