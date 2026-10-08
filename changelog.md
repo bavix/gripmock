@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.23.2 - 2026-10-08
+
+### What's Changed
+
+* migrate to hooks by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1005
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.23.1...v3.23.2
+
 ## v3.23.1 - 2026-10-08
 
 ### What's Changed
