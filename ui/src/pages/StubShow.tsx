@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStub, useStubs } from '../hooks/useStubs';
-import { useHistory } from '../hooks/useHistory';
+import { useScopedHistory } from '../hooks/useHistory';
 import { useServices } from '../hooks/useServices';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '../components/shared/Toast';
@@ -14,20 +14,9 @@ import { toYaml } from '../features/stubs/toYaml';
 import { stashClone } from '../lib/clone';
 import { FileCode } from 'lucide-react';
 import { useMemo } from 'react';
-import type { Stub, CallRecord } from '../lib/types';
-
-type Usage = { total: number; first: Date; last: Date } | null;
-
-function computeUsage(history: CallRecord[] | undefined, stub: Stub | undefined): Usage {
-  if (!history || !stub) return null;
-  const calls = history.filter((h) => h.stubId === stub.id);
-  if (calls.length === 0) return null;
-  return {
-    total: calls.length,
-    first: new Date(calls[calls.length - 1].timestamp),
-    last: new Date(calls[0].timestamp),
-  };
-}
+import type { Stub } from '../lib/types';
+import { computeUsage, type Usage } from './stubUsage';
+import { copyText, COPY_FAILED } from '../lib/clipboard';
 
 export function StubShow() {
   const { id } = useParams<{ id: string }>();
@@ -35,28 +24,33 @@ export function StubShow() {
   const toast = useToast();
   const qc = useQueryClient();
   const { data: stub, isLoading, error } = useStub(id!);
-  const { data: history } = useHistory();
   const { data: allStubs } = useStubs();
   const { data: svcList } = useServices();
+
+  const svc = useMemo(
+    () => svcList?.find((s) => !!stub && serviceRefMatches(stub.service, s.id, s.name)),
+    [svcList, stub],
+  );
+  const { data: endpointHistory } = useScopedHistory(svc?.id ?? stub?.service ?? '', stub?.method ?? '');
 
   const del = useMutation({
     mutationFn: async () => { await api.post('/stubs/batchDelete', [id]); },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['stubs'] }); toast.show('Stub deleted'); navigate('/stubs'); },
   });
 
-  const usage = useMemo(() => computeUsage(history, stub), [history, stub]);
+  const usage = useMemo(() => computeUsage(endpointHistory, stub), [endpointHistory, stub]);
 
   if (isLoading) return <div style={{ padding: 24, color: 'var(--text-muted)' }}>Loading...</div>;
   if (error || !stub) return <div style={{ padding: 24, color: 'var(--error)' }}>Stub not found.</div>;
 
-  const copyId = () => {
-    navigator.clipboard.writeText(stub.id);
-    toast.show('Copied to clipboard');
+  const copyId = async () => {
+    const ok = await copyText(stub.id);
+    toast.show(ok ? 'Copied to clipboard' : COPY_FAILED);
   };
 
   const isFile = stub.source === 'file';
   const example = stubRequestExample(stub);
-  const methodType = svcList?.find((s) => serviceRefMatches(stub.service, s.id, s.name))?.methods?.find((m) => m.name === stub.method)?.methodType;
+  const methodType = svc?.methods?.find((m) => m.name === stub.method)?.methodType;
   const stream = streamKind(methodType);
   const testHref = `/stubs/test?service=${encodeURIComponent(stub.service)}&method=${encodeURIComponent(stub.method)}&id=${encodeURIComponent(stub.id)}&payload=${encodeURIComponent(example.payload)}&headers=${encodeURIComponent(example.headers)}`;
 
@@ -64,7 +58,7 @@ export function StubShow() {
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <StubToolbar stub={stub} isFile={isFile} navigate={navigate} testHref={testHref} inputExample={example.payload}
         onClone={() => { stashClone(stub); navigate('/stubs/create?clone=1'); }}
-        onYaml={() => { navigator.clipboard.writeText(toYaml(stub)); toast.show('YAML copied'); }}
+        onYaml={async () => { const ok = await copyText(toYaml(stub)); toast.show(ok ? 'YAML copied' : COPY_FAILED); }}
         onDelete={() => del.mutate()} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -52,6 +52,7 @@ const (
 	defaultMaxRecvMsgSize = 4 << 20
 	maxLoggingStreamMsgs  = 32
 	maxHistoryStreamMsgs  = 100
+	maxLoggedBodyBytes    = 4 << 10
 	minStreamWorkers      = 4
 )
 
@@ -90,6 +91,7 @@ type GRPCServer struct {
 	validator       *validator.Validate
 	errorFormatter  *ErrorFormatter
 	limits          ServerLimits
+	logOptions      LogOptions
 
 	resolverOnce sync.Once
 	dynResolver  *dynamicDescriptorResolver
@@ -192,7 +194,13 @@ func NewGRPCServer(
 		validator:       v,
 		errorFormatter:  e,
 		limits:          limits.withDefaults(),
+		logOptions:      DefaultLogOptions(),
 	}
+}
+
+// SetLogOptions replaces what the call log keeps; call it before Build.
+func (s *GRPCServer) SetLogOptions(opts LogOptions) {
+	s.logOptions = opts
 }
 
 func (s *GRPCServer) Proxies() *proxyroutes.Registry {

@@ -4,6 +4,12 @@ import "github.com/google/uuid"
 
 // upsert inserts or updates stub values by ID.
 func (s *searcher) upsert(values ...*Stub) []uuid.UUID {
+	for _, value := range values {
+		if value != nil {
+			normalizeStubHeaders(&value.Headers)
+		}
+	}
+
 	return s.storage.upsert(values...)
 }
 
@@ -44,6 +50,10 @@ func (s *searcher) delBySession(session string) int {
 			delete(s.stubCallCount, key)
 		}
 	}
+
+	s.lookupMu.Lock()
+	delete(s.lookupCache, session)
+	s.lookupMu.Unlock()
 
 	return s.storage.delBySession(session)
 }
@@ -123,6 +133,8 @@ func (s *searcher) unused() []*Stub {
 
 // find resolves a Query to a Result (by ID, or optimized service/method search).
 func (s *searcher) find(query Query) (*Result, error) {
+	query.Headers = normalizeHeaderKeys(query.Headers)
+
 	if query.ID != nil {
 		return s.searchByID(query)
 	}

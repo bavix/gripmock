@@ -30,9 +30,11 @@ func (s *GRPCServer) buildProxiesWithBindings(ctx context.Context, imports []str
 	logger := zerolog.Ctx(ctx)
 
 	for _, binding := range bindings {
+		safeProxyURL := protosetdom.RedactURL(binding.ProxyURL)
+
 		logger.Info().
-			Str("proxy", binding.ProxyURL).
-			Strs("sources", binding.Sources).
+			Str("proxy", safeProxyURL).
+			Strs("sources", protosetdom.RedactURLs(binding.Sources)).
 			Msg("processing proxy binding")
 
 		var bindingDescriptors []*descriptorpb.FileDescriptorSet
@@ -40,16 +42,16 @@ func (s *GRPCServer) buildProxiesWithBindings(ctx context.Context, imports []str
 		if len(binding.Sources) > 0 {
 			bindingDescriptors, err = protosetdom.Build(ctx, imports, binding.Sources, s.remoteClient)
 			if err != nil {
-				return nil, nil, errors.Wrapf(err, "failed to build descriptors for proxy %s", binding.ProxyURL)
+				return nil, nil, errors.Wrapf(err, "failed to build descriptors for proxy %s", safeProxyURL)
 			}
 
 			logger.Info().
-				Str("proxy", binding.ProxyURL).
+				Str("proxy", safeProxyURL).
 				Int("num_descriptors", len(bindingDescriptors)).
 				Msg("built descriptors for proxy")
 		} else {
 			logger.Info().
-				Str("proxy", binding.ProxyURL).
+				Str("proxy", safeProxyURL).
 				Msg("no sources for proxy, will use reflection")
 		}
 

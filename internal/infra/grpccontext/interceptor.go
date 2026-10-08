@@ -36,7 +36,12 @@ func PanicRecoveryUnaryInterceptor(
 }
 
 // PanicRecoveryStreamInterceptor recovers from panics in streaming gRPC handlers.
-func PanicRecoveryStreamInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+func PanicRecoveryStreamInterceptor(
+	srv any,
+	stream grpc.ServerStream,
+	info *grpc.StreamServerInfo,
+	handler grpc.StreamHandler,
+) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			zerolog.Ctx(stream.Context()).
@@ -45,6 +50,7 @@ func PanicRecoveryStreamInterceptor(srv any, stream grpc.ServerStream, info *grp
 				Str("grpc.service", info.FullMethod).
 				Str("grpc.method_type", "stream").
 				Msg("Panic recovered in streaming gRPC handler")
+			err = status.Errorf(codes.Internal, "handler panic: %v", r)
 		}
 	}()
 

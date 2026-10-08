@@ -1,6 +1,7 @@
 package config_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -113,4 +114,25 @@ func TestConfigNew(t *testing.T) {
 
 	cfg := config.Load()
 	require.NotZero(t, cfg)
+}
+
+func TestLogRedaction(t *testing.T) {
+	t.Setenv("LOG_REDACT_METADATA", "true")
+	require.NoError(t, os.Unsetenv("LOG_REDACT_METADATA"))
+	require.NoError(t, os.Unsetenv("LOG_MESSAGE_CONTENT"))
+	require.NoError(t, os.Unsetenv("LOG_REDACT_KEYS"))
+
+	cfg := config.Load()
+	require.True(t, cfg.LogRedactMetadata)
+	require.True(t, cfg.LogMessageContent)
+	require.Empty(t, cfg.LogRedactKeys)
+
+	t.Setenv("LOG_REDACT_METADATA", "false")
+	t.Setenv("LOG_MESSAGE_CONTENT", "false")
+	t.Setenv("LOG_REDACT_KEYS", "x-tenant,x-trace")
+
+	cfg = config.Load()
+	require.False(t, cfg.LogRedactMetadata)
+	require.False(t, cfg.LogMessageContent)
+	require.Equal(t, []string{"x-tenant", "x-trace"}, cfg.LogRedactKeys)
 }

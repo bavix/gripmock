@@ -144,18 +144,14 @@ func TestConverterStubFile(t *testing.T) {
 	// Check first UUID
 	uuid1, ok := uuids[0].(map[string]any)
 	require.True(t, ok, "uuid1 should be map[string]any")
-	//nolint:testifylint // Exact float comparison from JSON parsing
-	require.Equal(t, float64(-773977811204288029), uuid1["high"])
-	//nolint:testifylint // Exact float comparison from JSON parsing
-	require.Equal(t, float64(-3102276763665777782), uuid1["low"])
+	require.InDelta(t, float64(-773977811204288029), uuid1["high"], 0)
+	require.InDelta(t, float64(-3102276763665777782), uuid1["low"], 0)
 
 	// Check second UUID
 	uuid2, ok := uuids[1].(map[string]any)
 	require.True(t, ok, "uuid2 should be map[string]any")
-	//nolint:testifylint // Exact float comparison from JSON parsing
-	require.Equal(t, float64(1894655895358218189), uuid2["high"])
-	//nolint:testifylint // Exact float comparison from JSON parsing
-	require.Equal(t, float64(-5214431432452141412), uuid2["low"])
+	require.InDelta(t, float64(1894655895358218189), uuid2["high"], 0)
+	require.InDelta(t, float64(-5214431432452141412), uuid2["low"], 0)
 }
 
 func TestStubMatcherJsonNumberPrecision(t *testing.T) {

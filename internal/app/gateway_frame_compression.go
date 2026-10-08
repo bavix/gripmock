@@ -38,16 +38,21 @@ func decompressFrame(data []byte, encoding string) ([]byte, error) {
 		return nil, status.Error(codes.Internal,
 			"frame is marked compressed but no compression was negotiated")
 	case encodingGzip:
-		reader, err := gzip.NewReader(strings.NewReader(string(data)))
+		reader, err := gzip.NewReader(bytes.NewReader(data))
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, "malformed gzip frame")
 		}
 
 		defer reader.Close() //nolint:errcheck
 
-		out, err := io.ReadAll(reader)
+		out, err := io.ReadAll(io.LimitReader(reader, connectEnvelopeMaxFrameSize+1))
 		if err != nil {
 			return nil, status.Error(codes.InvalidArgument, "malformed gzip frame")
+		}
+
+		if len(out) > connectEnvelopeMaxFrameSize {
+			return nil, status.Errorf(codes.ResourceExhausted,
+				"decompressed frame exceeds the %d byte limit", connectEnvelopeMaxFrameSize)
 		}
 
 		return out, nil

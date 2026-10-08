@@ -120,6 +120,7 @@ func (b *Budgerigar) InspectQuery(query Query) InspectReport {
 
 func (s *searcher) inspect(query Query) InspectReport {
 	query.toggles = features.New(RequestInternalFlag)
+	query.Headers = normalizeHeaderKeys(query.Headers)
 
 	trace := newSearchTrace()
 

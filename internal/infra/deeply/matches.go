@@ -14,6 +14,11 @@ func MatchesIgnoreArrayOrder(expect, actual any) bool {
 		(!structural(expect) && reflect.DeepEqual(expect, actual))
 }
 
+// Stringify renders a scalar value the way regexp matching sees it.
+func Stringify(value any) (string, bool) {
+	return stringify(value)
+}
+
 func stringify(value any) (string, bool) {
 	switch v := value.(type) {
 	case string:

@@ -1,0 +1,14 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+- service: com.bavix.plugins.v1.PluginService
+  method: Apply
+  input:
+    equals:
+      value: "abc"
+  output:
+    data:
+      sha256: '{{ sha256 .Request.value }}'
+      md5: '{{ md5 .Request.value }}'
+      pow: '{{ printf "%.0f" (pow 2.0 10.0) }}'
+      delay: '{{ fibonacci 3 "1s" }}'
+      crc32: '{{ crc32 .Request.value }}'

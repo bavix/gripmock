@@ -11,6 +11,7 @@ const CallsTrend = lazy(() => import('../features/dashboard/CallsTrend'));
 const CoverageDonut = lazy(() => import('../features/dashboard/CoverageDonut'));
 import { getApiUrl } from '../lib/api';
 import { colors } from '../lib/theme';
+import { dialableAddr } from '../lib/grpc';
 import {
   Activity, ListOrdered, History, AlertTriangle, Layers,
   Clock, Plus, Search, CheckCircle2, ShieldCheck, Copy, Plug,
@@ -42,16 +43,18 @@ function fmtUptime(sec: number): string {
 }
 
 function Endpoint({ proto, addr }: Readonly<{ proto: string; addr: string }>) {
-  const { copied, copy } = useCopy();
+  const { copied, failed, copy } = useCopy();
   // 0.0.0.0/empty host is not dialable from a browser — show localhost.
-  const shown = addr.replace(/^(0\.0\.0\.0|\[::\]|):/, 'localhost:').replace(/^:/, 'localhost:');
+  const shown = dialableAddr(addr);
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
       <span style={{ fontSize: 10.5, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{proto}</span>
-      <button type="button" onClick={() => copy(shown)} title="Click to copy"
+      <button type="button" onClick={() => void copy(shown)} title={failed ? 'Copy failed — select the address and copy manually' : 'Click to copy'}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: 'var(--text)', background: 'var(--bg-tertiary)', border: 'none', padding: '2px 8px', borderRadius: 4, userSelect: 'all', textAlign: 'inherit' }}>
         {shown}
-        {copied ? <CheckCircle2 size={11} style={{ color: colors.success }} /> : <Copy size={10} style={{ color: 'var(--text-muted)' }} />}
+        {copied && <CheckCircle2 size={11} style={{ color: colors.success }} />}
+        {failed && <AlertTriangle size={11} style={{ color: colors.error }} />}
+        {!copied && !failed && <Copy size={10} style={{ color: 'var(--text-muted)' }} />}
       </button>
     </span>
   );

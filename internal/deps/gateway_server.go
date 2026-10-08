@@ -1,7 +1,6 @@
 package deps
 
 import (
-	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -10,6 +9,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -127,6 +127,10 @@ func (b *Builder) newGatewayServer(ctx context.Context, router *mux.Router) *htt
 		handler = otelhttp.NewHandler(handler, "gripmock-gateway")
 	}
 
+	// Outermost on purpose: EnableFullDuplex walks ResponseWriter.Unwrap
+	// and gorilla's compress writer does not implement it.
+	handler = gatewayFullDuplexMiddleware(handler)
+
 	return &http.Server{
 		Addr:              b.config.Gateway.Addr,
 		Handler:           handler,
@@ -206,6 +210,27 @@ func setGatewayProtocols(srv *http.Server) {
 	}()
 }
 
+// gatewayFullDuplexMiddleware lets streaming handlers keep reading the
+// request body after the response has been flushed. Without it the
+// HTTP/1.x server drains and closes the body on the first flush, so the
+// second message of a gRPC-Web or Connect bidi stream fails with
+// "http: invalid Read on closed Body". HTTP/2 is unaffected.
+func gatewayFullDuplexMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.ProtoMajor == 1 && isStreamingGatewayContentType(r.Header.Get("Content-Type")) {
+			_ = http.NewResponseController(w).EnableFullDuplex()
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isStreamingGatewayContentType(ct string) bool {
+	ct = strings.ToLower(strings.TrimSpace(ct))
+
+	return strings.HasPrefix(ct, "application/grpc-web") || strings.HasPrefix(ct, "application/connect+")
+}
+
 // gatewayAccessLogMiddleware logs each gateway request on completion with
 // fields consistent with the native gRPC access log format.
 //
@@ -217,11 +242,12 @@ func gatewayAccessLogMiddleware(next http.Handler) http.Handler {
 		start := time.Now()
 
 		protocol := detectProtocol(r)
-		reqBody := captureReqBody(r)
+		capture := captureReqBody(r)
 		rec := &captureResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
 		next.ServeHTTP(rec, r)
 
+		reqBody := capture.String()
 		service, methodName := parseServiceMethod(r.URL.Path)
 		meta := buildMetadata(r.Header)
 
@@ -263,21 +289,72 @@ func detectProtocol(r *http.Request) string {
 	return "connectrpc"
 }
 
-// captureReqBody reads the request body (up to maxBodyCapture+1 bytes) and
-// replaces r.Body so the next handler can still read it.
-func captureReqBody(r *http.Request) string {
+func captureReqBody(r *http.Request) *bodyCapture {
+	capture := &bodyCapture{}
+
 	if r.Body == nil {
-		return ""
+		return capture
 	}
 
-	raw, _ := io.ReadAll(io.LimitReader(r.Body, maxBodyCapture+1))
-	r.Body = io.NopCloser(bytes.NewReader(raw))
+	r.Body = &teeReadCloser{rc: r.Body, capture: capture}
 
-	if len(raw) > maxBodyCapture {
-		return string(raw[:maxBodyCapture]) + "..."
+	return capture
+}
+
+type bodyCapture struct {
+	mu        sync.Mutex
+	buf       []byte
+	truncated bool
+}
+
+func (c *bodyCapture) String() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.truncated {
+		return string(c.buf) + "..."
 	}
 
-	return string(raw)
+	return string(c.buf)
+}
+
+func (c *bodyCapture) write(b []byte) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	remaining := maxBodyCapture - len(c.buf)
+	if remaining <= 0 {
+		c.truncated = c.truncated || len(b) > 0
+
+		return
+	}
+
+	if len(b) > remaining {
+		c.buf = append(c.buf, b[:remaining]...)
+		c.truncated = true
+
+		return
+	}
+
+	c.buf = append(c.buf, b...)
+}
+
+type teeReadCloser struct {
+	rc      io.ReadCloser
+	capture *bodyCapture
+}
+
+func (t *teeReadCloser) Read(p []byte) (int, error) {
+	n, err := t.rc.Read(p)
+	if n > 0 {
+		t.capture.write(p[:n])
+	}
+
+	return n, err //nolint:wrapcheck // transparent passthrough of the body error.
+}
+
+func (t *teeReadCloser) Close() error {
+	return t.rc.Close() //nolint:wrapcheck // transparent passthrough.
 }
 
 // buildMetadata returns a subset of request headers relevant for debugging.
@@ -421,6 +498,16 @@ func (w *captureResponseWriter) Write(b []byte) (int, error) {
 	}
 
 	return w.ResponseWriter.Write(b)
+}
+
+func (w *captureResponseWriter) Flush() {
+	if flusher, ok := w.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+func (w *captureResponseWriter) Unwrap() http.ResponseWriter {
+	return w.ResponseWriter
 }
 
 func (b *Builder) serveGateway(ctx context.Context, srv *http.Server, listener net.Listener) error {

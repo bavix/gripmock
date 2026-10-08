@@ -9,12 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEmpty(t *testing.T) {
-	t.Parallel()
-	//nolint:testifylint
-	require.True(t, true)
-}
-
 //nolint:funlen
 func TestSearchIgnoreArrayOrderAndFields(t *testing.T) {
 	t.Parallel()

@@ -15,6 +15,8 @@ func RankMatch(expected, actual any) float64 {
 
 const maxRankDepth = 64
 
+const maxDistanceCells = 1 << 16
+
 func rankMatchWithDepth(expected, actual any, depth int) float64 {
 	if depth > maxRankDepth {
 		return 0
@@ -196,18 +198,38 @@ func slicesRankMatch(expect, actual any, compare ranker) float64 {
 	return res / float64(total)
 }
 
+// trivialDistance answers the cases that need no dynamic programming:
+// identical strings, an empty side, and comparisons too large to run.
+//
+// Levenshtein is O(len(s)*len(t)) and one side comes straight from the client,
+// while the similar-stub scan runs it for up to similarScanLimit stubs per
+// unmatched request. A multi-megabyte field would cost minutes of CPU per
+// request, so oversized comparisons score as "not similar" instead.
+//
+// The cap only affects the fuzzy tiebreaker: equal strings are handled here,
+// and whether a stub matches at all is decided by the matchers, not by rank.
+func trivialDistance(s, t string) (float64, bool) {
+	if s == t {
+		return 1.0, true
+	}
+
+	lenS, lenT := len(s), len(t)
+	if lenS == 0 || lenT == 0 {
+		return 0.0, true
+	}
+
+	if lenS*lenT > maxDistanceCells {
+		return 0.0, true
+	}
+
+	return 0, false
+}
+
 // distance returns the Levenshtein similarity of two strings, normalized by the
 // longer string's length (1.0 = identical, 0.0 = fully different).
 func distance(s, t string) float64 {
-	// Fast path for identical strings
-	if s == t {
-		return 1.0
-	}
-
-	// Fast path for empty strings
-	lenS, lenT := len(s), len(t)
-	if lenS == 0 || lenT == 0 {
-		return 0.0
+	if score, decided := trivialDistance(s, t); decided {
+		return score
 	}
 
 	// ASCII fast path optimization (common case)

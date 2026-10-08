@@ -277,7 +277,7 @@ func TestBidiTemplateDelayIsPerMessageOnly(t *testing.T) {
 
 	srv, client := newClient(t)
 
-	const gap = 60 * time.Millisecond
+	const gap = 150 * time.Millisecond
 
 	srv.ExpectBidirectionalStream(negotiationv1.NegotiationService_Haggle_FullMethodName).
 		Match("deal_id", "DEAL-D").

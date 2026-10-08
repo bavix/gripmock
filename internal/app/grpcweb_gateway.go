@@ -186,9 +186,9 @@ func (g *GRPCWebGateway) serveReflection(w http.ResponseWriter, r *http.Request,
 }
 
 func (g *GRPCWebGateway) handleUnary(mocker *grpcMocker, a *grpcwebAdapter) {
-	raw, err := io.ReadAll(a.req.Body)
+	raw, err := readUnaryBody(a.req.Body)
 	if err != nil {
-		a.writeError(codes.Internal, "failed to read body")
+		a.writeErrorStatus(status.Convert(err))
 
 		return
 	}

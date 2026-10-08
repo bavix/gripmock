@@ -74,7 +74,7 @@ srv := sdk.NewServer(t,
 
 ### 2. Clean Up Sessions
 
-`srv.Close()` cleans remote stubs associated with the active session. You can also set a TTL to trigger automatic cleanup:
+`srv.Close()` cleans remote stubs associated with the active session. You can also set an idle TTL as an extra safety net:
 
 ```go
 func TestMyService_WithCleanup(t *testing.T) {
@@ -88,7 +88,7 @@ func TestMyService_WithCleanup(t *testing.T) {
 
     // Test logic here...
     
-    // Resources for this session are cleaned on Close() and via TTL.
+    // Resources for this session are cleaned on Close(), or after 30s of SDK inactivity.
 }
 ```
 
@@ -127,7 +127,9 @@ Sessions can be configured with various options depending on your needs:
 
 ### Session Timeouts
 
-The SDK schedules remote session cleanup with a TTL of `60s` by default. Use `sdk.WithSessionTTL(...)` to override:
+There is no client-side TTL by default: stubs are removed by `srv.Close()` (registered through `t.Cleanup`), and a session abandoned by a crashed test process is reaped by the server itself after `SESSION_GC_TTL`.
+
+`sdk.WithSessionTTL(...)` opts into an extra **idle** timer: it removes the stubs this SDK instance registered only when no SDK operation (stub registration, history read, history purge) happened for the given duration, and it is restarted by every such operation, so it never deletes stubs from under a running test:
 
 ```go
 srv := sdk.NewServer(t,

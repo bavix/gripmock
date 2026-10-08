@@ -1,14 +1,19 @@
 package sdk
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+
+	"github.com/bavix/gripmock/v3/internal/infra/stuber"
+	"github.com/bavix/gripmock/v3/pkg/sdk/internal/httpmock"
 )
 
 func TestNormalizeRemoteHelpers(t *testing.T) {
@@ -125,4 +130,74 @@ func TestRemoteArmSessionTTLStoresCleanupError(t *testing.T) {
 	}
 
 	t.Fatal("expected TTL cleanup error to be stored")
+}
+
+func TestRemoteSessionTTLIsIdleBased(t *testing.T) {
+	t.Parallel()
+
+	const (
+		ttl      = 200 * time.Millisecond
+		step     = 50 * time.Millisecond
+		stubs    = 5
+		sessName = "idle-ttl"
+	)
+
+	mock := httpmock.NewServer()
+	t.Cleanup(mock.Close)
+
+	m := &remoteMock{
+		ctx:         context.Background(),
+		restBaseURL: mock.URL,
+		httpClient:  mock.HTTPServer.Client(),
+		session:     sessName,
+		sessionTTL:  ttl,
+	}
+
+	m.armSessionTTL()
+	t.Cleanup(m.stopSessionTTL)
+
+	for i := range stubs {
+		time.Sleep(step)
+
+		require.NoError(t, m.commitStubsBatch([]*stuber.Stub{{
+			ID:      uuid.New(),
+			Service: "ttl.Service",
+			Method:  "Method" + strconv.Itoa(i),
+			Input:   stuber.InputData{Equals: map[string]any{"i": i}},
+			Output:  stuber.Output{Data: map[string]any{"ok": true}},
+		}}))
+	}
+
+	require.Len(t, mock.Budgerigar.All(), stubs)
+	require.NoError(t, m.getOpErr())
+}
+
+func TestRemoteSessionTTLFiresWhenIdle(t *testing.T) {
+	t.Parallel()
+
+	mock := httpmock.NewServer()
+	t.Cleanup(mock.Close)
+
+	m := &remoteMock{
+		ctx:         context.Background(),
+		restBaseURL: mock.URL,
+		httpClient:  mock.HTTPServer.Client(),
+		session:     "expiring",
+		sessionTTL:  50 * time.Millisecond,
+	}
+
+	require.NoError(t, m.commitStubsBatch([]*stuber.Stub{{
+		ID:      uuid.New(),
+		Service: "ttl.Service",
+		Method:  "Idle",
+		Input:   stuber.InputData{Equals: map[string]any{"i": 1}},
+		Output:  stuber.Output{Data: map[string]any{"ok": true}},
+	}}))
+
+	m.armSessionTTL()
+	t.Cleanup(m.stopSessionTTL)
+
+	require.Eventually(t, func() bool {
+		return len(mock.Budgerigar.All()) == 0
+	}, time.Second, 10*time.Millisecond)
 }

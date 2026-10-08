@@ -46,6 +46,8 @@ func (r *remoteHistory) fetch(client remoteapi.Client, filter remoteapi.HistoryF
 		return nil, 0, err
 	}
 
+	r.mock.touchSessionTTL()
+
 	return convertHistory(history), total, nil
 }
 

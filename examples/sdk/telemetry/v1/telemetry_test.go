@@ -204,7 +204,7 @@ func TestTemplateStreamDelayIsPerMessageOnly(t *testing.T) {
 
 	srv, client := newClient(t)
 
-	const gap = 60 * time.Millisecond
+	const gap = 150 * time.Millisecond
 
 	srv.ExpectServerStream(telemetryv1.TelemetryService_StreamSamples_FullMethodName).
 		Match("device_id", "sensor-7").

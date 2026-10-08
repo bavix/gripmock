@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { byTimestampDesc, callTime } from '../lib/format';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useInfiniteHistory, useHistoryErrorCount, usePurgeHistory } from '../hooks/useHistory';
@@ -8,21 +8,18 @@ import { colors } from '../lib/theme';
 import { DataTable } from '../components/table/DataTable';
 import type { Column } from '../components/table/tableFeatures';
 import { type CallRecord, isCallOk } from '../lib/types';
-import { grpcCodeName } from '../lib/grpc';
+import { grpcCodeName, grpcurlCommand } from '../lib/grpc';
 import { inspectLink } from '../lib/stub';
 import { stashClone } from '../lib/clone';
 import { stubFromCall } from '../features/stubs/stubFromCall';
 import { CallStatusBadge } from '../components/shared/CallStatusBadge';
-
-
-function grpcurl(r: CallRecord): string {
-  const msgs = r.requests?.length ? r.requests : [{}];
-  const data = msgs.length === 1 ? JSON.stringify(msgs[0]) : msgs.map((m) => JSON.stringify(m)).join('\n');
-  return `grpcurl -plaintext -d '${data}' localhost:4770 ${r.service}/${r.method}`;
-}
+import { useDashboard } from '../hooks/useDashboard';
+import { copyText, COPY_FAILED } from '../lib/clipboard';
+import { useToast } from '../components/shared/Toast';
 
 export function HistoryList() {
   const navigate = useNavigate();
+  const toast = useToast();
   const session = useStore((s) => s.session);
   const [sp] = useSearchParams();
   const [search, setSearch] = useState(sp.get('q') || '');
@@ -33,6 +30,12 @@ export function HistoryList() {
   const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useInfiniteHistory(100, 10_000, statusTab === 'err');
   const errorTotal = useHistoryErrorCount(10_000).data ?? 0;
   const purge = usePurgeHistory();
+  const grpcAddr = useDashboard().data?.grpcAddr;
+
+  const copyGrpcurl = useCallback(async (r: CallRecord) => {
+    const ok = await copyText(grpcurlCommand(r, grpcAddr));
+    toast.show(ok ? 'grpcurl command copied' : COPY_FAILED);
+  }, [grpcAddr, toast]);
 
   const total = data?.pages[0]?.total ?? 0;
   // Flatten loaded pages and sort newest-first (windows arrive oldest-first).
@@ -96,10 +99,10 @@ export function HistoryList() {
     }},
     { id: 'status', header: 'Status', cell: (info) => <CallStatusBadge call={info.row.original} /> },
     { id: 'cp', header: '', cell: (info) => (
-      <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(grpcurl(info.row.original)); }}
+      <button onClick={(e) => { e.stopPropagation(); void copyGrpcurl(info.row.original); }}
         className="icon-btn" style={{ width: 24, height: 24 }} title="Copy grpcurl"><Copy size={12} /></button>
     ), size: 30 },
-  ], [navigate]);
+  ], [navigate, copyGrpcurl]);
 
   return (
     <div className="page-enter" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -186,7 +189,7 @@ export function HistoryList() {
               <button onClick={() => inspectCall(r)} className="btn btn-sm"><Bug size={12} /> Inspect this call</button>
               {r.stubId && <button onClick={() => navigate(`/stubs/${r.stubId}`)} className="btn btn-sm"><ExternalLink size={12} /> Open stub</button>}
               <button onClick={() => { stashClone(stubFromCall(r)); navigate('/stubs/create?clone=1'); }} className="btn btn-sm"><Plus size={12} /> Create stub from call</button>
-              <button onClick={() => navigator.clipboard.writeText(grpcurl(r))} className="btn btn-sm"><Copy size={12} /> Copy grpcurl</button>
+              <button onClick={() => void copyGrpcurl(r)} className="btn btn-sm"><Copy size={12} /> Copy grpcurl</button>
             </div>
           </div>
         )}

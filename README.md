@@ -30,7 +30,7 @@ GripMock builds a mock server from your `.proto` files or a compiled `.pb` descr
 - **TLS and mTLS Support** - Run secure gRPC/HTTP test environments with native TLS options
 - **Advanced Protobuf Type Support** - Handle well-known and extended protobuf types (`google.protobuf.*`, `google.type.*`)
 - **YAML/JSON + Schema** - Author stubs in either format with JSON Schema IDE validation
-- **Plugin Ecosystem** - Extend functions with Go plugins and matching builder image tags
+- **Plugin Ecosystem** - Extend functions with Go plugins on Linux, macOS and Windows, with matching builder image tags
 - **Built-in Faker Templates** - Generate realistic fake person/contact/geo/network data directly in templates (`faker.*`)
 - **OpenTelemetry Tracing** - OTLP tracing for gRPC and HTTP paths (`otelgrpc` + `otelhttp`)
 - **Prometheus Metrics (`/metrics`)** - Runtime/process metrics (`go_*`, `process_*`) plus GripMock metrics
@@ -70,13 +70,25 @@ brew tap gripmock/tap
 brew install --cask gripmock
 ```
 
+The cask is built with cgo, so `--plugins` works. `brew install --cask
+gripmock-slim` installs the same server without plugin support.
+
 #### Shell Script
 ```bash
 curl -s https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.sh | sh -s
 ```
 
+Add `-- --slim` to install the build without plugin support. On musl (Alpine) the
+slim build is selected automatically.
+
 #### PowerShell (Windows)
 ```powershell
+irm https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.ps1 | iex
+```
+
+For the build without plugin support, set `GRIPMOCK_SLIM` first:
+```powershell
+$env:GRIPMOCK_SLIM=1
 irm https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.ps1 | iex
 ```
 
@@ -89,6 +101,13 @@ For plugin builds, use the paired builder image:
 
 ```bash
 docker pull bavix/gripmock:3.18.4-builder
+```
+
+If you never pass `--plugins`, use the slim image (built without cgo, so
+`plugin.Open` is unavailable):
+
+```bash
+docker pull bavix/gripmock:3.18.4-slim
 ```
 
 #### Go Install

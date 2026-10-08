@@ -15,6 +15,7 @@ type StreamCaptureState struct {
 	lastResponseTime time.Time
 	startTime        time.Time
 	recordDelay      bool
+	limit            int
 }
 
 func NewStreamCaptureState() *StreamCaptureState {
@@ -24,6 +25,17 @@ func NewStreamCaptureState() *StreamCaptureState {
 	}
 }
 
+func (s *StreamCaptureState) SetLimit(limit int) {
+	if s == nil {
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.limit = limit
+}
+
 func (s *StreamCaptureState) AppendRequest(req map[string]any) {
 	if s == nil {
 		return
@@ -31,6 +43,10 @@ func (s *StreamCaptureState) AppendRequest(req map[string]any) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.full(len(s.requests)) {
+		return
+	}
 
 	s.requests = append(s.requests, req)
 }
@@ -42,6 +58,12 @@ func (s *StreamCaptureState) AppendResponseWithTiming(resp any, now time.Time) {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.full(len(s.responses)) {
+		s.lastResponseTime = now
+
+		return
+	}
 
 	if respMap, ok := resp.(map[string]any); ok && s.recordDelay {
 		since := s.lastResponseTime
@@ -80,4 +102,8 @@ func (s *StreamCaptureState) HasTimedResponses() bool {
 	defer s.mu.Unlock()
 
 	return s.recordDelay && len(s.responses) > 0
+}
+
+func (s *StreamCaptureState) full(count int) bool {
+	return s.limit > 0 && count >= s.limit
 }

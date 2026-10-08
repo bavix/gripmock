@@ -7,11 +7,12 @@ import { ImportStubs } from '../features/stubs/ImportStubs';
 import { api } from '../lib/api';
 import { useCreateStub, useInfiniteStubs, useStubsPage, type StubListFilters } from '../hooks/useStubs';
 import { useCopy } from '../hooks/useCopy';
+import { copyText } from '../lib/clipboard';
 import { useServices } from '../hooks/useServices';
 import { useSmartSearch, isUuid } from '../hooks/useSearch';
 import { btn, colors } from '../lib/theme';
 import type { Stub } from '../lib/types';
-import { compactPreview, prettyJson, matcherTypes, MATCHER_COLORS, outputKind, outputTemplate, stubRequestExample, streamKind, hasContent, requestMessages, responseMessages, matcherEntries } from '../lib/stub';
+import { compactPreview, prettyJson, matcherTypes, MATCHER_COLORS, outputKind, outputTemplate, stubRequestExample, streamKind, hasContent, requestMessages, responseMessages, matcherEntries, stubRestoreBody } from '../lib/stub';
 import { stashClone } from '../lib/clone';
 import { DataTable } from '../components/table/DataTable';
 import { stubCountLabel } from './stubCount';
@@ -119,7 +120,7 @@ export function StubsList({ filter }: Props) {
       toast.show(`Deleted ${d.service}/${d.method}`, {
         label: 'Undo',
         onClick: async () => {
-          try { await createMut.mutateAsync({ service: d.service, method: d.method, priority: d.priority, input: d.input, output: d.output }); qc.invalidateQueries({ queryKey: ['stubs'] }); } catch {}
+          try { await createMut.mutateAsync([stubRestoreBody(d)]); qc.invalidateQueries({ queryKey: ['stubs'] }); } catch {}
         },
       });
     },
@@ -137,7 +138,7 @@ export function StubsList({ filter }: Props) {
       label: 'Undo',
       onClick: async () => {
         try {
-          await api.post('/stubs', items.map(({ id: _id, ...rest }) => rest));
+          await api.post('/stubs', items.map(stubRestoreBody));
           qc.invalidateQueries({ queryKey: ['stubs'] });
         } catch {}
       },
@@ -285,7 +286,7 @@ function makeColumns(selected: Set<string>, setSelected: (fn: (prev: Set<string>
     ), size: 32 },
     { id: 'id', header: 'ID', accessorKey: 'id', cell: (info) => (
       <button type="button" style={{ font: 'inherit', fontFamily: 'monospace', fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer', background: 'none', border: 'none', padding: 0, textAlign: 'inherit' }} title={info.getValue() as string}
-        onClick={() => navigator.clipboard.writeText(info.getValue() as string)}>{(info.getValue() as string)?.slice(0, 8)}</button>
+        onClick={() => void copyText(info.getValue() as string)}>{(info.getValue() as string)?.slice(0, 8)}</button>
     )},
     { id: 'type', header: 'Type', cell: (info) => (
       <span style={{ display: 'inline-flex', gap: 3, flexWrap: 'wrap' }}>
@@ -528,7 +529,7 @@ function StubCard({ stub, onDelete, expandedId, setExpandedId, navigate, methodT
 function CopyableId({ id }: { id: string }) {
   const { copied, copy } = useCopy();
   return (
-    <button type="button" onClick={() => copy(id)} title="Click to copy"
+    <button type="button" onClick={() => void copy(id)} title="Click to copy"
       style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 11.5, color: 'var(--text-primary)', background: 'var(--bg-tertiary)', border: 'none', padding: '3px 8px', borderRadius: 4, userSelect: 'all', wordBreak: 'break-all', lineHeight: 1.4, textAlign: 'inherit' }}>
       {id}
       {copied

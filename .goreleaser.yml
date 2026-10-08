@@ -6,7 +6,13 @@ before:
   hooks:
     - go mod tidy
 
+# Proxy build: shared packages then compile from module@version paths, which is
+# what an externally built plugin sees too.
+gomod:
+  proxy: true
+
 builds:
+  # cgo everywhere plugins are possible (windows has no Go plugin support).
   - id: gripmock
     main: .
     binary: gripmock
@@ -17,13 +23,52 @@ builds:
     goarch:
       - amd64
       - arm64
+    env:
+      - CGO_ENABLED={{ if eq .Os "windows" }}0{{ else }}1{{ end }}
+      - >-
+        {{- if eq .Os "linux" }}CC=zig cc -target {{ if eq .Arch "amd64" }}x86_64{{ else }}aarch64{{ end }}-linux-gnu.2.17{{ end }}
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/bavix/gripmock/v3/internal/infra/build.Version={{.Version}} -X github.com/bavix/gripmock/v3/internal/infra/build.Commit={{.ShortCommit}} -X github.com/bavix/gripmock/v3/internal/infra/build.Date={{.CommitDate}}
+
+  # No cgo: no plugin support, statically linked, runs on musl too.
+  - id: gripmock-slim
+    main: .
+    binary: gripmock
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
     flags:
       - -trimpath
     ldflags:
       - -s -w -X github.com/bavix/gripmock/v3/internal/infra/build.Version={{.Version}} -X github.com/bavix/gripmock/v3/internal/infra/build.Commit={{.ShortCommit}} -X github.com/bavix/gripmock/v3/internal/infra/build.Date={{.CommitDate}}
 
 archives:
-  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  - id: default
+    ids:
+      - gripmock
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - README.md
+
+  - id: slim
+    ids:
+      - gripmock-slim
+    name_template: "{{ .ProjectName }}-slim_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     formats:
       - tar.gz
     format_overrides:
@@ -58,6 +103,8 @@ brews:
       name: homebrew-tap
       branch: master
     directory: Formula
+    ids:
+      - default
     homepage: https://bavix.github.io/gripmock/
     description: "A mock server for gRPC services using .proto files or compiled .pb descriptors"
     license: "MIT"
@@ -68,7 +115,7 @@ brews:
       signing:
         enabled: true
         key: "{{ .Env.GPG_FINGERPRINT }}"
-        program: gpg2
+        program: gpg
         format: openpgp
     commit_msg_template: "Update GripMock to {{ .Version }}"
 
@@ -83,6 +130,9 @@ brews:
         brew uninstall gripmock
         brew install --cask gripmock
 
+      Go plugins (--plugins) are supported on macOS and Linux. Build them with
+      the same Go version and `go build -trimpath -buildmode=plugin`.
+
     test: |
       assert_match "v#{version}", shell_output("#{bin}/gripmock --version")
 
@@ -94,6 +144,8 @@ homebrew_casks:
       branch: master
     # Casks should live in the Casks directory (default). Keep explicit for clarity.
     directory: Casks
+    ids:
+      - default
     homepage: https://bavix.github.io/gripmock/
     description: "A mock server for gRPC services using .proto files or compiled .pb descriptors"
     license: "MIT"
@@ -106,10 +158,52 @@ homebrew_casks:
       signing:
         enabled: true
         key: "{{ .Env.GPG_FINGERPRINT }}"
-        program: gpg2
+        program: gpg
         format: openpgp
     commit_msg_template: "Update GripMock to {{ .Version }}"
+    conflicts:
+      - cask: gripmock-slim
+    caveats: |
+      Built with cgo, so Go plugins (--plugins) are supported.
+      For a plugin-free build run: brew install --cask gripmock-slim
+
     # Optional: remove quarantine on macOS if the binary isn't signed/notarized
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/gripmock"]
+          end
+
+  - name: gripmock-slim
+    repository:
+      owner: gripmock
+      name: homebrew-tap
+      branch: master
+    directory: Casks
+    ids:
+      - slim
+    homepage: https://bavix.github.io/gripmock/
+    description: "A mock server for gRPC services using .proto files or compiled .pb descriptors (no plugin support)"
+    license: "MIT"
+    url:
+      verified: github.com/bavix/gripmock
+      template: "https://github.com/bavix/gripmock/releases/download/v{{ .Version }}/gripmock-slim_{{ .Version }}_{{ .Os }}_{{ .Arch }}.tar.gz"
+    commit_author:
+      name: Github bot
+      email: bot@babichev.net
+      signing:
+        enabled: true
+        key: "{{ .Env.GPG_FINGERPRINT }}"
+        program: gpg
+        format: openpgp
+    commit_msg_template: "Update GripMock to {{ .Version }}"
+    conflicts:
+      - cask: gripmock
+    caveats: |
+      Built without cgo: Go plugins (--plugins) are not supported.
+      For plugin support run: brew install --cask gripmock
+
     hooks:
       post:
         install: |

@@ -106,8 +106,7 @@ func TestRankStreamElements(t *testing.T) {
 	t.Parallel()
 	// Test with empty streams
 	score := rankStreamElements([]map[string]any{}, []InputData{})
-	//nolint:testifylint
-	require.Equal(t, 0.0, score)
+	require.InDelta(t, 0.0, score, 1e-9)
 
 	// Test with single element
 	queryStream := []map[string]any{{"key": "value"}}

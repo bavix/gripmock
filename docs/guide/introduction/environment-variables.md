@@ -7,6 +7,9 @@ GripMock reads configuration from environment variables on startup.
 | Variable | Default | Description |
 |---|---|---|
 | `LOG_LEVEL` | `info` | Log level (`trace`, `debug`, `info`, `warn`, `error`). |
+| `LOG_REDACT_METADATA` | `true` | Replace credential metadata with `[REDACTED]` in the call log. |
+| `LOG_REDACT_KEYS` | *(built-in list)* | Comma-separated metadata keys to redact; replaces the built-in list (`authorization`, `proxy-authorization`, `cookie`, `set-cookie`, `x-api-key`, `api-key`, `x-auth-token`). |
+| `LOG_MESSAGE_CONTENT` | `true` | Log request and response bodies. |
 | `MAX_NESTING_DEPTH` | `256` | Max message nesting depth during stub matching (safety net for circular refs). |
 
 ## gRPC server
@@ -92,6 +95,12 @@ fallbacks are gone. Use the `GATEWAY_*` variables above.
 |---|---|---|
 | `SESSION_GC_INTERVAL` | `30s` | Session cleanup loop interval. |
 | `SESSION_GC_TTL` | `60s` | Session time-to-live. |
+
+## Shutdown
+
+| Variable | Default | Description |
+|---|---|---|
+| `SHUTDOWN_TIMEOUT` | `5s` | Graceful shutdown budget. When it expires the gRPC server is stopped forcefully and the HTTP servers drop open connections, so an in-flight stream cannot block the process. |
 
 ## Plugins
 

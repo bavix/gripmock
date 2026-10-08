@@ -35,3 +35,24 @@ func TestBuilderHIstoryStoreWithRedactKeys(t *testing.T) {
 	require.Equal(t, "alice", all[0].Requests[0]["user"])
 	require.Equal(t, "[REDACTED]", all[0].Requests[0]["password"])
 }
+
+func TestBuilderLogOptionsFollowConfig(t *testing.T) {
+	t.Parallel()
+
+	defaults := deps.NewBuilder(deps.WithConfig(config.Config{
+		LogRedactMetadata: true,
+		LogMessageContent: true,
+	})).LogOptions()
+
+	require.True(t, defaults.RedactMetadata)
+	require.True(t, defaults.MessageContent)
+	require.Empty(t, defaults.RedactKeys)
+
+	custom := deps.NewBuilder(deps.WithConfig(config.Config{
+		LogRedactKeys: []string{"x-tenant"},
+	})).LogOptions()
+
+	require.False(t, custom.RedactMetadata)
+	require.False(t, custom.MessageContent)
+	require.Equal(t, []string{"x-tenant"}, custom.RedactKeys)
+}

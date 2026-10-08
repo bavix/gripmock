@@ -156,6 +156,8 @@ func (br *BidiResult) removeStubFromMatchingByIndex(index int) {
 }
 
 func (s *searcher) findBidi(query QueryBidi) (*BidiResult, error) {
+	query.Headers = normalizeHeaderKeys(query.Headers)
+
 	if query.ID != nil {
 		return s.searchByIDBidi(query)
 	}

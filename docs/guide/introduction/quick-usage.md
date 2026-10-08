@@ -10,6 +10,10 @@ brew install --cask gripmock
 gripmock --version
 ```
 
+The `gripmock` cask is built with cgo, so [plugins](/guide/plugins/) load. The
+`gripmock-slim` cask is the same server without plugin support; the two casks
+conflict, install one.
+
 ### 2. Shell script (curl)
 
 Linux and macOS, arm64 and amd64:
@@ -17,6 +21,9 @@ Linux and macOS, arm64 and amd64:
 ```bash
 curl -s https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup.sh | sh -s
 ```
+
+Append `-- --slim` for the build without plugin support. On musl (Alpine) the
+slim build is installed automatically, since the default one links glibc.
 
 This script automatically:
 1. Detects your system (Linux/macOS) and architecture (arm64/amd64)

@@ -51,11 +51,13 @@ func (p *processor) process(ctx context.Context, paths []string) error {
 		default:
 		}
 
-		logger.Debug().Str("path", path).Msg("Processing path")
+		safePath := RedactURL(path)
+
+		logger.Debug().Str("path", safePath).Msg("Processing path")
 
 		source, err := ParseSource(path)
 		if err != nil {
-			return errors.Wrapf(err, "failed to parse source: %s", path)
+			return errors.Wrapf(err, "failed to parse source: %s", safePath)
 		}
 
 		if source.Type == SourceBufBuild {
@@ -71,7 +73,7 @@ func (p *processor) process(ctx context.Context, paths []string) error {
 
 		err = ProcessSource(ctx, source, p)
 		if err != nil {
-			return errors.Wrapf(err, "failed to process source: %s", source.Raw)
+			return errors.Wrapf(err, "failed to process source: %s", RedactURL(source.Raw))
 		}
 	}
 
@@ -123,7 +125,7 @@ func (p *processor) ProcessBufBuild(ctx context.Context, source *Source) error {
 
 	fds, err := p.remoteClient.FetchDescriptorSet(ctx, source)
 	if err != nil {
-		return errors.Wrapf(err, "failed to fetch from buf.build: %s", source.Raw)
+		return errors.Wrapf(err, "failed to fetch from buf.build: %s", RedactURL(source.Raw))
 	}
 
 	p.descriptorSets = append(p.descriptorSets, fds)
@@ -138,7 +140,7 @@ func (p *processor) ProcessReflect(ctx context.Context, source *Source) error {
 
 	fds, err := p.remoteClient.FetchDescriptorSet(ctx, source)
 	if err != nil {
-		return errors.Wrapf(err, "failed to fetch from gRPC reflection: %s", source.Raw)
+		return errors.Wrapf(err, "failed to fetch from gRPC reflection: %s", RedactURL(source.Raw))
 	}
 
 	p.descriptorSets = append(p.descriptorSets, fds)

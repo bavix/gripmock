@@ -11,7 +11,7 @@ concurrency:
 
 env:
   GRPCTESTIFY_VERSION: "1.10.3"
-  GO_VERSION: "1.26.6"
+  GO_VERSION: "1.26.8"
 
 jobs:
   unit-tests:
@@ -56,7 +56,11 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
+      # The windows runner keeps its C toolchain out of PATH; the cgo half of
+      # pkg/plugins/cshared/export is compiled by the plugin-tests job instead.
       - name: Run unit tests
+        env:
+          CGO_ENABLED: ${{ matrix.os == 'windows-latest' && '0' || '1' }}
         run: go test ./...
 
   bsr-e2e-tests:
@@ -185,6 +189,8 @@ jobs:
   goreleaser-check:
     name: "GoReleaser Check"
     runs-on: ubuntu-latest
+    outputs:
+      release_changed: ${{ steps.changes.outputs.release_changed }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -205,8 +211,55 @@ jobs:
       - name: Validate GoReleaser config
         run: goreleaser check
 
-      - name: Build snapshot with GoReleaser
-        run: goreleaser build --snapshot --clean
+      # The cgo builds need macOS and zig; the slim ones cover the config here.
+      - name: Build slim snapshot with GoReleaser
+        run: goreleaser build --snapshot --clean --id gripmock-slim
+
+      - name: Detect release-affecting changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "release_changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          base="origin/${{ github.base_ref }}"
+          git rev-parse --verify "$base" >/dev/null 2>&1 \
+            || git fetch --no-tags origin "${{ github.base_ref }}:refs/remotes/$base"
+          changed=$(git diff --name-only "$base...HEAD")
+          if printf '%s\n' "$changed" | grep -qE '^(\.goreleaser\.yml|go\.mod|go\.sum|\.github/workflows/(release\.yaml|continuous-integration\.yml))$'; then
+            echo "release_changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  goreleaser-cgo-check:
+    name: "GoReleaser Check (cgo)"
+    needs: goreleaser-check
+    if: needs.goreleaser-check.outputs.release_changed == 'true'
+    # Same runner as the release: darwin cgo needs the macOS SDK.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install zig
+        run: brew install zig
+
+      - name: Setup GoReleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "~> 2.15.0"
+          install-only: true
+
+      - name: Build cgo snapshot with GoReleaser
+        run: goreleaser build --snapshot --clean --id gripmock
 
   e2e-tests:
     name: "E2E Tests (${{ matrix.platform }})"
@@ -321,6 +374,75 @@ jobs:
         with:
           name: coverage-check
           path: /tmp/cover-check
+
+  plugin-tests:
+    name: "Plugin Tests (${{ matrix.platform }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+          - os: macos-latest
+            platform: macos
+          - os: windows-latest
+            platform: windows
+    steps:
+      - uses: actions/checkout@v7
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install grpctestify
+        uses: gripmock/grpctestify-action@v1
+        with:
+          install-only: true
+          version: ${{ env.GRPCTESTIFY_VERSION }}
+
+      - name: Run plugin suite
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          set -eu
+
+          bin="$PWD/.gripmock/bin"
+          dir="$PWD/.gripmock/plugins"
+          mode=plugin
+          ext=so
+          mkdir -p "$dir"
+
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            bin="$bin.exe"
+            mode=c-shared
+            ext=dll
+            export PATH="/c/msys64/mingw64/bin:$PATH"
+            command -v gcc >/dev/null || choco install mingw -y --no-progress
+            gcc --version
+          fi
+
+          go build -o "$bin" .
+
+          for name in hash math delay; do
+            go build -buildmode="$mode" -o "$dir/$name.$ext" "./examples/plugins/$name"
+          done
+
+          "$bin" info --plugins="$dir"
+
+          "$bin" --plugins="$dir" --stub=third_party/plugins third_party/plugins/service.proto &
+          pid=$!
+
+          cleanup() {
+            kill "$pid" 2>/dev/null || true
+          }
+
+          trap cleanup EXIT
+
+          "$bin" check --timeout=60s --silent
+          grpctestify third_party/plugins/
 
   e2e-tls-tests:
     name: "E2E TLS (${{ matrix.tls_mode }})"

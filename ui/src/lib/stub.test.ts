@@ -3,7 +3,7 @@ import {
   prune, hasContent, compactPreview, matcherTypes, matcherEntries,
   requestMessages, responseMessages, isRequestStream, isResponseStream,
   serviceRefMatches, methodPeers, shadowers, streamKind, outputKind,
-  evalMatcherFields, globToRegExp,
+  evalMatcherFields, globToRegExp, stubRestoreBody,
 } from './stub';
 import type { Stub, StubInput } from './types';
 
@@ -240,5 +240,41 @@ describe('evalMatcherFields anyOf', () => {
     const rows = evalMatcherFields({ a: 2 }, matcher);
     expect(rows).toHaveLength(1);
     expect(rows[0].field).toBe('a');
+  });
+});
+
+describe('stubRestoreBody', () => {
+  it('keeps every field a delete Undo has to restore', () => {
+    const full = stub({
+      headers: { equals: { authorization: 'Bearer t' } },
+      input: { equals: { a: 1 } },
+      inputs: [{ equals: { a: 1 } }, { equals: { a: 2 } }],
+      output: { data: { ok: true } },
+      options: { times: 3 },
+      effects: [{ action: 'upsert', id: 'e-1' }],
+      source: 'api',
+      priority: 7,
+    } as Partial<Stub>);
+
+    expect(stubRestoreBody(full)).toEqual({
+      service: 'pkg.Svc', method: 'M', priority: 7,
+      headers: { equals: { authorization: 'Bearer t' } },
+      input: { equals: { a: 1 } },
+      inputs: [{ equals: { a: 1 } }, { equals: { a: 2 } }],
+      output: { data: { ok: true } },
+      options: { times: 3 },
+      effects: [{ action: 'upsert', id: 'e-1' }],
+      source: 'api',
+    });
+  });
+
+  it('drops only the server-assigned id and does not mutate the stub', () => {
+    const original = stub({ options: { times: 2 } });
+
+    const body = stubRestoreBody(original);
+
+    expect(body).not.toHaveProperty('id');
+    expect(original.id).toBe('id-1');
+    expect(original.options).toEqual({ times: 2 });
   });
 });

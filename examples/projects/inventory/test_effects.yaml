@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://bavix.github.io/gripmock/schema/stub.json
+
+# Warm-up call: answers with an empty decoration map and, as a side effect,
+# registers the stub that serves the next call for the same cluster.
+- service: inventory.InventoryService
+  method: GetResourceDecorationByIPsStream
+  priority: 10
+  input:
+    equals:
+      k8s_cluster_id: "effects-cluster"
+      ips: ["10.0.0.7"]
+  output:
+    data:
+      ips_to_decorations: {}
+  options:
+    times: 1
+  effects:
+    - action: upsert
+      stub:
+        service: inventory.InventoryService
+        method: GetResourceDecorationByIPsStream
+        priority: 5
+        input:
+          equals:
+            k8s_cluster_id: "effects-cluster"
+            ips: ["10.0.0.7"]
+        output:
+          data:
+            ips_to_decorations:
+              "10.0.0.7":
+                decoration: "warm-cache"
+                environment: "staging"

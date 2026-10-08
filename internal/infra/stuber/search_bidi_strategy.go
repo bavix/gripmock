@@ -21,7 +21,7 @@ func HandlerCandidate(stub *Stub, query QueryBidi) bool {
 		return false
 	}
 
-	return matchBidiStubHeaders(stub, query.Headers)
+	return matchBidiStubHeaders(stub, normalizeHeaderKeys(query.Headers))
 }
 
 func matchBidiStubMessage(stub *Stub, queryHeaders map[string]any, messageData map[string]any) bool {
@@ -62,6 +62,7 @@ func scoreBidiStubMessage(query Query, stub *Stub, messageIndex int) float64 {
 	return rankStub(query, stub)
 }
 
+//nolint:cyclop
 func matchInputData(inputData InputData, messageData map[string]any) bool {
 	if isInputMatcherEmpty(inputData) {
 		return true
@@ -69,7 +70,8 @@ func matchInputData(inputData InputData, messageData map[string]any) bool {
 
 	if !matchInputEquals(inputData.Equals, messageData) ||
 		!matchInputContains(inputData.Contains, messageData) ||
-		!matchInputRegex(inputData.Matches, messageData) {
+		!matchInputRegex(inputData.Matches, messageData) ||
+		!matchInputGlob(inputData.Glob, messageData) {
 		return false
 	}
 
@@ -81,7 +83,8 @@ func matchInputData(inputData InputData, messageData map[string]any) bool {
 		alt := &inputData.AnyOf[i]
 		if matchInputEquals(alt.Equals, messageData) &&
 			matchInputContains(alt.Contains, messageData) &&
-			matchInputRegex(alt.Matches, messageData) {
+			matchInputRegex(alt.Matches, messageData) &&
+			matchInputGlob(alt.Glob, messageData) {
 			return true
 		}
 	}
@@ -96,7 +99,8 @@ func rankInputData(inputData InputData, messageData map[string]any) float64 {
 
 	base := rankInputEquals(inputData.Equals, messageData) +
 		rankInputContains(inputData.Contains, messageData) +
-		rankInputRegex(inputData.Matches, messageData)
+		rankInputRegex(inputData.Matches, messageData) +
+		rankGlob(inputData.Glob, messageData)
 
 	if len(inputData.AnyOf) == 0 {
 		return base
@@ -109,7 +113,8 @@ func rankInputData(inputData InputData, messageData map[string]any) float64 {
 
 		r := rankInputEquals(alt.Equals, messageData) +
 			rankInputContains(alt.Contains, messageData) +
-			rankInputRegex(alt.Matches, messageData)
+			rankInputRegex(alt.Matches, messageData) +
+			rankGlob(alt.Glob, messageData)
 
 		if r > bestAlt {
 			bestAlt = r
@@ -129,6 +134,10 @@ func matchInputContains(expected map[string]any, messageData map[string]any) boo
 
 func matchInputRegex(expected map[string]any, messageData map[string]any) bool {
 	return matches(expected, messageData)
+}
+
+func matchInputGlob(expected map[string]any, messageData map[string]any) bool {
+	return globMatch(expected, messageData)
 }
 
 func rankInputEquals(expected map[string]any, messageData map[string]any) float64 {
@@ -232,5 +241,9 @@ func keyStyleFlags(s string) (bool, bool) {
 }
 
 func isInputMatcherEmpty(inputData InputData) bool {
-	return len(inputData.Equals) == 0 && len(inputData.Contains) == 0 && len(inputData.Matches) == 0 && len(inputData.AnyOf) == 0
+	return len(inputData.Equals) == 0 &&
+		len(inputData.Contains) == 0 &&
+		len(inputData.Matches) == 0 &&
+		len(inputData.Glob) == 0 &&
+		len(inputData.AnyOf) == 0
 }

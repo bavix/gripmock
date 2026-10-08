@@ -1,0 +1,19 @@
+--- META ---
+tags: [plugins]
+
+--- ENDPOINT ---
+com.bavix.plugins.v1.PluginService/Apply
+
+--- REQUEST ---
+{
+  "value": "abc"
+}
+
+--- RESPONSE ---
+{
+  "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  "md5": "900150983cd24fb0d6963f7d28e17f72",
+  "pow": "1024",
+  "delay": "2s",
+  "crc32": "891568578"
+}

@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/goccy/go-json"
@@ -18,8 +20,23 @@ import (
 	protosetinfra "github.com/bavix/gripmock/v3/internal/infra/protoset"
 )
 
-// LogUnaryInterceptor logs unary gRPC calls.
-func LogUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+// logUnaryInterceptor logs unary gRPC calls.
+func (s *GRPCServer) logUnaryInterceptor(
+	ctx context.Context,
+	req any,
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+) (any, error) {
+	return logUnaryCall(ctx, req, info, handler, s.logOptions)
+}
+
+func logUnaryCall(
+	ctx context.Context,
+	req any,
+	info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler,
+	opts LogOptions,
+) (any, error) {
 	start := time.Now()
 	resp, err := handler(ctx, req)
 
@@ -42,37 +59,50 @@ func LogUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInf
 		Str("protocol", "grpc")
 
 	if md, ok := metadata.FromIncomingContext(ctx); ok {
-		event.Interface("grpc.metadata", md)
+		event.Interface("grpc.metadata", opts.redactMetadata(md))
 	}
 
-	if content := protoToJSON(req); content != nil {
-		event.RawJSON("grpc.request.content", content)
-	}
-
-	if content := protoToJSON(resp); content != nil {
-		event.RawJSON("grpc.response.content", content)
-	}
+	opts.logMessageContent(event, "grpc.request.content", req)
+	opts.logMessageContent(event, "grpc.response.content", resp)
 
 	event.Msg("gRPC call completed")
 
 	return resp, err
 }
 
-// LogStreamInterceptor logs streaming gRPC calls.
-func LogStreamInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+// logStreamInterceptor logs streaming gRPC calls.
+func (s *GRPCServer) logStreamInterceptor(
+	srv any,
+	stream grpc.ServerStream,
+	info *grpc.StreamServerInfo,
+	handler grpc.StreamHandler,
+) error {
+	return logStreamCall(stream.Context(), srv, stream, info, handler, s.logOptions)
+}
+
+func logStreamCall(
+	ctx context.Context,
+	srv any,
+	stream grpc.ServerStream,
+	info *grpc.StreamServerInfo,
+	handler grpc.StreamHandler,
+	opts LogOptions,
+) error {
 	start := time.Now()
-	grpcPeer, _ := peer.FromContext(stream.Context())
+	grpcPeer, _ := peer.FromContext(ctx)
 	service, method := splitMethodName(info.FullMethod)
 
-	wrapped := &loggingStream{stream, []any{}, []any{}}
+	wrapped := newLoggingStream(stream)
 	err := handler(srv, wrapped)
+
+	requests, responses := wrapped.snapshot()
 
 	level := zerolog.InfoLevel
 	if service == serviceReflection {
 		level = zerolog.DebugLevel
 	}
 
-	zerolog.Ctx(stream.Context()).WithLevel(level).
+	event := zerolog.Ctx(ctx).WithLevel(level).
 		Str("grpc.component", "server").
 		Str("grpc.method", method).
 		Str("grpc.method_type", "stream").
@@ -80,10 +110,18 @@ func LogStreamInterceptor(srv any, stream grpc.ServerStream, info *grpc.StreamSe
 		Str("grpc.code", status.Code(err).String()).
 		Dur("grpc.time_ms", time.Since(start)).
 		Str("peer.address", getPeerAddress(grpcPeer)).
-		Array("grpc.request.content", toLogArray(wrapped.requests...)).
-		Array("grpc.response.content", toLogArray(wrapped.responses...)).
-		Str("protocol", "grpc").
-		Msg("gRPC call completed")
+		Str("protocol", "grpc")
+
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		event.Interface("grpc.metadata", opts.redactMetadata(md))
+	}
+
+	if opts.MessageContent {
+		event.Array("grpc.request.content", toLogArray(requests...)).
+			Array("grpc.response.content", toLogArray(responses...))
+	}
+
+	event.Msg("gRPC call completed")
 
 	return err
 }
@@ -179,8 +217,17 @@ func toLogArray(items ...any) *zerolog.Array {
 type loggingStream struct {
 	grpc.ServerStream
 
+	mu        sync.Mutex
 	requests  []any
 	responses []any
+}
+
+func newLoggingStream(stream grpc.ServerStream) *loggingStream {
+	return &loggingStream{
+		ServerStream: stream,
+		requests:     []any{},
+		responses:    []any{},
+	}
 }
 
 func (s *loggingStream) SendMsg(m any) error {
@@ -195,10 +242,20 @@ func (s *loggingStream) RecvMsg(m any) error {
 	return s.ServerStream.RecvMsg(m)
 }
 
+func (s *loggingStream) snapshot() ([]any, []any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return slices.Clone(s.requests), slices.Clone(s.responses)
+}
+
 func (s *loggingStream) appendRequest(m any) {
 	if m == nil || isNilInterface(m) {
 		return
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	if len(s.requests) < maxLoggingStreamMsgs {
 		s.requests = append(s.requests, m)
@@ -210,7 +267,88 @@ func (s *loggingStream) appendResponse(m any) {
 		return
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if len(s.responses) < maxLoggingStreamMsgs {
 		s.responses = append(s.responses, m)
 	}
+}
+
+const redactedValue = "[REDACTED]"
+
+// DefaultRedactKeys lists the metadata keys hidden from the call log unless the
+// configuration replaces them.
+func DefaultRedactKeys() []string {
+	return []string{
+		"authorization",
+		"proxy-authorization",
+		"cookie",
+		"set-cookie",
+		"x-api-key",
+		"api-key",
+		"x-auth-token",
+	}
+}
+
+// LogOptions controls how much of a call reaches the log. Build it with
+// DefaultLogOptions: the zero value neither redacts metadata nor logs bodies.
+type LogOptions struct {
+	RedactMetadata bool
+	RedactKeys     []string
+	MessageContent bool
+}
+
+// DefaultLogOptions redacts the well-known credential headers and logs bodies.
+func DefaultLogOptions() LogOptions {
+	return LogOptions{RedactMetadata: true, RedactKeys: DefaultRedactKeys(), MessageContent: true}
+}
+
+func (o LogOptions) redactMetadata(md metadata.MD) metadata.MD {
+	if !o.RedactMetadata {
+		return md
+	}
+
+	keys := o.RedactKeys
+	if keys == nil {
+		keys = DefaultRedactKeys()
+	}
+
+	sensitive := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		sensitive[strings.ToLower(strings.TrimSpace(key))] = struct{}{}
+	}
+
+	redacted := make(metadata.MD, len(md))
+
+	for key, values := range md {
+		if _, hide := sensitive[strings.ToLower(key)]; hide {
+			redacted[key] = []string{redactedValue}
+
+			continue
+		}
+
+		redacted[key] = values
+	}
+
+	return redacted
+}
+
+func (o LogOptions) logMessageContent(event *zerolog.Event, key string, msg any) {
+	if !o.MessageContent {
+		return
+	}
+
+	content := protoToJSON(msg)
+	if content == nil {
+		return
+	}
+
+	if len(content) > maxLoggedBodyBytes {
+		event.Str(key, fmt.Sprintf("[truncated: %d bytes]", len(content)))
+
+		return
+	}
+
+	event.RawJSON(key, content)
 }
