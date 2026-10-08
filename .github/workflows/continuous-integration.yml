@@ -205,7 +205,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
-          version: "~> 2.15.0"
+          version: "~> 2.18.2"
           install-only: true
 
       - name: Validate GoReleaser config
@@ -255,7 +255,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
-          version: "~> 2.15.0"
+          version: "~> 2.18.2"
           install-only: true
 
       - name: Build cgo snapshot with GoReleaser
