@@ -19,7 +19,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version: '1.26.8'
+          go-version: '1.26.9'
 
       - name: Install zig
         run: brew install zig
