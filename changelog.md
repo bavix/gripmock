@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.23.3 - 2026-10-09
+
+### What's Changed
+
+* secfix by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1007
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.23.2...v3.23.3
+
 ## v3.23.2 - 2026-10-08
 
 ### What's Changed
