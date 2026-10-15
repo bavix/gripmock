@@ -1,5 +1,16 @@
 # Changelog
 
+## v3.23.4 - 2026-10-15
+
+### What's Changed
+
+* chore(deps): bump sourcemeta/jsonschema from 17.1.1 to 17.2.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1006
+* chore(deps): bump github.com/brianvoe/gofakeit/v7 from 7.17.1 to 7.18.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1010
+* chore(deps): bump golang from 1.26-alpine3.24 to 1.27-alpine3.24 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1008
+* chore(deps): bump github.com/bmatcuk/doublestar/v4 from 4.10.2 to 4.10.3 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1009
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.23.3...v3.23.4
+
 ## v3.23.3 - 2026-10-09
 
 ### What's Changed
