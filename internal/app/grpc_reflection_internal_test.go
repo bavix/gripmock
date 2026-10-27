@@ -36,21 +36,14 @@ func TestReflectionIncludesDynamicService(t *testing.T) {
 	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
-	serveErr := make(chan error, 1)
-
 	go func() {
-		serveErr <- server.Serve(listener)
+		_ = server.Serve(listener)
 	}()
 
 	t.Cleanup(func() {
 		server.Stop()
 
 		_ = listener.Close()
-
-		select {
-		case <-serveErr:
-		default:
-		}
 	})
 
 	registerGreeterDescriptors(t, ctx, registry)
