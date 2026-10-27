@@ -1,5 +1,17 @@
 # Changelog
 
+## v3.23.5 - 2026-10-27
+
+### What's Changed
+
+* chore(deps): bump sourcemeta/jsonschema from 17.2.0 to 17.2.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1011
+* chore(deps): bump github.com/klauspost/compress from 1.20.1 to 1.20.3 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1012
+* bump all by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1016
+* chore(deps): bump sourcemeta/jsonschema from 17.2.1 to 17.3.0 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1015
+* deps by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1017
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.23.4...v3.23.5
+
 ## v3.23.4 - 2026-10-15
 
 ### What's Changed
