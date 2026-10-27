@@ -64,7 +64,7 @@ func startGatewayServer(t *testing.T) (string, func()) {
 		cancel()
 
 		select {
-		case <-errCh:
+		case _ = <-errCh: //nolint:staticcheck
 		case <-time.After(500 * time.Millisecond):
 		}
 	}
