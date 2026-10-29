@@ -6,7 +6,7 @@
 
 * chore(deps): bump undici from 8.11.2 to 8.12.3 in /ui in the npm_and_yarn group across 1 directory by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1018
 * chore(deps): bump vitepress from 2.0.0-alpha.20 to 2.0.0-alpha.21 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1019
-* fix: add gzip image support for legacy Docker by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1022
+* fix: add gzip image support for legacy Docker by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1022 (Thank you @korrawit)
 
 **Full Changelog**: https://github.com/bavix/gripmock/compare/v3.23.5...v3.23.6
 
