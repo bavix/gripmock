@@ -13,6 +13,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
+        arch: [amd64, arm64]
+        compression: [zstd, gzip]
         include:
           - arch: amd64
             platform: linux/amd64
@@ -53,9 +55,9 @@ jobs:
             version=${{ github.ref_name }}
             commit=${{ github.sha }}
             date=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
-          outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=zstd,compression-level=19
-          cache-from: type=gha,scope=builder-${{ matrix.arch }}
-          cache-to: type=gha,mode=max,scope=builder-${{ matrix.arch }}
+          outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=${{ matrix.compression }},compression-level=${{ matrix.compression == 'zstd' && '19' || '6' }},force-compression=${{ matrix.compression == 'gzip' }}
+          cache-from: type=gha,scope=builder-${{ matrix.arch }}${{ matrix.compression == 'gzip' && '-legacy' || '' }}
+          cache-to: type=gha,mode=max,scope=builder-${{ matrix.arch }}${{ matrix.compression == 'gzip' && '-legacy' || '' }}
 
       - name: Build runtime image
         id: build_runtime
@@ -70,9 +72,9 @@ jobs:
             commit=${{ github.sha }}
             date=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
             BUILDER_IMAGE=ghcr.io/bavix/gripmock@${{ steps.build_builder.outputs.digest }}
-          outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=zstd,compression-level=19
-          cache-from: type=gha,scope=runtime-${{ matrix.arch }}
-          cache-to: type=gha,mode=max,scope=runtime-${{ matrix.arch }}
+          outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=${{ matrix.compression }},compression-level=${{ matrix.compression == 'zstd' && '19' || '6' }},force-compression=${{ matrix.compression == 'gzip' }}
+          cache-from: type=gha,scope=runtime-${{ matrix.arch }}${{ matrix.compression == 'gzip' && '-legacy' || '' }}
+          cache-to: type=gha,mode=max,scope=runtime-${{ matrix.arch }}${{ matrix.compression == 'gzip' && '-legacy' || '' }}
 
       - name: Build slim runtime image
         id: build_slim
@@ -88,24 +90,24 @@ jobs:
             date=${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
             BUILDER_IMAGE=ghcr.io/bavix/gripmock@${{ steps.build_builder.outputs.digest }}
             cgo=0
-          outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=zstd,compression-level=19
-          cache-from: type=gha,scope=slim-${{ matrix.arch }}
-          cache-to: type=gha,mode=max,scope=slim-${{ matrix.arch }}
+          outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=${{ matrix.compression }},compression-level=${{ matrix.compression == 'zstd' && '19' || '6' }},force-compression=${{ matrix.compression == 'gzip' }}
+          cache-from: type=gha,scope=slim-${{ matrix.arch }}${{ matrix.compression == 'gzip' && '-legacy' || '' }}
+          cache-to: type=gha,mode=max,scope=slim-${{ matrix.arch }}${{ matrix.compression == 'gzip' && '-legacy' || '' }}
 
       - name: Export digests
         run: |
-          mkdir -p /tmp/digests/builder /tmp/digests/runtime /tmp/digests/slim
+          mkdir -p /tmp/digests/${{ matrix.compression }}/{builder,runtime,slim}
           builder='${{ steps.build_builder.outputs.digest }}'
           runtime='${{ steps.build_runtime.outputs.digest }}'
           slim='${{ steps.build_slim.outputs.digest }}'
-          touch "/tmp/digests/builder/${builder#sha256:}"
-          touch "/tmp/digests/runtime/${runtime#sha256:}"
-          touch "/tmp/digests/slim/${slim#sha256:}"
+          touch "/tmp/digests/${{ matrix.compression }}/builder/${builder#sha256:}"
+          touch "/tmp/digests/${{ matrix.compression }}/runtime/${runtime#sha256:}"
+          touch "/tmp/digests/${{ matrix.compression }}/slim/${slim#sha256:}"
 
       - name: Upload digests
         uses: actions/upload-artifact@v7
         with:
-          name: digests-${{ matrix.arch }}
+          name: digests-${{ matrix.arch }}-${{ matrix.compression }}
           path: /tmp/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -114,6 +116,14 @@ jobs:
     needs:
       - build
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - compression: zstd
+            suffix: ""
+          - compression: gzip
+            # Gzip variants for runtimes that cannot pull zstd layers; see https://github.com/bavix/gripmock/discussions/1020 and https://github.com/bavix/gripmock/issues/1021.
+            suffix: -legacy
     steps:
       - name: Download digests
         uses: actions/download-artifact@v8
@@ -129,6 +139,9 @@ jobs:
           images: |
             bavix/gripmock
             ghcr.io/bavix/gripmock
+          flavor: |
+            latest=${{ matrix.compression == 'zstd' && 'auto' || 'false' }}
+            suffix=${{ matrix.suffix }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -145,10 +158,10 @@ jobs:
           flavor: |
             latest=false
           tags: |
-            type=ref,event=branch,suffix=-builder
-            type=semver,pattern={{version}}-builder
-            type=semver,pattern={{major}}.{{minor}}-builder
-            type=semver,pattern={{major}}-builder
+            type=ref,event=branch,suffix=-builder${{ matrix.suffix }}
+            type=semver,pattern={{version}}-builder${{ matrix.suffix }}
+            type=semver,pattern={{major}}.{{minor}}-builder${{ matrix.suffix }}
+            type=semver,pattern={{major}}-builder${{ matrix.suffix }}
 
       - name: Docker meta (slim)
         id: meta_slim
@@ -160,10 +173,10 @@ jobs:
           flavor: |
             latest=false
           tags: |
-            type=ref,event=branch,suffix=-slim
-            type=semver,pattern={{version}}-slim
-            type=semver,pattern={{major}}.{{minor}}-slim
-            type=semver,pattern={{major}}-slim
+            type=ref,event=branch,suffix=-slim${{ matrix.suffix }}
+            type=semver,pattern={{version}}-slim${{ matrix.suffix }}
+            type=semver,pattern={{major}}.{{minor}}-slim${{ matrix.suffix }}
+            type=semver,pattern={{major}}-slim${{ matrix.suffix }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -182,7 +195,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Push builder manifest list
-        working-directory: /tmp/digests/builder
+        working-directory: /tmp/digests/${{ matrix.compression }}/builder
         run: |
           docker buildx imagetools create \
             --annotation "index:org.opencontainers.image.description=gRPC Mock Server Builder" \
@@ -190,7 +203,7 @@ jobs:
             $(printf "ghcr.io/bavix/gripmock@sha256:%s " *)
 
       - name: Push runtime manifest list
-        working-directory: /tmp/digests/runtime
+        working-directory: /tmp/digests/${{ matrix.compression }}/runtime
         run: |
           docker buildx imagetools create \
             --annotation "index:org.opencontainers.image.description=gRPC Mock Server" \
@@ -198,7 +211,7 @@ jobs:
             $(printf "ghcr.io/bavix/gripmock@sha256:%s " *)
 
       - name: Push slim manifest list
-        working-directory: /tmp/digests/slim
+        working-directory: /tmp/digests/${{ matrix.compression }}/slim
         run: |
           docker buildx imagetools create \
             --annotation "index:org.opencontainers.image.description=gRPC Mock Server (slim, no plugin support)" \

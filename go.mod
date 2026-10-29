@@ -6,13 +6,13 @@ require (
 	github.com/andybalholm/brotli v1.2.7
 	github.com/bavix/features v1.0.4
 	github.com/bmatcuk/doublestar/v4 v4.10.4
-	github.com/brianvoe/gofakeit/v7 v7.18.0
+	github.com/brianvoe/gofakeit/v7 v7.18.1
 	github.com/bufbuild/protocompile v0.14.2-0.20260414195949-1188a46c0129
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/cockroachdb/errors v1.14.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/go-playground/validator/v10 v10.30.5
-	github.com/goccy/go-json v0.11.2
+	github.com/goccy/go-json v0.12.0
 	github.com/goccy/go-yaml v1.19.2
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
@@ -68,10 +68,11 @@ require (
 	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/oapi-codegen/nullable v1.2.0 // indirect
+	github.com/pandatix/go-abnf v0.5.3 // indirect
 	github.com/petermattis/goid v0.0.0-20260918085751-abfca077860b // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.6.3 // indirect
-	github.com/prometheus/common v0.72.1 // indirect
+	github.com/prometheus/common v0.73.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.23.0 // indirect
 	github.com/rogpeppe/go-internal v1.16.0 // indirect
