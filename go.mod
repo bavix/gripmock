@@ -68,11 +68,11 @@ require (
 	github.com/mattn/go-colorable v0.1.16 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/oapi-codegen/nullable v1.2.0 // indirect
-	github.com/pandatix/go-abnf v0.5.3 // indirect
-	github.com/petermattis/goid v0.0.0-20260918085751-abfca077860b // indirect
+	github.com/pandatix/go-abnf v0.5.5 // indirect
+	github.com/petermattis/goid v0.0.0-20261031113815-c1739d51dded // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.6.3 // indirect
-	github.com/prometheus/common v0.73.0 // indirect
+	github.com/prometheus/common v0.73.1 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 	github.com/prometheus/procfs v0.23.0 // indirect
 	github.com/rogpeppe/go-internal v1.16.0 // indirect

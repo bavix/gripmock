@@ -19,6 +19,9 @@ For each release tag `<tag>`:
 - `bavix/gripmock:<tag>` - runtime, cgo, plugins work
 - `bavix/gripmock:<tag>-builder` - toolchain for compiling plugins
 - `bavix/gripmock:<tag>-slim` - runtime without cgo, **no plugin support**
+- `bavix/gripmock:<tag>-debian` - Debian runtime, cgo, plugins work
+- `bavix/gripmock:<tag>-debian-builder` - Debian toolchain for compiling plugins
+- `bavix/gripmock:<tag>-debian-slim` - Debian runtime without cgo, **no plugin support**
 
 Same tags are published to `ghcr.io/bavix/gripmock`.
 
@@ -27,9 +30,10 @@ Pick `-slim` only if you never pass `--plugins`; `plugin.Open` there fails with
 
 ## CI behavior
 
-- `Dockerfile.builder` builds and publishes `:<tag>-builder`
-- `Dockerfile` builds and publishes `:<tag>` (`cgo=1`) and `:<tag>-slim` (`cgo=0`)
+- `Dockerfile.builder` and `Dockerfile.builder.debian` build and publish the Alpine and Debian builder images
+- `Dockerfile` and `Dockerfile.debian` build the corresponding runtime (`cgo=1`) and slim (`cgo=0`) images
 - runtime builds pass `BUILDER_IMAGE=ghcr.io/bavix/gripmock@<builder digest>` from the same pipeline run
+- Build plugins with the builder image matching the runtime distro.
 - layers are pushed with zstd compression; Docker 23+ or containerd is required to pull them
 
 This keeps runtime and builder strictly aligned.
