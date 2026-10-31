@@ -18,3 +18,18 @@ jobs:
         uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: Dockerfile.builder
+
+      - name: Run hadolint (Debian runtime)
+        uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: Dockerfile.debian
+
+      - name: Run hadolint (Debian builder)
+        uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: Dockerfile.builder.debian
+
+      - name: Run hadolint (nonroot wrapper)
+        uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: Dockerfile.nonroot

@@ -1,0 +1,67 @@
+name: Publish image manifest
+description: Create version tags and publish a multi-architecture manifest from platform digests.
+inputs:
+  digest-directory:
+    description: Directory containing one digest marker per architecture.
+    required: true
+  tag-suffix:
+    description: Suffix appended to branch and version tags.
+    required: true
+  latest:
+    description: docker/metadata-action latest flavor value.
+    required: false
+    default: "false"
+  description:
+    description: OCI index description.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Generate image tags
+      id: meta
+      uses: docker/metadata-action@v6
+      with:
+        images: |
+          bavix/gripmock
+          ghcr.io/bavix/gripmock
+        flavor: |
+          latest=${{ inputs.latest }}
+          suffix=${{ inputs.tag-suffix }}
+        tags: |
+          type=ref,event=branch
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+
+    - name: Publish multi-architecture manifest
+      shell: bash
+      working-directory: ${{ inputs.digest-directory }}
+      env:
+        DESCRIPTION: ${{ inputs.description }}
+        TAGS_JSON: ${{ steps.meta.outputs.json }}
+      run: |
+        shopt -s nullglob
+        digest_files=(*)
+        if (( ${#digest_files[@]} == 0 )); then
+          echo "No image digests found in ${PWD}" >&2
+          exit 1
+        fi
+
+        tags=()
+        while IFS= read -r tag; do
+          tags+=(--tag "$tag")
+        done < <(jq -r '.tags[]' <<< "${TAGS_JSON}")
+
+        sources=()
+        for digest_file in "${digest_files[@]}"; do
+          if [[ ! "${digest_file}" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "Unexpected digest filename: ${digest_file}" >&2
+            exit 1
+          fi
+          sources+=("ghcr.io/bavix/gripmock@sha256:${digest_file}")
+        done
+
+        docker buildx imagetools create \
+          --annotation "index:org.opencontainers.image.description=${DESCRIPTION}" \
+          "${tags[@]}" \
+          "${sources[@]}"
