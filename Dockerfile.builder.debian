@@ -1,0 +1,17 @@
+FROM golang:1.27-bookworm
+
+LABEL org.opencontainers.image.title="GripMock Builder"
+LABEL org.opencontainers.image.description="Builder image for GripMock runtime and Go plugins"
+LABEL org.opencontainers.image.source="https://github.com/bavix/gripmock"
+LABEL org.opencontainers.image.documentation="https://bavix.github.io/gripmock/"
+LABEL org.opencontainers.image.authors="Babichev Maxim <info@babichev.net>"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.vendor="bavix"
+
+# hadolint ignore=DL3008
+RUN apt-get update && apt-get install -y --no-install-recommends git build-essential binutils \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY . /gripmock-src
+
+WORKDIR /work

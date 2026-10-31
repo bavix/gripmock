@@ -1,0 +1,133 @@
+name: Build image set
+description: Build builder, runtime, slim, and nonroot images for one distro/platform.
+inputs:
+  distro:
+    description: Base family used for cache scopes.
+    required: true
+  builder-file:
+    description: Builder Dockerfile for this image family.
+    required: true
+  runtime-file:
+    description: Runtime Dockerfile for this image family.
+    required: true
+  arch:
+    description: Target architecture used for cache scopes.
+    required: true
+  platform:
+    description: BuildKit target platform.
+    required: true
+  compression:
+    description: Image layer compression (zstd or gzip).
+    required: true
+  compression-level:
+    description: BuildKit compression level.
+    required: true
+  force-compression:
+    description: Force recompression of all image layers.
+    required: true
+  labels:
+    description: OCI labels from docker/metadata-action.
+    required: false
+    default: ""
+  version:
+    description: Image version.
+    required: true
+  commit:
+    description: Source commit.
+    required: true
+  date:
+    description: Build date.
+    required: true
+outputs:
+  builder-digest:
+    description: Builder image digest.
+    value: ${{ steps.builder.outputs.digest }}
+  runtime-digest:
+    description: Runtime image digest.
+    value: ${{ steps.runtime.outputs.digest }}
+  slim-digest:
+    description: Slim runtime image digest.
+    value: ${{ steps.slim.outputs.digest }}
+  nonroot-digest:
+    description: Nonroot runtime image digest.
+    value: ${{ steps.nonroot.outputs.digest }}
+  slim-nonroot-digest:
+    description: Nonroot slim image digest.
+    value: ${{ steps.slim_nonroot.outputs.digest }}
+runs:
+  using: composite
+  steps:
+    - name: Build builder image
+      id: builder
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: ${{ inputs.builder-file }}
+        platforms: ${{ inputs.platform }}
+        labels: ${{ inputs.labels }}
+        build-args: |
+          version=${{ inputs.version }}
+          commit=${{ inputs.commit }}
+          date=${{ inputs.date }}
+        outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=${{ inputs.compression }},compression-level=${{ inputs.compression-level }},force-compression=${{ inputs.force-compression }}
+        cache-from: type=gha,scope=builder-${{ inputs.distro }}-${{ inputs.arch }}-${{ inputs.compression }}
+        cache-to: type=gha,mode=max,scope=builder-${{ inputs.distro }}-${{ inputs.arch }}-${{ inputs.compression }}
+
+    - name: Build runtime image
+      id: runtime
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: ${{ inputs.runtime-file }}
+        platforms: ${{ inputs.platform }}
+        labels: ${{ inputs.labels }}
+        build-args: |
+          version=${{ inputs.version }}
+          commit=${{ inputs.commit }}
+          date=${{ inputs.date }}
+          BUILDER_IMAGE=ghcr.io/bavix/gripmock@${{ steps.builder.outputs.digest }}
+        cache-from: type=gha,scope=runtime-${{ inputs.distro }}-${{ inputs.arch }}-${{ inputs.compression }}
+        cache-to: type=gha,mode=max,scope=runtime-${{ inputs.distro }}-${{ inputs.arch }}-${{ inputs.compression }}
+        outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=${{ inputs.compression }},compression-level=${{ inputs.compression-level }},force-compression=${{ inputs.force-compression }}
+
+    - name: Build slim runtime image
+      id: slim
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: ${{ inputs.runtime-file }}
+        platforms: ${{ inputs.platform }}
+        labels: ${{ inputs.labels }}
+        build-args: |
+          version=${{ inputs.version }}
+          commit=${{ inputs.commit }}
+          date=${{ inputs.date }}
+          BUILDER_IMAGE=ghcr.io/bavix/gripmock@${{ steps.builder.outputs.digest }}
+          cgo=0
+        cache-from: type=gha,scope=slim-${{ inputs.distro }}-${{ inputs.arch }}-${{ inputs.compression }}
+        cache-to: type=gha,mode=max,scope=slim-${{ inputs.distro }}-${{ inputs.arch }}-${{ inputs.compression }}
+        outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=${{ inputs.compression }},compression-level=${{ inputs.compression-level }},force-compression=${{ inputs.force-compression }}
+
+    - name: Build nonroot runtime image
+      id: nonroot
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: Dockerfile.nonroot
+        platforms: ${{ inputs.platform }}
+        build-args: BASE_IMAGE=ghcr.io/bavix/gripmock@${{ steps.runtime.outputs.digest }}
+        outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=${{ inputs.compression }},compression-level=${{ inputs.compression-level }},force-compression=${{ inputs.force-compression }}
+        cache-from: type=gha,scope=nonroot-${{ inputs.distro }}-${{ inputs.arch }}-${{ inputs.compression }}
+        cache-to: type=gha,mode=max,scope=nonroot-${{ inputs.distro }}-${{ inputs.arch }}-${{ inputs.compression }}
+
+    - name: Build nonroot slim runtime image
+      id: slim_nonroot
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: Dockerfile.nonroot
+        platforms: ${{ inputs.platform }}
+        build-args: BASE_IMAGE=ghcr.io/bavix/gripmock@${{ steps.slim.outputs.digest }}
+        outputs: type=image,name=ghcr.io/bavix/gripmock,push-by-digest=true,name-canonical=true,push=true,compression=${{ inputs.compression }},compression-level=${{ inputs.compression-level }},force-compression=${{ inputs.force-compression }}
+        cache-from: type=gha,scope=slim-nonroot-${{ inputs.distro }}-${{ inputs.arch }}-${{ inputs.compression }}
+        cache-to: type=gha,mode=max,scope=slim-nonroot-${{ inputs.distro }}-${{ inputs.arch }}-${{ inputs.compression }}
