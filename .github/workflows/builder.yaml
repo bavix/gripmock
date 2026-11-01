@@ -148,6 +148,9 @@ jobs:
             slim_nonroot_suffix: -debian-slim-nonroot-legacy
             latest: "false"
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
       - name: Download digests
         uses: actions/download-artifact@v8
         with:
