@@ -1,5 +1,13 @@
 # Changelog
 
+## v3.23.8 - 2026-11-01
+
+### What's Changed
+
+* goreleaser v2.19 by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1038
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.23.7...v3.23.8
+
 ## v3.23.7 - 2026-11-01
 
 ### What's Changed
