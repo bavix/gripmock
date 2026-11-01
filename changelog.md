@@ -1,12 +1,34 @@
 # Changelog
 
+## v3.23.7 - 2026-11-01
+
+### What's Changed
+
+* chore(deps): bump sourcemeta/jsonschema from 17.3.0 to 17.3.1 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1023
+* Docker extended by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1024
+* checkout by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1036
+* ui bump all by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1037
+* chore(deps): bump sourcemeta/jsonschema from 17.3.1 to 17.3.2 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1025
+* chore(deps): bump js-yaml from 5.4.3 to 5.5.0 in /ui by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1026
+* chore(deps-dev): bump [@typescript-eslint](https://github.com/typescript-eslint)/parser from 8.71.1 to 8.72.1 in /ui by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1027
+* chore(deps): bump react-dom from 19.3.0 to 19.3.1 in /ui by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1028
+* chore(deps-dev): bump jsdom from 30.1.2 to 30.1.3 in /ui by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1030
+* chore(deps-dev): bump [@typescript-eslint](https://github.com/typescript-eslint)/eslint-plugin from 8.71.1 to 8.72.1 in /ui by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1031
+* chore(deps): bump react from 19.3.0 to 19.3.1 in /ui by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1032
+* chore(deps): bump zustand from 5.0.15 to 5.0.16 in /ui by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1033
+* chore(deps-dev): bump [@testing-library](https://github.com/testing-library)/user-event from 14.6.7 to 14.6.8 in /ui by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1034
+* chore(deps): bump lucide-react from 1.53.0 to 1.63.0 in /ui by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1035
+* chore(deps-dev): bump eslint from 10.12.0 to 10.13.0 in /ui by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1029
+
+**Full Changelog**: https://github.com/bavix/gripmock/compare/v3.23.6...v3.23.7
+
 ## v3.23.6 - 2026-10-29
 
 ### What's Changed
 
 * chore(deps): bump undici from 8.11.2 to 8.12.3 in /ui in the npm_and_yarn group across 1 directory by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1018
 * chore(deps): bump vitepress from 2.0.0-alpha.20 to 2.0.0-alpha.21 by [@dependabot](https://github.com/dependabot)[bot] in https://github.com/bavix/gripmock/pull/1019
-* fix: add gzip image support for legacy Docker by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1022 (Thank you @korrawit)
+* fix: add gzip image support for legacy Docker by [@rez1dent3](https://github.com/rez1dent3) in https://github.com/bavix/gripmock/pull/1022 (Thank you [@korrawit](https://github.com/korrawit))
 
 **Full Changelog**: https://github.com/bavix/gripmock/compare/v3.23.5...v3.23.6
 
