@@ -72,13 +72,15 @@ check_dependencies() {
         fi
     done
     
-    # Check for checksum command (sha256sum or shasum)
+    # Check for checksum command
     if command -v sha256sum >/dev/null 2>&1; then
         CHECKSUM_CMD="sha256sum"
     elif command -v shasum >/dev/null 2>&1; then
         CHECKSUM_CMD="shasum -a 256"
+    elif command -v sha256 >/dev/null 2>&1; then
+        CHECKSUM_CMD="sha256 -q"
     else
-        log_error "Neither 'sha256sum' nor 'shasum' command found. Please install one of them."
+        log_error "No SHA-256 checksum utility found. Install sha256sum, shasum, or sha256."
     fi
     
     log_success "Dependencies are ready."
@@ -92,6 +94,7 @@ detect_os_and_architecture() {
     case "$OS" in
         Linux) OS="linux" ;;
         Darwin) OS="darwin" ;;
+        FreeBSD) OS="freebsd" ;;
         *) log_error "Unsupported OS: ${BLUE}$OS${NC}" ;;
     esac
 
@@ -101,10 +104,12 @@ detect_os_and_architecture() {
         *) log_error "Unsupported architecture: ${BLUE}$ARCH${NC}" ;;
     esac
 
-    # The default build is cgo (Go plugins work) and needs glibc. On musl the
-    # slim build is the only one that runs; it has no plugin support.
+    # FreeBSD is currently distributed as slim only; plugins require cgo.
     FLAVOR=""
-    if [ "$SLIM" = "1" ]; then
+    if [ "$OS" = "freebsd" ]; then
+        FLAVOR="-slim"
+        log_info "FreeBSD uses the slim build (no plugin support)."
+    elif [ "$SLIM" = "1" ]; then
         FLAVOR="-slim"
         log_info "Installing the slim build (no plugin support)."
     elif [ "$OS" = "linux" ] && { ls /lib/ld-musl-* >/dev/null 2>&1 || (ldd --version 2>&1 | grep -qi musl); }; then
@@ -203,7 +208,11 @@ download_gripmock() {
     fi
 
     # Get file size with two decimal places using stat
-    FILE_SIZE_BYTES=$(stat --version >/dev/null 2>&1 && stat -c%s "$DOWNLOAD_FILE" || stat -f%z "$DOWNLOAD_FILE")
+    if stat -c%s "$DOWNLOAD_FILE" >/dev/null 2>&1; then
+        FILE_SIZE_BYTES=$(stat -c%s "$DOWNLOAD_FILE")
+    else
+        FILE_SIZE_BYTES=$(stat -f%z "$DOWNLOAD_FILE")
+    fi
     FILE_SIZE_MB=$(awk "BEGIN {printf \"%.2f\", ${FILE_SIZE_BYTES} / (1024 * 1024)}")
     log_success "Downloaded GripMock (${BLUE}${FILE_SIZE_MB} MB${NC})"
 }
