@@ -79,7 +79,9 @@ curl -s https://raw.githubusercontent.com/bavix/gripmock/refs/heads/master/setup
 ```
 
 Add `-- --slim` to install the build without plugin support. On musl (Alpine) the
-slim build is selected automatically.
+slim build is selected automatically. On FreeBSD, the installer selects the
+slim build automatically; FreeBSD binaries are currently available for amd64
+and arm64 and do not support Go plugins.
 
 #### PowerShell (Windows)
 ```powershell

@@ -1,0 +1,31 @@
+name: Test FreeBSD Installation
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: freebsd-install-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install and test on FreeBSD
+        uses: vmactions/freebsd-vm@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          release: "15"
+          envs: GITHUB_TOKEN
+          run: |
+            set -e
+            chmod +x ./setup.sh
+            ./setup.sh
+            gripmock --version
+            gripmock --help >/dev/null
+            ./setup.sh
+            gripmock --version
