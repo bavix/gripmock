@@ -45,7 +45,7 @@
     "prettier": "^3.9",
     "typescript": "npm:@typescript/typescript6@^6.0.3",
     "vite": "^8.3",
-    "vitest": "^5.0.3"
+    "vitest": "^5.1.0"
   },
   "overrides": {
     "dompurify": "^3.4.16"
