@@ -33,7 +33,7 @@
     "@testing-library/user-event": "^14.6.8",
     "@types/react": "^19.3",
     "@types/react-dom": "^19.3",
-    "@typescript-eslint/eslint-plugin": "^8.72.1",
+    "@typescript-eslint/eslint-plugin": "^8.72.2",
     "@typescript-eslint/parser": "^8.72.1",
     "@typescript/native": "npm:typescript@^7.0.2",
     "@vitejs/plugin-react": "^6.2",
